@@ -1,0 +1,31 @@
+node_modules/
+status.json
+_site/
+package.json
+package-lock.json
+shots/
+# ...and any scratch DIRECTORY, by shape rather than by name. `shots/` was here and
+# `shots.tmp/` walked straight past it on 2026-09-11 — the rule read a name when it meant
+# a kind, which is the same mistake seven guards in this repo have now made. An agent that
+# takes screenshots to answer a question names its folder whatever it likes; none of them
+# belong in a commit. See docs/QA-PASS.md E3.
+*.tmp/
+*.scratch/
+# scratch a session writes at the repo root because playwright-core resolves from here.
+# *.png at the root only — the game's real icons live in subdirectories and at named paths,
+# and screenshots taken to answer a question must never be committed as if they were art.
+*.tmp.js
+*.tmp.*
+/*.png
+!/icon-*.png
+# A screenshot script whose output directory came from an unset variable writes to
+# ./undefined/ at the repo root. It happened 2026-09-09; the cure for the mistake is not
+# committing it, but this stops the next one reaching a commit at all.
+/undefined/
+
+# the gauge shell is GENERATED from index.html by test/gauge.js — never commit a copy
+content/gauge/index.html
+content/gauge/index-3d.html
+content/gauge/config-3d.js
+# same for el horno's — GENERATED from index.html by test/horno.js
+content/horno/index.html

@@ -1,0 +1,84 @@
+name: CI
+# The PUBLIC repository's checks (written 2026-09-28 for the split; the private repository keeps its own).
+# Every suite runs ONCE per pull request, and once on each push to main; a branch push alone runs nothing,
+# because its pull request is where it is judged. The job is named "smoke" because the main-lock ruleset
+# requires a check of that name, sourced from GitHub Actions.
+permissions:
+  contents: read        # nothing in CI may push
+  pull-requests: read
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the address check reads every commit a pull request brings
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      # The owner, 2026-09-28: new work here must "at least wont have info about my peronal life". Every
+      # file and file name is read against the private map's terms, handed in as an encrypted secret and
+      # never printed. No secret (a fork's pull request gets none) is a red: a session brings a fork's
+      # commits into a branch here, reviews them, and the check runs there. First, before anything else.
+      - name: Nothing personal from the private list is in this repository
+        env:
+          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
+        run: node scripts/private-terms.js
+      - name: No personal address in a commit or a file — only no-reply ones
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            node test/authors.js "origin/$BASE_REF" "$PR_HEAD"
+          else
+            BASE="$BEFORE"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"   # the first push: everything from the first commit
+            fi
+            node test/authors.js "$BASE" HEAD
+          fi
+      - name: Every third-party file matches its fingerprint
+        run: node test/vendored.js
+      - name: Nothing that looks like a password or an access key is committed (the same list the site scan reads)
+        run: node test/keys.js
+      - name: The guards' own red cases
+        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Headless smoke test
+        run: node test/smoke.js
+      - name: The engine, against the game
+        run: node test/engine.smoke.js --index index.html
+      - name: The gauge — a brand-new world still boots and meets the engine on the same terms
+        run: node test/gauge.js
+      - name: El Horno — its shell still builds from index.html
+        run: node test/horno.js
+      - name: R10 — what we would publish is only the public game
+        run: bash scripts/build-site.sh /tmp/_site && node test/public.js /tmp/_site
+      - name: Offline play works, under a page that runs only its own script files
+        run: node test/offline.js
+      - name: A change to what players cache moves the version with it
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            node test/bump.js "origin/$BASE_REF"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            node test/bump.js "$BEFORE" HEAD
+          else
+            echo "the first push has no earlier version to compare against"
+          fi

@@ -1,0 +1,266 @@
+[
+ {
+  "name": "01-hq-3d",
+  "w": "hq",
+  "x": 10,
+  "y": 10,
+  "cam": "3d"
+ },
+ {
+  "name": "02-hq-ns-door-3d",
+  "w": "hq",
+  "x": 8,
+  "y": 12,
+  "cam": "3d"
+ },
+ {
+  "name": "02b-hq-ns-door-3d-yaw90",
+  "w": "hq",
+  "x": 8,
+  "y": 12,
+  "cam": "3d",
+  "yaw": 1.5708
+ },
+ {
+  "name": "03-street-3d",
+  "w": "st",
+  "x": 8,
+  "y": 11,
+  "cam": "3d"
+ },
+ {
+  "name": "07-park-bridge-3d",
+  "w": "pk",
+  "x": 8,
+  "y": 8,
+  "cam": "3d"
+ },
+ {
+  "name": "09-mercado-front",
+  "w": "st",
+  "x": 6,
+  "y": 11,
+  "cam": "front"
+ },
+ {
+  "name": "10-f2-stairs-3d",
+  "w": "f2",
+  "x": 14,
+  "y": 14,
+  "cam": "3d"
+ },
+ {
+  "name": "11-f2-hosts-front",
+  "w": "f2",
+  "x": 10,
+  "y": 8,
+  "cam": "front"
+ },
+ {
+  "name": "12-f2-stairs-top",
+  "w": "f2",
+  "x": 12,
+  "y": 14,
+  "cam": "top"
+ },
+ {
+  "name": "14-cocina-3d",
+  "w": "lc",
+  "x": 8,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "15-street-fence-3d",
+  "w": "st",
+  "x": 19,
+  "y": 7,
+  "cam": "3d"
+ },
+ {
+  "name": "16-cocina-front",
+  "w": "lc",
+  "x": 8,
+  "y": 6,
+  "cam": "front"
+ },
+ {
+  "name": "17-street-doors-3d",
+  "w": "st",
+  "x": 14,
+  "y": 3,
+  "cam": "3d"
+ },
+ {
+  "name": "18-park-fence-3d",
+  "w": "pk",
+  "x": 5,
+  "y": 4,
+  "cam": "3d"
+ },
+ {
+  "name": "19-calle-dos-gate-3d",
+  "w": "ex",
+  "x": 6,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "20-lot-fence-3d",
+  "w": "st",
+  "x": 13,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "21-hq-door-marker-3d",
+  "w": "hq",
+  "x": 10,
+  "y": 11,
+  "cam": "3d"
+ },
+ {
+  "name": "22-hq-door-marker-top",
+  "w": "hq",
+  "x": 10,
+  "y": 11,
+  "cam": "top"
+ },
+ {
+  "name": "23-taller-inside-3d",
+  "w": "ta",
+  "x": 10,
+  "y": 10,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "24-espiga-inside-3d",
+  "w": "pa",
+  "x": 10,
+  "y": 8,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "25-velazquez-inside-3d",
+  "w": "li",
+  "x": 10,
+  "y": 8,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "26-nolasco-inside-3d",
+  "w": "no",
+  "x": 12,
+  "y": 6,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "27-taller-lot-3d",
+  "w": "st",
+  "x": 23,
+  "y": 11,
+  "cam": "3d",
+  "yaw": 3.14159,
+  "ch": 99
+ },
+ {
+  "name": "28-calle-dos-shops-3d",
+  "w": "ex",
+  "x": 9,
+  "y": 3,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "29-notario-door-3d",
+  "w": "st",
+  "x": 25,
+  "y": 3,
+  "cam": "3d",
+  "ch": 99
+ },
+ {
+  "name": "26-cocina-3d-north",
+  "w": "lc",
+  "x": 8,
+  "y": 6,
+  "cam": "3d",
+  "yaw": 3.1416
+ },
+ {
+  "name": "27-cocina-3d-east",
+  "w": "lc",
+  "x": 8,
+  "y": 6,
+  "cam": "3d",
+  "yaw": 1.5708
+ },
+ {
+  "name": "28-f2-boxes-3d-north",
+  "w": "f2",
+  "x": 15,
+  "y": 7,
+  "cam": "3d",
+  "yaw": 3.1416
+ },
+ {
+  "name": "32-mural-calle-principal",
+  "w": "st",
+  "x": 20,
+  "y": 2,
+  "cam": "3d"
+ },
+ {
+  "name": "40-casita-west-front",
+  "w": "ex",
+  "x": 1,
+  "y": 3,
+  "cam": "front"
+ },
+ {
+  "name": "41-casita-east-3d",
+  "w": "ex",
+  "x": 22,
+  "y": 3,
+  "cam": "3d"
+ },
+ {
+  "name": "44-hq-stairs",
+  "w": "hq",
+  "x": 12,
+  "y": 14,
+  "cam": "front"
+ },
+ {
+  "name": "48-busstop-st",
+  "w": "st",
+  "x": 1,
+  "y": 2,
+  "cam": "front"
+ },
+ {
+  "name": "49-busstop-ex",
+  "w": "ex",
+  "x": 22,
+  "y": 4,
+  "cam": "3d"
+ },
+ {
+  "name": "50-cone-street",
+  "w": "st",
+  "x": 5,
+  "y": 4,
+  "cam": "front"
+ },
+ {
+  "name": "51-barriers-street",
+  "w": "st",
+  "x": 19,
+  "y": 7,
+  "cam": "3d"
+ }
+]

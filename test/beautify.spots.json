@@ -1,0 +1,8 @@
+[
+ {"name":"01-rug-top","w":"hq","x":10,"y":7,"cam":"top"},
+ {"name":"02-rug-3d","w":"hq","x":10,"y":8,"cam":"3d"},
+ {"name":"03-counter-top","w":"me","x":4,"y":10,"cam":"top"},
+ {"name":"04-counter-3d","w":"me","x":4,"y":11,"cam":"3d"},
+ {"name":"05-crates-top","w":"me","x":9,"y":6,"cam":"top"},
+ {"name":"06-crates-3d","w":"me","x":9,"y":7,"cam":"3d"}
+]

@@ -1,0 +1,4 @@
+[{"name":"s3-pk-3d","w":"pk","x":12,"y":6,"cam":"3d"},{"name":"s3-pk-front","w":"pk","x":12,"y":6,"cam":"front"},{"name":"s3-pk-top","w":"pk","x":12,"y":6,"cam":"top"},
+ {"name":"s3-st-3d","w":"st","x":12,"y":8,"cam":"3d"},{"name":"s3-ex-3d","w":"ex","x":12,"y":6,"cam":"3d"},
+ {"name":"s3-me-3d","w":"me","x":10,"y":4,"cam":"3d"},{"name":"s3-me-front","w":"me","x":10,"y":4,"cam":"front"},
+ {"name":"s3-no-3d","w":"no","x":12,"y":5,"cam":"3d"},{"name":"s3-no-front","w":"no","x":12,"y":5,"cam":"front"},{"name":"s3-ta-3d","w":"ta","x":10,"y":6,"cam":"3d"}]

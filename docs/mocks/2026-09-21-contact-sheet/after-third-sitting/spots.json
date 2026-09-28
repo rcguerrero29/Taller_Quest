@@ -1,0 +1,4 @@
+[{"name":"s6-pk-3d","w":"pk","x":12,"y":6,"cam":"3d"},{"name":"s6-pk-dog-3d","w":"pk","x":17,"y":6,"cam":"3d"},{"name":"s6-st-3d","w":"st","x":12,"y":8,"cam":"3d"},
+ {"name":"s6-st-tree-3d","w":"st","x":12,"y":12,"cam":"3d"},{"name":"s6-li-cone-3d","w":"li","x":14,"y":8,"cam":"3d"},
+ {"name":"s6-pk-altar-muertos-3d","w":"pk","x":18,"y":8,"cam":"3d","season":"muertos"},{"name":"s6-st-tree-muertos-3d","w":"st","x":12,"y":12,"cam":"3d","season":"muertos"},
+ {"name":"s6-pk-front","w":"pk","x":12,"y":6,"cam":"front"}]

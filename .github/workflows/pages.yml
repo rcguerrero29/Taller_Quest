@@ -1,0 +1,80 @@
+name: Pages
+# The city record (#14 ❗El expediente — owner, 2026-09-07: "ok go for your recommendations"):
+# the site is deployed from this job's artifact with status.json written beside the game from the
+# GitHub API — version and permits, nothing more. CI still never pushes a commit (contents: read).
+# THE SWITCH HAS BEEN MADE. Checked 2026-09-15 against the API rather than asked again: GitHub's own
+# `pages-build-deployment` last ran 2026-09-10 (run #158) and has been silent through every merge
+# since, while THIS workflow's `actions/deploy-pages@v4` step ran and SUCCEEDED on the #202 merge at
+# [a time]. deploy-pages only takes when Source is "GitHub Actions". So the allowlist below is what
+# serves the site, and /changarrito/, /docs/ and /test/ are no longer published.
+# The two `continue-on-error: true` that used to sit under configure-pages and deploy-pages came off
+# with that comment, and they are the more interesting half. They existed so the job could stay green
+# while the switch was still unmade — but once it was made they became a SILENT ZERO (docs/GAUGE.md):
+# a failed deploy would have left CI green and the site stale, and a Source switched back to a branch
+# would have skipped upload and deploy through the `if:` and said nothing at all. A deploy that does
+# not happen has to be a red, not a quiet one.
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  pages: write
+  id-token: write
+on:
+  push:
+    branches: [main]
+# workflow_dispatch: dropped 2026-09-21 (docs/SECURITY.md, the critic's finding 15). Never used in
+# 49 of 49 runs, and a classic `repo` token carries Actions: write — enough to dispatch a deploy by
+# hand. One door: a push to main, which the rulesets guard.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    # Finding CI-2 (2026-09-21): a required reviewer on the github-pages environment gates ONLY a job
+    # that declares the environment. Without this key the setting the owner flips does nothing.
+    # With it, and with "Required reviewers: rcguerrero29" set under Settings → Environments →
+    # github-pages, deploy-pages waits for his click — a bad push to main stays off the internet.
+    # Until he sets it, this key changes nothing: the environment exists with no rules.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      # An ALLOWLIST, because the denylist that stood here shipped the whole repository.
+      # It excluded .git, .github and node_modules and copied everything else into the artifact:
+      # docs/ (every internal register), test/, and — the reason this changed —
+      # changarrito/, the owner's private backlog tool. CLAUDE.md says the town is never linked from the public game. NOT LINKED IS NOT THE SAME AS NOT
+      # PUBLISHED: it was reachable at /changarrito/ by anyone who guessed the path.
+      # The guarantee scan in test/smoke.js forbids "api.github.com" in the public build and never
+      # caught this, because it scans what index.html LOADS and the town loads nothing from there.
+      # A denylist can only name yesterday's mistake. This names what the game needs, so anything
+      # added to the repo tomorrow is private until somebody says otherwise.
+      - name: the site — only what the public game serves
+        run: bash scripts/build-site.sh _site
+
+      - name: write the city record
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          OUT_DIR: _site
+        run: node .github/scripts/city-record.js
+      - name: the record is what a clerk can read
+        run: node test/record.js _site/status.json
+      # R10 runs LAST, after city-record.js has written status.json INTO the artifact. It used to
+      # run before that step, so the one file generated at deploy time — carrying titles straight
+      # from the API — was the only file in the box the box-check never saw. Check the box after
+      # the last thing is put in it, or you are checking a different box.
+      - name: R10 — nothing private is in the upload
+        run: node test/public.js _site
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b  # v5
+        id: pages
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4

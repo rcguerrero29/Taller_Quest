@@ -1,0 +1,39 @@
+name: Protection
+# THE LOCK ON MAIN, read live (docs/SECURITY.md §3 step 1; owner, 2026-09-24: "cybersecurity should be key
+# always"). The ruleset sat undone for three days because nothing read the live setting. This reads GitHub's
+# rules for main and goes red when the lock is switched off or weakened — test/protect.js says what it
+# checks and, as plainly, what it cannot see.
+#
+# Its own workflow, for two reasons (Zeni's review, 2026-09-24):
+# - ONCE A DAY. A lock switched off on a quiet day would otherwise stay green until the next push, and a
+#   push through an open lock is the harm, not the warning. A failed scheduled run notifies the account
+#   that added the schedule — the owner's, since every push here is under his grant [MEMORY]. GitHub
+#   pauses a schedule after 60 days with no activity on a public repository [MEMORY].
+# - ONLY what it needs. `contents: read` to check out the file and nothing else (a token also always
+#   carries read access to metadata, which is what the rules endpoint asks for [MEMORY]), and the
+#   checkout does not write the token into .git/config, because nothing here runs git.
+#
+# It is deliberately NOT a required check: a GitHub API hiccup must not be able to block the owner's
+# merges. Its red cases run offline inside ci.yml's `smoke`, which is required (`test/protect.js --selftest`).
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 13 * * *'   # 13:17 UTC every day
+jobs:
+  protection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: main is still locked — read from GitHub's live rules
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node test/protect.js

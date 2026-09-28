@@ -1,0 +1,338 @@
+[
+ {
+  "name": "sheet-hq-top",
+  "w": "hq",
+  "x": 9,
+  "y": 8,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-hq-front",
+  "w": "hq",
+  "x": 9,
+  "y": 8,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-hq-iso",
+  "w": "hq",
+  "x": 9,
+  "y": 8,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-hq-3d",
+  "w": "hq",
+  "x": 9,
+  "y": 8,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-f2-top",
+  "w": "f2",
+  "x": 10,
+  "y": 8,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-f2-front",
+  "w": "f2",
+  "x": 10,
+  "y": 8,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-f2-iso",
+  "w": "f2",
+  "x": 10,
+  "y": 8,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-f2-3d",
+  "w": "f2",
+  "x": 10,
+  "y": 8,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-st-top",
+  "w": "st",
+  "x": 12,
+  "y": 8,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-st-front",
+  "w": "st",
+  "x": 12,
+  "y": 8,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-st-iso",
+  "w": "st",
+  "x": 12,
+  "y": 8,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-st-3d",
+  "w": "st",
+  "x": 12,
+  "y": 8,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-ex-top",
+  "w": "ex",
+  "x": 12,
+  "y": 6,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-ex-front",
+  "w": "ex",
+  "x": 12,
+  "y": 6,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-ex-iso",
+  "w": "ex",
+  "x": 12,
+  "y": 6,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-ex-3d",
+  "w": "ex",
+  "x": 12,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-lo-top",
+  "w": "lo",
+  "x": 9,
+  "y": 5,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-lo-front",
+  "w": "lo",
+  "x": 9,
+  "y": 5,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-lo-iso",
+  "w": "lo",
+  "x": 9,
+  "y": 5,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-lo-3d",
+  "w": "lo",
+  "x": 9,
+  "y": 5,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-me-top",
+  "w": "me",
+  "x": 10,
+  "y": 4,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-me-front",
+  "w": "me",
+  "x": 10,
+  "y": 4,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-me-iso",
+  "w": "me",
+  "x": 10,
+  "y": 4,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-me-3d",
+  "w": "me",
+  "x": 10,
+  "y": 4,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-lc-top",
+  "w": "lc",
+  "x": 10,
+  "y": 5,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-lc-front",
+  "w": "lc",
+  "x": 10,
+  "y": 5,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-lc-iso",
+  "w": "lc",
+  "x": 10,
+  "y": 5,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-lc-3d",
+  "w": "lc",
+  "x": 10,
+  "y": 5,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-ta-top",
+  "w": "ta",
+  "x": 10,
+  "y": 6,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-ta-front",
+  "w": "ta",
+  "x": 10,
+  "y": 6,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-ta-iso",
+  "w": "ta",
+  "x": 10,
+  "y": 6,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-ta-3d",
+  "w": "ta",
+  "x": 10,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-pa-top",
+  "w": "pa",
+  "x": 10,
+  "y": 5,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-pa-front",
+  "w": "pa",
+  "x": 10,
+  "y": 5,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-pa-iso",
+  "w": "pa",
+  "x": 10,
+  "y": 5,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-pa-3d",
+  "w": "pa",
+  "x": 10,
+  "y": 5,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-li-top",
+  "w": "li",
+  "x": 10,
+  "y": 6,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-li-front",
+  "w": "li",
+  "x": 10,
+  "y": 6,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-li-iso",
+  "w": "li",
+  "x": 10,
+  "y": 6,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-li-3d",
+  "w": "li",
+  "x": 10,
+  "y": 6,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-no-top",
+  "w": "no",
+  "x": 12,
+  "y": 5,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-no-front",
+  "w": "no",
+  "x": 12,
+  "y": 5,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-no-iso",
+  "w": "no",
+  "x": 12,
+  "y": 5,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-no-3d",
+  "w": "no",
+  "x": 12,
+  "y": 5,
+  "cam": "3d"
+ },
+ {
+  "name": "sheet-pk-top",
+  "w": "pk",
+  "x": 12,
+  "y": 6,
+  "cam": "top"
+ },
+ {
+  "name": "sheet-pk-front",
+  "w": "pk",
+  "x": 12,
+  "y": 6,
+  "cam": "front"
+ },
+ {
+  "name": "sheet-pk-iso",
+  "w": "pk",
+  "x": 12,
+  "y": 6,
+  "cam": "iso"
+ },
+ {
+  "name": "sheet-pk-3d",
+  "w": "pk",
+  "x": 12,
+  "y": 6,
+  "cam": "3d"
+ }
+]
