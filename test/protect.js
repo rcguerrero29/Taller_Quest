@@ -194,7 +194,7 @@ if (require.main === module) {
     catch (e) { console.log('FAIL\n- could not read the saved rules file (' + e.message + ') — that is a red, not a pass'); process.exit(1); }
     report(rules);
   } else {
-    const repo = process.env.GITHUB_REPOSITORY || 'rcguerrero29/meridian-quest';
+    const repo = process.env.GITHUB_REPOSITORY || 'rcguerrero29/Taller_Quest';
     live(repo, process.env.GITHUB_TOKEN).then(report, e => {
       console.log('FAIL\n- could not read main\'s rules from GitHub (' + e.message + '), so this check cannot say main is protected — that is a red, not a pass');
       process.exit(1);
