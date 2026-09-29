@@ -2312,9 +2312,9 @@ const standsUp=g=>stands(g)&&!!TILESIDE[g];
 /* ---------- IS THIS LETTER ALREADY WEARING A DRAWING? ----------
    A tile of these kinds WITH a side drawing is not built as a plain block: `t3BoxMats`
    (`engine/engine3d.js`, grep "t3BoxMats") bakes the glyph's TOP-DOWN art onto the box's lid and
-   wraps its SIDE art round the four faces. The town's `K` run is a counter with a coffee machine
-   on its front and a cup on its top; its `T` is a gingham cloth with two plates on it. Those are
-   drawings, standing up, with volume already.
+   wraps its SIDE art round the four faces. A game's counter can wear a machine drawn on its front
+   and a cup on its top, a table a cloth with plates on it. Those are drawings, standing up, with
+   volume already.
 
    And the `mesh` view has NO texture channel at all — `t3MeshOf` (`engine/engine3d.js`) bakes every
    part into ONE vertex-coloured geometry, and a part carries a primitive, a place, a size, a colour
@@ -2342,16 +2342,15 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
 
    · **It is taken, not given** (clause 0). The first version bound a letter whenever the pack had
      said nothing about it, reading silence as consent. But a world that never mentioned a letter
-     has not agreed with the engine about it — it has said nothing. El Changarrito lays six `H`
-     and its own map calls them RACKS in the houses (`changarrito/content/maps.js`, grep "racks");
-     the engine's `H` is an open PRODUCE CRATE (`TILEDRAW["H"]` above). Nothing in any table in
+     has not agreed with the engine about it — it has said nothing. Another game on this engine
+     lays `H` as a different object altogether, and the engine's `H` is an open PRODUCE CRATE
+     (`TILEDRAW["H"]` above). Nothing in any table in
      this engine records what a world MEANS by a letter it has never drawn, so no clause can ever
      catch that — which makes it the third time one letter has meant two objects here, after `I`
      and `b`. The only thing that can catch it is the world saying which letters it agrees with.
-   · **It fills a hole, never a drawing** (clause 5). See `wearsArt` above. `K`(33) `S`(16) `D`(8)
-     `T`(7) `V`(7) — seventy-one tiles of the town — stand today as boxes wearing their own art,
-     and the first version of this gate replaced all seventy-one with untextured geometry and
-     counted it as seventy-one tiles fixed.
+   · **It fills a hole, never a drawing** (clause 5). See `wearsArt` above. Seventy-one tiles of
+     another game stand today as boxes wearing their own art, and the first version of this gate
+     replaced all seventy-one with untextured geometry and counted it as seventy-one tiles fixed.
 
    1 · `TILEMESH[g]` — the pack already answered with a shape. Its answer wins, always. This is the
        line that makes Meridian byte-identical: it has its own mesh for every letter here. It is

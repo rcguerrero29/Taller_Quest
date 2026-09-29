@@ -605,10 +605,10 @@ function findChromium() {
        now carry a pack side view and box:true, so both stand as boxes. THE LIST ONLY EVER SHRINKS,
        and it shrank because the guard said so — it went red naming both the moment the art landed,
        which is exactly what an is-it-still-true check is for.
-       AND THEN IT WENT RED ON THE TOWN, which is the more useful half. One list was shared by two
-       games that lay DIFFERENT glyphs: Meridian's H is a produce crate and the town's H is a piece
-       of furniture, so a letter shrinking out of one game's list silently claimed something about
-       the other game's letter of the same name. That is `docs/REGRESSION.md`'s recurring shape —
+       AND THEN IT WENT RED ON A SECOND GAME, which is the more useful half. One list was shared by
+       two games that lay DIFFERENT glyphs: Meridian's H is a produce crate and the other game's H is
+       a different object, so a letter shrinking out of one game's list silently claimed something
+       about the other game's letter of the same name. That is `docs/REGRESSION.md`'s recurring shape —
        the list read the GLYPH and meant `this glyph, in this game`. It is keyed by index now, and a
        game with no row of its own gets the shared baseline. Two games diverge again tomorrow; this
        stops that from being a surprise. (docs/BEAUTIFY.md build order, item 2.) */
@@ -629,55 +629,28 @@ function findChromium() {
        Red first, the audit's own sentence: '"A" is no longer flat in 3D — take it off this game's row of
        FLAT_BY_GAME in test/engine.smoke.js (the key is "index.html") so the list keeps shrinking (#39)'.
        Still flat: 3 4 5 (the agility gear, which is machinery) and X (the site marker). */
-    /* EL CHANGARRITO GETS ITS OWN ROW ON 2026-09-22, crew iteration 14 (el repartidor), and the row
-       is the receipt for the whole change. Until today the town had no key here, so it fell through
-       to the shared FLAT_BASE of fourteen glyphs and its street was allowed to be a picture gallery:
-       the audit printed 'Still flat in 3D (#39): 9×1 A×6 H×6 J×3 P×16 W×3 X×2' and called it a pass.
-       `engine/shapes.js` + the gate in engine.js let the town TAKE the engine's shape for the seven
-       letters it named in `SHAPETAKE` (changarrito/content/art.js), so five of those seven flat
-       letters stood up. The audit said so BEFORE this row existed, red, one line per glyph, naming
-       this key: that is the order it has to happen in.
-
-       WHAT IS LEFT ON THIS ROW, and both are decisions rather than leftovers:
-         'X' — the site marker, a mark on the ground and not an object.
-         'H' — SIX TILES THAT COULD STAND UP TODAY AND DELIBERATELY DO NOT. The engine's `H` is an
-               open produce crate; this town's `H` is a rack in a house (changarrito/content/maps.js,
-               grep "racks"). Standing the engine's crate up would put six crates of tomatoes in
-               the bedrooms, so the town does not name `H`. A letter on this row because somebody
-               decided it belongs there is not the same as a letter nobody has got to yet, and the
-               only place that difference is written down is here.
-
-       AND THE NUMBER. This row counts SPRITES, so it can never show the biggest part of the change:
-       'F' (93 tiles) and '◺' (9) stand as fence panels, which `couldBeFlat` does not list. The
-       honest count of tiles that stopped being flat pictures or edge-on planes is 131:
-       F 93, P 16, ◺ 9, A 6, J 3, W 3, 9 1. An earlier draft of this lane claimed 208; the other 77
-       were 71 tiles of K S D T V, which are not flat — they are boxes already wearing their own
-       drawings, and the gate now refuses them (`wearsArt`) — plus the 6 H tiles above. */
-    /* 'J' went back on this row the same day it came off. The town took the jacaranda, and a reader
-       looked at it: `wearsArt` guards a BOX's drawing, and a tree's drawing is not on a box — it is the
-       sprite canopy the engine bakes by hand (engine/engine3d.js, grep "one jacaranda canopy"), which
-       paints its blossoms with art("bloom") and changes them in season. engine/shapes.js's `tree` has
-       three greens and no bloom, so the trade was a jacaranda in flower for a bare green one. Taken
-       out of the town's SHAPETAKE; it stands as a picture again, which is the honest state. */
-    const FLAT_BY_GAME = { 'index.html': ['3', '4', '5', 'X'], 'changarrito/index.html': ['H', 'J', 'X'] };
-    /* WHY A LETTER IS ON A ROW, when the reason is a decision and not "nobody has got to it yet".
-       Without this, the reverse check below tells a future session to "take H off this game's row so
-       the list keeps shrinking" — which is the exact opposite of the decision, and it would be read
-       as an instruction. A row entry that was CHOSEN says so in its own failure message. */
-    const FLAT_ON_PURPOSE = { 'changarrito/index.html': {
-      H: 'the engine draws H as an open produce crate and THIS TOWN\'S H IS A RACK IN A HOUSE (changarrito/content/maps.js, grep "racks") — standing the crate up puts six crates of tomatoes in the bedrooms. It is left out of SHAPETAKE on purpose: do not "fix" this by taking it off the row',
-      J: 'the town keeps the engine\'s hand-baked jacaranda canopy, which blossoms and follows the season; the shared library\'s tree does not bloom yet. Left out of SHAPETAKE on purpose',
-    } };
-    const FLAT_KNOWN = FLAT_BY_GAME[IDXNAME] || FLAT_BASE;
+    /* A GAME THAT KEEPS ITS OWN ROW DECLARES IT IN ITS OWN FILES (2026-09-29, #263). Another game on
+       this engine lays some of the same letters as different objects, and its reasons for keeping a
+       letter flat are about its own rooms, so they belong to that game and not to this shared test:
+       `const FLAT_OK = { letters: [...], why: { G: 'the decision, in that game\'s words' } }` in the
+       game's content. A listed letter with a `why` was CHOSEN, and says so if it ever stands up; one
+       with no `why` is one nobody has got to yet, and says "take it off" the day it gets a shape. A
+       game with no declaration uses its row here, or FLAT_BASE. The history of each game's row lives
+       with that game. */
+    const FLAT_BY_GAME = { 'index.html': ['3', '4', '5', 'X'] };
+    const packFlat = (typeof FLAT_OK === 'object' && FLAT_OK && Array.isArray(FLAT_OK.letters)) ? FLAT_OK : null;
+    const FLAT_KNOWN = packFlat ? packFlat.letters : (FLAT_BY_GAME[IDXNAME] || FLAT_BASE);
     const laid = new Set(); Object.values(WORLDS).forEach(w => w.rows.forEach(r => r.split('').forEach(ch => laid.add(ch))));
     Object.keys(flat).forEach(g => { if (!FLAT_KNOWN.includes(g)) P.push('"' + g + '" (' + ((TILES[g] || {}).kind || '?') + ') stands in 3D as a flat picture in ' + [...flatIn[g]].join(',') + ' — give it a side view (TILESIDE) so it becomes a box; nothing new may ship flat (#39)'); });
-    // a pack may give a letter another meaning (the town's I is a facade): only a glyph laid here
+    // a pack may give a letter another meaning (another game's I is a facade): only a glyph laid here
     // as a kind the builder could make flat counts as "no longer flat"
     const couldBeFlat = g => ['furniture', 'appliance', 'prop', 'nature', 'gear', 'marker', 'site', 'transit', 'stair', 'tree'].includes((TILES[g] || {}).kind);
-    const onPurpose = FLAT_ON_PURPOSE[IDXNAME] || {};
+    const onPurpose = (packFlat && packFlat.why) || {};
     FLAT_KNOWN.forEach(g => { if (laid.has(g) && couldBeFlat(g) && !flat[g]) P.push(onPurpose[g]
       ? '"' + g + '" is standing in 3D and it was supposed to stay a picture: ' + onPurpose[g] + ' — something has given it a shape, and that is the thing to undo'
-      : '"' + g + '" is no longer flat in 3D — take it off this game\'s row of FLAT_BY_GAME in test/engine.smoke.js (the key is "' + IDXNAME + '") so the list keeps shrinking (#39)'); });
+      : packFlat ? '"' + g + '" is no longer flat in 3D — take it off FLAT_OK in this game\'s own files so the list keeps shrinking (#39)'
+      : FLAT_BY_GAME[IDXNAME] ? '"' + g + '" is no longer flat in 3D — take it off this game\'s row of FLAT_BY_GAME in test/engine.smoke.js (the key is "' + IDXNAME + '") so the list keeps shrinking (#39)'
+      : '"' + g + '" is no longer flat in 3D, and this game declares no FLAT_OK of its own, so it is held to the shared baseline: declare `const FLAT_OK={letters:[…],why:{…}}` in its own files with the letters it still keeps flat, and why (#39, #263)'); });
     /* ---- the shape gate's verdict, and it reports the HONEST number ----
        The flat row above can only ever show the letters that stood as sprites. This one counts
        tiles, which is what a person walking the street actually meets. */
