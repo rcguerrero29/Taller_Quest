@@ -13,7 +13,7 @@ it exercises. Read it first, then:
 
 - Give the user the next stop (or the one they ask for) in one short message: the
   action, then the expected result. Don't paste the whole tour at once.
-- The live game is at https://rcguerrero29.github.io/meridian-quest/ (deploys from
+- The live game is at https://rcguerrero29.github.io/Taller_Quest/ (deploys from
   `main`, ~1 min lag; installed PWAs need one refresh — the page auto-reloads once
   when the new service worker takes control).
 

@@ -5,7 +5,7 @@ roam the office and the barrio, take quests from coworkers (and one very good do
 calls — RAG vs fine-tuning, human-in-the-loop thresholds, agent guardrails, build vs buy — with XP,
 reputation hearts, and consequences.
 
-**Play it:** <https://rcguerrero29.github.io/meridian-quest/> — on a phone, add it to the home screen
+**Play it:** <https://rcguerrero29.github.io/Taller_Quest/> — on a phone, add it to the home screen
 and it plays offline.
 
 ## Private by design

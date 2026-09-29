@@ -71,9 +71,17 @@ function judge(rules, job) {
      approval and no code owner's review. The plan's step 4 adds a SECOND ruleset that asks for both and
      carries the owner as bypass; that is not a lockout, and this cannot see bypass lists to tell the two
      apart. So the question it can answer is: is there still a pull-request rule that asks for no review?
-     If every one of them asks, the lock's own rule was raised. */
-  const asksNoReview = r => { const q = r.parameters || {}; return ((q.required_approving_review_count | 0) === 0) && q.require_code_owner_review !== true; };
+     If every one of them asks, the lock's own rule was raised.
+     A THIRD way to ask for a review (Taller_Quest, 2026-09-28): `require_extra_approval_for_unattributed_changes`.
+     GitHub added it around 2026-08-21 and switches it ON for any ruleset whose rule leaves it out, which is what
+     importing main-lock did. It asks one more approval, from someone who is not the author, for a pull request whose
+     commits no GitHub account owns; every session's commit is one. This read "OK" over it that day, because it asked
+     only the approvals count. So it must say `false` in so many words: missing is read as GitHub's default, on. */
+  const extra = q => q.require_extra_approval_for_unattributed_changes !== false;
+  const asksNoReview = r => { const q = r.parameters || {}; return ((q.required_approving_review_count | 0) === 0) && q.require_code_owner_review !== true && !extra(q); };
   if (!pr.length) say('a change can reach main without a pull request — the "require a pull request" rule is gone');
+  else if (!pr.some(asksNoReview) && pr.some(r => { const q = r.parameters || {}; return ((q.required_approving_review_count | 0) === 0) && q.require_code_owner_review !== true; }))
+    say('the lock on main asks for an extra approval on pull requests whose commits no GitHub account owns ("Require an additional approval for unattributed … pull requests", which GitHub switches on whenever a ruleset does not say "off"). Every session\'s commit is one of those, and GitHub will not let the owner approve his own pull request, so he is locked out of every merge a session makes — untick it in Settings → Rules → main-lock → "Require a pull request before merging"');
   else if (!pr.some(asksNoReview))
     say('every pull-request rule on main now asks for an approving review or a code owner\'s. Every PR here is authored under the owner\'s account and GitHub will not let him approve his own, so unless each of those rules carries him as a bypass, he is locked out of every merge — docs/SECURITY.md §3, "the one-human trap". The lock itself (main-lock) is meant to ask for none');
   const sc = of('required_status_checks');
@@ -111,10 +119,11 @@ async function selftest() {
   const GOOD = [
     { type: 'deletion' },
     { type: 'non_fast_forward' },
-    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_code_owner_review: false } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_code_owner_review: false, require_extra_approval_for_unattributed_changes: false } },
     { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true,
       required_status_checks: [{ context: 'smoke', integration_id: ACTIONS_APP }] } },
   ];
+  const noExtraSaid = GOOD.map(r => r.type === 'pull_request' ? { type: r.type, parameters: { required_approving_review_count: 0, require_code_owner_review: false } } : r);
   /* docs/SECURITY.md §3 step 4, as written: a second ruleset, owner as bypass, asking for one approval and a code owner's */
   const STEP4 = { type: 'pull_request', parameters: { required_approving_review_count: 1, require_code_owner_review: true, require_last_push_approval: true } };
   const without = t => GOOD.filter(r => r.type !== t);
@@ -132,6 +141,8 @@ async function selftest() {
     ['the lock asks for one approval — the owner is locked out', withParams('pull_request', { required_approving_review_count: 1 }), 'smoke', 1],
     ['the lock asks for a code owner\'s review — the owner is locked out', withParams('pull_request', { require_code_owner_review: true }), 'smoke', 1],
     ['the lock asks for an approval AND step 4 is on — no rule is left that asks for none', withParams('pull_request', { required_approving_review_count: 1 }).concat([STEP4]), 'smoke', 1],
+    ['the lock asks an extra approval for commits no account owns (GitHub\'s default since 2026-08-21) — the owner is locked out', withParams('pull_request', { require_extra_approval_for_unattributed_changes: true }), 'smoke', 1],
+    ['the lock does not say whether it asks that extra approval — GitHub\'s default is on, so it is read as on', noExtraSaid, 'smoke', 1],
     ['CI not required at all', without('required_status_checks'), 'smoke', 1],
     ['the required check is not pinned to GitHub Actions', withParams('required_status_checks', { required_status_checks: [{ context: 'smoke' }] }), 'smoke', 1],
     ['the required check is pinned to some other app', withParams('required_status_checks', { required_status_checks: [{ context: 'smoke', integration_id: 1 }] }), 'smoke', 1],
@@ -194,7 +205,7 @@ if (require.main === module) {
     catch (e) { console.log('FAIL\n- could not read the saved rules file (' + e.message + ') — that is a red, not a pass'); process.exit(1); }
     report(rules);
   } else {
-    const repo = process.env.GITHUB_REPOSITORY || 'rcguerrero29/meridian-quest';
+    const repo = process.env.GITHUB_REPOSITORY || 'rcguerrero29/Taller_Quest';
     live(repo, process.env.GITHUB_TOKEN).then(report, e => {
       console.log('FAIL\n- could not read main\'s rules from GitHub (' + e.message + '), so this check cannot say main is protected — that is a red, not a pass');
       process.exit(1);

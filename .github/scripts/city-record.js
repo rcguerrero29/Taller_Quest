@@ -11,7 +11,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..', '..');
 const cfg = fs.readFileSync(path.join(root, 'content', 'meridian', 'config.js'), 'utf8');
 const deployed = (cfg.match(/GAMEV="(mq-v\d+)"/) || [])[1] || null;
-const token = process.env.GITHUB_TOKEN, repo = process.env.REPO || 'rcguerrero29/meridian-quest', owner = process.env.OWNER || repo.split('/')[0];
+const token = process.env.GITHUB_TOKEN, repo = process.env.REPO || 'rcguerrero29/Taller_Quest', owner = process.env.OWNER || repo.split('/')[0];
 const api = async (p) => {
   const r = await fetch('https://api.github.com' + p, { headers: { authorization: 'Bearer ' + token, accept: 'application/vnd.github+json', 'user-agent': 'meridian-city-record' } });
   if (!r.ok) throw new Error(p + ' → ' + r.status);
