@@ -726,6 +726,187 @@ function findChromium() {
   fails.push(...r.filter(l => !/^COUNT-ONLY: /.test(l)));
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
+  /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----
+     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please."
+     Before the gear can be shaped, the line it is shaped across has to be the park's own. Until
+     2026-09-29 the course was three of Meridian's tile coordinates written into the engine, so every
+     park's dog ran Meridian's course: in a park with no gear, laps to three tiles of bare grass; in a
+     room smaller than Meridian's park, a course that is not even on the map.
+     Asked by moving the OBJECT, never by reading the engine's list:
+       1 · lay three pieces where no gear has stood, and the dog runs through exactly those, in the
+           order you read the map, and finishes. Laid weave first and hurdle last, so a course run
+           in any other order reads differently from one run in reading order.
+       2 · take every piece out of the park, and the roll that means "run the course" does nothing
+           at all: not a run to empty ground, and not a fall-through into the next whim on the list,
+           which is digging, the puppy phase the owner keeps rare (engine.js, grep `puppy phase`).
+     Synchronous from end to end, so no frame is drawn and no live dog moves while the park is
+     rearranged, and every tile is put back before it returns. The dog is made here rather than
+     borrowed, so this runs in a pack with no dog at all; which dog it is never enters the route.
+     The roll is pinned, never drawn from the clock, and step 1 proves it still means "run the
+     course" before step 2 believes its silence. */
+  const agility = await page.evaluate(() => {
+    const P = [];
+    const wid = PL.park, w = WORLDS[wid];
+    if (!w) { P.push('this shell names "' + wid + '" as its park and there is no such world, so where its dog runs could not be asked'); return P; }
+    if (typeof dogWhim !== 'function' || typeof dogStep !== 'function') { P.push('the engine has no dog whim to ask where a park dog runs'); return P; }
+    const ROLL = 0.8;   /* inside the band of dogWhim's odds that means "run the course"; step 1 proves it */
+    const keepRows = w.rows.slice(), keepGrid = w.grid.map(r => r.slice());
+    const keepPark = JSON.stringify(PARK), keepDecals = DECALS.length;
+    const MR = Math.random, ST = window.setTimeout;
+    const put = (x, y, g) => { w.rows[y] = w.rows[y].slice(0, x) + g + w.rows[y].slice(x + 1); w.grid[y][x] = g; };
+    const isGear = g => g === '3' || g === '4' || g === '5' || (TILES[g] || {}).kind === 'gear';
+    const NAME = { '3': 'hurdle', '4': 'tunnel', '5': 'weave' };
+    const at = p => '(' + p[0] + ',' + p[1] + ')';
+    const [dx0, dy0] = PL.parkDog;
+    const dog = () => ({ kind: [...DOGK][0], world: wid, x: dx0, y: dy0, fx: dx0, fy: dy0, face: 1, dx: 0, dy: 0,
+      sit: false, layT: 0, next: 0, home: [dx0, dy0], task: null });
+    try {
+      Math.random = () => ROLL;
+      window.setTimeout = () => 0;   /* a whim that digs schedules its hole; a wrong answer here must not leave one in the park */
+      /* the gear this park has today — and then none of it */
+      const had = new Set();
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (isGear(w.rows[y][x])) { had.add(x + ',' + y); put(x, y, '.'); }
+
+      /* 1 · three pieces where no gear has stood, a step apart, reachable by the dog */
+      const reach = dogReach({ world: wid, x: dx0, y: dy0 }), spots = [];
+      for (let y = w.H - 1; y >= 0 && spots.length < 3; y--) for (let x = w.W - 1; x >= 0 && spots.length < 3; x--) {
+        if (!reach[y * w.W + x] || (x === dx0 && y === dy0) || had.has(x + ',' + y) || portalAt(wid, x, y)) continue;
+        if (spots.every(([sx, sy]) => Math.abs(sx - x) + Math.abs(sy - y) >= 2)) spots.push([x, y]);
+      }
+      if (spots.length < 3) { P.push('the park "' + wid + '" has fewer than three open tiles its dog can reach, so no course could be laid to ask where the dog runs'); return P; }
+      const route = spots.slice().sort((a, b) => a[1] - b[1] || a[0] - b[0]);   /* the order you read the map */
+      const LAY = ['5', '4', '3'];                                               /* weave first, hurdle last */
+      route.forEach((p, i) => put(p[0], p[1], LAY[i]));
+      const laid = route.map((p, i) => NAME[LAY[i]] + ' ' + at(p)).join(', ');
+      const d1 = dog();
+      dogWhim(d1, performance.now());
+      if (!d1.task || d1.task.type !== 'run') {
+        P.push('with a course laid in ' + wid + ' (' + laid + '), the roll that means "run the course" did not send the dog round it (it ' +
+          (d1.task ? 'set off to ' + d1.task.type : 'did nothing') + '), so a park dog never runs its own gear — or dogWhim\'s odds moved and this check has to be re-aimed');
+        return P;
+      }
+      const sent = (d1.task.wp || []).map(at).join(' '), ran = [];
+      for (let n = 0; n < 200 && d1.task; n++) {
+        const wp = d1.task.wp[d1.task.i];
+        if (wp && d1.x === wp[0] && d1.y === wp[1]) ran.push([d1.x, d1.y]);
+        dogStep(d1, performance.now());
+      }
+      const want = route.map(at).join(' '), got = ran.map(at).join(' ');
+      if (got !== want) P.push('a park dog runs an agility course its park does not have: in ' + wid + ' the gear stands at ' + laid +
+        ', and the dog was sent to ' + (sent || 'nowhere') + ' and stood on ' + (got || 'none of it') + '. It should run the park\'s own gear, in the order you read the map: ' + want);
+
+      /* 2 · no gear anywhere: the whim passes, and hands its roll to nothing else */
+      route.forEach(p => put(p[0], p[1], '.'));
+      const d2 = dog(), before = JSON.stringify(d2), decals = DECALS.length;
+      dogWhim(d2, performance.now());
+      const did = [];
+      if (d2.task) did.push(d2.task.type === 'run' ? 'run a course through ' + ((d2.task.wp || []).map(at).join(' ') || 'nothing') : 'set off to ' + d2.task.type);
+      if (d2.digT) did.push('dig a hole');
+      if (d2.layT) did.push('lie down');
+      if (d2.howlT) did.push('howl');
+      if (DECALS.length !== decals) did.push('leave something on the grass');
+      if (!did.length && JSON.stringify(d2) !== before) did.push('change what it was doing');
+      if (did.length) P.push('a park dog runs an agility course its park does not have: with no gear anywhere in ' + wid +
+        ', the roll that means "run the course" made the dog ' + did.join(' and ') +
+        '. A park with no course has nothing to run, and the roll must not pass to anything else — digging is the puppy phase the owner keeps rare');
+    } finally {
+      Math.random = MR; window.setTimeout = ST;
+      keepRows.forEach((r, i) => { w.rows[i] = r; });
+      keepGrid.forEach((row, y) => row.forEach((g, x) => { w.grid[y][x] = g; }));
+      Object.assign(PARK, JSON.parse(keepPark)); DECALS.length = keepDecals;
+    }
+    return P;
+  });
+  fails.push(...agility);
+
+  /* ---- THE DOG DIGS ABOUT 8% OF WHAT HE DOES, WHEREVER HE IS ----
+     The owner's canon (2026-09-01, docs/IDEAS.md:436): digging was a puppy phase, cut to about 8% of
+     his whims from about 25%. Owner, 2026-09-29: "ok make it about 8 percent yes."
+     The same day as the canon, the course and the greeting between dogs were slotted in ABOVE
+     digging with their conditions in the else-if, so every roll they declined fell through to the
+     hole: away from the park he dug 22.5% of the time, nearly the 25% the canon had just cut, and
+     beside another dog 3.5%. Nothing asked how often, so for four weeks nobody saw it.
+     Asked by sweeping the roll, never by reading the odds: a thousand even steps from 0 to 1, through
+     dogWhim itself, for a dog made here — away from the park, in the park alone, and in the park with
+     another dog beside him. The share is of the whims that DO something; a whim that passes because
+     it cannot happen here is not a thing he did.
+       · 6–10%, because the canon and the owner both say "about", and one set of odds has to serve
+         three places where different whims apply, so it cannot land on 8.0 in all three; two points
+         either side still tells the canon from 22.5 and 3.5 at a glance.
+       · a whim that cannot happen here PASSES — it does not turn into something else. Asked as a
+         fact about every place at once: a nap, a song, a hole and the other thing each take the same
+         share of ALL his whims wherever he is. A fix that put digging at 8% by moving it above the
+         park whims, and let the street's declined rolls fall into the next line down, is caught here
+         and not by the 8%.
+       · naps and songs stay most of what he does, and the course and the greeting still happen where
+         they can — reaching 8% by deleting them is not the fix.
+     Deterministic: the roll is the only thing swept. Every later draw in the whim gets 0.5, so the cone
+     (4%) and the favourite person (40%) never fire and are not measured here; they are rolled before
+     the rest, and a made-up dog has neither beside it. Every real dog is parked off the map for the
+     sweep and put back, so "alone" means alone. */
+  const digging = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof dogWhim !== 'function') { P.push('the engine has no dog whim to ask how often a dog digs'); return { P, out }; }
+    const N = 1000, K = [...DOGK][0], KINDS = ['nap', 'song', 'course', 'greeting', 'dig', 'poop'];
+    const open = (w, x, y) => !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
+    const spot = wid => { const w = WORLDS[wid]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (open(w, x, y)) return [x, y]; return null; };
+    const away = [PL.street, PL.home].concat(Object.keys(WORLDS)).find(id => WORLDS[id] && id !== PL.park && spot(id));
+    const places = [];
+    if (away) places.push({ name: away === PL.street ? 'on the street' : 'away from the park, in ' + away, wid: away });
+    if (WORLDS[PL.park]) places.push({ name: 'in the park alone', wid: PL.park }, { name: 'in the park with another dog beside him', wid: PL.park, pal: true });
+    if (!places.length) { P.push('this shell has no world in which to ask how often a dog digs'); return { P, out }; }
+    const hasCourse = !!WORLDS[PL.park] && WORLDS[PL.park].rows.some(row => [...row].some(g => (TILES[g] || {}).kind === 'gear'));
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, park: JSON.stringify(PARK), decals: DECALS.length };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]);
+    const seen = [];
+    try {
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      real.forEach(([c]) => { c.world = '__frozen'; });
+      places.forEach(pl => {
+        const at = spot(pl.wid);
+        if (!at) { P.push(pl.name + ' there is no open tile to stand a dog on, so how often he digs could not be asked'); return; }
+        const [x, y] = at;
+        const pal = pl.pal ? { kind: K, world: pl.wid, x, y, fx: x, fy: y, face: 1, task: null } : null;
+        if (pal) CRIT.push(pal);
+        const n = { nap: 0, song: 0, course: 0, greeting: 0, dig: 0, poop: 0, passes: 0 };
+        try {
+          for (let i = 0; i < N; i++) {
+            const r = (i + 0.5) / N; let first = true;
+            Math.random = () => { if (first) { first = false; return r; } return 0.5; };
+            const d = { kind: K, world: pl.wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null };
+            const dec = DECALS.length;
+            dogWhim(d, performance.now());
+            if (d.layT) n.nap++; else if (d.howlT) n.song++; else if (d.task && d.task.type === 'run') n.course++;
+            else if (d.task) n.greeting++; else if (d.digT) n.dig++; else if (DECALS.length > dec) n.poop++; else n.passes++;
+            DECALS.length = dec; if (pal) pal.task = null;
+          }
+        } finally { if (pal) CRIT.splice(CRIT.indexOf(pal), 1); }
+        const did = N - n.passes, pc = k => did ? 100 * n[k] / did : 0;
+        out.push(pl.name + ': ' + KINDS.map(k => k + ' ' + pc(k).toFixed(1) + '%').join(' · ') + ' of what he does; ' + (100 * n.passes / N).toFixed(1) + '% of whims pass');
+        if (!did) { P.push(pl.name + ' none of the dog\'s whims does anything, so how often he digs could not be asked'); return; }
+        seen.push({ pl, n });
+        const dig = pc('dig');
+        if (dig < 6 || dig > 10) P.push(pl.name + ' the dog digs ' + dig.toFixed(1) + '% of the time; the owner keeps it about 8% ("ok make it about 8 percent yes", 2026-09-29 — a puppy phase, docs/IDEAS.md:436)');
+        if (pc('nap') + pc('song') <= 50) P.push(pl.name + ' naps and songs are only ' + (pc('nap') + pc('song')).toFixed(1) + '% of what the dog does; they are meant to be most of it');
+        if (pl.pal && !n.greeting) P.push(pl.name + ', the two dogs never greet each other');
+        if (pl.wid === PL.park && hasCourse && !n.course) P.push(pl.name + ', the dog never runs the course his park has');
+      });
+      /* the pass, asked of every place at once: what cannot happen here must not become something else */
+      ['nap', 'song', 'dig', 'poop'].forEach(k => {
+        const lo = seen.reduce((a, s) => (!a || s.n[k] < a.n[k] ? s : a), null), hi = seen.reduce((a, s) => (!a || s.n[k] > a.n[k] ? s : a), null);
+        if (lo && hi && lo.n[k] !== hi.n[k]) P.push(hi.pl.name + ' ' + { nap: 'the dog naps', song: 'the dog howls', dig: 'the dog digs', poop: 'the dog leaves a mess' }[k] + ' on ' +
+          (100 * hi.n[k] / N).toFixed(1) + '% of his whims, and ' + lo.pl.name + ' on ' + (100 * lo.n[k] / N).toFixed(1) + '%: a whim that cannot happen ' + hi.pl.name + ' is turning into that instead of passing quietly');
+      });
+    } finally {
+      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
+      real.forEach(([c, w]) => { c.world = w; });
+      Object.assign(PARK, JSON.parse(keep.park)); DECALS.length = keep.decals;
+    }
+    return { P, out };
+  });
+  digging.out.forEach(l => console.log('  DIGGING: ' + l));
+  fails.push(...digging.P);
+
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
      Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of
      `try{localStorage.setItem(...)}catch(e){}`, so a device out of room let the game go on playing

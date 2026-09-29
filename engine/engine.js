@@ -3210,10 +3210,20 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   cr.task=null;
 }
-const AGILITY=[[9,8],[11,8],[13,8]]; /* the course order: hurdle, tunnel, weave */
+/* The agility course is whatever gear the park's own map lays down: every tile whose kind is
+   "gear", in the order you read the map. Meridian's row 8 reads 3.4.5, so its dog runs hurdle,
+   tunnel, weave, the course it always ran. Until 2026-09-29 the course was those three coordinates,
+   written here, and every park's dog ran Meridian's course, across bare grass in a park that has no
+   gear and off the map in a room smaller than Meridian's park. Read from `rows`, the map as drawn,
+   not `grid`, where a person standing on the hurdle is stamped "N": somebody standing on a piece
+   does not take it off the course. Asked at every whim and never cached, so a map changed while the
+   game runs is the map the dog runs. */
+function agilityCourse(wid){const w=WORLDS[wid],wp=[];if(!w)return wp;
+  for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if((TILES[w.rows[y][x]]||{}).kind==="gear")wp.push([x,y]);
+  return wp;}
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (owner canon) — it stays in the repertoire, barely. In the park:
-  zoomies through the agility course, and the ancient greeting between dogs. */
+  zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
   const r=Math.random(),park=cr.world===PL.park;
   /* the cone. Owner, 2026-09-04: "sonny should be even able to rip it." Checked before the rest of
      the repertoire so a cone right under his nose beats a nap — but it is one roll in twenty-five,
@@ -3234,19 +3244,32 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
       cr.happyT=now+2200;cr.face=Math.sign(f.x-cr.x)||cr.face;cr.sit=true;cr.next=now+2800;return;}}
   const other=park?CRIT.find(o=>o!==cr&&isDog(o)&&o.world===PL.park&&!o.task
     &&Math.abs(o.x-cr.x)+Math.abs(o.y-cr.y)<=7):null;
-  if(r<0.42){cr.layT=now+3800+Math.random()*3200;cr.sit=false;cr.next=cr.layT;}
-  else if(r<0.74){cr.howlT=now+2100;cr.next=now+2800;
+  /* THE ODDS: one band of the roll each, in this order: a nap, a song, the course, the greeting, a
+     hole, and the other thing. Digging is the owner's canon: a puppy phase, kept to about 8% of what
+     he does (owner canon round 2, 2026-09-01, docs/IDEAS.md:436: "~8% of whims, was ~25%"; and on
+     2026-09-29, "ok make it about 8 percent yes").
+     The course and the greeting only happen where they can, in a park with gear and with another dog
+     near, and a band that cannot happen here PASSES QUIETLY: its roll never goes down the list. On
+     2026-09-01 those two were slotted in above digging with their conditions in the else-if, so every
+     roll they declined fell into the hole: away from the park he dug 22.5% of the time, and beside
+     another dog 3.5%. One set of odds cannot land on exactly 8% in places where different whims
+     apply, so digging is sized to sit between 7 and 9 in all of them; test/engine.smoke.js (grep
+     `DIGS ABOUT 8%`) sweeps the roll in each place and prints the shares. */
+  if(r<0.40){cr.layT=now+3800+Math.random()*3200;cr.sit=false;cr.next=cr.layT;}
+  else if(r<0.71){cr.howlT=now+2100;cr.next=now+2800;
     if(park)PARK.h++;
     try{musHowl();}catch(e){} /* an actual tiny howl, when the sound is on */
     if(Math.random()<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
-  else if(r<0.86&&park){cr.task={type:"run",wp:AGILITY.map(p=>p.slice()),i:0};cr.sit=false;cr.layT=0;}
-  else if(r<0.93&&other){ /* dogs being dogs: sniff, or a burst of chase */
+  else if(r<0.83){if(park){const wp=agilityCourse(cr.world);
+    /* no gear, no course: the whim passes */
+    if(wp.length){cr.task={type:"run",wp,i:0};cr.sit=false;cr.layT=0;}}}
+  else if(r<0.90){if(other){ /* dogs being dogs: sniff, or a burst of chase; no other dog, it passes */
     if(Math.random()<0.55)cr.task={type:"sniff",other};
     else{cr.task={type:"chase",other,until:now+4200};
       other.task={type:"flee",until:now+4200};other.sit=false;other.layT=0;
       if(Math.random()<0.4)toast("🐶 "+(T().chaseToast||"!"),2200);}
-    cr.sit=false;cr.layT=0;}
-  else if(r<0.965){cr.digT=now+1700;cr.next=now+2400; /* the rare tribute to puppy Sonny */
+    cr.sit=false;cr.layT=0;}}
+  else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare tribute to puppy Sonny */
     if(park)PARK.d++;
     const hx=cr.x,hy=cr.y,hw=cr.world;
     setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:Date.now()+34000}),1400);}
