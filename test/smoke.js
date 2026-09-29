@@ -1064,6 +1064,22 @@ const CANDIDATES = [
         wp.every(([ax, ay]) => !!reach[ay * WORLDS.pk.W + ax])) ||
         "Meridian's dog no longer runs its course as it always has, hurdle (9,8), tunnel (11,8), weave (13,8): it was sent on " + (sent || 'no course at all');
     }
+    // and a restaurant to sing at. La Cocina's door opens onto Calle Principal at (6,5), and it
+    // is Rosa who brings the water (owner, 2026-09-29: "awooing infront of a restaurant and a worker brings
+    // them a water bowl"). Without this, taking the restaurant out of PLACES would leave the engine's own
+    // check asking a pack that serves nothing, and passing. Asked through the whim, for a dog made here
+    // in Sonny's own corner of the street, so nobody real moves.
+    {
+      const MR3 = Math.random; Math.random = () => 0.80;
+      const d = { kind: 'beagle', name: 'Sonny', world: 'st', x: 22, y: 11, fx: 22, fy: 11, face: 1, sit: false, layT: 0, next: 0, home: [22, 11], task: null };
+      try { dogWhim(d, performance.now()); } finally { Math.random = MR3; }
+      const t = d.task;
+      /* the step is whichever side of La Cocina's door (6,5) he comes from: from his corner, the south one */
+      const worker = t && t.eat && typeof eateryWorker === 'function' ? eateryWorker(t.eat) : null;
+      out.cocina = (!!t && t.type === 'door' && !!t.step && t.step[0] === 6 && t.step[1] === 6 && !!t.eat && t.eat.world === 'lc' && !!worker && worker.npc === 'rosa') ||
+        "Meridian's dog has no restaurant to sing at on Calle Principal: from his corner the roll for a restaurant door " +
+        (t ? 'sent him to ' + t.type + (t.step ? ' at (' + t.step + ')' : '') : 'did nothing') + " — it should send him to La Cocina's south step at (6,6), where Rosa brings the water";
+    }
     // swipe works on the 3D canvas too
     held = null; ctl = 'swipe';
     document.getElementById('world').hidden = false; // the trolley-pass section left the intro up
@@ -1091,7 +1107,7 @@ const CANDIDATES = [
   ['pkOk', 'lawnReach', 'waterBlocked', 'sonny', 'inPark', 'treatCounted', 'band', 'bandStored',
     'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneSonny', 'sitOk', 'stayOk', 'comeOk',
     'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'sonnyProtected',
-    'agility', 'swipe3d', 'exited', 'card', 'sonnyHome', 'langOk'].forEach(k => {
+    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'sonnyHome', 'langOk'].forEach(k => {
     if (park[k] !== true) fails.push('park: ' + k + ' failed (' + JSON.stringify(park[k]) + ')');
   });
 

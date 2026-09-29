@@ -1143,6 +1143,7 @@ function t3Actors(){
       else if(cr.kind==="lab")drawLab(g,cr,2,6);
       else if(cr.kind==="chi")drawChi(g,cr,2,6);}});});
   if(BALL&&BALL.world===world)list.push({x:BALL.fx,y:BALL.fy,f:g=>drawBall(g,2,6,BALL.phase,BALL.t)});
+  DOGTHINGS.forEach(o=>{if(o.world===world)list.push({x:o.fx,y:o.fy,f:g=>drawDogThing(g,2,6,o)});});
   /* hero:true — drawn through whatever stands between them and the camera (#22: "a wall between
      you and the camera hides you in 3D"). The four camera stops put a wall in front of the hero
      often; the person you are steering must never vanish behind one. */

@@ -397,7 +397,8 @@ the day two worlds need to live in one deploy.
   The engine reads its rooms as ROLES from the pack's `PLACES` table: `home` and `spawn`
   (where a new game and a broken save land), `street` (the map dot follows you there), `park`
   with `parkIn` / `parkDog` / `parkDogHome` / `parkAdopt` (the leash, the dogs), `friends` (the
-  worlds whose people a dog may befriend — only worlds you have), `upstairs` (the map's ⇧).
+  worlds whose people a dog may befriend — only worlds you have), `upstairs` (the map's ⇧), `eateries`
+  (the places that serve food, and who works there: a dog sings at the door and they bring him water).
   Pavement colours per world come from `FLOORS`. A pack that declares neither gets Meridian's
   table byte for byte; a pack with its own names declares its own (`changarrito/content/config.js`
   is the worked example). The smoke fails the build if a world id is ever spelled in `engine/`
@@ -418,8 +419,9 @@ the day two worlds need to live in one deploy.
   | `parkAdopt` | `[[x,y],…]` | free spots an adopted dog may take, tried in order | six spots |
   | `friends` | world ids | the worlds whose people a dog may befriend; a world you do not have is skipped | `st me lc lo` |
   | `upstairs` | world id | the floor the map marks ⇧ | `f2` |
+  | `eateries` | `[{world,who},…]` | places that serve food: a dog who sings at one's door is brought a bowl of water by `who` (a person who works in `world`; left out, the first person there). A world you do not have is skipped, so a pack with none gets none | `[{world:"lc"}]` (the first person there is Doña Rosa) |
 
-  A role you leave out falls back to the default. Declare all ten anyway: the table is the
+  A role you leave out falls back to the default. Declare all eleven anyway: the table is the
   world's metadata, and a reader should not have to open the engine to learn what the engine
   will assume. Everything a pack may declare is listed in §2 (`PLACES FLOORS ANIMALS …`).
 - **The name blocklist** in `test/smoke.js` (the portability guard) is Meridian's proper nouns.

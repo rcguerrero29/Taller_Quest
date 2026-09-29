@@ -820,12 +820,20 @@ function findChromium() {
   const digging = await page.evaluate(() => {
     const P = [], out = [];
     if (typeof dogWhim !== 'function') { P.push('the engine has no dog whim to ask how often a dog digs'); return { P, out }; }
-    const N = 1000, K = [...DOGK][0], KINDS = ['nap', 'song', 'course', 'greeting', 'dig', 'poop'];
+    const N = 1000, K = [...DOGK][0], KINDS = ['nap', 'song', 'course', 'greeting', 'stick', 'door', 'romp', 'dig', 'poop'];
+    /* a task is named by what it is: the course and the greeting keep their names; the whims that fill
+       the rolls those cannot use away from the park (2026-09-29) are counted under their own */
+    const SORT = { run: 'course', sniff: 'greeting', chase: 'greeting' };
     const open = (w, x, y) => !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
     const spot = wid => { const w = WORLDS[wid]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (open(w, x, y)) return [x, y]; return null; };
     const away = [PL.street, PL.home].concat(Object.keys(WORLDS)).find(id => WORLDS[id] && id !== PL.park && spot(id));
     const places = [];
     if (away) places.push({ name: away === PL.street ? 'on the street' : 'away from the park, in ' + away, wid: away });
+    /* and a second place off the park, with no restaurant door in it (2026-09-29): the new whims pass there, and a
+       whim that fell through into the next line down when it could not happen would only show where it cannot */
+    const indoors = [PL.home].concat(Object.keys(WORLDS)).find(id => WORLDS[id] && id !== PL.park && id !== away && spot(id) &&
+      !(typeof eateryDoors === 'function' && eateryDoors(id).length));
+    if (indoors) places.push({ name: indoors === PL.home ? 'at home' : 'in ' + indoors, wid: indoors });
     if (WORLDS[PL.park]) places.push({ name: 'in the park alone', wid: PL.park }, { name: 'in the park with another dog beside him', wid: PL.park, pal: true });
     if (!places.length) { P.push('this shell has no world in which to ask how often a dog digs'); return { P, out }; }
     const hasCourse = !!WORLDS[PL.park] && WORLDS[PL.park].rows.some(row => [...row].some(g => (TILES[g] || {}).kind === 'gear'));
@@ -841,17 +849,17 @@ function findChromium() {
         const [x, y] = at;
         const pal = pl.pal ? { kind: K, world: pl.wid, x, y, fx: x, fy: y, face: 1, task: null } : null;
         if (pal) CRIT.push(pal);
-        const n = { nap: 0, song: 0, course: 0, greeting: 0, dig: 0, poop: 0, passes: 0 };
+        const n = { nap: 0, song: 0, course: 0, greeting: 0, stick: 0, door: 0, romp: 0, dig: 0, poop: 0, passes: 0 };
         try {
           for (let i = 0; i < N; i++) {
             const r = (i + 0.5) / N; let first = true;
             Math.random = () => { if (first) { first = false; return r; } return 0.5; };
             const d = { kind: K, world: pl.wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null };
-            const dec = DECALS.length;
+            const dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0;
             dogWhim(d, performance.now());
-            if (d.layT) n.nap++; else if (d.howlT) n.song++; else if (d.task && d.task.type === 'run') n.course++;
-            else if (d.task) n.greeting++; else if (d.digT) n.dig++; else if (DECALS.length > dec) n.poop++; else n.passes++;
-            DECALS.length = dec; if (pal) pal.task = null;
+            if (d.layT) n.nap++; else if (d.howlT) n.song++; else if (d.task) { const k = SORT[d.task.type] || d.task.type; n[k] = (n[k] || 0) + 1; }
+            else if (d.digT) n.dig++; else if (DECALS.length > dec) n.poop++; else n.passes++;
+            DECALS.length = dec; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = things; if (pal) pal.task = null;
           }
         } finally { if (pal) CRIT.splice(CRIT.indexOf(pal), 1); }
         const did = N - n.passes, pc = k => did ? 100 * n[k] / did : 0;
@@ -879,6 +887,234 @@ function findChromium() {
   });
   digging.out.forEach(l => console.log('  DIGGING: ' + l));
   fails.push(...digging.P);
+
+  /* ---- OFF THE PARK HE HAS THINGS TO DO: HIS OWN STICK, AND WATER AT A RESTAURANT DOOR ----
+     Owner, 2026-09-29: "give him other things to do to keep him busy? running after his own stick or
+     other dog things, chasing after another character. traveling to the bed on my office. awooing
+     infront of a restaurant and a worker brings them a water bowl. ya kno?"
+     Away from the park two bands of his whims used to pass, because the course and the greeting
+     cannot happen there. These fill them. Asked by driving the whim and then the dog, step by step,
+     on a clock this check owns (never the page's), for a dog made here:
+       1 · his own stick — he flings it, runs it down, picks it up, trots back to where he threw it
+           from, pleased with himself the whole way, and puts it down beside him.
+       2 · a restaurant door — for a place the pack says serves food (PLACES.eateries) whose door opens
+           onto a world that is not the park: he walks to the door and sings; somebody who works there
+           steps out onto the step with water and sets the bowl down between them; he drinks; they go
+           back in and the step is clear again; and he walks home, because a dog far from home cannot
+           wander (critFree keeps him within four tiles of it). A pack that serves nothing: the same
+           roll passes and nothing happens at all.
+       3 · the stick and the bowl are drawn by every camera this shell has — counted at the one drawer
+           they share, the way a kicked cone's call is counted (test/smoke.js, grep `Count the CALL`).
+     Synchronous; every real dog is parked off the map and put back; every stick, bowl and person this
+     makes is taken away again before it returns. */
+  const busy = await page.evaluate(() => {
+    const P = [];
+    const K = [...DOGK][0], MR = Math.random;
+    const keep = { world, px, py, fx, fy, cam: camMode };
+    const THINGS = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS : null, thingsBefore = THINGS ? THINGS.length : 0;
+    const VISITS = typeof DOGVISIT !== 'undefined' ? DOGVISIT : null;
+    const tick = typeof dogThingsUpdate === 'function' ? dogThingsUpdate : () => {};
+    const real = CRIT.filter(isDog).map(c => [c, c.world]);
+    const at = p => '(' + p[0] + ',' + p[1] + ')';
+    const open = (wid, x, y) => { const w = WORLDS[wid]; return x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y); };
+    const made = (wid, x, y) => ({ kind: K, name: 'Sonny', world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null, holdT: 0, stayT: 0 });
+    let T = performance.now();
+    /* one dog through its task, on this check's clock; `each` sees every step before it is taken */
+    const drive = (d, max, each) => { for (let i = 0; i < max && d.task; i++) { T += 100; tick(100, T); if (each) each(d); dogStep(d, T); d.moving = false; d.fx = d.x; d.fy = d.y; } T += 100; tick(100, T); };
+    /* which cameras draw this thing: the call at the shared drawer, per camera */
+    const has3d = typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0);
+    let drew3d = false;
+    const drawnBy = o => { const seen = new Set(), realDraw = window.drawDogThing; let cam = '';
+      if (typeof realDraw !== 'function') return seen;
+      window.drawDogThing = function (g, sx, sy, t) { if (t === o) seen.add(cam); return realDraw.apply(this, arguments); };
+      try { world = o.world; px = Math.round(o.fx); py = Math.round(o.fy); fx = px; fy = py;
+        ['top', 'front', 'iso'].forEach(c => { cam = c; camSet(c); draw(); });
+        if (has3d) { cam = '3d'; camSet('3d'); sizeCanvas(); draw3d(); drew3d = true; } }
+      finally { window.drawDogThing = realDraw; }
+      return seen; };
+    const cams = ['top', 'front', 'iso'].concat(has3d ? ['3d'] : []);
+    const missing = seen => cams.filter(c => !seen.has(c));
+    const away = [world, PL.street, PL.home].concat(Object.keys(WORLDS)).find(id => WORLDS[id] && id !== PL.park);
+    try {
+      real.forEach(([c]) => { c.world = '__frozen'; });
+
+      /* 1 · his own stick */
+      if (away) {
+        const w = WORLDS[away], reach = (x, y) => dogReach({ world: away, x, y });
+        let s = null;
+        for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) {
+          if (!open(away, x, y)) continue;
+          const rs = reach(x, y);
+          for (let yy = 0; yy < w.H && !s; yy++) for (let xx = 0; xx < w.W && !s; xx++) {
+            const dd = Math.abs(xx - x) + Math.abs(yy - y);
+            if (dd >= 3 && dd <= 5 && rs[yy * w.W + xx] && open(away, xx, yy)) s = [x, y]; } }
+        if (s) {
+          world = away; px = fx = w.W - 1; py = fy = w.H - 1;
+          Math.random = () => 0.74;   /* inside the band that, away from the park, means "his own stick" */
+          const d = made(away, s[0], s[1]);
+          dogWhim(d, T);
+          Math.random = MR;
+          if (!d.task || d.task.type !== 'stick') P.push('away from the park the dog never goes after his own stick: the roll that should send him ' +
+            (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "running after his own stick")');
+          else {
+            const stick = d.task.o; let carried = 0, proud = 0;
+            drive(d, 400, dd => { if (stick.phase === 'carried') { carried++; if (dd.happyT > T) proud++; } });
+            if (!carried) P.push('the dog ran to his own stick and never picked it up');
+            else if (d.x !== s[0] || d.y !== s[1]) P.push('the dog picked up his own stick and never brought it back to where he threw it from: he stopped at ' + at([d.x, d.y]) + ', not ' + at(s));
+            else if (proud < carried - 1) P.push('the dog trotted back with his own stick and was not pleased with himself for ' + (carried - 1 - proud) + ' of the steps home — the owner asked for proud');
+            if (!THINGS || THINGS.indexOf(stick) < 0 || stick.phase !== 'ground' || Math.abs(stick.fx - d.x) > 1 || Math.abs(stick.fy - d.y) > 1)
+              P.push('the dog brought his own stick back and it is not lying beside him — it vanished, or it is somewhere else');
+            else { const miss = missing(drawnBy(stick)); if (miss.length) P.push('his own stick is not drawn in the ' + miss.join(', ') + ' camera: there he is carrying nothing'); }
+          }
+        }
+      }
+
+      /* 2 · a restaurant door */
+      const eats = (PL.eateries || []).filter(e => e && WORLDS[e.world]);
+      if (!eats.length) {
+        if (away) { const w = WORLDS[away]; let s = null;
+          for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) if (open(away, x, y)) s = [x, y];
+          if (s) { world = away; Math.random = () => 0.80; const d = made(away, s[0], s[1]); dogWhim(d, T); Math.random = MR;
+            if (d.task || d.howlT || d.layT || d.digT) P.push('this pack serves no food, and the roll for a restaurant door still made the dog ' + (d.task ? 'set off to ' + d.task.type : 'do something') + ' — with no restaurant it must pass quietly'); } }
+      } else {
+        /* a door INTO the place, in a world that is not the park; its steps are the open tiles either side */
+        const doors = [];
+        eats.forEach(e => Object.keys(WORLDS).forEach(wid => { if (wid === PL.park || wid === e.world) return;
+          portalsOf(wid).forEach(({ x, y, p }) => { if (p.to === e.world) doors.push({ e, wid, door: [x, y] }); }); }));
+        if (!doors.length) P.push('PLACES.eateries names ' + eats.map(e => e.world).join(', ') + ', and no door leads into it from anywhere but the park, so no dog can ever sing at it');
+        const door = doors[0];
+        if (door) {
+          const w = WORLDS[door.wid], [sx, sy] = door.door, rs = dogReach({ world: door.wid, x: sx, y: sy });
+          const steps = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => [sx + dx, sy + dy]).filter(([x, y]) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.rows[y][x]) && !portalAt(door.wid, x, y));
+          const onStep = n => steps.some(([x, y]) => n.x === x && n.y === y);
+          let s = null;
+          for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) {
+            const dd = Math.abs(x - sx) + Math.abs(y - sy);
+            if (dd >= 4 && dd <= 12 && rs[y * w.W + x] && open(door.wid, x, y)) s = [x, y]; }
+          const inside = WORLDS[door.e.world].npcs || [];
+          const worker = (door.e.who && inside.find(n => n.npc === door.e.who)) || inside[0];
+          if (door.e.who && !inside.some(n => n.npc === door.e.who)) P.push('PLACES.eateries says ' + door.e.who + ' works at ' + door.e.world + ', and nobody of that name works there');
+          if (!s) P.push('there is nowhere near the door of ' + door.e.world + ' in ' + door.wid + ' for a dog to start from, so the restaurant door could not be asked');
+          else if (worker) {
+            const name = npcName(worker.npc).split(' ·')[0], glyph = steps.map(([x, y]) => w.grid[y][x]).join('');
+            world = door.wid; px = fx = w.W - 1; py = fy = w.H - 1;
+            Math.random = () => 0.80;   /* inside the band that, away from the park, means "a restaurant door" */
+            const d = made(door.wid, s[0], s[1]);
+            dogWhim(d, T);
+            Math.random = MR;
+            if (!d.task || d.task.type !== 'door') P.push('a dog in ' + door.wid + ' never goes to sing at ' + name + '\'s door: the roll that should send him ' +
+              (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "awooing infront of a restaurant and a worker brings them a water bowl")');
+            else {
+              let sang = false, came = null, lookOk = false, bowl = null, drank = false;
+              drive(d, 700, dd => {
+                if (Math.abs(dd.x - sx) + Math.abs(dd.y - sy) <= 2 && dd.howlT > T) sang = true;
+                const v = w.npcs.find(n => onStep(n) && n !== worker && String(n.key).indexOf('~') === 0);
+                if (v && !came) { came = v; lookOk = lookOf(v) === lookOf(worker) && v.npc === worker.npc; }
+                const b = THINGS && THINGS.find(o => o.kind === 'bowl' && o.world === door.wid);
+                if (b) bowl = b;
+                if (bowl && bowl.drinkUntil > T && Math.abs(dd.x - bowl.fx) <= 1 && Math.abs(dd.y - bowl.fy) <= 1) drank = true; });
+              if (!sang) P.push('the dog went to ' + name + '\'s door and never sang');
+              else if (!came) P.push('the dog sang at ' + name + '\'s door and nobody came out');
+              else if (!lookOk) P.push('somebody came out of ' + door.e.world + ' with the water and it was not ' + name + ': they are wearing somebody else\'s clothes');
+              if (came && !bowl) P.push(name + ' came out to the dog and brought no water bowl');
+              if (bowl && !drank) P.push(name + ' set a bowl of water down and the dog never drank from it');
+              if (came && w.npcs.indexOf(came) >= 0) P.push(name + ' came out with the water and never went back in: they are standing on the step for good');
+              if (steps.map(([x, y]) => w.grid[y][x]).join('') !== glyph) P.push('after ' + name + ' went back in, the step outside the door still reads as a person standing there — nobody can walk through it');
+              if (d.task || Math.abs(d.x - s[0]) + Math.abs(d.y - s[1]) > 1) P.push('after his drink the dog never went home: he stopped at ' + at([d.x, d.y]) + ', and a dog far from home cannot wander');
+              if (bowl) { const miss = missing(drawnBy(bowl)); if (miss.length) P.push('the water bowl is not drawn in the ' + miss.join(', ') + ' camera: the dog is drinking from nothing'); }
+            }
+          }
+        }
+      }
+    } finally {
+      Math.random = MR;
+      if (THINGS) THINGS.length = thingsBefore;
+      if (VISITS) { VISITS.forEach(v => removeChill(v.key)); VISITS.length = 0; }
+      real.forEach(([c, w]) => { c.world = w; });
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
+      /* the 3D scene was built for the world this check visited; build it again for the one it came from,
+         or the next check that reads T3.scene measures a different room (it did: the roof check, 20×1) */
+      if (drew3d) { camSet('3d'); sizeCanvas(); draw3d(); }
+      camSet(keep.cam); if (typeof sizeCanvas === 'function') sizeCanvas();
+    }
+    return P;
+  });
+  fails.push(...busy);
+
+  /* ---- AND A ROMP WITH SOMEBODY NEAR: THEY LAUGH, NOBODY RUNS ----
+     The owner, 2026-09-29: "chasing after another character". Away from the park the greeting's roll
+     cannot greet another dog, so it sends him to the nearest person in reach: he runs to their feet and
+     goes round them a few times, and they laugh. Friendly, the whole way: he never stands on them, and
+     they never move away from him — the page's own wander step is run between his hops, so a person who
+     would wander is proved to stay. The laugh is asked of the one painter every camera shares
+     (drawEmote), by reading what it writes. Same clock rules as above; nobody real moves. */
+  const romp = await page.evaluate(() => {
+    const P = [];
+    const K = [...DOGK][0], MR = Math.random, keep = { world, px, py, fx, fy };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]);
+    const at = p => '(' + p[0] + ',' + p[1] + ')';
+    const tick = typeof dogThingsUpdate === 'function' ? dogThingsUpdate : () => {};
+    const open = (wid, x, y) => { const w = WORLDS[wid]; return x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y); };
+    let T = performance.now();
+    /* a person in a world that is not the park, with room around them to start a dog from — somebody who
+       WANDERS first, because only they could run from him, and "nobody runs" asked of a person who never
+       moves is a check that cannot fail */
+    /* three to five steps from their feet ON FOOT — counted here, by this check's own flood, not by the
+       engine's: a start picked by straight distance was behind a fence, and the engine rightly said
+       nobody was near */
+    const onFoot = (w, n) => { const far = new Int16Array(w.W * w.H).fill(-1), q = [];
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = n.x + dx, y = n.y + dy;
+        if (x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') { far[y * w.W + x] = 1; q.push([x, y]); } });
+      while (q.length) { const [cx, cy] = q.shift(), d0 = far[cy * w.W + cx]; if (d0 >= 5) continue;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = cx + dx, y = cy + dy;
+          if (x < 0 || y < 0 || x >= w.W || y >= w.H || far[y * w.W + x] >= 0 || SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N') return;
+          far[y * w.W + x] = d0 + 1; q.push([x, y]); }); }
+      return far; };
+    let pick = null, anybody = false;
+    [true, false].forEach(wantWander => Object.keys(WORLDS).forEach(wid => { if (pick || wid === PL.park) return; const w = WORLDS[wid];
+      (w.npcs || []).forEach(n => { if (pick || String(n.key).indexOf('~') === 0) return; anybody = true;
+        if (wantWander && !wanders(n)) return;
+        const far = onFoot(w, n);
+        for (let y = 0; y < w.H && !pick; y++) for (let x = 0; x < w.W && !pick; x++)
+          if (far[y * w.W + x] >= 3 && open(wid, x, y)) pick = { wid, s: [x, y], wanders: wanders(n) }; }); }));
+    if (!pick) { if (anybody) P.push('there are people away from the park and not one of them has open ground three to five steps from their feet, so the romp could not be asked'); return P; }
+    const w = WORLDS[pick.wid];
+    try {
+      real.forEach(([c]) => { c.world = '__frozen'; });
+      world = pick.wid; px = fx = w.W - 1; py = fy = w.H - 1;
+      const d = { kind: K, name: 'Sonny', world: pick.wid, x: pick.s[0], y: pick.s[1], fx: pick.s[0], fy: pick.s[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: pick.s.slice(), task: null, holdT: 0, stayT: 0 };
+      Math.random = () => 0.86;   /* inside the band that, away from the park, means "a romp with somebody" */
+      dogWhim(d, T);
+      Math.random = MR;
+      const n = d.task && d.task.type === 'romp' ? d.task.n : null;
+      if (!n) { P.push('away from the park the dog never romps with anybody near: the roll that should send him ' + (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "chasing after another character")'); return P; }
+      const name = npcName(n.npc || n.key).split(' ·')[0], home = [n.x, n.y], round = new Set();
+      let reached = false, onThem = false, laughed = false, laughDrawn = null;
+      for (let i = 0; i < 300 && d.task; i++) {
+        T += 100; tick(100, T);
+        if (typeof wanderUpdate === 'function') wanderUpdate(100);   /* the page's own step for anybody who wanders */
+        if (Math.max(Math.abs(d.x - n.x), Math.abs(d.y - n.y)) <= 1) { reached = true; round.add(d.x + ',' + d.y); }
+        if (d.x === n.x && d.y === n.y) onThem = true;
+        if (n.laughUntil > T - 1) { laughed = true;
+          if (laughDrawn === null) { const cv = document.createElement('canvas').getContext('2d'), old = ctx, said = [];
+            cv.fillText = t => said.push(t); ctx = cv; try { drawEmote(n, 0, 0); } finally { ctx = old; } laughDrawn = said.join(''); } }
+        dogStep(d, T); d.moving = false; d.fx = d.x; d.fy = d.y;
+      }
+      if (!reached) P.push('the dog set off to romp with ' + name + ' and never reached their feet');
+      else if (round.size < 2) P.push('the dog reached ' + name + ' and never went round them: he stood on one tile');
+      if (onThem) P.push('the dog stood on ' + name + ' — a romp goes round somebody\'s feet, never onto them');
+      if (n.x !== home[0] || n.y !== home[1]) P.push(name + ' moved away from the dog, from ' + at(home) + ' to ' + at([n.x, n.y]) + ', while he romped — it is play, nobody runs from him');
+      if (reached && !laughed) P.push(name + ' never laughed while the dog romped round their feet');
+      else if (laughed && laughDrawn !== '😄') P.push('while the dog romps round ' + name + ' the one painter every camera shares writes ' + JSON.stringify(laughDrawn) + ' over their head, not the laugh');
+      if (d.task) P.push('the dog never finished his romp with ' + name);
+    } finally {
+      Math.random = MR;
+      real.forEach(([c, ww]) => { c.world = ww; });
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
+    }
+    return P;
+  });
+  fails.push(...romp);
 
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
      Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of

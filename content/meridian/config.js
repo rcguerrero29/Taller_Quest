@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v202";
+const GAMEV="mq-v203";
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
 /* default camera for this pack. TRUE 3D as of 2026-09-01 (owner: "please make 3d
@@ -23,6 +23,11 @@ const PLACES={
   parkIn:[2,6,"right"],      /* where you arrive in the park, and which way you face */
   parkDog:[3,6],             /* where the dog you brought stands when you arrive */
   parkDogHome:[8,6],         /* where that dog drifts back to while you play */
+  eateries:[{world:"lc"}],   /* the places that serve food: a dog who sings at the door is brought a bowl of water
+                                by whoever works there (owner, 2026-09-29: "awooing infront of a restaurant and a
+                                worker brings them a water bowl"). `who` may name the person; left out, it is the
+                                first one who works there — in La Cocina, Doña Rosa. A pack that names none: the
+                                dog never sings at a door, and that roll passes quietly. */
   parkAdopt:[[17,4],[19,4],[17,2],[19,2],[16,3],[20,3]], /* free spots an adopted dog may take, tried in order */
   friends:["st","me","lc","lo"], /* the worlds whose people a dog may befriend — only worlds you have */
   upstairs:"f2"              /* the floor the map marks ⇧ */

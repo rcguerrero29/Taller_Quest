@@ -103,7 +103,7 @@ window.addEventListener("unhandledrejection",e=>{try{const r=e&&e.reason;mqwarn(
    walkable, the street "st", the park "pk" with the leash landing at (2,6). A second world
    inherited them or crashed. Now the pack says which of its worlds play which ROLE, and the
    engine reads the role. A pack that says nothing gets Meridian's table, byte for byte. */
-const PLDEF={home:"hq",spawn:[10,11],street:"st",park:"pk",parkIn:[2,6,"right"],parkDog:[3,6],parkDogHome:[8,6],
+const PLDEF={home:"hq",spawn:[10,11],street:"st",park:"pk",parkIn:[2,6,"right"],parkDog:[3,6],parkDogHome:[8,6],eateries:[{world:"lc"}],
   parkAdopt:[[17,4],[19,4],[17,2],[19,2],[16,3],[20,3]],friends:["st","me","lc","lo"],upstairs:"f2"};
 const PL=Object.assign({},PLDEF,(typeof PLACES==="object"&&PLACES)||{});
 /* the pavement each world is painted with; a world not listed gets the pack's floor colours */
@@ -258,6 +258,12 @@ const CHILLN={},CHILLEGG={};let chillSeq=0;
 const EGGSAFE=typeof EGGS!=="undefined"?EGGS:{};
 const DEFACT=["💬","☕"]; /* fallback activity emotes for anyone NPCACT does not name */
 function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy from any angle */
+  /* a dog romping round their feet: they laugh, and for that long it is the one thing over their head
+     (owner, 2026-09-29: "chasing after another character" — play, never a flight). Its clock is the
+     loop's, the one the romp set it by, not the trade's; and it comes BEFORE the trade's window, which
+     is left exactly as its own guard reads it (test/smoke.js, grep `the job-icon window`). */
+  if(n.laughUntil>performance.now()){ctx.font="10px serif";ctx.textAlign="center";
+    ctx.fillText("😄",sx+25,sy+1);ctx.textAlign="start";return;}
   const acts=(typeof NPCACT!=="undefined"&&NPCACT[n.npc])||DEFACT;
   const nw=Date.now(),ph=((nw/1000)+n.x*7.3+n.y*13.7)%13;
   /* Drawn BESIDE the ❗ now, never instead of it (owner, 2026-09-03: "its hard to tell
@@ -962,6 +968,7 @@ function drawIso(){
       else if(cr.kind==="lab")drawLab(ctx,cr,bx,by);
       else if(cr.kind==="chi")drawChi(ctx,cr,bx,by);});});
   if(BALL&&BALL.world===world)bill(BALL.fx,BALL.fy,(bx,by)=>drawBall(ctx,bx,by,BALL.phase,BALL.t));
+  DOGTHINGS.forEach(o=>{if(o.world===world)bill(o.fx,o.fy,(bx,by)=>drawDogThing(ctx,bx,by,o));});
   bill(fx,fy,(bx,by)=>drawPerson(ctx,bx,by,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true}));
   /* decor stands up here too. It used to be drawn ONLY top-down and front, so every landmark
      the pack declares — the mural among them — was invisible in the two cameras people play in
@@ -2572,6 +2579,7 @@ function drawFront(){
     else if(cr.kind==="lab")drawLab(ctx,cr,sx,sy);
     else if(cr.kind==="chi")drawChi(ctx,cr,sx,sy);});});
   if(BALL&&BALL.world===world)act(BALL.fx,BALL.fy,(sx,sy)=>drawBall(ctx,sx,sy,BALL.phase,BALL.t));
+  DOGTHINGS.forEach(o=>{if(o.world===world)act(o.fx,o.fy,(sx,sy)=>drawDogThing(ctx,sx,sy,o));});
   act(fx,fy,(sx,sy)=>drawPerson(ctx,sx,sy,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true}));
   doorMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawDoorMark(ctx,sx,sy,14,d.mark)));
   readMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawReadMark(ctx,sx,sy,14)));
@@ -2671,6 +2679,7 @@ function draw(){
     else if(cr.kind==="chi")drawChi(ctx,cr,sx,sy);
   });
   if(BALL&&BALL.world===world)drawBall(ctx,BALL.fx*TS-camX,BALL.fy*TS-camY,BALL.phase,BALL.t);
+  DOGTHINGS.forEach(o=>{if(o.world===world)drawDogThing(ctx,o.fx*TS-camX,o.fy*TS-camY,o);});
   drawPerson(ctx,fx*TS-camX,fy*TS-camY,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true});
   doorMarks().forEach(d=>drawDoorMark(ctx,d.x*TS-camX,d.y*TS-camY,0,d.mark)); /* the top camera draws its own people — the marker too */
   readMarks().forEach(d=>drawReadMark(ctx,d.x*TS-camX,d.y*TS-camY,0));
@@ -3160,6 +3169,7 @@ function dogWalk(cr,tx,ty){ /* one BFS step toward (tx,ty); false if no path or 
 }
 function dogStep(cr,now){ /* the task router: every job a dog can hold */
   const tk=cr.task;
+  if(tk.wait&&now<tk.wait)return; /* a job may pause (a song, a bowl being set down), and a pause is not a step */
   tk.steps=(tk.steps||0)+1;
   if(tk.steps>80){cr.task=null;if(BALL&&BALL.dog===cr&&BALL.phase!=="carried")BALL.until=Date.now()+4000;return;}
   if(tk.type==="fetch"){
@@ -3187,6 +3197,54 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     if(cr.x===wp[0]&&cr.y===wp[1]){tk.i++;return;}
     if(!dogWalk(cr,wp[0],wp[1]))cr.task=null;
     return;}
+  if(tk.type==="stick"){ /* his own stick: run it down, then carry it home, very pleased with himself */
+    const o=tk.o;
+    if(!o||DOGTHINGS.indexOf(o)<0){cr.task=null;return;}
+    const tgt=tk.phase==="go"?[o.tx,o.ty]:[tk.hx,tk.hy];
+    if(cr.x===tgt[0]&&cr.y===tgt[1]){
+      if(tk.phase==="go"){if(o.phase==="fly")return;
+        o.phase="carried";tk.phase="back";tk.steps=0;return;}
+      o.phase="ground";o.dog=null;o.fx=cr.x+0.34*cr.face;o.fy=cr.y+0.08;o.until=now+8000; /* put down beside him */
+      cr.task=null;cr.sit=true;cr.happyT=now+2600;cr.next=now+2800;
+      if(cr.world===world&&Math.random()<0.5&&T().stickToast)toast("🐶 "+T().stickToast,2400);
+      return;}
+    if(tk.phase==="back")cr.happyT=now+400;        /* the proud trot: tail up the whole way back */
+    if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
+      if(o.phase!=="ground"){o.phase="ground";o.fx=cr.x;o.fy=cr.y;}o.dog=null;o.until=now+4000;}
+    return;}
+  if(tk.type==="door"){ /* at a restaurant door: he sings, somebody who works there brings water */
+    if(tk.phase==="go"){
+      if(cr.x===tk.at[0]&&cr.y===tk.at[1]){
+        tk.phase="sing";tk.steps=0;cr.sit=true;cr.face=Math.sign(tk.step[0]-cr.x)||cr.face;
+        cr.howlT=now+2100;if(cr.world===world){try{musHowl();}catch(e){}}
+        tk.wait=now+1800;return;}
+      if(!dogWalk(cr,tk.at[0],tk.at[1]))cr.task=null;
+      return;}
+    if(tk.phase==="sing"){tk.bowl=bowlVisit(cr,tk,now);tk.steps=0;
+      if(!tk.bowl){tk.phase="home";return;}          /* the step is taken, or nobody works there: he goes home dry */
+      tk.phase="drink";tk.wait=now+1000;return;}      /* the time it takes to set a bowl down */
+    if(tk.phase==="drink"){
+      if(!tk.drank){tk.drank=true;tk.bowl.drinkUntil=now+3200;cr.sit=false;cr.happyT=now+3400;
+        cr.face=Math.sign(tk.bowl.fx-cr.x)||cr.face;tk.wait=now+3200;return;}
+      tk.phase="home";tk.steps=0;return;}
+    /* home — a dog far from home cannot wander (critFree keeps him within four tiles of it) */
+    if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=1||!dogWalk(cr,cr.home[0],cr.home[1])){
+      cr.task=null;cr.sit=true;cr.next=now+1500;}
+    return;}
+  if(tk.type==="romp"){ /* round and round somebody's feet: they laugh, and nobody runs from him */
+    const n=tk.n,w=WORLDS[cr.world];
+    if(!n||w.npcs.indexOf(n)<0){cr.task=null;return;}
+    n.wnext=Math.max(n.wnext||0,now+2400);           /* they see him coming and wait for him: nobody walks off */
+    if(Math.max(Math.abs(cr.x-n.x),Math.abs(cr.y-n.y))>1){if(!dogWalk(cr,n.x,n.y))cr.task=null;return;}
+    n.laughUntil=now+1800;cr.happyT=now+900;          /* at their feet: they laugh */
+    if(tk.hops<=0){cr.task=null;cr.sit=true;cr.face=Math.sign(n.x-cr.x)||cr.face;cr.next=now+2200;return;}
+    tk.hops--;
+    /* one hop round them: to a tile still at their feet, next to where he is, never onto them */
+    const ring=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]].map(([dx,dy])=>[n.x+dx,n.y+dy])
+      .filter(([x,y])=>Math.abs(x-cr.x)+Math.abs(y-cr.y)===1&&taskFree(cr,x,y)&&!(cr.world===world&&x===px&&y===py));
+    if(!ring.length){cr.task=null;cr.sit=true;cr.next=now+2200;return;}
+    const[x,y]=ring[tk.hops%ring.length];cr.dx=x-cr.x;cr.dy=y-cr.y;if(cr.dx)cr.face=cr.dx;
+    cr.x=x;cr.y=y;cr.moving=true;cr.mt=0;tk.wait=now+220;return;}
   if(tk.type==="sniff"){
     const o=tk.other;
     if(!o||o.world!==cr.world){cr.task=null;return;}
@@ -3253,7 +3311,10 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
      roll they declined fell into the hole: away from the park he dug 22.5% of the time, and beside
      another dog 3.5%. One set of odds cannot land on exactly 8% in places where different whims
      apply, so digging is sized to sit between 7 and 9 in all of them; test/engine.smoke.js (grep
-     `DIGS ABOUT 8%`) sweeps the roll in each place and prints the shares. */
+     `DIGS ABOUT 8%`) sweeps the roll in each place and prints the shares.
+     Away from the park the course's roll goes to his own stick or a restaurant door, and the greeting's
+     to a romp with somebody near (2026-09-29; see `more to do away from the park` below), and each
+     passes in its turn when it cannot happen. */
   if(r<0.40){cr.layT=now+3800+Math.random()*3200;cr.sit=false;cr.next=cr.layT;}
   else if(r<0.71){cr.howlT=now+2100;cr.next=now+2800;
     if(park)PARK.h++;
@@ -3261,18 +3322,119 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
     if(Math.random()<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
   else if(r<0.83){if(park){const wp=agilityCourse(cr.world);
     /* no gear, no course: the whim passes */
-    if(wp.length){cr.task={type:"run",wp,i:0};cr.sit=false;cr.layT=0;}}}
+    if(wp.length){cr.task={type:"run",wp,i:0};cr.sit=false;cr.layT=0;}}
+    else if(r<0.77)dogStick(cr,now);  /* away from the park the course's roll is his own stick... */
+    else dogDoor(cr,now);}           /* ...or a restaurant door; either passes if it cannot happen here */
   else if(r<0.90){if(other){ /* dogs being dogs: sniff, or a burst of chase; no other dog, it passes */
     if(Math.random()<0.55)cr.task={type:"sniff",other};
     else{cr.task={type:"chase",other,until:now+4200};
       other.task={type:"flee",until:now+4200};other.sit=false;other.layT=0;
       if(Math.random()<0.4)toast("🐶 "+(T().chaseToast||"!"),2200);}
-    cr.sit=false;cr.layT=0;}}
+    cr.sit=false;cr.layT=0;}
+    else if(!park)dogRomp(cr,now);} /* away from the park the greeting's roll is a romp with somebody near */
   else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare tribute to puppy Sonny */
     if(park)PARK.d++;
     const hx=cr.x,hy=cr.y,hw=cr.world;
     setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:Date.now()+34000}),1400);}
   else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:Date.now()+45000});cr.next=now+3000;}
+}
+/* ---------- more to do away from the park ----------
+   Owner, 2026-09-29: "give him other things to do to keep him busy? running after his own stick or
+   other dog things, chasing after another character. traveling to the bed on my office. awooing
+   infront of a restaurant and a worker brings them a water bowl. ya kno?"
+   Each fills a roll that used to pass away from the park (the course and the greeting cannot happen
+   there), and each PASSES quietly when it cannot happen here: no room to throw a stick, no restaurant
+   door he can reach, somebody already out on the step. So a nap, a song, a hole and the other thing
+   keep exactly the share of his whims they had (test/engine.smoke.js, grep `DIGS ABOUT 8%`).
+   DOGTHINGS is what he has thrown, carried or been given that is not the ball: it is drawn wherever
+   the ball is drawn, in every camera, through drawDogThing — not through DECALS, which only the flat
+   cameras paint. DOGVISIT is a person who stepped out to him: a copy of somebody who works there,
+   standing on the step outside their own door, gone again on their own clock wherever you are. The
+   clocks are the `now` the loop hands every update, never Date.now(), so a test can own them. */
+const DOGTHINGS=[],DOGVISIT=[];
+function dogSteps(cr,max){ /* how many steps every tile is from him on foot, out to `max`; -1 is further, or no way there */
+  const w=WORLDS[cr.world],far=new Int16Array(w.W*w.H).fill(-1),q=[[cr.x,cr.y]];
+  far[cr.y*w.W+cr.x]=0;
+  while(q.length){const[cx,cy]=q.shift(),d0=far[cy*w.W+cx];if(d0>=max)continue;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const x=cx+dx,y=cy+dy;
+      if(x<0||y<0||x>=w.W||y>=w.H||far[y*w.W+x]>=0||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")continue;
+      far[y*w.W+x]=d0+1;q.push([x,y]);}}
+  return far;}
+function dogStick(cr,now){ /* he finds a stick, flings it, and runs it down */
+  if(DOGTHINGS.some(o=>o.dog===cr))return;
+  /* three to five steps away BY WALKING, not as the crow flies: chosen by straight distance, the first
+     one landed over La Obra's fence, four tiles off and seventeen steps round (looked at, 2026-09-29) */
+  const w=WORLDS[cr.world],far=dogSteps(cr,5),opts=[];
+  for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){const d=far[y*w.W+x];
+    if(d>=3&&!portalAt(cr.world,x,y)&&!troDanger(cr.world,x,y))opts.push([x,y]);}
+  if(!opts.length)return;                                    /* no room to throw: the whim passes */
+  const[tx,ty]=opts[Math.floor(Math.random()*opts.length)];
+  const o={kind:"stick",world:cr.world,sx:cr.x,sy:cr.y,fx:cr.x,fy:cr.y,tx,ty,t:0,phase:"fly",dog:cr};
+  DOGTHINGS.push(o);
+  cr.task={type:"stick",phase:"go",o,hx:cr.x,hy:cr.y};cr.sit=false;cr.layT=0;cr.face=Math.sign(tx-cr.x)||cr.face;}
+function dogRomp(cr,now){ /* the nearest person in reach, for a romp round their feet (owner: "chasing after another character") */
+  /* near ON FOOT: within ten steps of their feet. By straight distance the first one picked a man behind
+     a fence, three tiles off, and ran the long way round (looked at, 2026-09-29) */
+  const w=WORLDS[cr.world],steps=dogSteps(cr,10);let best=null;
+  (w.npcs||[]).forEach(n=>{if(String(n.key).indexOf("~bowl")===0)return; /* not somebody who only came out with water */
+    let far=-1;[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const x=n.x+dx,y=n.y+dy;
+      if(x>=0&&y>=0&&x<w.W&&y<w.H){const d=steps[y*w.W+x];if(d>=0&&(far<0||d<far))far=d;}});
+    if(far<0)return;
+    if(!best||far<best.far)best={far,n};});
+  if(!best)return;                                           /* nobody near: the whim passes */
+  best.n.wnext=Math.max(best.n.wnext||0,now+2400);           /* from the moment he sets off, they stay put */
+  cr.task={type:"romp",n:best.n,hops:4};cr.sit=false;cr.layT=0;}
+function eateryWorker(e){ /* who comes out: the pack's `who`, or else the first person who works there */
+  const inside=(e&&WORLDS[e.world]&&WORLDS[e.world].npcs)||[];
+  return (e.who&&inside.find(n=>n.npc===e.who))||inside.find(n=>String(n.key).indexOf("~")!==0)||null;}
+function eateryDoors(wid){ /* the steps outside every door in this world into a place the pack says serves food:
+  every open tile beside the door, on either side of it. Not only where the way OUT lands you: La Cocina's
+  lands you north of the building, the default 3D camera looks from the south, and a worker who came out on
+  the far side of the building brought the water where nobody could see it (looked at, 2026-09-29). */
+  const out=[],w=WORLDS[wid];if(!w)return out;
+  (PL.eateries||[]).forEach(e=>{if(!e||!WORLDS[e.world])return;
+    portalsOf(wid).forEach(({x,y,p})=>{if(p.to!==e.world)return;
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{const sx=x+dx,sy=y+dy;
+        if(sx<0||sy<0||sx>=w.W||sy>=w.H||SOLID.has(w.rows[sy][sx])||portalAt(wid,sx,sy))return;
+        out.push({step:[sx,sy],door:[x,y],eat:e});});});});
+  return out;}
+function dogDoor(cr,now){ /* a restaurant he can reach: he goes and sings at its door */
+  if(DOGVISIT.length)return;                                 /* somebody is already out on a step */
+  const w=WORLDS[cr.world],rs=dogReach(cr);let best=null;
+  eateryDoors(cr.world).forEach(d=>{[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy])=>{
+    const x=d.step[0]+dx,y=d.step[1]+dy;
+    if(x<0||y<0||x>=w.W||y>=w.H||!rs[y*w.W+x]||portalAt(cr.world,x,y)||troDanger(cr.world,x,y))return;
+    if(cr.world===world&&x===px&&y===py)return;
+    const far=Math.abs(x-cr.x)+Math.abs(y-cr.y);
+    if(!best||far<best.far)best={far,at:[x,y],step:d.step,eat:d.eat};});});
+  if(!best)return;                                           /* no restaurant door he can reach: the whim passes */
+  cr.task={type:"door",phase:"go",at:best.at,step:best.step,eat:best.eat};cr.sit=false;cr.layT=0;}
+function bowlVisit(cr,tk,now){ /* whoever the pack says works there steps out onto the step, with water */
+  const e=tk.eat,w=WORLDS[cr.world],[x,y]=tk.step,who=eateryWorker(e);
+  if(!who||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N"||(cr.world===world&&x===px&&y===py)
+    ||CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y))return null;
+  const key="~bowl"+(chillSeq++);
+  w.npcs.push({key,npc:who.npc,x,y,fx:x,fy:y,hx:x,hy:y,q:[],still:true,mv:null,mt:0,wnext:0,face:Math.sign(cr.x-x)||1});
+  NPCLOOK[key]=lookOf(who); /* her own clothes: a look keyed by map letter would not follow a new key (removeChill clears it) */
+  w.grid[y][x]="N";
+  DOGVISIT.push({key,until:now+3600});
+  const b={kind:"bowl",world:cr.world,fx:x+(cr.x-x)*0.55,fy:y+(cr.y-y)*0.55,phase:"ground",show:now+900,until:now+30000};
+  DOGTHINGS.push(b);
+  if(cr.world===world){const L=T().bowlToast;
+    toast("🥣 "+(typeof L==="function"?L(npcName(who.npc).split(" ·")[0],cr.name||""):(L||"💧")),2800);}
+  return b;}
+function dogThingsUpdate(dt,now){ /* the stick flies and rides in his mouth; bowls and sticks fade; visitors go back in */
+  for(let i=DOGTHINGS.length-1;i>=0;i--){const o=DOGTHINGS[i];
+    if(o.world!==world||(o.until&&now>o.until)){DOGTHINGS.splice(i,1);continue;} /* you left: it was never going to wait */
+    if(o.phase==="fly"){o.t=Math.min(1,o.t+dt/480);o.fx=o.sx+(o.tx-o.sx)*o.t;o.fy=o.sy+(o.ty-o.sy)*o.t;if(o.t>=1)o.phase="ground";}
+    else if(o.phase==="carried"){const d=o.dog;
+      if(!d||!d.task||d.task.o!==o||d.world!==o.world){o.phase="ground";o.dog=null;o.until=now+4000;}
+      else{o.fx=d.fx+0.28*d.face;o.fy=d.fy-0.12;}}
+    if(o.phase==="ground"&&!o.until&&!(o.dog&&o.dog.task&&o.dog.task.o===o))o.until=now+4000; /* dropped, then forgotten */
+    o.hidden=!!(o.show&&now<o.show);
+    o.fade=o.until?Math.max(0,Math.min(1,(o.until-now)/1500)):1;
+    o.drinking=!!(o.drinkUntil&&now<o.drinkUntil);o.ph=now;}
+  for(let i=DOGVISIT.length-1;i>=0;i--)if(now>DOGVISIT[i].until){removeChill(DOGVISIT[i].key);DOGVISIT.splice(i,1);}
 }
 function ballUpdate(dt,now){
   if(!BALL)return;
@@ -3306,6 +3468,25 @@ function drawBall(g,sx,sy,phase,t){
   g.beginPath();g.arc(cx-1.4,cy,3.1,-1.1,1.1);g.stroke();
   g.beginPath();g.arc(cx+1.4,cy,3.1,Math.PI-1.1,Math.PI+1.1);g.stroke();
 }
+function drawDogThing(g,sx,sy,o){ /* the simplest honest drawing of each, for Pili to shape: a stick, a bowl of water */
+  if(!o||o.hidden)return;
+  const a=o.fade===undefined?1:o.fade;if(a<=0)return;
+  g.globalAlpha=a;
+  if(o.kind==="stick"){
+    const arc=o.phase==="fly"?Math.sin(Math.PI*Math.min(1,o.t))*14:0,cx=sx+16,cy=sy+21-arc;
+    if(o.phase!=="carried"){g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+25,6,1.4,0,0,7);g.fill();}
+    g.save();g.translate(cx,cy);g.rotate(o.phase==="carried"?0:o.phase==="fly"?o.t*6:0.35);
+    g.fillStyle="#7A5230";g.fillRect(-7,-1.2,14,2.4);           /* the stick */
+    g.fillStyle="#5E3E22";g.fillRect(-7,-1.2,2.4,2.4);g.fillRect(2,-4,1.3,3); /* the chewed end, a twig */
+    g.restore();}
+  else if(o.kind==="bowl"){const cx=sx+16,cy=sy+23;
+    g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,cy+2.4,7.5,2,0,0,7);g.fill();
+    g.fillStyle="#8C98A4";g.beginPath();g.ellipse(cx,cy,7,3.2,0,0,7);g.fill();      /* the steel bowl */
+    g.fillStyle="#5FA8D8";g.beginPath();g.ellipse(cx,cy-0.4,5,2,0,0,7);g.fill();    /* the water */
+    g.fillStyle="#DCEFFA";g.fillRect(cx-2.6,cy-1.3,2.2,0.8);                          /* a glint */
+    if(o.drinking){const r=1+((o.ph||0)/180)%3.2;g.strokeStyle="#DCEFFA";g.lineWidth=0.6; /* he is lapping it up */
+      g.beginPath();g.ellipse(cx+1,cy-0.4,r,r*0.4,0,0,7);g.stroke();}}
+  g.globalAlpha=1;}
 $("ball").addEventListener("click",()=>{
   if(BALL||!DOGK.has(petTarget)||!petCrit||petCrit.task)return;
   const w=CW(),rs=dogReach(petCrit),opts=[];
@@ -3979,7 +4160,7 @@ function loop(ts){
   }else if(!tryPortal(ts))tryStep(); /* standing on a door whose cooldown just ran out: go through */
   petalMomentTick(dt);
   troTick(dt);
-  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);wanderUpdate(dt);fredCheck();
+  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);dogThingsUpdate(dt,ts);wanderUpdate(dt);fredCheck();
   /* The world keeps thinking behind a panel — the dog walks, the trolley comes, petals fall — so
      nothing jumps when you put the paper down. It is not DRAWN, though: measured at 215 frames in
      six seconds with a document covering the screen, every one of them at full device resolution
