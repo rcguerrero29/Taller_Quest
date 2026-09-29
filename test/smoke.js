@@ -1044,9 +1044,26 @@ const CANDIDATES = [
       if (!runner.task && Math.abs(runner.x - px) + Math.abs(runner.y - py) <= 1) break;
     }
     out.comeOk = Math.abs(runner.x - px) + Math.abs(runner.y - py) <= 1;
-    // the agility course exists and is reachable
-    out.agility = WORLDS.pk.rows[8].includes('3.4.5') &&
-      AGILITY.every(([ax, ay]) => !!dogReach({ world: 'pk', x: 2, y: 6 })[ay * WORLDS.pk.W + ax]);
+    // the agility course exists, is reachable, and is the course the dog is actually SENT on.
+    // Meridian's has been hurdle, tunnel, weave at (9,8) (11,8) (13,8) since it was built. From
+    // 2026-09-29 the engine reads it off this map instead of carrying those three coordinates
+    // itself, so this pins that nothing about Meridian's dog moved when that happened — asked
+    // through the whim, with the roll pinned to the one that means "run the course" and Sonny put
+    // straight back, synchronously, so the steps below find him exactly where they left him.
+    {
+      const keep = { world: sonny.world, x: sonny.x, y: sonny.y, fx: sonny.fx, fy: sonny.fy,
+        task: sonny.task, sit: sonny.sit, layT: sonny.layT, next: sonny.next };
+      const MR2 = Math.random; Math.random = () => 0.8;
+      sonny.world = 'pk'; sonny.task = null;
+      let wp = [];
+      try { dogWhim(sonny, performance.now()); wp = sonny.task && sonny.task.type === 'run' ? sonny.task.wp : []; }
+      finally { Math.random = MR2; Object.assign(sonny, keep); }
+      const sent = wp.map(([x, y]) => ({ '3': 'hurdle', '4': 'tunnel', '5': 'weave' }[WORLDS.pk.rows[y][x]] || 'bare ground') + ' (' + x + ',' + y + ')').join(', ');
+      const reach = dogReach({ world: 'pk', x: 2, y: 6 });
+      out.agility = (WORLDS.pk.rows[8].includes('3.4.5') && sent === 'hurdle (9,8), tunnel (11,8), weave (13,8)' &&
+        wp.every(([ax, ay]) => !!reach[ay * WORLDS.pk.W + ax])) ||
+        "Meridian's dog no longer runs its course as it always has, hurdle (9,8), tunnel (11,8), weave (13,8): it was sent on " + (sent || 'no course at all');
+    }
     // swipe works on the 3D canvas too
     held = null; ctl = 'swipe';
     document.getElementById('world').hidden = false; // the trolley-pass section left the intro up

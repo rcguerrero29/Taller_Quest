@@ -3210,10 +3210,20 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   cr.task=null;
 }
-const AGILITY=[[9,8],[11,8],[13,8]]; /* the course order: hurdle, tunnel, weave */
+/* The agility course is whatever gear the park's own map lays down: every tile whose kind is
+   "gear", in the order you read the map. Meridian's row 8 reads 3.4.5, so its dog runs hurdle,
+   tunnel, weave, the course it always ran. Until 2026-09-29 the course was those three coordinates,
+   written here, and every park's dog ran Meridian's course, across bare grass in a park that has no
+   gear and off the map in a room smaller than Meridian's park. Read from `rows`, the map as drawn,
+   not `grid`, where a person standing on the hurdle is stamped "N": somebody standing on a piece
+   does not take it off the course. Asked at every whim and never cached, so a map changed while the
+   game runs is the map the dog runs. */
+function agilityCourse(wid){const w=WORLDS[wid],wp=[];if(!w)return wp;
+  for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if((TILES[w.rows[y][x]]||{}).kind==="gear")wp.push([x,y]);
+  return wp;}
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (owner canon) — it stays in the repertoire, barely. In the park:
-  zoomies through the agility course, and the ancient greeting between dogs. */
+  zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
   const r=Math.random(),park=cr.world===PL.park;
   /* the cone. Owner, 2026-09-04: "sonny should be even able to rip it." Checked before the rest of
      the repertoire so a cone right under his nose beats a nap — but it is one roll in twenty-five,
@@ -3239,7 +3249,9 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
     if(park)PARK.h++;
     try{musHowl();}catch(e){} /* an actual tiny howl, when the sound is on */
     if(Math.random()<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
-  else if(r<0.86&&park){cr.task={type:"run",wp:AGILITY.map(p=>p.slice()),i:0};cr.sit=false;cr.layT=0;}
+  else if(r<0.86&&park){const wp=agilityCourse(cr.world);
+    /* no gear, no course: the whim passes, and its roll goes to nothing else — least of all digging */
+    if(wp.length){cr.task={type:"run",wp,i:0};cr.sit=false;cr.layT=0;}}
   else if(r<0.93&&other){ /* dogs being dogs: sniff, or a burst of chase */
     if(Math.random()<0.55)cr.task={type:"sniff",other};
     else{cr.task={type:"chase",other,until:now+4200};

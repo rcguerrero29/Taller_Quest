@@ -144,6 +144,15 @@ labels no renderer reads — `prop marker site nature gear transit stair` — su
 noun in what claims to be a class. Stair geometry does not come from `kind:"stair"` at all; it comes
 from the glyph literals of L5.
 
+> **2026-09-29: `gear` has a reader now, and it is not a renderer.** The park dog's agility course is
+> every `kind:"gear"` tile in the park's own map, in the order you read it (`engine/engine.js`, grep
+> `function agilityCourse`). It replaced `const AGILITY`, three of Meridian's tile coordinates the
+> engine carried, which sent every park's dog round Meridian's course whatever its park held; that
+> was L4's class and was never on this register. So **deleting `kind:"gear"` from a tile takes that
+> piece off the course**, and trimming this entry's list would take Meridian's dog off its own. Six
+> inert kinds remain. Held by `test/engine.smoke.js` (grep `A PARK DOG RUNS THE COURSE`) and
+> `test/smoke.js` (grep `out.agility`).
+
 ### L8 · `bridge` and `water` are one specific bridge and one specific river
 `engine.js:1004–1011`, `1242–1255`, `engine3d.js:334–368` — the geometry is the rainbow bridge, and a
 comment cites the owner asking for it. `kind:"water"` is floor paint, a blue rug: the mechanism for
