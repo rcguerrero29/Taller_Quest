@@ -49,3 +49,11 @@ const PAPER = `
   @keyframes bob { from{opacity:0} to{opacity:1} }   /* a global name the engine already uses */
   @property --escape { syntax:'<color>'; inherits:false; initial-value:red; }
 `;
+
+/* ---------- THE BUILDER'S DRONE, DECLARED AS A PROBE (#271) ----------
+   The same reason as PAPER above: a seam nobody uses is a seam nobody knows is broken. No game on the
+   public site declares a builder, so without this line no public build would ever press B. El Faro declares the builder so test/engine.smoke.js flies it here on every CI run — in all
+   four cameras in the 3D gauge. It is a fixture's line, not a game's choice: this pack is never linked
+   and nobody plays it. `name` is the only key the engine reads; it stays unset on purpose so the
+   engine's own neutral word is what gets measured. */
+const BUILDER={};
