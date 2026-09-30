@@ -2500,6 +2500,162 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...loopq);
 
+  /* ---- A MESSAGE THAT WAITED ITS TURN IS IN THE RECENT-ACTIVITY LIST ONCE (#278) ----
+     The list under the XP pill keeps the last two things said. A message that had to wait its turn
+     (another was showing, or a panel was over the world) was written into it when it was said and
+     AGAIN when it finally showed, so the doubled line pushed a real one out of a list that holds two.
+     Every message here is said by a REAL player action, Talk pressed beside somebody with something
+     to say or Copy pressed in a document, and every wait ends the real way: the toast's own timer,
+     the document's own close button, the loop noticing the paper went down. The list is read as the
+     player sees it, from the page.
+     THE CLOCK. A toast times out by the clock, so on a slow machine the first message could fade
+     before the second was said, and the check would call an immediate message a delayed one. It runs
+     under a clock it holds (Playwright's page.clock, paused, moved only by runFor), and each case
+     proves its message DID wait before it judges the list. Talk picks a line at random, so the random
+     pick is pinned to two lines that differ: two identical lines in the list are right when the same
+     thing was said twice, and a check that cannot tell them apart cannot see this bug.
+     THE WORLD IS HELD STILL: nobody wanders off and no animal, trolley or doorway speaks, so the only
+     things said are the check's own. It has a browser context of its own, so nothing it saves reaches
+     the checks around it. */
+  {
+    const tctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
+    const tp = await tctx.newPage();
+    const R = [], tErr = [], ok = [];
+    try {
+      tp.on('pageerror', e => tErr.push(e.message));
+      await tp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await tp.clock.install();
+      await tp.goto('file://' + file);
+      await tp.waitForTimeout(1500);
+      await tp.click('.classes button[data-c="architect"]');
+      await tp.click('#begin');
+      /* a jump well ahead of the page's own time, so a slow round trip does not land it in the past */
+      await tp.clock.pauseAt(await tp.evaluate(() => Date.now()) + 3000);
+      const where = await tp.evaluate(() => {
+        const $ = id => document.getElementById(id);
+        ['wanderUpdate', 'dogUpdate', 'catUpdate', 'pigUpdate', 'loroTick', 'critUpdate', 'ballUpdate', 'dogThingsUpdate',
+         'troTick', 'petalMomentTick', 'fredCheck', 'portalNudge'].forEach(f => { if (typeof window[f] === 'function') window[f] = function () {}; });
+        camSet('top');
+        /* every time a message goes UP on screen, what it said (the toast's class gains "on") */
+        const S = window.__said = { shown: [], copied: 0 };
+        new MutationObserver(rs => rs.forEach(r => {
+          if (!/\bon\b/.test(r.oldValue || '') && r.target.classList.contains('on')) S.shown.push(r.target.textContent);
+        })).observe($('toast'), { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          const w = navigator.clipboard.writeText.bind(navigator.clipboard);
+          navigator.clipboard.writeText = v => w(v).then(x => { S.copied++; return x; });
+        }
+        S.list = () => $('ticker').hidden ? [] : [...$('ticker').querySelectorAll('div')].map(d => d.textContent);
+        S.state = () => ({ shown: S.shown.slice(), list: S.list(), ticker: !$('ticker').hidden, covered: worldCovered(),
+          showing: $('toast').classList.contains('on') ? $('toast').textContent : null, copied: S.copied,
+          copy: !!$('docCopy') && !$('docCopy').hidden && $('docCopy').offsetParent !== null });
+        S.stand = s => { world = s.wid; px = fx = s.x; py = fy = s.y; moving = false; held = null; checkTalk(); };
+        S.pin = k => { if (!S.MR) S.MR = Math.random; Math.random = () => k; };
+        S.unpin = () => { if (S.MR) { Math.random = S.MR; S.MR = null; } };
+        const plain = (wid, x, y) => { world = wid; return !isSolid(x, y) && !portalAt(wid, x, y) && !troIsStop(wid, x, y); };
+        const txt = l => typeof l === 'string' ? l : (l && typeof l.t === 'string' ? l.t : null);
+        const start = { wid: world, x: px, y: py };
+        /* somebody with two different things to say and nothing else to do when Talk is pressed */
+        let talker = null;
+        for (const wid of Object.keys(WORLDS)) { if (talker) break;
+          for (const n of WORLDS[wid].npcs) { if (talker) break;
+            if (!n.chat || pendingAt(n) !== undefined || svcKind(n.npc, n)) continue;
+            const L = chillLines(n.npc) || (T().chat || {})[n.npc] || [];
+            const a = txt(L[0]), j = L.findIndex(l => txt(l) !== null && txt(l) !== a);
+            if (a === null || j < 0) continue;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const x = n.x + dx, y = n.y + dy;
+              if (!plain(wid, x, y)) continue;
+              world = wid; px = fx = x; py = fy = y; moving = false; held = null; checkTalk();
+              if ($('talk').hidden || $('talk').dataset.chatn !== n.npc) continue;
+              talker = { wid, x, y, name: npcName(n.npc).split(' ·')[0], pick: [0.5 / L.length, (j + 0.5) / L.length] }; break; } } }
+        /* a document on the street with nobody beside it, so Read is the one thing lit */
+        let paper = null;
+        for (const r of RD()) { if (paper) break; if (!WORLDS[r.world] || !DC()[r.doc]) continue;
+          for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [0, 0]]) { const x = r.x + dx, y = r.y + dy;
+            if (!plain(r.world, x, y)) continue;
+            world = r.world; px = fx = x; py = fy = y; moving = false; held = null; checkTalk();
+            if ($('read').hidden || !$('talk').hidden) continue;
+            const d = DC()[r.doc]; paper = { wid: r.world, x, y, name: (d.title && (d.title.en || '')) || r.doc }; break; } }
+        S.stand(start);
+        return { talker, paper };
+      });
+      await tp.clock.runFor(9000);   /* whatever a brand-new game says first has come and gone */
+      const st = () => tp.evaluate(() => window.__said.state());
+      const q = s => '"' + s + '"', ql = l => l.length ? l.map(q).join(' / ') : '(nothing)';
+      /* each case starts from an empty list: a real tap on it, the way a player clears it */
+      const fresh = async s => {
+        await tp.evaluate(s2 => window.__said.stand(s2), s);
+        if ((await st()).ticker) await tp.click('#ticker', { timeout: 5000 });
+        await tp.evaluate(() => { window.__said.shown.length = 0; });
+      };
+      const talk = async k => { await tp.evaluate(k2 => window.__said.pin(k2), k); await tp.click('#talk', { timeout: 5000 }); await tp.evaluate(() => window.__said.unpin()); };
+      if (!where.talker) R.push('COUNT-ONLY: nobody in this shell has two different things to say when Talk is pressed, so a message said with nothing in its way, and one that waited behind another, were not measured here');
+      else {
+        const who = where.talker.name;
+        /* (a) nothing in its way: said, shown at once, written once */
+        await fresh(where.talker);
+        await talk(where.talker.pick[0]);
+        const a0 = await st();
+        await tp.clock.runFor(4000);
+        const a1 = await st();
+        if (a0.shown.length !== 1) R.push('(a) pressing Talk beside ' + who + ' put nothing on screen, so a message with nothing in its way was not measured');
+        else if (a1.list.length !== 1 || a1.list[0] !== a0.shown[0])
+          R.push('(a) ' + who + ' said ' + q(a0.shown[0]) + ' with nothing in its way, and the recent-activity list reads ' + ql(a1.list) + ' — it should hold that line once');
+        else ok.push('(a) a line from ' + who + ' with nothing in its way');
+        /* (b) behind another toast: the second is said while the first is still up */
+        await fresh(where.talker);
+        await talk(where.talker.pick[0]);
+        await talk(where.talker.pick[1]);
+        const b0 = await st();
+        await tp.clock.runFor(9000);
+        const b1 = await st();
+        if (b0.shown.length !== 1 || b0.showing !== b0.shown[0])
+          R.push('(b) the second press of Talk beside ' + who + ' did not have to wait (on screen: ' + ql(b0.shown) + '), so a message waiting behind another was not measured');
+        else if (b1.shown.length !== 2 || b1.shown[0] === b1.shown[1])
+          R.push('(b) two presses of Talk beside ' + who + ' should put two different lines on screen, one after the other, and put ' + ql(b1.shown) + ', so the list could not be judged');
+        else if (b1.list.length !== 2 || b1.list[0] !== b1.shown[0] || b1.list[1] !== b1.shown[1]) {
+          const twice = b1.list.filter(l => l === b1.shown[1]).length;
+          R.push('(b) a message that waited behind another is written in the recent-activity list ' + (twice > 1 ? twice + ' times' : 'wrongly') + ': ' + who + ' said ' + q(b1.shown[0]) +
+            ', then ' + q(b1.shown[1]) + ' while the first was still up; once both had shown, the list reads ' + ql(b1.list) +
+            (twice > 1 && !b1.list.includes(b1.shown[0]) ? ' — the first line, said before it, pushed out of a list that keeps two' : '') +
+            ' (#278; engine/engine.js, grep `toastQ.shift()`)');
+        }
+        else ok.push('(b) a second line from ' + who + ' that waited behind the first');
+      }
+      /* (c) behind a panel: said while a document is open, shown when it is put down */
+      if (!where.paper) R.push('COUNT-ONLY: nothing on this shell\'s streets can be read, so a message waiting behind a document was not measured here');
+      else {
+        await fresh(where.paper);
+        await tp.click('#read', { timeout: 5000 });
+        await tp.clock.runFor(300);
+        const c0 = await st();
+        if (!c0.covered) R.push('(c) pressing Read beside "' + where.paper.name + '" did not put a document over the world, so a message waiting behind one was not measured');
+        else if (!c0.copy) R.push('COUNT-ONLY: "' + where.paper.name + '" has no Copy button, so a message waiting behind a document was not measured here');
+        else {
+          await tp.click('#docCopy', { timeout: 5000 });
+          for (let i = 0; i < 30 && !(await st()).copied; i++) await tp.waitForTimeout(100);   /* the clipboard answers in real time */
+          await tp.clock.runFor(300);
+          const c1 = await st();
+          await tp.click('#docClose', { timeout: 5000 });
+          await tp.clock.runFor(4000);
+          const c2 = await st();
+          if (!c1.copied) R.push('(c) Copy in "' + where.paper.name + '" never finished copying, so a message waiting behind a document was not measured');
+          else if (c1.shown.length) R.push('(c) Copy in "' + where.paper.name + '" put ' + ql(c1.shown) + ' on screen while the document was still open — it did not wait for the paper to go down, so the wait was not measured');
+          else if (c2.shown.length !== 1) R.push('(c) what Copy said in "' + where.paper.name + '" should have shown once the document was put down, and the screen showed ' + ql(c2.shown));
+          else if (c2.list.length !== 1 || c2.list[0] !== c2.shown[0])
+            R.push('(c) a message said while a document was open is written in the recent-activity list ' + (c2.list.filter(l => l === c2.shown[0]).length > 1 ? c2.list.filter(l => l === c2.shown[0]).length + ' times' : 'wrongly') +
+              ': Copy in "' + where.paper.name + '" said ' + q(c2.shown[0]) + ', it showed when the document was put down, and the list reads ' + ql(c2.list) +
+              ' (#278; engine/engine.js, grep `held.forEach`)');
+          else ok.push('(c) what Copy said in "' + where.paper.name + '", held until the document was put down');
+        }
+      }
+    } catch (e) { R.push('the check that a delayed message is written once could not finish: ' + String(e.message).split('\n')[0]); }
+    if (tErr.length) R.push('the page for the delayed-message check threw: ' + tErr.slice(0, 2).join(' | '));
+    if (ok.length) R.push('COUNT-ONLY: the recent-activity list held each message once: ' + ok.join('; '));
+    await tctx.close();
+    fails.push(...R);
+  }
+
   /* ---- the flat camera the game promises when 3D cannot draw ----
      Both packs boot into 3D (CAMDEF="3d"), so this is the camera nearly every player starts in.
      When draw3d() throws, the engine does three of the four things it should: it records the
