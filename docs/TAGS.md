@@ -319,7 +319,10 @@ evidence for doing it rather than adding a 39th word.
 `CRITTERS` and names him from the pack's `DOGNAMES` pool; it never spells a name. `test/smoke.js` (grep
 `the engine finds an animal by its role`) reads every name the pack gives an animal, and every name the
 pool could give, off the page that ships, and fails the engine for spelling one in code — the generic
-scan this entry asked for, for animals. The career classes are still open.
+scan this entry asked for, for animals. **Planted 2026-09-30**, in a copy: the old name lookup put back
+into the paw menu's fallback printed *"engine/engine.js:7019 names "Sonny" in code — the engine finds an
+animal by its role, never by the name a pack gave it"*. It runs on every build. The career classes are
+still open.
 
 ---
 

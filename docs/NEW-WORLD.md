@@ -26,7 +26,7 @@ Then open a bible and a ledger on day one, empty:
 
 **One question the interview must ask, every time (2026-09-05): "does this world have a star dog?"**
 A star dog is a pack's choice, never the engine's: a pack marks him in `CRITTERS` with `role:"star"`, and
-may declare `DOGNAMES`, a pool a new player's dog is named from and can rename him away from (#264). A
+may declare `DOGNAMES`, a pool a new player's star dog is named from; the player may rename him (#264). A
 world for someone else gets its own dog, or none. Ask before declaring a new world's `CRITTERS`.
 
 ## 0½ · Does your world END? — ask this before anything else (2026-09-09)

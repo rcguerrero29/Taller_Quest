@@ -359,7 +359,7 @@ const TRV=[{w:"st",x:1,y:1,dir:"right"},{w:"ex",x:22,y:3,dir:"left"}];
 /* The star dog's name belongs to the player (#264). A brand-new game picks one from this pool, keeps
    it, and lets the player rename him from the paw menu; the engine only picks, and never knows a name.
    Ordinary dog names, in no order of preference. A device that played here before the pool existed
-   keeps the name the map below gives him, which is why that name is one of these too. */
+   keeps the name the map below gives him, itself one possibility among these. */
 const DOGNAMES=["Biscuit","Bruno","Chato","Chester","Chispa","Firulais","Manchas","Milo",
                 "Otis","Pancho","Pecas","Pipo","Rocco","Rufus","Sonny","Tomy"];
 /* ambient critters: kinds live in the engine (butterfly, colibri, gato); spawns are

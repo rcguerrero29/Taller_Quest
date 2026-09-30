@@ -1144,6 +1144,9 @@ const CANDIDATES = [
     });
     const star = decl.stars[0] || null;
     const pool = decl.pool || [];
+    /* this suite's own page is a brand-new device, so its star was named by a random seed: every run is
+       a sample, and a red that depends on the name reproduces with the name printed here */
+    console.log('  NOTE: this run\'s star dog is "' + (await page.evaluate(() => (CRIT.find(c => c.role === 'star') || {}).name)) + '" (a brand-new device, a random seed)');
     if (decl.stars.length !== 1) P.push('the pack marks ' + decl.stars.length + ' dogs as its star (role:"star" in CRITTERS) — exactly one, or the engine has nothing but a name to find him by');
     else if (!decl.dogKinds.includes(star.kind)) P.push('the pack\'s star is a "' + star.kind + '", which does not run the dog program');
     // the names this suite gives dogs of its own: a pool name among them would fail a check here one run in N, for no fault of the game
