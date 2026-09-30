@@ -865,7 +865,7 @@ const CANDIDATES = [
   });
   if (!boarded.cont || !boarded.label.includes('Traveler')) fails.push('boarding did not restore the save: ' + JSON.stringify(boarded));
 
-  // ---- 6. Front-profile 2.5D, TILES metadata, and Sonny's program ----
+  // ---- 6. Front-profile 2.5D, TILES metadata, and the dog program ----
   const front = await page.evaluate(() => {
     const out = {};
     // TILES: every solid glyph (content SOLIDX included) carries a numeric lift
@@ -916,7 +916,7 @@ const CANDIDATES = [
     try { camSet('3d'); out.d3 = (typeof draw3d === 'function') ? draw3d() : 'missing'; }
     catch (e) { out.d3 = String(e); }
     try { camSet('top'); draw(); } catch (e) { out.d3 = 'top restore threw: ' + e; }
-    // the ball button exists and Sonny's strings are in both languages
+    // the ball button exists and the dog's strings are in both languages
     out.ballBtn = !!document.getElementById('ball');
     out.langOk = ['ballLb', 'fetchYes', 'fetchNo', 'howl', 'beagleTreat', 'camFront']
       .every(k => UI.en[k] && UI.es[k]);
@@ -940,7 +940,7 @@ const CANDIDATES = [
   if (!front.threeOk) fails.push('three.js not loaded (vendor/three.min.js missing?)');
   if (front.d3 !== true) fails.push('3D camera did not render: ' + front.d3);
   if (!front.ballBtn) fails.push('ball button missing from the HUD');
-  if (!front.langOk) fails.push('Sonny/camera strings missing in EN or ES');
+  if (!front.langOk) fails.push('dog/camera strings missing in EN or ES');
 
   // ---- 7. El Parque: leash → rainbow bridge → chill session → recap card ----
   const park = await page.evaluate(async () => {
@@ -952,26 +952,27 @@ const CANDIDATES = [
     const rs = dogReach({ world: 'pk', x: 2, y: 6 });
     out.lawnReach = !!rs[4 * w.W + 17] && !!rs[3 * w.W + 17]; // beside the doghouse
     out.waterBlocked = !rs[1 * w.W + 3]; // river tiles are not walkable
-    // Sonny lives on the street
-    const sonny = CRIT.find(c => c.kind === 'beagle' && c.name === 'Sonny');
-    out.sonny = !!sonny && sonny.world === 'st';
-    if (!sonny) return out;
+    // the star dog lives on the street — found by his role, because his name is whatever this device picked (#264)
+    const star = CRIT.find(c => c.role === 'star');
+    out.star = !!star && star.world === 'st';
+    if (!star) return out;
+    const SN = star.name;
     // leash him: stand adjacent, press the button, ride the 900ms transition
     world = 'st'; px = fx = 21; py = fy = 11; setWorldTag();
-    sonny.x = 22; sonny.y = 11; sonny.fx = 22; sonny.fy = 11; sonny.moving = false; sonny.task = null;
-    petCrit = sonny; petTarget = 'beagle';
+    star.x = 22; star.y = 11; star.fx = 22; star.fy = 11; star.moving = false; star.task = null;
+    petCrit = star; petTarget = 'beagle';
     document.getElementById('leash').click();
     await sleep(1200);
-    out.inPark = world === 'pk' && sonny.world === 'pk' && sonny.follow === true;
+    out.inPark = world === 'pk' && star.world === 'pk' && star.follow === true;
     // a treat in the park counts toward the recap
-    petCrit = sonny; petTarget = 'beagle';
+    petCrit = star; petTarget = 'beagle';
     document.getElementById('treat').click();
     out.treatCounted = PARK.t === 1;
     // bandana cycles and persists
-    petCrit = sonny; petTarget = 'beagle';
+    petCrit = star; petTarget = 'beagle';
     document.getElementById('band').click();
-    out.band = !!sonny.band;
-    out.bandStored = !!(JSON.parse(localStorage.getItem('mqpark') || '{}').band || {}).Sonny;
+    out.band = !!star.band;
+    out.bandStored = !!(JSON.parse(localStorage.getItem('mqpark') || '{}').band || {})[SN];
     // adopt a dog by name
     document.getElementById('adoptTitle').textContent = '';
     document.getElementById('adoptName').value = 'Nube';
@@ -984,12 +985,12 @@ const CANDIDATES = [
     document.getElementById('adoptGo').click();
     out.labAdopted = CRIT.some(c => c.kind === 'lab' && c.name === 'Oso' && c.c === '#6E4B2F');
     const nDogs = CRIT.filter(c => DOGK.has(c.kind)).length;
-    document.getElementById('adoptName').value = 'Sonny';
+    document.getElementById('adoptName').value = SN;
     document.getElementById('adoptGo').click();
     out.dupBlocked = CRIT.filter(c => DOGK.has(c.kind)).length === nDogs;
-    // the star is a single instance: a player-made 'Sonny' egg must not double him
-    spawnCustom({ n: 'Sonny', w: 'st', x: 9, y: 11 });
-    out.oneSonny = CRIT.filter(c => DOGK.has(c.kind) && c.name === 'Sonny').length === 1;
+    // the star is a single instance: a neighbour made in his name must not double him
+    spawnCustom({ n: SN, w: 'st', x: 9, y: 11 });
+    out.oneStar = CRIT.filter(c => DOGK.has(c.kind) && c.name === SN).length === 1;
     // no adoption limit: dogs 3-6 all land (the old cap was 4)
     for (const nm of ['Kiko', 'Luna', 'Rex', 'Toby']) {
       adoptB = 'chi'; adoptC = '#C9975C';
@@ -999,14 +1000,14 @@ const CANDIDATES = [
     out.noLimit = CRIT.filter(c => DOGK.has(c.kind) && dogRecord(c)).length === 6;
     // every adopted dog has one particular friend in the city
     out.friends = parkPrefs.dogs.every(d => d.friend && d.friend.w && d.friend.key);
-    // rename: works for an adopted dog, migrates its records, refuses 'Sonny'
+    // rename: works for an adopted dog, migrates its records, refuses the star's name in any case
     const nube = CRIT.find(c => c.name === 'Nube');
     parkPrefs.band.Nube = '#C0392B'; parkPrefs.train.Nube = { sit: 2 };
     renTarget = nube; document.getElementById('renName').value = 'Nieve';
     document.getElementById('renGo').click();
     out.renamed = nube.name === 'Nieve' && dogRecord(nube).n === 'Nieve'
       && parkPrefs.band.Nieve === '#C0392B' && parkPrefs.train.Nieve.sit === 2;
-    renTarget = nube; document.getElementById('renName').value = 'sonny';
+    renTarget = nube; document.getElementById('renName').value = SN.toLowerCase();
     document.getElementById('renGo').click();
     out.renDupBlocked = nube.name === 'Nieve';
     // rehome: the dog moves in with its friend, record kept — never deleted
@@ -1020,24 +1021,26 @@ const CANDIDATES = [
     const orec = parkPrefs.dogs.find(d => d.n === 'Oso');
     out.rehomed = !!orec && orec.rehomed === true && oso.world === orec.friend.w
       && CRIT.includes(oso);
-    // Sonny gets no rename/rehome buttons
+    // the star dog can be renamed like any adopted dog (#264) — and never rehomed: he lives on the street
     px = fx = 8; py = fy = 6;
-    sonny.x = 9; sonny.y = 6; sonny.fx = 9; sonny.fy = 6; sonny.world = 'pk'; sonny.task = null;
+    star.x = 9; star.y = 6; star.fx = 9; star.fy = 6; star.world = 'pk'; star.task = null;
     document.getElementById('cmd').click();
-    out.sonnyProtected = document.getElementById('cmdRen').hidden && document.getElementById('cmdReh').hidden;
+    out.starRenameOnly = (!document.getElementById('cmdRen').hidden && document.getElementById('cmdReh').hidden) ||
+      'the paw menu beside the star dog offers ' + (document.getElementById('cmdRen').hidden ? 'no rename' : 'a rename') +
+      ' and ' + (document.getElementById('cmdReh').hidden ? 'no rehome' : 'a rehome') + ' — he is renamed like any adopted dog, and never rehomed';
     document.getElementById('dogPX').click();
     // training: with luck pinned, Sit lands and Come recalls from across the lawn
     const MR = Math.random; Math.random = () => 0.01;
-    sonny.task = null; sonny.layT = 0; sonny.stayT = 0;
+    star.task = null; star.layT = 0; star.stayT = 0;
     px = fx = 8; py = fy = 6;
     dogCmd('sit');
-    out.sitOk = sonny.sit === true;
+    out.sitOk = star.sit === true;
     dogCmd('stay');
-    out.stayOk = sonny.stayT > performance.now();
-    sonny.stayT = 0; sonny.x = 17; sonny.y = 2; sonny.fx = 17; sonny.fy = 2; sonny.moving = false; sonny.next = 0;
+    out.stayOk = star.stayT > performance.now();
+    star.stayT = 0; star.x = 17; star.y = 2; star.fx = 17; star.fy = 2; star.moving = false; star.next = 0;
     dogCmd('come');
     Math.random = MR;
-    const runner = CRIT.find(c => c.task && c.task.type === 'come') || sonny;
+    const runner = CRIT.find(c => c.task && c.task.type === 'come') || star;
     const t1 = Date.now();
     while (Date.now() - t1 < 6000) {
       await sleep(150);
@@ -1048,16 +1051,16 @@ const CANDIDATES = [
     // Meridian's has been hurdle, tunnel, weave at (9,8) (11,8) (13,8) since it was built. From
     // 2026-09-29 the engine reads it off this map instead of carrying those three coordinates
     // itself, so this pins that nothing about Meridian's dog moved when that happened — asked
-    // through the whim, with the roll pinned to the one that means "run the course" and Sonny put
+    // through the whim, with the roll pinned to the one that means "run the course" and the star put
     // straight back, synchronously, so the steps below find him exactly where they left him.
     {
-      const keep = { world: sonny.world, x: sonny.x, y: sonny.y, fx: sonny.fx, fy: sonny.fy,
-        task: sonny.task, sit: sonny.sit, layT: sonny.layT, next: sonny.next };
+      const keep = { world: star.world, x: star.x, y: star.y, fx: star.fx, fy: star.fy,
+        task: star.task, sit: star.sit, layT: star.layT, next: star.next };
       const MR2 = Math.random; Math.random = () => 0.8;
-      sonny.world = 'pk'; sonny.task = null;
+      star.world = 'pk'; star.task = null;
       let wp = [];
-      try { dogWhim(sonny, performance.now()); wp = sonny.task && sonny.task.type === 'run' ? sonny.task.wp : []; }
-      finally { Math.random = MR2; Object.assign(sonny, keep); }
+      try { dogWhim(star, performance.now()); wp = star.task && star.task.type === 'run' ? star.task.wp : []; }
+      finally { Math.random = MR2; Object.assign(star, keep); }
       const sent = wp.map(([x, y]) => ({ '3': 'hurdle', '4': 'tunnel', '5': 'weave' }[WORLDS.pk.rows[y][x]] || 'bare ground') + ' (' + x + ',' + y + ')').join(', ');
       const reach = dogReach({ world: 'pk', x: 2, y: 6 });
       out.agility = (WORLDS.pk.rows[8].includes('3.4.5') && sent === 'hurdle (9,8), tunnel (11,8), weave (13,8)' &&
@@ -1068,10 +1071,10 @@ const CANDIDATES = [
     // is Rosa who brings the water (owner, 2026-09-29: "awooing infront of a restaurant and a worker brings
     // them a water bowl"). Without this, taking the restaurant out of PLACES would leave the engine's own
     // check asking a pack that serves nothing, and passing. Asked through the whim, for a dog made here
-    // in Sonny's own corner of the street, so nobody real moves.
+    // in the star dog's own corner of the street, so nobody real moves.
     {
       const MR3 = Math.random; Math.random = () => 0.80;
-      const d = { kind: 'beagle', name: 'Sonny', world: 'st', x: 22, y: 11, fx: 22, fy: 11, face: 1, sit: false, layT: 0, next: 0, home: [22, 11], task: null };
+      const d = { kind: 'beagle', name: 'Probe', world: 'st', x: 22, y: 11, fx: 22, fy: 11, face: 1, sit: false, layT: 0, next: 0, home: [22, 11], task: null };
       try { dogWhim(d, performance.now()); } finally { Math.random = MR3; }
       const t = d.task;
       /* the step is whichever side of La Cocina's door (6,5) he comes from: from his corner, the south one */
@@ -1094,7 +1097,7 @@ const CANDIDATES = [
     await sleep(300);
     out.exited = world === 'st';
     out.card = !document.getElementById('parkCard').hidden;
-    out.sonnyHome = sonny.world === 'st' && sonny.follow === false;
+    out.starHome = star.world === 'st' && star.follow === false;
     document.getElementById('pkClose').click();
     // strings in both languages
     out.langOk = !!(['leashLb', 'parkArrive', 'parkTitle', 'parkSum', 'parkLove', 'parkTeaser',
@@ -1104,12 +1107,316 @@ const CANDIDATES = [
     localStorage.removeItem('mqpark');
     return out;
   });
-  ['pkOk', 'lawnReach', 'waterBlocked', 'sonny', 'inPark', 'treatCounted', 'band', 'bandStored',
-    'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneSonny', 'sitOk', 'stayOk', 'comeOk',
-    'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'sonnyProtected',
-    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'sonnyHome', 'langOk'].forEach(k => {
+  ['pkOk', 'lawnReach', 'waterBlocked', 'star', 'inPark', 'treatCounted', 'band', 'bandStored',
+    'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneStar', 'sitOk', 'stayOk', 'comeOk',
+    'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'starRenameOnly',
+    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'starHome', 'langOk'].forEach(k => {
     if (park[k] !== true) fails.push('park: ' + k + ' failed (' + JSON.stringify(park[k]) + ')');
   });
+
+  // ---- #264 · the star dog: found by his ROLE, named from the pack's POOL, renamable, and nobody's ----
+  // In plain words: every new player meets the star dog under a name the game picks from a pool and
+  // keeps; the player may rename him (one or two dogs take a while to come round to a new name — a
+  // joke, on purpose); the engine finds him by what he is, never by what he is called; and nothing
+  // in this repository says whose dog he is. Each sentence below is what somebody would notice if one
+  // of those stopped being true. Names are read off the page that ships, never typed here, except the
+  // few this suite gives dogs of its own.
+  {
+    const P = [];
+    const ROOT = path.resolve(__dirname, '..');
+    const { execFileSync } = require('child_process');
+    const esc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const word = n => new RegExp('(?:^|[^\\p{L}\\p{N}_$])' + esc(n) + '(?:$|[^\\p{L}\\p{N}_$])', 'iu');
+    const decl = await page.evaluate(() => {
+      const C = typeof CRITTERS !== 'undefined' ? CRITTERS : [];
+      const dogKinds = typeof DOGK !== 'undefined' ? [...DOGK] : [];
+      return {
+        pool: typeof DOGNAMES !== 'undefined' && Array.isArray(DOGNAMES) ? DOGNAMES.slice() : null,
+        stars: C.filter(c => c.role === 'star').map(c => ({ kind: c.kind, name: c.name })),
+        named: C.filter(c => c.name).map(c => c.name),
+        dogNames: C.filter(c => c.name && dogKinds.includes(c.kind)).map(c => c.name),
+        dogKinds,
+        triggers: Object.entries(typeof EGGS !== 'undefined' ? EGGS : {}).flatMap(([k, e]) => (e.triggers || []).map(t => [k, t])),
+        cast: [...new Set(['en', 'es'].flatMap(l => Object.values((typeof NPCN !== 'undefined' && NPCN[l]) || {}).map(n => String(n).split(' ·')[0].trim())))],
+        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => [k, typeof UI.en[k], typeof UI.es[k],
+          Array.isArray(UI.en[k]) ? UI.en[k].length : -1, Array.isArray(UI.es[k]) ? UI.es[k].length : -1])
+      };
+    });
+    const star = decl.stars[0] || null;
+    const pool = decl.pool || [];
+    /* this suite's own page is a brand-new device, so its star was named by a random seed: every run is
+       a sample, and a red that depends on the name reproduces with the name printed here */
+    console.log('  NOTE: this run\'s star dog is "' + (await page.evaluate(() => (CRIT.find(c => c.role === 'star') || {}).name)) + '" (a brand-new device, a random seed)');
+    if (decl.stars.length !== 1) P.push('the pack marks ' + decl.stars.length + ' dogs as its star (role:"star" in CRITTERS) — exactly one, or the engine has nothing but a name to find him by');
+    else if (!decl.dogKinds.includes(star.kind)) P.push('the pack\'s star is a "' + star.kind + '", which does not run the dog program');
+    // the names this suite gives dogs of its own: a pool name among them would fail a check here one run in N, for no fault of the game
+    const SUITE_DOGS = ['Nube', 'Oso', 'Kiko', 'Luna', 'Rex', 'Toby', 'Nieve', 'Bizcocho', 'Garabato'];
+    if (!decl.pool) P.push('the pack declares no pool of dog names (DOGNAMES), so every new player meets the star dog under the same name');
+    else {
+      if (pool.length < 8) P.push('the pool of dog names holds ' + pool.length + ' — a pool is a real choice, eight names at least');
+      if (star && !pool.includes(star.name)) P.push('the name the map gives the star ("' + star.name + '") is missing from the pool — it is one possibility among the others');
+      const low = pool.map(n => String(n).toLowerCase());
+      low.forEach((n, i) => { if (low.indexOf(n) !== i) P.push('the pool names "' + pool[i] + '" twice'); });
+      pool.forEach(n => {
+        if (typeof n !== 'string' || !n.trim() || n !== n.trim() || n.length > 24 || /[\u0000-\u001f<>]/.test(n)) { P.push('the pool\'s ' + JSON.stringify(n) + ' is not a name the rename box would keep as it is'); return; }
+        const l = n.toLowerCase();
+        decl.triggers.forEach(([k, t]) => { if (l.includes(t)) P.push('the pool\'s "' + n + '" wakes the "' + k + '" easter egg (it contains "' + t + '") — the star dog would answer to a legend that is not his'); });
+        decl.cast.forEach(c => { if (c.toLowerCase() === l || c.toLowerCase().split(/\s+/).includes(l)) P.push('the pool\'s "' + n + '" is already somebody in this city ("' + c + '")'); });
+        decl.named.forEach(c => { if (c !== (star && star.name) && c.toLowerCase() === l) P.push('the pool\'s "' + n + '" is already an animal in this city'); });
+        if (SUITE_DOGS.some(s => s.toLowerCase() === l)) P.push('the pool\'s "' + n + '" is a name this suite gives a dog of its own, so one run in ' + pool.length + ' would fail on a duplicate that is not a bug');
+      });
+    }
+    decl.words.forEach(([k, en, es, nen, nes]) => {
+      if (en === 'undefined' || es === 'undefined') P.push('the words "' + k + '" are missing in ' + (en === 'undefined' ? 'English' : 'Spanish'));
+      else if (en !== es || nen !== nes) P.push('the words "' + k + '" are not the same shape in English and Spanish (' + en + '/' + nen + ' against ' + es + '/' + nes + ')');
+    });
+    if (decl.words.some(w => w[0] === 'parkTeaser' && w[1] !== 'function')) P.push('the park card\'s last line is fixed text, so it cannot say the name the player\'s dog actually has');
+
+    // the engine finds an animal by what it IS, never by the name a pack gave it (docs/TAGS.md L17).
+    // Read off the pack at runtime: every animal the map names, and every name the pool could give.
+    {
+      const NAMES = [...new Set([...decl.named, ...pool])];
+      if (!NAMES.length) P.push('no animal in this pack has a name, so the name scan has nothing to read — that is not a pass');
+      for (const base of engineFiles(fails)) {
+        const src = fs.readFileSync(path.join(ENGINE_DIR, base), 'utf8');
+        const bare = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' ')).replace(/\/\/[^\n]*/g, '');
+        bare.split('\n').forEach((code, i) => NAMES.forEach(n => {
+          if (word(n).test(code)) P.push('engine/' + base + ':' + (i + 1) + ' names "' + n + '" in code — the engine finds an animal by its role, never by the name a pack gave it');
+        }));
+      }
+    }
+
+    // nothing in this repository says whose dog he is. Two shapes: a possessive in front of a dog word,
+    // and a dog's name within two lines of the word "owner" (a quote runs onto the next line). Every
+    // tracked file, because a note is published the moment it is pushed, wherever it sits.
+    const DOGW = '(?:dogs?|pups?|pupp(?:y|ies)|beagles?|pooch|doggo|perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)';
+    const TIE_POSS = new RegExp('\\b(?:his|my|our|mine)\\s+(?:own\\s+|real\\s+|actual\\s+|real-life\\s+|family\\s+)?' + DOGW + '\\b', 'i');
+    const TIE_OWNERS = new RegExp('\\bowner[\'\u2019]s\\s+(?:[\\w-]+\\s+){0,2}' + DOGW + '\\b', 'i');
+    const TIE_ES = /\b(?:mis?|nuestr[oa]s?)\s+(?:perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)\b|\bperr[oa]s?\s+del\s+due[ñn]o\b/i;
+    const OWNERW = /\bowners?\b|\bdue[ñn][oa]s?\b/i;
+    const ties = (text, names) => {
+      const res = names.map(n => [n, word(n)]), lines = text.split('\n'), hits = [];
+      lines.forEach((l, i) => {
+        if (TIE_POSS.test(l) || TIE_OWNERS.test(l) || TIE_ES.test(l)) hits.push([i + 1, 'says the game\'s dog belongs to somebody']);
+        const near = lines.slice(Math.max(0, i - 2), i + 1).some(x => OWNERW.test(x));
+        const nm = near && res.find(([, re]) => re.test(l));
+        if (nm) hits.push([i + 1, 'puts a dog\'s name ("' + nm[0] + '") beside the word owner']);
+      });
+      return hits;
+    };
+    // its own red cases, run every time — the phrases are assembled here so this file never says them
+    {
+      const nm = pool[0] || (star && star.name) || 'Fido', O = 'own' + 'er';
+      [['the ' + O + '\'s dog, by name', true], ['the ' + O + '\u2019s recurring dog', true], ['a note about ' + 'his' + ' dog', true],
+       [O + ', 2026-09-04: "' + nm.toLowerCase() + ' should follow me anywhere"', true],
+       [O + ', 2026-09-04: "the cone"\nand then\n' + nm + ' should be able to rip it', true],
+       ['mi ' + 'perro', true],
+       ['your dog sits', false], ['the ' + O + ' of the bakery opens at six', false], [nm + ' fetches the ball', false]]
+        .forEach(([t, bad]) => { if ((ties(t, [nm]).length > 0) !== bad)
+          P.push('the whose-dog check ' + (bad ? 'let through' : 'flagged') + ' "' + t.replace(/\n/g, ' / ') + '" — it cannot be trusted with the repository'); });
+    }
+    {
+      let files = null;
+      try { files = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean); }
+      catch (e) { P.push('git could not list the tracked files, so no line was read for who the dog belongs to — that is a red, not a pass'); }
+      if (files) {
+        const names = [...new Set([...decl.dogNames, ...pool])];
+        let read = 0;
+        files.forEach(f => {
+          let t; try { t = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (e) { return; }
+          if (t.includes('\0')) return;
+          read++;
+          ties(t, names).forEach(([ln, why]) => P.push(f + ':' + ln + ' ' + why + ' — the public copy never says whose dog he is ("the star dog" says what he is)'));
+        });
+        if (read < 50) P.push('the whose-dog check read ' + read + ' tracked text files — it is pointed at the wrong place');
+      }
+    }
+
+    // ---- the pick, the rename and the joke, each on a device of its own ----
+    // The seed is ONE 32-bit value from crypto.getRandomValues, pinned here; a sessionStorage value
+    // overrides it for a reload, so "the next visit" can roll a different seed and must not use it.
+    const pinSeed = k => { const real = crypto.getRandomValues.bind(crypto);
+      crypto.getRandomValues = a => { if (a instanceof Uint32Array && a.length === 1) {
+        const s = sessionStorage.getItem('mq264seed'); a[0] = s !== null ? +s : k; return a; } return real(a); }; };
+    const device = async (seed, before, route) => {
+      const ctx = await browser.newContext();
+      if (before) await ctx.addInitScript(before);
+      await ctx.addInitScript(pinSeed, seed);
+      const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+      const errs = []; p.on('pageerror', e => errs.push(e.message));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      if (route) await route(p);
+      await p.goto(index); await p.waitForTimeout(1200);
+      return { ctx, p, errs };
+    };
+    if (star && decl.pool && pool.length > 2) {
+      const n = pool.length;
+      let i1 = [...pool.keys()].find(i => i >= 3 && pool[i] !== star.name); if (i1 === undefined) i1 = pool.findIndex(x => x !== star.name);
+      const K1 = 4099 * n + i1, i2 = (i1 + 1) % n, K2 = 31 * n + i2;
+      const readStar = () => { const s = CRIT.find(c => c.role === 'star'); let rec = null;
+        try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+        return { name: s ? s.name : null, kept: rec && rec.star ? rec.star.n : null }; };
+
+      // A · a brand-new player: the seed names him, the name is kept, and the next visit keeps it
+      const A = await device(K1);
+      const a1 = await A.p.evaluate(readStar);
+      if (a1.name !== pool[i1]) P.push('a brand-new player met the star dog as "' + a1.name + '"; with the seed pinned to ' + K1 + ' the pool\'s rule (the seed, modulo the pool\'s size) names him "' + pool[i1] + '"');
+      if (a1.kept !== a1.name) P.push('the name picked for a brand-new player was not kept on the device (' + JSON.stringify(a1.kept) + ') — the next visit would meet a different dog');
+      await A.p.evaluate(k => sessionStorage.setItem('mq264seed', String(k)), K2);
+      await A.p.reload(); await A.p.waitForTimeout(1200);
+      const a2 = await A.p.evaluate(readStar);
+      if (a2.name !== a1.name) P.push('coming back the next day, the star dog was "' + a2.name + '" instead of "' + a1.name + '" — a name is picked once and kept');
+
+      // the rename, through the paw menu; then the stubborn part, through the same buttons
+      const ra = await A.p.evaluate(async () => {
+        const sleep = ms => new Promise(r => setTimeout(r, ms)), $ = id => document.getElementById(id), P = [];
+        /* what each press SAYS, recorded as it is said: the activity record is no witness, because a toast
+           that has to queue is written into it twice — once when called, again when finally shown */
+        const said = [], toast0 = window.toast;
+        window.toast = function (m) { said.push(String(m)); return toast0.apply(this, arguments); };
+        const during = fn => { const i0 = said.length; fn(); return said.slice(i0).join(' | '); };
+        try {
+        document.querySelector('.classes button[data-c="architect"]').click(); $('begin').click();
+        await sleep(300);
+        const s = CRIT.find(c => c.role === 'star'); if (!s) return ['there is no star dog to rename'];
+        const was = s.name, NEW = 'Bizcocho';
+        const beside = () => { world = 'st'; s.world = 'st'; s.x = s.fx = 22; s.y = s.fy = 11; s.moving = false; s.task = null;
+          px = fx = 21; py = fy = 11; moving = false; setWorldTag(); };
+        beside(); $('cmd').click();
+        if ($('dogP').hidden) return ['the paw menu did not open beside the star dog'];
+        if ($('cmdRen').hidden) P.push('the paw menu beside the star dog offers no rename');
+        if (!$('cmdReh').hidden) P.push('the paw menu beside the star dog offers to rehome him — he lives on the street');
+        $('cmdReh').click(); if (s.world !== 'st') P.push('pressing rehome moved the star dog to ' + s.world);
+        $('cmdRen').click();
+        if ($('renP').hidden) return P.concat(['pressing rename beside the star dog opened nothing']);
+        if ($('renName').value !== was) P.push('the rename box opened with "' + $('renName').value + '", not the name he has ("' + was + '")');
+        $('renName').value = NEW;
+        const renSaid = during(() => $('renGo').click());
+        let rec = null; try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+        if (s.name !== NEW) return P.concat(['renamed "' + NEW + '", the star dog is still "' + s.name + '"']);
+        if (!rec || !rec.star || rec.star.n !== NEW) P.push('the new name was not kept on the device (' + JSON.stringify(rec && rec.star) + ')');
+        if (!renSaid.includes(was) || !renSaid.includes(NEW)) P.push('the first time the star dog is renamed he is the stubborn one, and the rename said "' + renSaid + '" — no word of the name he is used to');
+        // he keeps answering to the old name for the next two calls, then comes round
+        const MR = Math.random; Math.random = () => 0.01; /* every command would land: only the joke can stop one */
+        const call = () => { beside(); s.stayT = 0; $('cmd').click(); const got = during(() => $('cmdStay').click()); return { ok: s.stayT > performance.now(), said: got }; };
+        const c1 = call(), c2 = call(), c3 = call();
+        const r0 = said.length; await sleep(2600);
+        const later = said.slice(r0), round = later.find(m => m.includes(NEW) && !m.includes(was)) || later.join(' | ');
+        const c4 = call();
+        Math.random = MR;
+        [c1, c2].forEach((c, i) => {
+          if (c.ok) P.push('call ' + (i + 1) + ' after the rename: a stubborn dog answered to "' + NEW + '" at once');
+          else if (!c.said.includes(was)) P.push('call ' + (i + 1) + ' after the rename was ignored and the line ("' + c.said + '") never says the name he still answers to, "' + was + '"'); });
+        if (!c3.ok) P.push('the third call after the rename was ignored too — he must come round');
+        if (!round.includes(NEW) || round.includes(was)) P.push('coming round, the line was "' + round + '" — it should use his new name and let the old one go');
+        if (!c4.ok || c4.said.includes(was)) P.push('once he came round, a call still met the old name ("' + c4.said + '")');
+        // the words that name him name him NOW: the park card, and every treat line his legend has
+        parkExit(); const tz = $('pkTeaser').textContent; $('pkClose').click();
+        if (!tz.includes(NEW) || tz.includes(was)) P.push('the park card\'s last line says "' + tz + '" about a dog now called "' + NEW + '"');
+        const eg = s.egg && EGGS[s.egg];
+        if (!eg) P.push('the star dog carries no easter egg, so no treat line can name him');
+        else {
+          const L = eg.lines[lang].length, got = [];
+          for (let i = 0; i < L; i++) {
+            const seq = [0.1, (i + 0.5) / L]; let k = 0; const MR3 = Math.random; Math.random = () => seq[Math.min(k++, 1)];
+            beside(); petCrit = s; petTarget = s.kind;
+            try { got.push(during(() => $('treat').click())); } finally { Math.random = MR3; }
+          }
+          if (!got.some(l => l.includes(NEW))) P.push('no treat line names the dog being fed, so a stale name could not be told from a missing one');
+          got.filter(l => l.includes(was)).forEach(l => P.push('a treat line still calls him "' + was + '": "' + l + '"'));
+        }
+        // the legend follows the name he has now: name a neighbour after him and the barrio knows him
+        const kNew = eggFor(NEW), kOld = eggFor(was);
+        if (!kNew || !EGGS[kNew] || !EGGS[kNew].dog) P.push('a neighbour named "' + NEW + '", the star dog\'s name now, wakes no dog legend (' + kNew + ')');
+        if (kOld && kOld === kNew) P.push('the barrio still hails "' + was + '" as the star dog after he was renamed');
+        spawnCustom({ n: NEW, w: 'st', x: 9, y: 11 });
+        const twins = CRIT.filter(c => DOGK.has(c.kind) && c.name === NEW).length;
+        if (twins !== 1) P.push('a neighbour named after the star dog made ' + twins + ' dogs called "' + NEW + '" — there is one of him');
+        // the paw menu finds him by his ROLE: first in the list or last, called anything
+        const decoy = { kind: 'beagle', name: 'Garabato', world: PL.park, x: 3, y: 3, fx: 3, fy: 3, face: 1, sit: false, home: [3, 3], task: null, next: 0 };
+        CRIT.unshift(decoy); world = PL.home; px = fx = PL.spawn[0]; py = fy = PL.spawn[1]; s.world = 'st';
+        const found = nearestDog(); CRIT.splice(CRIT.indexOf(decoy), 1);
+        if (found !== s) P.push('from a room with no dog in it the paw menu reached ' + (found ? '"' + found.name + '"' : 'nobody') + ', not the star dog — it finds him by his role, whatever he is called and wherever he stands in the list');
+        return P;
+        } finally { window.toast = toast0; }
+      });
+      P.push(...ra);
+      await A.p.reload(); await A.p.waitForTimeout(1200);
+      const a3 = await A.p.evaluate(readStar);
+      if (a3.name !== 'Bizcocho') P.push('after a reload the renamed star dog was "' + a3.name + '" again — a rename is kept');
+      if (A.errs.length) P.push('the brand-new device threw: ' + A.errs.join(' | '));
+      await A.ctx.close();
+
+      // B and C · one or two dogs are stubborn, never more, and WHICH ones is not a roll of the dice
+      const cap = async (mr, es) => {
+        const D = await device(K1);
+        const r = await D.p.evaluate(([mr, es]) => {
+          const $ = id => document.getElementById(id), said = [], toast0 = window.toast;
+          window.toast = function (m) { said.push(String(m)); return toast0.apply(this, arguments); };
+          if (es) $('optEs').click();
+          const MR = Math.random; Math.random = () => mr;
+          const stub = [], ren = (c, nm) => { const was = c.name, i0 = said.length; renTarget = c; $('renName').value = nm; $('renGo').click();
+            if (c.name === nm && said.slice(i0).some(m => m.includes(was))) stub.push(was); };
+          try {
+            const s = CRIT.find(c => c.role === 'star');
+            if (s) ren(s, 'Bizcocho');
+            /* a new name never contains the old one, or "the line says the old name" would read every rename as stubborn */
+            const names = ['Garabato', 'Tlacuache', 'Nopal', 'Elote', 'Cacahuate', 'Pinole', 'Tejocote', 'Zapote', 'Mamey', 'Guayabo', 'Jicama', 'Camote'];
+            const next = ['Chamoy', 'Tepache', 'Pozole', 'Atole', 'Jamoncillo', 'Glorias', 'Cocada', 'Merengue', 'Obleas', 'Borrachito', 'Palanqueta', 'Mazapan'];
+            names.forEach(nm => { $('adoptName').value = nm; $('adoptGo').click(); });
+            names.forEach((nm, i) => { const c = CRIT.find(x => x.name === nm); if (c) ren(c, next[i]); });
+            return { stub, renamed: next.filter(nm => CRIT.some(x => x.name === nm)).length };
+          } finally { Math.random = MR; window.toast = toast0; }
+        }, [mr, es]);
+        await D.ctx.close();
+        return r;
+      };
+      const B = await cap(0.05, true), C = await cap(0.95, false);
+      if (B.renamed !== 12 || C.renamed !== 12) P.push('only ' + B.renamed + ' and ' + C.renamed + ' of 12 adopted dogs took a new name, so the count of stubborn ones reads a short list');
+      [['in Spanish, the dice low', B], ['in English, the dice high', C]].forEach(([how, r]) => {
+        if (r.stub.length < 1 || r.stub.length > 2) P.push(how + ', ' + r.stub.length + ' of 13 renamed dogs were stubborn (' + r.stub.join(', ') + ') — one or two, never more');
+      });
+      if (B.stub.join('|') !== C.stub.join('|')) P.push('which dogs are stubborn changed with the dice (' + B.stub.join(', ') + ' against ' + C.stub.join(', ') + ') — it is chosen once, not rolled');
+
+      // R · a device that played before the pool existed keeps the name it has always seen
+      const R = await device(K1, () => { if (!localStorage.getItem('mqpark')) localStorage.setItem('mqpark', '{"band":{},"dogs":[],"train":{}}'); });
+      const r1 = await R.p.evaluate(readStar);
+      if (r1.name !== star.name) P.push('a returning player (a park record, no name picked yet) met the star dog as "' + r1.name + '" — he keeps the name that player has always seen, "' + star.name + '"');
+      if (r1.kept !== star.name) P.push('the returning player\'s name for the star dog was not recorded (' + JSON.stringify(r1.kept) + '), so a later visit could still roll one');
+      await R.ctx.close();
+
+      // N · a game that declares no pool and no star: everything is as it was before either existed
+      const mapsSrc = fs.readFileSync(path.join(ROOT, 'content', 'meridian', 'maps.js'), 'utf8');
+      const cut = [[/const DOGNAMES=\[[^\]]*\];/, 'the pool'], [/,role:"star"/, 'the role']];
+      const missed = cut.filter(([re]) => !re.test(mapsSrc)).map(([, what]) => what);
+      if (missed.length) P.push('a game with no pool and no star cannot be built from maps.js (' + missed.join(' and ') + ' matched nothing) — this check would be reading the real game under another name');
+      else {
+        const bare = cut.reduce((s, [re]) => s.replace(re, ''), mapsSrc);
+        const N = await device(K1, null, p => p.route(/content\/meridian\/maps\.js$/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: bare })));
+        const n1 = await N.p.evaluate(() => {
+          const $ = id => document.getElementById(id), d = CRIT.find(c => DOGK.has(c.kind));
+          let rec = null; try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+          const o = { pool: typeof DOGNAMES, role: CRITTERS.some(c => c.role), name: d && d.name,
+            mapName: (CRITTERS.find(c => DOGK.has(c.kind)) || {}).name, kept: !!(rec && 'star' in rec) };
+          document.querySelector('.classes button[data-c="architect"]').click(); $('begin').click();
+          world = 'st'; d.world = 'st'; d.x = d.fx = 22; d.y = d.fy = 11; d.moving = false; d.task = null; px = fx = 21; py = fy = 11; setWorldTag();
+          $('cmd').click(); o.ren = !$('cmdRen').hidden; o.reh = !$('cmdReh').hidden; $('dogPX').click();
+          world = PL.home; o.reached = nearestDog() === d;
+          return o;
+        });
+        if (n1.pool !== 'undefined' || n1.role) P.push('the no-pool game still declares ' + (n1.role ? 'a star' : 'a pool') + ' — this check is reading the real game');
+        else {
+          if (n1.name !== n1.mapName) P.push('with no pool declared the dog was named "' + n1.name + '" — a game that declares no pool keeps the name in its own map ("' + n1.mapName + '")');
+          if (n1.kept) P.push('with no pool declared the engine still wrote a picked name into the park record');
+          if (n1.ren || n1.reh) P.push('with no star declared the paw menu offers ' + (n1.ren ? 'a rename' : 'a rehome') + ' for the map\'s dog — before #264 it offered neither');
+          if (!n1.reached) P.push('with no star declared the paw menu no longer reaches the map\'s dog from another room');
+        }
+        if (N.errs.length) P.push('the no-pool game threw: ' + N.errs.join(' | '));
+        await N.ctx.close();
+      }
+    }
+    fails.push(...P.map(m => 'star dog (#264): ' + m));
+  }
 
   // ---- swiping "up" must walk up the SCREEN at every camera rotation ----
   // The bug this locks out: engine.js referenced T3 zero times, so movement was pure
@@ -1319,7 +1626,7 @@ const CANDIDATES = [
     px = fx = 11; py = fy = 11; draw3d();
     { const hero = T3.pool.find(p => p.live && p.spr.material.depthTest === false);
       if (!hero) problems.push('on the floor the hero no longer draws through walls (#22)'); }
-    // owner, 2026-09-07: "i want to upgrade rainbow bridge for sonny asap" (IDEAS §15.4, planned since
+    // asked for on 2026-09-07: an upgraded rainbow bridge (IDEAS §15.4, planned since
     // 2026-09-01): in 3D the bridge is a DECK over the river with a rail each side, not flat paint,
     // and whoever crosses it stands on the deck.
     world = 'pk'; px = fx = 2; py = fy = 6; T3.yaw = 0; draw3d();
@@ -1697,12 +2004,12 @@ const CANDIDATES = [
     else if (typeof alebLooks !== 'function' || typeof faceLookFor !== 'function' || typeof wildDraw !== 'function') problems.push('the engine has no alebrije looks (alebLooks / faceLookFor / wildDraw)');
     else { const [aid, A] = ale;
       if (A.from || A.to) problems.push('the alebrije mode is on the calendar — it is a mode you pick, not a season that arrives');
-      const sonny = CRIT.find(c => c.kind === 'beagle' && c.name === 'Sonny');
-      if (!sonny) problems.push('no Sonny to paint');
+      const star = CRIT.find(c => c.role === 'star'), SN = star && star.name; /* by his role: his name is this device's (#264) */
+      if (!star) problems.push('no star dog to paint');
       else { const keep = { cam: camMode, world, px, py, ale: JSON.stringify(alePick) };
         const now0 = Date.now; Date.now = () => 1700000000000; /* the tail wags with the clock: freeze it so two bakes differ only by the treatment */
         const bake = (fn, sc) => { sc = sc || 1; const c = document.createElement('canvas'); c.width = 44 * sc; c.height = 44 * sc; const g = c.getContext('2d'); g.setTransform(sc, 0, 0, sc, 6 * sc, 12 * sc); fn(g); return g.getImageData(0, 0, 44 * sc, 44 * sc).data; };
-        const dog = () => bake(g => drawBeagle(g, sonny, 0, 0));
+        const dog = () => bake(g => drawBeagle(g, star, 0, 0));
         const alpha = d => { const a = []; for (let i = 3; i < d.length; i += 4) a.push(d[i] > 40 ? 1 : 0); return a; };
         const hues = d => { const B = new Set(); for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 200) continue; const r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2, sat = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1)); if (sat < 0.35 || l < 0.12 || l > 0.9) continue; let h = 0; if (mx === r) h = ((gg - b) / (mx - mn)) % 6; else if (mx === gg) h = (b - r) / (mx - mn) + 2; else h = (r - gg) / (mx - mn) + 4; B.add(Math.floor(((h * 60 + 360) % 360) / 30)); } return B.size; };
         seasonSet('off'); const off = dog();
@@ -1711,14 +2018,14 @@ const CANDIDATES = [
         else {
           const noWing = L.findIndex(l => !l.wings), wing = L.findIndex(l => l.wings);
           if (noWing < 0 || wing < 0) problems.push('the five looks must include wings on and wings off');
-          alePick.animals.Sonny = noWing; const on = dog();
-          if (alpha(on).join('') !== alpha(off).join('')) problems.push('the alebrije treatment moved Sonny\'s silhouette — it must paint only inside his own pixels');
-          const nh = hues(on); if (nh < 2 || nh > 4) problems.push(`Sonny wears ${nh} hue families as an alebrije — two to four read; one is a wash, more is crossed out`);
-          const ids = new Set(); for (let i = 0; i < 5; i++) { alePick.animals.Sonny = i; ids.add(alebLookFor('beagle', 'Sonny').id); } if (ids.size !== 5) problems.push('the five looks are not five distinct looks for Sonny');
-          alePick.animals.Sonny = wing; const w1 = dog(), a0 = alpha(off), a1 = alpha(w1);
+          alePick.animals[SN] = noWing; const on = dog();
+          if (alpha(on).join('') !== alpha(off).join('')) problems.push('the alebrije treatment moved the star dog\'s silhouette — it must paint only inside his own pixels');
+          const nh = hues(on); if (nh < 2 || nh > 4) problems.push(`the star dog wears ${nh} hue families as an alebrije — two to four read; one is a wash, more is crossed out`);
+          const ids = new Set(); for (let i = 0; i < 5; i++) { alePick.animals[SN] = i; ids.add(alebLookFor('beagle', SN).id); } if (ids.size !== 5) problems.push('the five looks are not five distinct looks for the star dog');
+          alePick.animals[SN] = wing; const w1 = dog(), a0 = alpha(off), a1 = alpha(w1);
           let added = 0, out = 0; for (let i = 0; i < a0.length; i++) { if (a0[i] && !a1[i]) out++; if (!a0[i] && a1[i]) { added++; const x = i % 44, y = Math.floor(i / 44); if (x < 6 + 16 - 13 || x > 6 + 16 + 13 || y > 12 + 22) out++; } }
-          if (added < 12) problems.push('the winged look adds no wings to Sonny');
-          if (out) problems.push('the wings cross Sonny\'s own pixels, his face, or the card\'s edge (' + out + ' pixels)');
+          if (added < 12) problems.push('the winged look adds no wings to the star dog');
+          if (out) problems.push('the wings cross the star dog\'s own pixels, his face, or the card\'s edge (' + out + ' pixels)');
           // owner, 2026-09-07 (evening): "wings look off" — Pili: big enough to break the silhouette, an edge and ribs, not one flat blob
           if (added < 40) problems.push(`the wings are a smudge — ${added} pixels; a wing that does not break the silhouette is not a wing`);
           const wcols = new Set(); for (let i = 0; i < a0.length; i++) if (!a0[i] && a1[i]) wcols.add(w1[i * 4] + ',' + w1[i * 4 + 1] + ',' + w1[i * 4 + 2]);
@@ -1726,16 +2033,16 @@ const CANDIDATES = [
           const acc = parseInt(L[wing].accent.slice(1), 16), tgt = [(acc >> 16) & 255, (acc >> 8) & 255, acc & 255].map(v => v * 0.5 | 0);
           if (![...wcols].some(c => { const v = c.split(',').map(Number); return Math.abs(v[0] - tgt[0]) < 10 && Math.abs(v[1] - tgt[1]) < 10 && Math.abs(v[2] - tgt[2]) < 10; })) problems.push('the wings have no darker edge in their own colour — cut paper has an edge all the way round');
           // "the color can be added like around the eyes": a ring round the eye, wider than it, the pupil untouched
-          const KB = ALEB_KIND.beagle; if (!KB || !KB.eye) problems.push('Sonny has no colour round the eyes');
-          else { alePick.animals.Sonny = noWing; const ringed = dog(); const eye = KB.eye; delete KB.eye; const bare = dog(); KB.eye = eye;
-            let ring = 0, pupil = 0; for (let i = 0; i < a0.length; i++) { const x = i % 44 - 6 - 16 - eye[0] * (sonny.face || 1), y = Math.floor(i / 44) - 12 - eye[1], r = Math.hypot(x, y);
+          const KB = ALEB_KIND.beagle; if (!KB || !KB.eye) problems.push('the star dog has no colour round the eyes');
+          else { alePick.animals[SN] = noWing; const ringed = dog(); const eye = KB.eye; delete KB.eye; const bare = dog(); KB.eye = eye;
+            let ring = 0, pupil = 0; for (let i = 0; i < a0.length; i++) { const x = i % 44 - 6 - 16 - eye[0] * (star.face || 1), y = Math.floor(i / 44) - 12 - eye[1], r = Math.hypot(x, y);
               const diff = ringed[i * 4] !== bare[i * 4] || ringed[i * 4 + 1] !== bare[i * 4 + 1] || ringed[i * 4 + 2] !== bare[i * 4 + 2]; if (!diff) continue; if (r < 1.3) pupil++; else if (r < eye[2] + 2.5) ring++; }
-            if (ring < 8) problems.push('the ring round Sonny\'s eye paints nothing (' + ring + ')'); if (pupil) problems.push('the ring closes on Sonny\'s pupil — he goes blind at ten tiles'); }
+            if (ring < 8) problems.push('the ring round the star dog\'s eye paints nothing (' + ring + ')'); if (pupil) problems.push('the ring closes on the star dog\'s pupil — he goes blind at ten tiles'); }
           // the buttons: next cycles all five and comes back; random never repeats the current look
-          petCrit = sonny; petTarget = 'beagle'; alePick.animals.Sonny = 0; const seen = [];
-          for (let i = 0; i < 5; i++) { alePress(false); seen.push(alebLookFor('beagle', 'Sonny').id); }
-          if (new Set(seen).size !== 5 || alebLookFor('beagle', 'Sonny').id !== L[0].id) problems.push('Next does not walk the five looks and come back (' + seen.join(',') + ')');
-          for (let i = 0; i < 12; i++) { const cur = alebLookFor('beagle', 'Sonny').id; alePress(true); if (alebLookFor('beagle', 'Sonny').id === cur) { problems.push('Random repeated the current look'); break; } }
+          petCrit = star; petTarget = 'beagle'; alePick.animals[SN] = 0; const seen = [];
+          for (let i = 0; i < 5; i++) { alePress(false); seen.push(alebLookFor('beagle', SN).id); }
+          if (new Set(seen).size !== 5 || alebLookFor('beagle', SN).id !== L[0].id) problems.push('Next does not walk the five looks and come back (' + seen.join(',') + ')');
+          for (let i = 0; i < 12; i++) { const cur = alebLookFor('beagle', SN).id; alePress(true); if (alebLookFor('beagle', SN).id === cur) { problems.push('Random repeated the current look'); break; } }
           petCrit = null; petTarget = null;
         }
         // everyone painted: the hero and a person of the world, in different looks when they are different people
@@ -1760,19 +2067,19 @@ const CANDIDATES = [
           // owner, 2026-09-07 (night): "a menu to choose the different alebrije styles" — Settings → Alebrijes: who, then the look by name
           const row = $('aleRow'), sel = $('aleWho');
           if (!row || row.hidden || !sel) problems.push('Settings has no Alebrijes menu in season');
-          else { const opts = [...sel.options].map(o => o.value); if (!opts.includes('you') || !opts.includes('Sonny')) problems.push('the menu offers neither your face nor Sonny (' + opts.join(',') + ')');
-            sel.value = 'Sonny'; sel.dispatchEvent(new Event('change')); const btns = [...$('aleRow').querySelectorAll('button')];
-            if (btns.length !== 5) problems.push('the menu lists ' + btns.length + ' looks for Sonny, not five');
-            else { btns[3].click(); if (alePick.animals.Sonny !== 3 || alebLookFor('beagle', 'Sonny').id !== F.length && alebLookFor('beagle', 'Sonny').id !== alebLooks()[3].id) problems.push('picking a look from the menu did not dress Sonny in it');
-              if ($('aleRow').querySelectorAll('button[aria-pressed="true"]').length !== 1) problems.push('the menu does not mark the look Sonny wears'); }
+          else { const opts = [...sel.options].map(o => o.value); if (!opts.includes('you') || !opts.includes(SN)) problems.push('the menu offers neither your face nor the star dog (' + opts.join(',') + ')');
+            sel.value = SN; sel.dispatchEvent(new Event('change')); const btns = [...$('aleRow').querySelectorAll('button')];
+            if (btns.length !== 5) problems.push('the menu lists ' + btns.length + ' looks for the star dog, not five');
+            else { btns[3].click(); if (alePick.animals[SN] !== 3 || alebLookFor('beagle', SN).id !== F.length && alebLookFor('beagle', SN).id !== alebLooks()[3].id) problems.push('picking a look from the menu did not dress the star dog in it');
+              if ($('aleRow').querySelectorAll('button[aria-pressed="true"]').length !== 1) problems.push('the menu does not mark the look the star dog wears'); }
             $('aleWho').value = 'you'; $('aleWho').dispatchEvent(new Event('change')); const fb = [...$('aleRow').querySelectorAll('button')];
             if (fb.length !== 5) problems.push('the menu lists ' + fb.length + ' calavera looks for your face, not five'); else { fb[2].click(); if (alePick.hero !== 2) problems.push('picking a face from the menu did not paint it'); }
-            delete alePick.animals.Sonny; alePick.hero = 0; }
+            delete alePick.animals[SN]; alePick.hero = 0; }
           // "leave it in the architecture to have the ability to upgrade to customize the look": a custom seam over the pick
-          alePick.custom = { Sonny: { tint: '#123456' }, you: { ring: '#654321' } };
-          if (alebLookFor('beagle', 'Sonny').tint !== '#123456') problems.push('a custom look for Sonny is not laid over his pick');
+          alePick.custom = { [SN]: { tint: '#123456' }, you: { ring: '#654321' } };
+          if (alebLookFor('beagle', SN).tint !== '#123456') problems.push('a custom look for the star dog is not laid over his pick');
           if (faceLookFor('hero', true).ring !== '#654321') problems.push('a custom face is not laid over your pick');
-          if (alebLookFor('beagle', 'Sonny').id !== alebLooks()[((aleHash('Sonny') + alePick.off) % 5 + 5) % 5].id) problems.push('a custom look lost the pick\'s name');
+          if (alebLookFor('beagle', SN).id !== alebLooks()[((aleHash(SN) + alePick.off) % 5 + 5) % 5].id) problems.push('a custom look lost the pick\'s name');
           alePick.custom = {};
           seasonSet('off'); if (faceLookFor('tacho', false) || alebLooks()) problems.push('with the mode off, the paint and the looks remain');
           if ($('aleRow') && !$('aleRow').hidden) problems.push('with the mode off, the Alebrijes menu stays');
@@ -1782,7 +2089,7 @@ const CANDIDATES = [
             applyCtl(); if ($('aleRnd') && $('aleRnd').hidden) problems.push('in Día de Muertos the look buttons hide'); const h0 = alePick.hero; alePress(false); if (alePick.hero === h0) problems.push('in Día de Muertos the next-look button does not change your face'); alePick.hero = h0; alePersist();
             if (!$('aleRow') || $('aleRow').hidden || ![...$('aleWho').options].some(o => o.value === 'you')) problems.push('in Día de Muertos the menu does not offer your face');
             seasonSet('off'); }
-          const offAgain = dog(); if (alpha(offAgain).join('') !== alpha(off).join('')) problems.push('with the mode off, Sonny\'s wings did not go');
+          const offAgain = dog(); if (alpha(offAgain).join('') !== alpha(off).join('')) problems.push('with the mode off, the star dog\'s wings did not go');
         }
         Date.now = now0;
         alePick = JSON.parse(keep.ale); alePersist();
@@ -4389,50 +4696,50 @@ const CANDIDATES = [
   }
 
   // ---- 33. the dog comes through the door ----
-  // Owner, 2026-09-04: "sonny should be able to follow me anywhere. but when i tell him to stay
-  // and sit he can stop following." + "sometimes he will follow just for fun."
+  // Asked for on 2026-09-04: the dog can follow the player anywhere; told to stay or sit, he stops
+  // following; and sometimes he follows just for fun.
   // A critter in a world you are not in only idles, so no dog had ever crossed a threshold.
   {
     const dog = await page.evaluate(() => {
       const problems = [];
       if (typeof dogsFollow !== 'function') return ['a dog cannot cross a door at all'];
-      const sonny = CRIT.find(c => isDog(c) && c.name === 'Sonny');
-      if (!sonny) return ['Sonny is not in the world'];
+      const star = CRIT.find(c => c.role === 'star');
+      if (!star) return ['the star dog is not in the world'];
 
-      const keep = { w: sonny.world, x: sonny.x, y: sonny.y, f: sonny.follow, h: sonny.holdT, s: sonny.stayT,
+      const keep = { w: star.world, x: star.x, y: star.y, f: star.follow, h: star.holdT, s: star.stayT,
                      pw: world, px: px, py: py };
-      const put = (w2, x, y) => { sonny.world = w2; sonny.x = x; sonny.y = y; sonny.fx = x; sonny.fy = y; };
+      const put = (w2, x, y) => { star.world = w2; star.x = x; star.y = y; star.fx = x; star.fy = y; };
       // stand on hq's stairs and cross to the office, with the dog at your heel
       const cross = () => { world = 'hq'; px = fx = 17; py = fy = 6;
-        put('hq', 17, 7); sonny.moving = false;
+        put('hq', 17, 7); star.moving = false;
         const fw = world, fx0 = px, fy0 = py;
         world = 'f2'; px = fx = 17; py = fy = 11;            // where hq's stair portal lands you
         dogsFollow(fw, fx0, fy0); };
 
       // 1. following: he comes
-      sonny.follow = true; sonny.holdT = 0; sonny.stayT = 0;
+      star.follow = true; star.holdT = 0; star.stayT = 0;
       cross();
-      if (sonny.world !== 'f2') problems.push('a dog on follow did not come through the door');
+      if (star.world !== 'f2') problems.push('a dog on follow did not come through the door');
       const w2 = WORLDS['f2'];
-      if (sonny.world === 'f2') {
-        if (SOLID.has(w2.grid[sonny.y][sonny.x])) problems.push('the dog arrived inside a wall');
-        if (sonny.x === px && sonny.y === py) problems.push('the dog arrived standing on the player');
-        if (Math.abs(sonny.x - px) + Math.abs(sonny.y - py) > 5) problems.push('the dog arrived across the room instead of beside you');
-        if (sonny.fx !== sonny.x || sonny.fy !== sonny.y) problems.push('the dog arrived mid-slide and will skate to his tile');
+      if (star.world === 'f2') {
+        if (SOLID.has(w2.grid[star.y][star.x])) problems.push('the dog arrived inside a wall');
+        if (star.x === px && star.y === py) problems.push('the dog arrived standing on the player');
+        if (Math.abs(star.x - px) + Math.abs(star.y - py) > 5) problems.push('the dog arrived across the room instead of beside you');
+        if (star.fx !== star.x || star.fy !== star.y) problems.push('the dog arrived mid-slide and will skate to his tile');
       }
 
       // 2. told to STAY: he stays, even though you left the room
-      sonny.follow = true; sonny.stayT = performance.now() + 9000; sonny.holdT = sonny.stayT;
+      star.follow = true; star.stayT = performance.now() + 9000; star.holdT = star.stayT;
       cross();
-      if (sonny.world !== 'hq') problems.push('a dog told to stay was dragged through the door anyway');
+      if (star.world !== 'hq') problems.push('a dog told to stay was dragged through the door anyway');
 
       // 3. told to SIT: same — the owner grouped them
-      sonny.follow = true; sonny.stayT = 0; sonny.holdT = performance.now() + 4000;
+      star.follow = true; star.stayT = 0; star.holdT = performance.now() + 4000;
       cross();
-      if (sonny.world !== 'hq') problems.push('a dog told to sit was dragged through the door anyway');
+      if (star.world !== 'hq') problems.push('a dog told to sit was dragged through the door anyway');
 
       // 4. not following and far from the door: he stays put, always
-      sonny.follow = false; sonny.holdT = 0; sonny.stayT = 0;
+      star.follow = false; star.holdT = 0; star.stayT = 0;
       let dragged = 0;
       for (let i = 0; i < 40; i++) {
         world = 'hq'; px = fx = 17; py = fy = 6;
@@ -4440,14 +4747,14 @@ const CANDIDATES = [
         const fw = world, fx0 = px, fy0 = py;
         world = 'f2'; px = fx = 17; py = fy = 11;
         dogsFollow(fw, fx0, fy0);
-        if (sonny.world === 'f2') dragged++;
+        if (star.world === 'f2') dragged++;
       }
       if (dragged) problems.push('a dog across the room followed you through a door ' + dragged + '/40 times — he cannot teleport to the door');
 
       // 5. not following but AT YOUR HEEL: sometimes, for fun — not never, not always
-      sonny.follow = false; sonny.holdT = 0; sonny.stayT = 0;
+      star.follow = false; star.holdT = 0; star.stayT = 0;
       let came = 0;
-      for (let i = 0; i < 300; i++) { cross(); if (sonny.world === 'f2') came++; }
+      for (let i = 0; i < 300; i++) { cross(); if (star.world === 'f2') came++; }
       if (came === 0) problems.push('an off-duty dog at your heel never once came along for fun');
       if (came === 300) problems.push('an off-duty dog came along every single time — that is a shadow, not a dog');
 
@@ -4460,7 +4767,7 @@ const CANDIDATES = [
         if (sx < 0) problems.push('no stair head in hq to test the door with');
         else {
           world = 'hq'; px = fx = sx; py = fy = sy;
-          put('hq', sx, sy + 1); sonny.follow = true; sonny.holdT = 0; sonny.stayT = 0; sonny.moving = false;
+          put('hq', sx, sy + 1); star.follow = true; star.holdT = 0; star.stayT = 0; star.moving = false;
           portalHold = ''; portalT = 0;
           /* TWO CALLS, because since mq-v171 the swap happens BEHIND A SHUTTING DOOR (the owner's
              option A): the first call starts the door and parks the warp, the second completes it
@@ -4473,7 +4780,7 @@ const CANDIDATES = [
           if (!started) problems.push('standing on the stairs did not travel — the wiring test proves nothing');
           else if (!warped) problems.push('the door shut on the stairs and never opened — the warp was parked and dropped');
           else if (world === 'hq') problems.push('the door shut and the world never changed behind it');
-          else if (sonny.world === 'hq') problems.push('walking through a door does not bring the dog: dogsFollow is never called from tryPortal');
+          else if (star.world === 'hq') problems.push('walking through a door does not bring the dog: dogsFollow is never called from tryPortal');
         }
       }
 
@@ -4486,7 +4793,7 @@ const CANDIDATES = [
            learned to keep off the rails he sometimes could not get out of the way — the player is on
            one side of him and a wall on the other — so the ride waited for him and this check went
            intermittently red thirty checks later, on a traffic cone. The dog belongs beside you. */
-        put('st', 1, 3); sonny.follow = true; sonny.holdT = 0; sonny.stayT = 0; sonny.moving = false;
+        put('st', 1, 3); star.follow = true; star.holdT = 0; star.stayT = 0; star.moving = false;
         openTravel();
         const btn = [...document.querySelectorAll('#tvList button')].find(b2 => !b2.disabled);
         if (!btn) problems.push('the trolley offered nowhere to go, so this proves nothing');
@@ -4516,19 +4823,19 @@ const CANDIDATES = [
              rather than papered over downstream. It cost two intermittent reds on a traffic cone. */
           warpT = 0;
           if (world === 'st') problems.push('the trolley did not travel');
-          else if (sonny.world === 'st') problems.push('the trolley left the dog standing at the stop — it does not arrive the way a door does');
+          else if (star.world === 'st') problems.push('the trolley left the dog standing at the stop — it does not arrive the way a door does');
         }
         document.getElementById('travel').hidden = true;
       }
 
       // 6. the whistle still reaches him wherever he is
-      put('pk', 5, 5); sonny.follow = false;
+      put('pk', 5, 5); star.follow = false;
       world = 'hq'; px = fx = 10; py = fy = 11;
       const found = nearestDog();
-      if (found !== sonny) problems.push('the paw menu can no longer reach the dog in another world');
+      if (found !== star) problems.push('the paw menu can no longer reach the dog in another world');
 
-      sonny.world = keep.w; sonny.x = sonny.fx = keep.x; sonny.y = sonny.fy = keep.y;
-      sonny.follow = keep.f; sonny.holdT = keep.h; sonny.stayT = keep.s;
+      star.world = keep.w; star.x = star.fx = keep.x; star.y = star.fy = keep.y;
+      star.follow = keep.f; star.holdT = keep.h; star.stayT = keep.s;
       world = keep.pw; px = fx = keep.px; py = fy = keep.py;
       return problems;
     });
@@ -4536,9 +4843,8 @@ const CANDIDATES = [
   }
 
   // ---- 34. a cone is a thing you kick ----
-  // Owner, 2026-09-04: "I think a cone shouldnt make me have to go around it. i should be able to
-  // kick it. sonny should be even able to rip it and they'll just reappear when i leave the screen
-  // for now."
+  // Asked for on 2026-09-04: a cone should not make the player walk around it — the player can kick
+  // it, the dog can even rip it, and it reappears once the player leaves the screen.
   {
     const prop = await page.evaluate(() => {
       const problems = [];
@@ -4634,11 +4940,12 @@ const CANDIDATES = [
         problems.push('the cone is neither solid nor standing, so the iso and front cameras drop it');
 
       // 5. the dog can take one, and it comes back too
-      const sonny = CRIT.find(c => isDog(c) && c.name === 'Sonny');
-      if (sonny) {
-        sonny.world = 'st'; sonny.x = cx; sonny.y = cy - 1; sonny.next = 0; sonny.holdT = 0;
+      const star = CRIT.find(c => c.role === 'star');
+      if (!star) problems.push('there is no star dog to take a cone, so nothing here can say whether a dog can');
+      if (star) {
+        star.world = 'st'; star.x = cx; star.y = cy - 1; star.next = 0; star.holdT = 0;
         let ripped = false;
-        for (let i = 0; i < 400 && !ripped; i++) { dogWhim(sonny, performance.now()); ripped = w.grid[cy][cx] !== 'C'; }
+        for (let i = 0; i < 400 && !ripped; i++) { dogWhim(star, performance.now()); ripped = w.grid[cy][cx] !== 'C'; }
         if (!ripped) problems.push('the dog can never rip a cone even standing on top of one');
         propsReset();
         if (w.grid[cy][cx] !== 'C') problems.push('a ripped cone never comes back');

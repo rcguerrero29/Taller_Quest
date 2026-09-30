@@ -24,8 +24,9 @@ Then open a bible and a ledger on day one, empty:
 - `docs/OWNER.md` — the owner's standing rules. Meridian's are a good default; the ones that
   travel to any story are marked *(travels)* below.
 
-**One question the interview must ask the owner, every time (2026-09-05): "keep Sonny?"** He is
-the owner's recurring dog, not the engine's; he appears in the owner's worlds by choice, and a
+**One question the interview must ask, every time (2026-09-05): "does this world have a star dog?"**
+A star dog is a pack's choice, never the engine's: a pack marks him in `CRITTERS` with `role:"star"`, and
+may declare `DOGNAMES`, a pool a new player's star dog is named from; the player may rename him (#264). A
 world for someone else gets its own dog, or none. Ask before declaring a new world's `CRITTERS`.
 
 ## 0½ · Does your world END? — ask this before anything else (2026-09-09)
@@ -313,7 +314,7 @@ became visible once a second world existed:
 | `GAMENAME` `GAMEV` | config.js | the name and the version. **Both are required by the shared suite** — `test/engine.smoke.js:64-65` fails the build without either, and `:67` fails if the title screen does not print `GAMEV`. This file listed `GAMEV` as optional until 2026-09-10; it was wrong |
 
 **Optional — guarded by `typeof`, the engine simply does less without them:**
-`CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS EGGS CHATTER CHILL NPCACT TRV
+`CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
 TOWNLBL DOORS DOORLOOK SOLIDX PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT` — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
