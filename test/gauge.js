@@ -84,13 +84,37 @@ console.log('gauge 3D shell built beside it (four cameras, its own storage prefi
    disappears means the template got easier — good, delete it here and say so. A line that appears
    means somebody made the engine harder to write a second game for, and it says so on the day it
    happens instead of in somebody's month two. */
+/* A RUN THAT NEVER ENDS IS A RED, NOT A WAIT (#279). This file used to wait for the inner run with
+   no limit at all. Twice on 2026-09-30, on a busy machine, the 3D run sat for eighteen minutes with
+   its renderer at zero CPU until somebody stopped it by hand; on GitHub that is a pull request stuck
+   at "running", not a clear red. Measured 2026-09-30: one inner run takes 11-15 s on a loaded
+   four-core machine, and the whole CI step, both runs, takes 23 s; the re-run on that busy machine
+   passed in 27 s. The limit is 180 s, more than six times that, so a slow machine is not failed for being
+   slow and a stuck one fails inside three minutes, by name.
+   SIGKILL, not the default SIGTERM: Playwright gives the child its own SIGTERM handler, and a child
+   whose event loop is stuck never runs any handler, so a polite signal can leave this file waiting
+   for ever, which is the bug. Planted that way (SIGTERM, a child stuck in a loop), this file was
+   still waiting four minutes past its limit when an outside watchdog stopped it. */
+const LIMIT_S = 180;
 function measure(shell, expectedFile, label) {
 const expectedPath = path.join(root, 'content', 'gauge', expectedFile);
 let out = '';
+const t0 = Date.now();
 try {
   out = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', shell],
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-} catch (e) { out = (e.stdout || '') + (e.stderr || ''); }
+    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
+} catch (e) {
+  out = (e.stdout || '') + (e.stderr || '');
+  if (e.code === 'ETIMEDOUT') {
+    console.log('FAIL — ' + label + ' timed out: its engine checks (node test/engine.smoke.js --index ' + shell + ') were');
+    console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes under 30 s, so they were stopped.');
+    console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
+    console.log('last thing it printed is where it stuck.');
+    console.log('--- the last thing the inner run printed ---');
+    console.log(out.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+    return 1;
+  }
+}
 
 const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
   // one line carries a live frame count; the number is noise, the fact is not
