@@ -620,8 +620,11 @@ let px=10,py=11,fx=10,fy=11,dir="down",moving=false,mt=0,held=null,bob=0;
 
    A GAME HAS A BUILDER ONLY IF ITS PACK SAYS SO (`BUILDER` in config.js). Without it there is no key,
    no Settings row and no code path; Meridian's answer is no, and test/smoke.js holds it there. */
-const DRONE={on:false,land:false,want:0,w:"",x:0,y:0,fx:0,fy:0,sx:0,sy:0,mt:1,ms:150,cardKey:"",side:"",sidek:""};
-const DRONE_STEPMS=150;
+const DRONE={on:false,land:false,want:0,w:"",x:0,y:0,fx:0,fy:0,sx:0,sy:0,mt:1,ms:150,t0:0,stopT:0,flag:-1,
+  sdx:1,sdy:0,lean:0,lv:0,note:0,tuck:0,cardKey:"",side:"",sidek:""};
+/* a new paper flag every flight, round the colours papel picado is cut from */
+const DRONEFLAGS=["#E0457B","#2AA7B8","#F08A24","#F2C230","#7A3FE0"];
+const DRONE_UPMS=460,DRONE_STEPMS=150,DRONE_TUCKMS=280;
 const BUILDKEYS=["name"];   /* every key the engine reads from BUILDER — and one it does not is said out loud (buildAudit) */
 const buildOK=()=>typeof BUILDER!=="undefined"&&!!BUILDER&&typeof BUILDER==="object";
 function focusXY(){return DRONE.on?[DRONE.fx,DRONE.fy]:[fx,fy];}     /* what the camera looks at */
@@ -4171,51 +4174,71 @@ function droneCan(){return buildOK()&&!DRONE.on&&!moving&&!RIDE.on&&!warpPend&&p
   !$("world").hidden&&!worldCovered();}
 function droneUp(){
   if(!droneCan())return false;
-  Object.assign(DRONE,{on:true,land:false,want:0,w:world,x:px,y:py,fx:fx,fy:fy,sx:px,sy:py,mt:1,cardKey:"",side:"",sidek:""});
-  held=null;droneActs(true);checkTalk();droneCardFill();return true;}   /* checkTalk: Talk, Serve and Read are the hero's, and he is not the one flying */
+  Object.assign(DRONE,{on:true,land:false,want:0,w:world,x:px,y:py,fx:fx,fy:fy,sx:px,sy:py,mt:1,t0:performance.now(),stopT:performance.now(),
+    flag:(DRONE.flag+1)%DRONEFLAGS.length,sdx:1,sdy:0,lean:0,lv:0,tuck:0,cardKey:"",side:"",sidek:""});
+  held=null;droneActs(true);checkTalk();droneCardFill();droneSound("up");return true;}   /* checkTalk: Talk, Serve and Read are the hero's, and he is not the one flying */
 function droneLand(){if(!DRONE.on||DRONE.land)return;
   DRONE.land=true;DRONE.sx=DRONE.fx;DRONE.sy=DRONE.fy;DRONE.mt=0;held=null;
-  DRONE.ms=Math.max(180,Math.min(460,Math.hypot(fx-DRONE.fx,fy-DRONE.fy)*70));}   /* home in under half a second from anywhere: a camera that cuts reads as a bug */
-function dronePut(){ /* the one way down — from a landing, or at once when the world moved under it */
-  DRONE.on=false;DRONE.land=false;DRONE.want=0;held=null;
+  DRONE.ms=Math.max(180,Math.min(460,Math.hypot(fx-DRONE.fx,fy-DRONE.fy)*70)); /* home in under half a second from anywhere: a camera that cuts reads as a bug */
+  droneSound("down");}
+function dronePut(tuck){ /* the one way down — from a landing, or at once when the world moved under it */
+  DRONE.on=false;DRONE.land=false;DRONE.want=0;DRONE.tuck=tuck?performance.now():0;held=null;
   droneActs(false);const c=$("droneCard");if(c)c.style.display="none";checkTalk();}
 /* `held` is the same key the hero walks with, so arrows, WASD, the dpad, the joystick and a swipe all
    fly it, and worldDir turns "up" into up-the-screen after a ↻ in 3D, exactly as it does for walking. */
 function droneTick(dt){
   const now=performance.now();
   if(!DRONE.on){if(DRONE.want&&!droneUp()&&now>DRONE.want)DRONE.want=0;return;}
-  if(DRONE.w!==world||$("world").hidden){dronePut();return;}   /* the world changed under it (a door, the city growing, a replay): it is simply put down */
+  if(DRONE.w!==world||$("world").hidden){dronePut(false);return;}   /* the world changed under it (a door, the city growing, a replay): it is simply put down */
   if(DRONE.land){
     DRONE.mt=Math.min(1,DRONE.mt+dt/DRONE.ms);const k=DRONE.mt<0.5?2*DRONE.mt*DRONE.mt:1-Math.pow(-2*DRONE.mt+2,2)/2;
     DRONE.fx=DRONE.sx+(fx-DRONE.sx)*k;DRONE.fy=DRONE.sy+(fy-DRONE.sy)*k;
-    if(DRONE.mt>=1)dronePut();
+    if(DRONE.mt>=1)dronePut(true);
     return;}
   if(DRONE.mt<1){
     DRONE.mt=Math.min(1,DRONE.mt+dt/DRONE_STEPMS);const k=1-Math.pow(1-DRONE.mt,2);
-    DRONE.fx=DRONE.sx+(DRONE.x-DRONE.sx)*k;DRONE.fy=DRONE.sy+(DRONE.y-DRONE.sy)*k;}
+    DRONE.fx=DRONE.sx+(DRONE.x-DRONE.sx)*k;DRONE.fy=DRONE.sy+(DRONE.y-DRONE.sy)*k;if(DRONE.mt>=1)DRONE.stopT=now;}
   if(DRONE.mt>=1&&held&&!worldCovered()){
     const[dx,dy]=DIRS[worldDir(held)],w=CW(),
       nx=Math.max(0,Math.min(w.W-1,DRONE.x+dx)),ny=Math.max(0,Math.min(w.H-1,DRONE.y+dy));   /* no walls up here, but the world has edges */
-    if(nx!==DRONE.x||ny!==DRONE.y){DRONE.sx=DRONE.x;DRONE.sy=DRONE.y;DRONE.x=nx;DRONE.y=ny;DRONE.mt=0;}}
+    if(nx!==DRONE.x||ny!==DRONE.y){const s=DIRS[held];
+      DRONE.sx=DRONE.x;DRONE.sy=DRONE.y;DRONE.x=nx;DRONE.y=ny;DRONE.mt=0;DRONE.sdx=s[0];DRONE.sdy=s[1];
+      droneSound("step",s[0]-s[1]);}}
+  /* the lean: into the move, and a damped spring back when it stops — two small wobbles, like
+     something catching its balance. Screen-space, from the key you pressed, so it leans the way you
+     see it go in every camera. */
+  const target=DRONE.mt<1?DRONE.sdx*0.2:0,s=Math.min(0.05,dt/1000);
+  DRONE.lv+=(-(DRONE.lean-target)*190-DRONE.lv*13)*s;DRONE.lean+=DRONE.lv*s;
   droneCardFill();droneCardPlace();}
 function droneActs(on){const a=$("acts");if(a)a.style.visibility=on?"hidden":"";}
 /* WHERE AND HOW IT IS DRAWN THIS FRAME — one answer for all four cameras, so no camera can disagree
-   about where the drone is. `h` is its height (1 = hover); `from`/`to`/`k` are the two tiles it is
-   between, so it climbs as it glides onto a wall instead of jumping. */
+   about where the drone is. `h` is 0 on the shoulder and 1 at hover; `ox` pulls it toward the hero's
+   right shoulder at takeoff and landing; `from`/`to`/`k` are the two tiles it is between, so it
+   climbs as it glides onto a wall instead of jumping. */
 function droneLook(){
-  if(!DRONE.on)return null;
-  let k=1,from=[DRONE.x,DRONE.y],to=[DRONE.x,DRONE.y];
-  if(DRONE.land){from=[Math.round(DRONE.sx),Math.round(DRONE.sy)];to=[px,py];k=DRONE.mt;}
-  else if(DRONE.mt<1){from=[DRONE.sx,DRONE.sy];k=1-Math.pow(1-DRONE.mt,2);}
-  return {x:DRONE.fx,y:DRONE.fy,h:1,ox:0,s:1,spin:1,from,to,k,tile:[DRONE.x,DRONE.y],marks:!DRONE.land,now:performance.now()};}
+  const now=performance.now();
+  if(DRONE.on){
+    const up=Math.min(1,(now-DRONE.t0)/DRONE_UPMS);let h,ox,spin,k=1,from=[DRONE.x,DRONE.y],to=[DRONE.x,DRONE.y];
+    if(DRONE.land){const m=DRONE.mt;h=1-m*m;ox=6*m;spin=1;from=[Math.round(DRONE.sx),Math.round(DRONE.sy)];to=[px,py];k=m;}
+    else{const r=up<0.3?0:(up-0.3)/0.7,c=1.7;h=r<=0?0:1+(c+1)*Math.pow(r-1,3)+c*Math.pow(r-1,2);   /* up with a small overshoot */
+      ox=6*Math.max(0,1-r*1.4);spin=up<0.3?up/0.3:1;
+      if(DRONE.mt<1){from=[DRONE.sx,DRONE.sy];k=1-Math.pow(1-DRONE.mt,2);}}
+    const idle=DRONE.mt>=1&&!DRONE.land&&now-DRONE.stopT>4000,ex=idle?Math.sin((now-DRONE.stopT)/900)*0.9:DRONE.sdx;   /* left alone, it looks about */
+    return {x:DRONE.fx,y:DRONE.fy,h,ox,s:1,spin,from,to,k,tile:[DRONE.x,DRONE.y],marks:!DRONE.land&&up>0.3,lean:DRONE.lean,sdx:ex,sdy:idle?0:DRONE.sdy,now};}
+  if(DRONE.tuck){const e=now-DRONE.tuck;if(e>DRONE_TUCKMS){DRONE.tuck=0;return null;}
+    const q=e/DRONE_TUCKMS;
+    return {x:fx,y:fy,h:0,ox:6,s:q<0.5?1:Math.max(0,1-(q-0.5)*2),spin:Math.max(0,1-q*1.8),from:[px,py],to:[px,py],k:1,tile:[px,py],marks:false,lean:0,sdx:0,sdy:0,now,tuck:true};}
+  return null;}
 /* the floor under a flat camera's drone: a wall lifts it by the wall's own lift (it flies OVER, and
    is seen to), a raised tread by the tread's */
 function droneFloorPx(cam,w,x,y){x=Math.round(x);y=Math.round(y);
   if(y<0||y>=w.H||x<0||x>=w.W)return 0;
   if(cam==="iso")return SOLID.has(w.grid[y][x])?-isoH(w,x,y):isoLiftPx(w,x,y);
   const g=w.grid[y][x];return SOLID.has(g)?-((TILES[g]||TILES[w.rows[y][x]]||{}).lift|0):liftPx(w,x,y);}
-/* the lamp's colour: warm, always */
-function droneLamp(dl){return {night:false,col:"#FFE9A8",a:0.9};}
+/* the lamp: warm always, gold and breathing on the door glow's own clock over a door */
+function droneLamp(dl){const w=CW(),t=dl.tile,door=!!portalAt(world,t[0],t[1]);
+  const hr=new Date().getHours()+new Date().getMinutes()/60,night=hr>=20.5||hr<6;
+  return {door,night,col:door?"#F0C24A":"#FFE9A8",a:door?0.62+0.38*Math.sin(Date.now()/380):0.9,blink:(dl.now%4200)<90||((dl.now%4200)>180&&(dl.now%4200)<270)};}
 function droneFlat(cam,camX,camY,P){ /* the flat cameras: marks, then the drone — last, because it is in the air */
   const dl=droneLook();if(!dl)return;
   const w=CW(),L=droneLamp(dl);
@@ -4226,7 +4249,7 @@ function droneFlat(cam,camX,camY,P){ /* the flat cameras: marks, then the drone 
     if(cam==="iso"){const[cx,cy]=P(t[0],t[1]);drawDroneMarks(ctx,{iso:true,cx,cy:cy+droneFloorPx("iso",w,t[0],t[1]),shx:bx+16,shy:by+28+fl,h:dl.h,lamp:L});}
     else{const[sx,sy]=box(t[0],t[1]);drawDroneMarks(ctx,{sx,sy,shx:bx+16,shy:by+27+fl,h:dl.h,lamp:L});}}
   drawDrone(ctx,bx+16+dl.ox,by+9-11*dl.h+fl+Math.sin(dl.now/190)*1.3*dl.h,droneOpts(dl,L));}
-function droneOpts(dl,L){return {s:dl.s,lamp:L.col,shirt:look.shirt};}
+function droneOpts(dl,L){return {s:dl.s,spin:dl.spin,lean:dl.lean,ex:dl.sdx,ey:dl.sdy,t:dl.now,lamp:L.col,lampA:L.a,blink:L.blink,shirt:look.shirt,flag:DRONEFLAGS[Math.max(0,DRONE.flag)]};}
 function drawDroneMarks(g,m){ /* the lamp's light on the ground: four lit corners — never a fill, the tile stays visible — and the drone's small shadow */
   g.save();
   if(m.h>0.05){const q=m.iso?0.72:1;g.fillStyle="rgba(20,16,28,"+(0.26*m.h).toFixed(3)+")";g.beginPath();g.ellipse(m.shx,m.shy,(4.6-1.2*m.h)*q,1.7*q,0,0,7);g.fill();}   /* an iso tile is half as tall: its shadow is smaller */
@@ -4239,14 +4262,23 @@ function drawDroneMarks(g,m){ /* the lamp's light on the ground: four lit corner
       [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(([x,y,sx,sy])=>{g.beginPath();g.moveTo(x,y+n*sy);g.lineTo(x,y);g.lineTo(x+n*sx,y);g.stroke();});}};
   pass(3.4,glow);pass(1.5,1);
   g.restore();}
-/* THE DRONE ITSELF — a toy somebody built at a kitchen table: a bottle cap painted the colour of your
-   shirt, glued across a popsicle stick, a rotor at each end of the stick and one lamp for an eye.
-   `cx,cy` is the middle of the cap. ONE painter, four cameras: the flat ones call it on the world
-   canvas, 3D bakes it into a billboard, exactly as every person here is drawn. */
+/* THE DRONE ITSELF — a toy somebody built at a kitchen table: a bottle cap painted the colour of
+   your shirt, glued across a popsicle stick, a rotor at each end of the stick, one lamp for an eye,
+   a bent-wire antenna with a bead, and a paper flag on a thread. `cx,cy` is the middle of the cap.
+   ONE painter, four cameras: the flat ones call it on the world canvas, 3D bakes it into a
+   billboard, exactly as every person here is drawn. */
 function drawDrone(g,cx,cy,o){
   o=o||{};const s=o.s===undefined?1:o.s;if(s<=0.02)return;
-  const shirt=o.shirt||"#8B5CF6",lamp=o.lamp||"#FFE9A8";
-  g.save();g.translate(cx,cy);g.scale(s*0.9,s*0.9);
+  const t=o.t||0,spin=o.spin===undefined?1:o.spin,shirt=o.shirt||"#8B5CF6",lamp=o.lamp||"#FFE9A8";
+  g.save();g.translate(cx,cy);g.rotate(o.lean||0);g.scale(s*0.9,s*0.9);
+  const side=(o.ex||0)>0?-1:1;
+  /* the paper flag trails behind, on the far end of the stick, and flutters */
+  {const ax=side*10.5,ay=0.8,fl=Math.sin(t/70)*1.2,tx=ax+side*2.5,ty=ay+4.2;
+    g.strokeStyle="rgba(43,37,54,.7)";g.lineWidth=0.6;g.beginPath();g.moveTo(ax,ay);g.lineTo(tx,ty);g.stroke();
+    g.fillStyle=o.flag||"#E0457B";g.beginPath();g.moveTo(tx,ty);g.lineTo(tx+side*5,ty+fl*0.4);
+    for(let i=0;i<3;i++){const u=tx+side*(5-i*1.67);g.lineTo(u,ty+4.2+fl);g.lineTo(u-side*0.83,ty+3.2+fl);}
+    g.lineTo(tx,ty+4);g.closePath();g.fill();
+    g.fillStyle="rgba(255,255,255,.55)";g.fillRect(tx+side*1.6-0.5,ty+1.4+fl*0.5,1,1);g.fillRect(tx+side*3.3-0.5,ty+1.6+fl*0.6,1,1);}
   /* a pale halo round the whole silhouette: a dark keyline on a dark facade is not a keyline */
   g.strokeStyle="rgba(247,242,228,.55)";g.lineWidth=2.6;g.lineCap="round";
   g.beginPath();g.moveTo(-10.5,-0.2);g.lineTo(10.5,-0.2);g.stroke();
@@ -4254,10 +4286,12 @@ function drawDrone(g,cx,cy,o){
   /* the stick */
   g.fillStyle="#D9B77E";g.beginPath();g.roundRect(-11.2,-1.3,22.4,2.4,1.2);g.fill();
   g.fillStyle="#A9844E";g.fillRect(-10.4,0.6,20.8,0.6);
-  /* the two rotors, spinning */
-  [-10.5,10.5].forEach(rx=>{g.fillStyle="#2B2536";g.beginPath();g.arc(rx,-1.8,1.1,0,7);g.fill();
-    g.fillStyle="rgba(237,233,245,.42)";g.beginPath();g.ellipse(rx,-2.6,4.8,1.25,0,0,7);g.fill();
-    g.strokeStyle="rgba(255,255,255,.35)";g.lineWidth=0.5;g.stroke();});
+  /* the two rotors: blades you can count when they are slow, a blur when they are not */
+  [-10.5,10.5].forEach((rx,i)=>{g.fillStyle="#2B2536";g.beginPath();g.arc(rx,-1.8,1.1,0,7);g.fill();
+    if(spin>0.55){g.fillStyle="rgba(237,233,245,"+(0.42*spin).toFixed(3)+")";g.beginPath();g.ellipse(rx,-2.6,4.8,1.25,0,0,7);g.fill();
+      g.strokeStyle="rgba(255,255,255,.35)";g.lineWidth=0.5;g.stroke();}
+    else{const a=t/1000*(4+spin*40)+i;g.strokeStyle="#4A4458";g.lineWidth=1.1;g.beginPath();
+      g.moveTo(rx-Math.cos(a)*4.4,-2.6-Math.sin(a)*0.9);g.lineTo(rx+Math.cos(a)*4.4,-2.6+Math.sin(a)*0.9);g.stroke();}});
   /* the cap: a crimped skirt in the shirt's shadow, the painted top in the shirt's colour */
   const dk=shadeHex(shirt,-0.38),lt=shadeHex(shirt,0.3);
   g.fillStyle=dk;g.beginPath();g.moveTo(-4.9,-0.6);g.lineTo(-4.9,2.1);
@@ -4268,10 +4302,30 @@ function drawDrone(g,cx,cy,o){
   g.strokeStyle=lt;g.lineWidth=0.8;g.beginPath();g.ellipse(0,-0.6,4.1,1.9,0,Math.PI*1.05,Math.PI*1.55);g.stroke();
   g.strokeStyle="#2B2536";g.lineWidth=0.8;g.beginPath();g.ellipse(0,-0.6,4.9,2.4,0,Math.PI,0);g.stroke();
   g.beginPath();g.moveTo(-4.9,-0.6);g.lineTo(-4.9,2.2);g.moveTo(4.9,-0.6);g.lineTo(4.9,2.2);g.stroke();
-  /* the lamp */
-  g.fillStyle="#2B2536";g.beginPath();g.arc(0,1.1,1.45,0,7);g.fill();
-  g.fillStyle=lamp;g.beginPath();g.arc(0,1.1,1.0,0,7);g.fill();
+  /* the antenna: bent wire, a bead, swinging against the lean */
+  {const bx=-(o.lean||0)*14;g.strokeStyle="#4A4458";g.lineWidth=0.7;g.beginPath();g.moveTo(1.2,-2.4);g.quadraticCurveTo(1.6+bx*0.4,-5,1.8+bx,-7.2);g.stroke();
+    g.fillStyle="#C0392B";g.beginPath();g.arc(1.8+bx,-7.4,1.05,0,7);g.fill();}
+  /* the lamp — its eye. It looks the way it is going, and blinks twice now and then. */
+  {const ex=Math.max(-2.4,Math.min(2.4,(o.ex||0)*1.8)),ey=1.1+(o.ey||0)*0.3;
+    if(!o.blink){const r=g.createRadialGradient(ex,ey,0.2,ex,ey,4.2);r.addColorStop(0,lamp);r.addColorStop(1,"rgba(255,233,168,0)");
+      g.globalAlpha=0.55*(o.lampA===undefined?1:o.lampA);g.fillStyle=r;g.beginPath();g.arc(ex,ey,4.2,0,7);g.fill();g.globalAlpha=1;}
+    g.fillStyle="#2B2536";g.beginPath();g.arc(ex,ey,1.45,0,7);g.fill();
+    g.fillStyle=o.blink?"#6E6048":lamp;g.beginPath();g.arc(ex,ey,1.0,0,7);g.fill();}
   g.restore();}
+/* a note per tile, walking the tune's own scale — up and right climb it, down and left come back —
+   so flying plays a line in the key of whatever the street is playing. Silent when the music is
+   off: a muted drone stays a mime, like the dog. */
+function droneSound(kind,dir){
+  if(!musOn||typeof MUSIC==="undefined"||!MUSIC.ctx||MUSIC.ctx.state!=="running")return;
+  const c=MUSIC.ctx,d=musDef(),t0=c.currentTime+0.02,deg=n=>{const q=((n%5)+5)%5;return d.root+24+Math.floor(n/5)*12+d.scale[q];};
+  if(kind==="step"){DRONE.note=Math.max(-3,Math.min(8,DRONE.note+(dir>0?1:dir<0?-1:0)));musVoice(deg(DRONE.note),t0,0.15,"triangle",0.045,d.bright);return;}
+  const up=kind==="up",o=c.createOscillator(),f=c.createBiquadFilter(),gn=c.createGain();
+  o.type="sawtooth";f.type="lowpass";f.frequency.value=1000;
+  o.frequency.setValueAtTime(up?140:400,t0);o.frequency.exponentialRampToValueAtTime(up?420:130,t0+0.34);
+  gn.gain.setValueAtTime(0,t0);gn.gain.linearRampToValueAtTime(0.03,t0+0.06);gn.gain.exponentialRampToValueAtTime(0.0008,t0+0.38);
+  o.connect(f);f.connect(gn);gn.connect(MUSIC.master);o.start(t0);o.stop(t0+0.42);
+  (up?[2,4]:[4,2]).forEach((n,i)=>musVoice(deg(n),t0+0.14+i*0.09,0.2,"triangle",0.045,d.bright));
+  if(up)DRONE.note=4;}
 /* ---- the card: what is under the drone, in words. Read-only in this slice. ----
    A child of #vp, because #vp is what goes fullscreen (the fsbtn handler) and anything outside it
    vanishes there. NOT a `.settings` panel, because worldCovered() would stop drawing the world under
@@ -4290,10 +4344,12 @@ function droneCardEl(){let c=$("droneCard");if(c)return c;const vp=$("vp");if(!v
     "background:rgba(20,16,30,.88);color:#EDE9F5;border-radius:12px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;"+
     "font-size:.7rem;line-height:1.4;box-shadow:0 2px 10px rgba(0,0,0,.3);display:none;";
   const hd=document.createElement("div");hd.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:4px;";
+  const sw=document.createElement("canvas");sw.width=48;sw.height=48;sw.setAttribute("aria-hidden","true");
+  sw.style.cssText="width:24px;height:24px;flex:0 0 24px;border-radius:4px;box-shadow:0 0 0 1px rgba(237,233,245,.25);image-rendering:pixelated;";
   const tt=document.createElement("div");tt.style.cssText="min-width:0;";
   const t1=document.createElement("div");t1.style.cssText="font-weight:600;color:#FFE9A8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
   const t2=document.createElement("div");t2.style.cssText="opacity:.72;white-space:nowrap;";
-  tt.append(t1,t2);hd.append(tt);
+  tt.append(t1,t2);hd.append(sw,tt);
   const ls=document.createElement("div");
   const ft=document.createElement("div");ft.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;opacity:.85;";
   const hint=document.createElement("span");hint.style.cssText="opacity:.7;";
@@ -4301,7 +4357,7 @@ function droneCardEl(){let c=$("droneCard");if(c)return c;const vp=$("vp");if(!v
   bt.style.cssText="border:none;border-radius:999px;background:rgba(237,233,245,.14);color:#EDE9F5;font:inherit;padding:3px 10px;cursor:pointer;";
   bt.addEventListener("click",()=>{droneLand();bt.blur();});
   ft.append(hint,bt);c.append(hd,ls,ft);
-  c._p={t1,t2,ls,hint,bt};vp.appendChild(c);return c;}
+  c._p={sw,t1,t2,ls,hint,bt};vp.appendChild(c);return c;}
 function droneCardFill(){const c=droneCardEl();if(!c||!DRONE.on)return;
   const w=CW(),x=DRONE.x,y=DRONE.y,es=lang==="es",row=w.rows[y]||"",g=row[x]||"",gg=(w.grid[y]||[])[x];
   const who=(w.npcs||[]).find(m=>Math.round(m.fx===undefined?m.x:m.fx)===x&&Math.round(m.fy===undefined?m.y:m.fy)===y);
@@ -4322,7 +4378,15 @@ function droneCardFill(){const c=droneCardEl();if(!c||!DRONE.on)return;
   P.t2.textContent=x+","+y+(g?"  “"+g+"”":"");
   P.ls.replaceChildren(...L.map(s=>{const e=document.createElement("div");e.textContent=s;return e;}));
   P.hint.textContent=es?"flechas: volar · Esc: aterrizar":"arrows fly · Esc lands";
-  P.bt.textContent=es?"Aterrizar":"Land";}
+  P.bt.textContent=es?"Aterrizar":"Land";
+  droneSwatch(P.sw,w,x,y);}
+/* the tile itself, small, beside its name: the same painter the top camera uses, borrowed for one
+   frame the way the 3D bake borrows the people's painters */
+function droneSwatch(cv2,w,x,y){const g2=cv2.getContext("2d"),old=ctx;
+  g2.setTransform(1,0,0,1,0,0);g2.clearRect(0,0,cv2.width,cv2.height);g2.setTransform(cv2.width/TS,0,0,cv2.height/TS,0,0);
+  const fp=FLOORC[world];g2.fillStyle=tc(fp?((x+y)%2?fp[0]:fp[1]):((x+y)%2?C.floor:C.floorAlt));g2.fillRect(0,0,TS,TS);
+  const ch=w.rows[y][x],tf=TILEDRAW[ch]||TILEDRAW[w.grid[y][x]];
+  if(tf){ctx=g2;try{tf({sx:0,sy:0,x,y,canopy:()=>{}});}catch(e){}ctx=old;}}
 /* out of the drone's way: the flat cameras stop at a world's edge, so the drone can reach a corner of
    the view — the card takes the other side, and on the left it sits above the dpad you are flying with */
 function droneCardPlace(){const c=$("droneCard");if(!c||c.style.display==="none")return;

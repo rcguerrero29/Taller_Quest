@@ -4103,6 +4103,39 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           await page.keyboard.press('Escape'); await page.waitForTimeout(200);
         }
       }
+      /* 10 · IT PLAYS IN THE STREET'S KEY — AND NOT AT ALL WITH THE MUSIC OFF. Asked of the audio graph,
+         not of a flag: a stand-in running context counts every voice made while the drone takes off, flies
+         a tile and lands. With the music off that must be none; with it on it must be some, or this probe
+         cannot hear anything and its silence proves nothing. Everything else that makes a sound is quiet
+         for the length of the check — the street's tune (which a key press restarts: musPoke listens to
+         keydown), its chirp, and the dogs. Two drafts of this went green on an engine where the drone had
+         no voice at all: the first counted the dogs' howls, the second the tune a pressed B had restarted.
+         The red-first run against the slice before this one is what showed both. */
+      const listen = async (on) => {
+        await page.evaluate(({ k, on }) => { world = k.id; px = fx = k.x; py = fy = k.y; moving = false; held = null;
+          window.__drMus = { on: musOn, ctx: MUSIC.ctx, master: MUSIC.master, mv: musVoice, howl: musHowl, chirp: musChirp, timer: !!MUSIC.timer };
+          musHowl = function () {}; musChirp = function () {}; window.__drMus.tick = musTick; musTick = function () {};
+          if (MUSIC.timer) { clearInterval(MUSIC.timer); MUSIC.timer = null; }
+          window.__drVoices = 0; musOn = on;
+          const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} });
+          MUSIC.ctx = { state: 'running', currentTime: 0, destination: {},
+            createOscillator() { window.__drVoices++; return { type: '', frequency: param(), connect() {}, start() {}, stop() {} }; },
+            createBiquadFilter() { return { type: '', frequency: param(), connect() {} }; },
+            createGain() { return { gain: param(), connect() {} }; } };
+          MUSIC.master = { connect() {} };
+          musVoice = function () { window.__drVoices++; }; }, { k: drSetup.pick, on });
+        await pressB();
+        const d = (await page.evaluate(k => k.x > 0 ? 'left' : 'right', drSetup.pick));
+        await flyStep(d); await page.waitForTimeout(150);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+        return page.evaluate(() => { const n = window.__drVoices, m = window.__drMus;
+          musOn = m.on; MUSIC.ctx = m.ctx; MUSIC.master = m.master; musVoice = m.mv; musHowl = m.howl; musChirp = m.chirp; musTick = m.tick; if (MUSIC.timer) { clearInterval(MUSIC.timer); MUSIC.timer = null; } if (m.timer && typeof musRetime === 'function') musRetime();
+          return n; });
+      };
+      const mute = await listen(false), loud = await listen(true);
+      if (mute) bad.push('with the music off the drone still made ' + mute + ' sound(s) taking off, flying and landing — with the music off it must stay silent');
+      if (!loud) bad.push('with the music on the drone makes no sound at all — no whirr taking off, no note per tile, nothing landing');
+      else droneNote.push('COUNT-ONLY: with the music on, one takeoff, one tile and one landing made ' + loud + ' voices; with it off, ' + mute);
       droneP.push(...bad);
     }
     if (!drSetup.declared) {
