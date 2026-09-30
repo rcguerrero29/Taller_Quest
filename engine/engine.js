@@ -621,7 +621,7 @@ let px=10,py=11,fx=10,fy=11,dir="down",moving=false,mt=0,held=null,bob=0;
    A GAME HAS A BUILDER ONLY IF ITS PACK SAYS SO (`BUILDER` in config.js). Without it there is no key,
    no Settings row and no code path; Meridian's answer is no, and test/smoke.js holds it there. */
 const DRONE={on:false,land:false,want:0,w:"",x:0,y:0,fx:0,fy:0,sx:0,sy:0,mt:1,ms:150,t0:0,stopT:0,flag:-1,
-  sdx:1,sdy:0,lean:0,lv:0,note:0,tuck:0,cardKey:"",side:"",sidek:""};
+  sdx:1,sdy:0,lean:0,lv:0,note:0,tuck:0,cardKey:"",side:""};
 /* a new paper flag every flight, round the colours papel picado is cut from */
 const DRONEFLAGS=["#E0457B","#2AA7B8","#F08A24","#F2C230","#7A3FE0"];
 const DRONE_UPMS=460,DRONE_STEPMS=150,DRONE_TUCKMS=280;
@@ -4175,7 +4175,7 @@ function droneCan(){return buildOK()&&!DRONE.on&&!moving&&!RIDE.on&&!warpPend&&p
 function droneUp(){
   if(!droneCan())return false;
   Object.assign(DRONE,{on:true,land:false,want:0,w:world,x:px,y:py,fx:fx,fy:fy,sx:px,sy:py,mt:1,t0:performance.now(),stopT:performance.now(),
-    flag:(DRONE.flag+1)%DRONEFLAGS.length,sdx:1,sdy:0,lean:0,lv:0,tuck:0,cardKey:"",side:"",sidek:""});
+    flag:(DRONE.flag+1)%DRONEFLAGS.length,sdx:1,sdy:0,lean:0,lv:0,tuck:0,cardKey:"",side:""});
   held=null;droneActs(true);checkTalk();droneCardFill();droneSound("up");return true;}   /* checkTalk: Talk, Serve and Read are the hero's, and he is not the one flying */
 function droneLand(){if(!DRONE.on||DRONE.land)return;
   DRONE.land=true;DRONE.sx=DRONE.fx;DRONE.sy=DRONE.fy;DRONE.mt=0;held=null;
@@ -4357,11 +4357,13 @@ function droneCardEl(){let c=$("droneCard");if(c)return c;const vp=$("vp");if(!v
   bt.style.cssText="border:none;border-radius:999px;background:rgba(237,233,245,.14);color:#EDE9F5;font:inherit;padding:3px 10px;cursor:pointer;";
   bt.addEventListener("click",()=>{droneLand();bt.blur();});
   ft.append(hint,bt);c.append(hd,ls,ft);
-  c._p={sw,t1,t2,ls,hint,bt};vp.appendChild(c);return c;}
+  tt.style.cssText="min-width:0;flex:1;";
+  c._p={sw,t1,t2,ls,hint,bt,hd,ft};vp.appendChild(c);return c;}
 function droneCardFill(){const c=droneCardEl();if(!c||!DRONE.on)return;
   const w=CW(),x=DRONE.x,y=DRONE.y,es=lang==="es",row=w.rows[y]||"",g=row[x]||"",gg=(w.grid[y]||[])[x];
   const who=(w.npcs||[]).find(m=>Math.round(m.fx===undefined?m.x:m.fx)===x&&Math.round(m.fy===undefined?m.y:m.fy)===y);
-  const key=world+"|"+x+"|"+y+"|"+lang+"|"+(who?who.npc:"")+"|"+(x===px&&y===py);
+  const vp=$("vp"),small=!!vp&&vp.clientWidth<520;   /* a phone: one line, and the button beside the name */
+  const key=world+"|"+x+"|"+y+"|"+lang+"|"+(who?who.npc:"")+"|"+(x===px&&y===py)+"|"+small;
   if(c.style.display==="none")c.style.display="block";
   if(key===DRONE.cardKey)return;DRONE.cardKey=key;
   const P=c._p,solid=SOLID.has(gg),m=TILES[gg]||TILES[g]||{},kw=DRONEKIND[m.kind];
@@ -4374,10 +4376,12 @@ function droneCardFill(){const c=droneCardEl();if(!c||!DRONE.on)return;
   const d=DECOS.find(o=>o.world===world&&o.x===x&&o.y===y);if(d)L.push((es?"Decoración: ":"Decoration: ")+d.deco);
   if(x===px&&y===py)L.push(es?"Aquí estás tú":"You are standing here");
   if(x===0||y===0||x===w.W-1||y===w.H-1)L.push(es?"Borde del mapa":"Edge of the map");
-  P.t1.textContent=droneName()+" · "+((T().locs||{})[world]||world);
+  P.t1.textContent=(small?"":droneName()+" · ")+((T().locs||{})[world]||world);   /* on a phone the place is the part worth the room */
   P.t2.textContent=x+","+y+(g?"  “"+g+"”":"");
-  P.ls.replaceChildren(...L.map(s=>{const e=document.createElement("div");e.textContent=s;return e;}));
+  P.ls.replaceChildren(...(small?[L[1]||L[0]]:L).map(s=>{const e=document.createElement("div");e.textContent=s;return e;}));   /* one line: a door, a person, a paper — or what the ground is */
   P.hint.textContent=es?"flechas: volar · Esc: aterrizar":"arrows fly · Esc lands";
+  if(small&&P.bt.parentNode!==P.hd)P.hd.append(P.bt);else if(!small&&P.bt.parentNode!==P.ft)P.ft.append(P.bt);
+  P.ft.style.display=small?"none":"flex";c.style.fontSize=small?".64rem":".7rem";c.style.padding=small?"6px 8px":"8px 10px";
   P.bt.textContent=es?"Aterrizar":"Land";
   droneSwatch(P.sw,w,x,y);}
 /* the tile itself, small, beside its name: the same painter the top camera uses, borrowed for one
@@ -4387,14 +4391,26 @@ function droneSwatch(cv2,w,x,y){const g2=cv2.getContext("2d"),old=ctx;
   const fp=FLOORC[world];g2.fillStyle=tc(fp?((x+y)%2?fp[0]:fp[1]):((x+y)%2?C.floor:C.floorAlt));g2.fillRect(0,0,TS,TS);
   const ch=w.rows[y][x],tf=TILEDRAW[ch]||TILEDRAW[w.grid[y][x]];
   if(tf){ctx=g2;try{tf({sx:0,sy:0,x,y,canopy:()=>{}});}catch(e){}ctx=old;}}
-/* out of the drone's way: the flat cameras stop at a world's edge, so the drone can reach a corner of
-   the view — the card takes the other side, and on the left it sits above the dpad you are flying with */
-function droneCardPlace(){const c=$("droneCard");if(!c||c.style.display==="none")return;
-  const flat=camMode==="top"||camMode==="front",fr=flat?(DRONE.fx*TS-camXg+TS/2)/VW:0.5;
-  const left=DRONE.side==="left"?fr>0.45:fr>0.55;   /* a little give either way, so it does not flap on the middle column */
-  const pad=left?[$("dpad"),$("joy")].find(e=>e&&!e.hidden&&e.offsetHeight):null,lift=pad?pad.offsetHeight+18:10;
-  const key=(left?"L":"R")+lift;if(key===DRONE.sidek)return;DRONE.sidek=key;DRONE.side=left?"left":"right";
-  c.style.left=left?"10px":"auto";c.style.right=left?"auto":"10px";c.style.bottom=lift+"px";}
+/* OUT OF THE WAY — asked of the screen, not guessed from where the drone "usually" is. The flat cameras
+   stop at a world's edge, so the drone can reach any corner of the view, and on a phone the dpad you
+   fly with fills the bottom-left of a world 266 pixels tall. So each corner the card could take is
+   measured against the drone and its tile, the dpad or stick, and the three icons, and the card takes
+   the first that is clear: where it already is, then bottom-right (its buttons are put away while you
+   fly), bottom-left, top-left under the score. The first version was two thresholds with a band of
+   give between them; on a phone it left the card over the drone's rotor (found in a frame, not by its
+   guard — test/engine.smoke.js "ON A PHONE" now walks the drone through the view to ask). */
+function droneCardPlace(){const c=$("droneCard"),vp=$("vp");if(!c||!vp||c.style.display==="none")return;
+  const V=vp.getBoundingClientRect(),cw=c.offsetWidth,ch=c.offsetHeight,rel=e=>{const r=e.getBoundingClientRect();return [r.left-V.left,r.top-V.top,r.right-V.left,r.bottom-V.top];};
+  let d;
+  if(camMode==="top"||camMode==="front"){const C=cv.getBoundingClientRect(),kx=C.width/VW,ky=C.height/VH,x0=C.left-V.left+(DRONE.fx*TS-camXg)*kx,y0=C.top-V.top+(DRONE.fy*TS-camYg)*ky;
+    d=[x0-6,y0-18*ky,x0+TS*kx+6,y0+TS*ky+6];}
+  else d=[V.width/2-40,V.height/2-56,V.width/2+40,V.height/2+30];   /* iso and 3D keep what you steer in the middle */
+  const keep=[d,...[$("dpad"),$("joy"),$("gear"),$("fsbtn"),$("mapbtn")].filter(e=>e&&!e.hidden&&e.offsetParent).map(rel)];
+  const at={br:[V.width-10-cw,V.height-10-ch],bl:[10,V.height-10-ch],tl:[10,52]};
+  const clear=k=>{const[x,y]=at[k],r=[x,y,x+cw,y+ch];return y>=0&&keep.every(q=>!(r[0]<q[2]&&q[0]<r[2]&&r[1]<q[3]&&q[1]<r[3]));};
+  const spot=[DRONE.side,"br","bl","tl"].find(k=>at[k]&&clear(k))||"br";if(spot===DRONE.side)return;DRONE.side=spot;
+  c.style.left=spot==="br"?"auto":"10px";c.style.right=spot==="br"?"10px":"auto";
+  c.style.top=spot==="tl"?"52px":"auto";c.style.bottom=spot==="tl"?"auto":"10px";}
 /* what the pack may say in BUILDER, checked at boot like TROKEYS: a key nobody reads is somebody
    writing a line, seeing nothing happen, and having no way to find out why */
 function buildAudit(){const out=[];if(typeof BUILDER==="undefined"||!BUILDER)return out;

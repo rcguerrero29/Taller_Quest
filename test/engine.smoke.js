@@ -4044,6 +4044,45 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
       if (fs6.none) bad.push('while you fly there is no card naming the tile under the drone');
       else if (!fs6.inVp || !fs6.vis || !fs6.within) bad.push('in fullscreen the card that names the tile is not on the screen — the game covers it and you are flying blind');
+      /* 6½ · ON A PHONE THE CARD GETS OUT OF THE WAY. A phone's world is short and the dpad you fly
+         with fills its bottom-left; the flat cameras stop at a world's edge, so the drone itself can
+         reach any corner of the view. At each corner of the world, and in its middle, the card must
+         stay on the screen and cover neither the drone nor the dpad nor the icons. The drone is PLACED
+         for this one, not flown: what is asked is where the card goes, and flying to four corners of a
+         thirty-tile street by key would take the suite a minute to ask it. */
+      await page.setViewportSize({ width: 390, height: 844 });
+      const ctl0 = await page.evaluate(() => ctl);
+      await page.evaluate(() => { document.getElementById('settings').hidden = false; document.getElementById('optPad').click(); document.getElementById('settings').hidden = true;
+        camSet('top'); sizeCanvas(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+      await page.waitForTimeout(250);
+      /* the corners, the middle, and then a SWEEP right to left across two rows: a card that stays where
+         it went for the last spot is the fault a frame found and the first draft of this missed */
+      const spots = await page.evaluate(() => { const w = CW(), out = [[0, 0, 'top-left'], [w.W - 1, 0, 'top-right'], [0, w.H - 1, 'bottom-left'], [w.W - 1, w.H - 1, 'bottom-right'], [Math.floor(w.W / 2), Math.floor(w.H / 2), 'middle']];
+        [Math.floor(w.H / 2), Math.floor(w.H * 2 / 3)].forEach(y => { for (let x = w.W - 1; x >= 0; x -= 2) out.push([x, y, 'tile ' + x + ',' + y + ' (sweeping west)']); });
+        return out; });
+      for (const [sx, sy, name] of spots) {
+        await page.evaluate(([x, y]) => { DRONE.x = DRONE.sx = x; DRONE.y = DRONE.sy = y; DRONE.fx = x; DRONE.fy = y; DRONE.mt = 1; }, [sx, sy]);
+        await page.waitForTimeout(160);
+        const r6 = await page.evaluate(() => { const box = e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+          const card = document.getElementById('droneCard'), vp = document.getElementById('vp'), cv = document.getElementById('cv');
+          if (!card || card.style.display === 'none') return { none: true };
+          const cr = cv.getBoundingClientRect(), k = cr.width / VW, x0 = cr.left + (DRONE.x * TS - camXg) * k, y0 = cr.top + (DRONE.y * TS - camYg) * k;
+          const pad = [document.getElementById('dpad'), document.getElementById('joy')].find(e => e && !e.hidden && e.offsetHeight);
+          return { card: box(card), vp: box(vp), drone: [x0, y0 - 14 * k, x0 + TS * k, y0 + TS * k], pad: pad ? box(pad) : null,
+            icons: ['gear', 'fsbtn', 'mapbtn'].map(id => document.getElementById(id)).filter(e => e && e.offsetParent).map(box) }; });
+        if (r6.none) { bad.push('on a phone, with the drone at the ' + name + ' of the world, there is no card'); continue; }
+        const hit = (a, b) => a && b && a[0] < b[2] - 1 && b[0] < a[2] - 1 && a[1] < b[3] - 1 && b[1] < a[3] - 1;
+        const out = r6.card[0] < r6.vp[0] - 1 || r6.card[1] < r6.vp[1] - 1 || r6.card[2] > r6.vp[2] + 1 || r6.card[3] > r6.vp[3] + 1;
+        if (!r6.pad) bad.push('on a phone the dpad did not come up when chosen, so the card could not be asked to clear it — which is not a pass');
+        if (out) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card sticks out of the screen');
+        if (hit(r6.card, r6.pad)) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the dpad you are flying with');
+        if (hit(r6.card, r6.drone)) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the drone and the tile it is over');
+        if (r6.icons.some(b => hit(r6.card, b))) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the map, fullscreen or Settings button');
+      }
+      await page.evaluate(c0 => { const b = { swipe: 'optSwipe', joy: 'optJoy', pad: 'optPad' }[c0]; document.getElementById('settings').hidden = false; if (b) document.getElementById(b).click(); document.getElementById('settings').hidden = true;
+        camSet('top'); sizeCanvas(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }, ctl0);
+      await page.setViewportSize({ width: 480, height: 900 });
+      await page.waitForTimeout(200);
       /* 7 · ESCAPE BRINGS IT HOME, AND THE CAMERA COMES BACK TO THE HERO */
       await page.keyboard.press('Escape');
       let landed = true; try { await page.waitForFunction(() => !DRONE.on, null, { timeout: 1500 }); } catch (e) { landed = false; }
