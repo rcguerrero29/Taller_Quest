@@ -4412,6 +4412,19 @@ function droneCardPlace(){const c=$("droneCard"),vp=$("vp");if(!c||!vp||c.style.
   const spot=[DRONE.side,"br","bl","tl"].find(k=>at[k]&&clear(k))||"br";if(spot===DRONE.side)return;DRONE.side=spot;
   c.style.left=spot==="br"?"auto":"10px";c.style.right=spot==="br"?"10px":"auto";
   c.style.top=spot==="tl"?"52px":"auto";c.style.bottom=spot==="tl"?"auto":"10px";}
+/* THE SETTINGS ROW — the way in for a phone, which has no B key. The engine builds it, and only for a
+   game that declares a builder, so neither shell carries it and a game without one has the Settings it
+   always had. While the drone is up, the same row brings it home. It waited for #266: before it, Enter
+   on the focused row beside a person pressed the row AND started talking to them. */
+function droneRow(){if($("openDrone"))return;const lab=$("openLab"),at=lab&&lab.closest(".optrow");if(!at||!at.parentNode)return;
+  const row=document.createElement("div");row.className="optrow";
+  const b=document.createElement("button");b.id="openDrone";b.type="button";b.style.cssText="flex:1;";
+  b.addEventListener("click",()=>{$("settings").hidden=true;b.blur();if(DRONE.on)droneLand();else droneAsk();});
+  row.append(b);at.parentNode.insertBefore(row,at);droneRowLabel();
+  $("gear").addEventListener("click",droneRowLabel);   /* its words follow the language and whether the drone is up */
+  ["optEn","optEs"].forEach(id=>{const e=$(id);if(e)e.addEventListener("click",()=>setTimeout(droneRowLabel,0));});}
+function droneRowLabel(){const b=$("openDrone");if(!b)return;const es=lang==="es",n=BUILDER.name?droneName():(es?"el dron":"the drone");
+  b.textContent=DRONE.on?(es?"Aterrizar ":"Land ")+n:(es?"Volar ":"Fly ")+n+" · B";}
 /* what the pack may say in BUILDER, checked at boot like TROKEYS: a key nobody reads is somebody
    writing a line, seeing nothing happen, and having no way to find out why */
 function buildAudit(){const out=[];if(typeof BUILDER==="undefined"||!BUILDER)return out;
@@ -5069,11 +5082,11 @@ window.addEventListener("keydown",e=>{
   if(e.key==="Escape"){const w=panelWayOut(topPanel());if(w){e.preventDefault();w.click();}}});
 /* B and Escape for the builder's drone (#271) — its own listener, AFTER the one above, so a panel keeps
    its Escape: a panel that listener closed arrives here with defaultPrevented set, and the drone stays
-   up. A B that repeats is ignored, or holding it would take off and land in turn. */
+   up. Whose key it is otherwise is keyForWorld's one rule (#266): a box you type in keeps its B, a
+   focused button keeps only Enter and Space. A B that repeats is ignored, or holding it would take off
+   and land in turn. */
 window.addEventListener("keydown",e=>{
-  if(!buildOK()||e.defaultPrevented)return;
-  const t2=e.target;if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"||t2.tagName==="SELECT"||t2.isContentEditable))return;
-  if($("world").hidden||worldCovered())return;
+  if(!buildOK()||e.defaultPrevented||!keyForWorld(e))return;
   if((e.key==="b"||e.key==="B")&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();if(DRONE.on)droneLand();else droneAsk();return;}
   if(e.key==="Escape"&&DRONE.on&&!DRONE.land){e.preventDefault();droneLand();}});
 /* the topmost panel open over the world. The reader keeps its own Escape, above. */
@@ -7665,6 +7678,7 @@ wanderInit();
 arrivalsOnRails().forEach(function(m){mqwarn("arrival",m,true);});
 troAudit().forEach(function(m){mqwarn("trolley",m,true);});
 buildAudit().forEach(function(m){mqwarn("builder",m,true);});
+if(buildOK())droneRow();
 const SV=loadSave();
 if(SV&&SV.n){$("continueBtn").hidden=false;
   $("continueBtn").textContent=T().contBtn(SV.n,SV.xp,SV.d.length);

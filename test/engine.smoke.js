@@ -4177,6 +4177,38 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       else droneNote.push('COUNT-ONLY: with the music on, one takeoff, one tile and one landing made ' + loud + ' voices; with it off, ' + mute);
       droneP.push(...bad);
     }
+    /* 10 · THE SETTINGS ROW: offered by a game that declares a builder, never by one that does not */
+    const row = await page.evaluate(() => !!document.getElementById('openDrone'));
+    if (!drSetup.declared && row) droneP.push('a game that declares no builder offers one in its Settings');
+    if (drSetup.declared && !row) droneP.push('this game declares a builder and its Settings has no row to fly it from — the only way in is a key a phone does not have');
+    if (drSetup.declared && row) {
+      await page.evaluate(k => { world = k.id; px = fx = k.x; py = fy = k.y; moving = false; held = null; }, drSetup.pick);
+      await page.click('#gear'); await page.waitForTimeout(150);
+      await page.evaluate(() => { const d = document.getElementById('openDrone'); let p = d && d.closest('details'); while (p) { p.open = true; p = p.parentElement && p.parentElement.closest('details'); } });
+      await page.click('#openDrone'); await page.waitForTimeout(520);
+      const r10 = await page.evaluate(() => ({ on: DRONE.on, set: document.getElementById('settings').hidden }));
+      if (!r10.on) droneP.push('the Settings row for the drone does not fly it');
+      else if (!r10.set) droneP.push('the Settings row lifts the drone off behind the Settings panel, where you cannot see it');
+      await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+      await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+      /* and from the keyboard, beside a person: Enter on the focused row flies the drone and starts no
+         conversation. This is why the row waited for #266 — before it, that one keystroke did both. */
+      const nb = await page.evaluate(() => { for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
+          for (const n of (w.npcs || [])) { if (pendingAt(n) === undefined && !n.chat) continue;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const x = n.x + dx, y = n.y + dy;
+              if (y >= 0 && y < w.H && x >= 0 && x < w.W && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y) && !troIsStop(id, x, y)) {
+                world = id; px = fx = x; py = fy = y; moving = false; held = null; checkTalk(); return { who: npcName(n.npc), talk: !document.getElementById('talk').hidden, cur }; } } } }
+        return null; });
+      if (nb && nb.talk) {
+        await page.click('#gear'); await page.waitForTimeout(150);
+        await page.focus('#openDrone'); await page.keyboard.press('Enter'); await page.waitForTimeout(520);
+        const r11 = await page.evaluate(() => ({ on: DRONE.on, cur, card: document.getElementById('card').hidden }));
+        if (!r11.on) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', did not fly it');
+        if (r11.cur !== nb.cur || !r11.card) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', also started a conversation with them');
+        await page.evaluate(() => { document.getElementById('card').hidden = true; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+        await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+      } else droneNote.push('COUNT-ONLY: nobody here could be stood beside with Talk showing, so Enter on the Settings row was not tried beside a person');
+    }
     if (!drSetup.declared) {
       await page.evaluate(() => { if (typeof DRONE !== 'undefined') DRONE.on = false; delete window.BUILDER; });   /* the probe ends here */
       await absent('after the probe was taken away');
