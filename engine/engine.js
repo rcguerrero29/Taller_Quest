@@ -4032,6 +4032,7 @@ function worldDir(d){
 function tryStep(){
   if(moving||!held||RIDE.on)return;   /* you cannot walk off a moving tram */
   if(performance.now()<warpT)return;
+  if(worldCovered())return;           /* nor behind a panel: a direction held when it opened waits for it to close (#274) */
   /* `dir` becomes the WORLD direction, so sprite facing and the move interpolation
      at the bottom of loop() (which reads DIRS[dir]) stay in step with the actual move. */
   dir=worldDir(held);const[dx,dy]=DIRS[dir],nx=px+dx,ny=py+dy;
@@ -4181,6 +4182,11 @@ function loop(ts){
     wasCovered=covered;
     if(!covered&&toastHeld.length){const held=toastHeld;toastHeld=[];
       setTimeout(()=>held.forEach(([m,d,c],i)=>setTimeout(()=>toast(m,d,c),i*120)),260);}
+    /* and the keyboard comes back to the game with the street (#266). The button that opened a panel
+       keeps the focus under it, so without this Enter beside a person pressed the gear a second time
+       and opened Settings again instead of talking. Only when the street itself is back: a card or a
+       chair may be taking the keys now. */
+    if(!covered&&!$("world").hidden){const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();}
   }
   if(!$("world").hidden&&!covered)draw();
 }
@@ -4750,11 +4756,31 @@ document.querySelectorAll(".dpad button[data-d]").forEach(b=>{
 const KEYS={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",
             W:"up",S:"down",A:"left",D:"right",KeyW:"up",KeyS:"down",KeyA:"left",KeyD:"right"};
 const keyDir=e=>KEYS[e.key]||KEYS[e.code]; /* a laptop keyboard: arrows or WASD, whatever the layout or caps lock says */
+/* WHO A KEY BELONGS TO — one rule for every key (#266, #274). Whatever has the keyboard's focus, and
+   any panel lying over the world, get a key first; the world — walking, talking, reading — gets it
+   only when nothing else takes it. Before this, Enter on a focused button beside a person pressed the
+   button AND opened the conversation (the gear beside Priya: Settings and her quest in one keystroke),
+   and the arrows walked the hero about behind an open Settings panel.
+   A control takes the keys it USES. A box you type in, or a list, takes every key; anything else that
+   has the focus — a button, a link — takes Enter and Space, because that is what pressing one is. So
+   the arrows still walk with the gear focused, and a player who clicked a button has not lost his feet.
+   Guarded by real key presses on real focus in test/engine.smoke.js (grep `A KEY GOES TO WHAT HAS`). */
+function keyForWorld(e){
+  if($("world").hidden||worldCovered())return false;
+  const t=e.target;
+  if(!t||t===window||t===document||t===document.body||t===document.documentElement)return true;
+  if(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return false;
+  return e.key!=="Enter"&&e.key!==" ";
+}
 window.addEventListener("keydown",e=>{
   const t2=e.target; /* typing a dog's name is not walking — "shadow" has a w, an a, an s and a d */
   if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"))return;
-  if(!$("world").hidden&&keyDir(e)){held=keyDir(e);e.preventDefault();}
-  if(e.key==="Enter"&&!$("talk").hidden&&!$("world").hidden)$("talk").click();
+  const mine=keyForWorld(e);
+  if(mine&&keyDir(e)){held=keyDir(e);e.preventDefault();}
+  /* Enter beside a person talks; Enter or Space beside a readable thing reads it, as its button does —
+     before this a keyboard reached Read only by Tabbing to it */
+  if(mine&&(e.key==="Enter"||e.key===" ")){const b=(e.key==="Enter"&&!$("talk").hidden)?$("talk"):$("read");
+    if(b&&!b.hidden){e.preventDefault();b.click();}}
   /* Escape puts the paper down, wherever you have scrolled to */
   if(e.key==="Escape"&&!$("reader").hidden){e.preventDefault();$("docClose").click();return;}
   /* Rosa 4: and it leaves a panel, the way it does in every other program. Only a panel that
