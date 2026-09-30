@@ -724,7 +724,7 @@ out), Calle Dos got its south fence.
 Diamond-iso v1 verdict: generic surfaces, hidden entrance, doors/walls/fences/
 trolley-stop all lost identity, emotes missing. Owner steer: front profile, not
 angled. Full plans: IDEAS §10 (TILES+DECOR metadata architecture, front-profile
-renderer, camera rotate/wall fade), §11 (Sonny's program — fetch 4/7, feed, howl,
+renderer, camera rotate/wall fade), §11 (the dog program — fetch 4/7, feed, howl,
 lay, dig, 💩→ future janitor pack), §12 (emote regression). Only plans were made,
 per owner instruction — nothing built this round.
 
