@@ -1020,11 +1020,13 @@ const CANDIDATES = [
     const orec = parkPrefs.dogs.find(d => d.n === 'Oso');
     out.rehomed = !!orec && orec.rehomed === true && oso.world === orec.friend.w
       && CRIT.includes(oso);
-    // Sonny gets no rename/rehome buttons
+    // the star dog can be renamed like any adopted dog (#264) — and never rehomed: he lives on the street
     px = fx = 8; py = fy = 6;
     sonny.x = 9; sonny.y = 6; sonny.fx = 9; sonny.fy = 6; sonny.world = 'pk'; sonny.task = null;
     document.getElementById('cmd').click();
-    out.sonnyProtected = document.getElementById('cmdRen').hidden && document.getElementById('cmdReh').hidden;
+    out.starRenameOnly = (!document.getElementById('cmdRen').hidden && document.getElementById('cmdReh').hidden) ||
+      'the paw menu beside the star dog offers ' + (document.getElementById('cmdRen').hidden ? 'no rename' : 'a rename') +
+      ' and ' + (document.getElementById('cmdReh').hidden ? 'no rehome' : 'a rehome') + ' — he is renamed like any adopted dog, and never rehomed';
     document.getElementById('dogPX').click();
     // training: with luck pinned, Sit lands and Come recalls from across the lawn
     const MR = Math.random; Math.random = () => 0.01;
@@ -1106,10 +1108,304 @@ const CANDIDATES = [
   });
   ['pkOk', 'lawnReach', 'waterBlocked', 'sonny', 'inPark', 'treatCounted', 'band', 'bandStored',
     'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneSonny', 'sitOk', 'stayOk', 'comeOk',
-    'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'sonnyProtected',
+    'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'starRenameOnly',
     'agility', 'cocina', 'swipe3d', 'exited', 'card', 'sonnyHome', 'langOk'].forEach(k => {
     if (park[k] !== true) fails.push('park: ' + k + ' failed (' + JSON.stringify(park[k]) + ')');
   });
+
+  // ---- #264 · the star dog: found by his ROLE, named from the pack's POOL, renamable, and nobody's ----
+  // In plain words: every new player meets the star dog under a name the game picks from a pool and
+  // keeps; the player may rename him (one or two dogs take a while to come round to a new name — a
+  // joke, on purpose); the engine finds him by what he is, never by what he is called; and nothing
+  // in this repository says whose dog he is. Each sentence below is what somebody would notice if one
+  // of those stopped being true. Names are read off the page that ships, never typed here, except the
+  // few this suite gives dogs of its own.
+  {
+    const P = [];
+    const ROOT = path.resolve(__dirname, '..');
+    const { execFileSync } = require('child_process');
+    const esc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const word = n => new RegExp('(?:^|[^\\p{L}\\p{N}_$])' + esc(n) + '(?:$|[^\\p{L}\\p{N}_$])', 'iu');
+    const decl = await page.evaluate(() => {
+      const C = typeof CRITTERS !== 'undefined' ? CRITTERS : [];
+      const dogKinds = typeof DOGK !== 'undefined' ? [...DOGK] : [];
+      return {
+        pool: typeof DOGNAMES !== 'undefined' && Array.isArray(DOGNAMES) ? DOGNAMES.slice() : null,
+        stars: C.filter(c => c.role === 'star').map(c => ({ kind: c.kind, name: c.name })),
+        named: C.filter(c => c.name).map(c => c.name),
+        dogNames: C.filter(c => c.name && dogKinds.includes(c.kind)).map(c => c.name),
+        dogKinds,
+        triggers: Object.entries(typeof EGGS !== 'undefined' ? EGGS : {}).flatMap(([k, e]) => (e.triggers || []).map(t => [k, t])),
+        cast: [...new Set(['en', 'es'].flatMap(l => Object.values((typeof NPCN !== 'undefined' && NPCN[l]) || {}).map(n => String(n).split(' ·')[0].trim())))],
+        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => [k, typeof UI.en[k], typeof UI.es[k],
+          Array.isArray(UI.en[k]) ? UI.en[k].length : -1, Array.isArray(UI.es[k]) ? UI.es[k].length : -1])
+      };
+    });
+    const star = decl.stars[0] || null;
+    const pool = decl.pool || [];
+    if (decl.stars.length !== 1) P.push('the pack marks ' + decl.stars.length + ' dogs as its star (role:"star" in CRITTERS) — exactly one, or the engine has nothing but a name to find him by');
+    else if (!decl.dogKinds.includes(star.kind)) P.push('the pack\'s star is a "' + star.kind + '", which does not run the dog program');
+    // the names this suite gives dogs of its own: a pool name among them would fail a check here one run in N, for no fault of the game
+    const SUITE_DOGS = ['Nube', 'Oso', 'Kiko', 'Luna', 'Rex', 'Toby', 'Nieve', 'Bizcocho', 'Garabato'];
+    if (!decl.pool) P.push('the pack declares no pool of dog names (DOGNAMES), so every new player meets the star dog under the same name');
+    else {
+      if (pool.length < 8) P.push('the pool of dog names holds ' + pool.length + ' — a pool is a real choice, eight names at least');
+      if (star && !pool.includes(star.name)) P.push('the name the map gives the star ("' + star.name + '") is missing from the pool — it is one possibility among the others');
+      const low = pool.map(n => String(n).toLowerCase());
+      low.forEach((n, i) => { if (low.indexOf(n) !== i) P.push('the pool names "' + pool[i] + '" twice'); });
+      pool.forEach(n => {
+        if (typeof n !== 'string' || !n.trim() || n !== n.trim() || n.length > 24 || /[\u0000-\u001f<>]/.test(n)) { P.push('the pool\'s ' + JSON.stringify(n) + ' is not a name the rename box would keep as it is'); return; }
+        const l = n.toLowerCase();
+        decl.triggers.forEach(([k, t]) => { if (l.includes(t)) P.push('the pool\'s "' + n + '" wakes the "' + k + '" easter egg (it contains "' + t + '") — the star dog would answer to a legend that is not his'); });
+        decl.cast.forEach(c => { if (c.toLowerCase() === l || c.toLowerCase().split(/\s+/).includes(l)) P.push('the pool\'s "' + n + '" is already somebody in this city ("' + c + '")'); });
+        decl.named.forEach(c => { if (c !== (star && star.name) && c.toLowerCase() === l) P.push('the pool\'s "' + n + '" is already an animal in this city'); });
+        if (SUITE_DOGS.some(s => s.toLowerCase() === l)) P.push('the pool\'s "' + n + '" is a name this suite gives a dog of its own, so one run in ' + pool.length + ' would fail on a duplicate that is not a bug');
+      });
+    }
+    decl.words.forEach(([k, en, es, nen, nes]) => {
+      if (en === 'undefined' || es === 'undefined') P.push('the words "' + k + '" are missing in ' + (en === 'undefined' ? 'English' : 'Spanish'));
+      else if (en !== es || nen !== nes) P.push('the words "' + k + '" are not the same shape in English and Spanish (' + en + '/' + nen + ' against ' + es + '/' + nes + ')');
+    });
+    if (decl.words.some(w => w[0] === 'parkTeaser' && w[1] !== 'function')) P.push('the park card\'s last line is fixed text, so it cannot say the name the player\'s dog actually has');
+
+    // the engine finds an animal by what it IS, never by the name a pack gave it (docs/TAGS.md L17).
+    // Read off the pack at runtime: every animal the map names, and every name the pool could give.
+    {
+      const NAMES = [...new Set([...decl.named, ...pool])];
+      if (!NAMES.length) P.push('no animal in this pack has a name, so the name scan has nothing to read — that is not a pass');
+      for (const base of engineFiles(fails)) {
+        const src = fs.readFileSync(path.join(ENGINE_DIR, base), 'utf8');
+        const bare = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' ')).replace(/\/\/[^\n]*/g, '');
+        bare.split('\n').forEach((code, i) => NAMES.forEach(n => {
+          if (word(n).test(code)) P.push('engine/' + base + ':' + (i + 1) + ' names "' + n + '" in code — the engine finds an animal by its role, never by the name a pack gave it');
+        }));
+      }
+    }
+
+    // nothing in this repository says whose dog he is. Two shapes: a possessive in front of a dog word,
+    // and a dog's name within two lines of the word "owner" (a quote runs onto the next line). Every
+    // tracked file, because a note is published the moment it is pushed, wherever it sits.
+    const DOGW = '(?:dogs?|pups?|pupp(?:y|ies)|beagles?|pooch|doggo|perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)';
+    const TIE_POSS = new RegExp('\\b(?:his|my|our|mine)\\s+(?:own\\s+|real\\s+|actual\\s+|real-life\\s+|family\\s+)?' + DOGW + '\\b', 'i');
+    const TIE_OWNERS = new RegExp('\\bowner[\'\u2019]s\\s+(?:[\\w-]+\\s+){0,2}' + DOGW + '\\b', 'i');
+    const TIE_ES = /\b(?:mis?|nuestr[oa]s?)\s+(?:perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)\b|\bperr[oa]s?\s+del\s+due[ñn]o\b/i;
+    const OWNERW = /\bowners?\b|\bdue[ñn][oa]s?\b/i;
+    const ties = (text, names) => {
+      const res = names.map(n => [n, word(n)]), lines = text.split('\n'), hits = [];
+      lines.forEach((l, i) => {
+        if (TIE_POSS.test(l) || TIE_OWNERS.test(l) || TIE_ES.test(l)) hits.push([i + 1, 'says the game\'s dog belongs to somebody']);
+        const near = lines.slice(Math.max(0, i - 2), i + 1).some(x => OWNERW.test(x));
+        const nm = near && res.find(([, re]) => re.test(l));
+        if (nm) hits.push([i + 1, 'puts a dog\'s name ("' + nm[0] + '") beside the word owner']);
+      });
+      return hits;
+    };
+    // its own red cases, run every time — the phrases are assembled here so this file never says them
+    {
+      const nm = pool[0] || (star && star.name) || 'Fido', O = 'own' + 'er';
+      [['the ' + O + '\'s dog, by name', true], ['the ' + O + '\u2019s recurring dog', true], ['a note about ' + 'his' + ' dog', true],
+       [O + ', 2026-09-04: "' + nm.toLowerCase() + ' should follow me anywhere"', true],
+       [O + ', 2026-09-04: "the cone"\nand then\n' + nm + ' should be able to rip it', true],
+       ['mi ' + 'perro', true],
+       ['your dog sits', false], ['the ' + O + ' of the bakery opens at six', false], [nm + ' fetches the ball', false]]
+        .forEach(([t, bad]) => { if ((ties(t, [nm]).length > 0) !== bad)
+          P.push('the whose-dog check ' + (bad ? 'let through' : 'flagged') + ' "' + t.replace(/\n/g, ' / ') + '" — it cannot be trusted with the repository'); });
+    }
+    {
+      let files = null;
+      try { files = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean); }
+      catch (e) { P.push('git could not list the tracked files, so no line was read for who the dog belongs to — that is a red, not a pass'); }
+      if (files) {
+        const names = [...new Set([...decl.dogNames, ...pool])];
+        let read = 0;
+        files.forEach(f => {
+          let t; try { t = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (e) { return; }
+          if (t.includes('\0')) return;
+          read++;
+          ties(t, names).forEach(([ln, why]) => P.push(f + ':' + ln + ' ' + why + ' — the public copy never says whose dog he is ("the star dog" says what he is)'));
+        });
+        if (read < 50) P.push('the whose-dog check read ' + read + ' tracked text files — it is pointed at the wrong place');
+      }
+    }
+
+    // ---- the pick, the rename and the joke, each on a device of its own ----
+    // The seed is ONE 32-bit value from crypto.getRandomValues, pinned here; a sessionStorage value
+    // overrides it for a reload, so "the next visit" can roll a different seed and must not use it.
+    const pinSeed = k => { const real = crypto.getRandomValues.bind(crypto);
+      crypto.getRandomValues = a => { if (a instanceof Uint32Array && a.length === 1) {
+        const s = sessionStorage.getItem('mq264seed'); a[0] = s !== null ? +s : k; return a; } return real(a); }; };
+    const device = async (seed, before, route) => {
+      const ctx = await browser.newContext();
+      if (before) await ctx.addInitScript(before);
+      await ctx.addInitScript(pinSeed, seed);
+      const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+      const errs = []; p.on('pageerror', e => errs.push(e.message));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      if (route) await route(p);
+      await p.goto(index); await p.waitForTimeout(1200);
+      return { ctx, p, errs };
+    };
+    if (star && decl.pool && pool.length > 2) {
+      const n = pool.length;
+      let i1 = [...pool.keys()].find(i => i >= 3 && pool[i] !== star.name); if (i1 === undefined) i1 = pool.findIndex(x => x !== star.name);
+      const K1 = 4099 * n + i1, i2 = (i1 + 1) % n, K2 = 31 * n + i2;
+      const readStar = () => { const s = CRIT.find(c => c.role === 'star'); let rec = null;
+        try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+        return { name: s ? s.name : null, kept: rec && rec.star ? rec.star.n : null }; };
+
+      // A · a brand-new player: the seed names him, the name is kept, and the next visit keeps it
+      const A = await device(K1);
+      const a1 = await A.p.evaluate(readStar);
+      if (a1.name !== pool[i1]) P.push('a brand-new player met the star dog as "' + a1.name + '"; with the seed pinned to ' + K1 + ' the pool\'s rule (the seed, modulo the pool\'s size) names him "' + pool[i1] + '"');
+      if (a1.kept !== a1.name) P.push('the name picked for a brand-new player was not kept on the device (' + JSON.stringify(a1.kept) + ') — the next visit would meet a different dog');
+      await A.p.evaluate(k => sessionStorage.setItem('mq264seed', String(k)), K2);
+      await A.p.reload(); await A.p.waitForTimeout(1200);
+      const a2 = await A.p.evaluate(readStar);
+      if (a2.name !== a1.name) P.push('coming back the next day, the star dog was "' + a2.name + '" instead of "' + a1.name + '" — a name is picked once and kept');
+
+      // the rename, through the paw menu; then the stubborn part, through the same buttons
+      const ra = await A.p.evaluate(async () => {
+        const sleep = ms => new Promise(r => setTimeout(r, ms)), $ = id => document.getElementById(id), P = [];
+        const last = () => tickerLines[tickerLines.length - 1] || '';
+        document.querySelector('.classes button[data-c="architect"]').click(); $('begin').click();
+        await sleep(300);
+        const s = CRIT.find(c => c.role === 'star'); if (!s) return ['there is no star dog to rename'];
+        const was = s.name, NEW = 'Bizcocho';
+        const beside = () => { world = 'st'; s.world = 'st'; s.x = s.fx = 22; s.y = s.fy = 11; s.moving = false; s.task = null;
+          px = fx = 21; py = fy = 11; moving = false; setWorldTag(); };
+        beside(); $('cmd').click();
+        if ($('dogP').hidden) return ['the paw menu did not open beside the star dog'];
+        if ($('cmdRen').hidden) P.push('the paw menu beside the star dog offers no rename');
+        if (!$('cmdReh').hidden) P.push('the paw menu beside the star dog offers to rehome him — he lives on the street');
+        $('cmdReh').click(); if (s.world !== 'st') P.push('pressing rehome moved the star dog to ' + s.world);
+        $('cmdRen').click();
+        if ($('renP').hidden) return P.concat(['pressing rename beside the star dog opened nothing']);
+        if ($('renName').value !== was) P.push('the rename box opened with "' + $('renName').value + '", not the name he has ("' + was + '")');
+        $('renName').value = NEW; $('renGo').click();
+        const said = last();
+        let rec = null; try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+        if (s.name !== NEW) return P.concat(['renamed "' + NEW + '", the star dog is still "' + s.name + '"']);
+        if (!rec || !rec.star || rec.star.n !== NEW) P.push('the new name was not kept on the device (' + JSON.stringify(rec && rec.star) + ')');
+        if (!said.includes(was) || !said.includes(NEW)) P.push('the first time the star dog is renamed he is the stubborn one, and the rename said "' + said + '" — no word of the name he is used to');
+        // he keeps answering to the old name for the next two calls, then comes round
+        const MR = Math.random; Math.random = () => 0.01; /* every command would land: only the joke can stop one */
+        const call = () => { beside(); s.stayT = 0; $('cmd').click(); $('cmdStay').click(); return { ok: s.stayT > performance.now(), said: last() }; };
+        const c1 = call(), c2 = call(), c3 = call();
+        await sleep(2600); const round = last();
+        const c4 = call();
+        Math.random = MR;
+        [c1, c2].forEach((c, i) => {
+          if (c.ok) P.push('call ' + (i + 1) + ' after the rename: a stubborn dog answered to "' + NEW + '" at once');
+          else if (!c.said.includes(was)) P.push('call ' + (i + 1) + ' after the rename was ignored and the line ("' + c.said + '") never says the name he still answers to, "' + was + '"'); });
+        if (!c3.ok) P.push('the third call after the rename was ignored too — he must come round');
+        if (!round.includes(NEW) || round.includes(was)) P.push('coming round, the line was "' + round + '" — it should use his new name and let the old one go');
+        if (!c4.ok || c4.said.includes(was)) P.push('once he came round, a call still met the old name ("' + c4.said + '")');
+        // the words that name him name him NOW: the park card, and every treat line his legend has
+        parkExit(); const tz = $('pkTeaser').textContent; $('pkClose').click();
+        if (!tz.includes(NEW) || tz.includes(was)) P.push('the park card\'s last line says "' + tz + '" about a dog now called "' + NEW + '"');
+        const eg = s.egg && EGGS[s.egg];
+        if (!eg) P.push('the star dog carries no easter egg, so no treat line can name him');
+        else {
+          const L = eg.lines[lang].length, got = [];
+          for (let i = 0; i < L; i++) {
+            const seq = [0.1, (i + 0.5) / L]; let k = 0; const MR3 = Math.random; Math.random = () => seq[Math.min(k++, 1)];
+            beside(); petCrit = s; petTarget = s.kind;
+            try { $('treat').click(); } finally { Math.random = MR3; }
+            got.push(last());
+          }
+          if (!got.some(l => l.includes(NEW))) P.push('no treat line names the dog being fed, so a stale name could not be told from a missing one');
+          got.filter(l => l.includes(was)).forEach(l => P.push('a treat line still calls him "' + was + '": "' + l + '"'));
+        }
+        // the legend follows the name he has now: name a neighbour after him and the barrio knows him
+        const kNew = eggFor(NEW), kOld = eggFor(was);
+        if (!kNew || !EGGS[kNew] || !EGGS[kNew].dog) P.push('a neighbour named "' + NEW + '", the star dog\'s name now, wakes no dog legend (' + kNew + ')');
+        if (kOld && kOld === kNew) P.push('the barrio still hails "' + was + '" as the star dog after he was renamed');
+        spawnCustom({ n: NEW, w: 'st', x: 9, y: 11 });
+        const twins = CRIT.filter(c => DOGK.has(c.kind) && c.name === NEW).length;
+        if (twins !== 1) P.push('a neighbour named after the star dog made ' + twins + ' dogs called "' + NEW + '" — there is one of him');
+        // the paw menu finds him by his ROLE: first in the list or last, called anything
+        const decoy = { kind: 'beagle', name: 'Garabato', world: PL.park, x: 3, y: 3, fx: 3, fy: 3, face: 1, sit: false, home: [3, 3], task: null, next: 0 };
+        CRIT.unshift(decoy); world = PL.home; px = fx = PL.spawn[0]; py = fy = PL.spawn[1]; s.world = 'st';
+        const found = nearestDog(); CRIT.splice(CRIT.indexOf(decoy), 1);
+        if (found !== s) P.push('from a room with no dog in it the paw menu reached ' + (found ? '"' + found.name + '"' : 'nobody') + ', not the star dog — it finds him by his role, whatever he is called and wherever he stands in the list');
+        return P;
+      });
+      P.push(...ra);
+      await A.p.reload(); await A.p.waitForTimeout(1200);
+      const a3 = await A.p.evaluate(readStar);
+      if (a3.name !== 'Bizcocho') P.push('after a reload the renamed star dog was "' + a3.name + '" again — a rename is kept');
+      if (A.errs.length) P.push('the brand-new device threw: ' + A.errs.join(' | '));
+      await A.ctx.close();
+
+      // B and C · one or two dogs are stubborn, never more, and WHICH ones is not a roll of the dice
+      const cap = async (mr, es) => {
+        const D = await device(K1);
+        const r = await D.p.evaluate(([mr, es]) => {
+          const $ = id => document.getElementById(id), last = () => tickerLines[tickerLines.length - 1] || '';
+          if (es) $('optEs').click();
+          const MR = Math.random; Math.random = () => mr;
+          const stub = [], ren = (c, nm) => { const was = c.name; renTarget = c; $('renName').value = nm; $('renGo').click();
+            if (c.name === nm && last().includes(was)) stub.push(was); };
+          try {
+            const s = CRIT.find(c => c.role === 'star');
+            if (s) ren(s, 'Bizcocho');
+            /* a new name never contains the old one, or "the line says the old name" would read every rename as stubborn */
+            const names = ['Garabato', 'Tlacuache', 'Nopal', 'Elote', 'Cacahuate', 'Pinole', 'Tejocote', 'Zapote', 'Mamey', 'Guayabo', 'Jicama', 'Camote'];
+            const next = ['Chamoy', 'Tepache', 'Pozole', 'Atole', 'Jamoncillo', 'Glorias', 'Cocada', 'Merengue', 'Obleas', 'Borrachito', 'Palanqueta', 'Mazapan'];
+            names.forEach(nm => { $('adoptName').value = nm; $('adoptGo').click(); });
+            names.forEach((nm, i) => { const c = CRIT.find(x => x.name === nm); if (c) ren(c, next[i]); });
+            return { stub, renamed: next.filter(nm => CRIT.some(x => x.name === nm)).length };
+          } finally { Math.random = MR; }
+        }, [mr, es]);
+        await D.ctx.close();
+        return r;
+      };
+      const B = await cap(0.05, true), C = await cap(0.95, false);
+      if (B.renamed !== 12 || C.renamed !== 12) P.push('only ' + B.renamed + ' and ' + C.renamed + ' of 12 adopted dogs took a new name, so the count of stubborn ones reads a short list');
+      [['in Spanish, the dice low', B], ['in English, the dice high', C]].forEach(([how, r]) => {
+        if (r.stub.length < 1 || r.stub.length > 2) P.push(how + ', ' + r.stub.length + ' of 13 renamed dogs were stubborn (' + r.stub.join(', ') + ') — one or two, never more');
+      });
+      if (B.stub.join('|') !== C.stub.join('|')) P.push('which dogs are stubborn changed with the dice (' + B.stub.join(', ') + ' against ' + C.stub.join(', ') + ') — it is chosen once, not rolled');
+
+      // R · a device that played before the pool existed keeps the name it has always seen
+      const R = await device(K1, () => { if (!localStorage.getItem('mqpark')) localStorage.setItem('mqpark', '{"band":{},"dogs":[],"train":{}}'); });
+      const r1 = await R.p.evaluate(readStar);
+      if (r1.name !== star.name) P.push('a returning player (a park record, no name picked yet) met the star dog as "' + r1.name + '" — he keeps the name that player has always seen, "' + star.name + '"');
+      if (r1.kept !== star.name) P.push('the returning player\'s name for the star dog was not recorded (' + JSON.stringify(r1.kept) + '), so a later visit could still roll one');
+      await R.ctx.close();
+
+      // N · a game that declares no pool and no star: everything is as it was before either existed
+      const mapsSrc = fs.readFileSync(path.join(ROOT, 'content', 'meridian', 'maps.js'), 'utf8');
+      const cut = [[/const DOGNAMES=\[[^\]]*\];/, 'the pool'], [/,role:"star"/, 'the role']];
+      const missed = cut.filter(([re]) => !re.test(mapsSrc)).map(([, what]) => what);
+      if (missed.length) P.push('a game with no pool and no star cannot be built from maps.js (' + missed.join(' and ') + ' matched nothing) — this check would be reading the real game under another name');
+      else {
+        const bare = cut.reduce((s, [re]) => s.replace(re, ''), mapsSrc);
+        const N = await device(K1, null, p => p.route(/content\/meridian\/maps\.js$/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: bare })));
+        const n1 = await N.p.evaluate(() => {
+          const $ = id => document.getElementById(id), d = CRIT.find(c => DOGK.has(c.kind));
+          let rec = null; try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
+          const o = { pool: typeof DOGNAMES, role: CRITTERS.some(c => c.role), name: d && d.name,
+            mapName: (CRITTERS.find(c => DOGK.has(c.kind)) || {}).name, kept: !!(rec && 'star' in rec) };
+          document.querySelector('.classes button[data-c="architect"]').click(); $('begin').click();
+          world = 'st'; d.world = 'st'; d.x = d.fx = 22; d.y = d.fy = 11; d.moving = false; d.task = null; px = fx = 21; py = fy = 11; setWorldTag();
+          $('cmd').click(); o.ren = !$('cmdRen').hidden; o.reh = !$('cmdReh').hidden; $('dogPX').click();
+          world = PL.home; o.reached = nearestDog() === d;
+          return o;
+        });
+        if (n1.pool !== 'undefined' || n1.role) P.push('the no-pool game still declares ' + (n1.role ? 'a star' : 'a pool') + ' — this check is reading the real game');
+        else {
+          if (n1.name !== n1.mapName) P.push('with no pool declared the dog was named "' + n1.name + '" — a game that declares no pool keeps the name in its own map ("' + n1.mapName + '")');
+          if (n1.kept) P.push('with no pool declared the engine still wrote a picked name into the park record');
+          if (n1.ren || n1.reh) P.push('with no star declared the paw menu offers ' + (n1.ren ? 'a rename' : 'a rehome') + ' for the map\'s dog — before #264 it offered neither');
+          if (!n1.reached) P.push('with no star declared the paw menu no longer reaches the map\'s dog from another room');
+        }
+        if (N.errs.length) P.push('the no-pool game threw: ' + N.errs.join(' | '));
+        await N.ctx.close();
+      }
+    }
+    fails.push(...P.map(m => 'star dog (#264): ' + m));
+  }
 
   // ---- swiping "up" must walk up the SCREEN at every camera rotation ----
   // The bug this locks out: engine.js referenced T3 zero times, so movement was pure
