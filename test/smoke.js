@@ -1792,6 +1792,168 @@ const CANDIDATES = [
   });
   fails.push(...season);
 
+  // ---- #277: rename a dog, close the game, open it again — everything about her but her name is the same ----
+  // Found 2026-09-30: a rename carried the bandana and the training to the new name by hand, from a list, and the
+  // list did not have the alebrije look, which is kept by name too — so she went back to whatever her new name
+  // gives, in Settings, on the street and after a reload. The rename's older check (grep `migrates its records`)
+  // reads the same two tables the rename carries, so it could never see a third. This one does not ask the rename's
+  // list: it records what a player can see about each dog AND everything the game has stored under her name in any
+  // table, renames her, reloads, and requires all of it back under the new name, and nothing still kept under the
+  // old one. Three dogs: one with a look chosen, a bandana and some training; one nobody chose anything for (her
+  // look came from her name); one wearing a custom look — the seam a later editor writes; nothing in play writes it
+  // yet, so it is put there by hand. The rest is done the way a player does it: adopted at the park's post, the look
+  // picked in Settings → Alebrijes, the bandana and the Sit from the buttons beside her, the rename from the paw
+  // menu, the game closed and continued. A fresh browser of its own: it leans on nothing above, leaves nothing behind.
+  {
+    const ctx = await browser.newContext();
+    const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+    p.setDefaultTimeout(6000);
+    const errs = [], rn = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    const helpers = () => {
+      const dogOf = nm => CRIT.find(c => c.name === nm && DOGK.has(c.kind));
+      const free = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
+      // every dog here back on her own spot and told to stay (they wander, and a wander must not decide what is measured);
+      // then the first tile beside what we came for, and any other dog within reach of it walked a few tiles off — so the
+      // buttons and the paw menu mean the one we mean (the park's own spots ring its post, so three dogs at home fence it)
+      const hold = wid => { const here = CRIT.filter(c => DOGK.has(c.kind) && c.world === wid);
+        here.forEach(c => { if (c.home) { c.x = c.home[0]; c.y = c.home[1]; } c.stayT = performance.now() + 1e9; c.task = null; c.follow = false; c.fx = c.x; c.fy = c.y; c.moving = false; }); return here; };
+      const dist = (c, x, y) => Math.abs(c.x - x) + Math.abs(c.y - y);
+      const standBy = (wid, near, alone) => { const w = WORLDS[wid], here = hold(wid); world = wid; setWorldTag(); moving = false;
+        let at = null; for (let y = 0; y < w.H && !at; y++) for (let x = 0; x < w.W && !at; x++) if (free(w, x, y) && near(x, y) && !here.some(c => dist(c, x, y) === 0)) at = [x, y];
+        if (!at) return false;
+        for (const c of here) { if (c === alone || dist(c, at[0], at[1]) > 1) continue; let to = null;
+          for (let y = 0; y < w.H && !to; y++) for (let x = 0; x < w.W && !to; x++) if (free(w, x, y) && Math.abs(x - at[0]) + Math.abs(y - at[1]) >= 3 && here.every(o => o === c || dist(o, x, y) >= 2)) to = [x, y];
+          if (!to) return false; c.x = c.fx = to[0]; c.y = c.fy = to[1]; }
+        px = fx = at[0]; py = fy = at[1]; return true; };
+      window.__renLook = {
+        beside: nm => { const d = dogOf(nm); return !!d && standBy(d.world, (x, y) => Math.abs(d.x - x) + Math.abs(d.y - y) === 1, d); },
+        post: () => { const w = WORLDS[PL.park]; return standBy(PL.park, (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => (w.grid[y + dy] || [])[x + dx] === '9'), null); },
+        /* the tail wags with the clock and the pose changes by the second: both held still, so two drawings differ only by how she is dressed */
+        draw: nm => { const d = dogOf(nm); if (!d) return null;
+          const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
+            return Array.from(g.getImageData(0, 0, 44, 44).data); }
+          finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
+        /* everything the game has stored under this name, in every table it keeps: a key that is the name, or a value that is */
+        stored: nm => { const out = {};
+          const walk = (v, at) => { if (v === nm) out[at] = '{name}';
+            else if (v && typeof v === 'object') Object.keys(v).forEach(k => { const kp = at + '.' + (k === nm ? '{name}' : k); if (k === nm) out[kp] = JSON.stringify(v[k]); walk(v[k], kp); }); };
+          for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); let v; try { v = JSON.parse(localStorage.getItem(key)); } catch (e) { continue; } walk(v, key); }
+          return out; },
+        /* what a player can see about her, and what the game keeps for her */
+        snap: nm => { const d = dogOf(nm); if (!d) return null; const r = dogRecord(d), lk = alebLookFor(d.kind, d.name);
+          return { kind: d.kind, coat: d.c, look: lk ? lk.id : null, band: d.band || null, train: JSON.stringify(parkPrefs.train[d.name] || null),
+            friend: JSON.stringify(r ? r.friend : null), home: JSON.stringify(r ? { rehomed: !!r.rehomed, x: r.x, y: r.y } : null),
+            px: __renLook.draw(nm), stored: __renLook.stored(nm) }; },
+        listed: nm => { const sel = $('aleWho'); if (!sel || $('aleRow').hidden) return 'Settings has no Alebrijes menu';
+          const opts = [...sel.options].map(o => o.value);
+          return opts.includes(nm) ? '' : `Settings → Alebrijes does not list ${nm} (it lists ${opts.join(', ')})`; },
+        pressed: () => [...$('aleRow').querySelectorAll('button[aria-pressed="true"]')].map(b => b.dataset.look),
+      }; };
+    const call = (fn, ...a) => p.evaluate(([fn, a]) => __renLook[fn](...a), [fn, a]);
+    const diff = (a, b) => { if (!a || !b || a.length !== b.length) return -1; let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) n++; return n; };
+    const drawer = async id => { await p.click('#gear'); if (!await p.evaluate(id => $(id).open, id)) await p.click(`#${id} summary`); };
+    const selfDrawer = () => drawer('drwSelf');
+    // what Settings → Alebrijes says this dog wears: the one look pressed once her name is chosen
+    const menuSays = async nm => { await selfDrawer(); const none = await call('listed', nm); let look = null;
+      if (!none) { await p.selectOption('#aleWho', nm); const pr = await call('pressed'); look = pr.length === 1 ? pr[0] : 'pressed: ' + (pr.join('+') || 'none'); }
+      await p.click('#closeSet'); return { none, look }; };
+    const adopt = async nm => { if (!await call('post')) return false;
+      await p.waitForSelector('#adopt:not([hidden])'); await p.click('#adopt'); await p.fill('#adoptName', nm); await p.click('#adoptGo'); await p.waitForTimeout(150);
+      return p.evaluate(nm => CRIT.some(c => c.name === nm && DOGK.has(c.kind)), nm); };
+    const rename = async (old, nw) => { if (!await call('beside', old)) return false; await p.waitForTimeout(120);
+      await p.click('#cmd'); await p.click('#cmdRen'); await p.fill('#renName', nw); await p.click('#renGo'); await p.waitForTimeout(150);
+      return p.evaluate(([old, nw]) => CRIT.some(c => c.name === nw) && !CRIT.some(c => c.name === old), [old, nw]); };
+    // everything but her name the same: what a player sees, and everything the game kept under her name
+    const same = (a, b, at) => {
+      if (!b) return [`${at}: she is not in the game at all`];
+      const out = [], dp = diff(a.px, b.px);
+      if (b.kind !== a.kind || b.coat !== a.coat) out.push(`${at}: she is a different dog — was a ${a.kind} in ${a.coat}, now a ${b.kind} in ${b.coat}`);
+      if (b.look !== a.look) out.push(`${at}: she wears another alebrije look — was ${a.look}, now ${b.look}`);
+      if (dp !== 0) out.push(`${at}: she is drawn differently — ${dp < 0 ? 'there is no drawing to compare' : dp + ' of 1936 pixels changed'}`);
+      if (b.band !== a.band) out.push(`${at}: her bandana changed — was ${a.band || 'none'}, now ${b.band || 'none'}`);
+      if (b.train !== a.train) out.push(`${at}: her training changed — was ${a.train}, now ${b.train}`);
+      if (b.friend !== a.friend) out.push(`${at}: her friend in the city changed — was ${a.friend}, now ${b.friend}`);
+      if (b.home !== a.home) out.push(`${at}: her home changed — was ${a.home}, now ${b.home}`);
+      const lost = Object.keys(a.stored).filter(k => b.stored[k] !== a.stored[k]);
+      if (lost.length) out.push(`${at}: not everything the game kept under her name came with her — ${lost.map(k => `${k} was ${a.stored[k]}, now ${b.stored[k] === undefined ? 'gone' : b.stored[k]}`).join('; ')}`);
+      return out; };
+    // a TABLE still keyed by the old name is left behind; a value that remembers the old name on purpose is not
+    const orphans = async (old, at) => { const k = Object.keys(await call('stored', old)).filter(s => s.endsWith('.{name}'));
+      return k.length ? [`${at}: the game still keeps something under her old name — ${k.map(s => s.replace(/\{name\}/g, old)).join(', ')}`] : []; };
+    try {
+      await p.goto(index); await p.waitForTimeout(900);
+      await p.click('.classes button[data-c="architect"]'); await p.click('#begin'); await p.waitForTimeout(500);
+      await p.evaluate(helpers);
+      // the flat camera, from Settings → Picture: it draws at three times the 3D frame rate here, and the drawing measured
+      // below is the one every camera paints with
+      await drawer('drwLook'); await p.click('#camRow button[data-cam="top"]'); await p.click('#closeSet');
+      const aid = await p.evaluate(() => { const a = Object.entries(SEASONS).find(([k, v]) => v.art && v.art.alebrije); return a && a[0]; });
+      const D = [{ old: 'Canela', is: 'her look chosen, a bandana, training' }, { old: 'Pinto', is: 'nothing chosen for her' }, { old: 'Rayo', is: 'a custom look' }];
+      if (!aid) rn.push('no season hands out alebrije looks — nothing was measured, which is not a pass');
+      else {
+        for (const d of D) if (!await adopt(d.old)) throw new Error(`${d.old} could not be adopted at the park's post`);
+        // then the alebrije mode, from Settings → Picture, by the button the season row builds from content
+        await drawer('drwLook'); await p.click(`#seasonRow button[data-sn="${aid}"]`); await p.click('#closeSet');
+        // each new name's own look must differ from the old name's, and Canela's chosen look from both — or a kept look and a lost one are the same picture
+        const plan = await p.evaluate(D => { const L = alebLooks(); if (!L) return null;
+          const used = new Set(CRIT.map(c => String(c.name || '').toLowerCase())), cand = ['Miel', 'Nube', 'Luna', 'Toby', 'Kiko', 'Rex', 'Sol', 'Nieve', 'Coco', 'Lola', 'Chispa', 'Duque'];
+          return D.map(d => { const dog = CRIT.find(c => c.name === d.old && DOGK.has(c.kind)); if (!dog) return null;
+            const mine = alebLookFor(dog.kind, d.old).id, nw = cand.find(n => !used.has(n.toLowerCase()) && alePick.animals[n] === undefined && alebLookFor(dog.kind, n).id !== mine);
+            if (!nw) return { mine }; used.add(nw.toLowerCase()); const theirs = alebLookFor(dog.kind, nw).id;
+            return { mine, nw, pick: L.map(l => l.id).find(id => id !== mine && id !== theirs) }; }); }, D);
+        if (!plan || plan.some(x => !x || !x.nw || !x.pick)) rn.push('the check cannot tell a kept look from a lost one — the mode is off, a pup is missing, or no new name gives a different look: ' + JSON.stringify(plan));
+        else {
+          D.forEach((d, i) => Object.assign(d, plan[i]));
+          const [A, B, C] = D, bareA = await call('draw', A.old);
+          // Canela: the look picked in Settings, the bandana from the button beside her, a Sit that lands (the dice held for one click)
+          await selfDrawer(); await p.selectOption('#aleWho', A.old); await p.click(`#aleRow button[data-look="${A.pick}"]`); await p.click('#closeSet');
+          if (!await call('beside', A.old)) throw new Error(`there is nowhere to stand beside ${A.old} alone`);
+          await p.waitForSelector('#band:not([hidden])'); await p.click('#band');
+          await p.evaluate(() => { window.__mr = Math.random; Math.random = () => 0.01; });
+          try { await p.click('#cmd'); await p.click('#cmdSit'); } finally { await p.evaluate(() => { Math.random = window.__mr; }); }
+          // Rayo: a custom look laid over her own, the way a later editor would
+          const bareC = await call('draw', C.old);
+          await p.evaluate(nm => { alePick.custom[nm] = { tint: '#0B6E4F', pat: '#F2E94E' }; alePersist(); }, C.old);
+          for (const d of D) d.s0 = await call('snap', d.old);
+          if (!A.s0.band || A.s0.train === 'null' || A.s0.look !== A.pick || diff(bareA, A.s0.px) < 1) rn.push(`${A.old} did not get her bandana, her Sit or her look (${A.s0.band}, ${A.s0.train}, ${A.s0.look}) — the check cannot say whether they come with her`);
+          else if (diff(bareC, C.s0.px) < 1) rn.push(`the custom look changed nothing about how ${C.old} is drawn — nothing to measure`);
+          else {
+            for (const d of D) {
+              if (!await rename(d.old, d.nw)) { rn.push(`the paw menu did not rename ${d.old} to ${d.nw} — nothing was measured`); continue; }
+              const at = `renamed ${d.old} → ${d.nw} (${d.is})`;
+              rn.push(...same(d.s0, await call('snap', d.nw), at), ...await orphans(d.old, at)); }
+            const said = await menuSays(A.nw);
+            if (said.none) rn.push(`renamed ${A.old} → ${A.nw}, and ${said.none}`);
+            else if (said.look !== A.pick) rn.push(`renamed ${A.old} → ${A.nw}, and Settings → Alebrijes says she wears ${said.look}; she was picked ${A.pick}`);
+            // the next time the game is opened
+            await p.reload(); await p.waitForTimeout(900); await p.click('#continueBtn'); await p.waitForTimeout(500); await p.evaluate(helpers);
+            if (!await p.evaluate(() => !!alebLooks())) rn.push('after a reload the alebrije mode is off, so nothing about the looks could be measured');
+            else {
+              for (const d of D) { const at = `renamed ${d.old} → ${d.nw} (${d.is}), then a reload`;
+                rn.push(...same(d.s0, await call('snap', d.nw), at), ...await orphans(d.old, at)); }
+              const said2 = await menuSays(A.nw);
+              if (said2.none) rn.push(`after a reload, ${said2.none}`);
+              else if (said2.look !== A.pick) rn.push(`after a reload, Settings → Alebrijes says ${A.nw} wears ${said2.look}; she was picked ${A.pick}`);
+              // the look went WITH her: a new pup given her old name is drawn as the first one was before anybody chose her anything
+              if (!await adopt(A.old)) rn.push(`after the rename, a new pup could not be named ${A.old} — nothing was measured`);
+              else { const d3 = diff(bareA, await call('draw', A.old));
+                if (d3 !== 0) rn.push(`a new pup named ${A.old} is not drawn as the first ${A.old} was before anything was chosen for her (${d3} pixels differ) — something stayed with the name instead of going with the dog`); }
+            }
+          }
+        }
+      }
+    } catch (e) { rn.push('the check could not drive the game to the end, so it measured nothing: ' + String(e.message || e).split('\n')[0]); }
+    if (errs.length) rn.push('the page errored: ' + errs.join(' | '));
+    if (!rn.length) console.log('  RENAME, RELOAD, COMPARE: three dogs renamed (a chosen look, a bandana and training · nothing chosen · a custom look) — after a reload everything but the name came back, and nothing stayed under an old name');
+    fails.push(...rn.map(s => '#277 rename, reload, compare: ' + s));
+    await ctx.close();
+  }
+
   // ---- a door says where it leads ----
   // The cold read (IDEAS §15.8) found all five door glyphs pixel-identical: an office
   // door, a shop entrance and the mercado's door were the same brown, so nothing told a
