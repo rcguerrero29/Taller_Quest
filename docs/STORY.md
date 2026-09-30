@@ -346,7 +346,7 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   folder. Nolasco is the one who reads them together.
 - **Frederick's fame** — the barrio's media department; his DMs fill with
   questions meant for the businesses (the wrong-channel gag, with a real lesson
-  under it). He hosts the inauguración. Sonny is the intern. **Four wrong-channel beats
+  under it). He hosts the inauguración. The star dog is the intern (his name is the player's, #264). **Four wrong-channel beats
   planted (2026-09-02)**, one per pack; Nolasco's grade-3 ending names him host.
 - **The four cats** — the street cat has no business. She picks the taller and
   Don Tacho does not object. Her name is Tuerca. Every new business gets a cat, and

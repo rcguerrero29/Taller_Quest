@@ -379,8 +379,8 @@ function findChromium() {
       if (!out1 || out1.lk.style !== 'long') P.push('#132: a save made after this change cannot keep long hair (got "' + (out1 && out1.lk.style) + '")');
     }
     // ---- #130: naming and styling are two parts, and look like two parts ----
-    // Owner: "for the menu to update sonny and my appearance, can we move it slightly up and
-    // sepparate from my name? just looks like it overlaps". The panel is one block above (title,
+    // Asked for (#130): the menu that sets the dog's look and the hero's own should sit a little higher
+    // and apart from the name — it looked as if it overlapped. The panel is one block above (title,
     // note, preview, name) and one below (the choices), with a rule between them — and the chair,
     // which comes in with the name hidden, gets the same shape so both ways in read the same.
     {
@@ -431,9 +431,9 @@ function findChromium() {
       Object.keys(said).slice(0, 4).forEach(m => P.push('Rosa 2: ' + m));
     }
     // ---- #127: every drawer is one subject, and its controls live inside it ----
-    // Owner: "there is a bug in the main settings menu due to the options for sonny/my character.
-    // lets just move that to its own section and re organize so it doesnt break the architecture
-    // of the drawers and menus." So this checks the architecture, not one drawer: each drawer is
+    // Asked for (#127): the options for the dog and the hero broke the main settings menu, so they moved
+    // to a section of their own, reorganised so they do not break the architecture of the drawers and
+    // menus. So this checks the architecture, not one drawer: each drawer is
     // named, opens and closes on its own, and every control belongs to exactly one of them.
     {
       const WANT = { drwCtl: ['lbCtl', 'optSwipe'], drwLook: ['lbTheme', 'themeRow', 'lbCam', 'camRow', 'lbSeason', 'seasonRow'],
@@ -711,7 +711,7 @@ function findChromium() {
            in any other order reads differently from one run in reading order.
        2 · take every piece out of the park, and the roll that means "run the course" does nothing
            at all: not a run to empty ground, and not a fall-through into the next whim on the list,
-           which is digging, the puppy phase the owner keeps rare (engine.js, grep `puppy phase`).
+           which is digging, the puppy phase canon keeps rare (engine.js, grep `puppy phase`).
      Synchronous from end to end, so no frame is drawn and no live dog moves while the park is
      rearranged, and every tile is put back before it returns. The dog is made here rather than
      borrowed, so this runs in a pack with no dog at all; which dog it is never enters the route.
@@ -781,7 +781,7 @@ function findChromium() {
       if (!did.length && JSON.stringify(d2) !== before) did.push('change what it was doing');
       if (did.length) P.push('a park dog runs an agility course its park does not have: with no gear anywhere in ' + wid +
         ', the roll that means "run the course" made the dog ' + did.join(' and ') +
-        '. A park with no course has nothing to run, and the roll must not pass to anything else — digging is the puppy phase the owner keeps rare');
+        '. A park with no course has nothing to run, and the roll must not pass to anything else — digging is the puppy phase canon keeps rare');
     } finally {
       Math.random = MR; window.setTimeout = ST;
       keepRows.forEach((r, i) => { w.rows[i] = r; });
@@ -793,7 +793,7 @@ function findChromium() {
   fails.push(...agility);
 
   /* ---- THE DOG DIGS ABOUT 8% OF WHAT HE DOES, WHEREVER HE IS ----
-     The owner's canon (2026-09-01, docs/IDEAS.md:436): digging was a puppy phase, cut to about 8% of
+     Canon (2026-09-01, docs/IDEAS.md:436): digging was a puppy phase, cut to about 8% of
      his whims from about 25%. Owner, 2026-09-29: "ok make it about 8 percent yes."
      The same day as the canon, the course and the greeting between dogs were slotted in ABOVE
      digging with their conditions in the else-if, so every roll they declined fell through to the
@@ -867,7 +867,7 @@ function findChromium() {
         if (!did) { P.push(pl.name + ' none of the dog\'s whims does anything, so how often he digs could not be asked'); return; }
         seen.push({ pl, n });
         const dig = pc('dig');
-        if (dig < 6 || dig > 10) P.push(pl.name + ' the dog digs ' + dig.toFixed(1) + '% of the time; the owner keeps it about 8% ("ok make it about 8 percent yes", 2026-09-29 — a puppy phase, docs/IDEAS.md:436)');
+        if (dig < 6 || dig > 10) P.push(pl.name + ' the dog digs ' + dig.toFixed(1) + '% of the time; canon keeps it about 8% ("ok make it about 8 percent yes", 2026-09-29 — a puppy phase, docs/IDEAS.md:436)');
         if (pc('nap') + pc('song') <= 50) P.push(pl.name + ' naps and songs are only ' + (pc('nap') + pc('song')).toFixed(1) + '% of what the dog does; they are meant to be most of it');
         if (pl.pal && !n.greeting) P.push(pl.name + ', the two dogs never greet each other');
         if (pl.wid === PL.park && hasCourse && !n.course) P.push(pl.name + ', the dog never runs the course his park has');
@@ -917,7 +917,7 @@ function findChromium() {
     const real = CRIT.filter(isDog).map(c => [c, c.world]);
     const at = p => '(' + p[0] + ',' + p[1] + ')';
     const open = (wid, x, y) => { const w = WORLDS[wid]; return x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y); };
-    const made = (wid, x, y) => ({ kind: K, name: 'Sonny', world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null, holdT: 0, stayT: 0 });
+    const made = (wid, x, y) => ({ kind: K, name: 'Probe', world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null, holdT: 0, stayT: 0 });
     let T = performance.now();
     /* one dog through its task, on this check's clock; `each` sees every step before it is taken */
     const drive = (d, max, each) => { for (let i = 0; i < max && d.task; i++) { T += 100; tick(100, T); if (each) each(d); dogStep(d, T); d.moving = false; d.fx = d.x; d.fy = d.y; } T += 100; tick(100, T); };
@@ -1082,7 +1082,7 @@ function findChromium() {
     try {
       real.forEach(([c]) => { c.world = '__frozen'; });
       world = pick.wid; px = fx = w.W - 1; py = fy = w.H - 1;
-      const d = { kind: K, name: 'Sonny', world: pick.wid, x: pick.s[0], y: pick.s[1], fx: pick.s[0], fy: pick.s[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: pick.s.slice(), task: null, holdT: 0, stayT: 0 };
+      const d = { kind: K, name: 'Probe', world: pick.wid, x: pick.s[0], y: pick.s[1], fx: pick.s[0], fy: pick.s[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: pick.s.slice(), task: null, holdT: 0, stayT: 0 };
       Math.random = () => 0.86;   /* inside the band that, away from the park, means "a romp with somebody" */
       dogWhim(d, T);
       Math.random = MR;
@@ -3016,6 +3016,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (rowS === undefined && rowN === undefined) { P.push('COUNT-ONLY: nobody can stand beside the trolley line in ' + L.world + ' at x=' + mid); return P; }
     const keep = { w: world, px, py, cam: camMode, st: TRO.state, x: TRO.x, d: TRO.dir, mv: moving, season: seasonPick, dp: drawPerson, td: window.troDraw2D };
     if (typeof seasonSet === 'function') seasonSet('off');   /* nothing that sways by the clock in the frame */
+    /* …and ONE INSTANT for all five frames, because the season is not the only clock. Found 2026-09-30 as a 1-pixel red
+       that passed on re-run: the five frames are five draws, milliseconds apart (tens on a busy runner), and the
+       hummingbird at the stop hovers on Date.now over the feet of the person in front of the car. "Him without the car"
+       drawn a moment after "him with it" differed where the bird had moved, and that was counted as the car covering
+       him. Both clocks stand still until the frames are taken; the draw order does not depend on the clock. */
+    const wallNow = Date.now, pagePerf = performance.now, t0 = wallNow(), p0 = pagePerf.call(performance); Date.now = () => t0; performance.now = () => p0;
     world = L.world; moving = false; held = null;
     /* the car's tail one tile west of the hero's column: a whole-tile x, because the flat cameras paint the car
        from its tile's corner and a half-tile car beside a whole-tile person barely touches him on screen */
@@ -3049,7 +3055,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
       }); });
-    window.troDraw2D = real; drawPerson = realDP;
+    window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
     if (typeof seasonSet === 'function') seasonSet(keep.season);
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d;
     camSet(keep.cam); sizeCanvas();
