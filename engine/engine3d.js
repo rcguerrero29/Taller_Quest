@@ -43,8 +43,8 @@ function t3Fell(){if(T3.said)return;T3.said=true;const last=T3.errors[T3.errors.
    Billboards always show their painted face to the camera, but the painters mirror an
    animal by its WORLD facing (`face` = ±x). Turn the camera to the north stop and a dog
    trotting to world +x is painted facing screen-right while +x is now screen-LEFT — so
-   the ball he carries, placed at world +x, sat behind him ("Sonny is picking up the ball
-   with his butt", owner 2026-09-03). Facing is a screen-space fact; derive it from the
+   the ball he carries, placed at world +x, sat behind him (a playtest of 2026-09-03: the dog
+   was picking up the ball with his butt). Facing is a screen-space fact; derive it from the
    camera stop and the actor's velocity, not from the map. */
 const t3Q=()=>((Math.round(T3.yaw/(Math.PI/2))%4)+4)%4;
 /* one hex→hex mix, so a value ramp can be written where it is read instead of as six constants */
@@ -594,8 +594,8 @@ function t3Build(key){
         }
         continue;} /* the head ▲ is the top step; its portal mark still floats above it */
     }
-    if((TILES[gch]||{}).kind==="bridge"){ /* the rainbow bridge (IDEAS §15.4, owner 2026-09-07: "upgrade rainbow
-         bridge for sonny asap"): it was two tiles of flat art that read as a smear on the floor. Now a
+    if((TILES[gch]||{}).kind==="bridge"){ /* the rainbow bridge (IDEAS §15.4, asked for on
+         2026-09-07 as an upgrade): it was two tiles of flat art that read as a smear on the floor. Now a
          plank DECK stands BRIDGEH over the water wearing the six bands on top, with a post-and-bar rail
          on each side of the crossing; whoever crosses stands on the deck (stairLift). The run follows
          the river: water north or south means the bridge runs east-west and the rails stand north and south. */
@@ -1283,7 +1283,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
 }
 /* #61: a wall between the camera and the hero vanishes for that frame — the cutaway every third-
    person camera does. Standing in the lobby with the south wall behind you, the wall used to fill
-   the screen and the hero (drawn through walls) read as standing ON it, while Sonny, drawn in the
+   the screen and the hero (drawn through walls) read as standing ON it, while the dog, drawn in the
    scene, was hidden behind it. Now that wall is simply not there while it is in the way. Walls,
    facades, lintels, doors and the window pieces cut; treads, rails, props and decor do not. */
 /* #65, the owner's word after [partner] walked it: "[partner] prefers the minimized wall but limit it to one

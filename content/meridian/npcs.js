@@ -70,11 +70,13 @@ const CHILL=[
 /* name eggs: lowercase triggers -> reaction lines (EN/ES in lockstep). dog:true eggs
    join as a lemon beagle critter instead of a person. All lines are ORIGINAL homage —
    in-world townsfolk reacting, never franchise quotes. Built 2026-08-30 from the
-   reference research pack (Marvel / Harry Potter / Vampire Diaries / PLL). */
+   reference research pack (Marvel / Harry Potter / Vampire Diaries / PLL).
+   star:true (#264): the star dog's own legend has no fixed trigger — it answers to whatever he is
+   called now, and a line written n=>… is said with that name. */
 const EGGS={
- sonny:{triggers:["sonny"],dog:true,lines:{
-  en:["A lemon beagle! The barrio has been waiting for this exact dog.","Sonny inspects the block. The block passes, barely.","Frederick has heard legends of a beagle with perfect vibes."],
-  es:["¡Un beagle limón! El barrio esperaba justo a este perro.","Sonny inspecciona la cuadra. La cuadra aprueba, apenas.","Frederick ha oído leyendas de un beagle con vibra perfecta."]}},
+ star:{star:true,dog:true,lines:{
+  en:["A lemon beagle! The barrio has been waiting for this exact dog.",n=>`${n} inspects the block. The block passes, barely.`,"Frederick has heard legends of a beagle with perfect vibes."],
+  es:["¡Un beagle limón! El barrio esperaba justo a este perro.",n=>`${n} inspecciona la cuadra. La cuadra aprueba, apenas.`,"Frederick ha oído leyendas de un beagle con vibra perfecta."]}},
  tony:{triggers:["tony","stark","iron man","ironman"],lines:{
   en:["Tony? Don Güero says even if you build a flying suit in a cave out of scrap, in this barrio you still need a permit.","Rosa put out a tip jar shaped like a red-and-gold helmet. Genius, billionaire... okay, mostly it's a very good tip jar.","The muralist painted a little glowing circle on the taquería sign. Now the al pastor feels self-funded."],
   es:["¿Tony? Don Güero dice que aunque armes un traje volador en una cueva con puro fierro viejo, en este barrio igual necesitas permiso.","Rosa puso un bote de propinas con forma de casco rojo y dorado. Genio, millonario... bueno, más que nada es muy buen bote.","El muralista pintó un circulito brillante en el letrero de la taquería. Ahora el pastor se siente autofinanciado."]}},
