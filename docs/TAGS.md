@@ -295,7 +295,7 @@ genuinely reusable."* The **seam** is reusable. Its **defaults** are one town's 
 
 ---
 
-### L17 · The engine still names Meridian's career classes and the owner's dog
+### L17 · The engine still names Meridian's career classes and its star dog
 **Registered 2026-09-10. Both verified in live code, not comments.**
 
 `[CODE]` `const SHIRTS={architect:"#E0A430",diplomat:"#8B5CF6",operator:"#2AA47C"}`
@@ -304,16 +304,22 @@ shared engine. A pack whose people are not architects, diplomats and operators c
 and the shell's character creator is keyed to the same three (`index.html:386-388`), so the town
 carries them too, unused.
 
-`[CODE]` `CRIT.find(c=>isDog(c)&&c.name==="Sonny")` (`engine/engine.js:4679`) — **the owner's dog, by
+`[CODE]` `CRIT.find(c=>isDog(c)&&c.name==="Sonny")` (`engine/engine.js:4679`) — **the pack's star dog, by
 name, in a conditional in the shared engine.** Not a comment. The paw menu's last-resort fallback.
 
 **The part worth the entry:** `test/smoke.js:2204-2209` is a 38-name blocklist built exactly to catch
 this, and it lists `chelo`, `nando`, `perla`, `pelusa`, `frijol` — and **not `sonny`**. The guard that
-exists to stop one pack's names reaching the engine is missing the one name the owner would recognise
-fastest. `[TRAINING]` A blocklist is a list of the mistakes somebody already made; it can only ever be
+exists to stop one pack's names reaching the engine is missing the one name every player of this pack
+meets first. `[TRAINING]` A blocklist is a list of the mistakes somebody already made; it can only ever be
 as complete as yesterday. `docs/NEW-WORLD.md` §3 already says the honest fix is to make the scan
 generic — *scan the pack for capitalised names and forbid them in `engine/`* — and this is the
 evidence for doing it rather than adding a 39th word.
+
+**The dog half, closed 2026-09-30 (#264, `mq-v204`).** The engine finds the star by `role:"star"` in
+`CRITTERS` and names him from the pack's `DOGNAMES` pool; it never spells a name. `test/smoke.js` (grep
+`the engine finds an animal by its role`) reads every name the pack gives an animal, and every name the
+pool could give, off the page that ships, and fails the engine for spelling one in code — the generic
+scan this entry asked for, for animals. The career classes are still open.
 
 ---
 

@@ -256,6 +256,10 @@ function auditWander(){const bad=[];
    triggers to reaction lines (and dog:true eggs join as a critter instead). */
 const CHILLN={},CHILLEGG={};let chillSeq=0;
 const EGGSAFE=typeof EGGS!=="undefined"?EGGS:{};
+/* the star dog's name as it stands NOW (#264). An egg that declares star:true answers to it, whatever
+   the pool or the player made it, instead of to fixed triggers. Set where he is named (boot) and renamed
+   (the paw menu); null in a game that marks no star, where no such egg ever wakes. */
+let starNow=null;
 const DEFACT=["💬","☕"]; /* fallback activity emotes for anyone NPCACT does not name */
 function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy from any angle */
   /* a dog romping round their feet: they laugh, and for that long it is the one thing over their head
@@ -278,8 +282,15 @@ function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy f
   ctx.globalAlpha=1;ctx.textAlign="start";
 }
 function eggFor(name){const n=String(name||"").toLowerCase();let hit=null;
-  Object.entries(EGGSAFE).forEach(([k,e])=>{if(!hit&&e.triggers.some(t2=>n.includes(t2)))hit=k;});
+  /* the star's own legend first, and by his WHOLE name: a short pool name must not wake inside a longer one */
+  const s=starNow&&starNow.toLowerCase(),padded=" "+n.replace(/\s+/g," ")+" ";
+  if(s)Object.entries(EGGSAFE).forEach(([k,e])=>{if(!hit&&e.star&&padded.includes(" "+s+" "))hit=k;});
+  Object.entries(EGGSAFE).forEach(([k,e])=>{if(!hit&&!e.star&&(e.triggers||[]).some(t2=>n.includes(t2)))hit=k;});
   return hit;}
+/* an egg's lines in this language; a line written as a function is said with the star's name as it is
+   now (or, in a game with no star, the name of whoever woke it) */
+function eggLines(k,who){const e=EGGSAFE[k];if(!e||!e.lines)return [];
+  return (e.lines[lang]||[]).map(l=>typeof l==="function"?l(starNow||who||""):l);}
 function addChill(c){ /* {name:{en,es},world,x,y,look} → chat NPC; returns key or null */
   const w=WORLDS[c.world];if(!w)return null;
   const x=c.x|0,y=c.y|0;
@@ -351,7 +362,7 @@ function roomPersist(){if(!RM())return;
   else console.warn("ROOM host "+h.id+" cannot stand at "+h.world+" ("+h.x+","+h.y+") — solid or taken");});
 const roomPending=n=>{const h=roomHosts[n.npc];return !!h&&h.steps.some(s=>!roomAns[h.id+":"+s.id]);};
 const chillLines=k=>{
-  if(CHILLEGG[k])return EGGSAFE[CHILLEGG[k]].lines[lang];
+  if(CHILLEGG[k])return eggLines(CHILLEGG[k],CHILLN[k]&&CHILLN[k].en);
   if(String(k).startsWith("~c"))
     return T().chill.concat(typeof CHATTER!=="undefined"?CHATTER[lang]||[]:[]);
   return null;};
@@ -2295,7 +2306,7 @@ Object.assign(TILES,{
   C:{lift:6,kind:"marker",stand:true,light:true},X:{lift:6,kind:"site"},   /* light: you kick it, you do not walk around it */
   P:{lift:6,kind:"nature"},J:{lift:0,kind:"tree"},
   "~":{lift:0,kind:"water"},"9":{lift:7,kind:"prop"},
-  "^":{lift:0,kind:"bridge"}, /* walkable, flat art in 2D; in 3D a raised plank deck with rails (owner, 2026-09-07: "upgrade rainbow bridge for sonny") */
+  "^":{lift:0,kind:"bridge"}, /* walkable, flat art in 2D; in 3D a raised plank deck with rails (asked for on 2026-09-07: an upgraded rainbow bridge) */
   /* `stand`: walkable, but an OBJECT — not paint on the floor. The engine had exactly two
      categories, flat ground art or solid geometry, and a staircase is neither: you walk onto
      it and it has to stand up. Without this the front camera and the 3D ground bake paint a
@@ -3009,7 +3020,7 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(world!==cr.world){cr.next=now+1200;return;}
   if(now<cr.next)return;
   if(cr.stayT>now){cr.sit=true;return;} /* STAY means stay */
-  if(cr.follow){ /* off-leash but loyal: keeps up MOST of the time (owner canon) */
+  if(cr.follow){ /* off-leash but loyal: keeps up MOST of the time (canon) */
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
     if(d>2){
       if(Math.random()<0.10){cr.next=now+700;return;} /* something smelled important */
@@ -3029,7 +3040,7 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;
   cr.next=now+(cr.kind==="gato"?900+Math.random()*2600:250+Math.random()*900);
 });}
-/* ---------- Sonny's program (IDEAS §11) ----------
+/* ---------- the dog program (IDEAS §11) ----------
    Any beagle gets a real life: a ball he fetches exactly 4 times in 7 (a shuffled
    cycle, so it feels like a dog and not a coin), a howl, a proper lie-down, holes,
    and — infrequently — the other thing, which fades on its own until the day the
@@ -3050,7 +3061,7 @@ function fetchRoll(cr){ /* a fresh shuffled 7-cycle per dog — streaks stay dog
 function taskFree(cr,x,y){const w=WORLDS[cr.world]; /* the home leash comes off on a job; the rails do not */
   return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")&&!troDanger(cr.world,x,y);}
 /* real pathfinding for a dog with a job — greedy stepping wedged on walls
-   (owner: "sometimes sonny cant get the ball"). BFS floods from the target;
+   (a playtest: sometimes the dog could not get to the ball). BFS floods from the target;
    the first tile to touch the dog is his next step. null = no path exists. */
 function bfsStep(cr,tx,ty){
   const w=WORLDS[cr.world];
@@ -3070,8 +3081,8 @@ function bfsStep(cr,tx,ty){
   return null;
 }
 /* ---------- through the door with you ----------
-   Owner, 2026-09-04: "sonny should be able to follow me anywhere. but when i tell him to stay and
-   sit he can stop following." and "sometimes he will follow just for fun."
+   Asked for on 2026-09-04: the dog can follow the player anywhere; told to stay or sit, he stops
+   following; and sometimes he follows just for fun.
 
    A critter in a world you are not standing in only idles (see the critter update), so a dog could
    never cross a threshold — the leash was the only thing that had ever moved one between worlds.
@@ -3109,9 +3120,8 @@ function dogsFollow(fromW,fromX,fromY){
   });
 }
 /* ---------- light props: things you kick ----------
-   Owner, 2026-09-04: "I think a cone shouldnt make me have to go around it. i should be able to
-   kick it. sonny should be even able to rip it and they'll just reappear when i leave the screen
-   for now."
+   Asked for on 2026-09-04: a cone should not make the player walk around it — the player can kick
+   it, the dog can even rip it, and it simply reappears once the player leaves the screen.
 
    A light prop is walkable, so it can never block you and can never seal a room — the whole class
    of "a prop got kicked in front of a door" is impossible by construction rather than by a check.
@@ -3279,10 +3289,10 @@ function agilityCourse(wid){const w=WORLDS[wid],wp=[];if(!w)return wp;
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if((TILES[w.rows[y][x]]||{}).kind==="gear")wp.push([x,y]);
   return wp;}
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
-  puppy phase (owner canon) — it stays in the repertoire, barely. In the park:
+  puppy phase (canon) — it stays in the repertoire, barely. In the park:
   zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
   const r=Math.random(),park=cr.world===PL.park;
-  /* the cone. Owner, 2026-09-04: "sonny should be even able to rip it." Checked before the rest of
+  /* the cone (2026-09-04: the dog can even rip it). Checked before the rest of
      the repertoire so a cone right under his nose beats a nap — but it is one roll in twenty-five,
      so it stays a thing that happened once and not a thing he does. It comes back when you leave
      the room, like every other light prop. */
@@ -3302,8 +3312,8 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   const other=park?CRIT.find(o=>o!==cr&&isDog(o)&&o.world===PL.park&&!o.task
     &&Math.abs(o.x-cr.x)+Math.abs(o.y-cr.y)<=7):null;
   /* THE ODDS: one band of the roll each, in this order: a nap, a song, the course, the greeting, a
-     hole, and the other thing. Digging is the owner's canon: a puppy phase, kept to about 8% of what
-     he does (owner canon round 2, 2026-09-01, docs/IDEAS.md:436: "~8% of whims, was ~25%"; and on
+     hole, and the other thing. Digging is canon: a puppy phase, kept to about 8% of what
+     he does (canon round 2, 2026-09-01, docs/IDEAS.md:436: "~8% of whims, was ~25%"; and on
      2026-09-29, "ok make it about 8 percent yes").
      The course and the greeting only happen where they can, in a park with gear and with another dog
      near, and a band that cannot happen here PASSES QUIETLY: its roll never goes down the list. On
@@ -3332,16 +3342,16 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
       if(Math.random()<0.4)toast("🐶 "+(T().chaseToast||"!"),2200);}
     cr.sit=false;cr.layT=0;}
     else if(!park)dogRomp(cr,now);} /* away from the park the greeting's roll is a romp with somebody near */
-  else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare tribute to puppy Sonny */
+  else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare nod to the puppy phase */
     if(park)PARK.d++;
     const hx=cr.x,hy=cr.y,hw=cr.world;
     setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:Date.now()+34000}),1400);}
   else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:Date.now()+45000});cr.next=now+3000;}
 }
 /* ---------- more to do away from the park ----------
-   Owner, 2026-09-29: "give him other things to do to keep him busy? running after his own stick or
-   other dog things, chasing after another character. traveling to the bed on my office. awooing
-   infront of a restaurant and a worker brings them a water bowl. ya kno?"
+   Asked for on 2026-09-29: more to keep the dog busy — his own stick, other dog things, a romp after
+   another character, a trip to the bed in the player's office, and a song at a restaurant door until
+   a worker brings out a water bowl.
    Each fills a roll that used to pass away from the park (the course and the greeting cannot happen
    there), and each PASSES quietly when it cannot happen here: no room to throw a stick, no restaurant
    door he can reach, somebody already out on the step. So a nap, a song, a hole and the other thing
@@ -3452,7 +3462,7 @@ function ballUpdate(dt,now){
   else if(BALL.phase==="ground"&&BALL.until&&Date.now()>BALL.until)BALL=null;
   else if(BALL.phase==="carried"&&BALL.dog){BALL.fx=BALL.dog.fx+0.28*BALL.dog.face;BALL.fy=BALL.dog.fy-0.12;}
 }
-function drawLeash(cr,camX,camY){ /* blue, like his collar — owner canon */
+function drawLeash(cr,camX,camY){ /* blue, like his collar — canon */
   const hx=fx*TS-camX+16,hy=fy*TS-camY+21;
   const dx=cr.fx*TS-camX+16,dy2=cr.fy*TS-camY+19;
   ctx.strokeStyle="#2E5FA8";ctx.lineWidth=1.6;ctx.lineCap="round";
@@ -3535,7 +3545,7 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
   g.strokeStyle=lemon;g.lineWidth=2.4;g.lineCap="round"; /* the tail: lemon, always going (slower when resting) */
   const wg=lay?wag*0.4:wag,tex2=cx-10+wg,tey=sy+11+dy;
   g.beginPath();g.moveTo(cx-7,sy+19.5+dy);g.quadraticCurveTo(cx-11,sy+15+dy+wg*0.5,tex2,tey);g.stroke();
-  g.fillStyle=white;g.beginPath();g.arc(tex2,tey,1.5,0,7);g.fill(); /* the white tip — owner canon */
+  g.fillStyle=white;g.beginPath();g.arc(tex2,tey,1.5,0,7);g.fill(); /* the white tip — canon */
   g.fillStyle=white;g.beginPath();g.roundRect(cx-7.5,sy+17+dy,14,8,4);g.fill();
   g.fillStyle=lemon;g.beginPath();g.roundRect(cx-5,sy+16.5+dy,8,4.5,3);g.fill(); /* saddle */
   g.fillStyle=white; /* white freckles across the lemon coat */
@@ -3548,7 +3558,7 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
       g.fillRect(cx+p[0]+Math.sin(Date.now()/90+i*2)*2.5,sy+p[1],2,2);});
     g.fillStyle=white;}
   g.beginPath();g.arc(cx+6.5,sy+16+dy+hy,4.6,0,7);g.fill(); /* head */
-  g.fillStyle=cr.collar||"#2E5FA8"; /* the collar: blue to start, like his leash (owner canon) */
+  g.fillStyle=cr.collar||"#2E5FA8"; /* the collar: blue to start, like his leash (canon) */
   g.beginPath();g.roundRect(cx+2.5,sy+18.6+dy,6,1.7,1);g.fill();
   if(cr.band){g.fillStyle=cr.band; /* a bandana from the park, worn with dignity over the collar */
     g.beginPath();g.moveTo(cx+2.4,sy+18.4+dy);g.lineTo(cx+8.2,sy+18.6+dy);g.lineTo(cx+5.2,sy+22+dy);
@@ -3557,7 +3567,7 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
   g.fillStyle=lemon; /* lemon crown over the brow — a lemon beagle wears his color up top */
   g.beginPath();g.arc(cx+7,sy+14.4+dy+hy,3.7,Math.PI,Math.PI*2);g.fill();
   g.fillRect(cx+3.3,sy+14.4+dy+hy,7.4,1.6);
-  g.fillStyle=white; /* Sonny canon: the heart on his face — tip pointing to his nose,
+  g.fillStyle=white; /* beagle canon: the heart on his face — tip pointing to his nose,
      the two bumps back on either side. A perfect heart, just angled forward. */
   g.save();g.translate(cx+6.7,sy+13+dy+hy);g.rotate(-0.75);
   g.beginPath();g.arc(-0.62,-0.46,0.72,0,7);g.arc(0.62,-0.46,0.72,0,7);g.fill();
@@ -3896,8 +3906,8 @@ function drawPerson(g,sx,sy,lk,o){
   if(d!=="up"&&Math.floor(Date.now()/130+sx*0.7+sy)%37!==0){
     g.fillStyle="#26202B";g.fillRect(sx+13.5+ex,sy+4.5+ey+bh,1.6,1.6);g.fillRect(sx+17+ex,sy+4.5+ey+bh,1.6,1.6);}
 }
-/* ---------- ALEBRIJES (owner, 2026-09-07: "so sonny will still look sonny like but in different
-   colors and perhaps tiny wings"; Pili's direction the same day) ----------
+/* ---------- ALEBRIJES (asked for on 2026-09-07: the dog still looks like himself, in different
+   colours and perhaps tiny wings; Pili's direction the same day) ----------
    An alebrije is a real animal in impossible colours. The first cut striped the animal and the
    owner called it "crossed out". Now, inside the animal's own alpha mask (the silhouette is
    byte-identical, and the test says so): the coat is TINTED (source-atop, 62%, the contact shadow
@@ -4837,7 +4847,7 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
   $("love").hidden=!loveOK;
   if(loveOK)$("love").textContent=T().loveLb||"💗";
   /* 🐾 the paw menu: always on screen (owner ask) — commands reach the nearest
-     dog here, or whistle Sonny across the whole city */
+     dog here, or whistle the star dog across the whole city */
   $("cmd").hidden=false;
   $("cmd").textContent="🐾";
   let adoptOK=false;
@@ -4867,13 +4877,13 @@ $("treat").addEventListener("click",()=>{
     if(g2){g2.sit=true;g2.next=performance.now()+3200;g2.happyT=performance.now()+2200;g2.layT=0;
       g2.fedT=performance.now();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
       if(world===PL.park)PARK.t++;}
-    const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?EGGSAFE[g2.egg].lines[lang]
+    const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
     toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}
   else if(petTarget==="gato"){
     const g2=petCrit;
     if(g2){g2.sit=true;g2.next=performance.now()+3200;}
-    const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?EGGSAFE[g2.egg].lines[lang]:T().gato;
+    const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?eggLines(g2.egg,g2.name):T().gato;
     toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;
@@ -5141,7 +5151,7 @@ $("begin").addEventListener("click",()=>{
   xp=0;hearts=startHearts();done=new Set();qa={};marks={};world=PL.home;px=fx=PL.spawn[0];py=fy=PL.spawn[1];dir="down";
   save();enterWorld(true);
   const eg=eggFor(heroName); /* a legendary name gets a nod once the tutorial clears */
-  if(eg)setTimeout(()=>toast(EGGSAFE[eg].lines[lang][0],3600),7400);
+  if(eg)setTimeout(()=>toast(eggLines(eg,heroName)[0],3600),7400);
 });
 /* ---------- start/end ---------- */
 /* One curtain for every ending. `burnout` = the optional hearts layer ran out, which
@@ -5830,8 +5840,8 @@ let petEggSeen=null;
   const v=$(id).value.trim();
   if(i===0)petCfg.n=v||"Frederick";else if(i===1)petCfg.am=v||"07:30";else petCfg.pm=v||"18:00";
   petSave();$("exArea").value=T().carePack(heroName,treats,petCfg);
-  if(i===0){const eg=eggFor(petCfg.n); /* name the pet Sonny and the barrio knows */
-    if(eg&&eg!==petEggSeen){petEggSeen=eg;toast(EGGSAFE[eg].lines[lang][0],3200);}}
+  if(i===0){const eg=eggFor(petCfg.n); /* name the pet after a legend and the barrio knows */
+    if(eg&&eg!==petEggSeen){petEggSeen=eg;toast(eggLines(eg,petCfg.n)[0],3200);}}
 }));
 function icsData(){
   const now=new Date(),p2=n2=>String(n2).padStart(2,"0");
@@ -6750,7 +6760,7 @@ try{(JSON.parse(localStorage.getItem(SK("edits"))||"[]")).forEach(e2=>{
 /* ---------- owner-created characters (admin ➕ brush) — per-device, like map edits.
    Records: {n:name, w:world, x, y, lk:{shirt,skin,hair,style}}. Names are data:
    length-clamped, rendered only via textContent/canvas. A name matching a dog egg
-   (e.g. Sonny) joins as a beagle critter instead of a person. */
+   (the star dog's name, as it is now) joins as a beagle critter instead of a person. */
 const NPCSTYLES=["cap","long","curly","spiky","pony","afro","buzz","braids","buns","broccoli","fade","mullet"];
 const sanName=s2=>String(s2||"").replace(/[\u0000-\u001f<>]/g,"").trim().slice(0,24);
 /* a typed line for the room sheet: control characters out, everything else as typed —
@@ -6769,7 +6779,7 @@ function spawnCustom(rec){
   const eg=eggFor(name);
   if(eg&&EGGSAFE[eg].dog){ /* a legendary dog joins the critter pass */
     if(CRIT.some(c=>DOGK.has(c.kind)&&(c.name||"").toLowerCase()===name.toLowerCase()))
-      return true; /* the star is already in town — one Sonny only (owner playtest) */
+      return true; /* the star is already in town — there is one of him (a playtest finding) */
     if(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")return false;
     CRIT.push({kind:"beagle",world:rec.w,x,y,fx:x,fy:y,c:"#E8C46A",name,egg:eg,
       moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,home:[x,y]});
@@ -6779,7 +6789,6 @@ function spawnCustom(rec){
     ?{shirt:lk.shirt,skin:lk.skin,hair:lk.hair,style:NPCSTYLES.includes(lk.style)?lk.style:"cap"}
     :randLook();
   return !!addChill({name:{en:name,es:name},world:rec.w,x,y,look});}
-myNpcs=myNpcs.filter(r=>{try{return spawnCustom(r);}catch(e){return false;}});
 /* ---------- El Parque 🌈 (IDEAS §13 preview, owner-signed) ----------
    Leash a dog and HE takes YOU — over the rainbow bridge to the park. Chill
    session, no clock: fetch, treats, howls. Crossing back plays a little recap.
@@ -6789,8 +6798,45 @@ const parkPrefs={band:{},dogs:[],train:{}};
 try{const p0=JSON.parse(localStorage.getItem(SK("park"))||"{}");
   if(p0&&typeof p0==="object"){parkPrefs.band=(p0.band&&typeof p0.band==="object")?p0.band:{};
     parkPrefs.dogs=Array.isArray(p0.dogs)?p0.dogs.slice(0,24):[]; /* no adoption limit (owner) — just a sanity ceiling */
-    parkPrefs.train=(p0.train&&typeof p0.train==="object")?p0.train:{};}}catch(e){}
+    parkPrefs.train=(p0.train&&typeof p0.train==="object")?p0.train:{};
+    /* #264: the star dog's kept name, and how many dogs have been stubborn about a new one. Neither is
+       written until something happens to write it, so a game that never names a star stores exactly
+       what it stored before. */
+    if(p0.star&&typeof p0.star==="object"&&sanName(p0.star.n))parkPrefs.star={n:sanName(p0.star.n),r:p0.star.r?1:0,stub:p0.star.stub};
+    if(p0.stubs)parkPrefs.stubs=Math.max(0,Math.min(2,p0.stubs|0));}}catch(e){}
 function parkPersist(){mqStore(SK("park"),JSON.stringify(parkPrefs));}
+/* ---------- the star dog (#264): found by his ROLE, named from the pack's POOL ----------
+   A pack marks one dog in CRITTERS with role:"star": the one the paw menu reaches from any room and
+   the whistle carries across the city. The engine never knows what he is called. A pack may also
+   declare DOGNAMES, a pool: a brand-new device picks one name from it (seeded, below) and keeps it in
+   the park record, and the player may rename him like any adopted dog — never rehome him, he lives on
+   the street. A device that has played here before keeps the name it has always seen, the map's.
+   A pack that declares neither changes nothing here at all: no pick, no record, no rename. */
+const starDog=()=>CRIT.find(c=>c.role==="star"&&isDog(c))||null;
+const DOGPOOL=(()=>{const seen=new Set();
+  return (typeof DOGNAMES!=="undefined"&&Array.isArray(DOGNAMES)?DOGNAMES:[]).map(sanName)
+    .filter(n=>{const l=n.toLowerCase();if(!n||seen.has(l))return false;seen.add(l);return true;});})();
+/* the pick, a pure function a test can sweep: the seed modulo the pool's size, stepping past a name
+   another dog here already has */
+function dogNamePick(pool,seed,taken){const n=pool.length;if(!n)return null;const s0=(seed>>>0)%n;
+  for(let i=0;i<n;i++){const nm=pool[(s0+i)%n];if(!taken.includes(nm.toLowerCase()))return nm;}
+  return null;}
+/* one 32-bit seed from the platform's generator — not the game's dice, which tests pin for other reasons */
+function dogSeed(){try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0];}
+  catch(e){return Math.floor(Math.random()*4294967296);}}
+(function nameStar(){const s=starDog();if(!s)return;
+  if(parkPrefs.star)s.name=parkPrefs.star.n;
+  else if(DOGPOOL.length){
+    /* only a device that has never played here is named from the pool: a park record or a save from an
+       earlier visit keeps the name that player knows, and storage that cannot be read keeps it too — a
+       name that could not be kept is not picked */
+    let before=true;try{before=localStorage.getItem(SK("park"))!==null||localStorage.getItem(SK("1"))!==null;}catch(e){}
+    const nm=before?null:dogNamePick(DOGPOOL,dogSeed(),CRIT.filter(c=>isDog(c)&&c!==s).map(c=>String(c.name||"").toLowerCase()));
+    if(nm)s.name=nm;
+    parkPrefs.star={n:s.name,r:0};parkPersist();}
+  starNow=s.name||null;})();
+/* people made in admin mode spawn once the star has his name, so one named after him finds him here */
+myNpcs=myNpcs.filter(r=>{try{return spawnCustom(r);}catch(e){return false;}});
 /* every adopted dog befriends one particular townsperson (owner ask) — and some
    dogs roam the city to hang out at their friend's side */
 const FRIENDW=PL.friends.filter(w=>WORLDS[w]); /* a role the pack has no world for is simply skipped */
@@ -6850,6 +6896,7 @@ $("leash").addEventListener("click",()=>{
   },900);
 });
 function parkExit(){
+  const led=LEASH&&LEASH.cr;
   if(LEASH){const c=LEASH.cr; /* the leashed dog trots home; adopted dogs LIVE here */
     c.follow=false;c.task=null;c.world=LEASH.w;c.x=LEASH.x;c.y=LEASH.y;c.fx=c.x;c.fy=c.y;
     c.home=[c.x,c.y];LEASH=null;}
@@ -6858,7 +6905,8 @@ function parkExit(){
   $("pkTitle").textContent=t.parkTitle;
   $("pkSum").textContent=t.parkSum(PARK.f,PARK.t,PARK.h,PARK.d);
   $("pkLove").textContent=t.parkLove;
-  $("pkTeaser").textContent=t.parkTeaser;
+  const tz=t.parkTeaser,sd=starDog(); /* a line written as a function says the name he has now (#264) */
+  $("pkTeaser").textContent=typeof tz==="function"?tz((sd&&sd.name)||(led&&led.name)||""):tz;
   $("pkClose").textContent=t.parkClose;
   $("parkCard").hidden=false;
 }
@@ -6911,7 +6959,7 @@ function aleRowBuild(){const row=$("aleRow"),lb=$("lbAle");if(!row)return;
   L.forEach((lk,i)=>{const b=document.createElement("button");b.dataset.look=lk.id;b.textContent=lk.name?(lk.name[lang]||lk.name.en):lk.id;
     b.setAttribute("aria-pressed",i===cur?"true":"false");b.addEventListener("click",()=>aleSetPick(aleWho,i));row.appendChild(b);});}
 if($("aleRnd")){$("aleRnd").addEventListener("click",()=>alePress(true));$("aleNext").addEventListener("click",()=>alePress(false));}
-$("love").addEventListener("click",()=>{ /* "let us say i love you to him" — owner ask */
+$("love").addEventListener("click",()=>{ /* a button to tell him you love him (asked for) */
   if(!DOGK.has(petTarget)||!petCrit)return;
   const c=petCrit;
   c.loveT=performance.now()+2800;c.happyT=performance.now()+2800;
@@ -6967,11 +7015,19 @@ $("adoptX").addEventListener("click",()=>{$("adoptP").hidden=true;});
 function nearestDog(){let best=null,bd=1e9;
   CRIT.forEach(c=>{if(!isDog(c)||c.world!==world)return;
     const d=Math.abs(c.x-px)+Math.abs(c.y-py);if(d<bd){bd=d;best=c;}});
-  /* nobody here? the paw menu still reaches Sonny, wherever he is */
-  return best||CRIT.find(c=>isDog(c)&&c.name==="Sonny")||CRIT.find(c=>isDog(c))||null;}
+  /* nobody here? the paw menu still reaches the star dog, wherever he is — found by his role */
+  return best||starDog()||CRIT.find(c=>isDog(c))||null;}
 function dogCmd(kind){
   const c=nearestDog();if(!c)return;
   $("dogP").hidden=true;
+  /* still getting used to a new name (#264): the next two calls go to a name he does not answer to
+     yet, and the line says the one he does; the call after that, he comes round, as if it were his idea */
+  const rr=dogRecord(c)||(c===starDog()?parkPrefs.star:null),st=rr&&rr.stub;
+  if(st&&typeof st==="object"){const was=sanName(st.was),L=T().dogStubborn||[],left=Math.max(0,Math.min(2,st.left|0));
+    if(left>0&&was&&L.length){st.left=left-1;parkPersist();
+      const f=L[(2-left)%L.length];toast("🐶 "+(typeof f==="function"?f(c.name,was):f),2800);return;}
+    delete rr.stub;parkPersist();
+    if(typeof T().dogCameRound==="function")setTimeout(()=>toast("🐶 "+T().dogCameRound(c.name),2600),2000);}
   const key=c.name||"dog";
   parkPrefs.train[key]=parkPrefs.train[key]||{};
   const tr=parkPrefs.train[key],reps=tr[kind]||0;
@@ -7004,19 +7060,35 @@ $("cmd").addEventListener("click",()=>{
   $("dogPTitle").textContent="🎓 "+(c.name||"🐶");
   [["cmdSit","sit"],["cmdDown","down"],["cmdStay","stay"],["cmdCome","come"],["cmdFollow","follow"]]
     .forEach(([id])=>$(id).textContent=T()[id]);
-  const rec=dogRecord(c); /* Sonny and other originals: no rename, no rehome */
-  $("cmdRen").hidden=$("cmdReh").hidden=!rec;
-  if(rec){$("cmdRen").textContent=T().renameLb;$("cmdReh").textContent=T().rehomeLb;}
+  /* adopted dogs: rename and rehome. The star (#264): rename only — he lives on the street. Other
+     dogs the map places: neither. */
+  const rec=dogRecord(c),star=c===starDog();
+  $("cmdRen").hidden=!(rec||star);$("cmdReh").hidden=!rec;
+  if(rec||star)$("cmdRen").textContent=T().renameLb;
+  if(rec)$("cmdReh").textContent=T().rehomeLb;
   $("dogPX").textContent=T().adoptX;
   $("dogP").hidden=false;
 });
 [["cmdSit","sit"],["cmdDown","down"],["cmdStay","stay"],["cmdCome","come"],["cmdFollow","follow"]]
   .forEach(([id,k])=>$(id).addEventListener("click",()=>dogCmd(k)));
 $("dogPX").addEventListener("click",()=>{$("dogP").hidden=true;});
-/* rename (anyone but Sonny) and rehome (nobody is ever deleted) — owner asks */
+/* rename (adopted dogs and the star) and rehome (adopted dogs; nobody is ever deleted) */
 let renTarget=null;
+/* whose record a rename writes: an adopted dog's own, or the star's in the park record */
+function renRec(c){const r=dogRecord(c);if(r)return r;
+  if(c&&c===starDog()){if(!parkPrefs.star)parkPrefs.star={n:c.name,r:0};return parkPrefs.star;}
+  return null;}
+/* THE STUBBORN ONES (#264, a joke on purpose): after a rename, one or two dogs keep answering to
+   the old name for the next two calls. Which ones is not a roll of the dice: the star, the first time
+   he is renamed (the name he has had longest), and any other dog whose old name hashes to it — about
+   one in three — and never more than two in a game. A pack with no pool, or no words for it, has no
+   joke, and its renames are exactly what they were. */
+function dogStubborn(rec,old,star){const t=T();
+  if(!DOGPOOL.length||typeof t.renameStub!=="function"||!Array.isArray(t.dogStubborn)||!t.dogStubborn.length)return false;
+  if((parkPrefs.stubs|0)>=2)return false;
+  return star?!rec.r:aleHash(String(old||"").toLowerCase())%3===0;}
 $("cmdRen").addEventListener("click",()=>{
-  const c=nearestDog(),rec=c&&dogRecord(c);if(!rec)return;
+  const c=nearestDog();if(!c||!(dogRecord(c)||c===starDog()))return;
   $("dogP").hidden=true;renTarget=c;
   $("renTitle").textContent=T().renameAsk;$("renGo").textContent=T().renGo;$("renX").textContent=T().adoptX;
   $("renName").value=c.name||"";$("renP").hidden=false;$("renName").focus();
@@ -7028,12 +7100,16 @@ $("renGo").addEventListener("click",()=>{
   if(!n||n===c.name)return;
   if(CRIT.some(o=>isDog(o)&&o!==c&&(o.name||"").toLowerCase()===n.toLowerCase())){
     toast(T().dupDog(n),2600);return;}
-  const rec=dogRecord(c);if(!rec)return;
-  const old=c.name;
+  const rec=renRec(c);if(!rec)return;
+  const old=c.name,star=c===starDog();
   if(parkPrefs.band[old]!==undefined){parkPrefs.band[n]=parkPrefs.band[old];delete parkPrefs.band[old];}
   if(parkPrefs.train[old]!==undefined){parkPrefs.train[n]=parkPrefs.train[old];delete parkPrefs.train[old];}
-  rec.n=n;c.name=n;c.egg=eggFor(n);parkPersist();
-  toast("✏️ "+T().renameDone(n),2800);
+  const stub=dogStubborn(rec,old,star);
+  delete rec.stub;
+  rec.n=n;c.name=n;if(star){rec.r=1;starNow=n;}c.egg=eggFor(n);
+  if(stub){rec.stub={was:old,left:2};parkPrefs.stubs=(parkPrefs.stubs|0)+1;}
+  parkPersist();
+  toast("✏️ "+(stub?T().renameStub(n,old):T().renameDone(n)),2800);
 });
 $("renX").addEventListener("click",()=>{renTarget=null;$("renP").hidden=true;});
 $("cmdReh").addEventListener("click",()=>{
@@ -7050,7 +7126,7 @@ $("cmdReh").addEventListener("click",()=>{
 /* a save that closed the app mid-park: make sure a dog is there when it reopens */
 function parkRescue(){
   if(world===PL.park&&!CRIT.some(c=>isDog(c)&&c.world===PL.park)){
-    const s0=CRIT.find(c=>isDog(c));
+    const s0=starDog()||CRIT.find(c=>isDog(c));
     if(s0){s0.world=PL.park;s0.x=PL.parkDog[0];s0.y=PL.parkDog[1];s0.fx=s0.x;s0.fy=s0.y;s0.home=PL.parkDogHome.slice();}
   }
 }
@@ -7100,17 +7176,17 @@ $("nmOut").addEventListener("click",()=>{
   myNpcs=myNpcs.filter(r=>r!==nmEdit.rec);npcPersist();
   $("npcMaker").hidden=true;nmEdit=null;toast(T().npcGone,1800);});
 $("nmOk").addEventListener("click",()=>{
-  if(nmEdit){ /* save edits: rename can even re-trigger an egg (Sonny transforms) */
+  if(nmEdit){ /* save edits: rename can even re-trigger an egg (name a neighbour after the star dog and a dog he is) */
     const name=sanName($("nmName").value);
     if(name){nmEdit.rec.n=name;despawnAt(nmEdit.gx,nmEdit.gy);spawnCustom(nmEdit.rec);npcPersist();
-      const eg2=eggFor(name);toast(eg2?EGGSAFE[eg2].lines[lang][0]:T().npcSaved,eg2?3400:1800);}
+      const eg2=eggFor(name);toast(eg2?eggLines(eg2,name)[0]:T().npcSaved,eg2?3400:1800);}
     $("npcMaker").hidden=true;nmEdit=null;return;}
   const name=sanName($("nmName").value);
   if(!name||!nmPending){$("npcMaker").hidden=true;nmPending=null;return;}
   const rec={n:name,w:nmPending.w,x:nmPending.x,y:nmPending.y,lk:randLook()};
   if(spawnCustom(rec)){myNpcs.push(rec);npcPersist();
     const eg=eggFor(name);
-    toast(eg?EGGSAFE[eg].lines[lang][0]:T().npcMade(name),eg?3400:2200);}
+    toast(eg?eggLines(eg,name)[0]:T().npcMade(name),eg?3400:2200);}
   $("npcMaker").hidden=true;nmPending=null;
 });
 $("nmName").addEventListener("keydown",e=>{if(e.key==="Enter")$("nmOk").click();});

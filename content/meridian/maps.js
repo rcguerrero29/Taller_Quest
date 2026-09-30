@@ -109,7 +109,7 @@ const WORLD_DEFS={
      "#..r..........y....#",
      "#..................#",
      "##########L#########"],
- /* El Parque 🌈 — Sonny's park, reached only on the leash (no street door).
+ /* El Parque 🌈 — the star dog's park, reached only on the leash (no street door).
     A river (~) runs down the west side; the rainbow bridge (^) crosses it at the
     exit row. The doghouse (9) is where adoptions happen. This map is the preview
     of the pet-care spin-off (IDEAS §13) and its future starting map. */
@@ -356,8 +356,15 @@ const MAPDOT={pk:[22,10]};
 const TROLLEYAT=[{world:"st",row:2,from:0,to:29,stops:[{x:1,y:1}]},
                  {world:"ex",row:1,from:20,to:0,stops:[{x:20,y:2}]}];
 const TRV=[{w:"st",x:1,y:1,dir:"right"},{w:"ex",x:22,y:3,dir:"left"}];
+/* The star dog's name belongs to the player (#264). A brand-new game picks one from this pool, keeps
+   it, and lets the player rename him from the paw menu; the engine only picks, and never knows a name.
+   Ordinary dog names, in no order of preference. A device that played here before the pool existed
+   keeps the name the map below gives him, which is why that name is one of these too. */
+const DOGNAMES=["Biscuit","Bruno","Chato","Chester","Chispa","Firulais","Manchas","Milo",
+                "Otis","Pancho","Pecas","Pipo","Rocco","Rufus","Sonny","Tomy"];
 /* ambient critters: kinds live in the engine (butterfly, colibri, gato); spawns are
-   content. Each wanders a small radius around home; the gato is pettable. */
+   content. Each wanders a small radius around home; the gato is pettable. A dog marked
+   role:"star" is the one the paw menu reaches from any room — the engine finds him by that. */
 const CRITTERS=[
  {kind:"butterfly",world:"st",x:6,y:12,c:"#E4A7D8"},
  {kind:"butterfly",world:"ex",x:13,y:3,c:"#8FC7E8"},
@@ -367,7 +374,7 @@ const CRITTERS=[
  {kind:"gato",world:"li",x:16,y:7,c:"#F2F0EA",name:"Pelusa"}, /* she rides in the van */
  {kind:"gato",world:"no",x:2,y:2,c:"#3A3A40",name:"Timbre"} /* she sits where the doorbell would be */,
  {kind:"gato",world:"me",x:15,y:9,c:"#7A6A55"},  /* Frijol — the bodega cat, pettable */
- {kind:"beagle",world:"st",x:22,y:11,c:"#E8C46A",name:"Sonny",egg:"sonny"} /* the star himself */
+ {kind:"beagle",world:"st",x:22,y:11,c:"#E8C46A",name:"Sonny",role:"star",egg:"star"} /* the star himself; his name is the player's (DOGNAMES) */
 ];
 /* one-off place identity as data (IDEAS §10): the engine's DECODRAW vocabulary
    (sign, mural) renders these in ALL FOUR cameras: top (engine.js drawDecor), front (the
