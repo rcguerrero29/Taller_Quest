@@ -1058,8 +1058,8 @@ function findChromium() {
      THE CLOCK IS HELD STILL. A mark fades by Date.now(), and so do a neighbour's idle sway, a door's glow,
      a tree's canopy: every pair of frames compared here is taken at one stubbed instant, and a control pair
      (the same scene twice) must differ by nothing first, or the probe measures nothing (§13r). The season
-     is switched off, the tram sent away and the critters of that world parked, so nothing else stands on
-     the spot. Nothing here calls a painter: the whim makes the mark, and draw() / draw3d() draw it. The 3D
+     is switched off, the tram sent away, and the critters and people of that world taken out of the
+     picture, so nothing else stands on the spot. Nothing here calls a painter: the whim makes the mark, and draw() / draw3d() draw it. The 3D
      camera is asked at all four of its quarter turns, because a mark can hide behind a wall at one stop. */
   const leaves = await page.evaluate(() => {
     const P = [];
@@ -1071,28 +1071,32 @@ function findChromium() {
     const QT = Math.PI / 2;
     const views = flat.map(c => ({ cam: c, nm: 'the ' + c + ' camera', clock: true }))
       .concat(has3d ? [0, 1, 2, 3].map(q => ({ cam: '3d', yaw: q * QT, nm: q ? 'the 3D camera turned ' + q + ' quarter' + (q > 1 ? 's' : '') : 'the 3D camera', clock: !q })) : []);
-    /* the spot: open ground a player can stand on, with open ground all round it, nobody on it, off the tram's rails */
+    /* the spot: ground a player can stand on, off the tram's rails, with as much open ground round it as the shell
+       has — all eight neighbours in a street, fewer in a one-room world (the gauge, El Horno). It is chosen from the
+       MAP, never from where people happen to stand: a person is stamped into the grid wherever they wander, so a
+       spot read through them came and went between runs (it did — the gauge found one on one run and none on the
+       next). The people of that world are taken out of the picture while it is measured instead, and put back. */
     const bare = (wid, x, y) => { const w = WORLDS[wid];
       if (x < 0 || y < 0 || x >= w.W || y >= w.H) return false;
-      const g = w.grid[y][x], r = w.rows[y][x];
-      return !SOLID.has(g) && g !== 'N' && !stands(r) && !stands(g) && !DOORSET.has(r) && !portalAt(wid, x, y)
+      const r = w.rows[y][x], g = w.grid[y][x] === 'N' ? r : w.grid[y][x];
+      return !SOLID.has(g) && !SOLID.has(r) && g !== 'N' && r !== 'N' && !stands(r) && !stands(g) && !DOORSET.has(r) && !portalAt(wid, x, y)
         && !DECOS.some(d => d.world === wid && d.x === x && d.y === y) && !wellDepth(w, x, y) && !stairLift(w, x, y); };
     const animals = wid => [['dog', typeof DOG !== 'undefined' && DOG], ['cat', typeof CAT !== 'undefined' && CAT], ['pig', typeof PIG !== 'undefined' && PIG], ['loro', typeof LORO !== 'undefined' && LORO]]
       .filter(([k, a]) => a && AW(k) === wid).map(([, a]) => [Math.round(a.fx === undefined ? a.x : a.fx), Math.round(a.fy === undefined ? a.y : a.fy)]);
     let spot = null;
     [PL.street].concat(Object.keys(WORLDS)).filter((id, i, a) => WORLDS[id] && a.indexOf(id) === i).some(wid => {
       const w = WORLDS[wid], L = troLine(wid), an = animals(wid);
-      for (let y = 1; y < w.H - 1 && !spot; y++) for (let x = 1; x < w.W - 1 && !spot; x++) {
-        if (L && Math.abs(y - L.row) <= 1) continue;
-        let ok = true;
-        for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1 && ok; dx++) ok = bare(wid, x + dx, y + dy) && !an.some(a => Math.abs(a[0] - x - dx) + Math.abs(a[1] - y - dy) === 0);
-        if (ok) spot = { wid, x, y }; }
-      return !!spot; });
-    if (!spot) { P.push('there is no open tile with open ground all round it in any world of this shell, so where the dog leaves things could not be looked at — that is a red, not a pass'); return P; }
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+        if ((L && Math.abs(y - L.row) <= 1) || !bare(wid, x, y)) continue;
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (bare(wid, x + dx, y + dy) && !an.some(a => a[0] === x + dx && a[1] === y + dy)) n++;
+        if (!spot || n > spot.n) spot = { wid, x, y, n }; }
+      return spot && spot.n === 9; });
+    if (!spot) { P.push('there is no open ground a person can stand on in any world of this shell, so where the dog leaves things could not be looked at — that is a red, not a pass'); return P; }
     const realNow = Date.now, keep = { world, px, py, fx, fy, cam: camMode, mv: moving, st: TRO.state, season: typeof seasonPick !== 'undefined' ? seasonPick : null,
       yaw: has3d ? T3.yaw : 0, MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, dp: drawPerson,
       decals: DECALS.slice(), things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, park: JSON.stringify(PARK), hid: document.getElementById('world').hidden };
-    const parked = CRIT.filter(c => c.world === spot.wid).map(c => [c, c.world]);
+    const parked = CRIT.filter(c => c.world === spot.wid).map(c => [c, c.world]), people = WORLDS[spot.wid].npcs;
     let NOW = realNow(), heroOn = true, drew3d = false;
     const cv2 = document.getElementById('cv'), g2 = cv2.getContext('2d');
     const frame = v => {
@@ -1112,6 +1116,7 @@ function findChromium() {
       window.setTimeout = fn => { if (typeof fn === 'function') fn(); return 0; };   /* the hole lands 1.4 s into the dig: now, at this check's instant */
       window.toast = () => {}; window.musHowl = () => {};
       parked.forEach(([c]) => { c.world = '__frozen'; });
+      WORLDS[spot.wid].npcs = [];
       if (typeof seasonSet === 'function') seasonSet('off');
       TRO.state = 'away';
       /* 1 · the dog leaves them, by his own whim: the roll swept until each kind of mark has appeared once */
@@ -1140,8 +1145,9 @@ function findChromium() {
       const TIMES = [-1200, -600, -200];   /* the last moments of its life; the reference camera says what strength each should have */
       const born = NOW;                    /* every mark was made at this one instant */
       marks.forEach(dc => {
+        DECALS.length = 0;                 /* this mark and nothing else, whatever the one before it left behind */
         const name = dc.kind === 'hole' ? 'the hole the dog dug' : 'the mess the dog left', at = ' at ' + dc.world + ' (' + dc.x + ',' + dc.y + ')';
-        const mid = born + (dc.until - born) / 2, ref = {}, seen = [], fades = [], turns = {};
+        const mid = born + (dc.until - born) / 2, ref = {}, seen = [], fades = [], turns = {}, flatN = {};
         views.forEach((v, vi) => {
           const vn = v.cam === '3d' ? '3D' + (v.yaw ? '↻' + Math.round(v.yaw / QT) : '') : v.cam;
           camSet(v.cam); sizeCanvas();
@@ -1160,7 +1166,7 @@ function findChromium() {
             P.push('in ' + v.nm + ' ' + name + ' is not where he left it: stand on the spot and its middle is at (' + Math.round(mark.cx) + ',' + Math.round(mark.cy) + '), outside your own outline (' +
               him.x0 + '–' + him.x1 + ' across, ' + him.y0 + '–' + him.y1 + ' down) — it is drawn somewhere else');
           seen.push(vn + ' ' + mark.n);
-          if (v.cam === '3d') turns[Math.round(v.yaw / QT)] = [mark.x1 - mark.x0 + 1, mark.y1 - mark.y0 + 1];
+          if (v.cam === '3d') turns[Math.round(v.yaw / QT)] = [mark.x1 - mark.x0 + 1, mark.y1 - mark.y0 + 1]; else flatN[v.cam] = mark.n;
           if (!v.clock) return;
           /* the clock: its strength near the end, as a share of its full strength, against the reference camera's */
           /* the reference is the first camera, and only the first: if it could not be measured it has already said so above */
@@ -1175,7 +1181,10 @@ function findChromium() {
               Math.round(share * 100) + '% of its full strength, and ' + views[0].nm + ' shows it at ' + Math.round(ref[dt] * 100) + '%'); break; }
           }
           fades.push(vn + ' ' + sh.join('/'));
-          NOW = dc.until + 1; put(dc); const E = frame(v); const kept = DECALS.indexOf(dc) >= 0; lift(dc); const E2 = frame(v); put(dc);
+          /* and it is taken away after, not put back: a mark whose time is up comes alive again the moment the clock
+             is set back for the next one, and the first draft of this check measured the mess on top of a ghost of
+             the hole — the top camera read the mess at 131% of its own full strength in El Horno */
+          NOW = dc.until + 1; put(dc); const E = frame(v); const kept = DECALS.indexOf(dc) >= 0; lift(dc); const E2 = frame(v);
           const left = cmp(E, E2).n;
           if (left) P.push('in ' + v.nm + ' ' + name + ' is still drawn a moment after its time is up: ' + left + ' pixels of it, on a mark that has gone');
           if (kept) P.push('in ' + v.nm + ' ' + name + ' is kept after its time is up: nothing lets go of it while this camera runs, so everything he ever leaves on the ground is carried for good');
@@ -1186,6 +1195,13 @@ function findChromium() {
         if (dc.kind === 'hole' && turns[0] && turns[1]) { const r0 = turns[0][0] / turns[0][1], r1 = turns[1][0] / turns[1][1];
           if (Math.abs(r0 / r1 - 1) < 0.25) P.push('in the 3D camera ' + name + ' stands up like a sign instead of lying on the ground: turned a quarter, its outline keeps its shape (' +
             turns[0].join('×') + ' → ' + turns[1].join('×') + ' pixels), where a hole in the ground is seen along its other side'); }
+        /* THE OTHER THING STANDS, and every flat camera stands it up with the same painter on the same canvas at the
+           same scale, so it covers about as many pixels in each. It is a colour glyph, which keeps the ALPHA of
+           whatever fill the painter before it left: in iso that drew it at about half its strength (59 pixels where
+           top and front showed 102, measured 2026-09-30) until it was given an ink of its own. */
+        if (dc.kind !== 'hole') { const most = Math.max(...Object.values(flatN)), top = Object.keys(flatN).find(c => flatN[c] === most);
+          Object.keys(flatN).forEach(c => { if (flatN[c] < most * 0.75) P.push('in the ' + c + ' camera ' + name + ' is drawn faint: it changes ' + flatN[c] +
+            ' pixels where the same drawing in the ' + top + ' camera changes ' + most + ' — it is written in whatever ink the painter before it left'); }); }
         P.push('COUNT-ONLY: ' + name + at + ' — pixels it changes, you standing on it: ' + seen.join(', ') + (turns[0] && turns[1] ? '; its outline in 3D ' + turns[0].join('×') + ', turned a quarter ' + turns[1].join('×') : '') + '; its strength ' +
           TIMES.map(t => (-t / 1000).toFixed(1)).join('/') + ' s before it is gone: ' + fades.join(', '));
       });
@@ -1195,6 +1211,7 @@ function findChromium() {
       if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
       Object.assign(PARK, JSON.parse(keep.park));
       parked.forEach(([c, w]) => { c.world = w; });
+      WORLDS[spot.wid].npcs = people;
       if (keep.season !== null && typeof seasonSet === 'function') seasonSet(keep.season);
       TRO.state = keep.st; moving = keep.mv;
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;

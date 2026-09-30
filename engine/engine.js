@@ -2483,7 +2483,11 @@ function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top 
   if(dc.kind==="hole"){g.fillStyle="#5A4630";g.beginPath();g.ellipse(sx+16,sy+18,8,5,0,0,7);g.fill();
     g.fillStyle="#3E2F1E";g.beginPath();g.ellipse(sx+16,sy+18,5,3,0,0,7);g.fill();
     g.fillStyle="#6E5638";[[6,10],[25,12],[10,25],[23,24]].forEach(p=>g.fillRect(sx+p[0],sy+p[1],2.5,2));}
-  else if(dc.kind==="poop"){g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
+  /* an ink of its own: a colour glyph ignores the fill's colour and NOT its alpha, and this used to write with
+     whatever fill the painter before it left, so a translucent one drew the mess faint by the clock of something
+     else (measured 2026-09-30, one glyph on a bare card: alpha 22809 under "#000", 4553 under the 0.2 evening
+     wash). The brown is what shows where a device has no colour glyph. */
+  else if(dc.kind==="poop"){g.fillStyle="#5A4630";g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
   g.globalAlpha=1;}
 function drawDecals(camX,camY){ /* the top and front cameras: on the ground, under everybody */
   decalsNow(Date.now()).forEach(({dc,a})=>{
