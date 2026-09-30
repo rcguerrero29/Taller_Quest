@@ -14,6 +14,13 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # A backstop, so a hung check is a red rather than a pull request stuck at "running" (#279).
+    # Measured 2026-09-30: the whole job took 3 min 47 s on CI, and every step after the install took
+    # 4 min 26 s and 4 min 38 s in two runs on a loaded four-core machine. Each engine run that
+    # test/gauge.js and test/horno.js start stops itself at 3 min and says so, three of them at most,
+    # so 20 min is above a normal job plus every one of those limits together: when one hangs, its
+    # own sentence prints before this fires.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
