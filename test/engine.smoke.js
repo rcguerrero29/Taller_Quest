@@ -2860,6 +2860,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (rowS === undefined && rowN === undefined) { P.push('COUNT-ONLY: nobody can stand beside the trolley line in ' + L.world + ' at x=' + mid); return P; }
     const keep = { w: world, px, py, cam: camMode, st: TRO.state, x: TRO.x, d: TRO.dir, mv: moving, season: seasonPick, dp: drawPerson, td: window.troDraw2D };
     if (typeof seasonSet === 'function') seasonSet('off');   /* nothing that sways by the clock in the frame */
+    /* …and ONE INSTANT for all five frames, because the season is not the only clock. Found 2026-09-30 as a 1-pixel red
+       that passed on re-run: the five frames are five draws, milliseconds apart (tens on a busy runner), and the
+       hummingbird at the stop hovers on Date.now over the feet of the person in front of the car. "Him without the car"
+       drawn a moment after "him with it" differed where the bird had moved, and that was counted as the car covering
+       him. Both clocks stand still until the frames are taken; the draw order does not depend on the clock. */
+    const wallNow = Date.now, pagePerf = performance.now, t0 = wallNow(), p0 = pagePerf.call(performance); Date.now = () => t0; performance.now = () => p0;
     world = L.world; moving = false; held = null;
     /* the car's tail one tile west of the hero's column: a whole-tile x, because the flat cameras paint the car
        from its tile's corner and a half-tile car beside a whole-tile person barely touches him on screen */
@@ -2893,7 +2899,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
       }); });
-    window.troDraw2D = real; drawPerson = realDP;
+    window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
     if (typeof seasonSet === 'function') seasonSet(keep.season);
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d;
     camSet(keep.cam); sizeCanvas();
