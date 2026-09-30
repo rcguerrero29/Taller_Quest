@@ -898,6 +898,15 @@ function drawIso(){
       else{ctx.save();ctx.translate(cx,cy);ctx.scale(0.45,0.45);ctx.translate(-cx,-cy);
         isoDiamond(cx,cy,ch==="Y"?"#C0392B":"#E0B45C");ctx.restore();}}
   }
+  /* what the dog leaves (#267). A hole is laid onto its tile's diamond: the top camera's own painter,
+     through the one transform that takes a 32-px tile square to this camera's 44×22 diamond about P's
+     centre — so it is the same hole on the same tile, and a block in front covers it the way it covers
+     the floor. The other thing stands, in the depth pass below, where the people are. */
+  const decs=decalsNow(Date.now());
+  decs.forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
+    const[cx,cy]=P(dc.x,dc.y);
+    if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
+    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);drawDecal(ctx,-TS/2,-TS/2,dc,a);ctx.restore();});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
@@ -951,6 +960,8 @@ function drawIso(){
        through it would turn the deck into a coloured slab, which this file already learned once
        with the trolley stop. Named rather than hidden. */
     if(cx>-ISW&&cx<VW+ISW&&cy>-40&&cy<VH+40)R.push({d:gx+gy+0.51,f:()=>fn(cx-16,cy-25)});};
+  /* before the people, so somebody standing on the same tile is drawn over it, as in the flat cameras */
+  decs.forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])bill(dc.x,dc.y,(bx,by)=>drawDecal(ctx,bx,by,dc,a));});
   w.npcs.forEach(n=>bill(n.fx===undefined?n.x:n.fx,n.fy===undefined?n.y:n.fy,(bx,by)=>{
     drawPerson(ctx,bx,by,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     if(hasSay(n))drawSayMark(ctx,bx,by);
@@ -2453,19 +2464,32 @@ function drawDecor(camX,camY){DECOS.forEach(d=>{if(d.world!==world)return;
   const f=DECODRAW[d.deco];if(!f)return;
   const sx=d.x*TS-camX,sy=d.y*TS-camY;
   if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;f(sx,sy,d);});}
-/* temporary ground marks — dug holes and the other thing; they fade on their own */
-const DECALS=[];
-function drawDecals(camX,camY){const nw=Date.now();
+/* temporary ground marks — dug holes and the other thing; they fade on their own.
+   IN EVERY CAMERA (#267, the owner's issue, 2026-09-29: "You see the dog dig and no hole appears"). Only
+   the top and front cameras painted these, so in 3D — the camera Meridian opens in — and in iso there
+   was nothing on the ground at all, and while you played in 3D nothing ever let go of a faded one.
+   Now there is one clock and one painter, the way the stick and the bowl share drawDogThing:
+   decalsNow says which marks on this world are live and how strong, and drops the faded ones whichever
+   camera is running; drawDecal paints one mark on its tile. A hole LIES on the ground in every camera
+   (iso lays the painter onto the tile's diamond, 3D lays it on the floor as a plane — engine3d.js,
+   t3Decals); the other thing is a little pile drawn in profile, so it STANDS, and iso and 3D draw it
+   where they draw feet, the way they draw the ball. DECALFLAT says which is which. */
+const DECALS=[],DECALFLAT={hole:true};
+function decalsNow(nw){
   for(let i=DECALS.length-1;i>=0;i--)if(DECALS[i].until<nw)DECALS.splice(i,1);
-  DECALS.forEach(dc=>{if(dc.world!==world)return;
+  return DECALS.filter(dc=>dc.world===world).map(dc=>({dc,a:Math.min(1,(dc.until-nw)/1500)}));}
+function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top camera's 32-px terms */
+  g.globalAlpha=a;
+  if(dc.kind==="hole"){g.fillStyle="#5A4630";g.beginPath();g.ellipse(sx+16,sy+18,8,5,0,0,7);g.fill();
+    g.fillStyle="#3E2F1E";g.beginPath();g.ellipse(sx+16,sy+18,5,3,0,0,7);g.fill();
+    g.fillStyle="#6E5638";[[6,10],[25,12],[10,25],[23,24]].forEach(p=>g.fillRect(sx+p[0],sy+p[1],2.5,2));}
+  else if(dc.kind==="poop"){g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
+  g.globalAlpha=1;}
+function drawDecals(camX,camY){ /* the top and front cameras: on the ground, under everybody */
+  decalsNow(Date.now()).forEach(({dc,a})=>{
     const sx=dc.x*TS-camX,sy=dc.y*TS-camY;
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
-    ctx.globalAlpha=Math.min(1,(dc.until-nw)/1500);
-    if(dc.kind==="hole"){ctx.fillStyle="#5A4630";ctx.beginPath();ctx.ellipse(sx+16,sy+18,8,5,0,0,7);ctx.fill();
-      ctx.fillStyle="#3E2F1E";ctx.beginPath();ctx.ellipse(sx+16,sy+18,5,3,0,0,7);ctx.fill();
-      ctx.fillStyle="#6E5638";[[6,10],[25,12],[10,25],[23,24]].forEach(p=>ctx.fillRect(sx+p[0],sy+p[1],2.5,2));}
-    else if(dc.kind==="poop"){ctx.font="11px serif";ctx.textAlign="center";ctx.fillText("💩",sx+16,sy+22);ctx.textAlign="start";}
-    ctx.globalAlpha=1;});}
+    drawDecal(ctx,sx,sy,dc,a);});}
 /* ---------- front-profile 2.5D (IDEAS §10 step ②) ----------
    The owner's steer, verbatim: "show us a profile from the front." Square grid,
    straight-on camera. Solids keep every painted pixel of their facades and grow a
@@ -3347,8 +3371,9 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
    door he can reach, somebody already out on the step. So a nap, a song, a hole and the other thing
    keep exactly the share of his whims they had (test/engine.smoke.js, grep `DIGS ABOUT 8%`).
    DOGTHINGS is what he has thrown, carried or been given that is not the ball: it is drawn wherever
-   the ball is drawn, in every camera, through drawDogThing — not through DECALS, which only the flat
-   cameras paint. DOGVISIT is a person who stepped out to him: a copy of somebody who works there,
+   the ball is drawn, in every camera, through drawDogThing. (DECALS, which only the flat cameras used to
+   paint, are in every camera too now, through drawDecal — #267.) DOGVISIT is a person who stepped out
+   to him: a copy of somebody who works there,
    standing on the step outside their own door, gone again on their own clock wherever you are. The
    clocks are the `now` the loop hands every update, never Date.now(), so a test can own them. */
 const DOGTHINGS=[],DOGVISIT=[];

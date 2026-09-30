@@ -1041,6 +1041,173 @@ function findChromium() {
   });
   fails.push(...busy);
 
+  /* ---- WHAT THE DOG LEAVES ON THE GROUND IS ON THE GROUND IN EVERY CAMERA (#267) ----
+     The owner's issue, 2026-09-29: "When the dog digs a hole or leaves a mess, it only shows in the flat
+     top-down and front cameras. In 3D, which is Meridian's default camera, and in iso, there is nothing on
+     the ground. You see the dog dig and no hole appears. Done when what the dog leaves on the ground shows
+     in every camera." Asked as pixels, the way a player misses it (docs/POSTMORTEM.md §3). A dog made here
+     is sent by his own whim — the roll is swept until he digs, and until he leaves the other thing, so no
+     band is typed out here — on an open tile with open ground all round; the person you steer stands on
+     that spot, and every camera this shell has is asked three things:
+       · IT SHOWS: the frame with the mark minus the frame without it;
+       · WHERE HE LEFT IT: the middle of those pixels lies inside the outline of the person standing on the
+         spot (the frame with him minus the frame without him) — under his feet, not a tile away;
+       · ON THE SAME CLOCK: near the end of its life its strength, as a share of its full strength, is the
+         share the reference camera (the first flat one, the painter that has always faded it) shows at the
+         same instant; and a moment after its end it is drawn by nobody and kept by nobody.
+     THE CLOCK IS HELD STILL. A mark fades by Date.now(), and so do a neighbour's idle sway, a door's glow,
+     a tree's canopy: every pair of frames compared here is taken at one stubbed instant, and a control pair
+     (the same scene twice) must differ by nothing first, or the probe measures nothing (§13r). The season
+     is switched off, the tram sent away and the critters of that world parked, so nothing else stands on
+     the spot. Nothing here calls a painter: the whim makes the mark, and draw() / draw3d() draw it. The 3D
+     camera is asked at all four of its quarter turns, because a mark can hide behind a wall at one stop. */
+  const leaves = await page.evaluate(() => {
+    const P = [];
+    const K = typeof DOGK !== 'undefined' ? [...DOGK][0] : null;
+    if (typeof dogWhim !== 'function' || typeof DECALS === 'undefined' || !K) { P.push('COUNT-ONLY: this shell has no dog, so nothing is dug and nothing is left on the ground'); return P; }
+    const has3d = typeof draw3d === 'function' && !!window.THREE && typeof T3 !== 'undefined' && CAMS.indexOf('3d') >= 0;
+    const flat = ['top', 'front', 'iso'].filter(c => CAMS.indexOf(c) >= 0);
+    if (!flat.length) { P.push('COUNT-ONLY: this shell has no flat camera to say how a mark on the ground fades'); return P; }
+    const QT = Math.PI / 2;
+    const views = flat.map(c => ({ cam: c, nm: 'the ' + c + ' camera', clock: true }))
+      .concat(has3d ? [0, 1, 2, 3].map(q => ({ cam: '3d', yaw: q * QT, nm: q ? 'the 3D camera turned ' + q + ' quarter' + (q > 1 ? 's' : '') : 'the 3D camera', clock: !q })) : []);
+    /* the spot: open ground a player can stand on, with open ground all round it, nobody on it, off the tram's rails */
+    const bare = (wid, x, y) => { const w = WORLDS[wid];
+      if (x < 0 || y < 0 || x >= w.W || y >= w.H) return false;
+      const g = w.grid[y][x], r = w.rows[y][x];
+      return !SOLID.has(g) && g !== 'N' && !stands(r) && !stands(g) && !DOORSET.has(r) && !portalAt(wid, x, y)
+        && !DECOS.some(d => d.world === wid && d.x === x && d.y === y) && !wellDepth(w, x, y) && !stairLift(w, x, y); };
+    const animals = wid => [['dog', typeof DOG !== 'undefined' && DOG], ['cat', typeof CAT !== 'undefined' && CAT], ['pig', typeof PIG !== 'undefined' && PIG], ['loro', typeof LORO !== 'undefined' && LORO]]
+      .filter(([k, a]) => a && AW(k) === wid).map(([, a]) => [Math.round(a.fx === undefined ? a.x : a.fx), Math.round(a.fy === undefined ? a.y : a.fy)]);
+    let spot = null;
+    [PL.street].concat(Object.keys(WORLDS)).filter((id, i, a) => WORLDS[id] && a.indexOf(id) === i).some(wid => {
+      const w = WORLDS[wid], L = troLine(wid), an = animals(wid);
+      for (let y = 1; y < w.H - 1 && !spot; y++) for (let x = 1; x < w.W - 1 && !spot; x++) {
+        if (L && Math.abs(y - L.row) <= 1) continue;
+        let ok = true;
+        for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1 && ok; dx++) ok = bare(wid, x + dx, y + dy) && !an.some(a => Math.abs(a[0] - x - dx) + Math.abs(a[1] - y - dy) === 0);
+        if (ok) spot = { wid, x, y }; }
+      return !!spot; });
+    if (!spot) { P.push('there is no open tile with open ground all round it in any world of this shell, so where the dog leaves things could not be looked at — that is a red, not a pass'); return P; }
+    const realNow = Date.now, keep = { world, px, py, fx, fy, cam: camMode, mv: moving, st: TRO.state, season: typeof seasonPick !== 'undefined' ? seasonPick : null,
+      yaw: has3d ? T3.yaw : 0, MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, dp: drawPerson,
+      decals: DECALS.slice(), things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, park: JSON.stringify(PARK), hid: document.getElementById('world').hidden };
+    const parked = CRIT.filter(c => c.world === spot.wid).map(c => [c, c.world]);
+    let NOW = realNow(), heroOn = true, drew3d = false;
+    const cv2 = document.getElementById('cv'), g2 = cv2.getContext('2d');
+    const frame = v => {
+      if (v.cam === '3d') { T3.turn = null; T3.yaw = v.yaw; if (!draw3d()) return null; drew3d = true;
+        const c3 = T3.renderer.domElement, c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
+        const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return { d: g.getImageData(0, 0, c.width, c.height).data, W: c.width }; }
+      draw(); return { d: g2.getImageData(0, 0, cv2.width, cv2.height).data, W: cv2.width }; };
+    /* how many pixels moved (by more than a shade), where their middle is, the box round them, and the
+       summed change over every pixel — the strength, which is what a fade takes away */
+    const cmp = (A, B) => { const a = A.d, b = B.d, W = A.W; let n = 0, sx = 0, sy = 0, s = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+      for (let i = 0; i < a.length; i += 4) { const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); if (!d) continue; s += d;
+        if (d > 30) { const p = i >> 2, x = p % W, y = (p - x) / W; n++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+      return { n, s, cx: n ? sx / n : NaN, cy: n ? sy / n : NaN, x0, y0, x1, y1 }; };
+    const MIN = 20;
+    try {
+      Date.now = () => NOW;
+      window.setTimeout = fn => { if (typeof fn === 'function') fn(); return 0; };   /* the hole lands 1.4 s into the dig: now, at this check's instant */
+      window.toast = () => {}; window.musHowl = () => {};
+      parked.forEach(([c]) => { c.world = '__frozen'; });
+      if (typeof seasonSet === 'function') seasonSet('off');
+      TRO.state = 'away';
+      /* 1 · the dog leaves them, by his own whim: the roll swept until each kind of mark has appeared once */
+      const marks = [], MK = (wid, x, y) => ({ kind: K, world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null, holdT: 0, stayT: 0 });
+      for (let i = 0; i < 400; i++) {
+        const r = (i + 0.5) / 400; let first = true;
+        Math.random = () => { if (first) { first = false; return r; } return 0.5; };
+        const n0 = DECALS.length;
+        dogWhim(MK(spot.wid, spot.x, spot.y), performance.now());
+        Math.random = keep.MR;
+        const got = DECALS.slice(n0);
+        DECALS.length = n0; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
+        got.forEach(dc => { if (!marks.some(m => m.kind === dc.kind)) marks.push(dc); });
+      }
+      Object.assign(PARK, JSON.parse(keep.park));
+      if (!marks.some(m => m.kind === 'hole')) P.push('swept through every roll of his whim at ' + spot.wid + ' (' + spot.x + ',' + spot.y + '), the dog never dug a hole, so there was nothing to look for in any camera');
+      if (marks.length < 2) P.push('swept through every roll of his whim, the dog never left the other thing on the ground either, so there was nothing to look for in any camera');
+      marks.forEach(dc => {
+        if (dc.world !== spot.wid || dc.x !== spot.x || dc.y !== spot.y) P.push('the dog standing at ' + spot.wid + ' (' + spot.x + ',' + spot.y + ') left a ' + dc.kind + ' at ' + dc.world + ' (' + dc.x + ',' + dc.y + ') instead: not where he was'); });
+      /* 2 · every camera, with you standing on the spot and the clock held still */
+      document.getElementById('world').hidden = false;
+      world = spot.wid; px = fx = spot.x; py = fy = spot.y; moving = false; held = null;
+      drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero && !heroOn) return; return keep.dp.apply(this, arguments); };
+      const put = dc => { if (DECALS.indexOf(dc) < 0) DECALS.push(dc); }, lift = dc => { const i = DECALS.indexOf(dc); if (i >= 0) DECALS.splice(i, 1); };
+      DECALS.length = 0;
+      const TIMES = [-1200, -600, -200];   /* the last moments of its life; the reference camera says what strength each should have */
+      const born = NOW;                    /* every mark was made at this one instant */
+      marks.forEach(dc => {
+        const name = dc.kind === 'hole' ? 'the hole the dog dug' : 'the mess the dog left', at = ' at ' + dc.world + ' (' + dc.x + ',' + dc.y + ')';
+        const mid = born + (dc.until - born) / 2, ref = {}, seen = [], fades = [], turns = {};
+        views.forEach((v, vi) => {
+          const vn = v.cam === '3d' ? '3D' + (v.yaw ? '↻' + Math.round(v.yaw / QT) : '') : v.cam;
+          camSet(v.cam); sizeCanvas();
+          NOW = mid; heroOn = false; put(dc);
+          /* one frame thrown away first: in Meridian the first top-camera frame paints the flower bed at st 8,4
+             differently from every frame after it (10 pixels, measured with the season left alone as well as
+             switched off), which is a first draw settling and not the mark */
+          frame(v);
+          const A = frame(v); if (!A) { P.push(v.nm + ' could not draw at all, so ' + name + ' was not looked for there'); return; }
+          const A2 = frame(v); lift(dc); const B = frame(v); heroOn = true; const H = frame(v); heroOn = false; put(dc);
+          const ctl = cmp(A, A2), mark = cmp(A, B), him = cmp(H, B);
+          if (ctl.n) { P.push(v.nm + ' cannot be measured: two frames of the same scene at the same instant differ by ' + ctl.n + ' pixels'); return; }
+          if (him.n < 30) { P.push('in ' + v.nm + ' nobody shows standing' + at + ' (' + him.n + ' pixels), so where ' + name + ' lies could not be compared with anything — that is a red, not a pass'); return; }
+          if (mark.n < MIN) { P.push(name + at + ' does not show in ' + v.nm + ': taking it away changes ' + mark.n + ' pixels. You watch him ' + (dc.kind === 'hole' ? 'dig' : 'squat') + ' and nothing is on the ground (#267)'); return; }
+          if (mark.cx < him.x0 || mark.cx > him.x1 || mark.cy < him.y0 || mark.cy > him.y1)
+            P.push('in ' + v.nm + ' ' + name + ' is not where he left it: stand on the spot and its middle is at (' + Math.round(mark.cx) + ',' + Math.round(mark.cy) + '), outside your own outline (' +
+              him.x0 + '–' + him.x1 + ' across, ' + him.y0 + '–' + him.y1 + ' down) — it is drawn somewhere else');
+          seen.push(vn + ' ' + mark.n);
+          if (v.cam === '3d') turns[Math.round(v.yaw / QT)] = [mark.x1 - mark.x0 + 1, mark.y1 - mark.y0 + 1];
+          if (!v.clock) return;
+          /* the clock: its strength near the end, as a share of its full strength, against the reference camera's */
+          /* the reference is the first camera, and only the first: if it could not be measured it has already said so above */
+          const isRef = vi === 0;
+          if (!isRef && !Object.keys(ref).length) return;
+          const sh = [];
+          for (const dt of TIMES) {
+            NOW = dc.until + dt; put(dc); const F = frame(v); lift(dc); const G = frame(v); put(dc);
+            const share = cmp(F, G).s / mark.s; sh.push(Math.round(share * 100) + '%');
+            if (isRef) ref[dt] = share;
+            else if (Math.abs(share - ref[dt]) > 0.2) { P.push('in ' + v.nm + ' ' + name + ' does not fade with the others: ' + (-dt / 1000).toFixed(1) + ' s before it is gone it shows at ' +
+              Math.round(share * 100) + '% of its full strength, and ' + views[0].nm + ' shows it at ' + Math.round(ref[dt] * 100) + '%'); break; }
+          }
+          fades.push(vn + ' ' + sh.join('/'));
+          NOW = dc.until + 1; put(dc); const E = frame(v); const kept = DECALS.indexOf(dc) >= 0; lift(dc); const E2 = frame(v); put(dc);
+          const left = cmp(E, E2).n;
+          if (left) P.push('in ' + v.nm + ' ' + name + ' is still drawn a moment after its time is up: ' + left + ' pixels of it, on a mark that has gone');
+          if (kept) P.push('in ' + v.nm + ' ' + name + ' is kept after its time is up: nothing lets go of it while this camera runs, so everything he ever leaves on the ground is carried for good');
+        });
+        /* A HOLE LIES IN THE GROUND. Turn the 3D camera a quarter and a thing lying on the ground is seen along its
+           other side, so its outline on screen changes shape; a card standing up like a sign turns to face you
+           and keeps the one it had. Asked of the hole only: the other thing is a little pile, and it stands. */
+        if (dc.kind === 'hole' && turns[0] && turns[1]) { const r0 = turns[0][0] / turns[0][1], r1 = turns[1][0] / turns[1][1];
+          if (Math.abs(r0 / r1 - 1) < 0.25) P.push('in the 3D camera ' + name + ' stands up like a sign instead of lying on the ground: turned a quarter, its outline keeps its shape (' +
+            turns[0].join('×') + ' → ' + turns[1].join('×') + ' pixels), where a hole in the ground is seen along its other side'); }
+        P.push('COUNT-ONLY: ' + name + at + ' — pixels it changes, you standing on it: ' + seen.join(', ') + (turns[0] && turns[1] ? '; its outline in 3D ' + turns[0].join('×') + ', turned a quarter ' + turns[1].join('×') : '') + '; its strength ' +
+          TIMES.map(t => (-t / 1000).toFixed(1)).join('/') + ' s before it is gone: ' + fades.join(', '));
+      });
+    } finally {
+      Date.now = realNow; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; drawPerson = keep.dp;
+      DECALS.length = 0; keep.decals.forEach(d => DECALS.push(d));
+      if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
+      Object.assign(PARK, JSON.parse(keep.park));
+      parked.forEach(([c, w]) => { c.world = w; });
+      if (keep.season !== null && typeof seasonSet === 'function') seasonSet(keep.season);
+      TRO.state = keep.st; moving = keep.mv;
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
+      if (has3d) T3.yaw = keep.yaw;
+      /* build the 3D scene again for the world this check came from, or the next check that reads T3.scene measures this room */
+      if (drew3d) { camSet('3d'); sizeCanvas(); draw3d(); }
+      camSet(keep.cam); sizeCanvas(); document.getElementById('world').hidden = keep.hid;
+    }
+    return P;
+  });
+  fails.push(...leaves.filter(l => !/^COUNT-ONLY: /.test(l)));
+  leaves.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+
   /* ---- AND A ROMP WITH SOMEBODY NEAR: THEY LAUGH, NOBODY RUNS ----
      The owner, 2026-09-29: "chasing after another character". Away from the park the greeting's roll
      cannot greet another dog, so it sends him to the nearest person in reach: he runs to their feet and
