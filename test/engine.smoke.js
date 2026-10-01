@@ -1306,7 +1306,7 @@ function findChromium() {
      Why he got stuck: a dog wanders only a few steps around his own spot, and an activity that ended
      further away than that left every step he tried refused, so he stood there until something else
      moved him. Meridian's agility course ends seven steps from the park dog's spot. Measured on the
-     engine before this check: a dog living in Meridian's park spent 90% of his free time standing like
+     engine before this check: a dog living in Meridian's park spent 90% of his time standing like
      that, once for 22 minutes on end (8 simulated hours).
      Asked by driving the REAL update loop (critUpdate, ballUpdate, dogThingsUpdate: what every frame
      calls) for a dog made here, on clocks this check HOLDS (performance.now and Date.now both read its
@@ -1359,7 +1359,8 @@ function findChromium() {
     const T0 = keep.PN.call(performance), D0 = keep.DN.call(Date);
     let T = T0, DT = 16.67, queue = [], prng = keep.MR;
     const real = CRIT.map(c => ({ c, world: c.world, next: c.next, stepT: c.stepT }));
-    const people = []; Object.keys(WORLDS).forEach(id => (WORLDS[id].npcs || []).forEach(n => people.push([n, n.wnext])));
+    /* everybody's own clocks, which a romp sets on this check's T and the page then reads on the real one: kept, and put back */
+    const people = []; Object.keys(WORLDS).forEach(id => (WORLDS[id].npcs || []).forEach(n => people.push([n, n.wnext, n.laughUntil])));
     const walled = [], laid = [];
     const wall = (wid, x, y) => { const w = WORLDS[wid]; walled.push([wid, x, y, w.grid[y][x]]); w.grid[y][x] = WALL; };
     const lay = (wid, x, y, g) => { const w = WORLDS[wid]; laid.push([wid, x, y, w.rows[y], w.grid[y][x]]); w.rows[y] = w.rows[y].slice(0, x) + g + w.rows[y].slice(x + 1); w.grid[y][x] = g; };
@@ -1440,6 +1441,10 @@ function findChromium() {
       const after = (what, d, home, c) => {
         const end = [d.x, d.y], far = md(end, home);
         if (far <= c.reach) return { none: what + ' ended ' + far + ' steps from his spot, within the ' + c.reach + ' he wanders anyway, so it could not leave him stuck' };
+        /* the people in the room stand where the real clock left them when this check began: if one of them has shut
+           the only way home, a walk was never possible and this run asks nothing about the walk */
+        if (foot(d.world, end)(home[0], home[1]) < 0 && !N4.some(([dx, dy]) => foot(d.world, end)(home[0] + dx, home[1] + dy) >= 0))
+          return { none: what + ' ended at ' + at(end) + ' with no way home on foot at all — somebody stands in it' };
         const r = live(d, AFTER), fin = [d.x, d.y];
         if (r.first === null) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot ' + at(home) + ', for the whole ' + sec(AFTER) +
           ' that followed: every step he tried was further from home than a dog may wander. The owner, 2026-10-01: "i dont understand why he gets stuck"' };
@@ -1631,7 +1636,7 @@ function findChromium() {
       Math.random = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
       unmake();
       real.forEach(r => { r.c.world = r.world; r.c.next = r.next; if (r.stepT === undefined) delete r.c.stepT; else r.c.stepT = r.stepT; });
-      people.forEach(([n, v]) => { n.wnext = v; });
+      people.forEach(([n, v, l]) => { n.wnext = v; if (l === undefined) delete n.laughUntil; else n.laughUntil = l; });
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
       Object.assign(PARK, JSON.parse(keep.park)); DECALS.length = keep.decals;
       Object.keys(parkPrefs).forEach(k => delete parkPrefs[k]); Object.assign(parkPrefs, JSON.parse(keep.prefs)); parkPersist();
