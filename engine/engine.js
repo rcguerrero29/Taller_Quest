@@ -120,6 +120,12 @@ const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J"
 const DOORSET=new Set((typeof DOORS!=="undefined"?DOORS:"+ELO").split(""));
 let world=PL.home;
 const WORLDS={};
+/* #269 — THE LONGEST ID A SAVE KEEPS WHOLE: the place you stood in (`w`) and a lot's faces (`bl`). An id
+   is kept whole or not at all, because cut short it names some other place, or none. The place you
+   stood in was cut to twelve letters, so a world or a room with a longer id sent you home on every
+   reload — and rooms were NAMED by cutting their lot's id to twelve to fit, which made two lots whose
+   ids share twelve letters into one room. Forty is what `bl` already kept for a lot's id. */
+const IDLEN=40;
 Object.keys(WORLD_DEFS).forEach(id=>{
   const rows=WORLD_DEFS[id].slice(),grid=[],wnpcs=[],defs=WNPC[id]||{};
   rows.forEach((row,y)=>{grid.push(row.split(""));row.split("").forEach((ch,x)=>{
@@ -371,6 +377,7 @@ const chillLines=k=>{
   Object.entries(WORLD_DEFS).forEach(([id,rows])=>{
     const L=rows[0].length;
     rows.forEach((r,i)=>{if(r.length!==L)mqwarn("world",id+" row "+i+" width "+r.length+" != "+L,true);});
+    if(id.length>IDLEN)mqwarn("world","the place "+id+" has an id of "+id.length+" letters and a save keeps "+IDLEN+" — whoever saves there is sent home on every reload",true);
   });
   Object.keys(WORLDS).forEach(from=>portalsOf(from).forEach(({ch,p})=>{
     const w=WORLDS[p.to];
@@ -748,10 +755,14 @@ function sanitizeSave(s){
     if(k==="__proto__"||k==="constructor"||k==="prototype")return; /* a #save= link may not reach the prototype */
     const v=s.bl[k];if(!v||typeof v!=="object")return;const o={};
     Object.keys(v).slice(0,32).forEach(pk=>{if(typeof v[pk]==="string")o[String(pk).slice(0,32)]=v[pk].slice(0,32);});
-    o&&(bl[String(k).slice(0,40)]=o);});
+    if(String(k).length<=IDLEN)bl[String(k)]=o;});   /* #269: whole or not at all — a cut id is some other lot's */
   return{n,c:str2(s.c,24,""),lk,xp:num(s.xp,0,999,0),he:num(s.he,0,3,3),d,
     px:num(s.px,0,63,10),py:num(s.py,0,63,11),tr:num(s.tr,0,9999,0),fq:num(s.fq,0,3,0),
-    w:str2(s.w,12,PL.home),wr:wearIn("wr"),wc:wearIn("wc"),qa,cs:num(s.cs,0,32,0),mk,so,hd,bl,
+    /* #269: the place you stood in, whole or not at all (IDLEN) — and never a name every object already
+       answers to: WORLDS["constructor"] is Object's own, and Continue stopped the game at the title on it.
+       Cut to twelve letters, the longer such names were defused by accident; kept whole, they are refused. */
+    w:(typeof s.w==="string"&&s.w&&s.w.length<=IDLEN&&!(s.w in Object.prototype))?s.w:PL.home,
+    wr:wearIn("wr"),wc:wearIn("wc"),qa,cs:num(s.cs,0,32,0),mk,so,hd,bl,
     v:s.v===undefined?undefined:num(s.v,0,99,0),
     /* hairV must survive the wash. It is the field that records what "long" MEANS (#132), and
        :473 reads it to decide whether a long-haired hero keeps their hair or is turned back into
@@ -7706,6 +7717,12 @@ function resolveBuild(b){
 /* refuse anything that would wall the city in. Cheap, and it runs before a tile is written. */
 function buildSafe(spec){
   const w=WORLDS[spec.world];if(!w)return "no such world: "+spec.world;
+  /* #269 — a room is named by its lot's id, WHOLE (buildInterior), so the id must be one a save can
+     keep, one room's only, and not the name of a place that is already there */
+  if((spec.links||[]).length){const rid=String(spec.id);
+    if(spec.links.length>1)return "it has "+spec.links.length+" doors into rooms and a lot's room is named by the lot's id — they would be one room";
+    if(rid.length>IDLEN)return "its id is "+rid.length+" letters and a save keeps "+IDLEN+" — a reload inside its room would send you home";
+    if(Object.prototype.hasOwnProperty.call(WORLDS,rid)&&!WORLDS[rid].built)return "its room would be called "+rid+", and a place is already called that";}
   for(const [y,x,ch] of spec.tiles){
     if(y<0||x<0||y>=w.H||x>=w.W)return "off the map at "+x+","+y;
     if(w.grid[y][x]==="N")return "somebody is standing at "+x+","+y;
@@ -7733,10 +7750,12 @@ function buildSafe(spec){
 }
 function applyBuilds(){
   bldReads=[];
+  const ids=new Set();   /* #269: a lot's id names its room and keeps its faces — a second lot with the same id is refused, never merged */
   BLDS().forEach(b=>{
     const spec=resolveBuild(b);
     if(!spec){if(!bldWarned){bldWarned=true;mqwarn("build","no template named "+b.tpl,true);}return;}
-    const bad=buildSafe(spec);
+    const dup=ids.has(String(b.id));ids.add(String(b.id));
+    const bad=dup?"another lot already has the id "+b.id+" — the two would be one room":buildSafe(spec);
     if(bad){mqwarn("build","refused to build "+b.id+" — "+bad,true);return;}
     const w=WORLDS[spec.world];
     spec.tiles.forEach(([y,x,ch])=>{
@@ -7745,12 +7764,26 @@ function applyBuilds(){
     spec.reads.forEach(r=>bldReads.push(r));
     (spec.links||[]).forEach(l=>buildInterior(spec.world,l));
   });
+  roomNamesShared();
 }
-/* an interior a build carries becomes a WORLD of its own, named after the lot (an id is at most
-   twelve characters — the save keeps that many), with its people, its name and its arrival line
+/* #269 — "and a warning that other rooms have the same name" (the owner, 2026-09-30). Two rooms MAY
+   share a name: a name is a label, and each keeps its own id and its own room. But a sign, a map or a
+   trolley card that says "the gatehouse" twice cannot tell a person which is which, so it is said
+   out loud, once per name and language, and nothing is refused. Only names a built room is part of:
+   a pack's own places were named by hand and are not this check's business. */
+function roomNamesShared(){
+  Object.keys(UI).forEach(lg=>{const L=(UI[lg]&&UI[lg].locs)||{},by={};
+    Object.keys(L).forEach(id=>{if(!WORLDS[id]||typeof L[id]!=="string")return;
+      const k=L[id].trim().toLowerCase();if(k)(by[k]=by[k]||[]).push(id);});
+    Object.keys(by).forEach(k=>{const ids=by[k];
+      if(ids.length>1&&ids.some(id=>WORLDS[id].built))
+        mqwarn("name",ids.length+" places are called \""+L[ids[0]]+"\" ("+ids.join(", ")+") — each has its own room, but a sign cannot tell them apart",false);});});
+}
+/* an interior a build carries becomes a WORLD of its own, named by the lot's id, whole (#269: it was
+   cut to twelve letters, so two lots whose ids share twelve were one room), with its people, its name and its arrival line
    in both languages; the lot's door and the room's exit become coordinate portals to each other */
 function buildInterior(from,l){
-  const I=l.interior,id=String(l.id).slice(0,12);
+  const I=l.interior,id=String(l.id);
   const rows=I.rows.slice(),grid=[],wnpcs=[],defs=I.people||{};
   rows.forEach((row,y)=>{grid.push(row.split(""));row.split("").forEach((ch,x)=>{
     if(defs[ch]){wnpcs.push({key:ch,x,y,...defs[ch]});grid[y][x]="N";}});});
