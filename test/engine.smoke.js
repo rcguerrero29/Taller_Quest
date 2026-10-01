@@ -3177,12 +3177,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   /* ---- and in the flat cameras the trolley is painted in its row's turn ----
      The owner, 2026-09-21, naming the weirdness: "looks like the person is laying on the trolley."
-     The front camera painted the car in the GROUND pass and the isometric camera painted it LAST,
-     after everybody: so in front a person on the platform behind the car had his feet on its roof,
-     and in iso a person standing in front of the car was painted under it and one behind it had his
-     legs cut off at its roof line — the other two readings of "laying on the trolley". A car is a
-     thing on its row, and the depth queue every camera already keeps is where it belongs: whoever
-     is nearer the camera than the rails paints over it, whoever is farther paints under it.
+     What he saw was the 3D camera, the check above. In the flat cameras the isometric camera painted
+     the car LAST, after everybody, so a person standing in front of the car was painted under it
+     (86 pixels of him, measured that day). That was moved the same day (drawIso, grep
+     `IN ITS ROW'S TURN`). The FRONT camera was not, although until 2026-10-01 this note said its
+     car had been painted in the ground pass and fixed (#276): the same day's frames were all 3D, and
+     the front camera went on painting the car before its depth queue, under every row, until
+     mq-v217 — the walk-through below is the frame that showed it. A car is a thing on its row, and
+     the depth queue every camera already keeps is where it belongs: whoever is nearer the camera
+     than the rails paints over it, whoever is farther paints under it.
      Asked as pixels in each flat camera, with the car alongside the hero's column: a person on the
      row in FRONT of the rails keeps every pixel of himself (the car changes none), and a person on
      the row BEHIND the rails yields every pixel where they overlap (he changes none of the car).
@@ -3238,7 +3241,42 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!overlap) return;                                   /* no overlap on this row in this camera: there is no order to get wrong */
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
-      }); });
+      });
+      /* WALKING THROUGH IT, in the front camera (#276). At rest nobody touches the car in this camera: it is drawn inside
+         its own row, and a person's feet and shadow end inside his, so the two rows above meet it in 0 pixels here and the
+         order cannot show (measured 2026-10-01 at Calle Principal: 0 behind, 2 in front). The one person who reaches the
+         car's row with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown
+         from the platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform
+         your feet are still BEHIND its row, and until mq-v217 the front camera painted the car before its depth queue, so
+         your legs went on its roof: the owner's "laying on the trolley", in the camera this note had called fixed. So the
+         step is swept in eighths of a tile on each side of the rails' row (the row itself, inside the car, is neither side),
+         counting only pixels where his BODY and the car's BODY meet: a drop shadow on either is a tint, not an order (with
+         only his body required, 4 pixels of a correctly hidden person read as "in front" in iso, where the car is not
+         opaque). A side where the two never meet says so. A camera that draws no car, or nobody, there is a red and not
+         a note: planted 2026-10-01 with the front-view car blanked, the first draft of this sweep said "not measured" and
+         the whole suite stayed green. */
+      if (cam === 'front') [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
+        if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the ' + cam + ' camera'); return; }
+        const body = (P2, Q, i) => Math.abs(P2[i] - Q[i]) + Math.abs(P2[i + 1] - Q[i + 1]) + Math.abs(P2[i + 2] - Q[i + 2]) > 120;
+        let carSeen = 0, heroSeen = 0, meet = 0, moved = 0, worst = 0, at = 0;
+        for (let k = 1; k <= 7; k++) { px = fx = mid; py = L.row; fy = L.row + sgn * k / 8;
+          const A = grab(), A2 = grab();
+          heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
+          let wrong = 0;
+          for (let i = 0; i < A.length; i += 4) { if (ne(B, D, i)) carSeen++; if (ne(C, D, i)) heroSeen++;
+            if (!body(C, D, i) || !body(B, D, i)) continue;              /* only where his body and the car's body meet */
+            if (ne(A, A2, i)) { moved++; continue; }
+            meet++;
+            if (side === 'behind' ? (ne(A, B, i) && !ne(A, C, i)) : (ne(A, C, i) && !ne(A, B, i))) wrong++; }
+          if (wrong > worst) { worst = wrong; at = k; } }
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody stepping through it from ' + side + ' it could be measured against it'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody where the hero steps ' + side + ' the trolley in ' + L.world + ', so walking through it was not measured'); return; }
+        if (moved > meet * 0.05) { P.push('the ' + cam + ' camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (meet + moved) + ' pixels where he and the car meet'); return; }
+        if (!meet) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the ' + cam + ' camera never put his body and the car\'s in the same pixel, so the order was not measured'); return; }
+        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
+        if (worst && side === 'in front of') P.push('in the ' + cam + ' camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
+      });
+    });
     window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
     if (typeof seasonSet === 'function') seasonSet(keep.season);
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d;
