@@ -1091,6 +1091,29 @@ function t3Petals(){
       p.visible=true;i++;}});
   for(;i<T3.petals.length;i++)T3.petals[i].visible=false;
 }
+/* what the dog leaves on the ground (#267). A hole LIES on the floor: a plane a hair above it, carrying the
+   top camera's own painting of the hole (drawDecal, baked once per kind at this density), faded by the same
+   clock as every other camera (decalsNow → material opacity), and lit as a Lambert surface like the ground
+   it lies on, so evening darkens both together. The other thing stands, and rides the actor pool
+   (t3Actors) the way the ball does. A pool like the petals: nothing is made or thrown away per frame. */
+function t3DecalTex(kind){
+  if(T3.decalK!==T3.K){Object.values(T3.decalTex||{}).forEach(t=>t.dispose());T3.decalTex={};T3.decalK=T3.K;}
+  if(T3.decalTex[kind])return T3.decalTex[kind];
+  const K=T3.K,c=document.createElement("canvas");c.width=c.height=32*K;
+  const g=c.getContext("2d");g.setTransform(K,0,0,K,0,0);drawDecal(g,0,0,{kind},1);
+  return T3.decalTex[kind]=t3Tex(c,true);}
+function t3Decals(){
+  T3.decals=T3.decals||[];const w=CW();let i=0;
+  decalsNow(Date.now()).forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
+    let p=T3.decals[i];
+    if(!p){p=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshLambertMaterial({transparent:true,depthWrite:false}));
+      p.rotation.x=-Math.PI/2;T3.decals[i]=p;T3.scene.add(p);}
+    const tex=t3DecalTex(dc.kind);
+    if(p.material.map!==tex){p.material.map=tex;p.material.needsUpdate=true;}
+    p.material.opacity=a;
+    p.position.set(dc.x+0.5,0.011+stairLift(w,dc.x,dc.y),dc.y+0.5);
+    p.userData={decal:dc.kind,x:dc.x,y:dc.y};p.visible=true;i++;});
+  for(;i<T3.decals.length;i++)T3.decals[i].visible=false;}
 /* actors: a pool of live-canvas sprites, repainted by the 2D artists every frame */
 function t3Sprite(i){
   let p=T3.pool[i];
@@ -1121,6 +1144,9 @@ function t3ReadFace(w,x,y){
 function t3Actors(){
   const list=[];
   const w=CW();
+  /* the other thing the dog leaves stands, like the ball, painted by the flat cameras' own painter (#267) — first
+     in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
+  decalsNow(Date.now()).forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
   w.npcs.forEach(n=>list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,f:(g)=>{
     drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     /* the SAME painter the flat cameras use, smaller and closer because this sprite has six pixels
@@ -1257,6 +1283,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Actors();
     t3DroneMarks();
     t3Petals();
+    t3Decals();
     t3Fiesta();
     t3Leash();
     T3.renderer.render(T3.scene,T3.cam);
