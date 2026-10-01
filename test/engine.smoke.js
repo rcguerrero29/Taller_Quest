@@ -46,12 +46,16 @@ function findChromium() {
   const pageErrors = [], warns = [];
   page.on('pageerror', e => pageErrors.push(e.message));
   page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
-  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent
-  // …except the gauge pack's own deliberate attack (content/gauge/config.js PAPER: an @import and a font from
-  // example.invalid). The engine parses a pack's paper in a probe <style>, the browser tries the import there, and
-  // the page's policy refusing it is the door working, not a door open. Counted out loud, never failed, never hidden.
-  const refused = [], attackRefused = [];
-  page.on('console', m => { const s = m.text(); if (/Content Security Policy/i.test(s)) (/example\.invalid/.test(s) ? attackRefused : refused).push(s.slice(0, 220)); });
+  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
+  // #256: on every page this file opens, and WITH NO EXCEPTION. Until #256 the gauge pack's deliberate attack
+  // (content/gauge/config.js PAPER: an @import from example.invalid) was counted out loud and never failed: the
+  // engine parsed a pack's paper in a <style> written into the page, the browser tried the import there, and the
+  // policy refusing it was the door working. Since style-src is 'self' a <style> written into the page is refused
+  // itself, so the paper is parsed in a constructed sheet, which never fetches an @import at all. A refusal for
+  // example.invalid now means something parses pack CSS the old way again, and that is a red like any other.
+  const refused = [];
+  const watchPolicy = p => p.on('console', m => { const s = m.text(); if (/Content Security Policy/i.test(s)) refused.push(s.slice(0, 220)); });
+  watchPolicy(page);
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
   await page.goto('file://' + file);
   await page.waitForTimeout(1500);
@@ -1369,36 +1373,46 @@ function findChromium() {
       return P; }
     const declared = (typeof PAPER === 'string') ? PAPER : '';
     const out = (typeof PAPER_APPLIED === 'string') ? PAPER_APPLIED : '';
+    /* WHERE THE PAPER IS. Since #256 the engine ADOPTS a constructed sheet (document.adoptedStyleSheets)
+       instead of writing a <style> into the page, which style-src 'self' refuses. This asks for the sheet
+       the engine says it applied (PAPER_SHEET) and falls back to a <style id="paperSkin">, so every check
+       below reads the OUTCOME on either engine. How the sheet got there is the policy guards' business. */
+    const adopted = [...(document.adoptedStyleSheets || [])];
+    const ps = (typeof PAPER_SHEET !== 'undefined' && PAPER_SHEET) || (document.getElementById('paperSkin') || {}).sheet || null;
 
     /* ---- A PACK THAT DECLARES NOTHING MUST GET NOTHING. Meridian's path, and the one that keeps
            "every engine change is behaviour-identical for Meridian's players" true. ---- */
     if (!declared.trim()) {
       if (out) P.push('this pack declares no PAPER and the engine injected a stylesheet anyway');
-      if (document.getElementById('paperSkin')) P.push('a pack that declares no PAPER still got a <style id="paperSkin"> in the document');
+      if (document.getElementById('paperSkin') || adopted.length)
+        P.push('a pack that declares no PAPER still got a paper stylesheet in the document (' + (adopted.length ? adopted.length + ' adopted sheet(s)' : '<style id="paperSkin">') + ')');
       return P;
     }
 
     /* ---- 1 · THE GOOD HALF ARRIVED ---- */
     if (!out) { P.push('this pack declares PAPER and the engine produced no stylesheet at all — the seam is dead'); return P; }
-    const node = document.getElementById('paperSkin');
-    if (!node) P.push('the engine built a paper stylesheet but never put it in the document');
+    const docSheets = [...document.styleSheets];
+    if (!ps || !(adopted.includes(ps) || docSheets.includes(ps))) P.push('the engine built a paper stylesheet but never put it in the document');
     else {
-      /* it must come AFTER the shell's own styles, or a tie goes to the engine and the pack's
-         declaration silently loses to Meridian's voice */
-      const styles = [...document.querySelectorAll('style')];
-      if (styles.indexOf(node) !== styles.length - 1 && styles.some((s2, i) => i > styles.indexOf(node) && /\.paper/.test(s2.textContent || '')))
-        P.push('the pack\'s paper is injected before a shell stylesheet that also styles .paper, so the pack loses every tie');
+      /* it must come AFTER every other sheet that styles .paper, or a tie goes to the shell and the
+         pack's declaration silently loses to Meridian's voice. Cascade order is the document's own
+         sheets, then the adopted ones. A later sheet this page cannot read (a file:// <link> is
+         opaque) counts as one that might, because "could not look" is not "nothing there". */
+      const order = [...docSheets, ...adopted], later = order.slice(order.indexOf(ps) + 1);
+      const text = sh => { try { return [...sh.cssRules].map(r => r.cssText).join('\n'); } catch (e) { return null; } };
+      if (later.some(sh => { const t = text(sh); return t === null || /\.paper/.test(t); }))
+        P.push('the pack\'s paper is applied before a shell stylesheet that also styles .paper (or one this check cannot read), so the pack loses every tie');
     }
     /* the sheet is real CSS the browser accepted, not a string that looks like CSS */
     let ruleCount = 0;
-    try { ruleCount = node && node.sheet ? node.sheet.cssRules.length : 0; } catch (e) {}
+    try { ruleCount = ps ? ps.cssRules.length : 0; } catch (e) {}
     if (!ruleCount) P.push('the injected paper stylesheet parses to zero rules — it reached the page as text and styles nothing');
 
     /* ---- 2 · EVERY SELECTOR IS ROOTED IN THE READER ----
            Read off the PARSED sheet, so a selector that only LOOKS scoped in the source text cannot
            pass: the browser normalises what we are checking. ---- */
     const sels = [];
-    try { for (const r of node.sheet.cssRules) collect(r, sels); } catch (e) {}
+    try { for (const r of ps.cssRules) collect(r, sels); } catch (e) {}
     function collect(r, acc) {
       if (r.selectorText !== undefined) { acc.push(r.selectorText); return; }
       if (r.cssRules) for (const c of r.cssRules) collect(c, acc);
@@ -2704,6 +2718,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   {
     const tctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
     const tp = await tctx.newPage();
+    watchPolicy(tp);
     const R = [], tErr = [], ok = [];
     try {
       tp.on('pageerror', e => tErr.push(e.message));
@@ -4585,6 +4600,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      wanders onto the hero's next tile turns a walk into a wall (.claude/skills/guard/SKILL.md, "it reads the clock"). */
   {
     const kp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    watchPolicy(kp);
     const kErr = [];
     kp.on('pageerror', e => kErr.push(e.message));
     await kp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
@@ -4811,8 +4827,13 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      they are printed rather than failed. One filter at the end, so a new check cannot forget one. */
   fails.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   fails = fails.filter(l => !/^COUNT-ONLY: /.test(l));
-  if (attackRefused.length) console.log("  COUNT-ONLY: the page's policy refused " + attackRefused.length + " fetch(es) to example.invalid, the gauge pack's deliberate attack — as it must");
-  if (refused.length) fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254) — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 3).join(' | '));
+  /* by kind, so the sentence says what a player lost: a refused style is a piece of the page that silently
+     lost its look, a refused script is a feature that silently never ran */
+  if (refused.length) { const kinds = {};
+    refused.forEach(r => { const k = /inline style/i.test(r) ? 'style(s) written inside the page' : /stylesheet/i.test(r) ? 'stylesheet(s) from another site' :
+      /inline script|inline event/i.test(r) ? 'script(s) written inside the page' : /script/i.test(r) ? 'script file(s)' : 'other request(s)'; kinds[k] = (kinds[k] || 0) + 1; });
+    fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254, #256): ' +
+      Object.entries(kinds).map(([k, n]) => n + ' ' + k).join(', ') + ' — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 2).join(' | ')); }
   if (fails.length) { console.log('FAIL (' + idx + ')\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : 'nothing') + '.');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -54,6 +54,12 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
   const listed = [...new Set([...((swSrc.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || "").matchAll(/"\.\/([^"]*)"/g)].map(m => m[1]).filter(Boolean))];
   if (!listed.length) { console.log("FAIL — the built sw.js lists no ASSETS this check can read, so there is nothing to test"); process.exit(1); }
   if (!listed.includes('sw-register.js')) fails.push('sw.js does not cache sw-register.js, so an offline visit would load a page whose offline switch is missing');
+  /* #256: the page's look lives in stylesheet FILES now (style-src 'self'), so a stylesheet the page wears and the
+     worker does not keep is a game that opens offline as bare text. The worker's fetch handler would not save it
+     either: on a first visit the page loads before the worker controls it. Asked of the built page, every link. */
+  const sheetsWorn = [...fs.readFileSync(path.join(out, 'index.html'), 'utf8').matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1].replace(/^\.\//, ''));
+  if (!sheetsWorn.length) fails.push('the built page links no stylesheet at all, so whether its look survives offline could not be asked — nothing to measure is not a pass');
+  sheetsWorn.filter(f => !listed.includes(f)).forEach(f => fails.push('the page wears ' + f + ' and sw.js does not cache it, so offline the game opens without it'));
 
   /* the server: the built box, with one switch — hand out the NEXT version of sw.js */
   let next = false;
@@ -93,6 +99,11 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     return faces.map(([f, w, s]) => f + ' ' + w + ' ' + s).filter(k => !ok.has(k));
   }, FACES).catch(e => ['(could not read: ' + e.message.split('\n')[0] + ')']);
   const booted = () => page.evaluate(() => ({ gamev: typeof GAMEV !== 'undefined' ? GAMEV : null, canvas: !!document.querySelector('canvas') })).catch(() => ({ gamev: null, canvas: false }));
+  /* every stylesheet the page links ARRIVED and parsed: a <link> whose file never came has no sheet, or one with
+     no rules in it. Asked of the page, not of the cache, so it reads what the player's browser actually applied. */
+  const unstyled = () => page.evaluate(() => [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .filter(l => { try { return !l.sheet || !l.sheet.cssRules.length; } catch (e) { return true; } }).map(l => l.getAttribute('href')))
+    .catch(e => ['(could not read: ' + e.message.split('\n')[0] + ')']);
 
   try {
     /* 1 · first visit */
@@ -105,6 +116,8 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     if (cached.length) fails.push('first visit: the cache "' + CACHE + '" is missing ' + cached.join(', '));
     await settle(1500);
     if (loads !== 1) fails.push('first visit: the page loaded ' + loads + ' times — a first visit has nothing stale and must not reload');
+    const bare1 = await unstyled();
+    if (bare1.length) fails.push('first visit: the stylesheet(s) ' + bare1.join(', ') + ' did not arrive, so the page is not wearing its own look');
     const noFont1 = await fontsIn(page);
     if (noFont1.length) fails.push('first visit: the typeface(s) ' + noFont1.join(', ') + ' did not load from this site');
     const shown = await page.evaluate(() => getComputedStyle(document.documentElement).display);
@@ -134,6 +147,8 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     await page.reload({ waitUntil: 'load' }).catch(e => fails.push('offline: the reload failed — ' + e.message.split('\n')[0]));
     const b2 = await booted();
     if (b2.gamev !== b1.gamev || !b2.canvas) fails.push('offline: the game did not boot from the cache (GAMEV ' + b2.gamev + ', canvas ' + b2.canvas + ')');
+    const bare2 = await unstyled();
+    if (bare2.length) fails.push('offline: the stylesheet(s) ' + bare2.join(', ') + ' did not load from the cache — offline the game would open without its look');
     const noFont2 = await fontsIn(page);
     if (noFont2.length) fails.push('offline: the typeface(s) ' + noFont2.join(', ') + ' did not load from the cache — offline would look different from online');
     await context.setOffline(false);
@@ -170,5 +185,5 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
   fs.rmSync(out, { recursive: true, force: true });
 
   if (fails.length) { console.log('FAIL — offline play\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline with its own three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation. El Horno\'s shell matches the public policy and runs no worker.');
+  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline wearing its own ' + sheetsWorn.length + ' stylesheet(s) and three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation. El Horno\'s shell matches the public policy and runs no worker.');
 })();

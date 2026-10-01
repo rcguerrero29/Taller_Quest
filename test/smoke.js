@@ -71,9 +71,13 @@ const CANDIDATES = [
   page.on('pageerror', e => pageErrors.push(e.message));
   const warns = [];
   page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
-  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent
+  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
+  // #256: on EVERY page this file opens, not only the first. Since style-src is 'self' a refused style is a
+  // silent visual break (the element simply loses its look), and four checks below open a browser of their
+  // own; a refusal that only happens in one of them used to be seen by nobody.
   const refused = [];
-  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); });
+  const watchPolicy = p => p.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); });
+  watchPolicy(page);
   // fail external fetches (Google Fonts) instantly — a hanging CDN must never stall the suite
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
 
@@ -1243,6 +1247,7 @@ const CANDIDATES = [
       if (before) await ctx.addInitScript(before);
       await ctx.addInitScript(pinSeed, seed);
       const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+      watchPolicy(p);
       const errs = []; p.on('pageerror', e => errs.push(e.message));
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       if (route) await route(p);
@@ -2114,6 +2119,7 @@ const CANDIDATES = [
   {
     const ctx = await browser.newContext();
     const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+    watchPolicy(p);
     p.setDefaultTimeout(6000);
     const errs = [], rn = [];
     p.on('pageerror', e => errs.push(e.message));
@@ -2273,6 +2279,7 @@ const CANDIDATES = [
   {
     const ctx = await browser.newContext();
     const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+    watchPolicy(p);
     p.setDefaultTimeout(6000);
     const errs = [], bd = [];
     p.on('pageerror', e => errs.push(e.message));
@@ -2902,6 +2909,7 @@ const CANDIDATES = [
   {
     const ctx2 = await browser.newContext();
     const p2 = await ctx2.newPage({ viewport: { width: 480, height: 900 } });
+    watchPolicy(p2);
     const errs = [], w2 = [];
     p2.on('pageerror', e => errs.push(e.message));
     p2.on('console', m => { if (m.type() === 'warning') w2.push(m.text()); });
@@ -5270,13 +5278,19 @@ const CANDIDATES = [
     }
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const csp = (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
-    const PINNED = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'";
-    if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only');
+    // #256 (2026-10-01): style-src is 'self' too, so every door on the list is shut. Styles come from files only.
+    const PINNED = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'";
+    if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only' + (/style-src[^;]*'unsafe-inline'/.test(csp || '') ? ' (it lets the page use styling written inside it again, the door #256 shut: if outside text ever reached the page, that door would let it repaint or deface the game)' : ''));
     // #254 (2026-09-27): the page runs only script FILES. Under script-src 'self' a script written inside
     // the page is blocked without a sound, so one here is dead code or the first step to reopening that door.
     const inlineJs = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].length
                    + [...html.matchAll(/<[a-z][^>]*\son[a-z]+\s*=/gi)].length;
     if (inlineJs) fails.push(`guarantee: index.html carries ${inlineJs} script(s) written inside the page (a <script> block or an on…= handler) — the page runs only script files (#254); move it into one`);
+    // #256: and styles the same way. Under style-src 'self' the browser refuses a <style> block or a style="…"
+    // attribute without a sound and the element just loses that look, so one here is a silent visual break
+    // or the first step to reopening the door. Counted, so the sentence says how much of the page went.
+    const inlineCss = [...html.matchAll(/<style[\s>]/gi)].length, inlineAttr = [...html.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
+    if (inlineCss + inlineAttr) fails.push(`guarantee: index.html carries ${inlineCss} <style> block(s) and ${inlineAttr} style="…" attribute(s) written inside the page — the policy refuses every one and a player sees the page without them (#256); the page's styles live in shell.css`);
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
     if (!/res\.ok/.test(sw)) fails.push('guarantee: sw.js caches responses without checking res.ok');
     if (!/self\.location\.origin/.test(sw)) fails.push('guarantee: sw.js does not restrict itself to its own origin');

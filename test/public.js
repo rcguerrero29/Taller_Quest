@@ -95,17 +95,22 @@ if (!pages.length) fails.push('the upload holds no .html page, so no policy was 
 /* An off-origin host is not forbidden by nature — it is a DECISION, and the rule is that it has to be
    a declared one, here, with the reason. Since 2026-09-27 there is none. */
 const DECLARED_OFF_ORIGIN = {};
-const WANT = { 'script-src': "'self'", 'style-src': "'self' 'unsafe-inline'", 'font-src': "'self'", 'img-src': "'self'", 'connect-src': "'none'",
+const WANT = { 'script-src': "'self'", 'style-src': "'self'", 'font-src': "'self'", 'img-src': "'self'", 'connect-src': "'none'",
   'default-src': "'self'", 'base-uri': "'self'", 'form-action': "'none'", 'object-src': "'none'" };
 pages.forEach(p => { const html = read(p);
   const csp = (html.match(/<meta[^>]+http-equiv="Content-Security-Policy"[^>]+content="([^"]*)"/i) || [])[1];
   if (!csp) { fails.push(p + ' declares no Content-Security-Policy — nothing limits where that page may talk to'); return; }
   const dirs = Object.fromEntries(csp.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [k, ...v] = s.split(/\s+/); return [k, v.join(' ')]; }));
   Object.entries(WANT).forEach(([k, v]) => { if (dirs[k] !== v)
-    fails.push(p + '\'s policy has ' + k + ' "' + (dirs[k] === undefined ? '(missing)' : dirs[k]) + '" and the public pages are held to "' + v + '"' + (k === 'style-src' ? '' : ' — a wider value reopens a door #254 closed')); });
+    fails.push(p + '\'s policy has ' + k + ' "' + (dirs[k] === undefined ? '(missing)' : dirs[k]) + '" and the public pages are held to "' + v + '" — a wider value reopens a door ' + (k === 'style-src' ? '#256' : '#254') + ' closed'); });
   Object.keys(dirs).filter(k => !(k in WANT)).forEach(k => fails.push(p + '\'s policy adds ' + k + ', which no public page has — say why here before it ships'));
   const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].length + [...html.matchAll(/<[a-z][^>]*\son[a-z]+\s*=/gi)].length;
   if (inline) fails.push(p + ' carries ' + inline + ' script(s) written inside the page — the policy blocks them silently, so they are dead code or a door being reopened');
+  /* #256: and no style written inside the page either. Under style-src 'self' the browser refuses a <style> block
+     or a style="…" attribute without a sound, and the element simply loses that look: a silent visual break on a
+     player's phone, or the first step to reopening the door. Counted, so the sentence says how much is affected. */
+  const css = [...html.matchAll(/<style[\s>]/gi)].length, attr = [...html.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
+  if (css + attr) fails.push(p + ' carries ' + css + ' <style> block(s) and ' + attr + ' style="…" attribute(s) written inside the page — the policy refuses every one, so a player sees that page without them');
   if (!/<meta name="referrer" content="no-referrer">/.test(html)) fails.push(p + ' has no no-referrer tag, so a link out would tell the next site where the player came from');
   if (!/<script src="(?:\.\.\/)*frame-guard\.js"><\/script>/.test(html.split('</head>')[0])) fails.push(p + ' does not load frame-guard.js in its <head>, so another site could show it inside a frame and cover it with its own buttons');
   [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(m => m[1]).forEach(u => {

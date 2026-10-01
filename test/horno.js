@@ -155,8 +155,13 @@ async function played() {
   let exe; try { const p = chromium.executablePath(); if (p && fs.existsSync(p)) exe = p; } catch (e) {}
   if (!exe) exe = CAND.find(p => { try { return fs.existsSync(p) && fs.statSync(p).isFile(); } catch (e) { return false; } });
   const b = await chromium.launch({ executablePath: exe });
+  /* EVERY REFUSAL UNDER THE PAGE'S OWN POLICY IS A RED (#254, #256). This page is the bakery a person plays, card
+     open, buttons pressed — and since style-src is 'self' a refused style is not an error anybody sees: the card
+     just stops wearing its paper. Watched from the first byte, failed at the end however the walk went. */
+  const refused = [];
   try {
     const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
+    pg.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 160)); });
     await pg.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await pg.goto('file://' + path.join(root, 'content', 'horno', 'index.html'));
     await pg.waitForTimeout(1200);
@@ -309,6 +314,32 @@ async function played() {
     const btns = await pg.evaluate(() => [...document.querySelectorAll('#docBody .dbtn')].map(x => x.textContent.trim()));
     if (!btns.some(t => /vanilla|vainilla/i.test(t)) || !btns.some(t => /chocolate/i.test(t)))
       { bad.push('the sheet at the tray does not offer both shells — it offered: ' + JSON.stringify(btns)); return; }
+
+    /* ───────── 2c½ · THE CARD WEARS THE BAKERY'S PAPER, ON SCREEN (#256) ─────────
+       The owner's done-when for #256 is "the bakery card still wears its paper", and that is a fact about the
+       screen. The engine stopped writing the pack's paper into the page as a <style> (refused under style-src
+       'self') and adopts a constructed sheet instead; if that ever stops working, nothing throws — the card
+       quietly opens in Meridian's municipal paper. So the open card is PHOTOGRAPHED and its pixels counted
+       against the colour the pack itself declares (content/horno/config.js, PAPER, the `&` rule): this file
+       types no colour of its own. Decoded in a blank page of its own, because the game's page may not load a
+       data: image under its own policy. */
+    const want = await pg.evaluate(() => { const m = /&\s*\{[^}]*background\s*:\s*#([0-9A-Fa-f]{6})/.exec(typeof PAPER === 'string' ? PAPER : '');
+      return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)) : null; });
+    if (!want) bad.push('el horno declares no `& { background:#rrggbb }` in its PAPER, so whether the card wears the bakery\'s paper could not be asked. Nothing to measure is not a pass.');
+    else {
+      const png = await pg.locator('#paperSheet').screenshot({ animations: 'disabled' });
+      const dec = await b.newPage();
+      const got = await dec.evaluate(async ([b64, rgb]) => { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob());
+        const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - rgb[0]) + Math.abs(d[i + 1] - rgb[1]) + Math.abs(d[i + 2] - rgb[2]) <= 6) n++;
+        return { n, all: d.length / 4, w: c.width, h: c.height }; }, [png.toString('base64'), want]);
+      await dec.close();
+      const share = got.all ? got.n / got.all : 0;
+      if (!got.all) bad.push('the baker\'s card is open and has no size on screen (' + got.w + 'x' + got.h + '), so whether it wears its paper could not be asked. Nothing to measure is not a pass.');
+      else if (share < 0.4) bad.push('the baker\'s card opened in somebody else\'s paper: only ' + (share * 100).toFixed(1) + '% of the open card (' + got.w + 'x' + got.h + ' px) is the bakery\'s own rgb(' + want.join(',') + '), where it is most of the card. The pack\'s PAPER did not reach the screen — the card a player opens looks like a municipal form again (#256).');
+      else console.log('  the open baker\'s card wears the bakery\'s paper: ' + (share * 100).toFixed(1) + '% of its ' + got.w + 'x' + got.h + ' px is the rgb(' + want.join(',') + ') the pack declares');
+    }
     await pg.evaluate(() => [...document.querySelectorAll('#docBody .dbtn')].find(x => /vanilla|vainilla/i.test(x.textContent)).click());
     await pg.waitForTimeout(600);
 
@@ -639,7 +670,9 @@ async function played() {
       if (!out.read) bad.push('after baking, the Read button at the tray is gone, so you cannot open the card a second time and change your mind — and changing your mind for ever is the whole of this world\'s no-punishment rule.');
       if (out.fs && out.noscroll && out.hidden && out.read) console.log('  the card closes the engine\'s own way: fullscreen comes back and the Read button relights');
     }
-  } finally { await b.close(); }
+  } finally {
+    if (refused.length) bad.push('the browser refused ' + refused.length + ' thing(s) the bakery asked for under its own policy (#254, #256), silent to a player — a refused style is a piece of the page that lost its look: ' + [...new Set(refused)].slice(0, 2).join(' | '));
+    await b.close(); }
 }
 
 /* ───────────────── 3 · THE STANDING DEMANDS ─────────────────
