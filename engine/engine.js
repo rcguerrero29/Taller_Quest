@@ -3806,7 +3806,10 @@ const SHIRT_PATTERNS={
   dots:(g,x,y,w,h,lk)=>{g.fillStyle="rgba(255,255,255,.55)";for(let r=0;r<3;r++)for(let c=0;c<3;c++){g.beginPath();g.arc(x+3+c*4+(r%2)*2,y+3.5+r*3.6,0.9,0,7);g.fill();}},
   flourish:(g,x,y,w,h,lk)=>{g.fillStyle="rgba(255,255,255,.5)";[[7,4],[5,7],[9,7],[7,10],[7,7]].forEach(([dx,dy],i)=>{g.beginPath();g.ellipse(x+dx,y+dy,i<4?1.4:1,i<4?2:1,i<4?(i*Math.PI/2):0,0,7);g.fill();});
     g.fillStyle=hexDark(lk.shirt,0.7);g.beginPath();g.arc(x+7,y+7,0.8,0,7);g.fill();}};
-function shirtPattern(g,lk,x,y,w,h){const f=SHIRT_PATTERNS[lk.pattern];if(!f)return;g.save();g.beginPath();g.roundRect(x,y,w,h,4);g.clip();f(g,x,y,w,h,lk);g.restore();}
+/* #301: a pattern is looked up among the patterns this game HAS, never through the table's prototype — a saved look
+   keeps any word, and `__proto__` or `valueOf` were "found" and called; the throw left a clip on the canvas and froze the
+   picture for whoever boarded a Trolley Pass carrying it (test/engine.smoke.js, grep `#301`) */
+function shirtPattern(g,lk,x,y,w,h){const f=Object.prototype.hasOwnProperty.call(SHIRT_PATTERNS,lk.pattern)?SHIRT_PATTERNS[lk.pattern]:null;if(typeof f!=="function")return;g.save();g.beginPath();g.roundRect(x,y,w,h,4);g.clip();f(g,x,y,w,h,lk);g.restore();}
 function drawPerson(g,sx,sy,lk,o){
   if(lk&&lk.robot)return drawRobot(g,sx,sy,lk,o);
   o=o||{};const b=o.bob||o.idle||0,d=o.dir||"down",bh=b*0.5;
