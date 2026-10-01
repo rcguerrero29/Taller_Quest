@@ -949,15 +949,22 @@ function drawIso(){
       else{ctx.save();ctx.translate(cx,cy);ctx.scale(0.45,0.45);ctx.translate(-cx,-cy);
         isoDiamond(cx,cy,ch==="Y"?"#C0392B":"#E0B45C");ctx.restore();}}
   }
-  /* what the dog leaves (#267). A hole is laid onto its tile's diamond: the top camera's own painter,
-     through the one transform that takes a 32-px tile square to this camera's 44×22 diamond about P's
-     centre — so it is the same hole on the same tile, and a block in front covers it the way it covers
-     the floor. The other thing stands, in the depth pass below, where the people are. */
-  const decs=decalsNow(Date.now());
-  decs.forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
-    const[cx,cy]=P(dc.x,dc.y);
+  /* WHAT LIES ON THE GROUND is laid onto its tile's diamond by `lay`: the top camera's own painter, written for a
+     32-px tile square with (sx,sy) its top-left, through the one transform that takes that square to this camera's
+     44×22 diamond about P's centre — so it is the same mark on the same tile, and a block in front, or a person
+     standing on it, covers it the way they cover the floor. One transform for every ground mark here.
+     The petals a walker drops (#284) lie here, before the depth pass. They were handed P as if it named the tile's
+     top-left, when P names the diamond's centre, and painted after the depth sort: their middle 17 px right of and
+     16 px below the middle of the tile they fell on, not one pixel of them on it, standing upright, over the people
+     and blocks round them (test/engine.smoke.js, grep `petalsOnTheirTile`).
+     What the dog leaves (#267): a hole lies here too; the other thing stands, in the depth pass below, where the
+     people are. */
+  const lay=(x,y,paint)=>{const[cx,cy]=P(x,y);
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
-    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);drawDecal(ctx,-TS/2,-TS/2,dc,a);ctx.restore();});
+    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);paint(-TS/2,-TS/2);ctx.restore();};
+  petalTrail(world,null,lay);
+  const decs=decalsNow(Date.now());
+  decs.forEach(({dc,a})=>{if(DECALFLAT[dc.kind])lay(dc.x,dc.y,(sx,sy)=>drawDecal(ctx,sx,sy,dc,a));});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
@@ -1050,12 +1057,12 @@ function drawIso(){
      trolley"): painted after everybody, the car covered a person standing in FRONT of it — 86 pixels
      of him under a car that was behind him, measured. It is a thing on its row: it takes the depth
      queue at its own centre, so whoever is nearer the camera paints over it and whoever is farther
-     paints under it, the way the people already do. (The line inspector, crew iteration 12.) */
+     paints under it, the way the people already do. (The line inspector, crew iteration 12.)
+     The petals are no longer drawn here: they lie on the ground, laid by `lay` before the depth pass (#284). */
   {const L=troLine(world);if(L&&TRO.state!=="away"){const n=troCars(L);
     for(let i=0;i<n;i++){const cx=TRO.x+i*(TRO_LEN+TRO_GAP);
       R.push({d:cx+TRO_LEN/2+L.row+0.5,f:(function(k){return function(){troDraw2D(world,P,false,k);};})(i)});}}}
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
-  petalTrail(world,P);
   fiestaDraw2D(world,P,false);
   /* shared time-of-day wash (door spills are top-down-only for now) */
   const dnow=new Date(),hr=dnow.getHours()+dnow.getMinutes()/60;
@@ -1976,13 +1983,15 @@ function petalDrop(wid,x,y,feet){ /* owner, 2026-09-07: the trail "for the bridg
   }
   if(!carry&&!deck)return;
   PETALS.push({w:wid,x,y,t:Date.now(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
-function petalTrail(wid,toScreen){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera */
+function petalTrail(wid,toScreen,lay){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera's 32-px terms (top, front);
+  or, for a camera whose ground is not that square, lay(x,y,paint), which puts paint(sx,sy) onto the tile's own ground (iso, #284) */
   if(!PETALS.length)return;const now=Date.now(),P=petalPal();
+  lay=lay||((x,y,paint)=>{const[sx,sy]=toScreen(x,y);paint(sx,sy);});
   PETALS.forEach(pt=>{if(pt.w!==wid)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
-    const[sx,sy]=toScreen(pt.x,pt.y);let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
-    ctx.globalAlpha=1-age*age;
-    for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
-    ctx.globalAlpha=1;});}
+    lay(pt.x,pt.y,(sx,sy)=>{let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+      ctx.globalAlpha=1-age*age;
+      for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
+      ctx.globalAlpha=1;});});}
 TILEDRAW["^"]=rc=>{const{sx,sy,x,y}=rc; /* the rainbow bridge: walk the whole spectrum.
       The six bands are what a season recolours; planks and rails are design. One season may
       also STREW the deck (art("bridgeStyle")==="petals"): Día de Muertos lays cempasúchil petals
@@ -2591,7 +2600,15 @@ function drawFront(){
   /* depth pass: facades, decor and actors interleaved by row, back to front. Declared before the
      fiesta is drawn because a prop on a solid tile is queued into it (fiestaDraw2D's `defer`) */
   const R=[];
-  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true);
+  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);
+  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner's "looks like the person is laying on
+     the trolley" (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
+     that row (people are y+0.55) — whoever is nearer the camera than the rails paints over it, whoever is farther paints
+     under it. Until mq-v217 this camera painted it right here, before the queue and so under every row, while a note in
+     test/engine.smoke.js said it had been moved. At rest nobody in this camera reaches the car's row, so nothing showed;
+     half a step off the platform into a stopped car put the hero's legs on its roof. Every car of a train is on the same
+     row, so one slot holds the whole train. */
+  {const L=troLine(world);if(L)R.push({d:L.row+0.5,f:()=>troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true)});}
   fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true,fn=>R.push({d:fn.y+0.05,f:fn})); /* after its row's facade, before actors — the same slot decor uses */
   drawDecals(camX,camY);
   DECOS.forEach(d=>{if(d.world!==world)return;const f=DECODRAW[d.deco];if(!f)return;
@@ -4168,8 +4185,12 @@ function tryStep(){
   if(worldCovered())return;           /* nor behind a panel: a direction held when it opened waits for it to close (#274) */
   /* `dir` becomes the WORLD direction, so sprite facing and the move interpolation
      at the bottom of loop() (which reads DIRS[dir]) stay in step with the actual move. */
+  const was=dir;
   dir=worldDir(held);const[dx,dy]=DIRS[dir],nx=px+dx,ny=py+dy;
   if(isSolid(nx,ny)){
+    /* a key toward somebody (or a wall) turns you without a step, and turning changes who Talk offers
+       (#285) — asked again once per turn, never once a frame for as long as the key is held */
+    if(dir!==was)checkTalk();
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
@@ -5101,11 +5122,29 @@ function svcRun(who,n){
   if(k==="chair"){openChair(who);return true;}
   return false;
 }
+/* WHO TALK OFFERS, AND SO WHO ENTER TALKS TO, when more than one person is beside you (#285). The
+   owner, 2026-10-01: "enter talks to the person you face first sounds good" — answering the order put
+   to him: the one you face, then the one with a quest for you, then the nearest. It used to be whoever
+   came first in the world's list: between Priya and Theo, facing Theo, Enter opened Priya's quest.
+   Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+   order — so with one person beside you, nothing changes. One pass over the same list as before.
+   Guarded by real key presses in test/engine.smoke.js (grep `ENTER TALKS TO THE ONE YOU FACE`). */
+function talkPick(){
+  const f=DIRS[dir]||[0,0],ax=px+f[0],ay=py+f[1];
+  let quest=null,first=null;
+  for(const n of CW().npcs){
+    if(Math.abs(n.x-px)+Math.abs(n.y-py)!==1)continue;
+    const q=pendingAt(n)!==undefined;
+    if(!q&&!n.chat)continue;
+    if(n.x===ax&&n.y===ay)return n;
+    if(q&&!quest)quest=n;
+    if(!first)first=n;}
+  return quest||first;}
 function checkTalk(){
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
-  const n=CW().npcs.find(n=>Math.abs(n.x-px)+Math.abs(n.y-py)===1&&(pendingAt(n)!==undefined||n.chat));
+  const n=talkPick();
   if(n){const qi=pendingAt(n),tb=$("talk"),rh=roomHosts[n.npc];
     if(qi!==undefined){tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${AQ()[qi].title}”`;
       tb.dataset.qi=qi;delete tb.dataset.chatn;}
@@ -5695,6 +5734,9 @@ $("gear").addEventListener("click",()=>{
   /* the wardrobe is extra — any ATTEMPT at the quest content nominates opens it */
   {const wq=GRW().wardrobeQuest;
    $("openWd").hidden=!(wq!==undefined&&(done.has(wq)||qa[wq]!==undefined));}
+  /* #283: Alebrijes lists whoever is in the game NOW: a pup adopted since the list was last built, and the face paint of
+     a season that turned over at midnight while the game was open (both measured stale before this line) */
+  aleRowBuild();
   $("settings").hidden=false;held=null;});
 $("openWd").addEventListener("click",()=>{$("settings").hidden=true;openWardrobe();});
 $("closeSet").addEventListener("click",()=>{$("settings").hidden=true;});
@@ -7314,7 +7356,8 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   dogPlace(cr,d0);
   CRIT.push(cr);});
 parkPersist();
-CRIT.forEach(cr=>{if(cr.kind==="beagle"&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
+/* #281: every dog gets his bandana back, not only a beagle — the button gives one to any breed and the record keeps it by name */
+CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
 $("leash").addEventListener("click",()=>{
   if(!DOGK.has(petTarget)||!petCrit||world===PL.park)return;
   const c=petCrit;
