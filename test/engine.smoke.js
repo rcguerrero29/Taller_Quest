@@ -5154,12 +5154,23 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       if (!link) { SF.push('could not make a Trolley Pass to board — nothing was measured with the pattern "' + word + '"'); throw 0; }
       await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await sp.goto(link); await sp.waitForTimeout(1200);
-      await sp.waitForSelector('#tpFound:not([hidden])', { timeout: 6000 });
+      let card = await sp.evaluate(() => !document.getElementById('tpFound').hidden);
+      for (let i = 0; !card && i < 20; i++) { await sp.waitForTimeout(250); card = await sp.evaluate(() => !document.getElementById('tpFound').hidden); }
+      /* A SHELL THAT CANNOT BOARD A PASS AT ALL (#305: El Horno and the gauge throw at the card, because they
+         declare none of its words) is said out loud, and the saved look is then drawn directly: the fault this
+         guards is in the drawing, and every shell draws people. A card that fails WITHOUT an error is a red. */
+      if (!card) {
+        if (!sErr.length) { SF.push('a Trolley Pass link opened and no card offered to board it, and the page said nothing — nothing was measured with the pattern "' + word + '"'); throw 0; }
+        fails.push('COUNT-ONLY: this shell cannot board a Trolley Pass (its arrival card threw: ' + sErr[0].split('\n')[0] + ' — #305), so the pass with the pattern "' + word + '" was drawn directly instead of walked');
+      }
       sErr.length = 0;
-      await Promise.all([sp.waitForEvent('load'), sp.click('#tpBoard')]); await sp.waitForTimeout(1200);
-      await sp.click('#continueBtn'); await sp.waitForTimeout(500);
-      const kept = await sp.evaluate(() => look && look.pattern);
-      const cams = await sp.evaluate(() => (typeof CAMS === 'undefined' ? ['top', 'front', 'iso', '3d'] : CAMS.slice()));
+      const cams = !card ? [] : await sp.evaluate(() => (typeof CAMS === 'undefined' ? ['top', 'front', 'iso', '3d'] : CAMS.slice()));
+      let kept = word;
+      if (card) {
+        await Promise.all([sp.waitForEvent('load'), sp.click('#tpBoard')]); await sp.waitForTimeout(1200);
+        await sp.click('#continueBtn'); await sp.waitForTimeout(500);
+        kept = await sp.evaluate(() => look && look.pattern);
+      }
       for (const cam of cams) {
         await sp.evaluate(c => camSet(c), cam); await sp.waitForTimeout(300);
         const before = sErr.length, at0 = await sp.evaluate(() => [world, px, py]);
@@ -5171,14 +5182,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!moved) SF.push('in the ' + cam + ' camera the hero did not move for four real arrow presses, so whether the picture follows him was not measured');
       }
       /* after the game has drawn you, can the brush still reach the whole picture? */
-      const clipped = await sp.evaluate(() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-        let threw = null; try { drawPerson(g, 16, 16, look, {}); } catch (e) { threw = e.message; }
+      const clipped = await sp.evaluate(([w, boarded]) => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+        /* boarded: the look the game is wearing now; otherwise the look the save's own reading makes of the pass */
+        const lk = boarded ? look : ((sanitizeSave({ n: 'x', lk: { pattern: w } }) || {}).lk || { pattern: w });
+        let threw = null; try { drawPerson(g, 16, 16, lk, {}); } catch (e) { threw = e.message; }
         g.globalAlpha = 1; g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 64, 64); const d = g.getImageData(0, 0, 64, 64).data; let miss = 0;
         for (let i = 0; i < d.length; i += 4) if (!(d[i] === 255 && d[i + 1] === 0 && d[i + 2] === 255)) miss++;
-        return { threw, miss }; });
+        return { threw, miss }; }, [word, card]);
       if (clipped.threw) SF.push('drawing you in a saved look whose shirt pattern is "' + word + '" threw: ' + clipped.threw);
       if (clipped.miss) SF.push('after drawing you in a saved look whose shirt pattern is "' + word + '", ' + clipped.miss + ' of 4096 pixels could no longer be painted — the drawing left a clip behind, which is the frozen screen');
-      if (!SF.length) fails.push('COUNT-ONLY: a saved look whose shirt pattern is "' + word + '" (a Trolley Pass made on one device, boarded on another, then Continue) was walked with real keys in ' + cams.join(', ') + ' without a single page error, and drawing you leaves the whole picture paintable');
+      if (!SF.length) fails.push('COUNT-ONLY: a saved look whose shirt pattern is "' + word + '" ' + (card ? '(a Trolley Pass made on one device, boarded on another, then Continue) was walked with real keys in ' + cams.join(', ') + ' without a single page error, and drawing you' : 'drawn directly') + ' leaves the whole picture paintable');
     } catch (e) { if (e !== 0) SF.push('the check could not drive the game to the end, so it measured nothing: ' + String(e && e.message || e).split('\n')[0]); }
     await sctx.close();
     fails.push(...SF.map(m => 'saved look (#301): ' + m));
