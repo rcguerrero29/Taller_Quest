@@ -5656,6 +5656,9 @@ $("gear").addEventListener("click",()=>{
   /* the wardrobe is extra — any ATTEMPT at the quest content nominates opens it */
   {const wq=GRW().wardrobeQuest;
    $("openWd").hidden=!(wq!==undefined&&(done.has(wq)||qa[wq]!==undefined));}
+  /* #283: Alebrijes lists whoever is in the game NOW: a pup adopted since the list was last built, and the face paint of
+     a season that turned over at midnight while the game was open (both measured stale before this line) */
+  aleRowBuild();
   $("settings").hidden=false;held=null;});
 $("openWd").addEventListener("click",()=>{$("settings").hidden=true;openWardrobe();});
 $("closeSet").addEventListener("click",()=>{$("settings").hidden=true;});
@@ -7275,7 +7278,8 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   dogPlace(cr,d0);
   CRIT.push(cr);});
 parkPersist();
-CRIT.forEach(cr=>{if(cr.kind==="beagle"&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
+/* #281: every dog gets his bandana back, not only a beagle — the button gives one to any breed and the record keeps it by name */
+CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
 $("leash").addEventListener("click",()=>{
   if(!DOGK.has(petTarget)||!petCrit||world===PL.park)return;
   const c=petCrit;
