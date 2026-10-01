@@ -3221,41 +3221,53 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const grab = () => { draw(); return g2.getImageData(0, 0, cv2.width, cv2.height).data; };
     const ne = (A, B, i) => Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 30;
     cams.forEach(cam => { camSet(cam); sizeCanvas();
-      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => { if (row === undefined) return;
+      /* FOUR CASES, AND EACH ONE SAYS WHETHER IT MEASURED ANYTHING (#275). This used to `return` in silence when a side had
+         nowhere to stand or the two never overlapped, and three of the four did exactly that: measured inside this suite on
+         2026-10-01, only "iso, in front" put any of his body on the car (45 pixels); "iso, behind" met it with 16 pixels of
+         drop shadow and none of him, and the front camera met it with 2 and 0. A car painted under everybody in iso
+         passed. So the count is now where his BODY and the car's BODY meet — a shadow on either is a tint, not an order —
+         and a case where they never do says so out loud. A camera that draws no car, or nobody, is a red: that is the probe
+         going blind, and silence there would be a pass about nothing. */
+      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => {
+        if (row === undefined) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can stand ' + side + ' the trolley at x=' + mid + ', so the ' + cam + ' camera was not asked about that side at rest'); return; }
         px = fx = mid; py = fy = row;
         const A = grab(), A2 = grab();
         heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
-        let control = 0, region = 0, overlap = 0, heroChangedTram = 0, tramChangedHero = 0;
-        /* his BODY, not his drop shadow: the shadow is a translucent tint and its anti-aliased rim can land within
-           tolerance of either frame; a body pixel differs from the bare ground by more than 120 */
+        let control = 0, region = 0, carSeen = 0, heroSeen = 0, meet = 0, heroChangedTram = 0, tramChangedHero = 0;
+        /* a BODY, not a drop shadow: a shadow is a translucent tint and its anti-aliased rim can land within tolerance of
+           either frame; a body pixel differs from the bare ground by more than 120 — his, and the car's */
         const solid = (P, Q, i) => Math.abs(P[i] - Q[i]) + Math.abs(P[i + 1] - Q[i + 1]) + Math.abs(P[i + 2] - Q[i + 2]) > 120;
         for (let i = 0; i < A.length; i += 4) { const hero = ne(C, D, i), tram = ne(B, D, i); if (!hero && !tram) continue;
-          region++;
+          region++; if (tram) carSeen++; if (hero) heroSeen++;
           /* a neighbour's idle bob is a sub-pixel sine of the clock: a pixel that moved between two frames of the same
              scene is left out of the count, and only a region that is mostly moving is a probe that measures nothing */
           if (ne(A, A2, i)) { control++; continue; }
-          /* "covered" means the OTHER one's pixel is what shows — a person's translucent drop shadow tinting the car
-             under it is not the car covering him, so a pixel counts only when it equals one frame and not the other */
-          if (hero && tram) { overlap++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (solid(C, D, i) && ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; } }
+          if (!solid(C, D, i) || !solid(B, D, i)) continue;     /* only where his body and the car's body meet */
+          /* "covered" means the OTHER one's pixel is what shows: a pixel counts only when it equals one frame and not the other */
+          meet++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; }
         if (control > region * 0.05) { P.push('the ' + cam + ' camera cannot be measured: two frames of the same scene differ by ' + control + ' of ' + region + ' pixels around the trolley'); return; }
-        if (!overlap) return;                                   /* no overlap on this row in this camera: there is no order to get wrong */
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody standing ' + side + ' it could be measured'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + '), so that side was not measured'); return; }
+        if (!meet) { P.push('COUNT-ONLY: in the ' + cam + ' camera a person standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + ') never meets it — not one pixel of his body crosses the car\'s — so the order there was not measured at rest'); return; }
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
       });
-      /* WALKING THROUGH IT, in the front camera (#276). At rest nobody touches the car in this camera: it is drawn inside
-         its own row, and a person's feet and shadow end inside his, so the two rows above meet it in 0 pixels here and the
-         order cannot show (measured 2026-10-01 at Calle Principal: 0 behind, 2 in front). The one person who reaches the
-         car's row with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown
-         from the platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform
-         your feet are still BEHIND its row, and until mq-v217 the front camera painted the car before its depth queue, so
-         your legs went on its roof: the owner's "laying on the trolley", in the camera this note had called fixed. So the
-         step is swept in eighths of a tile on each side of the rails' row (the row itself, inside the car, is neither side),
-         counting only pixels where his BODY and the car's BODY meet: a drop shadow on either is a tint, not an order (with
-         only his body required, 4 pixels of a correctly hidden person read as "in front" in iso, where the car is not
-         opaque). A side where the two never meet says so. A camera that draws no car, or nobody, there is a red and not
-         a note: planted 2026-10-01 with the front-view car blanked, the first draft of this sweep said "not measured" and
-         the whole suite stayed green. */
-      if (cam === 'front') [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
+      /* WALKING THROUGH IT, in both flat cameras (#276, #275). Standing still, two of the cases above cannot see the
+         order. In the front camera the car is drawn inside its own row and so is a person, so nobody standing beside it
+         meets it there (0 pixels behind, 2 in front, measured 2026-10-01 at Calle Principal). In iso nobody STANDING
+         behind the car meets it: the car is a flat sprite from its tile's corner, and scanned over every tile around a
+         dwelling car, bodies met it only south and east of it, nearer the camera. The one person who reaches the car's row
+         with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown from the
+         platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform your feet
+         are still BEHIND its row and the car must cover you: until mq-v217 the front camera painted the car before its
+         depth queue, so your legs went on its roof, the owner's "laying on the trolley" in the camera this note had called
+         fixed; and in iso a car painted under everybody went unnoticed. So the step is swept in eighths of a tile on each
+         side of the rails' row (the row itself, inside the car, is neither side), counting only where his BODY and the
+         car's BODY meet: a drop shadow on either is a tint, not an order (with only his body required, 4 pixels of a
+         correctly hidden person read as "in front" in iso, where the car is not opaque). A side where the two never meet
+         says so. A camera that draws no car, or nobody, there is a red and not a note: planted 2026-10-01 with the
+         front-view car blanked, the first draft of this sweep said "not measured" and the whole suite stayed green. */
+      [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
         if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the ' + cam + ' camera'); return; }
         const body = (P2, Q, i) => Math.abs(P2[i] - Q[i]) + Math.abs(P2[i + 1] - Q[i + 1]) + Math.abs(P2[i + 2] - Q[i + 2]) > 120;
         let carSeen = 0, heroSeen = 0, meet = 0, moved = 0, worst = 0, at = 0;
