@@ -15,6 +15,8 @@ on our side that holds your data. What it does promise, on every page it publish
   (`connect-src 'none'`). No request goes to another company: the fonts are served from here.
 - **No script written inside the page runs** (`script-src 'self'`): code runs only from the site's
   own files, so text that reaches the page can never run as code.
+- **No style written inside the page applies either** (`style-src 'self'`): the page's look comes
+  only from the site's own stylesheet files, so text that reaches the page can never repaint it.
 - **No referrer** is sent when you follow a link out, and the page **hides itself inside another
   site's frame**, so its buttons cannot be covered by someone else's.
 - **The offline worker keeps only this game's own files** — never another site's response, never
@@ -35,6 +37,3 @@ refusal the browser reports under the page's own policy.
   `<meta>` tag in each page. Framing is refused by `frame-guard.js` for that reason.
 - The game shares its web address (`rcguerrero29.github.io`) with anything else published from the
   same account, and browsers keep one storage area per address. Only a custom domain would separate it.
-- The page still allows styles written inside it (`style-src 'unsafe-inline'`): the shell and one
-  content pack style themselves that way. With no way for text to become markup, and no way for a
-  style to send anything out under this policy, it is a known and tracked limit, not an open hole.

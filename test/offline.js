@@ -55,8 +55,10 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
   if (!listed.length) { console.log("FAIL — the built sw.js lists no ASSETS this check can read, so there is nothing to test"); process.exit(1); }
   if (!listed.includes('sw-register.js')) fails.push('sw.js does not cache sw-register.js, so an offline visit would load a page whose offline switch is missing');
   /* #256: the page's look lives in stylesheet FILES now (style-src 'self'), so a stylesheet the page wears and the
-     worker does not keep is a game that opens offline as bare text. The worker's fetch handler would not save it
-     either: on a first visit the page loads before the worker controls it. Asked of the built page, every link. */
+     worker does not keep is a game that may open offline as bare text. Asked HERE, of the list, because the run
+     below cannot see a missing entry: its framed visit and its bakery visit go through the worker once it is in
+     control, and the worker stores shell.css on the way. Planted 2026-10-01 (shell.css taken off ASSETS): this
+     line went red and the offline check further down stayed green. Every link the built page carries. */
   const sheetsWorn = [...fs.readFileSync(path.join(out, 'index.html'), 'utf8').matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1].replace(/^\.\//, ''));
   if (!sheetsWorn.length) fails.push('the built page links no stylesheet at all, so whether its look survives offline could not be asked — nothing to measure is not a pass');
   sheetsWorn.filter(f => !listed.includes(f)).forEach(f => fails.push('the page wears ' + f + ' and sw.js does not cache it, so offline the game opens without it'));

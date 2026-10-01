@@ -15,7 +15,7 @@
 set -euo pipefail
 OUT="${1:-_site}"
 rm -rf "$OUT"; mkdir -p "$OUT/content"
-cp index.html sw.js sw-register.js frame-guard.js qr.js manifest.webmanifest icon-192.png icon-512.png "$OUT/"
+cp index.html shell.css sw.js sw-register.js frame-guard.js qr.js manifest.webmanifest icon-192.png icon-512.png "$OUT/"
 cp -r engine vendor "$OUT/"
 cp -r content/meridian "$OUT/content/"
 

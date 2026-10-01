@@ -5289,7 +5289,9 @@ const CANDIDATES = [
     // #256: and styles the same way. Under style-src 'self' the browser refuses a <style> block or a style="…"
     // attribute without a sound and the element just loses that look, so one here is a silent visual break
     // or the first step to reopening the door. Counted, so the sentence says how much of the page went.
-    const inlineCss = [...html.matchAll(/<style[\s>]/gi)].length, inlineAttr = [...html.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
+    // read with the page's comments taken out: a comment that SAYS "<style>" is prose, not a block the browser applies
+    const live = html.replace(/<!--[\s\S]*?-->/g, '');
+    const inlineCss = [...live.matchAll(/<style[\s>]/gi)].length, inlineAttr = [...live.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
     if (inlineCss + inlineAttr) fails.push(`guarantee: index.html carries ${inlineCss} <style> block(s) and ${inlineAttr} style="…" attribute(s) written inside the page — the policy refuses every one and a player sees the page without them (#256); the page's styles live in shell.css`);
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
     if (!/res\.ok/.test(sw)) fails.push('guarantee: sw.js caches responses without checking res.ok');

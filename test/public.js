@@ -16,7 +16,7 @@
    Run:  node test/public.js _site
    Build the box first (the same commands .github/workflows/pages.yml runs):
      mkdir -p _site
-     cp index.html sw.js sw-register.js frame-guard.js qr.js manifest.webmanifest icon-192.png icon-512.png _site/
+     cp index.html shell.css sw.js sw-register.js frame-guard.js qr.js manifest.webmanifest icon-192.png icon-512.png _site/
      cp -r engine vendor _site/
      mkdir -p _site/content && cp -r content/meridian _site/content/                              */
 const fs = require('fs'), path = require('path');
@@ -109,7 +109,8 @@ pages.forEach(p => { const html = read(p);
   /* #256: and no style written inside the page either. Under style-src 'self' the browser refuses a <style> block
      or a style="…" attribute without a sound, and the element simply loses that look: a silent visual break on a
      player's phone, or the first step to reopening the door. Counted, so the sentence says how much is affected. */
-  const css = [...html.matchAll(/<style[\s>]/gi)].length, attr = [...html.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
+  const live = html.replace(/<!--[\s\S]*?-->/g, '');   /* a comment that SAYS "<style>" is prose, not a block the browser applies */
+  const css = [...live.matchAll(/<style[\s>]/gi)].length, attr = [...live.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
   if (css + attr) fails.push(p + ' carries ' + css + ' <style> block(s) and ' + attr + ' style="…" attribute(s) written inside the page — the policy refuses every one, so a player sees that page without them');
   if (!/<meta name="referrer" content="no-referrer">/.test(html)) fails.push(p + ' has no no-referrer tag, so a link out would tell the next site where the player came from');
   if (!/<script src="(?:\.\.\/)*frame-guard\.js"><\/script>/.test(html.split('</head>')[0])) fails.push(p + ' does not load frame-guard.js in its <head>, so another site could show it inside a frame and cover it with its own buttons');
@@ -140,7 +141,7 @@ if (has('sw.js')) { const sw = read('sw.js');
 
 /* ---- 5 · and the game is actually there ----------------------------------------------------- */
 // An allowlist that drops a file is the other way to fail, and it is silent too.
-['index.html', 'sw.js', 'sw-register.js', 'frame-guard.js', 'vendor/fonts/fonts.css', 'qr.js', 'manifest.webmanifest', 'engine/engine.js', 'engine/engine3d.js',
+['index.html', 'shell.css', 'sw.js', 'sw-register.js', 'frame-guard.js', 'vendor/fonts/fonts.css', 'qr.js', 'manifest.webmanifest', 'engine/engine.js', 'engine/engine3d.js',
  'vendor/three.min.js', 'content/meridian/config.js', 'content/meridian/maps.js', 'content/meridian/strings.js']
   .forEach(f => { if (!has(f)) fails.push('the upload is MISSING ' + f + ' — the allowlist has dropped part of the game'); });
 

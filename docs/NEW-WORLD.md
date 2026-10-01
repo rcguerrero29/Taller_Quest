@@ -367,8 +367,10 @@ const PAPER = `
   world canvas or the page — not because we ask you not to, but because a selector that tries comes
   out the other side matching nothing. `docs/BOUNDARY.md`, "The paper seam", says exactly how.
 - **`@import`, `@font-face`, `@keyframes` and `@property` are dropped**, and the log says so. They
-  register a *global name* or fetch, and a name cannot be scoped to a subtree. Use faces the system
-  already has (`Georgia`, `ui-serif`, `ui-monospace`) — that is enough to stop looking like a form.
+  register a *global name* or fetch, and a name cannot be scoped to a subtree. (`@import` is never
+  even fetched: the engine parses your paper in a constructed stylesheet, which drops it unread.)
+  Use faces the system already has (`Georgia`, `ui-serif`, `ui-monospace`) — that is enough to stop
+  looking like a form.
 - **`position:fixed` is stripped**, for the same reason: it escapes the reader and can cover the HUD.
 
 **The two questions A15 says to keep apart forever, and this is the template's copy of them:**
