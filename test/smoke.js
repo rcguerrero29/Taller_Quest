@@ -2354,6 +2354,100 @@ const CANDIDATES = [
     await ctx.close();
   }
 
+  // ---- #281: a bandana given at the park comes back after a reload on every breed, not only the beagle ----
+  // Found 2026-10-01: the bandana is kept by the dog's name in the park record, and the line that puts it back when the
+  // game opens asked whether the dog was a BEAGLE — so a lab or a chihuahua wore it until the game was closed and came
+  // back bare, while the record still held it. Every check that reloaded a bandana before this one adopted with the
+  // card's default breed, which is the beagle, so none could see it. This one adopts one pup of EVERY breed the
+  // adoption card offers (read off the card, so a breed added later is in it), the way a player does: the card at the
+  // park's post, the breed button, a name; then the bandana from the button beside each pup; then the game closed and
+  // continued. Each pup must wear the bandana she wore when the game was closed, in the record AND in the drawing every
+  // camera paints with. A fresh browser of its own: it leans on nothing above, leaves nothing behind.
+  {
+    const ctx = await browser.newContext();
+    const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+    p.setDefaultTimeout(6000);
+    const errs = [], bd = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    const helpers = () => {
+      const dogOf = nm => CRIT.find(c => c.name === nm && DOGK.has(c.kind));
+      const free = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
+      const dist = (c, x, y) => Math.abs(c.x - x) + Math.abs(c.y - y);
+      // every dog here on her own spot and told to stay (a wander must not decide which dog the button means); then the
+      // first free tile beside what we came for, and any other dog within reach of it walked a few tiles off
+      const standBy = (wid, near, alone) => { const w = WORLDS[wid]; world = wid; setWorldTag(); moving = false;
+        const here = CRIT.filter(c => DOGK.has(c.kind) && c.world === wid);
+        here.forEach(c => { if (c.home) { c.x = c.home[0]; c.y = c.home[1]; } c.stayT = performance.now() + 1e9; c.task = null; c.follow = false; c.fx = c.x; c.fy = c.y; c.moving = false; });
+        let at = null; for (let y = 0; y < w.H && !at; y++) for (let x = 0; x < w.W && !at; x++) if (free(w, x, y) && near(x, y) && !here.some(c => dist(c, x, y) === 0)) at = [x, y];
+        if (!at) return false;
+        for (const c of here) { if (c === alone || dist(c, at[0], at[1]) > 1) continue; let to = null;
+          for (let y = 0; y < w.H && !to; y++) for (let x = 0; x < w.W && !to; x++) if (free(w, x, y) && dist({ x, y }, at[0], at[1]) >= 3 && here.every(o => o === c || dist(o, x, y) >= 2)) to = [x, y];
+          if (!to) return false; c.x = c.fx = to[0]; c.y = c.fy = to[1]; }
+        px = fx = at[0]; py = fy = at[1]; return true; };
+      window.__band = {
+        breeds: () => [...document.querySelectorAll('#adoptBreeds button')].map(b => b.dataset.b),
+        post: () => { const w = WORLDS[PL.park]; return standBy(PL.park, (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => (w.grid[y + dy] || [])[x + dx] === '9'), null); },
+        beside: nm => { const d = dogOf(nm); return !!d && standBy(d.world, (x, y) => dist(d, x, y) === 1, d); },
+        kind: nm => { const d = dogOf(nm); return d ? d.kind : null; },
+        band: nm => { const d = dogOf(nm); return d ? d.band || null : undefined; },
+        kept: nm => { try { return (JSON.parse(localStorage.getItem(SK('park')) || '{}').band || {})[nm] || null; } catch (e) { return null; } },
+        /* the drawing every camera paints a dog with; the tail wags with the clock and the pose changes by the second,
+           both held still, so two drawings differ only by what she wears */
+        draw: nm => { const d = dogOf(nm); if (!d) return null;
+          const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
+            return Array.from(g.getImageData(0, 0, 44, 44).data); }
+          finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
+      }; };
+    const call = (fn, ...a) => p.evaluate(([fn, a]) => __band[fn](...a), [fn, a]);
+    const diff = (a, b) => { if (!a || !b || a.length !== b.length) return -1; let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) n++; return n; };
+    const NAMES = ['Nube', 'Oso', 'Kiko', 'Lunares', 'Pelusa', 'Tamal'];
+    try {
+      await p.goto(index); await p.waitForTimeout(900);
+      await p.click('.classes button[data-c="architect"]'); await p.click('#begin'); await p.waitForTimeout(500);
+      await p.evaluate(helpers);
+      const breeds = await call('breeds');
+      if (!breeds.some(b => b !== 'beagle')) bd.push(`the adoption card offers ${breeds.join(', ') || 'no breed at all'} — there is no other breed to give a bandana to, so nothing was measured, which is not a pass`);
+      else {
+        const pups = breeds.map((b, i) => ({ breed: b, nm: NAMES[i] }));
+        // adopted the way a player does: stand at the post, open the card, choose the breed, give a name
+        for (const d of pups) {
+          if (!await call('post')) throw new Error('there is nowhere to stand beside the park\'s post');
+          await p.waitForSelector('#adopt:not([hidden])'); await p.click('#adopt');
+          await p.click(`#adoptBreeds button[data-b="${d.breed}"]`); d.is = d.nm + ' the ' + (await p.textContent(`#adoptBreeds button[data-b="${d.breed}"]`)).replace(/[^\p{L} ]/gu, '').trim();
+          await p.fill('#adoptName', d.nm); await p.click('#adoptGo'); await p.waitForTimeout(150);
+          if (await call('kind', d.nm) !== d.breed) throw new Error(`the card did not give a ${d.breed} named ${d.nm} (got ${await call('kind', d.nm)})`); }
+        // a bandana each, from the button beside her
+        for (const d of pups) {
+          d.bare = await call('draw', d.nm);
+          if (!await call('beside', d.nm)) throw new Error(`there is nowhere to stand beside ${d.nm} alone`);
+          await p.waitForSelector('#band:not([hidden])'); await p.click('#band'); await p.waitForTimeout(80);
+          d.band = await call('band', d.nm); d.px = await call('draw', d.nm); }
+        for (const d of pups) {
+          if (!d.band) bd.push(`the bandana button did not put a bandana on ${d.is} — nothing was measured for her`);
+          else if (await call('kept', d.nm) !== d.band) bd.push(`${d.is} wears a bandana, but the park record does not keep it under her name — nothing a reload could bring back`);
+          else if (diff(d.bare, d.px) < 1) bd.push(`a bandana changes nothing about how ${d.is} is drawn — the drawing cannot say whether it came back`); }
+        if (!bd.length) {
+          // the next time the game is opened
+          await p.reload(); await p.waitForTimeout(900); await p.click('#continueBtn'); await p.waitForTimeout(500); await p.evaluate(helpers);
+          for (const d of pups) {
+            const band = await call('band', d.nm);
+            if (band === undefined) { bd.push(`after a reload, ${d.is} is not in the game at all`); continue; }
+            const dp = diff(d.px, await call('draw', d.nm));
+            if (band !== d.band) bd.push(`after a reload, ${d.is} has ${band ? 'a different bandana (' + band + ')' : 'no bandana'} — she wore ${d.band} when the game was closed, and the park record still keeps it for her`);
+            else if (dp !== 0) bd.push(`after a reload, ${d.is} is drawn differently from how she looked when the game was closed (${dp < 0 ? 'there is no drawing to compare' : dp + ' of 1936 pixels'})`); }
+          if (!bd.length) console.log(`  BANDANA, RELOAD: a pup of every breed the adoption card offers (${pups.map(d => d.is).join(', ')}) got a bandana from the button beside her, and after a reload each one wears it again, in the record and in the drawing`);
+        }
+      }
+    } catch (e) { bd.push('the check could not drive the game to the end, so it measured nothing: ' + String(e.message || e).split('\n')[0]); }
+    if (errs.length) bd.push('the page errored: ' + errs.join(' | '));
+    fails.push(...bd.map(s => '#281 bandana after a reload: ' + s));
+    await ctx.close();
+  }
+
   // ---- a door says where it leads ----
   // The cold read (IDEAS §15.8) found all five door glyphs pixel-identical: an office
   // door, a shop entrance and the mercado's door were the same brown, so nothing told a
