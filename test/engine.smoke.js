@@ -3402,12 +3402,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   /* ---- and in the flat cameras the trolley is painted in its row's turn ----
      The owner, 2026-09-21, naming the weirdness: "looks like the person is laying on the trolley."
-     The front camera painted the car in the GROUND pass and the isometric camera painted it LAST,
-     after everybody: so in front a person on the platform behind the car had his feet on its roof,
-     and in iso a person standing in front of the car was painted under it and one behind it had his
-     legs cut off at its roof line — the other two readings of "laying on the trolley". A car is a
-     thing on its row, and the depth queue every camera already keeps is where it belongs: whoever
-     is nearer the camera than the rails paints over it, whoever is farther paints under it.
+     What he saw was the 3D camera, the check above. In the flat cameras the isometric camera painted
+     the car LAST, after everybody, so a person standing in front of the car was painted under it
+     (86 pixels of him, measured that day). That was moved the same day (drawIso, grep
+     `IN ITS ROW'S TURN`). The FRONT camera was not, although until 2026-10-01 this note said its
+     car had been painted in the ground pass and fixed (#276): the same day's frames were all 3D, and
+     the front camera went on painting the car before its depth queue, under every row, until
+     mq-v217 — the walk-through below is the frame that showed it. A car is a thing on its row, and
+     the depth queue every camera already keeps is where it belongs: whoever is nearer the camera
+     than the rails paints over it, whoever is farther paints under it.
      Asked as pixels in each flat camera, with the car alongside the hero's column: a person on the
      row in FRONT of the rails keeps every pixel of himself (the car changes none), and a person on
      the row BEHIND the rails yields every pixel where they overlap (he changes none of the car).
@@ -3443,27 +3446,74 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const grab = () => { draw(); return g2.getImageData(0, 0, cv2.width, cv2.height).data; };
     const ne = (A, B, i) => Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 30;
     cams.forEach(cam => { camSet(cam); sizeCanvas();
-      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => { if (row === undefined) return;
+      /* FOUR CASES, AND EACH ONE SAYS WHETHER IT MEASURED ANYTHING (#275). This used to `return` in silence when a side had
+         nowhere to stand or the two never overlapped, and three of the four did exactly that: measured inside this suite on
+         2026-10-01, only "iso, in front" put any of his body on the car (45 pixels); "iso, behind" met it with 16 pixels of
+         drop shadow and none of him, and the front camera met it with 2 and 0. A car painted under everybody in iso
+         passed. So the count is now where his BODY and the car's BODY meet — a shadow on either is a tint, not an order —
+         and a case where they never do says so out loud. A camera that draws no car, or nobody, is a red: that is the probe
+         going blind, and silence there would be a pass about nothing. */
+      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => {
+        if (row === undefined) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can stand ' + side + ' the trolley at x=' + mid + ', so the ' + cam + ' camera was not asked about that side at rest'); return; }
         px = fx = mid; py = fy = row;
         const A = grab(), A2 = grab();
         heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
-        let control = 0, region = 0, overlap = 0, heroChangedTram = 0, tramChangedHero = 0;
-        /* his BODY, not his drop shadow: the shadow is a translucent tint and its anti-aliased rim can land within
-           tolerance of either frame; a body pixel differs from the bare ground by more than 120 */
+        let control = 0, region = 0, carSeen = 0, heroSeen = 0, meet = 0, heroChangedTram = 0, tramChangedHero = 0;
+        /* a BODY, not a drop shadow: a shadow is a translucent tint and its anti-aliased rim can land within tolerance of
+           either frame; a body pixel differs from the bare ground by more than 120 — his, and the car's */
         const solid = (P, Q, i) => Math.abs(P[i] - Q[i]) + Math.abs(P[i + 1] - Q[i + 1]) + Math.abs(P[i + 2] - Q[i + 2]) > 120;
         for (let i = 0; i < A.length; i += 4) { const hero = ne(C, D, i), tram = ne(B, D, i); if (!hero && !tram) continue;
-          region++;
+          region++; if (tram) carSeen++; if (hero) heroSeen++;
           /* a neighbour's idle bob is a sub-pixel sine of the clock: a pixel that moved between two frames of the same
              scene is left out of the count, and only a region that is mostly moving is a probe that measures nothing */
           if (ne(A, A2, i)) { control++; continue; }
-          /* "covered" means the OTHER one's pixel is what shows — a person's translucent drop shadow tinting the car
-             under it is not the car covering him, so a pixel counts only when it equals one frame and not the other */
-          if (hero && tram) { overlap++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (solid(C, D, i) && ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; } }
+          if (!solid(C, D, i) || !solid(B, D, i)) continue;     /* only where his body and the car's body meet */
+          /* "covered" means the OTHER one's pixel is what shows: a pixel counts only when it equals one frame and not the other */
+          meet++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; }
         if (control > region * 0.05) { P.push('the ' + cam + ' camera cannot be measured: two frames of the same scene differ by ' + control + ' of ' + region + ' pixels around the trolley'); return; }
-        if (!overlap) return;                                   /* no overlap on this row in this camera: there is no order to get wrong */
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody standing ' + side + ' it could be measured'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + '), so that side was not measured'); return; }
+        if (!meet) { P.push('COUNT-ONLY: in the ' + cam + ' camera a person standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + ') never meets it — not one pixel of his body crosses the car\'s — so the order there was not measured at rest'); return; }
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
-      }); });
+      });
+      /* WALKING THROUGH IT, in both flat cameras (#276, #275). Standing still, two of the cases above cannot see the
+         order. In the front camera the car is drawn inside its own row and so is a person, so nobody standing beside it
+         meets it there (0 pixels behind, 2 in front, measured 2026-10-01 at Calle Principal). In iso nobody STANDING
+         behind the car meets it: the car is a flat sprite from its tile's corner, and scanned over every tile around a
+         dwelling car, bodies met it only south and east of it, nearer the camera. The one person who reaches the car's row
+         with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown from the
+         platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform your feet
+         are still BEHIND its row and the car must cover you: until mq-v217 the front camera painted the car before its
+         depth queue, so your legs went on its roof, the owner's "laying on the trolley" in the camera this note had called
+         fixed; and in iso a car painted under everybody went unnoticed. So the step is swept in eighths of a tile on each
+         side of the rails' row (the row itself, inside the car, is neither side), counting only where his BODY and the
+         car's BODY meet: a drop shadow on either is a tint, not an order (with only his body required, 4 pixels of a
+         correctly hidden person read as "in front" in iso, where the car is not opaque). A side where the two never meet
+         says so. A camera that draws no car, or nobody, there is a red and not a note: planted 2026-10-01 with the
+         front-view car blanked, the first draft of this sweep said "not measured" and the whole suite stayed green. */
+      [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
+        if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the ' + cam + ' camera'); return; }
+        const body = (P2, Q, i) => Math.abs(P2[i] - Q[i]) + Math.abs(P2[i + 1] - Q[i + 1]) + Math.abs(P2[i + 2] - Q[i + 2]) > 120;
+        let carSeen = 0, heroSeen = 0, meet = 0, moved = 0, worst = 0, at = 0;
+        for (let k = 1; k <= 7; k++) { px = fx = mid; py = L.row; fy = L.row + sgn * k / 8;
+          const A = grab(), A2 = grab();
+          heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
+          let wrong = 0;
+          for (let i = 0; i < A.length; i += 4) { if (ne(B, D, i)) carSeen++; if (ne(C, D, i)) heroSeen++;
+            if (!body(C, D, i) || !body(B, D, i)) continue;              /* only where his body and the car's body meet */
+            if (ne(A, A2, i)) { moved++; continue; }
+            meet++;
+            if (side === 'behind' ? (ne(A, B, i) && !ne(A, C, i)) : (ne(A, C, i) && !ne(A, B, i))) wrong++; }
+          if (wrong > worst) { worst = wrong; at = k; } }
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody stepping through it from ' + side + ' it could be measured against it'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody where the hero steps ' + side + ' the trolley in ' + L.world + ', so walking through it was not measured'); return; }
+        if (moved > meet * 0.05) { P.push('the ' + cam + ' camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (meet + moved) + ' pixels where he and the car meet'); return; }
+        if (!meet) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the ' + cam + ' camera never put his body and the car\'s in the same pixel, so the order was not measured'); return; }
+        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
+        if (worst && side === 'in front of') P.push('in the ' + cam + ' camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
+      });
+    });
     window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
     if (typeof seasonSet === 'function') seasonSet(keep.season);
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d;
@@ -5026,6 +5076,272 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (kErr.length) K.push('the page threw while the keys were being pressed: ' + kErr.join(' | '));
     await kp.close();
     fails.push(...K.map(m => 'keys: ' + m));
+  }
+
+  /* ---- WITH TWO PEOPLE BESIDE YOU, ENTER TALKS TO THE ONE YOU FACE (#285) ----
+     The owner, 2026-10-01: "enter talks to the person you face first sounds good", answering the order
+     put to him: the one you face, then the one with a quest for you, then the nearest. Before it, Enter
+     (and the Talk button it presses) went to whoever came first in the world's list of people: in
+     Meridian's own office, standing between Priya and Theo and facing Theo, Enter opened Priya's quest.
+     Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+     order — which is why one person beside you must be offered exactly as before, whichever way you face.
+     REAL KEYS (POSTMORTEM §4): the hero is turned by a real arrow press toward a tile he cannot walk
+     onto — a person, or a wall — or walks in with one; Enter is a real key press. What is read is what a
+     player reads: the name on the Talk button before Enter, and the name on the card, or on the line
+     said, after it. A page of its own, the neighbours, the tram and the doorstep lines held still (§7;
+     the guard skill, "it reads the clock"), the camera on top so an arrow is one world step.
+     THE TWO PEOPLE ARE FOUND WHERE THE MAP STANDS THEM when it stands two beside one tile; where no map
+     does, one of them is moved there the way the R11 check above moves a wanderer (grep `put the
+     wanderer on EVERY tile`), and the line this prints says who was moved. A chapter is walked to where
+     it has to be, as the plan check does (grep `walk the chapters until the paper`). And a shell with
+     somebody to measure where the finder found no scene is a red about the finder, never a pass. */
+  {
+    const fp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const fErr = [], FF = [], measured = [];
+    fp.on('pageerror', e => fErr.push(e.message));
+    await fp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await fp.goto('file://' + file);
+    await fp.waitForTimeout(1500);
+    const found = await fp.evaluate(() => {
+      const $ = id => document.getElementById(id);
+      ['wanderUpdate', 'portalNudge', 'troTick'].forEach(f => { if (typeof window[f] === 'function') window[f] = function () {}; });
+      camSet('top');
+      const F = window.__face = { shown: [] };
+      new MutationObserver(rs => rs.forEach(r => {
+        if (!/\bon\b/.test(r.oldValue || '') && r.target.classList.contains('on')) F.shown.push(r.target.textContent);
+      })).observe($('toast'), { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+      const D4 = [['ArrowUp', 0, -1, 'up'], ['ArrowDown', 0, 1, 'down'], ['ArrowLeft', -1, 0, 'left'], ['ArrowRight', 1, 0, 'right']];
+      const CH = typeof CHAPTERS !== 'undefined' && CHAPTERS.length ? CHAPTERS : [];
+      const boot = { done: [...done], seen: chSeen, world, px, py, dir };
+      /* -1 is the game as it booted; ch is chapter ch open with every quest before it answered */
+      F.chapter = ch => { done.clear();
+        if (ch < 0) boot.done.forEach(q => done.add(q)); else for (let i = 0; i < ch; i++) (CH[i].quests || []).forEach(q => done.add(q));
+        chSeen = ch < 0 ? boot.seen : ch; if (typeof applyGrowth === 'function') applyGrowth(); };
+      const states = [-1].concat(CH.map((c, i) => i + 1));
+      /* a person is moved the engine's own way (wanderUpdate): the map's glyph back where they stood, a
+         person stamped where they stand now. Every move is undone before the next scene is set. */
+      const moved = [];
+      F.move = (wid, i, x, y) => { const w = WORLDS[wid], n = w.npcs[i];
+        if (!moved.some(m => m.n === n)) moved.push({ n, w, x: n.x, y: n.y });
+        if (w.grid[n.y]) w.grid[n.y][n.x] = w.rows[n.y][n.x];
+        n.x = n.fx = x; n.y = n.fy = y; w.grid[y][x] = 'N'; };
+      F.unmove = () => { while (moved.length) { const m = moved.pop(), n = m.n;
+        if (m.w.grid[n.y]) m.w.grid[n.y][n.x] = m.w.rows[n.y][n.x];
+        n.x = n.fx = m.x; n.y = n.fy = m.y; m.w.grid[m.y][m.x] = 'N'; } };
+      const says = n => pendingAt(n) !== undefined || !!n.chat;
+      /* somebody whose answer to Enter can be read: a quest is a card with their name on it, a chat is
+         a line signed with their name. Somebody who only chats AND runs something (a chair, a room)
+         answers with a panel instead, so they are left out rather than misread. */
+      const readable = n => says(n) && (pendingAt(n) !== undefined || !svcKind(n.npc, n)) && !!npcName(n.npc);
+      const nm = n => String(npcName(n.npc)).split(' ·')[0];
+      const who = (wid, n) => ({ npc: n.npc, name: nm(n), i: WORLDS[wid].npcs.indexOf(n), quest: pendingAt(n) !== undefined });
+      const stand = (wid, x, y) => { world = wid; return !isSolid(x, y) && !portalAt(wid, x, y) && !troIsStop(wid, x, y); };
+      const solid = (wid, x, y) => { world = wid; return isSolid(x, y); };
+      const at = (wid, x, y) => WORLDS[wid].npcs.find(n => n.x === x && n.y === y);
+      const talkersBy = (wid, x, y) => WORLDS[wid].npcs.filter(n => Math.abs(n.x - x) + Math.abs(n.y - y) === 1 && says(n));
+      const toward = (x, y, n) => D4.find(([, dx, dy]) => x + dx === n.x && y + dy === n.y);
+      /* how a player stands on (x,y) facing NOBODY he could talk to, with a real key: turn toward a wall
+         (or somebody with nothing to say), else walk in from a free tile so the step ends facing a tile
+         nobody with something to say stands on. In an L of two people with both other sides open, no
+         key does it — a player cannot stand there facing nobody — and that tile is not used. */
+      const nobody = (wid, x, y) => {
+        const by = [];
+        for (const [k, dx, dy, d] of D4) { const p = at(wid, x + dx, y + dy);
+          if (solid(wid, x + dx, y + dy) && !(p && says(p))) by.push({ how: 'turn', key: k, dir: d, from: [x, y], toward: p ? nm(p) + ', who has nothing to say' : 'a wall', rank: p ? 1 : 0 }); }
+        by.sort((a, b) => a.rank - b.rank);
+        if (by.length) return by[0];
+        for (const [k, dx, dy, d] of D4) { const p = at(wid, x + dx, y + dy);
+          if (stand(wid, x - dx, y - dy) && !(p && says(p))) return { how: 'walk', key: k, dir: d, from: [x - dx, y - dy], toward: 'nobody' }; }
+        return null; };
+      /* two people beside one tile where nobody else with something to say stands beside it: where the
+         map stands them, else `mover` taken to the far side of a tile beside `stay` */
+      const pair = (wid, stay, mover, needNobody, build) => {
+        for (const [, dx, dy] of D4) { const x = stay.x + dx, y = stay.y + dy;
+          if (!stand(wid, x, y)) continue;
+          let built = null;
+          if (build) { const bx = x + dx, by2 = y + dy;
+            if (Math.abs(mover.x - x) + Math.abs(mover.y - y) === 1 || !stand(wid, bx, by2)) continue;
+            built = { i: WORLDS[wid].npcs.indexOf(mover), name: nm(mover), from: [mover.x, mover.y], to: [bx, by2] };
+            F.move(wid, built.i, bx, by2); }
+          const tk = talkersBy(wid, x, y), nb = nobody(wid, x, y);
+          const ok = tk.length === 2 && tk.includes(stay) && tk.includes(mover) && (nb || !needNobody);
+          if (built) F.unmove();
+          if (ok) return { wid, x, y, nobody: nb, built,
+            dirTo: Object.fromEntries([stay, mover].map(n => [nm(n), toward(x, y, n)])) }; }
+        return null; };
+      /* one person with something to say beside a tile, and somebody with NOTHING to say on another side
+         of it — where the map stands them, else the quiet one moved to a free side */
+      const quiet = (wid, P, S, build) => {
+        for (const [, dx, dy] of D4) { const x = P.x + dx, y = P.y + dy;
+          if (!stand(wid, x, y)) continue;
+          let built = null;
+          if (build) {
+            if (Math.abs(S.x - x) + Math.abs(S.y - y) === 1) continue;
+            const to = D4.map(([, ex, ey]) => [x + ex, y + ey]).find(([sx, sy]) => stand(wid, sx, sy));
+            if (!to) continue;
+            built = { i: WORLDS[wid].npcs.indexOf(S), name: nm(S), from: [S.x, S.y], to };
+            F.move(wid, built.i, to[0], to[1]); }
+          const tk = talkersBy(wid, x, y);
+          const ok = Math.abs(S.x - x) + Math.abs(S.y - y) === 1 && tk.length === 1 && tk[0] === P;
+          const toP = toward(x, y, P), toS = toward(x, y, S);
+          if (built) F.unmove();
+          if (ok) return { wid, x, y, built, toP, toS, quiet: nm(S) }; }
+        return null; };
+      const distinct = (a, b) => nm(a) && nm(b) && nm(a) !== nm(b);
+      /* the scenes, each in the first state of the story where it exists — where the map stands them
+         first, built only when no state has it */
+      const out = { A: null, B: null, C: null, E: null, crude: { A: 0, B: 0, C: 0, E: 0 }, pre: '' };
+      for (const build of [false, true]) for (const ch of states) {
+        if (out.A && out.B && out.C && out.E) break;
+        F.chapter(ch);
+        for (const wid of Object.keys(WORLDS)) { const L = WORLDS[wid].npcs;
+          /* `crude` counts the same people the scenes are drawn from, with no geometry asked: a count above
+             zero with no scene is the finder failing, not the city having nobody */
+          for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j];
+            const two = readable(a) && readable(b) && distinct(a, b);
+            if (!build && two) out.crude.A++;
+            if (!out.A && two) {
+              const s = pair(wid, a, b, false, build) || pair(wid, b, a, false, build);
+              if (s) out.A = Object.assign(s, { ch, people: [who(wid, a), who(wid, b)] }); }
+            /* a person who only chats, listed BEFORE one with a quest for you: the only order in which
+               "the one with a quest for you" changes anything */
+            const chat = says(a) && pendingAt(a) === undefined, quest = pendingAt(b) !== undefined;
+            if (!build && chat && quest && two) out.crude.B++;
+            if (!out.B && chat && quest && two) {
+              const s = pair(wid, b, a, true, build) || pair(wid, a, b, true, build);
+              if (s) out.B = Object.assign(s, { ch, people: [who(wid, a), who(wid, b)] }); }
+            /* one who has something to say and one who has nothing, either way round */
+            for (const [P, S] of [[a, b], [b, a]]) {
+              if (!readable(P) || says(S) || !nm(S)) continue;
+              if (!build) out.crude.E++;
+              if (out.E) continue;
+              const s = quiet(wid, P, S, build);
+              if (s) out.E = Object.assign(s, { ch, people: [who(wid, P)] }); } }
+          if (!build) for (const n of L) { if (readable(n)) out.crude.C++;
+            if (out.C || !readable(n)) continue;
+            for (const [, dx, dy] of D4) { const x = n.x + dx, y = n.y + dy;
+              if (!stand(wid, x, y) || talkersBy(wid, x, y).length !== 1) continue;
+              const nb = nobody(wid, x, y); if (!nb) continue;
+              out.C = { wid, x, y, nobody: nb, built: null, ch, people: [who(wid, n)], dirTo: { [nm(n)]: toward(x, y, n) } }; break; } } } }
+      F.chapter(-1);
+      /* the finder asks isSolid in world after world, and isSolid reads the CURRENT world, so it points
+         `world` elsewhere while the hero still stands on his own tile. Left like that, the loop finds
+         him on a door in a world he is not in and walks him through it a few frames later — after the
+         first scene was set, which is how the first draft's first case found the hero at a doorway's
+         far side. Put back exactly where the game had him. */
+      world = boot.world; px = fx = boot.px; py = fy = boot.py; dir = boot.dir;
+      out.pre = `${T().talkPre}`;
+      /* a scene: the story at its chapter, anybody moved for it moved, nothing over the street, nothing
+         said yet, the hero where the case starts him, the keyboard on the page */
+      F.scene = async (s, from, d) => {
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        $('card').hidden = true; F.unmove(); F.chapter(s.ch);
+        if (s.built) F.move(s.wid, s.built.i, s.built.to[0], s.built.to[1]);
+        enterWorld(false);
+        world = s.wid; px = fx = from[0]; py = fy = from[1]; moving = false; held = null; warpT = 0; dir = d;
+        clearTimeout(toastT); toastQ.length = 0; $('toast').classList.remove('on');
+        checkTalk(); F.shown.length = 0;
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); };
+      F.state = () => ({ px, py, dir, world, talk: !$('talk').hidden, talkText: $('talk').textContent,
+        card: $('card').hidden ? null : $('npcName').textContent, said: F.shown.slice(), covered: worldCovered() });
+      return out;
+    });
+    const fst = () => fp.evaluate(() => window.__face.state());
+    const scene = (s, from, d) => fp.evaluate(([s2, f2, d2]) => window.__face.scene(s2, f2, d2), [s, from, d]);
+    /* a real arrow: held until the hero turns (toward something he cannot walk onto) or a step starts */
+    const arrow = async (key, how) => {
+      const b = await fst(); await fp.keyboard.down(key);
+      const t0 = Date.now(); let a = b;
+      while (Date.now() - t0 < 1500) { await fp.waitForTimeout(30); a = await fst();
+        if (a.px !== b.px || a.py !== b.py || (how === 'turn' && a.dir !== b.dir)) break; }
+      await fp.keyboard.up(key); await fp.waitForTimeout(how === 'walk' ? 450 : 150);
+      return fst(); };
+    /* what the player reads: who the Talk button names, and who answered Enter */
+    const named = (s, ppl) => !s.talk ? null : ppl.find(p => { const r = s.talkText.slice(found.pre.length);
+      return s.talkText.indexOf(found.pre) === 0 && (r === p.name || r.indexOf(p.name + ' — ') === 0); }) || { name: '"' + s.talkText + '"', none: true };
+    const answered = (a, ppl) => ppl.filter(p => (a.card && a.card.split(' ·')[0] === p.name) || a.said.some(t => t.indexOf('💬 ' + p.name + ':') === 0));
+    const did = (a, ppl) => { if (a.card) return 'opened ' + a.card.split(' ·')[0] + '\'s quest';
+      const line = a.said.find(t => ppl.some(p => t.indexOf('💬 ' + p.name + ':') === 0));
+      return line ? 'brought up "' + line.slice(0, 70) + '"' : a.covered ? 'opened something over the street' : 'brought nobody\'s answer up in 4 s'; };
+    const button = (s, ppl) => { const n = named(s, ppl); return !n ? 'was dark' : 'named ' + n.name; };
+    /* one case: set the scene, face with a real key, read the button, press Enter, read the answer.
+       Only what comes up AFTER Enter counts, and it is waited for: a turn toward a wall says the wall's
+       own line ("Construction fence…"), and a person's answer then waits its turn behind it, as it does
+       for a player — the first draft read the screen at once and reported the fence as the answer. */
+    const run = async (tag, s, from, d0, key, how, wantDir, want, where, why) => {
+      await scene(s, from, d0);
+      const t = await arrow(key, how);
+      if (t.px !== s.x || t.py !== s.y || t.dir !== wantDir) {
+        FF.push(tag + ' could not set the scene: a real ' + key + ' left the hero at ' + t.px + ',' + t.py + ' facing ' + t.dir + ', not on ' + s.x + ',' + s.y + ' facing ' + wantDir + ' — nothing was measured');
+        return; }
+      await fp.evaluate(() => { window.__face.shown.length = 0; });
+      await fp.keyboard.press('Enter');
+      const t0 = Date.now(); let a = await fst();
+      while (Date.now() - t0 < 4000 && !a.card && !a.covered && !answered(a, s.people).length) { await fp.waitForTimeout(100); a = await fst(); }
+      const n = named(t, s.people), got = answered(a, s.people);
+      if (!n || n.none || n.name !== want.name || got.length !== 1 || got[0].name !== want.name)
+        FF.push(tag + ' ' + where + ', the Talk button ' + button(t, s.people) + ' and Enter ' + did(a, s.people) + ' — ' + why);
+    };
+    const where = s => s.built ? ' (' + s.built.name + ' moved from ' + s.built.from.join(',') + ' to ' + s.built.to.join(',') + ' to stand there)' : ' (where the map stands them)';
+    const chap = s => s.ch < 0 ? '' : ', chapter ' + s.ch + ' open,';
+    const A = found.A, B = found.B, C = found.C, E = found.E;
+    const facing = (nb, from) => nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + from + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so he faces neither';
+    /* (face) each of the two, turned toward from facing the other: the one listed second is the red on
+       the old engine; the one listed first is the control that a rule "always the second" would fail */
+    if (A) {
+      const [p, q] = A.people;
+      for (const [tgt, other] of [[q, p], [p, q]]) {
+        const k = A.dirTo[tgt.name], from = A.dirTo[other.name];
+        await run('(face)', A, [A.x, A.y], from[3], k[0], 'turn', k[3], tgt,
+          'in ' + A.wid + chap(A) + ' standing between ' + p.name + ' and ' + q.name + ' and turned with a real ' + k[0] + ' from ' + other.name + ' to face ' + tgt.name,
+          'Enter talks to the one you face (#285; the owner, 2026-10-01: "enter talks to the person you face first sounds good")');
+      }
+      measured.push('turned to face each of ' + p.name + ' and ' + q.name + ' in ' + A.wid + where(A));
+      /* (facing nobody) between the same two: the one with a quest for you, and between two alike the
+         one the list puts first — the tie that keeps everything else as it was. Started facing the one
+         who must NOT be offered, so a turn that forgets to ask again shows. */
+      if (A.nobody) {
+        const nb = A.nobody, want = (p.quest || !q.quest) ? p : q, other = want === p ? q : p;
+        await run('(facing nobody)', A, nb.from, nb.how === 'turn' ? A.dirTo[other.name][3] : nb.dir, nb.key, nb.how, nb.dir, want,
+          'in ' + A.wid + chap(A) + ' between ' + p.name + ' and ' + q.name + ', ' + facing(nb, other.name),
+          p.quest === q.quest ? 'with nobody in front of you and the two alike, the one the list puts first is offered, as before #285' : 'with nobody in front of you, the one with a quest for you comes first (#285)');
+        measured.push('facing neither of them (' + (nb.how === 'turn' ? 'turned toward ' + nb.toward : 'walked in') + ')');
+      } else fails.push('COUNT-ONLY: no key leaves the hero between ' + p.name + ' and ' + q.name + ' facing nobody, so the order with nobody in front of you was not measured with them (#285)');
+    } else if (found.crude.A) FF.push('(face) two people in one world of this shell have something to say at the same time (' + found.crude.A + ' pair(s), counted over the chapters), and the finder set up no scene with two of them beside one tile — the finder is broken, not the city; nothing about facing was measured');
+    else fails.push('COUNT-ONLY: no two people in one world of this shell, at any chapter, have something to say at the same time that a player can read back (a quest card, or a line signed with a name), so Enter-talks-to-the-one-you-face was not measured here (#285)');
+    /* (quest first) facing nobody, between one who only chats (listed first) and one with a quest */
+    if (B) {
+      const [c, q] = B.people, nb = B.nobody, other = B.dirTo[c.name];
+      await run('(quest first)', B, nb.from, nb.how === 'turn' ? other[3] : nb.dir, nb.key, nb.how, nb.dir, q,
+        'in ' + B.wid + chap(B) + ' between ' + c.name + ', who only chats and is listed first, and ' + q.name + ', who has a quest for you, ' + (nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + c.name + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so he faces nobody'),
+        'with nobody you could talk to in front of you, the one with a quest for you comes first (#285)');
+      measured.push('quest before chat between ' + c.name + ' and ' + q.name + ' in ' + B.wid + chap(B).replace(/,$/, '') + where(B));
+    } else if (found.crude.B) FF.push('(quest first) ' + found.crude.B + ' time(s) a person who only chats is listed before one with a quest for you in the same world, and the finder set up no scene with them beside one tile facing nobody — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: in no world of this shell, at any chapter, is somebody who only chats listed before somebody with a quest for you (among people whose answer a player can read back), so quest-before-chat was not measured here (#285)');
+    /* (one person) beside one person only, facing away from them: offered exactly as before */
+    if (C) {
+      const [p] = C.people, nb = C.nobody;
+      await run('(one person)', C, nb.from, nb.how === 'turn' ? C.dirTo[p.name][3] : nb.dir, nb.key, nb.how, nb.dir, p,
+        'in ' + C.wid + chap(C) + ' beside ' + p.name + ' alone, ' + (nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + p.name + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so ' + p.name + ' is beside him and not in front'),
+        'one person beside you is offered whichever way you face, as before #285');
+      measured.push('one person, ' + p.name + ', offered while facing ' + nb.toward + ' in ' + C.wid);
+    } else if (found.crude.C) FF.push('(one person) people in this shell have something to say (' + found.crude.C + ', counted over the chapters) and the finder found no tile beside one of them alone where a key can face him away — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: nobody in this shell, at any chapter, has something to say that a player can read back, so nothing about who Enter talks to was measured here (#285)');
+    /* (facing somebody quiet) the one you face comes first only if they have something to say: turned
+       to face somebody with nothing to say, the person beside you who has something is still offered */
+    if (E) {
+      const [p] = E.people;
+      await run('(facing somebody quiet)', E, [E.x, E.y], E.toP[3], E.toS[0], 'turn', E.toS[3], p,
+        'in ' + E.wid + chap(E) + ' beside ' + p.name + ' and turned with a real ' + E.toS[0] + ' from ' + p.name + ' to face ' + E.quiet + ', who has nothing to say',
+        'the one you face comes first only when they have something to say, and ' + p.name + ', beside you, still does (#285)');
+      measured.push('facing ' + E.quiet + ', who has nothing to say, beside ' + p.name + ' in ' + E.wid + where(E));
+    } else if (found.crude.E) FF.push('(facing somebody quiet) ' + found.crude.E + ' time(s) somebody with nothing to say shares a world with somebody who has something, and the finder set up no scene with the quiet one in front and the other beside — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: nobody in this shell with nothing to say shares a world with somebody whose answer a player can read back, so facing a quiet person was not measured here (#285)');
+    if (measured.length) fails.push('COUNT-ONLY: Enter and the one you face (#285) — ' + measured.join('; '));
+    if (fErr.length) FF.push('the page threw while facing people and pressing Enter: ' + fErr.join(' | '));
+    await fp.close();
+    fails.push(...FF.map(m => 'enter: ' + m));
   }
 
   await page.setViewportSize({ width: 480, height: 900 });

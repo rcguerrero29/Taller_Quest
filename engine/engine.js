@@ -2600,7 +2600,15 @@ function drawFront(){
   /* depth pass: facades, decor and actors interleaved by row, back to front. Declared before the
      fiesta is drawn because a prop on a solid tile is queued into it (fiestaDraw2D's `defer`) */
   const R=[];
-  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true);
+  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);
+  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner's "looks like the person is laying on
+     the trolley" (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
+     that row (people are y+0.55) — whoever is nearer the camera than the rails paints over it, whoever is farther paints
+     under it. Until mq-v217 this camera painted it right here, before the queue and so under every row, while a note in
+     test/engine.smoke.js said it had been moved. At rest nobody in this camera reaches the car's row, so nothing showed;
+     half a step off the platform into a stopped car put the hero's legs on its roof. Every car of a train is on the same
+     row, so one slot holds the whole train. */
+  {const L=troLine(world);if(L)R.push({d:L.row+0.5,f:()=>troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true)});}
   fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true,fn=>R.push({d:fn.y+0.05,f:fn})); /* after its row's facade, before actors — the same slot decor uses */
   drawDecals(camX,camY);
   DECOS.forEach(d=>{if(d.world!==world)return;const f=DECODRAW[d.deco];if(!f)return;
@@ -4116,8 +4124,12 @@ function tryStep(){
   if(worldCovered())return;           /* nor behind a panel: a direction held when it opened waits for it to close (#274) */
   /* `dir` becomes the WORLD direction, so sprite facing and the move interpolation
      at the bottom of loop() (which reads DIRS[dir]) stay in step with the actual move. */
+  const was=dir;
   dir=worldDir(held);const[dx,dy]=DIRS[dir],nx=px+dx,ny=py+dy;
   if(isSolid(nx,ny)){
+    /* a key toward somebody (or a wall) turns you without a step, and turning changes who Talk offers
+       (#285) — asked again once per turn, never once a frame for as long as the key is held */
+    if(dir!==was)checkTalk();
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
@@ -5049,11 +5061,29 @@ function svcRun(who,n){
   if(k==="chair"){openChair(who);return true;}
   return false;
 }
+/* WHO TALK OFFERS, AND SO WHO ENTER TALKS TO, when more than one person is beside you (#285). The
+   owner, 2026-10-01: "enter talks to the person you face first sounds good" — answering the order put
+   to him: the one you face, then the one with a quest for you, then the nearest. It used to be whoever
+   came first in the world's list: between Priya and Theo, facing Theo, Enter opened Priya's quest.
+   Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+   order — so with one person beside you, nothing changes. One pass over the same list as before.
+   Guarded by real key presses in test/engine.smoke.js (grep `ENTER TALKS TO THE ONE YOU FACE`). */
+function talkPick(){
+  const f=DIRS[dir]||[0,0],ax=px+f[0],ay=py+f[1];
+  let quest=null,first=null;
+  for(const n of CW().npcs){
+    if(Math.abs(n.x-px)+Math.abs(n.y-py)!==1)continue;
+    const q=pendingAt(n)!==undefined;
+    if(!q&&!n.chat)continue;
+    if(n.x===ax&&n.y===ay)return n;
+    if(q&&!quest)quest=n;
+    if(!first)first=n;}
+  return quest||first;}
 function checkTalk(){
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
-  const n=CW().npcs.find(n=>Math.abs(n.x-px)+Math.abs(n.y-py)===1&&(pendingAt(n)!==undefined||n.chat));
+  const n=talkPick();
   if(n){const qi=pendingAt(n),tb=$("talk"),rh=roomHosts[n.npc];
     if(qi!==undefined){tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${AQ()[qi].title}”`;
       tb.dataset.qi=qi;delete tb.dataset.chatn;}
@@ -5643,6 +5673,9 @@ $("gear").addEventListener("click",()=>{
   /* the wardrobe is extra — any ATTEMPT at the quest content nominates opens it */
   {const wq=GRW().wardrobeQuest;
    $("openWd").hidden=!(wq!==undefined&&(done.has(wq)||qa[wq]!==undefined));}
+  /* #283: Alebrijes lists whoever is in the game NOW: a pup adopted since the list was last built, and the face paint of
+     a season that turned over at midnight while the game was open (both measured stale before this line) */
+  aleRowBuild();
   $("settings").hidden=false;held=null;});
 $("openWd").addEventListener("click",()=>{$("settings").hidden=true;openWardrobe();});
 $("closeSet").addEventListener("click",()=>{$("settings").hidden=true;});
@@ -7262,7 +7295,8 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   dogPlace(cr,d0);
   CRIT.push(cr);});
 parkPersist();
-CRIT.forEach(cr=>{if(cr.kind==="beagle"&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
+/* #281: every dog gets his bandana back, not only a beagle — the button gives one to any breed and the record keeps it by name */
+CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
 $("leash").addEventListener("click",()=>{
   if(!DOGK.has(petTarget)||!petCrit||world===PL.park)return;
   const c=petCrit;
