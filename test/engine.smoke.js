@@ -3250,24 +3250,31 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          your feet are still BEHIND its row, and until mq-v217 the front camera painted the car before its depth queue, so
          your legs went on its roof: the owner's "laying on the trolley", in the camera this note had called fixed. So the
          step is swept in eighths of a tile on each side of the rails' row (the row itself, inside the car, is neither side),
-         and a side with nothing to measure says so rather than passing. */
+         counting only pixels where his BODY and the car's BODY meet: a drop shadow on either is a tint, not an order (with
+         only his body required, 4 pixels of a correctly hidden person read as "in front" in iso, where the car is not
+         opaque). A side where the two never meet says so. A camera that draws no car, or nobody, there is a red and not
+         a note: planted 2026-10-01 with the front-view car blanked, the first draft of this sweep said "not measured" and
+         the whole suite stayed green. */
       if (cam === 'front') [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
-        if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the front camera'); return; }
+        if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the ' + cam + ' camera'); return; }
         const body = (P2, Q, i) => Math.abs(P2[i] - Q[i]) + Math.abs(P2[i + 1] - Q[i + 1]) + Math.abs(P2[i + 2] - Q[i + 2]) > 120;
-        let met = 0, moved = 0, worst = 0, at = 0;
+        let carSeen = 0, heroSeen = 0, meet = 0, moved = 0, worst = 0, at = 0;
         for (let k = 1; k <= 7; k++) { px = fx = mid; py = L.row; fy = L.row + sgn * k / 8;
           const A = grab(), A2 = grab();
           heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
           let wrong = 0;
-          for (let i = 0; i < A.length; i += 4) { if (!ne(C, D, i) || !ne(B, D, i)) continue;   /* only where he and the car meet */
+          for (let i = 0; i < A.length; i += 4) { if (ne(B, D, i)) carSeen++; if (ne(C, D, i)) heroSeen++;
+            if (!body(C, D, i) || !body(B, D, i)) continue;              /* only where his body and the car's body meet */
             if (ne(A, A2, i)) { moved++; continue; }
-            met++;
-            if (side === 'behind' ? (ne(A, B, i) && !ne(A, C, i)) : (body(C, D, i) && ne(A, C, i) && !ne(A, B, i))) wrong++; }
+            meet++;
+            if (side === 'behind' ? (ne(A, B, i) && !ne(A, C, i)) : (ne(A, C, i) && !ne(A, B, i))) wrong++; }
           if (wrong > worst) { worst = wrong; at = k; } }
-        if (moved > met * 0.05) { P.push('the front camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (met + moved) + ' pixels where he and the car meet'); return; }
-        if (!met) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the front camera never put the person and the car in the same pixel, so the order was not measured'); return; }
-        if (worst && side === 'behind') P.push('in the front camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its roof with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
-        if (worst && side === 'in front of') P.push('in the front camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody stepping through it from ' + side + ' it could be measured against it'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody where the hero steps ' + side + ' the trolley in ' + L.world + ', so walking through it was not measured'); return; }
+        if (moved > meet * 0.05) { P.push('the ' + cam + ' camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (meet + moved) + ' pixels where he and the car meet'); return; }
+        if (!meet) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the ' + cam + ' camera never put his body and the car\'s in the same pixel, so the order was not measured'); return; }
+        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
+        if (worst && side === 'in front of') P.push('in the ' + cam + ' camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
       });
     });
     window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
