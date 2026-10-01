@@ -7441,12 +7441,18 @@ $("renGo").addEventListener("click",()=>{
   const rec=renRec(c);if(!rec)return;
   const old=c.name,star=c===starDog();
   if(parkPrefs.band[old]!==undefined){parkPrefs.band[n]=parkPrefs.band[old];delete parkPrefs.band[old];}
+  /* #277: the alebrije look goes with the dog, like the bandana: the one chosen for it or, if nobody chose, the one
+     its old name gave it, and any custom look over that. Nothing stays under the old name. A stopgap: the picks are
+     kept by name until dogs are given ids that never change. */
+  {const A=alePick.animals,C=alePick.custom;A[n]=A[old]!==undefined?A[old]:aleHash(old)+alePick.off;delete A[old];
+   if(C&&C[old]!==undefined){C[n]=C[old];delete C[old];}alePersist();if(aleWho===old)aleWho=n;}
   if(parkPrefs.train[old]!==undefined){parkPrefs.train[n]=parkPrefs.train[old];delete parkPrefs.train[old];}
   const stub=dogStubborn(rec,old,star);
   delete rec.stub;
   rec.n=n;c.name=n;if(star){rec.r=1;starNow=n;}c.egg=eggFor(n);
   if(stub){rec.stub={was:old,left:2};parkPrefs.stubs=(parkPrefs.stubs|0)+1;}
   parkPersist();
+  aleRowBuild(); /* #277: and Settings → Alebrijes lists the dog by its new name, in the look that went with it */
   toast("✏️ "+(stub?T().renameStub(n,old):T().renameDone(n)),2800);
 });
 $("renX").addEventListener("click",()=>{renTarget=null;$("renP").hidden=true;});
