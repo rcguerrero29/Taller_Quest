@@ -628,6 +628,13 @@ easter eggs, pettable animals, a dog who follows you through doors, light props 
 the stapled-paper reader, build templates with seeded variation, and the admin tools for
 placing townsfolk by hand. None of it needs a line written for a second world.
 
+**One line takes the builder's drone** (#271): `const BUILDER={};` in your `config.js`. B — or a row
+the engine adds to Settings, for a phone — lifts a small drone off the person you play; the keys fly it tile by tile, over walls but never off the map;
+the camera goes with it; a card names the tile under it; Escape flies it home. The person you play
+stays exactly where he stood, and nothing about a flight is ever saved. It is a builder's tool, so it
+is off until a pack asks for it, and Meridian does not. `name:{en:"…",es:"…"}` renames it; nothing
+else in `BUILDER` is read, and the engine says so at boot if you write anything else.
+
 ## 8 · What 2026-09-05 added to this template *(El Changarrito, the first world built from it)*
 
 The backlog town — `docs/story/el-changarrito.md` — is the first second world, and building
