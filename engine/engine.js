@@ -2591,7 +2591,15 @@ function drawFront(){
   /* depth pass: facades, decor and actors interleaved by row, back to front. Declared before the
      fiesta is drawn because a prop on a solid tile is queued into it (fiestaDraw2D's `defer`) */
   const R=[];
-  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true);
+  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);
+  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner's "looks like the person is laying on
+     the trolley" (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
+     that row (people are y+0.55) — whoever is nearer the camera than the rails paints over it, whoever is farther paints
+     under it. Until mq-v217 this camera painted it right here, before the queue and so under every row, while a note in
+     test/engine.smoke.js said it had been moved. At rest nobody in this camera reaches the car's row, so nothing showed;
+     half a step off the platform into a stopped car put the hero's legs on its roof. Every car of a train is on the same
+     row, so one slot holds the whole train. */
+  {const L=troLine(world);if(L)R.push({d:L.row+0.5,f:()=>troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true)});}
   fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true,fn=>R.push({d:fn.y+0.05,f:fn})); /* after its row's facade, before actors — the same slot decor uses */
   drawDecals(camX,camY);
   DECOS.forEach(d=>{if(d.world!==world)return;const f=DECODRAW[d.deco];if(!f)return;
