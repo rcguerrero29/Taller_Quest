@@ -42,20 +42,25 @@ function findChromium() {
   if (!exe) { console.error('No Chromium found. Set CHROMIUM_PATH, or install one of: ' + CANDIDATES.join(', ')); process.exit(1); }
   const root = path.resolve(__dirname, '..'), file = path.resolve(root, idx);
   const browser = await chromium.launch({ executablePath: exe });
-  const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
-  const pageErrors = [], warns = [];
-  page.on('pageerror', e => pageErrors.push(e.message));
-  page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
   // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
-  // #256: on every page this file opens, and WITH NO EXCEPTION. Until #256 the gauge pack's deliberate attack
+  // #256: on every page this file opens, BY CONSTRUCTION (the browser hands each new page to the watcher, so a check
+  // added later cannot forget; the first draft named each page and two checks landed on main the same day that it
+  // never saw), and WITH NO EXCEPTION. Until #256 the gauge pack's deliberate attack
   // (content/gauge/config.js PAPER: an @import from example.invalid) was counted out loud and never failed: the
   // engine parsed a pack's paper in a <style> written into the page, the browser tried the import there, and the
   // policy refusing it was the door working. Since style-src is 'self' a <style> written into the page is refused
   // itself, so the paper is parsed in a constructed sheet, which never fetches an @import at all. A refusal for
   // example.invalid now means something parses pack CSS the old way again, and that is a red like any other.
-  const refused = [];
-  const watchPolicy = p => p.on('console', m => { const s = m.text(); if (/Content Security Policy/i.test(s)) refused.push(s.slice(0, 220)); });
-  watchPolicy(page);
+  const refused = [], watched = new WeakSet();
+  const watchPolicy = p => { if (watched.has(p)) return; watched.add(p); watchPolicy.n = (watchPolicy.n || 0) + 1;
+    p.on('console', m => { const s = m.text(); if (/Content Security Policy/i.test(s)) refused.push(s.slice(0, 220)); }); };
+  { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
+    browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
+    browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
+  const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
+  const pageErrors = [], warns = [];
+  page.on('pageerror', e => pageErrors.push(e.message));
+  page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
   await page.goto('file://' + file);
   await page.waitForTimeout(1500);
@@ -2718,7 +2723,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   {
     const tctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
     const tp = await tctx.newPage();
-    watchPolicy(tp);
     const R = [], tErr = [], ok = [];
     try {
       tp.on('pageerror', e => tErr.push(e.message));
@@ -4600,7 +4604,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      wanders onto the hero's next tile turns a walk into a wall (.claude/skills/guard/SKILL.md, "it reads the clock"). */
   {
     const kp = await browser.newPage({ viewport: { width: 480, height: 900 } });
-    watchPolicy(kp);
     const kErr = [];
     kp.on('pageerror', e => kErr.push(e.message));
     await kp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
@@ -4827,6 +4830,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      they are printed rather than failed. One filter at the end, so a new check cannot forget one. */
   fails.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   fails = fails.filter(l => !/^COUNT-ONLY: /.test(l));
+  console.log('  COUNT-ONLY: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
   /* by kind, so the sentence says what a player lost: a refused style is a piece of the page that silently
      lost its look, a refused script is a feature that silently never ran */
   if (refused.length) { const kinds = {};

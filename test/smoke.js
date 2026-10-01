@@ -66,18 +66,22 @@ const CANDIDATES = [
     if (!fs.existsSync(path.resolve(__dirname, '..', '.github', 'workflows', 'pages.yml')) || !fs.existsSync(path.resolve(__dirname, '..', '.github', 'scripts', 'city-record.js'))) fails.push('no deploy writes the city record (#14)');
   }
   const browser = await chromium.launch({ executablePath: exe });
+  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
+  // #256: on EVERY page this file opens, not only the first, and BY CONSTRUCTION: the browser hands each new page
+  // to the watcher, so a check added later with a browser of its own is watched without anybody remembering to.
+  // The first draft called watchPolicy() at each place a page was opened; two checks landed on main the same day
+  // and opened pages that draft never saw. Since style-src is 'self' a refused style is a silent visual break.
+  const refused = [], watched = new WeakSet();
+  const watchPolicy = p => { if (watched.has(p)) return; watched.add(p); watchPolicy.n = (watchPolicy.n || 0) + 1;
+    p.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); }); };
+  { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
+    browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
+    browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', e => pageErrors.push(e.message));
   const warns = [];
   page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
-  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
-  // #256: on EVERY page this file opens, not only the first. Since style-src is 'self' a refused style is a
-  // silent visual break (the element simply loses its look), and four checks below open a browser of their
-  // own; a refusal that only happens in one of them used to be seen by nobody.
-  const refused = [];
-  const watchPolicy = p => p.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); });
-  watchPolicy(page);
   // fail external fetches (Google Fonts) instantly — a hanging CDN must never stall the suite
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
 
@@ -1247,7 +1251,6 @@ const CANDIDATES = [
       if (before) await ctx.addInitScript(before);
       await ctx.addInitScript(pinSeed, seed);
       const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
-      watchPolicy(p);
       const errs = []; p.on('pageerror', e => errs.push(e.message));
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       if (route) await route(p);
@@ -2119,7 +2122,6 @@ const CANDIDATES = [
   {
     const ctx = await browser.newContext();
     const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
-    watchPolicy(p);
     p.setDefaultTimeout(6000);
     const errs = [], rn = [];
     p.on('pageerror', e => errs.push(e.message));
@@ -2279,7 +2281,6 @@ const CANDIDATES = [
   {
     const ctx = await browser.newContext();
     const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
-    watchPolicy(p);
     p.setDefaultTimeout(6000);
     const errs = [], bd = [];
     p.on('pageerror', e => errs.push(e.message));
@@ -2909,7 +2910,6 @@ const CANDIDATES = [
   {
     const ctx2 = await browser.newContext();
     const p2 = await ctx2.newPage({ viewport: { width: 480, height: 900 } });
-    watchPolicy(p2);
     const errs = [], w2 = [];
     p2.on('pageerror', e => errs.push(e.message));
     p2.on('console', m => { if (m.type() === 'warning') w2.push(m.text()); });
@@ -6275,6 +6275,7 @@ const CANDIDATES = [
 
 
 
+  console.log('  NOTE: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
   if (refused.length) fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254) — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 3).join(' | '));
   if (fails.length) { console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log(`OK — ${stat.quests} quests, maxXP ${stat.maxXP}, all invariants hold.`);
