@@ -4107,8 +4107,12 @@ function tryStep(){
   if(worldCovered())return;           /* nor behind a panel: a direction held when it opened waits for it to close (#274) */
   /* `dir` becomes the WORLD direction, so sprite facing and the move interpolation
      at the bottom of loop() (which reads DIRS[dir]) stay in step with the actual move. */
+  const was=dir;
   dir=worldDir(held);const[dx,dy]=DIRS[dir],nx=px+dx,ny=py+dy;
   if(isSolid(nx,ny)){
+    /* a key toward somebody (or a wall) turns you without a step, and turning changes who Talk offers
+       (#285) — asked again once per turn, never once a frame for as long as the key is held */
+    if(dir!==was)checkTalk();
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
@@ -5040,11 +5044,29 @@ function svcRun(who,n){
   if(k==="chair"){openChair(who);return true;}
   return false;
 }
+/* WHO TALK OFFERS, AND SO WHO ENTER TALKS TO, when more than one person is beside you (#285). The
+   owner, 2026-10-01: "enter talks to the person you face first sounds good" — answering the order put
+   to him: the one you face, then the one with a quest for you, then the nearest. It used to be whoever
+   came first in the world's list: between Priya and Theo, facing Theo, Enter opened Priya's quest.
+   Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+   order — so with one person beside you, nothing changes. One pass over the same list as before.
+   Guarded by real key presses in test/engine.smoke.js (grep `ENTER TALKS TO THE ONE YOU FACE`). */
+function talkPick(){
+  const f=DIRS[dir]||[0,0],ax=px+f[0],ay=py+f[1];
+  let quest=null,first=null;
+  for(const n of CW().npcs){
+    if(Math.abs(n.x-px)+Math.abs(n.y-py)!==1)continue;
+    const q=pendingAt(n)!==undefined;
+    if(!q&&!n.chat)continue;
+    if(n.x===ax&&n.y===ay)return n;
+    if(q&&!quest)quest=n;
+    if(!first)first=n;}
+  return quest||first;}
 function checkTalk(){
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
-  const n=CW().npcs.find(n=>Math.abs(n.x-px)+Math.abs(n.y-py)===1&&(pendingAt(n)!==undefined||n.chat));
+  const n=talkPick();
   if(n){const qi=pendingAt(n),tb=$("talk"),rh=roomHosts[n.npc];
     if(qi!==undefined){tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${AQ()[qi].title}”`;
       tb.dataset.qi=qi;delete tb.dataset.chatn;}
