@@ -1225,6 +1225,231 @@ function findChromium() {
   fails.push(...leaves.filter(l => !/^COUNT-ONLY: /.test(l)));
   leaves.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
+  /* ---- THE PETALS A WALKER DROPS LIE ON THE TILE HE DROPPED THEM ON, UNDER HIM, IN EVERY CAMERA (#284) ----
+     The issue: "The marigold petals a walker drops behind them land about a tile and a half off in the iso camera:
+     east and a little south of where they were really dropped. In the top camera they land in the right place. They
+     are also painted over blocks and people instead of lying on the ground. Done when the petals lie on the tile they
+     were dropped on in every camera, under whoever stands there." Asked as pixels (docs/POSTMORTEM.md §3), through the
+     real path: the person you steer walks into a heap of loose petals the pack lays (a tile it declares petals:true)
+     and back out again with REAL arrow keys, in the iso camera, three times, so his own steps drop what his shoes
+     carried on the tile he stepped back onto. Nothing here calls a petal painter: draw() and draw3d() draw them.
+     Then, standing on that tile, every camera this shell has is asked, at 0, 25 and 50% of the petals' life:
+       · THEY SHOW: the frame with his petals minus the frame without them;
+       · ON THAT TILE: in a flat camera the tile's own ground is found by laying that one tile as "-" and diffing —
+         never by the camera's arithmetic — and nine in ten of the petals' pixels must lie on it; in 3D, which bakes
+         its floor once a world, their middle must lie inside the outline of the person standing there (#267's test);
+       · UNDER HIM: where his body and his petals meet, he is what shows (his body: his shadow is half the ground);
+       · ON ONE CLOCK: late in their life their strength, as a share of the strength they fell with, is within a fifth
+         of the top camera's at the same instant; and a moment after their life is up they are drawn by nobody.
+     THE CLOCK IS HELD STILL — petals fade by Date.now(), and so do a neighbour's sway and a door's glow — and a control
+     pair of frames must differ by nothing first, or the probe measures nothing (§13r). The season is switched off so
+     no deck strews the ground; the people of that world are taken out of the picture and off the grid, its critters
+     and animals out of the picture, the tram sent away; and everything is put back. A shell that lays no petals says so. */
+  const petals = await (async function petalsOnTheirTile(page) {
+    const out = [];
+    const setup = await page.evaluate(() => {
+      if (typeof PETALS === 'undefined' || typeof petalDrop !== 'function' || typeof HEROFEET === 'undefined') return { note: 'COUNT-ONLY: this engine drops no petals, so where they lie was not looked at' };
+      const heap = g => !!(g && TILES[g] && TILES[g].petals);
+      const ws = Object.keys(WORLDS).filter(id => WORLDS[id].rows.some(r => [...r].some(heap)));
+      if (!ws.length) return { note: 'COUNT-ONLY: no world in this shell lays loose petals on the ground (a tile declared petals:true), so no trail is dropped and where one lies was not looked at' };
+      /* the spot, from the MAP and never from where people happen to stand: a heap, and open ground beside it that is
+         not a heap, not a door, not a stop, not a stair — the D with the most open ground round it, first in scan order */
+      const bare = (wid, x, y) => { const w = WORLDS[wid];
+        if (x < 0 || y < 0 || x >= w.W || y >= w.H) return false;
+        const r = w.rows[y][x];
+        return !SOLID.has(r) && r !== 'N' && !stands(r) && !heap(r) && !DOORSET.has(r) && !portalAt(wid, x, y) && !troIsStop(wid, x, y)
+          && !DECOS.some(d => d.world === wid && d.x === x && d.y === y) && !wellDepth(w, x, y) && !stairLift(w, x, y); };
+      const ND = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, BACK = { up: 'down', down: 'up', left: 'right', right: 'left' };
+      let pick = null;
+      ws.forEach(wid => { const w = WORLDS[wid], L = troLine(wid);
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+          if (!heap(w.rows[y][x]) || portalAt(wid, x, y) || troIsStop(wid, x, y) || (L && Math.abs(y - L.row) <= 1)) continue;
+          Object.keys(ND).forEach(d => { const dx = x - ND[d][0], dy = y - ND[d][1];   /* D is the tile you step INTO the heap from, going d */
+            if (!bare(wid, dx, dy)) return;
+            let n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (bare(wid, dx + i, dy + j)) n++;
+            if (!pick || n > pick.n) pick = { wid, x: dx, y: dy, hx: x, hy: y, into: d, out: BACK[d], n }; }); } });
+      if (!pick) return { err: 'this shell lays loose petals in ' + ws.join(', ') + ', and not one heap has open ground beside it to step back onto, so where a trail lies could not be looked at — that is a red, not a pass' };
+      const w = WORLDS[pick.wid];
+      window.__p284 = { world, px, py, fx, fy, dir, cam: camMode, mv: moving, st: TRO.state, season: typeof seasonPick !== 'undefined' ? seasonPick : null,
+        yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0, petals: PETALS.slice(), feet: { hc: HEROFEET.hc, pc: HEROFEET.pc },
+        decals: typeof DECALS !== 'undefined' ? DECALS.slice() : null, people: w.npcs, grid: w.grid.map(r => r.slice()), wid: pick.wid,
+        hidden: document.getElementById('world').hidden, open: [...document.querySelectorAll('.settings')].filter(p => !p.hidden).map(p => p.id),
+        reader: document.getElementById('reader').hidden, crit: CRIT.filter(c => c.world === pick.wid).map(c => [c, c.world]),
+        drone: (typeof DRONE !== 'undefined' && DRONE) ? { on: DRONE.on, want: DRONE.want } : null };
+      /* the people of that world are taken out of the picture AND off the grid (a person is stamped into it, and a
+         stamp on the heap would stop the walk), the season switched off so no deck strews the ground, the tram sent away */
+      w.npcs = []; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (w.grid[y][x] === 'N') w.grid[y][x] = w.rows[y][x];
+      if (typeof seasonSet === 'function') seasonSet('off');
+      TRO.state = 'away';
+      PETALS.length = 0; HEROFEET.hc = 0; HEROFEET.pc = 0;
+      [...document.querySelectorAll('.settings')].forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true;
+      document.getElementById('world').hidden = false;
+      world = pick.wid; px = fx = pick.x; py = fy = pick.y; dir = 'down'; moving = false; held = null; warpT = 0; portalT = 0;
+      if (typeof DRONE !== 'undefined' && DRONE) { DRONE.on = false; DRONE.want = false; }   /* the keys walk him, not the drone; put back at the end */
+      camSet('iso'); sizeCanvas(); draw();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      return { pick };
+    });
+    if (setup.note) { out.push(setup.note); return out; }
+    if (setup.err) { out.push(setup.err); return out; }
+    const pk = setup.pick, at = '(' + pk.x + ',' + pk.y + ') in ' + pk.wid;
+    try {
+      /* THE WALK: real arrow keys, in the iso camera, the way a player crosses the heap — into it and back out, three
+         times. One drop is three petals, a few pixels each once they lie on a diamond, and the first draft of this check
+         walked once: the paint order put back went red by ONE pixel of nine where he and they met. Three drops on his
+         tile give "under him" something to measure */
+      const KEY = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, CROSS = 3;
+      const step = async (d, tx, ty) => {
+        await page.keyboard.down(KEY[d]);
+        try { await page.waitForFunction(([x, y]) => px === x && py === y, [tx, ty], { timeout: 2000 }); } catch (e) {}
+        await page.keyboard.up(KEY[d]);
+        try { await page.waitForFunction(() => !moving, null, { timeout: 2000 }); } catch (e) {}
+        return page.evaluate(() => ({ x: px, y: py, world, moving }));
+      };
+      for (let k = 0; k < CROSS; k++) {
+        const s1 = await step(pk.into, pk.hx, pk.hy);
+        if (s1.x !== pk.hx || s1.y !== pk.hy) { out.push('petals (#284): from ' + at + ' the arrow key ' + KEY[pk.into] + ' did not walk the hero into the loose petals at (' + pk.hx + ',' + pk.hy + ') — he is at (' + s1.x + ',' + s1.y + ') in ' + s1.world + ', so no trail was dropped and nothing was looked at'); return out; }
+        const s2 = await step(pk.out, pk.x, pk.y);
+        if (s2.x !== pk.x || s2.y !== pk.y) { out.push('petals (#284): from the loose petals at (' + pk.hx + ',' + pk.hy + ') the arrow key ' + KEY[pk.out] + ' did not walk the hero back out to ' + at + ' — he is at (' + s2.x + ',' + s2.y + '), so nothing was looked at'); return out; }
+      }
+      const res = await page.evaluate(([pk, CROSS]) => {
+        const P = [], at = '(' + pk.x + ',' + pk.y + ') in ' + pk.wid, w = WORLDS[pk.wid];
+        const mine = PETALS.filter(p => p.w === pk.wid && p.x === pk.x && p.y === pk.y);
+        if (!mine.length) { P.push('petals (#284): the hero walked into the loose petals at (' + pk.hx + ',' + pk.hy + ') and back out to ' + at + ' with the arrow keys, ' + CROSS + ' times, and nothing was dropped on ' + at + ' — his shoes carried nothing off the heap (' + PETALS.length + ' drop(s) in all), so there was nothing to look for'); return P; }
+        const drop = { t: Math.min(...mine.map(p => p.t)), last: Math.max(...mine.map(p => p.t)) };   /* their life is read from the first; "gone" waits for the last */
+        const has3d = typeof draw3d === 'function' && !!window.THREE && typeof T3 !== 'undefined' && CAMS.indexOf('3d') >= 0;
+        const flat = ['top', 'front', 'iso'].filter(c => CAMS.indexOf(c) >= 0), QT = Math.PI / 2;
+        const views = flat.map(c => ({ cam: c, nm: 'the ' + c + ' camera', clock: true, ages: [0, 0.25, 0.5] }))
+          .concat(has3d ? [0, 1, 2, 3].map(q => ({ cam: '3d', yaw: q * QT, nm: q ? 'the 3D camera turned ' + q + ' quarter' + (q > 1 ? 's' : '') : 'the 3D camera', clock: !q, ages: q ? [0] : [0, 0.25, 0.5] })) : []);
+        const realNow = Date.now, dp0 = drawPerson, others = PETALS.slice();
+        const ani = [['dog', typeof DOG !== 'undefined' && DOG], ['cat', typeof CAT !== 'undefined' && CAT], ['pig', typeof PIG !== 'undefined' && PIG], ['loro', typeof LORO !== 'undefined' && LORO]]
+          .filter(([k, a]) => a && AW(k) === pk.wid).map(([, a]) => [a, { x: a.x, y: a.y, fx: a.fx, fy: a.fy }]);
+        const things = [].concat(typeof DOGTHINGS !== 'undefined' ? DOGTHINGS : [], typeof BALL !== 'undefined' && BALL ? [BALL] : []).filter(o => o && o.world === pk.wid);
+        let NOW = drop.t, heroOn = true, drew3d = false;
+        const cv2 = document.getElementById('cv'), g2 = cv2.getContext('2d');
+        const frame = v => {
+          if (v.cam === '3d') { T3.turn = null; T3.yaw = v.yaw; if (!draw3d()) return null; drew3d = true;
+            const c3 = T3.renderer.domElement, c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
+            const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return { d: g.getImageData(0, 0, c.width, c.height).data, W: c.width, H: c.height }; }
+          draw(); return { d: g2.getImageData(0, 0, cv2.width, cv2.height).data, W: cv2.width, H: cv2.height }; };
+        /* what moved (by more than a shade): how many pixels, their middle, the box round them, a mask, and the summed change — the strength */
+        const cmp = (A, B, t) => { const a = A.d, b = B.d, W = A.W, m = new Uint8Array(a.length >> 2); let n = 0, sx = 0, sy = 0, s = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+          if (t === undefined) t = 30;
+          for (let i = 0; i < a.length; i += 4) { const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); if (!d) continue; s += d;
+            if (d > t) { const p = i >> 2, x = p % W, y = (p - x) / W; m[p] = 1; n++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+          return { n, s, m, W, cx: n ? sx / n : NaN, cy: n ? sy / n : NaN, x0, y0, x1, y1 }; };
+        /* HIS OUTLINE, less its edge: an edge pixel is half him and half whatever is under him, so it is not asked */
+        const core = c => { const W = c.W, m = c.m, o = new Uint8Array(m.length); for (let p = 0; p < m.length; p++) if (m[p] && m[p - 1] && m[p + 1] && m[p - W] && m[p + W]) o[p] = 1; return o; };
+        /* and HIS BODY, which is that less his shadow — a shadow pixel is the ground under it darkened by the same share in every channel */
+        const bodyOf = (c, H, B) => { const o = core(c);
+          for (let p = 0; p < o.length; p++) { if (!o[p]) continue; const i = p << 2;
+            const r = [0, 1, 2].map(k => (H.d[i + k] + 1) / (B.d[i + k] + 1)), mean = (r[0] + r[1] + r[2]) / 3;
+            if (mean < 1 && mean > 0.4 && Math.max(r[0], r[1], r[2]) - Math.min(r[0], r[1], r[2]) < 0.08) o[p] = 0; }
+          return o; };
+        const both = (a, b) => { let n = 0; for (let p = 0; p < a.length; p++) if (a[p] && b[p]) n++; return n; };
+        const show = on => { PETALS.length = 0; if (on) mine.forEach(p => PETALS.push(p)); };
+        const MIN = 20, seen = [], fades = [], ref = {};
+        const R0 = w.rows[pk.y];
+        try {
+          Date.now = () => NOW;
+          drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero && !heroOn) return; return dp0.apply(this, arguments); };
+          window.__p284.crit.forEach(([c]) => { c.world = '__frozen'; });
+          things.forEach(o => { o.__w = o.world; o.world = '__frozen'; });
+          ani.forEach(([a]) => { a.x = a.fx = -99; a.y = a.fy = -99; });
+          if (typeof DECALS !== 'undefined') DECALS.length = 0;
+          px = fx = pk.x; py = fy = pk.y; moving = false; held = null;
+          views.forEach((v, vi) => {
+            camSet(v.cam); sizeCanvas();
+            const vn = v.cam === '3d' ? '3D' + (v.yaw ? '↻' + Math.round(v.yaw / QT) : '') : v.cam;
+            /* the tile's own ground, as the camera paints it: the same frame with that one tile laid as "-" instead, minus
+               the frame without — never the camera's arithmetic. Asked of the flat cameras; 3D bakes its floor once a world */
+            let ground = null;
+            if (v.cam !== '3d') { NOW = drop.t; show(false); heroOn = false; frame(v); const B0 = frame(v);
+              w.rows[pk.y] = R0.slice(0, pk.x) + '-' + R0.slice(pk.x + 1); const G = frame(v); w.rows[pk.y] = R0;
+              ground = cmp(G, B0, 0);   /* ANY change: Meridian lays "-" as a crosswalk, and its pale stripes are within 30 shades of a pale floor */
+              if (ground.n < 60) { P.push('petals (#284): in ' + v.nm + ' the ground of ' + at + ' could not be found — laying it another colour changed ' + ground.n + ' pixels — so whether the petals lie on it was not measured; that is a red, not a pass'); ground = null; } }
+            let full = null, line = [];
+            for (const age of v.ages) {
+              NOW = drop.t + age * PETAL_MS;
+              heroOn = false; show(true); frame(v);   /* one thrown away: a first draw settling is not the trail */
+              const A = frame(v); if (!A) { P.push('petals (#284): ' + v.nm + ' could not draw at all, so the trail was not looked for there'); return; }
+              const A2 = frame(v); show(false); const B = frame(v); heroOn = true; const H = frame(v); show(true); const X = frame(v); heroOn = false;
+              const ctl = cmp(A, A2), mark = cmp(A, B), him = cmp(H, B), wh = Math.round(age * 100) + '% of their life';
+              if (ctl.n) { P.push('petals (#284): ' + v.nm + ' cannot be measured: two frames of the same scene at the same instant differ by ' + ctl.n + ' pixels'); return; }
+              if (him.n < 30) { P.push('petals (#284): in ' + v.nm + ' nobody shows standing on ' + at + ' (' + him.n + ' pixels), so whether the petals lie under him could not be asked — that is a red, not a pass'); return; }
+              if (mark.n < MIN) { P.push('petals (#284): the petals the hero dropped on ' + at + ' do not show in ' + v.nm + ' at ' + wh + ': taking them away changes ' + mark.n + ' pixels'); return; }
+              if (age === 0) full = mark;
+              /* ON THAT TILE */
+              if (ground) { const on = both(mark.m, ground.m), share = on / mark.n;
+                if (share < 0.9) { P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' do not lie on that tile: ' + (mark.n - on) + ' of their ' + mark.n + ' pixels are off its ground, and their middle is ' +
+                  Math.round(mark.cx - ground.cx) + ' px across and ' + Math.round(mark.cy - ground.cy) + ' px down from the middle of it (the tile\'s ground is ' + (ground.x1 - ground.x0 + 1) + '×' + (ground.y1 - ground.y0 + 1) + ' px) — they landed somewhere else'); return; }
+                line.push(Math.round(share * 100) + '% on it'); }
+              else if (mark.cx < him.x0 || mark.cx > him.x1 || mark.cy < him.y0 || mark.cy > him.y1) {
+                P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' are not where he dropped them: standing on the spot, their middle is at (' + Math.round(mark.cx) + ',' + Math.round(mark.cy) + '), outside his own outline (' +
+                  him.x0 + '–' + him.x1 + ' across, ' + him.y0 + '–' + him.y1 + ' down)'); return; }
+              /* UNDER HIM: where his body and his petals meet, he is what shows — the frame with both minus the frame with
+                 him alone changes nothing there. His BODY, not his shadow: a shadow is half the ground under it, and in the 3D
+                 camera a petal at his toes is nearer than the card he is painted on and rightly covers the strip of it below
+                 his feet, where the shadow is painted (looked at, 2026-10-01). Nowhere to meet is a red, not a pass. */
+              const his = bodyOf(him, H, B), over = cmp(X, H);
+              let meet = 0, shows = 0;
+              for (let p = 0; p < his.length; p++) if (his[p] && mark.m[p]) { meet++; if (over.m[p]) shows++; }
+              if (meet < 10) { P.push('petals (#284): in ' + v.nm + ' the hero standing on ' + at + ' does not stand over his own petals (' + meet + ' pixels where they and his body meet), so whether they lie under him could not be asked — that is a red, not a pass'); return; }
+              if (shows > meet * 0.2) { P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' are painted over him, not under him: standing on them, ' + shows + ' of the ' + meet + ' pixels where his body and they meet show the petals (at ' + wh + ')'); return; }
+              line.push(meet + ' under his body, ' + shows + ' showing through');
+            }
+            seen.push(vn + ' ' + full.n + ' px, ' + line.slice(0, 2).join(', '));
+            if (!v.clock) return;
+            /* ON THE SAME CLOCK: the strength late in their life, as a share of it when they fell, against the reference
+               camera's. Asked of the flat cameras, which paint petals with one painter on one clock. The 3D camera's is
+               PRINTED and not asked: its petals are cut away early, below a third of their strength — a fault of its own,
+               found by this check and reported apart from #284 — so a red here would be about something else */
+            const isRef = vi === 0, sh = [];
+            if (!isRef && !Object.keys(ref).length) return;
+            for (const age of [0.5, 0.8, 0.95]) {
+              NOW = drop.t + age * PETAL_MS; heroOn = false; show(true); const F = frame(v); show(false); const G = frame(v);
+              const share = cmp(F, G).s / full.s; sh.push(Math.round(share * 100) + '%');
+              if (isRef) ref[age] = share;
+              else if (v.cam !== '3d' && Math.abs(share - ref[age]) > 0.2) { P.push('petals (#284): in ' + v.nm + ' the petals do not fade with the others: at ' + Math.round(age * 100) + '% of their life they show at ' + Math.round(share * 100) + '% of the strength they fell with, and ' + views[0].nm + ' shows them at ' + Math.round(ref[age] * 100) + '%'); break; }
+            }
+            fades.push(vn + ' ' + sh.join('/'));
+            NOW = drop.last + PETAL_MS + 1; show(true); const E = frame(v); show(false); const E2 = frame(v); const left = cmp(E, E2, 0).n;   /* drawn by nobody: ANY change, not a visible one — at a fifth of their strength petals stay under 30 shades on a pale floor (planted) */
+            if (left) P.push('petals (#284): in ' + v.nm + ' the petals are still drawn a moment after their life is up: ' + left + ' pixels of them');
+          });
+          P.push('COUNT-ONLY: petals the hero dropped on ' + at + ', walking into the heap at (' + pk.hx + ',' + pk.hy + ') and out ' + CROSS + ' times (' + mine.length + ' drops) — ' + seen.join('; ') + '; their strength at 50/80/95% of their life: ' + fades.join(', '));
+        } finally {
+          Date.now = realNow; drawPerson = dp0; w.rows[pk.y] = R0;
+          window.__p284.crit.forEach(([c, cw]) => { c.world = cw; });
+          things.forEach(o => { o.world = o.__w; delete o.__w; });
+          ani.forEach(([a, k]) => Object.assign(a, k));
+          PETALS.length = 0; others.forEach(p => PETALS.push(p));
+          window.__p284.drew3d = drew3d;
+        }
+        return P;
+      }, [pk, CROSS]);
+      out.push(...res);
+    } finally {
+      await page.evaluate(() => { const K = window.__p284; if (!K) return; const w = WORLDS[K.wid];
+        w.npcs = K.people; K.grid.forEach((r, y) => r.forEach((g, x) => { w.grid[y][x] = g; }));
+        PETALS.length = 0; K.petals.forEach(p => PETALS.push(p)); HEROFEET.hc = K.feet.hc; HEROFEET.pc = K.feet.pc;
+        if (K.decals) { DECALS.length = 0; K.decals.forEach(d => DECALS.push(d)); }
+        if (K.season !== null && typeof seasonSet === 'function') seasonSet(K.season);
+        TRO.state = K.st; moving = K.mv; held = null; if (K.drone) { DRONE.on = K.drone.on; DRONE.want = K.drone.want; }
+        world = K.world; px = K.px; py = K.py; fx = K.fx; fy = K.fy; dir = K.dir;
+        document.getElementById('world').hidden = K.hidden; document.getElementById('reader').hidden = K.reader;
+        K.open.forEach(id => { const p = document.getElementById(id); if (p) p.hidden = false; });
+        if (typeof T3 !== 'undefined' && T3) T3.yaw = K.yaw;
+        /* the 3D scene built again for the world this check came from, or the next check that reads T3.scene measures this one */
+        if (K.drew3d) { camSet('3d'); sizeCanvas(); draw3d(); }
+        camSet(K.cam); sizeCanvas();
+        delete window.__p284; });
+    }
+    return out;
+  })(page);
+  fails.push(...petals.filter(l => !/^COUNT-ONLY: /.test(l)));
+  petals.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+
   /* ---- AND A ROMP WITH SOMEBODY NEAR: THEY LAUGH, NOBODY RUNS ----
      The owner, 2026-09-29: "chasing after another character". Away from the park the greeting's roll
      cannot greet another dog, so it sends him to the nearest person in reach: he runs to their feet and

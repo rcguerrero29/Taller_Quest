@@ -3,7 +3,7 @@
    game's own shell and nothing else — never a cross-origin request (an API answer must not
    be frozen in a cache), never a non-ok response (a 403 must not become the permanent
    answer), and it deletes only caches it owns (another pack on this origin keeps its own). */
-const CACHE = "mq-v217";
+const CACHE = "mq-v218";
 const PFX = "mq-"; /* the cache names this worker owns */
 const ASSETS = ["./", "./index.html", "./frame-guard.js", "./sw-register.js", "./qr.js",
   "./vendor/fonts/fonts.css", "./vendor/fonts/unbounded-latin-500-normal.woff2", "./vendor/fonts/unbounded-latin-700-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-400-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-500-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-600-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-400-italic.woff2", "./vendor/fonts/ibm-plex-mono-latin-400-normal.woff2", "./vendor/fonts/ibm-plex-mono-latin-500-normal.woff2", "./engine/boot.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
