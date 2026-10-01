@@ -91,6 +91,13 @@ textFiles.forEach(f => { const src = read(f);
    and nothing else, no script may be written inside the page, no link may carry code, and nothing
    may leave for another host. Reading no page at all is a red, not a pass. */
 const pages = files.filter(f => /\.html?$/.test(f));
+/* WHERE THE BROWSER READS IT, not wherever the text is (#256, Zeni's review). A browser obeys a policy <meta> only
+   inside <head>, and never one inside an HTML comment; this used to take the first match anywhere in the file, so a
+   meta commented out, or moved into <body>, still read as the policy while the browser enforced nothing. Measured in
+   Chromium 2026-10-01: commented out, a <style> block and a style attribute both applied and nothing reached the
+   console; in <body>, both applied. */
+const policyOf = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = live.search(/<\/head\s*>|<body[\s>]/i);
+  return ((end < 0 ? '' : live.slice(0, end)).match(/<meta[^>]+http-equiv="Content-Security-Policy"[^>]+content="([^"]*)"/i) || [])[1]; };
 if (!pages.length) fails.push('the upload holds no .html page, so no policy was read — there is nothing here to call safe');
 /* An off-origin host is not forbidden by nature — it is a DECISION, and the rule is that it has to be
    a declared one, here, with the reason. Since 2026-09-27 there is none. */
@@ -98,8 +105,15 @@ const DECLARED_OFF_ORIGIN = {};
 const WANT = { 'script-src': "'self'", 'style-src': "'self'", 'font-src': "'self'", 'img-src': "'self'", 'connect-src': "'none'",
   'default-src': "'self'", 'base-uri': "'self'", 'form-action': "'none'", 'object-src': "'none'" };
 pages.forEach(p => { const html = read(p);
-  const csp = (html.match(/<meta[^>]+http-equiv="Content-Security-Policy"[^>]+content="([^"]*)"/i) || [])[1];
-  if (!csp) { fails.push(p + ' declares no Content-Security-Policy — nothing limits where that page may talk to'); return; }
+  const csp = policyOf(html);
+  if (!csp) { fails.push(p + ' declares no Content-Security-Policy in its <head> outside a comment, the only place a browser obeys one — nothing limits where that page may talk to'); return; }
+  /* A DIRECTIVE NAMED TWICE. Browsers obey the FIRST copy and ignore the rest; the map below keeps the LAST, so
+     `style-src 'self' 'unsafe-inline'; …; style-src 'self'` read as shut while the browser applied the open one.
+     Measured in Chromium: the first copy is in force, and the only console line ("Ignoring duplicate
+     Content-Security-Policy directive") is spelled with hyphens, which no watcher in these suites reads. */
+  const names = csp.split(';').map(s => s.trim()).filter(Boolean).map(s => s.split(/\s+/)[0].toLowerCase());
+  if (new Set(names).size !== names.length)
+    fails.push(p + '\'s policy names ' + [...new Set(names.filter((n, i) => names.indexOf(n) !== i))].join(', ') + ' more than once — a browser obeys the first copy and ignores the rest, so the copy this check would read is not the one in force');
   const dirs = Object.fromEntries(csp.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [k, ...v] = s.split(/\s+/); return [k, v.join(' ')]; }));
   Object.entries(WANT).forEach(([k, v]) => { if (dirs[k] !== v)
     fails.push(p + '\'s policy has ' + k + ' "' + (dirs[k] === undefined ? '(missing)' : dirs[k]) + '" and the public pages are held to "' + v + '" — a wider value reopens a door ' + (k === 'style-src' ? '#256' : '#254') + ' closed'); });

@@ -37,7 +37,13 @@ const CANDIDATES = [process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium_headle
   '/opt/pw-browsers/chromium', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'].filter(Boolean);
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.css': 'text/css', '.svg': 'image/svg+xml' };
-const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
+/* WHERE THE BROWSER READS IT, not wherever the text is (#256, Zeni's review). A browser obeys a policy <meta> only
+   inside <head>, and never one inside an HTML comment; this used to take the first match anywhere in the file, so a
+   meta commented out, or moved into <body>, still read as the policy while the browser enforced nothing. Measured in
+   Chromium 2026-10-01: commented out, a <style> block and a style attribute both applied and nothing reached the
+   console; in <body>, both applied. */
+const CSP = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = live.search(/<\/head\s*>|<body[\s>]/i);
+  return ((end < 0 ? '' : live.slice(0, end)).match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1]; };
 
 (async () => {
   const fails = [];
@@ -107,6 +113,43 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     .filter(l => { try { return !l.sheet || !l.sheet.cssRules.length; } catch (e) { return true; } }).map(l => l.getAttribute('href')))
     .catch(e => ['(could not read: ' + e.message.split('\n')[0] + ')']);
 
+  /* 9 · IS THE POLICY ENFORCED AT ALL? (#256, Zeni's review.) Since #256 no page produces a single refusal, so
+     "the browser reported no violation" reads the same whether the policy works or is missing: a meta commented
+     out, moved into <body>, or with its directive repeated in the open form first, enforces nothing (measured in
+     Chromium). So each page is handed the two things the policy exists to refuse — a <style> block and a style
+     attribute, each setting a custom property nothing uses — and must refuse BOTH: neither value applies, and
+     exactly one style-src-elem and one style-src-attr refusal arrive. Those two are this check's own and come off
+     the violations list; anything else that arrived meanwhile stays on it. Both pages, over http, from the box. */
+  const tried = [];
+  const enforced = async (p, where) => {
+    const before = violations.length;
+    const r = await p.evaluate(async () => {
+      const seen = [], on = e => seen.push(e.effectiveDirective || e.violatedDirective);
+      document.addEventListener('securitypolicyviolation', on);
+      const s = document.createElement('style'); s.textContent = ':root{--zeni:1}'; document.head.appendChild(s);
+      const i = document.createElement('i'); i.setAttribute('style', '--zeni:2'); document.body.appendChild(i);
+      await new Promise(res => setTimeout(res, 300));
+      const out = { block: getComputedStyle(document.documentElement).getPropertyValue('--zeni').trim(),
+                    attr: getComputedStyle(i).getPropertyValue('--zeni').trim(), seen: seen.slice().sort() };
+      document.removeEventListener('securitypolicyviolation', on); s.remove(); i.remove();
+      return out;
+    }).catch(e => ({ err: e.message.split('\n')[0] }));
+    /* the refusals reach this file by two routes (the page's console and its event binding), each in its own time:
+       wait until 200 ms pass with nothing new, not for a fixed time a busy machine could outrun */
+    for (let k = 0, n = -1; k < 15 && violations.length !== n; k++) { n = violations.length; await settle(200); }
+    const mine = violations.splice(before);
+    /* at most this check's own two of each kind come off: one event per style, and one console line per style where
+       this page's console is read. A third is the page's own, and stays a red. */
+    const left = { ev: 2, con: 2 };
+    violations.push(...mine.filter(v => /style-src-(elem|attr) blocked inline/.test(v) && left.ev-- > 0 ? false
+      : /Refused to apply inline style/.test(v) && left.con-- > 0 ? false : true));
+    if (r.err) { fails.push(where + ': whether the policy is enforced could not be asked (' + r.err + ') — nothing to measure is not a pass'); return; }
+    const went = [r.block === '1' && 'a <style> block', r.attr === '2' && 'a style="…" attribute'].filter(Boolean);
+    if (went.length) fails.push(where + ': ' + went.join(' and ') + ' written into the page APPLIED — the browser is not enforcing the page\'s policy (a policy <meta> counts only inside <head>, never inside a comment, and the first copy of a directive is the one in force), so every "no violation" in these suites measured nothing');
+    else if (r.seen.join() !== 'style-src-attr,style-src-elem') fails.push(where + ': the two styles written into the page did not apply, but the browser reported ' + (r.seen.length ? r.seen.join(', ') : 'no refusal at all') + ' instead of exactly one style-src-elem and one style-src-attr');
+    else tried.push(where);
+  };
+
   try {
     /* 1 · first visit */
     await page.goto(base, { waitUntil: 'load' });
@@ -122,6 +165,7 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     if (bare1.length) fails.push('first visit: the stylesheet(s) ' + bare1.join(', ') + ' did not arrive, so the page is not wearing its own look');
     const noFont1 = await fontsIn(page);
     if (noFont1.length) fails.push('first visit: the typeface(s) ' + noFont1.join(', ') + ' did not load from this site');
+    await enforced(page, 'the public page');
     const shown = await page.evaluate(() => getComputedStyle(document.documentElement).display);
     if (shown === 'none') fails.push('the game hides itself in its OWN tab — frame-guard.js thinks it is framed when it is not');
 
@@ -140,6 +184,7 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     const hp = await context.newPage();
     await hp.goto(base + 'content/horno/', { waitUntil: 'load' }).catch(() => {});
     await settle(800);
+    await enforced(hp, 'el horno');
     await hp.close();
     const kept = await page.evaluate(async c => (await (await caches.open(c)).keys()).map(r => new URL(r.url).pathname).filter(p => /\/content\/(?!meridian\/)/.test(p)), CACHE);
     if (kept.length) fails.push('the worker keeps another world\'s files in Meridian\'s cache (' + kept.slice(0, 3).join(', ') + ') — they would go stale until Meridian updates');
@@ -183,9 +228,10 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     if (/sw-register\.js|serviceWorker/.test(horno)) fails.push('el horno\'s shell still turns on a service worker — it is not the app and must never fight it for a cache');
     if (/<script(?![^>]*\bsrc=)[^>]*>/.test(horno)) fails.push('el horno\'s shell carries a script written inside the page');
   }
-  if (!/script-src 'self';/.test(CSP(pub) || '')) fails.push('the public page\'s policy is not script-src \'self\' only');
+  if (!CSP(pub)) fails.push('the public page has no policy in its <head> outside a comment, the only place a browser obeys one');
+  else if (!/script-src 'self';/.test(CSP(pub))) fails.push('the public page\'s policy is not script-src \'self\' only');
   fs.rmSync(out, { recursive: true, force: true });
 
   if (fails.length) { console.log('FAIL — offline play\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline wearing its own ' + sheetsWorn.length + ' stylesheet(s) and three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation. El Horno\'s shell matches the public policy and runs no worker.');
+  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline wearing its own ' + sheetsWorn.length + ' stylesheet(s) and three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation — while on ' + tried.length + ' page(s) (' + tried.join(', ') + ') it refused the <style> block and the style attribute this check wrote, so the policy is in force. El Horno\'s shell matches the public policy and runs no worker.');
 })();

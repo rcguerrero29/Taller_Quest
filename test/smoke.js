@@ -5277,10 +5277,17 @@ const CANDIDATES = [
       });
     }
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const csp = (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
+    /* WHERE THE BROWSER READS IT, not wherever the text is (#256, Zeni's review). A browser obeys a policy <meta> only
+       inside <head>, and never one inside an HTML comment; this used to take the first match anywhere in the file, so a
+       meta commented out, or moved into <body>, still read as the policy while the browser enforced nothing. Measured in
+       Chromium 2026-10-01: commented out, a <style> block and a style attribute both applied and nothing reached the
+       console; in <body>, both applied. */
+    const live = html.replace(/<!--[\s\S]*?-->/g, ''), headEnd = live.search(/<\/head\s*>|<body[\s>]/i);
+    const csp = ((headEnd < 0 ? '' : live.slice(0, headEnd)).match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
     // #256 (2026-10-01): style-src is 'self' too, so every door on the list is shut. Styles come from files only.
     const PINNED = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'";
-    if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only' + (/style-src[^;]*'unsafe-inline'/.test(csp || '') ? ' (it lets the page use styling written inside it again, the door #256 shut: if outside text ever reached the page, that door would let it repaint or deface the game)' : ''));
+    if (!csp) fails.push('guarantee: index.html has no Content-Security-Policy in its <head> outside a comment, the only place a browser obeys one — the page runs with no policy at all');
+    else if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only' + (/style-src[^;]*'unsafe-inline'/.test(csp || '') ? ' (it lets the page use styling written inside it again, the door #256 shut: if outside text ever reached the page, that door would let it repaint or deface the game)' : ''));
     // #254 (2026-09-27): the page runs only script FILES. Under script-src 'self' a script written inside
     // the page is blocked without a sound, so one here is dead code or the first step to reopening that door.
     const inlineJs = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].length
@@ -5289,8 +5296,7 @@ const CANDIDATES = [
     // #256: and styles the same way. Under style-src 'self' the browser refuses a <style> block or a style="…"
     // attribute without a sound and the element just loses that look, so one here is a silent visual break
     // or the first step to reopening the door. Counted, so the sentence says how much of the page went.
-    // read with the page's comments taken out: a comment that SAYS "<style>" is prose, not a block the browser applies
-    const live = html.replace(/<!--[\s\S]*?-->/g, '');
+    // read with the page's comments taken out (`live`, above): a comment that SAYS "<style>" is prose, not a block
     const inlineCss = [...live.matchAll(/<style[\s>]/gi)].length, inlineAttr = [...live.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
     if (inlineCss + inlineAttr) fails.push(`guarantee: index.html carries ${inlineCss} <style> block(s) and ${inlineAttr} style="…" attribute(s) written inside the page — the policy refuses every one and a player sees the page without them (#256); the page's styles live in shell.css`);
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
