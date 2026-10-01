@@ -5634,6 +5634,9 @@ $("gear").addEventListener("click",()=>{
   /* the wardrobe is extra — any ATTEMPT at the quest content nominates opens it */
   {const wq=GRW().wardrobeQuest;
    $("openWd").hidden=!(wq!==undefined&&(done.has(wq)||qa[wq]!==undefined));}
+  /* #283: Alebrijes lists whoever is in the game NOW: a pup adopted since the list was last built, and the face paint of
+     a season that turned over at midnight while the game was open (both measured stale before this line) */
+  aleRowBuild();
   $("settings").hidden=false;held=null;});
 $("openWd").addEventListener("click",()=>{$("settings").hidden=true;openWardrobe();});
 $("closeSet").addEventListener("click",()=>{$("settings").hidden=true;});
