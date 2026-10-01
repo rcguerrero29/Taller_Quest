@@ -779,13 +779,17 @@ function worldCovered(){
   return false;
 }
 let toastHeld=[],wasCovered=false;   /* what the street said while you were not looking */
-function toast(msg,ms,crit){const el=$("toast");el.classList.toggle("crit",!!crit); /* red for what must be discussed sooner (#8) */
+function toast(msg,ms,crit){
   /* The activity record mirrors recent messages so a short interaction can be re-read
      after the toast fades (owner ask). Owner, 2026-09-01: keep the last TWO. Owner,
      2026-09-03: "should only delete after two activities, the timer is too fast" — so
      there is NO timer at all now. A line leaves when two newer lines have pushed it out,
      or when the player taps the record away. It sits on the LEFT rail, under the XP pill,
-     where the owner judged it does not crowd the screen. */
+     where the owner judged it does not crowd the screen.
+     Written ONCE, here, when the message is said (#278). A message that has to wait its turn
+     (another is up, or a panel is over the world) used to be written again when its turn came,
+     from the queue and from the held replay, and the doubled line pushed a real one out of a
+     list that keeps two. The waiting and the showing are toastShow's; the record is only here. */
   const tk=$("ticker");
   tickerLines.push(msg);while(tickerLines.length>2)tickerLines.shift();
   tk.textContent="";
@@ -793,15 +797,18 @@ function toast(msg,ms,crit){const el=$("toast");el.classList.toggle("crit",!!cri
     if(i<tickerLines.length-1)d.className="prev";   /* the older one, dimmed */
     tk.appendChild(d);});
   tk.hidden=false;
+  toastShow(msg,ms,crit);}
+/* Putting a message on screen, now or when its turn comes. Never writes the record (#278). */
+function toastShow(msg,ms,crit){const el=$("toast");el.classList.toggle("crit",!!crit); /* red for what must be discussed sooner (#8) */
   /* Owner: "capture events if happening in background." The trolley still comes and the dog still
      does what it does while you are reading a sheet — but a toast played out behind an opaque panel
      is a message delivered to nobody, and it takes its turn in the queue with it. Held instead, and
-     said when you put the paper down. The record above has it either way. */
+     said when you put the paper down. The record in toast() has it either way. */
   if(worldCovered()){toastHeld.push([msg,ms,!!crit]);return;}
   if(el.classList.contains("on")){toastQ.push([msg,ms]);return;}
   el.textContent=msg;el.classList.add("on");
   clearTimeout(toastT);toastT=setTimeout(()=>{el.classList.remove("on");
-    if(toastQ.length){const[m,d]=toastQ.shift();setTimeout(()=>toast(m,d),300);}},ms||2600);}
+    if(toastQ.length){const[m,d]=toastQ.shift();setTimeout(()=>toastShow(m,d),300);}},ms||2600);}
 $("ticker").addEventListener("click",()=>{$("ticker").hidden=true;tickerLines.length=0;});
 let lastBump=0;
 const pendingAt=n=>n.q.find(qi=>!done.has(qi)&&qOpen(qi));
@@ -4506,12 +4513,13 @@ function loop(ts){
      nothing jumps when you put the paper down. It is not DRAWN, though: measured at 215 frames in
      six seconds with a document covering the screen, every one of them at full device resolution
      and none of them visible. On a phone that is battery and heat for pixels nobody sees.
-     The moment the cover lifts, whatever the street said while you were reading is said now. */
+     The moment the cover lifts, whatever the street said while you were reading is said now —
+     SHOWN now: it was written in the record when it was said (#278). */
   const covered=worldCovered();
   if(covered!==wasCovered){
     wasCovered=covered;
     if(!covered&&toastHeld.length){const held=toastHeld;toastHeld=[];
-      setTimeout(()=>held.forEach(([m,d,c],i)=>setTimeout(()=>toast(m,d,c),i*120)),260);}
+      setTimeout(()=>held.forEach(([m,d,c],i)=>setTimeout(()=>toastShow(m,d,c),i*120)),260);}
     /* and the keyboard comes back to the game with the street (#266). The button that opened a panel
        keeps the focus under it, so without this Enter beside a person pressed the gear a second time
        and opened Settings again instead of talking. Only when the street itself is back: a card or a
