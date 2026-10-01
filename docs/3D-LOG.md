@@ -510,3 +510,22 @@ new polygonal update for all these and what we or you learned from marigolds?").
   flat cameras cannot centre the building — it is the last three tiles of the row — so there the
   corner buttons cover part of it; the awnings still read between them.
 - Frames: `docs/mocks/2026-09-24-barberia/`.
+
+### 2026-09-30 · #271 — the builder's drone: a thing in the air, and the ground under it
+
+- **The drone is a billboard in the actor pool**, painted by the same `drawDrone` the flat cameras
+  call, with depth testing off and drawn last (`renderOrder` 2000). It is in the air and it is what
+  you steer, so it takes #22's rule — never hidden. While it flies, the hero is no longer the one you
+  steer and stands behind walls like everyone else; with the drone down he is exactly as before.
+- **Rejected: a drone with nothing on the ground.** Over a storefront row it read as a sticker on the
+  facade behind it (frame, 2026-09-30). What fixed it: the lamp's four lit corners on its tile and a
+  small contact shadow under it — two flat planes kept in the SCENE, not the group, because the group
+  is rebuilt with every world. The corners sit on the tile's real top (`t3TileTop`: the floor, a
+  tread, or `t3Top` of the tallest thing built on it).
+- **The camera, the wall cutaway and the tram's see-through follow `focusXY()` / `focusTile()`,**
+  which are the hero's own `fx,fy` / `px,py` whenever the drone is down — the reason both games draw
+  exactly what they drew with the builder off.
+- **Measured:** the drone covers 2–4% of the middle of its tile in 3D; the hero covers 43–63% of his,
+  depending on the tile. Frames: the session scratchpad (`shots/after-*`), not committed.
+- **Not measured:** the corners over a tall, thin mesh tile — `t3Top` is right for a box, and nobody
+  has flown the drone over the jacaranda yet.

@@ -5988,6 +5988,17 @@ const CANDIDATES = [
   fails.push(...twoSmall);
 
 
+  /* ---- MERIDIAN HAS NO BUILDER'S DRONE (#271) ----
+     The builder's drone is a pack's choice — `BUILDER` in a pack's config — and Meridian's answer is
+     no: the drone is a tool for making a world, and this game's players came to practise a job. Its
+     content is never edited for another world's sake. This is the CONTENT half of the rule and it
+     lives here, in Meridian's own suite, because the shared suite cannot know which answer a game
+     chose: test/engine.smoke.js asks the engine half (where no builder is declared, B does nothing and
+     Settings offers nothing), and measures the drone under a probe declaration it takes away again. */
+  const noDrone = await page.evaluate(() => ({ declared: typeof BUILDER !== 'undefined', row: !!document.getElementById('openDrone') }));
+  if (noDrone.declared) fails.push("Meridian's players can fly the builder's drone: Meridian's config declares BUILDER, and the builder is a tool for making worlds that this game's players were never offered");
+  if (noDrone.row) fails.push("Meridian's Settings offers every player the builder's drone");
+
   await browser.close();
 
 

@@ -3788,6 +3788,449 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   flight.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
 
+  /* ---- THE BUILDER'S DRONE (#271) ----
+     What the builder is: a small flying thing you steer to the spot you are working on, so the person
+     you play does not cover what you are looking at. With the builder on, the keys fly the drone and
+     not the hero, the camera goes with it, a card names the tile under it, and Escape brings it home.
+     The hero stays exactly where he stood, and nothing about the flight is ever saved.
+
+     HOW THIS IS ASKED, because each rule below was bought:
+     · every step is a REAL key through page.keyboard — never droneUp() or droneTick(). A guard that
+       calls the function proves the function, not that anything reaches it (docs/POSTMORTEM.md §4);
+     · every picture is taken inside ONE evaluate with Date.now AND performance.now frozen, because the
+       drone bobs and its lamp breathes on the clock (the guard skill: "it reads the clock");
+     · "covers" is pixels: the drone's painter is blanked and the frame diffed, changing exactly one
+       thing (POSTMORTEM §3 and §5). The tile it is measured against is read off what the renderer
+       itself wrote (camXg/camYg, isoOg, T3.cam), never re-derived here;
+     · A PACK THAT DECLARES NO BUILDER is asked that B does nothing. Then — A PROBE, SAID PLAINLY — this
+       suite declares `window.BUILDER` on its own page for the length of this block, so the engine's
+       drone is measured in a big world even where no game on the public site declares one. No pack
+       file is edited and no player of that game ever sees a drone: the declaration is deleted before
+       the block ends, and B is asked, again, to do nothing. */
+  const droneP = [];
+  const droneNote = [];
+  const DK = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+  await page.evaluate(() => {
+    window.__drShot = function (cam) {
+      const out = { cam };
+      const rNow = Date.now, rPerf = performance.now, t0 = rNow(), p0 = performance.now();
+      Date.now = () => t0; performance.now = () => p0;
+      try {
+        camSet(cam); sizeCanvas();
+        if (camMode !== cam) { out.skip = true; return out; }
+        let W, H, grab, hideBody, showBody, hideMarks, showMarks, hideHero, showHero, inside;
+        if (cam !== '3d') {
+          const c = document.getElementById('cv'), g = c.getContext('2d'); W = c.width; H = c.height;
+          grab = () => { draw(); return g.getImageData(0, 0, W, H).data; };
+          const has = typeof drawDrone === 'function', rb = has ? drawDrone : null, rm = has ? drawDroneMarks : null, rp = drawPerson;
+          hideBody = () => { if (has) drawDrone = function () {}; }; showBody = () => { if (has) drawDrone = rb; };
+          hideMarks = () => { if (has) drawDroneMarks = function () {}; }; showMarks = () => { if (has) drawDroneMarks = rm; };
+          hideHero = () => { drawPerson = function (g, x, y, lk, o) { if (o && o.hero) return; return rp.apply(this, arguments); }; }; showHero = () => { drawPerson = rp; };
+          draw();
+          const k = W / VW;
+          if (cam === 'iso') {
+            inside = (tx, ty, X, Y, f) => { const cx = (tx - ty) * ISW / 2 + isoOg[0], cy = (tx + ty) * ISH / 2 + isoOg[1]; return Math.abs((X / k - cx) / (ISW / 2)) + Math.abs((Y / k - cy) / (ISH / 2)) <= f; };
+          } else {
+            inside = (tx, ty, X, Y, f) => { const sx = tx * TS - camXg, sy = ty * TS - camYg, m = (1 - f) / 2 * TS, u = X / k, v = Y / k; return u >= sx + m && u < sx + TS - m && v >= sy + m && v < sy + TS - m; };
+          }
+        } else {
+          if (!(typeof draw3d === 'function' && window.THREE && draw3d())) { out.skip = true; return out; }
+          const c3 = T3.renderer.domElement; W = c3.width; H = c3.height;
+          grab = () => { T3.renderer.render(T3.scene, T3.cam); const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, W, H).data; };
+          const spr = (T3.pool || []).find(p => p.live && p.spr.userData.drone);
+          const marks = (T3.droneMarks || []).filter(m => m.visible);
+          const hs = (T3.pool || []).find(p => p.live && p.spr.userData.hero);
+          out.sprite = !!spr; out.meshes = marks.length;
+          hideBody = () => { if (spr) spr.spr.visible = false; }; showBody = () => { if (spr) spr.spr.visible = true; };
+          hideMarks = () => marks.forEach(m => { m.visible = false; }); showMarks = () => marks.forEach(m => { m.visible = true; });
+          hideHero = () => { if (hs) hs.spr.visible = false; }; showHero = () => { if (hs) hs.spr.visible = true; };
+          const quad = {}, corners = (tx, ty) => quad[tx + ',' + ty] || (quad[tx + ',' + ty] = (() => { const lift = 0.012 + stairLift(CW(), tx, ty);
+            const cor = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => { const v = new THREE.Vector3(tx + a, lift, ty + b).project(T3.cam); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; });
+            return { cor, mx: cor.reduce((s, c) => s + c[0], 0) / 4, my: cor.reduce((s, c) => s + c[1], 0) / 4 }; })());
+          inside = (tx, ty, X, Y, f) => { const c = corners(tx, ty), q = c.cor.map(([a, b]) => [c.mx + (a - c.mx) * f, c.my + (b - c.my) * f]); let s = 0;
+            for (let i = 0; i < 4; i++) { const [a, b] = q[i], [c2, d2] = q[(i + 1) % 4], cr = (c2 - a) * (Y - b) - (d2 - b) * (X - a); if (cr > 0) s |= 1; else if (cr < 0) s |= 2; }
+            return s !== 3; };
+        }
+        const A = grab(), A2 = grab();
+        hideBody(); const B = grab(); showBody();
+        hideMarks(); const M = grab(); showMarks();
+        const Hh = hideHero ? (hideHero(), grab()) : A; if (showHero) showHero();
+        const ne = (P, Q, i) => Math.abs(P[i] - Q[i]) + Math.abs(P[i + 1] - Q[i + 1]) + Math.abs(P[i + 2] - Q[i + 2]) > 30;
+        let control = 0, body = 0, bx = 0, by = 0, tile = 0, mid = 0, midHit = 0, tileMarks = 0, hMid = 0, hHit = 0;
+        const flying = typeof DRONE !== 'undefined' && DRONE.on, hx = px, hy = py, dx0 = flying ? DRONE.x : px, dy0 = flying ? DRONE.y : py, heroOnly = !flying;
+        for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) { const i = (Y * W + X) * 4;
+          if (ne(A, A2, i)) control++;
+          const b = ne(A, B, i), m = ne(A, M, i);
+          if (b) { body++; bx += X; by += Y; }
+          if (inside(dx0, dy0, X, Y, 1)) { tile++; if (m) tileMarks++; }
+          if (inside(dx0, dy0, X, Y, 0.6)) { mid++; if (b || m) midHit++; }
+          if (heroOnly && inside(hx, hy, X, Y, 0.6)) { hMid++; if (ne(A, Hh, i)) hHit++; } }
+        Object.assign(out, { W, H, control, body, cx: body ? bx / body / W : null, cy: body ? by / body / H : null, tile, mid, midHit, tileMarks, hMid, hHit });
+        return out;
+      } catch (e) { out.err = String(e && e.message || e); return out; }
+      finally { Date.now = rNow; performance.now = rPerf; }
+    };
+  });
+  /* THE NEIGHBOURS STAND STILL for the length of this block: the flight tile is picked around where
+     people are, and people wander — so without this the tile, and every number measured on it, would
+     change from run to run. A step already under way (420 ms) is let finish first. Put back at the end. */
+  await page.evaluate(() => { window.__drWander = []; Object.keys(WORLDS).forEach(id => (WORLDS[id].npcs || []).forEach(n => { window.__drWander.push(n); n.wnext = Infinity; })); });
+  await page.waitForTimeout(600);
+  const drSetup = await page.evaluate(() => {
+    const s = { declared: typeof BUILDER !== 'undefined' && !!BUILDER };
+    window.__drKeep = { world, px, py, fx, fy, dir, cam: camMode, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0,
+      hidden: document.getElementById('world').hidden, open: [...document.querySelectorAll('.settings')].filter(p => !p.hidden).map(p => p.id),
+      reader: document.getElementById('reader').hidden };
+    /* the flight needs a big world: the largest, then a floor tile far enough from every edge that a
+       flat camera is not pinned against one when the drone moves two tiles east. And NOTHING SOLID
+       DIRECTLY IN FRONT of either tile: in iso, front and 3D a block on the row nearer the camera stands
+       over the tile behind it, and the hero measured there is a hero behind a wall — 0%, found on the
+       gauge one run in four, because the pick avoids people and people wander. */
+    const ids = Object.keys(WORLDS).sort((a, b) => WORLDS[b].W * WORLDS[b].H - WORLDS[a].W * WORLDS[a].H);
+    const free = (w, id, x, y) => y >= 0 && y + 1 < w.H && x >= 0 && x < w.W && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' &&
+      !SOLID.has(w.grid[y + 1][x]) && !portalAt(id, x, y) && !troIsStop(id, x, y) &&
+      !(w.npcs || []).some(n => (n.x === x && n.y === y) || (n.y === y + 1 && Math.abs(n.x - x) <= 1));   /* nobody on it, nobody standing in front of it */
+    let pick = null;
+    for (const id of ids) { const w = WORLDS[id];
+      for (let y = 4; y <= w.H - 5 && !pick; y++) for (let x = 5; x + 2 <= w.W - 6 && !pick; x++)
+        if (free(w, id, x, y) && free(w, id, x + 2, y)) pick = { id, x, y, flat: true };
+      if (pick) break; }
+    if (!pick) for (const id of ids) { const w = WORLDS[id];
+      for (let y = 1; y < w.H - 1 && !pick; y++) for (let x = 1; x + 2 < w.W - 1 && !pick; x++)
+        if (free(w, id, x, y) && free(w, id, x + 2, y)) pick = { id, x, y, flat: false };
+      if (pick) break; }
+    if (!pick) return { err: 'no floor anywhere in this pack with two free tiles east of it, so the drone has nowhere to fly — which proves nothing' };
+    [...document.querySelectorAll('.settings')].forEach(p => { p.hidden = true; });
+    document.getElementById('reader').hidden = true;
+    document.getElementById('world').hidden = false;
+    world = pick.id; px = fx = pick.x; py = fy = pick.y; dir = 'down'; moving = false; held = null;
+    warpT = 0; portalT = 0; warpPend = null; TRO.state = 'away';
+    if (typeof T3 !== 'undefined' && T3) { T3.yaw = 0; T3.turn = null; }
+    camSet('top'); sizeCanvas(); draw();
+    s.camTop = [camXg, camYg];
+    if (CAMS.includes('3d') && typeof draw3d === 'function' && window.THREE) { camSet('3d'); sizeCanvas(); if (draw3d()) s.cam3 = T3.cam.position.toArray(); camSet('top'); sizeCanvas(); }
+    checkTalk();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    s.pick = pick; s.W = WORLDS[pick.id].W; s.H = WORLDS[pick.id].H;
+    return s;
+  });
+  const heroSame = () => page.evaluate(k => ({ ok: world === k.id && px === k.x && py === k.y && fx === k.x && fy === k.y && !moving, at: world + ' ' + px + ',' + py + (moving ? ' walking' : '') }), drSetup.pick);
+  const droneAt = () => page.evaluate(() => (typeof DRONE === 'undefined') ? null : { on: DRONE.on, x: DRONE.x, y: DRONE.y, mt: DRONE.mt });
+  async function flyStep(d) {
+    const b = await droneAt();
+    await page.keyboard.down(DK[d]);
+    try { await page.waitForFunction(b0 => DRONE.x !== b0.x || DRONE.y !== b0.y, b, { timeout: 700 }); } catch (e) {}
+    await page.keyboard.up(DK[d]);
+    try { await page.waitForFunction(() => DRONE.mt >= 1, null, { timeout: 900 }); } catch (e) {}
+    return droneAt();
+  }
+  async function flyTo(tx, ty) {
+    let a = await droneAt();
+    for (let n = 0; a && (a.x !== tx || a.y !== ty) && n < (Math.abs(tx - a.x) + Math.abs(ty - a.y)) * 2 + 6; n++) {
+      const d = a.x < tx ? 'right' : a.x > tx ? 'left' : a.y < ty ? 'down' : 'up';
+      a = await flyStep(d);
+      const h = await heroSame(); if (!h.ok) return { a, hero: h };
+    }
+    return { a };
+  }
+  const pressB = async () => { await page.keyboard.press('b'); await page.waitForTimeout(520); };
+  const absent = async (when) => {
+    await page.keyboard.press('b'); await page.waitForTimeout(350);
+    const r = await page.evaluate(() => ({ on: typeof DRONE !== 'undefined' && DRONE.on, cam: (camSet('top'), draw(), [camXg, camYg]) }));
+    if (r.on) droneP.push('B flies a drone ' + when + ' in a game that declares no builder — its players were promised nothing of the kind');
+    if (drSetup.camTop && (r.cam[0] !== drSetup.camTop[0] || r.cam[1] !== drSetup.camTop[1])) droneP.push('B moves the camera ' + when + ' in a game that declares no builder');
+    if (r.on) { await page.keyboard.press('Escape'); await page.waitForTimeout(700); }
+  };
+  if (drSetup.err) droneP.push(drSetup.err);
+  else {
+    if (!drSetup.declared) {
+      await absent('');
+      await page.evaluate(() => { window.BUILDER = {}; });   /* THE PROBE — see the header; deleted below */
+      droneNote.push('COUNT-ONLY: this pack declares no builder: B did nothing, and the drone was then measured under a probe declaration that this block removes');
+    }
+    const hero0 = await heroSame();
+    /* the bar the drone is held to: how much of his own tile the hero covers, measured the way a
+       player sees him — builder off, before anything takes off */
+    const heroBar = {};
+    for (const cam of ['top', 'front', 'iso', '3d']) heroBar[cam] = await page.evaluate(c => window.__drShot(c), cam);
+    await page.evaluate(() => { camSet('top'); sizeCanvas(); });
+    await pressB();
+    let st = await droneAt();
+    if (!st || !st.on) droneP.push('pressing B does nothing: with a builder declared there is no drone to fly' + (drSetup.declared ? '' : ' (the probe)'));
+    else {
+      const bad = [];
+      let h = await heroSame(); if (!h.ok) bad.push('the hero moved when the drone took off: he is at ' + h.at);
+      const acts = await page.evaluate(() => ({ acts: getComputedStyle(document.getElementById('acts')).visibility, talk: document.getElementById('talk').hidden }));
+      if (acts.acts !== 'hidden') bad.push('while you fly the drone, the buttons for whoever stands beside the hero stay on screen and pressable');
+      /* 1 · IT FLIES, THE HERO STAYS, AND THE CAMERA GOES WITH IT */
+      const shot0 = {}, shot1 = {};
+      for (const cam of ['top', 'front', 'iso', '3d']) shot0[cam] = await page.evaluate(c => window.__drShot(c), cam);
+      await page.evaluate(() => { camSet('top'); sizeCanvas(); });
+      const f1 = await flyTo(drSetup.pick.x + 2, drSetup.pick.y);
+      if (f1.hero) bad.push('the hero walked while you flew the drone: he is at ' + f1.hero.at);
+      if (!f1.a || f1.a.x !== drSetup.pick.x + 2) bad.push('two presses of → did not fly the drone two tiles east: it is at ' + (f1.a ? f1.a.x + ',' + f1.a.y : 'nowhere'));
+      await page.waitForTimeout(450);
+      for (const cam of ['top', 'front', 'iso', '3d']) shot1[cam] = await page.evaluate(c => window.__drShot(c), cam);
+      await page.evaluate(() => { camSet('top'); sizeCanvas(); });
+      for (const cam of ['top', 'front', 'iso', '3d']) {
+        const a = shot0[cam], b = shot1[cam];
+        if (a.skip || b.skip) { droneNote.push('COUNT-ONLY: the ' + cam + ' camera is not in this pack, so the drone was not measured there'); continue; }
+        if (a.err || b.err) { bad.push('the ' + cam + ' camera could not be measured with the drone in it: ' + (a.err || b.err)); continue; }
+        if (b.control) { bad.push('the drone cannot be measured in the ' + cam + ' camera: two pictures of the same frozen moment differ by ' + b.control + ' pixels'); continue; }
+        if (cam === '3d' && !b.sprite) bad.push('in the 3D camera no billboard says it is the drone, so nobody can ask where it went');
+        if (b.body < 40) { bad.push('in the ' + cam + ' camera the drone is not drawn (' + b.body + ' pixels) — you are steering nothing'); continue; }
+        if (!b.tile) { bad.push('in the ' + cam + ' camera the tile under the drone is off the screen'); continue; }
+        if (b.tileMarks < 12) bad.push('in the ' + cam + ' camera nothing on the ground says which tile the drone is over (' + b.tileMarks + ' pixels of mark on it)');
+        /* THE DRONE EXISTS TO COVER LESS than the person you play, so the bar is the hero's own number,
+           measured the way a player sees him on the same kind of tile — and "less" is held at under half
+           of it, never at a percentage somebody typed. */
+        const hm = heroBar[cam] || {}, pct = Math.round(100 * b.midHit / Math.max(1, b.mid)), hpct = Math.round(100 * (hm.hHit || 0) / Math.max(1, hm.hMid || 0));
+        if (!hm.hMid || hpct < 10) bad.push('in the ' + cam + ' camera the hero could not be measured on his own tile (' + hpct + '%), so there is nothing to hold the drone to — which is not a pass');
+        else if (pct * 2 > hpct) bad.push('in the ' + cam + ' camera the drone covers ' + pct + '% of the middle of the tile it is over and the hero covers ' + hpct + '% of his — the drone is there to cover less, and it covers more than half as much');
+        droneNote.push('COUNT-ONLY: ' + cam + ': the drone paints ' + b.body + ' pixels and covers ' + pct + '% of the middle of its tile; the hero covers ' + hpct + '% of his');
+        const flat = cam === 'top' || cam === 'front';
+        if (flat && !drSetup.pick.flat) { droneNote.push('COUNT-ONLY: ' + cam + ': no world here is wide enough for this camera to scroll, so following was measured in iso and 3D only'); continue; }
+        if (a.cx === null) continue;
+        const dx = Math.abs(b.cx - a.cx), dy = Math.abs(b.cy - a.cy);
+        if (dx > 0.03 || dy > 0.03) bad.push('in the ' + cam + ' camera the drone flew two tiles and slid ' + Math.round(dx * 100) + '% across the view — the camera stayed with the hero instead of going with the drone');
+      }
+      /* 2 · IT FLIES OVER A WALL, BECAUSE IT IS IN THE AIR */
+      const wall = await page.evaluate(() => { const w = CW(); let best = null;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { for (let k = 1; k <= 5; k++) { const x = DRONE.x + dx * k, y = DRONE.y + dy * k;
+          if (x < 0 || y < 0 || x >= w.W || y >= w.H) break; if (SOLID.has(w.grid[y][x])) { if (!best || k < best.k) best = { x, y, k, g: w.rows[y][x] }; break; } } });
+        return best; });
+      if (!wall) droneNote.push('COUNT-ONLY: nothing solid within five tiles of the flight, so flying over a wall was not tried');
+      else {
+        const f2 = await flyTo(wall.x, wall.y);
+        if (f2.hero) bad.push('the hero walked while you flew the drone: he is at ' + f2.hero.at);
+        if (!f2.a || f2.a.x !== wall.x || f2.a.y !== wall.y) bad.push('the drone stopped at "' + wall.g + '" — it is meant to fly over walls, not bump into them');
+        else { const card = await page.evaluate(() => (document.getElementById('droneCard') || {}).textContent || '');
+          if (!card.includes(wall.x + ',' + wall.y)) bad.push('over the wall at ' + wall.x + ',' + wall.y + ' the card does not name that tile — it says: ' + JSON.stringify(card.slice(0, 120))); }
+      }
+      /* 3 · OVER A DOOR IT IS JUST OVER A DOOR */
+      const door = await page.evaluate(() => { const ps = portalsOf(world); if (!ps.length) return null;
+        ps.sort((a, b) => Math.abs(a.x - DRONE.x) + Math.abs(a.y - DRONE.y) - Math.abs(b.x - DRONE.x) - Math.abs(b.y - DRONE.y));
+        const p = ps[0]; return { x: p.x, y: p.y, to: p.p.to, name: (T().locs || {})[p.p.to] || p.p.to }; });
+      if (!door) droneNote.push('COUNT-ONLY: this world has no door, so flying over one was not tried');
+      else {
+        const f3 = await flyTo(door.x, door.y);
+        await page.waitForTimeout(250);
+        const r3 = await page.evaluate(w0 => ({ w: world, pend: !!warpPend, on: DRONE.on, card: (document.getElementById('droneCard') || {}).textContent || '' }), null);
+        if (f3.hero) bad.push('the hero walked while you flew the drone: he is at ' + f3.hero.at);
+        if (r3.w !== drSetup.pick.id || r3.pend) bad.push('the drone flew over the door at ' + door.x + ',' + door.y + ' and the door took the world with it');
+        else if (!f3.a || f3.a.x !== door.x || f3.a.y !== door.y) bad.push('the drone could not reach the door at ' + door.x + ',' + door.y);
+        else if (!r3.card.includes(door.name)) bad.push('over the door to ' + door.name + ' the card does not say where it goes — it says: ' + JSON.stringify(r3.card.slice(0, 140)));
+        else if (!r3.card.includes(door.x + ',' + door.y)) bad.push('over the door at ' + door.x + ',' + door.y + ' the card names some other tile: ' + JSON.stringify(r3.card.slice(0, 140)));
+      }
+      /* 4 · IT STAYS INSIDE THE WORLD */
+      const edge = await page.evaluate(() => { const w = CW(), c = [['left', DRONE.x], ['right', w.W - 1 - DRONE.x], ['up', DRONE.y], ['down', w.H - 1 - DRONE.y]].sort((a, b) => a[1] - b[1])[0];
+        return { d: c[0], n: c[1], W: w.W, H: w.H }; });
+      await page.keyboard.down(DK[edge.d]); await page.waitForTimeout((edge.n + 4) * 200); await page.keyboard.up(DK[edge.d]);
+      await page.waitForTimeout(300);
+      const e4 = await droneAt(); h = await heroSame();
+      if (!h.ok) bad.push('the hero walked while you flew the drone: he is at ' + h.at);
+      if (!e4 || e4.x < 0 || e4.y < 0 || e4.x >= edge.W || e4.y >= edge.H) bad.push('held against the edge, the drone flew off the world: it is at ' + (e4 ? e4.x + ',' + e4.y : '?'));
+      else if ((edge.d === 'left' && e4.x !== 0) || (edge.d === 'right' && e4.x !== edge.W - 1) || (edge.d === 'up' && e4.y !== 0) || (edge.d === 'down' && e4.y !== edge.H - 1))
+        bad.push('held toward the ' + edge.d + ' edge, the drone stopped short of it at ' + e4.x + ',' + e4.y);
+      /* 5 · NOTHING ABOUT THE FLIGHT IS SAVED */
+      const sv = await page.evaluate(() => { save(); const s = loadSave() || {};
+        let p = null; try { const u = passURL(), m = u.match(/#save=([A-Za-z0-9\-_]+)/); const j = JSON.parse(unb64u(m[1])); p = sanitizeSave(j.s); } catch (e) {}
+        return { px: s.px, py: s.py, w: s.w, ppx: p && p.px, ppy: p && p.py }; });
+      if (sv.px !== drSetup.pick.x || sv.py !== drSetup.pick.y || sv.w !== drSetup.pick.id) bad.push('the drone\'s spot rides the save: a reload would wake you at ' + sv.w + ' ' + sv.px + ',' + sv.py + ' — where the drone was, possibly inside a wall — instead of where you stood');
+      else if (sv.ppx !== drSetup.pick.x || sv.ppy !== drSetup.pick.y) bad.push('the drone\'s spot rides the Trolley Pass: the link would open at ' + sv.ppx + ',' + sv.ppy + ' instead of where you stood');
+      /* 6 · IN FULLSCREEN THE CARD IS STILL THERE */
+      await page.click('#fsbtn'); await page.waitForTimeout(250);
+      const fs6 = await page.evaluate(() => { const c = document.getElementById('droneCard'), vp = document.getElementById('vp');
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        if (!c) return { none: true };
+        const r = c.getBoundingClientRect(), v = vp.getBoundingClientRect(), cs = getComputedStyle(c);
+        return { inVp: vp.contains(c), fs: vp.classList.contains('fs'), vis: cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 20 && r.height > 12,
+          within: r.left >= v.left - 1 && r.right <= v.right + 1 && r.top >= v.top - 1 && r.bottom <= v.bottom + 1 }; });
+      await page.click('#fsbtn'); await page.waitForTimeout(200);
+      await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+      if (fs6.none) bad.push('while you fly there is no card naming the tile under the drone');
+      else if (!fs6.inVp || !fs6.vis || !fs6.within) bad.push('in fullscreen the card that names the tile is not on the screen — the game covers it and you are flying blind');
+      /* 6½ · ON A PHONE THE CARD GETS OUT OF THE WAY. A phone's world is short and the dpad you fly
+         with fills its bottom-left; the flat cameras stop at a world's edge, so the drone itself can
+         reach any corner of the view. At each corner of the world, and in its middle, the card must
+         stay on the screen and cover neither the drone nor the dpad nor the icons. The drone is PLACED
+         for this one, not flown: what is asked is where the card goes, and flying to four corners of a
+         thirty-tile street by key would take the suite a minute to ask it. */
+      await page.setViewportSize({ width: 390, height: 844 });
+      const ctl0 = await page.evaluate(() => ctl);
+      await page.evaluate(() => { document.getElementById('settings').hidden = false; document.getElementById('optPad').click(); document.getElementById('settings').hidden = true;
+        camSet('top'); sizeCanvas(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+      await page.waitForTimeout(250);
+      /* the corners, the middle, and then a SWEEP right to left across two rows: a card that stays where
+         it went for the last spot is the fault a frame found and the first draft of this missed */
+      const spots = await page.evaluate(() => { const w = CW(), out = [[0, 0, 'top-left'], [w.W - 1, 0, 'top-right'], [0, w.H - 1, 'bottom-left'], [w.W - 1, w.H - 1, 'bottom-right'], [Math.floor(w.W / 2), Math.floor(w.H / 2), 'middle']];
+        [Math.floor(w.H / 2), Math.floor(w.H * 2 / 3)].forEach(y => { for (let x = w.W - 1; x >= 0; x -= 2) out.push([x, y, 'tile ' + x + ',' + y + ' (sweeping west)']); });
+        return out; });
+      for (const [sx, sy, name] of spots) {
+        await page.evaluate(([x, y]) => { DRONE.x = DRONE.sx = x; DRONE.y = DRONE.sy = y; DRONE.fx = x; DRONE.fy = y; DRONE.mt = 1; }, [sx, sy]);
+        await page.waitForTimeout(160);
+        const r6 = await page.evaluate(() => { const box = e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+          const card = document.getElementById('droneCard'), vp = document.getElementById('vp'), cv = document.getElementById('cv');
+          if (!card || card.style.display === 'none') return { none: true };
+          const cr = cv.getBoundingClientRect(), k = cr.width / VW, x0 = cr.left + (DRONE.x * TS - camXg) * k, y0 = cr.top + (DRONE.y * TS - camYg) * k;
+          const pad = [document.getElementById('dpad'), document.getElementById('joy')].find(e => e && !e.hidden && e.offsetHeight);
+          return { card: box(card), vp: box(vp), drone: [x0, y0 - 14 * k, x0 + TS * k, y0 + TS * k], pad: pad ? box(pad) : null,
+            icons: ['gear', 'fsbtn', 'mapbtn'].map(id => document.getElementById(id)).filter(e => e && e.offsetParent).map(box) }; });
+        if (r6.none) { bad.push('on a phone, with the drone at the ' + name + ' of the world, there is no card'); continue; }
+        const hit = (a, b) => a && b && a[0] < b[2] - 1 && b[0] < a[2] - 1 && a[1] < b[3] - 1 && b[1] < a[3] - 1;
+        const out = r6.card[0] < r6.vp[0] - 1 || r6.card[1] < r6.vp[1] - 1 || r6.card[2] > r6.vp[2] + 1 || r6.card[3] > r6.vp[3] + 1;
+        if (!r6.pad) bad.push('on a phone the dpad did not come up when chosen, so the card could not be asked to clear it — which is not a pass');
+        if (out) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card sticks out of the screen');
+        if (hit(r6.card, r6.pad)) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the dpad you are flying with');
+        if (hit(r6.card, r6.drone)) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the drone and the tile it is over');
+        if (r6.icons.some(b => hit(r6.card, b))) bad.push('on a phone, with the drone at the ' + name + ' of the world, the card covers the map, fullscreen or Settings button');
+      }
+      await page.evaluate(c0 => { const b = { swipe: 'optSwipe', joy: 'optJoy', pad: 'optPad' }[c0]; document.getElementById('settings').hidden = false; if (b) document.getElementById(b).click(); document.getElementById('settings').hidden = true;
+        camSet('top'); sizeCanvas(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }, ctl0);
+      await page.setViewportSize({ width: 480, height: 900 });
+      await page.waitForTimeout(200);
+      /* 7 · ESCAPE BRINGS IT HOME, AND THE CAMERA COMES BACK TO THE HERO */
+      await page.keyboard.press('Escape');
+      let landed = true; try { await page.waitForFunction(() => !DRONE.on, null, { timeout: 1500 }); } catch (e) { landed = false; }
+      if (!landed) bad.push('Escape does not bring the drone home: it is still flying a second and a half later');
+      else {
+        h = await heroSame(); if (!h.ok) bad.push('the hero is not where he stood when the drone landed: he is at ' + h.at);
+        const back = await page.evaluate(() => { camSet('top'); sizeCanvas(); draw(); const t = [camXg, camYg]; let c3 = null;
+          if (CAMS.includes('3d') && typeof draw3d === 'function' && window.THREE) { camSet('3d'); sizeCanvas(); if (draw3d()) c3 = T3.cam.position.toArray(); camSet('top'); sizeCanvas(); }
+          return { t, c3, acts: getComputedStyle(document.getElementById('acts')).visibility }; });
+        if (back.t[0] !== drSetup.camTop[0] || back.t[1] !== drSetup.camTop[1]) bad.push('after the drone landed the camera is at ' + back.t.join(',') + ' and it started at ' + drSetup.camTop.join(',') + ' — it came back to somewhere that is not the person you play');
+        if (drSetup.cam3 && back.c3 && back.c3.some((v, i) => Math.abs(v - drSetup.cam3[i]) > 1e-6)) bad.push('after the drone landed the 3D camera is not where it was before it took off');
+        if (back.acts === 'hidden') bad.push('after the drone landed the buttons for the person beside you never came back');
+      }
+      /* 8 · ENTER WHILE FLYING TALKS TO NOBODY */
+      const tk = await page.evaluate(() => { let hit = null;
+        for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
+          for (const n of (w.npcs || [])) { if (pendingAt(n) === undefined && !n.chat) continue;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const x = n.x + dx, y = n.y + dy;
+              if (y >= 0 && y < w.H && x >= 0 && x < w.W && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y) && !troIsStop(id, x, y)) { hit = { id, x, y, who: npcName(n.npc) }; break; } }
+            if (hit) break; }
+          if (hit) break; }
+        if (!hit) return null;
+        world = hit.id; px = fx = hit.x; py = fy = hit.y; moving = false; held = null; checkTalk();
+        hit.talk = !document.getElementById('talk').hidden; hit.cur = cur; hit.card = document.getElementById('card').hidden;
+        return hit; });
+      if (!tk || !tk.talk) droneNote.push('COUNT-ONLY: nobody in this pack could be stood beside with Talk showing, so Enter-while-flying was not tried');
+      else {
+        await pressB();
+        const on8 = await droneAt();
+        if (!on8 || !on8.on) bad.push('beside ' + tk.who + ', B did not lift the drone off');
+        else {
+          const t8 = await page.evaluate(() => document.getElementById('talk').hidden);
+          if (!t8) bad.push('while you fly the drone, Talk is still offered for ' + tk.who + ' back where you stood');
+          await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+          const r8 = await page.evaluate(() => ({ cur, card: document.getElementById('card').hidden, reader: document.getElementById('reader').hidden }));
+          if (r8.cur !== tk.cur || r8.card !== tk.card || !r8.reader) bad.push('Enter, pressed while flying the drone, started a conversation with ' + tk.who + ' back where you stood');
+          await page.evaluate(() => { document.getElementById('card').hidden = true; document.getElementById('reader').hidden = true; });
+          await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+        }
+      }
+      /* 9 · IF THE WORLD CHANGES UNDER IT, IT IS PUT DOWN. The world can change without a door —
+         the city grows, a replay wipes it, a district's ending stands you somewhere new — so this
+         asks the ONE place that reads it every frame, by changing `world` directly: the rule does
+         not care which path moved it, and the plant is removing the rule. */
+      const w9 = await page.evaluate(k => { world = k.id; px = fx = k.x; py = fy = k.y; moving = false; held = null; checkTalk(); return Object.keys(WORLDS).find(id => id !== k.id) || null; }, drSetup.pick);
+      if (w9) {
+        await pressB();
+        const on9 = await droneAt();
+        if (on9 && on9.on) {
+          await page.evaluate(id => { const w = WORLDS[id]; let s = null;
+            for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y)) s = [x, y];
+            world = id; px = fx = s[0]; py = fy = s[1]; }, w9);
+          await page.waitForTimeout(250);
+          const r9 = await droneAt();
+          if (r9 && r9.on) bad.push('the world changed under the drone and it kept flying in a place you are not in');
+          await page.evaluate(k => { world = k.id; px = fx = k.x; py = fy = k.y; if (DRONE.on) { DRONE.on = false; } }, drSetup.pick);
+          await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+        }
+      }
+      /* 10 · IT PLAYS IN THE STREET'S KEY — AND NOT AT ALL WITH THE MUSIC OFF. Asked of the audio graph,
+         not of a flag: a stand-in running context counts every voice made while the drone takes off, flies
+         a tile and lands. With the music off that must be none; with it on it must be some, or this probe
+         cannot hear anything and its silence proves nothing. Everything else that makes a sound is quiet
+         for the length of the check — the street's tune (which a key press restarts: musPoke listens to
+         keydown), its chirp, and the dogs. Two drafts of this went green on an engine where the drone had
+         no voice at all: the first counted the dogs' howls, the second the tune a pressed B had restarted.
+         The red-first run against the slice before this one is what showed both. */
+      const listen = async (on) => {
+        await page.evaluate(({ k, on }) => { world = k.id; px = fx = k.x; py = fy = k.y; moving = false; held = null;
+          window.__drMus = { on: musOn, ctx: MUSIC.ctx, master: MUSIC.master, mv: musVoice, howl: musHowl, chirp: musChirp, timer: !!MUSIC.timer };
+          musHowl = function () {}; musChirp = function () {}; window.__drMus.tick = musTick; musTick = function () {};
+          if (MUSIC.timer) { clearInterval(MUSIC.timer); MUSIC.timer = null; }
+          window.__drVoices = 0; musOn = on;
+          const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} });
+          MUSIC.ctx = { state: 'running', currentTime: 0, destination: {},
+            createOscillator() { window.__drVoices++; return { type: '', frequency: param(), connect() {}, start() {}, stop() {} }; },
+            createBiquadFilter() { return { type: '', frequency: param(), connect() {} }; },
+            createGain() { return { gain: param(), connect() {} }; } };
+          MUSIC.master = { connect() {} };
+          musVoice = function () { window.__drVoices++; }; }, { k: drSetup.pick, on });
+        await pressB();
+        const d = (await page.evaluate(k => k.x > 0 ? 'left' : 'right', drSetup.pick));
+        await flyStep(d); await page.waitForTimeout(150);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+        return page.evaluate(() => { const n = window.__drVoices, m = window.__drMus;
+          musOn = m.on; MUSIC.ctx = m.ctx; MUSIC.master = m.master; musVoice = m.mv; musHowl = m.howl; musChirp = m.chirp; musTick = m.tick; if (MUSIC.timer) { clearInterval(MUSIC.timer); MUSIC.timer = null; } if (m.timer && typeof musRetime === 'function') musRetime();
+          return n; });
+      };
+      const mute = await listen(false), loud = await listen(true);
+      if (mute) bad.push('with the music off the drone still made ' + mute + ' sound(s) taking off, flying and landing — with the music off it must stay silent');
+      if (!loud) bad.push('with the music on the drone makes no sound at all — no whirr taking off, no note per tile, nothing landing');
+      else droneNote.push('COUNT-ONLY: with the music on, one takeoff, one tile and one landing made ' + loud + ' voices; with it off, ' + mute);
+      droneP.push(...bad);
+    }
+    /* 10 · THE SETTINGS ROW: offered by a game that declares a builder, never by one that does not */
+    const row = await page.evaluate(() => !!document.getElementById('openDrone'));
+    if (!drSetup.declared && row) droneP.push('a game that declares no builder offers one in its Settings');
+    if (drSetup.declared && !row) droneP.push('this game declares a builder and its Settings has no row to fly it from — the only way in is a key a phone does not have');
+    if (drSetup.declared && row) {
+      await page.evaluate(k => { world = k.id; px = fx = k.x; py = fy = k.y; moving = false; held = null; }, drSetup.pick);
+      await page.click('#gear'); await page.waitForTimeout(150);
+      await page.evaluate(() => { const d = document.getElementById('openDrone'); let p = d && d.closest('details'); while (p) { p.open = true; p = p.parentElement && p.parentElement.closest('details'); } });
+      await page.click('#openDrone'); await page.waitForTimeout(520);
+      const r10 = await page.evaluate(() => ({ on: DRONE.on, set: document.getElementById('settings').hidden }));
+      if (!r10.on) droneP.push('the Settings row for the drone does not fly it');
+      else if (!r10.set) droneP.push('the Settings row lifts the drone off behind the Settings panel, where you cannot see it');
+      await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+      await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+      /* and from the keyboard, beside a person: Enter on the focused row flies the drone and starts no
+         conversation. This is why the row waited for #266 — before it, that one keystroke did both. */
+      const nb = await page.evaluate(() => { for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
+          for (const n of (w.npcs || [])) { if (pendingAt(n) === undefined && !n.chat) continue;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const x = n.x + dx, y = n.y + dy;
+              if (y >= 0 && y < w.H && x >= 0 && x < w.W && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y) && !troIsStop(id, x, y)) {
+                world = id; px = fx = x; py = fy = y; moving = false; held = null; checkTalk(); return { who: npcName(n.npc), talk: !document.getElementById('talk').hidden, cur }; } } } }
+        return null; });
+      if (nb && nb.talk) {
+        await page.click('#gear'); await page.waitForTimeout(150);
+        await page.focus('#openDrone'); await page.keyboard.press('Enter'); await page.waitForTimeout(520);
+        const r11 = await page.evaluate(() => ({ on: DRONE.on, cur, card: document.getElementById('card').hidden }));
+        if (!r11.on) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', did not fly it');
+        if (r11.cur !== nb.cur || !r11.card) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', also started a conversation with them');
+        await page.evaluate(() => { document.getElementById('card').hidden = true; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+        await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+      } else droneNote.push('COUNT-ONLY: nobody here could be stood beside with Talk showing, so Enter on the Settings row was not tried beside a person');
+    }
+    if (!drSetup.declared) {
+      await page.evaluate(() => { if (typeof DRONE !== 'undefined') DRONE.on = false; delete window.BUILDER; });   /* the probe ends here */
+      await absent('after the probe was taken away');
+    }
+  }
+  await page.evaluate(() => { (window.__drWander || []).forEach(n => { n.wnext = performance.now() + 400; }); });
+  await page.evaluate(() => { const k = window.__drKeep; if (!k) return;
+    if (typeof DRONE !== 'undefined') { DRONE.on = false; DRONE.land = false; }
+    world = k.world; px = k.px; py = k.py; fx = k.fx; fy = k.fy; dir = k.dir; moving = false; held = null;
+    if (typeof T3 !== 'undefined' && T3) T3.yaw = k.yaw;
+    camSet(k.cam); sizeCanvas();
+    document.getElementById('world').hidden = k.hidden; document.getElementById('reader').hidden = k.reader;
+    k.open.forEach(id => { const p = document.getElementById(id); if (p) p.hidden = false; }); });
+  droneNote.forEach(l => console.log('  ' + l));
+  fails.push(...droneP);
+
   /* ---- A KEY GOES TO WHAT HAS THE KEYBOARD; THE WORLD GETS ONLY WHAT NOBODY ELSE TAKES (#266, #274) ----
      On a laptop, Enter on a focused button beside a person pressed the button AND opened the
      conversation — in Meridian the gear beside Priya opened Settings and started her quest in one
