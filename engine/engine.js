@@ -4378,10 +4378,43 @@ function droneSound(kind,dir){
    vanishes there. NOT a `.settings` panel, because worldCovered() would stop drawing the world under
    it. Every word goes in through textContent and every style through the CSSOM (el.style.cssText),
    which a strict style-src still allows (measured 2026-09-30; #256). */
-function droneName(){const n=buildOK()&&BUILDER.name;
+function droneName(){return droneOwnName()||droneGameName();}
+/* the game's own name for her: the pack's BUILDER.name, or the engine's word */
+function droneGameName(){const n=buildOK()&&BUILDER.name;
   if(typeof n==="string")return n.slice(0,24);
   if(n&&typeof n==="object"&&typeof (n[lang]||n.en)==="string")return String(n[lang]||n.en).slice(0,24);
   return lang==="es"?"Dron":"Drone";}
+/* THE PLAYER MAY RENAME HER (#295; the owner asked on 2026-10-01 that the drone's name be the player's to change).
+   The game's own name stays the default for anybody who never renames her, and an emptied box goes back to it.
+   The name is cleaned exactly as a dog's is (sanName, in the same box, #264) and kept on THIS device under the
+   game's own prefix — beside the save, never in it: it is not quest data. It is kept by an id made once, the
+   first time anything is kept (#282: every kept thing gets an id; a name is only a label), as a list of records:
+   one drone per game today is the first, and a second drone later is a second record, so nothing kept ever has
+   to move. Nothing is written until a player names her, so a game nobody renames stores what it stored before.
+   The guard: test/engine.smoke.js, grep "THE PLAYER CAN NAME THE BUILDER'S DRONE". */
+let droneKept=null;
+function droneRecs(){if(droneKept)return droneKept;droneKept=[];
+  try{const a=JSON.parse(localStorage.getItem(SK("drones"))||"[]");
+    if(Array.isArray(a))a.slice(0,8).forEach(r=>{
+      if(!r||typeof r!=="object"||typeof r.id!=="string"||!/^[A-Za-z0-9_-]{1,40}$/.test(r.id))return;   /* what the device held is data too */
+      const o={id:r.id},n=sanName(r.n);if(n)o.n=n;droneKept.push(o);});}catch(e){}
+  return droneKept;}
+function droneRec(make){const L=droneRecs();
+  if(!L.length&&make)L.push({id:"dr"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)});
+  return L[0]||null;}
+function droneOwnName(){const r=buildOK()?droneRec(false):null;return r&&r.n?r.n:"";}
+function droneRename(v){const r=droneRec(true),n=sanName(v);
+  if(n)r.n=n;else delete r.n;
+  mqStore(SK("drones"),JSON.stringify(droneRecs()));
+  DRONE.cardKey="";droneRowLabel();if(DRONE.on)droneCardFill();
+  const es=lang==="es",g=droneGameName();
+  toast("✏️ "+(n?(es?"Tu dron ahora se llama "+n:"Your drone is now called "+n):(es?"Tu dron vuelve a llamarse "+g:"Your drone is called "+g+" again")),2400);}
+/* the box is the dog's (#renP), with the drone's words when the pack has none for it */
+function droneNameAsk(){const es=lang==="es",t=T();renTarget=DRONE;
+  $("renTitle").textContent=es?"¿Cómo se llama tu dron?":"What is your drone called?";
+  $("renGo").textContent=t.renGo||(es?"Listo":"Done");$("renX").textContent=t.adoptX||(es?"Cancelar":"Cancel");
+  $("renName").value=droneOwnName();$("renName").placeholder=droneGameName();   /* an empty box says what it goes back to */
+  $("renP").hidden=false;$("renName").focus();}
 const DRONEKIND={wall:["Wall","Muro"],facade:["Storefront","Fachada"],furniture:["Furniture","Mueble"],appliance:["Appliance","Aparato"],
   fence:["Fence","Cerca"],marker:["Marker","Señal"],site:["Building site","Construcción"],nature:["Plant","Planta"],tree:["Tree","Árbol"],
   water:["Water","Agua"],prop:["Thing","Cosa"],bridge:["Bridge","Puente"],stair:["Stairs","Escalera"],gear:["Agility gear","Obstáculo de agilidad"]};
@@ -4466,11 +4499,14 @@ function droneRow(){if($("openDrone"))return;const lab=$("openLab"),at=lab&&lab.
   const row=document.createElement("div");row.className="optrow";
   const b=document.createElement("button");b.id="openDrone";b.type="button";b.style.cssText="flex:1;";
   b.addEventListener("click",()=>{$("settings").hidden=true;b.blur();if(DRONE.on)droneLand();else droneAsk();});
-  row.append(b);at.parentNode.insertBefore(row,at);droneRowLabel();
+  const r=document.createElement("button");r.id="nameDrone";r.type="button";r.style.cssText="flex:0 0 auto;";   /* her name: the box a dog's name is typed in (#295); the flight keeps the room */
+  r.addEventListener("click",()=>{$("settings").hidden=true;r.blur();droneNameAsk();});
+  row.append(b,r);at.parentNode.insertBefore(row,at);droneRowLabel();
   $("gear").addEventListener("click",droneRowLabel);   /* its words follow the language and whether the drone is up */
   ["optEn","optEs"].forEach(id=>{const e=$(id);if(e)e.addEventListener("click",()=>setTimeout(droneRowLabel,0));});}
-function droneRowLabel(){const b=$("openDrone");if(!b)return;const es=lang==="es",n=BUILDER.name?droneName():(es?"el dron":"the drone");
-  b.textContent=DRONE.on?(es?"Aterrizar ":"Land ")+n:(es?"Volar ":"Fly ")+n+" · B";}
+function droneRowLabel(){const b=$("openDrone");if(!b)return;const es=lang==="es",n=(droneOwnName()||BUILDER.name)?droneName():(es?"el dron":"the drone");
+  b.textContent=DRONE.on?(es?"Aterrizar ":"Land ")+n:(es?"Volar ":"Fly ")+n+" · B";
+  const r=$("nameDrone");if(r){r.textContent="✏️ "+(es?"Nombre":"Name");r.setAttribute("aria-label",(es?"Cambiar el nombre de ":"Rename ")+n);}}
 /* what the pack may say in BUILDER, checked at boot like TROKEYS: a key nobody reads is somebody
    writing a line, seeing nothing happen, and having no way to find out why */
 function buildAudit(){const out=[];if(typeof BUILDER==="undefined"||!BUILDER)return out;
@@ -7467,11 +7503,12 @@ $("cmdRen").addEventListener("click",()=>{
   const c=nearestDog();if(!c||!(dogRecord(c)||c===starDog()))return;
   $("dogP").hidden=true;renTarget=c;
   $("renTitle").textContent=T().renameAsk;$("renGo").textContent=T().renGo;$("renX").textContent=T().adoptX;
-  $("renName").value=c.name||"";$("renP").hidden=false;$("renName").focus();
+  $("renName").value=c.name||"";$("renName").placeholder="";$("renP").hidden=false;$("renName").focus();
 });
 $("renGo").addEventListener("click",()=>{
   const c=renTarget;renTarget=null;$("renP").hidden=true;
   if(!c)return;
+  if(c===DRONE){droneRename($("renName").value);$("renName").placeholder="";return;}   /* the drone's name (#295): an empty box is a choice too */
   const n=sanName($("renName").value);
   if(!n||n===c.name)return;
   if(CRIT.some(o=>isDog(o)&&o!==c&&(o.name||"").toLowerCase()===n.toLowerCase())){
@@ -7493,7 +7530,7 @@ $("renGo").addEventListener("click",()=>{
   aleRowBuild(); /* #277: and Settings → Alebrijes lists the dog by its new name, in the look that went with it */
   toast("✏️ "+(stub?T().renameStub(n,old):T().renameDone(n)),2800);
 });
-$("renX").addEventListener("click",()=>{renTarget=null;$("renP").hidden=true;});
+$("renX").addEventListener("click",()=>{renTarget=null;$("renP").hidden=true;$("renName").placeholder="";});
 $("cmdReh").addEventListener("click",()=>{
   const c=nearestDog(),rec=c&&dogRecord(c);if(!rec)return;
   $("dogP").hidden=true;
