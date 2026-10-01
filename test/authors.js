@@ -213,8 +213,18 @@ if (require.main === module) {
        second when there is nothing to find (Zeni, 2026-09-24) */
     let cmd = null; try { cmd = ((JSON.parse(input) || {}).tool_input || {}).command; } catch (e) {}
     if (typeof cmd === 'string' && !isPush(cmd)) process.exit(0);
+    /* A check that never finishes refuses; it does not wave a push through (#279). The check below
+       takes 0.2 s here (measured 2026-09-30). 45 s is far above that and under the 60 s that
+       .claude/settings.json gives this whole hook, so the refusal is this file's own, in its own words. */
+    const LIMIT_S = 45, t0 = Date.now();
     const { spawnSync } = require('child_process');
-    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, encoding: 'utf8', timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
+    if (r.error && r.error.code === 'ETIMEDOUT') {
+      process.stderr.write('PUSH REFUSED by test/authors.js — the address check (node test/authors.js) was still running after ' +
+        Math.round((Date.now() - t0) / 1000) + ' s, where it normally takes under a second, so it was stopped and cannot say what this push would publish.\n' +
+        'Run `node test/authors.js` by hand to see where it sticks.\n');
+      process.exit(2);
+    }
     if (r.status === 0) process.exit(0);
     process.stderr.write('PUSH REFUSED by test/authors.js — this push would publish an address that is not a no-reply one.\n' + (r.stdout || '') + (r.stderr || '') +
       'If the commit it names is already on main, run `git fetch origin main` and try again.\n');
