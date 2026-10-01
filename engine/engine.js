@@ -949,15 +949,22 @@ function drawIso(){
       else{ctx.save();ctx.translate(cx,cy);ctx.scale(0.45,0.45);ctx.translate(-cx,-cy);
         isoDiamond(cx,cy,ch==="Y"?"#C0392B":"#E0B45C");ctx.restore();}}
   }
-  /* what the dog leaves (#267). A hole is laid onto its tile's diamond: the top camera's own painter,
-     through the one transform that takes a 32-px tile square to this camera's 44×22 diamond about P's
-     centre — so it is the same hole on the same tile, and a block in front covers it the way it covers
-     the floor. The other thing stands, in the depth pass below, where the people are. */
-  const decs=decalsNow(Date.now());
-  decs.forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
-    const[cx,cy]=P(dc.x,dc.y);
+  /* WHAT LIES ON THE GROUND is laid onto its tile's diamond by `lay`: the top camera's own painter, written for a
+     32-px tile square with (sx,sy) its top-left, through the one transform that takes that square to this camera's
+     44×22 diamond about P's centre — so it is the same mark on the same tile, and a block in front, or a person
+     standing on it, covers it the way they cover the floor. One transform for every ground mark here.
+     The petals a walker drops (#284) lie here, before the depth pass. They were handed P as if it named the tile's
+     top-left, when P names the diamond's centre, and painted after the depth sort: their middle 17 px right of and
+     16 px below the middle of the tile they fell on, not one pixel of them on it, standing upright, over the people
+     and blocks round them (test/engine.smoke.js, grep `petalsOnTheirTile`).
+     What the dog leaves (#267): a hole lies here too; the other thing stands, in the depth pass below, where the
+     people are. */
+  const lay=(x,y,paint)=>{const[cx,cy]=P(x,y);
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
-    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);drawDecal(ctx,-TS/2,-TS/2,dc,a);ctx.restore();});
+    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);paint(-TS/2,-TS/2);ctx.restore();};
+  petalTrail(world,null,lay);
+  const decs=decalsNow(Date.now());
+  decs.forEach(({dc,a})=>{if(DECALFLAT[dc.kind])lay(dc.x,dc.y,(sx,sy)=>drawDecal(ctx,sx,sy,dc,a));});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
@@ -1050,12 +1057,12 @@ function drawIso(){
      trolley"): painted after everybody, the car covered a person standing in FRONT of it — 86 pixels
      of him under a car that was behind him, measured. It is a thing on its row: it takes the depth
      queue at its own centre, so whoever is nearer the camera paints over it and whoever is farther
-     paints under it, the way the people already do. (The line inspector, crew iteration 12.) */
+     paints under it, the way the people already do. (The line inspector, crew iteration 12.)
+     The petals are no longer drawn here: they lie on the ground, laid by `lay` before the depth pass (#284). */
   {const L=troLine(world);if(L&&TRO.state!=="away"){const n=troCars(L);
     for(let i=0;i<n;i++){const cx=TRO.x+i*(TRO_LEN+TRO_GAP);
       R.push({d:cx+TRO_LEN/2+L.row+0.5,f:(function(k){return function(){troDraw2D(world,P,false,k);};})(i)});}}}
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
-  petalTrail(world,P);
   fiestaDraw2D(world,P,false);
   /* shared time-of-day wash (door spills are top-down-only for now) */
   const dnow=new Date(),hr=dnow.getHours()+dnow.getMinutes()/60;
@@ -1976,13 +1983,15 @@ function petalDrop(wid,x,y,feet){ /* owner, 2026-09-07: the trail "for the bridg
   }
   if(!carry&&!deck)return;
   PETALS.push({w:wid,x,y,t:Date.now(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
-function petalTrail(wid,toScreen){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera */
+function petalTrail(wid,toScreen,lay){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera's 32-px terms (top, front);
+  or, for a camera whose ground is not that square, lay(x,y,paint), which puts paint(sx,sy) onto the tile's own ground (iso, #284) */
   if(!PETALS.length)return;const now=Date.now(),P=petalPal();
+  lay=lay||((x,y,paint)=>{const[sx,sy]=toScreen(x,y);paint(sx,sy);});
   PETALS.forEach(pt=>{if(pt.w!==wid)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
-    const[sx,sy]=toScreen(pt.x,pt.y);let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
-    ctx.globalAlpha=1-age*age;
-    for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
-    ctx.globalAlpha=1;});}
+    lay(pt.x,pt.y,(sx,sy)=>{let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+      ctx.globalAlpha=1-age*age;
+      for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
+      ctx.globalAlpha=1;});});}
 TILEDRAW["^"]=rc=>{const{sx,sy,x,y}=rc; /* the rainbow bridge: walk the whole spectrum.
       The six bands are what a season recolours; planks and rails are design. One season may
       also STREW the deck (art("bridgeStyle")==="petals"): Día de Muertos lays cempasúchil petals
