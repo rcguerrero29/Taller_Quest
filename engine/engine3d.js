@@ -1026,7 +1026,7 @@ function t3Trolley(){ /* the tram on the line; it is never a wall — you may st
    train's own box — so a six-tile set answers for its whole length. Asked here and in t3Actors. */
 function t3TramNear(){
   if(!T3.tram||!T3.tram.visible||!T3.cam)return false;
-  const from=T3.cam.position,to=new THREE.Vector3(fx+0.5,0.1,fy+0.5),dv=to.clone().sub(from),len=dv.length();
+  const[qx,qy]=focusXY(),from=T3.cam.position,to=new THREE.Vector3(qx+0.5,0.1,qy+0.5),dv=to.clone().sub(from),len=dv.length();
   const hit=new THREE.Ray(from,dv.normalize()).intersectBox(new THREE.Box3().setFromObject(T3.tram),new THREE.Vector3());
   return !!hit&&hit.distanceTo(from)<len;}
 function t3Fiesta(){ /* the piñata sways; it is never hit and gives nothing (Nacho's guardrail) */
@@ -1148,6 +1148,12 @@ function t3Actors(){
      you and the camera hides you in 3D"). The four camera stops put a wall in front of the hero
      often; the person you are steering must never vanish behind one. */
   list.push({x:fx,y:fy,hero:true,f:g=>drawPerson(g,2,6,look,{dir:t3ScreenDir(dir),bob:moving?Math.sin(bob)*2:0,moving,hero:true})});
+  /* the builder's drone (#271): the same painter as the flat cameras, baked into a billboard; its
+     height is the floor under it (a wall's roof, when it is over one) plus the hover */
+  {const dr=typeof droneLook==="function"?droneLook():null;
+    if(dr){const wd=CW(),ft=(a,b)=>{const X=Math.round(a),Y=Math.round(b);return (wd.grid[Y]&&SOLID.has(wd.grid[Y][X]))?t3TileTop(X,Y):0;},
+      fl=ft(dr.from[0],dr.from[1])+(ft(dr.to[0],dr.to[1])-ft(dr.from[0],dr.from[1]))*dr.k,L=droneLamp(dr);
+      list.push({x:dr.x,y:dr.y,h:fl+0.43+0.45*dr.h+Math.sin(dr.now/190)*0.035*dr.h,drone:true,f:g=>drawDrone(g,18+dr.ox,30,droneOpts(dr,L))});}}
   /* the door marker rides the same pool, lifted above the wall line so the door slab
      does not hide it — and above whatever the BUILDING carries over the door, which until
      crew iteration 14 nothing in this engine could answer. 1.0 was chosen against a flat
@@ -1209,8 +1215,10 @@ function t3Actors(){
        floor the hero respects depth — the lip and the knee-high rail hide their legs, which is what going
        down into a hole looks like — and the tall wall on the camera side is the one the near-wall rule
        already minimizes. On the floor and on a climbing flight they still draw through walls (#22). */
-    p.spr.material.depthTest=!a.hero||lift<0;p.spr.renderOrder=1000-Math.round(dl*10);
-    p.spr.userData.hero=!!a.hero; /* so a guard can find the person you steer without reading a rendering flag for it */
+    /* the DRONE is the thing in the air and the thing you steer, so while it flies it takes #22's rule —
+       never hidden — and the hero, no longer the one you steer, stands behind walls like everyone (#271) */
+    p.spr.material.depthTest=a.drone?false:(!(a.hero&&!DRONE.on)||lift<0);p.spr.renderOrder=a.drone?2000:1000-Math.round(dl*10);
+    p.spr.userData.hero=!!a.hero;p.spr.userData.drone=!!a.drone; /* so a guard can find the person you steer without reading a rendering flag for it */
     p.spr.visible=true;p.live=true;
   });
   for(let i=list.length;i<T3.pool.length;i++){T3.pool[i].spr.visible=false;T3.pool[i].live=false;}
@@ -1239,7 +1247,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     const key=world+"|"+themeName+"|"+T3.dirty;
     if(T3.builtKey!==key)t3Build(key);
     t3TurnTick();
-    const hx=fx+0.5,hz=fy+0.5;
+    const[qx,qy]=focusXY(),hx=qx+0.5,hz=qy+0.5;   /* what you steer: the hero, or the drone (#271) */
     T3.cam.position.set(hx+Math.sin(T3.yaw)*T3CAMD,T3CAMH,hz+Math.cos(T3.yaw)*T3CAMD);
     T3.cam.lookAt(hx,0.4,hz);
     t3Light();
@@ -1247,6 +1255,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Reveal();
     t3Trolley();   /* the car first: the people ask where it stands (t3Actors, tramBetween) */
     t3Actors();
+    t3DroneMarks();
     t3Petals();
     t3Fiesta();
     t3Leash();
@@ -1460,8 +1469,8 @@ function t3Near(x,y,yaw,fake){ /* the pieces nearest (x,y) that hide you at this
    Materials can be shared between pieces of one glyph, so the glass copy is made once per PIECE and
    kept beside the solid one — never edited in place, or one tree would fog the whole row. */
 function t3Reveal(){
-  const key=world+"|"+px+"|"+py+"|"+t3Q()+"|"+T3.builtKey;
-  if(T3.nearKey!==key){T3.nearKey=key;T3.near=t3Near(px,py,Math.round(T3.yaw/(Math.PI/2))*(Math.PI/2));}
+  const[tx,ty]=focusTile(),key=world+"|"+tx+"|"+ty+"|"+t3Q()+"|"+T3.builtKey;   /* the wall in front of what the camera looks at (#271) */
+  if(T3.nearKey!==key){T3.nearKey=key;T3.near=t3Near(tx,ty,Math.round(T3.yaw/(Math.PI/2))*(Math.PI/2));}
   const cut3=new Set((T3.near||[]).map(p=>p.o).filter(Boolean));
   T3.group.children.slice().forEach(o=>{const u=o.userData;if(!u||u.stub)return;
     const cut=cut3.has(o);
@@ -1481,6 +1490,39 @@ function t3Reveal(){
     o.material=cut?u.glass3:u.solid3;
     o.renderOrder=cut?1500:0;                /* after the people, so it tints them instead of hiding them */
   });}
+/* ---- THE BUILDER'S DRONE IN 3D (#271) ----
+   Its billboard rides the actor pool like every person (t3Actors); what is here is the ground under
+   it — the lamp's four lit corners on its tile and its small shadow — two flat pieces kept in the
+   SCENE, not the group, because the group is thrown away and rebuilt with every world. */
+function t3TileTop(x,y){ /* how high the top of a tile is: its floor or tread, or the roof of whatever is built on it */
+  const w=CW();if(y<0||y>=w.H||x<0||x>=w.W)return 0;
+  if(!SOLID.has(w.grid[y][x]))return stairLift(w,x,y);
+  if(T3.topMemoKey!==T3.builtKey){T3.topMemo={};T3.topMemoKey=T3.builtKey;}
+  const k=x+","+y;if(k in T3.topMemo)return T3.topMemo[k];
+  let top=0;(T3.group?T3.group.children:[]).forEach(o=>{const u=o.userData;if(!u||u.stub||u.apron||u.x!==x||u.y!==y)return;top=Math.max(top,t3Top(o));});
+  return T3.topMemo[k]=top||1.1;}
+function t3DroneMarks(){
+  const dr=typeof droneLook==="function"?droneLook():null;
+  if(!T3.droneMarks){
+    const c=document.createElement("canvas");c.width=c.height=128;const g=c.getContext("2d");
+    const arm=(lw,a)=>{g.strokeStyle="rgba(255,255,255,"+a+")";g.lineWidth=lw;g.lineCap="round";g.lineJoin="round";
+      [[10,10,1,1],[118,10,-1,1],[10,118,1,-1],[118,118,-1,-1]].forEach(([x,y,sx,sy])=>{g.beginPath();g.moveTo(x,y+30*sy);g.lineTo(x,y);g.lineTo(x+30*sx,y);g.stroke();});};
+    arm(12,0.3);arm(5,1);
+    const ring=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,color:0xFFE9A8}));
+    ring.rotation.x=-Math.PI/2;ring.renderOrder=1400;ring.userData={droneMark:"lamp"};
+    const s=document.createElement("canvas");s.width=s.height=64;const h=s.getContext("2d"),r=h.createRadialGradient(32,32,2,32,32,31);
+    r.addColorStop(0,"rgba(20,16,28,1)");r.addColorStop(1,"rgba(20,16,28,0)");h.fillStyle=r;h.fillRect(0,0,64,64);
+    const shade=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(s),transparent:true,depthWrite:false}));
+    shade.rotation.x=-Math.PI/2;shade.renderOrder=1399;shade.userData={droneMark:"shadow"};
+    T3.scene.add(ring,shade);T3.droneMarks=[ring,shade];}
+  const[ring,shade]=T3.droneMarks;
+  if(!dr){ring.visible=false;shade.visible=false;return;}
+  const L=droneLamp(dr),t=dr.tile,w=CW();
+  ring.visible=!!dr.marks;
+  if(ring.visible){ring.position.set(t[0]+0.5,t3TileTop(t[0],t[1])+0.02,t[1]+0.5);ring.material.color.set(L.col);ring.material.opacity=Math.min(1,(L.night?1.1:0.9)*L.a);}
+  shade.visible=dr.h>0.05;
+  if(shade.visible){const X=Math.round(dr.x),Y=Math.round(dr.y),fl=(w.grid[Y]&&SOLID.has(w.grid[Y][X]))?t3TileTop(X,Y):stairLift(w,X,Y);
+    const sc=0.26-0.05*dr.h;shade.scale.set(sc,sc,1);shade.position.set(dr.x+0.5,fl+0.016,dr.y+0.5);shade.material.opacity=0.34*dr.h;}}
 function t3Glow(){ /* the light under every door breathes — same clock as the 2D art */
   const a=0.25+0.2*Math.sin(Date.now()/380);
   T3.glows.forEach(m=>{m.opacity=a;});
