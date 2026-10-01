@@ -4803,6 +4803,173 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...K.map(m => 'keys: ' + m));
   }
 
+  /* ---- ANOTHER PLAYER'S LOOK IS CHECKED THE WAY A SAVED LOOK IS (#32) ----
+     The owner, 2026-10-01: "ok fix the colour check". In multiplayer another player's character arrives
+     from THEIR device and is drawn for everyone who can see them, so what their device sent is data: a
+     broken or hostile value must not freeze or break the drawing, and any real colour stays allowed.
+     Nothing fills PEERS yet (the NET seam is empty), so this fills it the way a network would: each stranger
+     is built AS TEXT and parsed, because a `__proto__` in an object literal never reaches the wire
+     (docs/POSTMORTEM.md §13a). Then it lets the game's own loop draw them and reads the frame that loop drew,
+     in every camera the game offers, chosen in Settings with real clicks.
+     WHAT IS COMPARED. Every hostile stranger must be drawn pixel for pixel like a stranger who sent no look at
+     all, which is the game's default look (read from the save loader, the one place that names it); a stranger
+     who chose a real colour from this game's own swatches, or a hair style or pattern its creator offers, must
+     NOT be. The hero wears a non-default look, chosen in the creator, so a stranger drawn in YOUR clothes is
+     told apart from one drawn in the default.
+     THE WORLD IS HELD STILL: nobody wanders, nothing ticks, Date.now stands still (people sway and blink by it),
+     and the first number in each camera is the control — two frames with nothing changed must be identical, or
+     nothing was measured. No page.clock: measured 2026-10-01, a throw inside the game loop under Playwright's
+     clock reaches neither `pageerror` nor `window.onerror`, so a check under it cannot hear the page break.
+     A FREEZE IS A RESULT, NOT NOISE: measured on 6d95088, a stranger whose pattern is "__proto__" throws inside
+     the shirt's clip, the clip is never restored, and from that frame on the top camera repaints only the
+     stranger's shirt — the hero walked two tiles and the screen did not move. So after every stranger the
+     default one stands in again, and a frame that does not come back is reported, and the page reloaded. */
+  {
+    const pctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
+    let pp = null;
+    const P32 = [], N32 = [], pErr = [];
+    const HOSTILE = [
+      ['who sent no look at all', null],
+      ['whose look is one word instead of a look', '"#2AA47C"'],
+      ['whose colours are not colours', '{"shirt":"transparent","skin":"rgb(0 0 0 / 0)","hair":"url(https://example.invalid/x.png)"}'],
+      ['whose colours are the wrong type', '{"shirt":5,"skin":["#C2543F"],"hair":{"r":255},"style":7,"outfit":["formal"],"pattern":{"a":1}}'],
+      ['whose look is a megabyte', '@big'],   /* six one-megabyte strings, built as text inside the page (setup) */
+      ['who asks for things a saved look never carries', '{"robot":true,"hat":"hard","__proto__":{"robot":true},"constructor":{"prototype":{"robot":true}}}'],
+      ['whose pattern is "__proto__"', '{"pattern":"__proto__"}'],
+      ['whose pattern is "valueOf"', '{"pattern":"valueOf"}'],
+      ['whose shirt is an object that cannot become text', '{"shirt":{"toString":1}}'],
+      ['whose hair style and outfit the game does not have', '{"style":"zigzag-xl","outfit":"constructor"}'],
+    ];
+    const setup = async () => {
+      if (pp) await pp.close();
+      pp = await pctx.newPage();
+      pp.on('pageerror', e => pErr.push(e.message));
+      await pp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await pp.goto('file://' + file);
+      await pp.evaluate(() => { try { localStorage.clear(); } catch (e) {} });   /* a reload after a freeze starts a new game too */
+      await pp.reload(); await pp.waitForTimeout(1500);
+      await pp.click('.classes button[data-c="architect"]');
+      /* the hero wears a look that is not the default, chosen the way a player chooses it */
+      const D = await pp.evaluate(() => sanitizeSave({ n: 'x' }).lk);
+      for (const part of ['shirt', 'skin', 'hair']) {
+        const want = await pp.evaluate(({ part, def }) => {
+          const b = [...document.querySelectorAll('#row' + part[0].toUpperCase() + part.slice(1) + ' button')]
+            .find(x => !(x.getAttribute('aria-label') || '').toLowerCase().endsWith(' ' + def.toLowerCase()));
+          return b ? b.getAttribute('aria-label') : null; }, { part, def: D[part] });
+        if (want) await pp.click('button[aria-label="' + want + '"]');
+      }
+      await pp.click('#begin');
+      await pp.waitForTimeout(800);
+      return pp.evaluate(() => {
+        const $ = id => document.getElementById(id);
+        ['wanderUpdate', 'dogUpdate', 'catUpdate', 'pigUpdate', 'loroTick', 'critUpdate', 'ballUpdate', 'dogThingsUpdate',
+         'troTick', 'petalMomentTick', 'fredCheck', 'portalNudge'].forEach(f => { if (typeof window[f] === 'function') window[f] = function () {}; });
+        const T0 = Date.now(); Date.now = () => T0;
+        moving = false; held = null;
+        const w = WORLDS[world];
+        if (!w) return { none: 'the game started in a world it does not have (' + world + ')' };
+        const free = (x, y) => x > 0 && y > 0 && x < w.W - 1 && y < w.H - 1 && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
+        /* beside the hero, not in front: measured, a stranger one tile south stands behind the near wall in 3D and only his head shows */
+        const spot = [[1, 0], [-1, 0], [0, -1], [0, 1]].map(([dx, dy]) => [px + dx, py + dy]).find(([x, y]) => free(x, y)) || [px + 1, py];
+        const S = window.__p32 = { spot, def: sanitizeSave({ n: 'x' }).lk, mine: { ...look } };
+        const MB = 1 << 20;
+        S.big = '{"shirt":"#' + 'A'.repeat(MB) + '","skin":"#' + 'B'.repeat(MB) + '","hair":"' + 'x'.repeat(MB) +
+          '","style":"' + 'y'.repeat(MB) + '","outfit":"' + 'z'.repeat(MB) + '","pattern":"' + 'w'.repeat(MB) + '"}';
+        /* a stranger as a network sends one: text, parsed */
+        S.put = lookText => { PEERS = lookText === undefined ? [] : [JSON.parse('{"id":"p32","name":"Stranger","w":' + JSON.stringify(world) +
+          ',"x":' + spot[0] + ',"y":' + spot[1] + ',"dir":"down"' + (lookText === null ? '' : ',"look":' + (lookText === '@big' ? S.big : lookText)) + '}')]; };
+        /* the frame the game's own loop drew: this callback is queued after the loop's, so it runs after it */
+        const read = () => { const c3 = $('cv3'), is3 = camMode === '3d' && c3 && !c3.hidden, src = is3 ? c3 : $('cv');
+          const box = src.getBoundingClientRect(), W = src.width, H = src.height;
+          if (!box.width || !box.height || $('world').hidden || worldCovered()) return { none: 'the ' + camMode + ' canvas has no box on the page (world ' + ($('world').hidden ? 'hidden' : 'shown') + ', covered ' + worldCovered() + ')' };
+          let d; if (is3) { const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); d = g.getImageData(0, 0, W, H).data; }
+          else d = src.getContext('2d').getImageData(0, 0, W, H).data;
+          return { d, W, H }; };
+        S.grab = key => new Promise(res => { let n = 0; const f = () => { if (++n < 2) { requestAnimationFrame(f); return; } S[key] = read(); res(S[key].none || null); }; requestAnimationFrame(f); });
+        S.size = k => S[k] && S[k].d ? S[k].W * S[k].H : 0;
+        S.diff = (a, b) => { const A = S[a], B = S[b]; if (!A || !B || A.none || B.none || A.W !== B.W || A.H !== B.H) return -1;
+          let n = 0; for (let i = 0; i < A.d.length; i += 4) if (A.d[i] !== B.d[i] || A.d[i + 1] !== B.d[i + 1] || A.d[i + 2] !== B.d[i + 2]) n++; return n; };
+        S.cams = [...document.querySelectorAll('#camRow button')].filter(b => !b.hidden).map(b => b.dataset.cam);
+        return { cams: S.cams, def: S.def, mine: S.mine, spot, swatch: SWATCH, styles: (T().styles || []).map(o => o[0]), patterns: (T().patterns || []).map(o => o[0]) };
+      });
+    };
+    const camTo = async c => {
+      await pp.click('#gear'); await pp.waitForTimeout(150);
+      if (!(await pp.evaluate(() => document.getElementById('drwLook').open))) await pp.click('#drwLook summary');
+      await pp.click('#camRow button[data-cam="' + c + '"]');
+      await pp.click('#closeSet'); await pp.waitForTimeout(c === '3d' ? 800 : 200);
+      return pp.evaluate(() => camMode);
+    };
+    const grab = k => pp.evaluate(k2 => window.__p32.grab(k2), k);
+    const diff = (a, b) => pp.evaluate(([a2, b2]) => window.__p32.diff(a2, b2), [a, b]);
+    const put = t => pp.evaluate(t2 => window.__p32.put(t2), t);
+    const settle = async () => { let none = await grab('ref'), still = -1;
+      for (let i = 0; i < 12 && !none; i++) { none = await grab('ref2'); still = await diff('ref', 'ref2'); if (still === 0) break; await grab('ref'); }
+      return { none, still }; };
+    let env = await setup();
+    if (env.none) { P32.push(env.none + ', so no stranger was drawn anywhere — nothing was measured'); env.cams = []; }
+    const short = t => t === null ? '(none)' : t === '@big' ? 'six strings of a megabyte each' : (t.length > 90 ? t.slice(0, 60) + '… (' + t.length + ' characters)' : t);
+    if (!env.cams.length) P32.push('this game offers no camera in Settings, so no stranger was drawn anywhere — nothing was measured');
+    for (const cam of env.cams) {
+      const got = await camTo(cam);
+      if (got !== cam) { P32.push('the ' + cam + ' button in Settings did not switch the camera (it is ' + got + '), so the ' + cam + ' camera was not measured'); continue; }
+      /* the control: the default stranger, twice, with nothing changed between */
+      await put(JSON.stringify(env.def));
+      const c0 = await settle();
+      if (c0.none) { P32.push('in the ' + cam + ' camera ' + c0.none + ', so nothing was measured'); continue; }
+      if (c0.still !== 0) { P32.push('in the ' + cam + ' camera the frame changed by ' + c0.still + ' pixels with nothing changed — the world would not hold still, so nothing was measured'); continue; }
+      /* is a stranger's LOOK on screen here? A stranger in your clothes must be drawn differently from one in the
+         default. Planted: with the body not drawn at all, "stranger or no stranger" still differed by the name label
+         over his head, and every hostile case passed while measuring nothing. */
+      await put(JSON.stringify(env.mine)); await grab('yours');
+      const shows = await diff('ref', 'yours'), yoursDiffer = shows;
+      if (!shows) {
+        if (cam === 'iso') N32.push('COUNT-ONLY: the iso camera draws no other player yet (#32\'s second half waits for multiplayer), so there it was measured only that no stranger breaks the street');
+        else { P32.push('in the ' + cam + ' camera a stranger in your clothes is drawn exactly like one in the default, so a stranger\'s look cannot be seen there and nothing was measured'); continue; }
+      }
+      for (const [label, text] of HOSTILE) {
+        pErr.length = 0;
+        await put(text); await grab('case');
+        const n = await diff('case', 'ref'), errs = pErr.slice();
+        const mineToo = shows > 0 && yoursDiffer > 0 && (await diff('case', 'yours')) === 0;
+        if (errs.length) P32.push('with a stranger ' + label + ' beside you, the page threw ' + errs.length + ' time(s) in the ' + cam + ' camera: ' + errs[0] + ' — their look was ' + short(text));
+        if (mineToo) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn wearing YOUR clothes — a stranger who sends nothing must look like the game\'s default, never like you');
+        else if (n) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn differently (' + (n < 0 ? 'unreadable' : n + ' pixels') + ') from a stranger who sent no look — what their device sent reached the drawing, where a saved look would have been made safe first: ' + short(text));
+        /* and the street comes back when they leave */
+        await put(JSON.stringify(env.def)); await grab('after');
+        const back = await diff('after', 'ref');
+        if (back) {
+          const all = await pp.evaluate(() => window.__p32.size('ref'));
+          P32.push('after a stranger ' + label + ' walked away, the ' + cam + ' camera did not come back: ' + (back < 0 ? 'nothing could be read' : back + ' of its ' + all + ' pixels stay wrong') + ' until a reload' + (back > all / 2 ? ' — the screen is frozen' : ''));
+          env = await setup();
+          if ((await camTo(cam)) !== cam) break;
+          await put(JSON.stringify(env.def)); await settle();
+          await put(JSON.stringify(env.mine)); await grab('yours');
+        }
+      }
+      if (shows) {
+        /* any real colour stays allowed: one of this game's own swatches that is not the default */
+        for (const part of ['shirt', 'skin', 'hair']) {
+          const hex = (env.swatch[part] || []).find(c => c.toLowerCase() !== String(env.def[part]).toLowerCase());
+          if (!hex) { N32.push('COUNT-ONLY: this game has no ' + part + ' swatch but the default, so a stranger\'s own ' + part + ' colour was not tried'); continue; }
+          await put(JSON.stringify({ [part]: hex })); await grab('real');
+          if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose a real ' + part + ' colour, ' + hex + ' (one of this game\'s own swatches), was drawn exactly like one in the default — either the colour was thrown away, and any real colour must stay allowed, or his ' + part + ' cannot be seen from here, and then nothing about ' + part + 's was measured in this camera');
+        }
+        /* and a hair style or a pattern this game's creator offers */
+        for (const [key, list, def] of [['style', env.styles, env.def.style], ['pattern', env.patterns, env.def.pattern]]) {
+          const pick = list.find(v => v !== def);
+          if (!pick) { N32.push('COUNT-ONLY: this game\'s creator offers no ' + key + ' but the default, so a stranger\'s own ' + key + ' was not tried'); continue; }
+          await put(JSON.stringify({ [key]: pick })); await grab('real');
+          if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose the ' + key + ' "' + pick + '", which this game\'s creator offers, was drawn exactly like one with the default ' + key + ' — either it was thrown away, or it cannot be seen from here and nothing about it was measured in this camera');
+        }
+      }
+      await put(undefined);
+    }
+    if (pp) await pp.close();
+    await pctx.close();
+    fails.push(...[...new Set(N32)], ...[...new Set(P32)].map(m => 'another player: ' + m));
+  }
+
   await page.setViewportSize({ width: 480, height: 900 });
   await browser.close();
   /* COUNT-ONLY lines are what a check SAW, not what it found — "2 flights walked in 15 worlds",
