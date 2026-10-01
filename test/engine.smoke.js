@@ -3972,6 +3972,238 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   flight.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
 
+  /* ---- A KEY GOES TO WHAT HAS THE KEYBOARD; THE WORLD GETS ONLY WHAT NOBODY ELSE TAKES (#266, #274) ----
+     On a laptop, Enter on a focused button beside a person pressed the button AND opened the
+     conversation — in Meridian the gear beside Priya opened Settings and started her quest in one
+     keystroke — and with Settings open the arrows walked the hero about behind it. It was both games,
+     and it blocked the builder, whose panels are buttons pressed with Enter. The rule is one rule for
+     every key: a focused control, or any panel over the world, gets a key first; walking, talking and
+     reading get it only when nothing else does.
+     Every check here is a REAL key press on REAL focus (page.keyboard, page.focus). A guard that called
+     the key handler would test the handler and not the keyboard (POSTMORTEM §4). It runs in a page of
+     its own, so nothing the checks above left behind decides what a key does here (§7), and it holds
+     the neighbours still, because a person who wanders off takes the Talk button with him and one who
+     wanders onto the hero's next tile turns a walk into a wall (.claude/skills/guard/SKILL.md, "it reads the clock"). */
+  {
+    const kp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const kErr = [];
+    kp.on('pageerror', e => kErr.push(e.message));
+    await kp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await kp.goto('file://' + file);
+    await kp.waitForTimeout(1500);
+    const K = [];
+    const found = await kp.evaluate(() => {
+      const $ = id => document.getElementById(id);
+      wanderUpdate = function () {};
+      camSet('top');                                  /* an arrow is one world step, not a camera turn */
+      const W = window.__keys = { talks: 0 };
+      $('talk').addEventListener('click', () => { W.talks++; }, true);
+      /* the street, nothing over it, the hero on a tile, the keyboard on the page itself. It waits two
+         frames before it hands back: the loop notices a panel has gone on its next frame and gives
+         the keyboard back to the game then, and a check that focused the gear inside that frame
+         would have its focus taken away by the very rule it is not measuring — which is what the
+         first draft did, in el horno, after a document had been open. */
+      W.scene = async s => {
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        $('card').hidden = true;
+        enterWorld(false);
+        world = s.wid; px = fx = s.x; py = fy = s.y; moving = false; held = null; warpT = 0; dir = 'down';
+        checkTalk();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      };
+      W.state = () => ({
+        px, py, talks: W.talks,
+        card: !$('card').hidden, world: !$('world').hidden, covered: worldCovered(),
+        settings: !$('settings').hidden, reader: !$('reader').hidden,
+        talk: !$('talk').hidden, read: !!$('read') && !$('read').hidden,
+        focus: document.activeElement === document.body ? 'the page' : (document.activeElement.id ? '#' + document.activeElement.id : document.activeElement.tagName.toLowerCase()),
+      });
+      W.focusIn = id => { const b = [...$(id).querySelectorAll('button,select,input')].find(x => !x.hidden && x.offsetParent !== null);
+        if (!b) return null; b.focus(); return document.activeElement === b ? (b.id ? '#' + b.id : b.tagName.toLowerCase()) : null; };
+      const D = [['ArrowUp', 0, -1], ['ArrowDown', 0, 1], ['ArrowLeft', -1, 0], ['ArrowRight', 1, 0]];
+      const plain = (wid, x, y) => { world = wid; return !isSolid(x, y) && !portalAt(wid, x, y) && !troIsStop(wid, x, y); };
+      enterWorld(false);
+      /* a person with something to SAY — a pending quest by preference, so a conversation is a card
+         you can see; anybody Talk lights for otherwise — a free tile beside them, and one plain step
+         from that tile */
+      let person = null, anyone = null, npcs = 0, quests = 0;
+      for (const wid of Object.keys(WORLDS)) { if (person) break; const w = WORLDS[wid];
+        for (const n of w.npcs) { npcs++; const q = pendingAt(n) !== undefined; if (q) quests++;
+          if (person || (!q && anyone)) continue;
+          for (const [, dx, dy] of D) { const x = n.x + dx, y = n.y + dy;
+            if (!plain(wid, x, y)) continue;
+            world = wid; px = fx = x; py = fy = y; moving = false; checkTalk();
+            if ($('talk').hidden) continue;
+            const step = D.find(([, sx, sy]) => plain(wid, x + sx, y + sy));
+            if (!step) continue;
+            const spot = { wid, x, y, name: npcName(n.npc).split(' ·')[0], key: step[0], to: [x + step[1], y + step[2]] };
+            if (q) person = spot; else anyone = spot;
+            break; } } }
+      person = person || anyone;
+      /* a readable thing with nobody beside it, so Enter has only the one thing to do */
+      let paper = null, reads = 0;
+      for (const r of RD()) { if (paper) break; if (!WORLDS[r.world] || !DC()[r.doc]) continue; reads++;
+        for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [0, 0]]) { const x = r.x + dx, y = r.y + dy;
+          if (!plain(r.world, x, y)) continue;
+          world = r.world; px = fx = x; py = fy = y; moving = false; checkTalk();
+          if ($('read').hidden || !$('talk').hidden) continue;
+          const d = DC()[r.doc]; paper = { wid: r.world, x, y, name: (d.title && (d.title.en || '')) || r.doc }; break; } }
+      /* the longest straight walk up to five plain tiles (three at the least), for a direction that is
+         already held when a panel opens. Measured after the neighbours were stilled: in the gauge a
+         wanderer standing in the long row turns six tiles into four, so a fixed five was a coin toss */
+      let run = null;
+      const wids = Object.keys(WORLDS).sort((a, b) => (b === (person && person.wid)) - (a === (person && person.wid)));
+      for (const wid of wids) { if (run && run.n === 5) break; const w = WORLDS[wid];
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+          if (!plain(wid, x, y)) continue;
+          for (const [k, dx, dy] of D) { let n = 0; while (n < 5 && plain(wid, x + dx * (n + 1), y + dy * (n + 1))) n++;
+            if (n >= 3 && (!run || n > run.n)) run = { wid, x, y, key: k, dx, dy, n }; } } }
+      const gear = $('gear');
+      return { person, npcs, quests, paper, reads, run, gear: !!gear && !gear.hidden && gear.offsetParent !== null, settings: !!$('settings') };
+    });
+    const st = () => kp.evaluate(() => window.__keys.state());
+    const scene = s => kp.evaluate(s2 => window.__keys.scene(s2), s);
+    const talked = (b, a) => a.talks > b.talks || (a.card && !b.card);
+    /* what the WORLD did with a key, said as what happened: a conversation, a document, or nothing */
+    const worldDid = (b, a, who) => talked(b, a) ? 'started a conversation with ' + who : (a.reader && !b.reader) ? 'opened a document' : '';
+    /* a focused button beside something the world answers: it is pressed, and nothing else is. The
+       sentence says which half went wrong — the engine cancelling the key also cancels the press. */
+    const pressedOnly = (tag, key, where, who, b, a) => {
+      const w = worldDid(b, a, who);
+      if (w) K.push(tag + ' ' + key + ' on the focused gear beside ' + where + ' ' + (a.settings ? 'pressed the gear AND ' + w + ' — one key, two answers' : w + ' instead of pressing the gear') + '. On a laptop a focused button beside somebody cannot be pressed without the world answering too, and the builder\'s panels are buttons pressed with Enter (#266)');
+      else if (!a.settings) K.push(tag + ' ' + key + ' on the focused gear beside ' + where + ' did not press it — Settings stayed shut — and nothing else answered either, so what a focused button does with ' + key + ' was not measured');
+    };
+    const press = async k => { await kp.keyboard.press(k); await kp.waitForTimeout(350); };
+    /* hold an arrow the way a person does; let go the moment a step starts, so it is one tile */
+    const hold = async (k, ms) => {
+      const b = await st(); await kp.keyboard.down(k);
+      const t0 = Date.now(); let a = b;
+      while (Date.now() - t0 < ms) { await kp.waitForTimeout(40); a = await st(); if (a.px !== b.px || a.py !== b.py) break; }
+      await kp.keyboard.up(k); await kp.waitForTimeout(400); a = await st();
+      return { b, a, moved: a.px !== b.px || a.py !== b.py };
+    };
+    const P = found.person, at = s => s.px + ',' + s.py;
+    if (!found.gear) K.push('this shell shows no gear on the street, so there was no focused button to press Enter on — what a key does with a button focused was not measured, and that is not a pass');
+    else if (!P && found.quests) K.push('the shell has ' + found.quests + ' person(s) with a quest to give and this check found no free tile beside any of them where Talk lights — the finder is broken, not the city; nothing about Enter and a person was measured');
+    else if (!P) fails.push('COUNT-ONLY: nobody in this shell has anything to say at the start (' + found.npcs + ' people, no quest, no chat), so Enter-beside-a-person was not asked here');
+    if (found.gear && P) {
+      /* (a) Enter on a focused button beside a person presses the button and nothing else */
+      await scene(P); await kp.focus('#gear');
+      let b = await st();
+      if (b.focus !== '#gear' || !b.talk || b.covered) K.push('(a) could not set the scene: focus on ' + b.focus + ', Talk ' + (b.talk ? 'lit' : 'dark') + ', world ' + (b.covered ? 'covered' : 'open') + ' — nothing was measured');
+      else { await press('Enter'); pressedOnly('(a)', 'Enter', P.name, P.name, b, await st()); }
+
+      /* (b) with nothing focused, Enter beside a person still talks */
+      await scene(P); b = await st();
+      if (b.focus !== 'the page' || !b.talk) K.push('(b) could not set the scene: focus on ' + b.focus + ', Talk ' + (b.talk ? 'lit' : 'dark'));
+      else { await press('Enter'); const a = await st();
+        if (!talked(b, a)) K.push('(b) Enter beside ' + P.name + ', with nothing focused and nothing over the world, did not talk — the keyboard\'s way into a conversation is gone'); }
+
+      /* (d) Space on a focused button presses only the button */
+      await scene(P); await kp.focus('#gear'); b = await st();
+      if (b.focus !== '#gear') K.push('(d) could not put the focus on the gear (it is on ' + b.focus + ')');
+      else { await press('Space'); pressedOnly('(d)', 'Space', P.name, P.name, b, await st()); }
+
+      /* (c) an arrow key with a panel open moves nobody. The CONTROL comes first and is not optional:
+         the same arrow, with the gear focused and nothing open, has to walk — otherwise a panel that
+         "stopped" the hero may only have met a wall, and a green here would be about the map. The
+         control is also the other half of the rule: a button takes Enter and Space, not the arrows,
+         so a player who clicked one with the mouse has not lost his feet. */
+      await scene(P); await kp.focus('#gear');
+      const ctl = await hold(P.key, 1500);
+      if (!ctl.moved) K.push('(c) with the gear focused and NOTHING open, ' + P.key + ' did not move the hero from ' + at(ctl.b) + ' toward ' + P.to.join(',') + ' — either a focused button now swallows the arrows, so a player who clicked one can no longer walk, or the step is blocked and the panel checks below would measure a wall');
+      else {
+        /* open Settings with a real click, put the keyboard where the brief found it (on a control
+           inside, or on nothing), and hold the same arrow. A fresh scene each time, so one walk
+           cannot leave the hero facing a wall for the next. */
+        for (const inside of [true, false]) {
+          await scene(P); await kp.click('#gear'); await kp.waitForTimeout(250);
+          const where = inside ? await kp.evaluate(() => window.__keys.focusIn('settings'))
+                               : await kp.evaluate(() => { document.activeElement.blur(); return 'nothing'; });
+          const s = await st();
+          if (!s.settings || !where) { K.push('(c) could not open Settings and put the focus ' + (inside ? 'on a control inside it' : 'on the page') + ' (Settings ' + (s.settings ? 'open' : 'shut') + ', focus on ' + s.focus + ') — nothing was measured'); continue; }
+          const r = await hold(P.key, 1000);
+          if (r.moved) K.push('(c) with Settings open and ' + where + ' focused, ' + P.key + ' walked the hero from ' + at(r.b) + ' to ' + at(r.a) + ' behind the panel (#274)');
+        }
+        /* Enter is a key too: Settings open, nothing focused, the person still beside you */
+        await scene(P); await kp.click('#gear'); await kp.waitForTimeout(250);
+        await kp.evaluate(() => document.activeElement.blur());
+        const b2 = await st();
+        if (!b2.settings || !b2.talk || b2.focus !== 'the page') K.push('(c) could not set the scene for Enter behind Settings: Settings ' + (b2.settings ? 'open' : 'shut') + ', Talk ' + (b2.talk ? 'lit' : 'dark') + ', focus on ' + b2.focus);
+        else { await press('Enter'); const a2 = await st();
+          if (talked(b2, a2)) K.push('(c) with Settings open over the street and nothing focused, Enter beside ' + P.name + ' started a conversation behind the panel — no key may reach the world while a panel covers it'); }
+        /* and behind a document, which is where a pack's own keyboard surfaces live (the dough) */
+        await scene(P);
+        const doc = await kp.evaluate(() => { const id = Object.keys(DC())[0]; if (!id) return null; docOpen(id); return id; });
+        await kp.waitForTimeout(250);
+        if (doc) { const s = await st();
+          if (!s.reader) K.push('(c) the document "' + doc + '" did not open, so walking behind a document was not measured');
+          else { const r = await hold(P.key, 1000);
+            if (r.moved) K.push('(c) with the document "' + doc + '" open, ' + P.key + ' walked the hero from ' + at(r.b) + ' to ' + at(r.a) + ' behind the paper (#274)'); } }
+        else fails.push('COUNT-ONLY: this shell has no document, so walking behind one was not asked here');
+        /* and a direction ALREADY held when a panel opens. The key never went up, so no keyup lets go of
+           it. Every panel the engine opens today lets go of it in its own opener (`held=null` — the
+           gear's click handler does, which is why the first draft of this, clicking the gear while
+           walking, could not go red on the unchanged engine). So this opens a panel the way a NEW one
+           might, without that line — the builder's panels are coming — and the world has to stop by
+           itself. Plain tiles ahead of wherever he is when it opens, so "he stopped" cannot be a wall. */
+        const R = found.run;
+        if (!R) K.push('(c) no world in this shell has three plain tiles in a row, so a direction held while a panel opens was not measured');
+        else {
+          await scene(R); await kp.keyboard.down(R.key);
+          const t0 = Date.now(); let w = await st();
+          while (Date.now() - t0 < 1500 && w.px === R.x && w.py === R.y) { await kp.waitForTimeout(30); w = await st(); }
+          await kp.evaluate(() => { document.getElementById('settings').hidden = false; });
+          await kp.waitForTimeout(60);
+          const s1 = await st(); await kp.waitForTimeout(1000); const s2 = await st();
+          await kp.keyboard.up(R.key); await kp.waitForTimeout(300);
+          const ahead = Math.abs((s1.px - R.x) * R.dx + (s1.py - R.y) * R.dy);
+          if (w.px === R.x && w.py === R.y) K.push('(c) holding ' + R.key + ' on a clear run in ' + R.wid + ' never moved the hero, so a key held while a panel opens was not measured');
+          else if (!s1.covered) K.push('(c) a panel put over the street while walking does not count as covering it, so a key held while a panel opens was not measured');
+          else if (ahead >= R.n) K.push('(c) the hero had reached the end of the run before the panel opened, so a key held while a panel opens was not measured');
+          else if (s2.px !== s1.px || s2.py !== s1.py) K.push('(c) holding ' + R.key + ' when a panel opened over the street, the hero walked on from ' + at(s1) + ' to ' + at(s2) + ' behind it — a direction held when a panel opens has to wait for it to close, whether or not the panel\'s opener remembered to let go of it (#274)');
+        }
+      }
+
+      /* EXTRA: when a panel closes, the keyboard comes back to the game. Open Settings from the gear
+         with Enter, shut it with Escape, and Enter beside the person must talk — not press the gear
+         a second time and open Settings again. */
+      await scene(P); await kp.focus('#gear');
+      let s = await st();
+      if (s.focus !== '#gear') K.push('(focus) could not put the focus on the gear (it is on ' + s.focus + '), so the way back to the game was not measured');
+      else { await press('Enter'); s = await st();
+        if (!s.settings) K.push('(focus) Enter on the focused gear did not open Settings, so the way back to the game was not measured');
+        else if (!s.card) {                          /* with the card up, (a) has already said what is wrong */
+          await press('Escape'); s = await st();
+          if (s.settings) K.push('(focus) Escape did not shut Settings, so the way back to the game was not measured');
+          else { await kp.waitForTimeout(150); const b3 = await st(); await press('Enter'); const a3 = await st();
+            if (!talked(b3, a3)) K.push(b3.focus !== 'the page'
+              ? '(focus) after Settings was opened with Enter on the gear and shut with Escape, the keyboard was still on ' + b3.focus + ', so Enter beside ' + P.name + ' ' + (a3.settings ? 'opened Settings again' : 'did nothing') + ' instead of talking — when a panel closes, the keys belong to the game again'
+              : '(focus) after Settings was opened and shut from the keyboard, the keyboard was back on the page and Enter beside ' + P.name + ' still did not talk'); } } }
+    }
+    /* EXTRA: Enter or Space beside a readable thing reads it, the way Enter beside a person talks.
+       Before this, reading from a keyboard took five Tabs. Asked twice: a shell that declares things
+       to read and where this finder found none is a broken finder, not a pass. */
+    if (found.paper) {
+      const R = found.paper;
+      for (const k of ['Space', 'Enter']) {
+        await scene(R); const b = await st();
+        if (!b.read || b.talk || b.focus !== 'the page') { K.push('(read) could not set the scene beside "' + R.name + '": Read ' + (b.read ? 'lit' : 'dark') + ', Talk ' + (b.talk ? 'lit' : 'dark') + ', focus on ' + b.focus); continue; }
+        await press(k); const a = await st();
+        if (!a.reader) K.push('(read) ' + k + ' beside "' + R.name + '", with nothing focused, did not read it — the Read button is lit and the keyboard cannot reach it without Tabbing');
+      }
+      /* and (d) again where Space now means something: a focused button still takes it */
+      if (found.gear) { await scene(R); await kp.focus('#gear'); const b = await st();
+      if (b.focus !== '#gear') K.push('(d) could not put the focus on the gear beside "' + R.name + '" (it is on ' + b.focus + ')');
+      else { await press('Space'); pressedOnly('(d)', 'Space', '"' + R.name + '"', 'somebody', b, await st()); } }
+    } else if (found.reads) K.push('the shell declares ' + found.reads + ' thing(s) to read and this check found no free tile where Read lights with nobody to talk to — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: nothing in this shell is readable, so Enter/Space-reads was not asked here');
+    if (kErr.length) K.push('the page threw while the keys were being pressed: ' + kErr.join(' | '));
+    await kp.close();
+    fails.push(...K.map(m => 'keys: ' + m));
+  }
+
   await page.setViewportSize({ width: 480, height: 900 });
   await browser.close();
   /* COUNT-ONLY lines are what a check SAW, not what it found — "2 flights walked in 15 worlds",

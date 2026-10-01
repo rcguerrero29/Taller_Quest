@@ -648,13 +648,33 @@ async function played() {
    means the template got easier, a line that appears means somebody made the engine harder to
    write a second game for, and it says so on the day it happens.
    NOTHING TO MEASURE IS NOT A MEASUREMENT: an empty result is a broken run and fails differently. */
+/* A RUN THAT NEVER ENDS IS A RED, NOT A WAIT (#279). This used to wait for the shared suite with no
+   limit, the same shape that held test/gauge.js for eighteen minutes twice on 2026-09-30 with its
+   renderer at zero CPU. Measured 2026-09-30: the shared suite against this shell takes 15 s on a
+   loaded four-core machine; the gauge's re-run on that busy machine passed in 27 s. The limit is
+   180 s, more than six times that, so a slow machine is not failed for being slow and a stuck run
+   fails inside three minutes, by name. SIGKILL, because Playwright gives the child its own SIGTERM
+   handler and a child whose event loop is stuck never runs any handler. */
+const LIMIT_S = 180;
 function demands() {
   const expectedPath = path.join(root, 'content', 'horno', 'expected.txt');
   let out = '';
+  const t0 = Date.now();
   try {
     out = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', 'content/horno/index.html'],
-      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (e) { out = (e.stdout || '') + (e.stderr || ''); }
+      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
+  } catch (e) {
+    out = (e.stdout || '') + (e.stderr || '');
+    if (e.code === 'ETIMEDOUT') {
+      console.log('FAIL — el horno\'s engine checks (node test/engine.smoke.js --index content/horno/index.html) timed out:');
+      console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes under 30 s, so they were stopped.');
+      console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
+      console.log('last thing it printed is where it stuck.');
+      console.log('--- the last thing the inner run printed ---');
+      console.log(out.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+      return false;
+    }
+  }
   const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
     .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')).sort();
   if (!/COUNT-ONLY|\bOK\b|^FAIL/m.test(out)) {
