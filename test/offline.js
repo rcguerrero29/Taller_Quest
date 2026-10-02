@@ -91,7 +91,9 @@ const CSP = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = l
   const context = await browser.newContext();
   const page = await context.newPage();
   const violations = [];
-  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) violations.push(m.text().slice(0, 160)); });
+  /* 400, not 160: the hash of the refused text sits past the 160th character in Chromium's older wording, and the
+     probe below is told apart from the page's own refusals by that hash */
+  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) violations.push(m.text().slice(0, 400)); });
   await context.exposeBinding('__cspViolation', (src, v) => violations.push(v));
   await context.addInitScript(() => document.addEventListener('securitypolicyviolation', e => window.__cspViolation(e.violatedDirective + ' blocked ' + (e.blockedURI || 'inline'))));
   let loads = 0;
@@ -121,6 +123,9 @@ const CSP = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = l
      exactly one style-src-elem and one style-src-attr refusal arrive. Those two are this check's own and come off
      the violations list; anything else that arrived meanwhile stays on it. Both pages, over http, from the box. */
   const tried = [];
+  /* the two texts the probe writes, as the browser will name them: 'sha256-' + base64 of the text, the first eight
+     characters (48 bits) being enough to tell them from anything a page would apply on its own */
+  const PROBE_HASH = [':root{--zeni:1}', '--zeni:2'].map(t => 'sha256-' + require('crypto').createHash('sha256').update(t).digest('base64').slice(0, 8));
   const enforced = async (p, where) => {
     const before = violations.length;
     const r = await p.evaluate(async () => {
@@ -139,10 +144,14 @@ const CSP = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = l
     for (let k = 0, n = -1; k < 15 && violations.length !== n; k++) { n = violations.length; await settle(200); }
     const mine = violations.splice(before);
     /* at most this check's own two of each kind come off: one event per style, and one console line per style where
-       this page's console is read. A third is the page's own, and stays a red. */
+       this page's console is read. A third is the page's own, and stays a red. A console line is this check's own
+       only if it carries the HASH of one of the two texts written above: Chromium names the refused text's sha256
+       in the line, and the words around it changed between versions ("Refused to apply inline style…" in 141,
+       "Applying inline style violates…" in the one CI installed on 2026-10-02, which left the probe's own two
+       lines on the list and turned #25 red), so the words are not the noun. */
     const left = { ev: 2, con: 2 };
     violations.push(...mine.filter(v => /style-src-(elem|attr) blocked inline/.test(v) && left.ev-- > 0 ? false
-      : /Refused to apply inline style/.test(v) && left.con-- > 0 ? false : true));
+      : /inline style/i.test(v) && PROBE_HASH.some(h => v.includes(h)) && left.con-- > 0 ? false : true));
     if (r.err) { fails.push(where + ': whether the policy is enforced could not be asked (' + r.err + ') — nothing to measure is not a pass'); return; }
     const went = [r.block === '1' && 'a <style> block', r.attr === '2' && 'a style="…" attribute'].filter(Boolean);
     if (went.length) fails.push(where + ': ' + went.join(' and ') + ' written into the page APPLIED — the browser is not enforcing the page\'s policy (a policy <meta> counts only inside <head>, never inside a comment, and the first copy of a directive is the one in force), so every "no violation" in these suites measured nothing');
