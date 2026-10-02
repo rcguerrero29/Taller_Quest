@@ -7759,7 +7759,9 @@ function ribbonSay(){
       the taller opens", and anything else a pack invents later, with no engine change.
    4. NOTHING IS STAMPED THAT BREAKS THE CITY. Every build is validated before a single tile
       lands: inside the map, never over a person, never over a portal, never a door that opens
-      onto nothing (#9), and no portal in that world may lose its last standable neighbour.
+      onto nothing (#9), and no portal in that world may lose its last standable neighbour. A room's
+      door opens onto a side you can step out on, and a lot never builds over the spot where another
+      door sets you down (#265, doorStep).
       A refused build is logged to the console and fails the smoke (§27); saying it in play is
       El Portero's job (#8, designed, not built).
 
@@ -7807,6 +7809,32 @@ function resolveBuild(b){
   });
   return {id:b.id,world:b.world,tpl:b.tpl,pick,tiles,reads,links};
 }
+/* #265 — WHICH WAY A BUILT DOOR OPENS. The way out of a room a lot carries set you down one tile
+   SOUTH of its door, always, whatever stood there: a door in a hut's north wall let you out inside
+   the hut's own wall, a hatch in the bottom edge of the map let you out off the map, and the engine
+   said nothing at boot (planted at the builder junta, 2026-09-29). The owner, 2026-09-30: "an auto,
+   choose a door for now workflow when building so exits/doors exist."
+   So the door opens onto the first side, in DOORSIDES order, that you can step out onto and walk on
+   from. The step is on the map, not solid, not a door (you would be thrown straight through it), and
+   not somebody who never moves; and beside it there is at least one more tile you can stand on,
+   because a step whose only way on is back through the door is the same trap one tile further out.
+   South comes first: it is the side every door that shipped before this already uses. A neighbour who
+   WANDERS is not a wall — he will be gone in four seconds, and a door that faced a different way
+   depending on who was walking past at boot would be a different city on every load.
+   It reads the grid it is handed: buildSafe passes the street with the lot already laid on it, so the
+   side is chosen against the lot's own walls, and a door with no side at all is refused there.
+   The sides are a local, not a top-level const: the first applyBuilds() runs at load, hundreds of
+   lines above this, and a top-level const is not there yet when it does (measured: the engine stopped). */
+function doorStep(id,g,rows,x,y){
+  const DOORSIDES=[["down",0,1],["up",0,-1],["right",1,0],["left",-1,0]];
+  const w=WORLDS[id];if(!w)return null;
+  const A=PORTALSAT[id]||{},P=PORTALS[id]||{};
+  const stand=(a,b)=>{if(a<0||b<0||a>=w.W||b>=w.H||(a===x&&b===y)||SOLID.has(g[b][a]))return false;
+    return g[b][a]!=="N"||wanders(whoAt(id,a,b));};
+  for(const [dir,dx,dy] of DOORSIDES){const sx=x+dx,sy=y+dy;
+    if(!stand(sx,sy)||A[sx+","+sy]||P[rows[sy][sx]])continue;
+    if(DOORSIDES.some(([,ox,oy])=>stand(sx+ox,sy+oy)))return {x:sx,y:sy,dir:dir};}
+  return null;}
 /* refuse anything that would wall the city in. Cheap, and it runs before a tile is written. */
 function buildSafe(spec){
   const w=WORLDS[spec.world];if(!w)return "no such world: "+spec.world;
@@ -7833,6 +7861,17 @@ function buildSafe(spec){
       return nx>=0&&ny>=0&&nx<w.W&&ny<w.H&&!SOLID.has(g[ny][nx])&&g[ny][nx]!=="N";});
     if(!ok)return "it would seal the door at "+x+","+y;
   }
+  /* #265 — never over the spot where another door sets you down: whoever came through it would stand
+     inside this lot. A lot raised earlier chose its side before this one landed, so this is the half of
+     doorStep that keeps that choice true. */
+  for(const from of Object.keys(WORLDS))for(const {x,y,p} of portalsOf(from)){
+    if(p.to===spec.world&&p.x>=0&&p.y>=0&&p.x<w.W&&p.y<w.H&&SOLID.has(g[p.y][p.x])&&!SOLID.has(w.grid[p.y][p.x]))
+      return "it would build over "+p.x+","+p.y+", where the door in "+from+" at "+x+","+y+" sets you down";}
+  /* ...and every door it links to a room opens onto a side you can step out on. The side found here,
+     on the street with this lot laid on it, is the one the room's way out uses (buildInterior). */
+  for(const l of (spec.links||[])){
+    l.step=doorStep(spec.world,g,rows,l.x,l.y);
+    if(!l.step)return "its door at "+l.x+","+l.y+" has nowhere to step out onto — whoever went in could never come out";}
   return null;
 }
 function applyBuilds(){
@@ -7852,8 +7891,10 @@ function applyBuilds(){
 }
 /* an interior a build carries becomes a WORLD of its own, named after the lot (an id is at most
    twelve characters — the save keeps that many), with its people, its name and its arrival line
-   in both languages; the lot's door and the room's exit become coordinate portals to each other */
+   in both languages; the lot's door and the room's exit become coordinate portals to each other,
+   and the exit sets you down on the side of the door that buildSafe chose (doorStep, #265) */
 function buildInterior(from,l){
+  const st=l.step;if(!st)return;   /* no side to step out on, no room: buildSafe has already said so out loud */
   const I=l.interior,id=String(l.id).slice(0,12);
   const rows=I.rows.slice(),grid=[],wnpcs=[],defs=I.people||{};
   rows.forEach((row,y)=>{grid.push(row.split(""));row.split("").forEach((ch,x)=>{
@@ -7864,7 +7905,7 @@ function buildInterior(from,l){
     if(I.locs)t.locs[id]=I.locs[lg]||I.locs.en||id;if(I.arrive)t.arrive[id]=I.arrive[lg]||I.arrive.en||"";});
   const ld=l.landing||[Math.floor(rows[0].length/2),rows.length-2],ex=l.exit||[Math.floor(rows[0].length/2),rows.length-1];
   (PORTALSAT[from]=PORTALSAT[from]||{})[l.x+","+l.y]={to:id,x:ld[0],y:ld[1],dir:"up",by:l.id};
-  (PORTALSAT[id]=PORTALSAT[id]||{})[ex[0]+","+ex[1]]={to:from,x:l.x,y:l.y+1,dir:"down",by:l.id};
+  (PORTALSAT[id]=PORTALSAT[id]||{})[ex[0]+","+ex[1]]={to:from,x:st.x,y:st.y,dir:st.dir,by:l.id};
 }
 /* a district's storefront ribbon: dropped once that district has opened */
 function applyRibbon(){
