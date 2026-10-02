@@ -5279,6 +5279,145 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   droneNote.forEach(l => console.log('  ' + l));
   fails.push(...droneP);
 
+  /* ---- #269: TWO ROOMS ARE TWO ROOMS, AND A RELOAD PUTS YOU WHERE YOU STOOD ----
+     A room a lot carries was named by cutting the lot's id to twelve letters, because the save kept
+     twelve — so two lots whose ids share their first twelve letters made ONE room, silently: rename
+     Meridian's lots casita-de-don-1 and casita-de-don-2 and Doña Tencha's house, and Doña Tencha,
+     disappeared, with nothing in the log (measured 2026-09-30, in a copy of this repository). And the
+     save cut the id of whatever place you stood in to twelve letters, so a place with a longer id sent
+     you home on every reload. The owner, 2026-09-30: "why dont they have different IDs? and a warning
+     that other rooms have the same name".
+     A PROBE, SAID PLAINLY, on a page of its own: a yard whose id is longer than twelve letters, and two
+     lots whose ids share their first twelve, each carrying a room of a different width and the SAME
+     name. Real arrow keys walk into each; a real reload and a real press of Continue ask where you wake;
+     then four lots that must be refused — an id already taken by a lot, an id already taken by a
+     place, an id longer than a save keeps, and one lot with two doors into rooms. Nothing here calls the code that names a room. */
+  {
+    const names = await page.evaluate(() => (typeof logKind === 'function' ? logKind('name') : []).map(e => e.msg));
+    names.forEach(m => console.log('  NOTE: the engine says two places share a name (a warning, not a fault): ' + m));
+    const declare = () => {
+      wanderUpdate = function () {};
+      camSet('top');
+      if (SOLID.has('.') || !SOLID.has('#')) return { err: 'this pack makes "." solid or "#" walkable, so the probe yard cannot be laid in its letters' };
+      const Y = 'probe-yard-for-two-gatehouses';
+      const rows = ['#############', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#############'];
+      WORLDS[Y] = { rows: rows.slice(), rows0: rows.slice(), grid: rows.map(r => r.split('')), npcs: [], W: rows[0].length, H: rows.length };
+      Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[Y] = 'the probe yard'; t.arrive[Y] = ''; });
+      const room = w => ({ rows: w === 5 ? ['#####', '#...#', '#...#', '##.##'] : ['#######', '#.....#', '#.....#', '###.###'], locs: { en: 'the gatehouse', es: 'la caseta' } });
+      if (typeof BUILDTPL === 'undefined') window.BUILDTPL = {};
+      Object.assign(BUILDTPL, {
+        'probe-gate-a': { id: 'probe-gate-a', size: { w: 1, h: 1 }, parts: [{ id: 'door', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(5) } }] },
+        'probe-gate-b': { id: 'probe-gate-b', size: { w: 1, h: 1 }, parts: [{ id: 'door', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(7) } }] },
+        'probe-gate-two': { id: 'probe-gate-two', size: { w: 2, h: 1 }, parts: [{ id: 'left', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(5) } },
+          { id: 'right', tiles: [[0, 1, '.']], link: { door: [0, 1], interior: room(7) } }] },
+      });
+      if (typeof BUILDS === 'undefined') window.BUILDS = [];
+      BUILDS.length = 0;   /* only the probe's lots are raised here; the page is thrown away */
+      BUILDS.push({ id: 'probe-gatehouse-1', tpl: 'probe-gate-a', world: Y, x: 2, y: 2 }, { id: 'probe-gatehouse-2', tpl: 'probe-gate-b', world: Y, x: 6, y: 2 });
+      applyBuilds();
+      return { Y };
+    };
+    const ip = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const iErr = [], IR = [];
+    ip.on('pageerror', e => iErr.push(e.message));
+    await ip.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await ip.goto('file://' + file);
+    await ip.waitForTimeout(1500);
+    const set = await ip.evaluate(declare);
+    await ip.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true; document.getElementById('card').hidden = true; });
+    const at = () => ip.evaluate(() => ({ w: world, x: px, y: py, W: (WORLDS[world] || {}).W, name: (T().locs || {})[world] || world }));
+    const walkIn = async (x, y) => {
+      await ip.evaluate(([Y, x, y]) => { world = Y; px = fx = x; py = fy = y; moving = false; held = null; dir = 'down'; warpT = 0; portalT = 0; warpPend = null; portalHold = '';
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }, [set.Y, x, y]);
+      await ip.waitForTimeout(80);
+      await ip.keyboard.down('ArrowDown');
+      try { await ip.waitForFunction(Y => world !== Y && !warpPend, set.Y, { timeout: 5000 }); } catch (e) {}
+      await ip.keyboard.up('ArrowDown');
+      try { await ip.waitForFunction(() => performance.now() > warpT && performance.now() > portalT + 30, null, { timeout: 5000 }); } catch (e) {}
+      return at();
+    };
+    const reload = async () => {
+      await ip.reload(); await ip.waitForTimeout(1500);
+      await ip.evaluate(declare);                            /* the pack's lots again, as a boot would raise them */
+      await ip.click('#continueBtn'); await ip.waitForTimeout(600);
+      return at();
+    };
+    if (set.err) IR.push(set.err);
+    else {
+      const one = await walkIn(2, 1), two = await walkIn(6, 1);
+      if (one.w === set.Y || two.w === set.Y) IR.push('walking onto a gatehouse door from the yard did not take you inside (first: ' + one.w + ', second: ' + two.w + ')');
+      else if (one.w === two.w) IR.push('the first gatehouse\'s door opened into the second one\'s room, ' + two.W + ' tiles wide where its own is 5 — two rooms whose ids share their first twelve letters became one, and the first is gone');
+      else if (one.W !== 5 || two.W !== 7) IR.push('the two gatehouse doors open into two rooms, but not their own: ' + one.W + ' and ' + two.W + ' tiles wide where they were built 5 and 7');
+      /* a reload, standing in the second gatehouse: the arrival saved; Continue must put you back */
+      const woke = await reload();
+      if (woke.w !== two.w || woke.x !== two.x || woke.y !== two.y) IR.push('you saved standing in the second gatehouse at ' + two.x + ',' + two.y + ', reloaded and pressed Continue, and woke up in ' + woke.name + ' at ' + woke.x + ',' + woke.y);
+      /* ...and in the yard, whose id is longer than twelve letters: walk out, reload, Continue */
+      await ip.keyboard.down('ArrowDown');
+      try { await ip.waitForFunction(Y => world === Y && !warpPend, set.Y, { timeout: 5000 }); } catch (e) {}
+      await ip.keyboard.up('ArrowDown');
+      try { await ip.waitForFunction(() => performance.now() > warpT, null, { timeout: 5000 }); } catch (e) {}
+      const out = await at();
+      if (out.w !== set.Y) IR.push('walking out of the second gatehouse did not bring you back to the yard (you are in ' + out.name + ')');
+      else {
+        const woke2 = await reload();
+        if (woke2.w !== set.Y || woke2.x !== out.x || woke2.y !== out.y) IR.push('you saved standing in the yard at ' + out.x + ',' + out.y + ' — a place whose id is ' + set.Y.length + ' letters long — reloaded and pressed Continue, and woke up in ' + woke2.name + ' at ' + woke2.x + ',' + woke2.y);
+      }
+      /* the warning the owner asked for: both rooms are called "the gatehouse" */
+      const warned = await ip.evaluate(() => (typeof logKind === 'function' ? logKind('name') : []).map(e => e.msg));
+      const said = warned.find(m => m.includes('probe-gatehouse-1') && m.includes('probe-gatehouse-2'));
+      if (!said) IR.push('two rooms are both called "the gatehouse" and nothing said so — he asked for a warning that other rooms have the same name');
+      else IR.push('COUNT-ONLY: room ids (#269): two rooms called "the gatehouse" are two rooms, and the engine said so: ' + said);
+      /* four lots that must be refused, raised the way a pack's are */
+      const bad = await ip.evaluate(Y => {
+        const long = 'probe-' + 'gatehouse-with-a-name-too-long-to-keep-whole';
+        BUILDS.push({ id: 'probe-gatehouse-1', tpl: 'probe-gate-a', world: Y, x: 10, y: 2 }, { id: Y, tpl: 'probe-gate-a', world: Y, x: 4, y: 5 }, { id: long, tpl: 'probe-gate-a', world: Y, x: 8, y: 5 },
+          { id: 'probe-two-doors', tpl: 'probe-gate-two', world: Y, x: 10, y: 5 });
+        applyBuilds();
+        const crit = logCrit().filter(e => e.kind === 'build').map(e => e.msg);
+        return { long, yardW: WORLDS[Y] && WORLDS[Y].W, yardBuilt: !!(WORLDS[Y] && WORLDS[Y].built), dupDoor: !!portalAt(Y, 10, 2), longDoor: !!portalAt(Y, 8, 5), yardDoor: portalAt(Y, 4, 5),
+          dupSaid: crit.find(m => m.includes('probe-gatehouse-1')), yardSaid: crit.find(m => m.includes(Y)), longSaid: crit.find(m => m.includes(long)),
+          two: [portalAt(Y, 10, 5), portalAt(Y, 11, 5)].map(p => p && p.to), twoSaid: crit.find(m => m.includes('probe-two-doors')) };
+      }, set.Y);
+      if (bad.dupDoor || !bad.dupSaid) IR.push('a second lot with the id probe-gatehouse-1 was ' + (bad.dupDoor ? 'built, its door opening into the first one\'s room' : 'left out') + (bad.dupSaid ? '' : ', and nothing said why'));
+      if (bad.yardBuilt || bad.yardW !== 13) IR.push('a lot whose id is the id of the yard ' + (bad.yardBuilt ? 'replaced the yard itself with a room ' + bad.yardW + ' tiles wide' : 'changed the yard') + (bad.yardSaid ? '' : ', and nothing said so'));
+      else if (bad.yardDoor) IR.push('a lot whose id is the id of the yard was built anyway, its door opening into a room called ' + bad.yardDoor.to + (bad.yardSaid ? '' : ', and nothing said so'));
+      else if (!bad.yardSaid) IR.push('a lot whose id is the id of the yard was left out and nothing said why');
+      if (bad.longDoor || !bad.longSaid) IR.push('a lot whose id is ' + bad.long.length + ' letters long was ' + (bad.longDoor ? 'built — a save keeps fewer, so whoever saved inside it would wake up somewhere else' : 'left out') + (bad.longSaid ? '' : ', and nothing said why'));
+      if (bad.two[0] && bad.two[0] === bad.two[1]) IR.push('a lot with two doors into two rooms was built with both doors opening into one room, ' + bad.two[0] + (bad.twoSaid ? '' : ', and nothing said so'));
+      else if (bad.two[0] || bad.two[1] || !bad.twoSaid) IR.push('a lot with two doors into two rooms was ' + (bad.two[0] || bad.two[1] ? 'built' : 'left out') + (bad.twoSaid ? '' : ', and nothing said why'));
+      if (bad.dupSaid && bad.yardSaid && bad.longSaid && bad.twoSaid) IR.push('COUNT-ONLY: room ids (#269): four lots refused, in these words: ' + [bad.dupSaid, bad.yardSaid, bad.longSaid, bad.twoSaid].join(' | '));
+    }
+    if (iErr.length) IR.push('the page threw while walking between rooms and reloading: ' + iErr.slice(0, 3).join(' | '));
+    await ip.close();
+    /* ...and a save whose place is a name every object answers to. Kept whole, "constructor" finds the one
+       Object.prototype lends WORLDS, and Continue stops the game at the title with an error; cut to twelve
+       letters, longer ones like "propertyIsEnumerable" were defused by accident — so keeping ids whole
+       must not let them all through. A Trolley Pass link reaches this same loader. Each name in a page of
+       its own (a broken page's error must not be counted against the next), planted at the title, where
+       the HUD is down and nothing saves itself over the plant on the way out (pagehide). */
+    for (const odd of ['constructor', 'propertyIsEnumerable']) {
+      const op = await browser.newPage({ viewport: { width: 480, height: 900 } });
+      const oErr = [];
+      op.on('pageerror', e => oErr.push(e.message));
+      await op.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await op.goto('file://' + file); await op.waitForTimeout(1200);
+      await op.evaluate(o => { save(); const k = SK('1'), sv = JSON.parse(localStorage.getItem(k)); sv.w = o; localStorage.setItem(k, JSON.stringify(sv)); }, odd);
+      await op.reload(); await op.waitForTimeout(1200);
+      const carried = await op.evaluate(() => (JSON.parse(localStorage.getItem(SK('1')) || '{}') || {}).w);
+      if (carried !== odd) IR.push('a save whose place is called "' + odd + '" could not be planted — the game holds "' + carried + '" — so nothing was measured, which is not a pass');
+      else {
+        try { await op.click('#continueBtn', { timeout: 5000 }); } catch (e) { oErr.push('Continue could not be pressed: ' + String(e.message || e).split('\n')[0]); }
+        await op.waitForTimeout(700);
+        const r = await op.evaluate(() => ({ w: String(world), shown: !document.getElementById('world').hidden }));
+        if (oErr.length || !r.shown || r.w === odd) IR.push('a save whose place is called "' + odd + '" — a name every object answers to — ' +
+          (!r.shown ? 'stopped the game at the title when Continue was pressed' : r.w === odd ? 'put you inside it' : 'woke you in ' + r.w) + (oErr.length ? ', and the page threw: ' + oErr[0] : ''));
+      }
+      await op.close();
+    }
+    fails.push(...IR.map(m => /^COUNT-ONLY: /.test(m) ? m : 'room ids: ' + m));
+  }
+
   /* ---- A KEY GOES TO WHAT HAS THE KEYBOARD; THE WORLD GETS ONLY WHAT NOBODY ELSE TAKES (#266, #274) ----
      On a laptop, Enter on a focused button beside a person pressed the button AND opened the
      conversation — in Meridian the gear beside Priya opened Settings and started her quest in one
