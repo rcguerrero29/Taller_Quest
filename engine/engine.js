@@ -960,15 +960,22 @@ function drawIso(){
       else{ctx.save();ctx.translate(cx,cy);ctx.scale(0.45,0.45);ctx.translate(-cx,-cy);
         isoDiamond(cx,cy,ch==="Y"?"#C0392B":"#E0B45C");ctx.restore();}}
   }
-  /* what the dog leaves (#267). A hole is laid onto its tile's diamond: the top camera's own painter,
-     through the one transform that takes a 32-px tile square to this camera's 44×22 diamond about P's
-     centre — so it is the same hole on the same tile, and a block in front covers it the way it covers
-     the floor. The other thing stands, in the depth pass below, where the people are. */
-  const decs=decalsNow(Date.now());
-  decs.forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
-    const[cx,cy]=P(dc.x,dc.y);
+  /* WHAT LIES ON THE GROUND is laid onto its tile's diamond by `lay`: the top camera's own painter, written for a
+     32-px tile square with (sx,sy) its top-left, through the one transform that takes that square to this camera's
+     44×22 diamond about P's centre — so it is the same mark on the same tile, and a block in front, or a person
+     standing on it, covers it the way they cover the floor. One transform for every ground mark here.
+     The petals a walker drops (#284) lie here, before the depth pass. They were handed P as if it named the tile's
+     top-left, when P names the diamond's centre, and painted after the depth sort: their middle 17 px right of and
+     16 px below the middle of the tile they fell on, not one pixel of them on it, standing upright, over the people
+     and blocks round them (test/engine.smoke.js, grep `petalsOnTheirTile`).
+     What the dog leaves (#267): a hole lies here too; the other thing stands, in the depth pass below, where the
+     people are. */
+  const lay=(x,y,paint)=>{const[cx,cy]=P(x,y);
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
-    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);drawDecal(ctx,-TS/2,-TS/2,dc,a);ctx.restore();});
+    ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);paint(-TS/2,-TS/2);ctx.restore();};
+  petalTrail(world,null,lay);
+  const decs=decalsNow(Date.now());
+  decs.forEach(({dc,a})=>{if(DECALFLAT[dc.kind])lay(dc.x,dc.y,(sx,sy)=>drawDecal(ctx,sx,sy,dc,a));});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
@@ -1061,12 +1068,12 @@ function drawIso(){
      trolley"): painted after everybody, the car covered a person standing in FRONT of it — 86 pixels
      of him under a car that was behind him, measured. It is a thing on its row: it takes the depth
      queue at its own centre, so whoever is nearer the camera paints over it and whoever is farther
-     paints under it, the way the people already do. (The line inspector, crew iteration 12.) */
+     paints under it, the way the people already do. (The line inspector, crew iteration 12.)
+     The petals are no longer drawn here: they lie on the ground, laid by `lay` before the depth pass (#284). */
   {const L=troLine(world);if(L&&TRO.state!=="away"){const n=troCars(L);
     for(let i=0;i<n;i++){const cx=TRO.x+i*(TRO_LEN+TRO_GAP);
       R.push({d:cx+TRO_LEN/2+L.row+0.5,f:(function(k){return function(){troDraw2D(world,P,false,k);};})(i)});}}}
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
-  petalTrail(world,P);
   fiestaDraw2D(world,P,false);
   /* shared time-of-day wash (door spills are top-down-only for now) */
   const dnow=new Date(),hr=dnow.getHours()+dnow.getMinutes()/60;
@@ -1987,13 +1994,15 @@ function petalDrop(wid,x,y,feet){ /* owner, 2026-09-07: the trail "for the bridg
   }
   if(!carry&&!deck)return;
   PETALS.push({w:wid,x,y,t:Date.now(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
-function petalTrail(wid,toScreen){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera */
+function petalTrail(wid,toScreen,lay){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera's 32-px terms (top, front);
+  or, for a camera whose ground is not that square, lay(x,y,paint), which puts paint(sx,sy) onto the tile's own ground (iso, #284) */
   if(!PETALS.length)return;const now=Date.now(),P=petalPal();
+  lay=lay||((x,y,paint)=>{const[sx,sy]=toScreen(x,y);paint(sx,sy);});
   PETALS.forEach(pt=>{if(pt.w!==wid)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
-    const[sx,sy]=toScreen(pt.x,pt.y);let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
-    ctx.globalAlpha=1-age*age;
-    for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
-    ctx.globalAlpha=1;});}
+    lay(pt.x,pt.y,(sx,sy)=>{let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+      ctx.globalAlpha=1-age*age;
+      for(let i=0;i<3;i++)petalShape(ctx,sx+6+rnd()*20,sy+6+rnd()*20,rnd()*Math.PI*2,1.1,P[1+((i+pt.s)%(P.length-1))]);
+      ctx.globalAlpha=1;});});}
 TILEDRAW["^"]=rc=>{const{sx,sy,x,y}=rc; /* the rainbow bridge: walk the whole spectrum.
       The six bands are what a season recolours; planks and rails are design. One season may
       also STREW the deck (art("bridgeStyle")==="petals"): Día de Muertos lays cempasúchil petals
@@ -2602,7 +2611,15 @@ function drawFront(){
   /* depth pass: facades, decor and actors interleaved by row, back to front. Declared before the
      fiesta is drawn because a prop on a solid tile is queued into it (fiestaDraw2D's `defer`) */
   const R=[];
-  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true);
+  petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);
+  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner's "looks like the person is laying on
+     the trolley" (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
+     that row (people are y+0.55) — whoever is nearer the camera than the rails paints over it, whoever is farther paints
+     under it. Until mq-v217 this camera painted it right here, before the queue and so under every row, while a note in
+     test/engine.smoke.js said it had been moved. At rest nobody in this camera reaches the car's row, so nothing showed;
+     half a step off the platform into a stopped car put the hero's legs on its roof. Every car of a train is on the same
+     row, so one slot holds the whole train. */
+  {const L=troLine(world);if(L)R.push({d:L.row+0.5,f:()=>troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true)});}
   fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true,fn=>R.push({d:fn.y+0.05,f:fn})); /* after its row's facade, before actors — the same slot decor uses */
   drawDecals(camX,camY);
   DECOS.forEach(d=>{if(d.world!==world)return;const f=DECODRAW[d.deco];if(!f)return;
@@ -3062,11 +3079,12 @@ function drawLoro(g,sx,sy){
    the kinds. Critters wander a small radius around home, never block the hero, and
    the street cat is pettable via the same button as the named animals. */
 const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,holdT:0,stayT:0,home:[c.x,c.y]}));
+const CRIT_REACH=4; /* how many steps from its own spot a critter wanders on its own; critFree refuses a step any further */
 function critFree(cr,x,y){const w=WORLDS[cr.world];
   return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")
     &&!(world===cr.world&&x===px&&y===py)
     &&!(typeof troDanger==="function"&&troDanger(cr.world,x,y))  /* nothing alive WALKS INTO a road with a car on it */
-    &&Math.abs(x-cr.home[0])+Math.abs(y-cr.home[1])<=4;}
+    &&Math.abs(x-cr.home[0])+Math.abs(y-cr.home[1])<=CRIT_REACH;}
 /* ---- ...and a thing that finds itself in the road leaves it ----
    Avoidance alone is not enough: the line is empty ground when no car is running, so a critter is
    free to cross it and will be standing on it when the next tram is summoned. Flight alone is not
@@ -3093,12 +3111,18 @@ function critShy(cr,now){
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;cr.next=now+260;
   return true;}
 function critUpdate(dt,now){CRIT.forEach(cr=>{
+  /* the stuck clock (#268): when he was last anything but free and standing — a step, a job, told to hold,
+     following you, you not in the room. dogUnstick reads it; a clock that ran backwards starts again. */
+  if(cr.moving||cr.task||cr.follow||cr.holdT>now||cr.stayT>now||world!==cr.world||cr.stepT===undefined||cr.stepT>now)cr.stepT=now;
   if(!cr.moving&&critShy(cr,now))return;   /* the road first: a critter does not wait its turn to live */
   if(cr.moving){cr.mt+=dt/(cr.kind==="gato"?520:cr.kind==="butterfly"?300:160);
     if(cr.mt>=1){cr.moving=false;cr.fx=cr.x;cr.fy=cr.y;}
     else{cr.fx=cr.x-cr.dx*(1-cr.mt);cr.fy=cr.y-cr.dy*(1-cr.mt);}return;}
-  if(cr.task){if(world===cr.world)dogStep(cr,now);
-    else{cr.task=null;if(BALL&&BALL.dog===cr)BALL=null;}return;}
+  if(cr.task){const tk=cr.task;
+    if(world===cr.world)dogStep(cr,now);
+    else{cr.task=null;if(BALL&&BALL.dog===cr)BALL=null;}
+    if(!cr.task)dogDone(cr,tk,now);   /* every way a job ends passes here: the one rule (#268) */
+    return;}
   if(world!==cr.world){cr.next=now+1200;return;}
   if(now<cr.next)return;
   if(cr.stayT>now){cr.sit=true;return;} /* STAY means stay */
@@ -3116,7 +3140,8 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(cr.kind==="gato"?1500+Math.random()*3500:400+Math.random()*900);return;}
   cr.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
-  if(!dirs.length){cr.next=now+900;return;}
+  if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* he appears no matter what (#268) */
+    cr.next=now+900;return;}
   const d=dirs[Math.floor(Math.random()*dirs.length)];
   cr.dx=d[0];cr.dy=d[1];if(d[0])cr.face=d[0];
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;
@@ -3280,8 +3305,14 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
   if(tk.type==="come"){
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
     if(d<=1){cr.task=null;cr.sit=true;cr.happyT=now+2200;cr.next=now+2600;
+      cr.home=[cr.x,cr.y]; /* where you called him is where he stays, as when the whistle carries across the city (#268; owner, 2026-09-30: "i dont want him to leave me") */
       toast("🐶 "+(T().cmdOkCome||"!"),2400);return;}
     if(!dogWalk(cr,px,py))cr.task=null;
+    return;}
+  if(tk.type==="home"){ /* back to his own spot, from where he may wander again — every job that ends far from it ends here (dogDone) */
+    if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=1||!dogWalk(cr,cr.home[0],cr.home[1])){
+      cr.task=null;cr.sit=true;cr.next=now+1500;}
+    else cr.sit=false;                                /* on his feet for the walk, whatever the job ended in */
     return;}
   if(tk.type==="run"){ /* the agility course, taken at full commitment */
     const wp=tk.wp[tk.i];
@@ -3313,16 +3344,13 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
       if(!dogWalk(cr,tk.at[0],tk.at[1]))cr.task=null;
       return;}
     if(tk.phase==="sing"){tk.bowl=bowlVisit(cr,tk,now);tk.steps=0;
-      if(!tk.bowl){tk.phase="home";return;}          /* the step is taken, or nobody works there: he goes home dry */
+      if(!tk.bowl){cr.task={type:"home"};return;}    /* the step is taken, or nobody works there: he goes home dry */
       tk.phase="drink";tk.wait=now+1000;return;}      /* the time it takes to set a bowl down */
-    if(tk.phase==="drink"){
-      if(!tk.drank){tk.drank=true;tk.bowl.drinkUntil=now+3200;cr.sit=false;cr.happyT=now+3400;
-        cr.face=Math.sign(tk.bowl.fx-cr.x)||cr.face;tk.wait=now+3200;return;}
-      tk.phase="home";tk.steps=0;return;}
-    /* home — a dog far from home cannot wander (critFree keeps him within four tiles of it) */
-    if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=1||!dogWalk(cr,cr.home[0],cr.home[1])){
-      cr.task=null;cr.sit=true;cr.next=now+1500;}
-    return;}
+    if(!tk.drank){tk.drank=true;tk.bowl.drinkUntil=now+3200;cr.sit=false;cr.happyT=now+3400;
+      cr.face=Math.sign(tk.bowl.fx-cr.x)||cr.face;tk.wait=now+3200;return;}
+    /* home: the door was the first job to walk him home, because a dog far from home cannot wander
+       (critFree keeps him within CRIT_REACH of it). That walk is now a job of its own, and every job ends with it */
+    cr.task={type:"home"};return;}
   if(tk.type==="romp"){ /* round and round somebody's feet: they laugh, and nobody runs from him */
     const n=tk.n,w=WORLDS[cr.world];
     if(!n||w.npcs.indexOf(n)<0){cr.task=null;return;}
@@ -3359,6 +3387,56 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   cr.task=null;
 }
+/* ---------- THE ONE RULE: a job that ends far from home ends with him going home (#268) ----------
+   The owner, 2026-10-01: "i dont understand why he gets stuck". Because a dog wanders only within
+   CRIT_REACH steps of his own spot (critFree refuses any step further), and a job could end further away
+   than that: the agility course ends seven steps from the park dog's spot, a romp at somebody's feet, a
+   sniff beside another dog. Every step he tried after that was refused, and he stood there until
+   something else moved him. Measured before this: a dog living in Meridian's park spent 90% of his time
+   standing like that, once for 22 minutes on end (eight simulated hours). The restaurant door
+   already walked him home for exactly this reason; that walk is now a job of its own ("home", above), and
+   this is the rule that ends every job with it — written once, where critUpdate steps every job and sees
+   every way one ends, including the one the router never sees: you leaving the room in the middle of it.
+   · He has his beat first — the sit, the wag, whatever the job ended in — then sets off (`wait`).
+   · A dog who follows you is with YOU: the follow brings him back to you, never to his spot (owner,
+     2026-09-30: "i dont want him to leave me"). And Come makes where you called him his spot.
+   · Nobody in the room: he is simply home.
+   · A walk home that could not finish is not tried again from here; the stuck clock has it. */
+function dogDone(cr,tk,now){
+  if(tk.type==="home"||cr.task||cr.follow)return;
+  if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=CRIT_REACH)return;
+  if(cr.world!==world){dogPut(cr,dogHomeSpot(cr));return;}
+  cr.task={type:"home",wait:cr.next};}
+/* ---------- "he appears no matter what" (owner, 2026-10-01): the stuck clock ----------
+   Whatever else leaves him somewhere he cannot wander from — told to Sit in the middle of the course, a
+   wall where there was none, a walk home cut off — a dog who tried to step and could not, and has not
+   managed a single step for DOG_STUCK while free (no job, not told to hold, not following you, you in
+   the room), walks home; with no way home on foot, he is simply there.
+   DOG_STUCK IS MEASURED, not chosen: a free dog with room steps every 0.9 s (median), 99 in 100 of his
+   pauses are under 5.7 s, and the longest in eight simulated hours (26,000 pauses, two places, eight
+   seeds) was 11.6 s — a nap and then some sitting. Twelve seconds is past all of it, so by the time this
+   acts he has stood still longer than a healthy dog ever does. It never asks about a resting dog at all:
+   it runs only when every step he tried was refused. test/engine.smoke.js measures the rhythm again on
+   every run (grep `DOG RHYTHM`).
+   Where he reappears is his own spot, or the nearest free tile to it: never your tile, never a wall or a
+   person, never the tram's way while a car is on it, never a door, never on another animal. */
+const DOG_STUCK=12000;
+function dogHomeSpot(cr){
+  const w=WORLDS[cr.world];if(!w)return null;const hx=cr.home[0],hy=cr.home[1];
+  const ok=(x,y)=>x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N"
+    &&!(world===cr.world&&x===px&&y===py)&&!troDanger(cr.world,x,y)&&!portalAt(cr.world,x,y)
+    &&!CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y);
+  for(let r=0;r<=CRIT_REACH;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)
+    if(Math.abs(dx)+Math.abs(dy)===r&&ok(hx+dx,hy+dy))return[hx+dx,hy+dy];
+  return null;}
+function dogPut(cr,s){if(!s)return false;
+  cr.x=s[0];cr.y=s[1];cr.fx=s[0];cr.fy=s[1];cr.moving=false;cr.mt=0;cr.sit=false;cr.layT=0;return true;}
+function dogUnstick(cr,now){
+  if(cr.x===cr.home[0]&&cr.y===cr.home[1])return false;      /* he is home: whatever hems him in is standing round him, and moves */
+  if(bfsStep(cr,cr.home[0],cr.home[1])){cr.task={type:"home"};return true;}   /* a way home on foot: he walks it */
+  const s=dogHomeSpot(cr);
+  if(!s||(s[0]===cr.x&&s[1]===cr.y)||!dogPut(cr,s))return false;
+  cr.stepT=now;cr.next=now+600;return true;}
 /* The agility course is whatever gear the park's own map lays down: every tile whose kind is
    "gear", in the order you read the map. Meridian's row 8 reads 3.4.5, so its dog runs hurdle,
    tunnel, weave, the course it always ran. Until 2026-09-29 the course was those three coordinates,
@@ -4118,8 +4196,12 @@ function tryStep(){
   if(worldCovered())return;           /* nor behind a panel: a direction held when it opened waits for it to close (#274) */
   /* `dir` becomes the WORLD direction, so sprite facing and the move interpolation
      at the bottom of loop() (which reads DIRS[dir]) stay in step with the actual move. */
+  const was=dir;
   dir=worldDir(held);const[dx,dy]=DIRS[dir],nx=px+dx,ny=py+dy;
   if(isSolid(nx,ny)){
+    /* a key toward somebody (or a wall) turns you without a step, and turning changes who Talk offers
+       (#285) — asked again once per turn, never once a frame for as long as the key is held */
+    if(dir!==was)checkTalk();
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
@@ -5051,11 +5133,29 @@ function svcRun(who,n){
   if(k==="chair"){openChair(who);return true;}
   return false;
 }
+/* WHO TALK OFFERS, AND SO WHO ENTER TALKS TO, when more than one person is beside you (#285). The
+   owner, 2026-10-01: "enter talks to the person you face first sounds good" — answering the order put
+   to him: the one you face, then the one with a quest for you, then the nearest. It used to be whoever
+   came first in the world's list: between Priya and Theo, facing Theo, Enter opened Priya's quest.
+   Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+   order — so with one person beside you, nothing changes. One pass over the same list as before.
+   Guarded by real key presses in test/engine.smoke.js (grep `ENTER TALKS TO THE ONE YOU FACE`). */
+function talkPick(){
+  const f=DIRS[dir]||[0,0],ax=px+f[0],ay=py+f[1];
+  let quest=null,first=null;
+  for(const n of CW().npcs){
+    if(Math.abs(n.x-px)+Math.abs(n.y-py)!==1)continue;
+    const q=pendingAt(n)!==undefined;
+    if(!q&&!n.chat)continue;
+    if(n.x===ax&&n.y===ay)return n;
+    if(q&&!quest)quest=n;
+    if(!first)first=n;}
+  return quest||first;}
 function checkTalk(){
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
-  const n=CW().npcs.find(n=>Math.abs(n.x-px)+Math.abs(n.y-py)===1&&(pendingAt(n)!==undefined||n.chat));
+  const n=talkPick();
   if(n){const qi=pendingAt(n),tb=$("talk"),rh=roomHosts[n.npc];
     if(qi!==undefined){tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${AQ()[qi].title}”`;
       tb.dataset.qi=qi;delete tb.dataset.chatn;}
@@ -5645,6 +5745,9 @@ $("gear").addEventListener("click",()=>{
   /* the wardrobe is extra — any ATTEMPT at the quest content nominates opens it */
   {const wq=GRW().wardrobeQuest;
    $("openWd").hidden=!(wq!==undefined&&(done.has(wq)||qa[wq]!==undefined));}
+  /* #283: Alebrijes lists whoever is in the game NOW: a pup adopted since the list was last built, and the face paint of
+     a season that turned over at midnight while the game was open (both measured stale before this line) */
+  aleRowBuild();
   $("settings").hidden=false;held=null;});
 $("openWd").addEventListener("click",()=>{$("settings").hidden=true;openWardrobe();});
 $("closeSet").addEventListener("click",()=>{$("settings").hidden=true;});
@@ -7264,7 +7367,8 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   dogPlace(cr,d0);
   CRIT.push(cr);});
 parkPersist();
-CRIT.forEach(cr=>{if(cr.kind==="beagle"&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
+/* #281: every dog gets his bandana back, not only a beagle — the button gives one to any breed and the record keeps it by name */
+CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
 $("leash").addEventListener("click",()=>{
   if(!DOGK.has(petTarget)||!petCrit||world===PL.park)return;
   const c=petCrit;
@@ -7666,7 +7770,9 @@ function ribbonSay(){
       the taller opens", and anything else a pack invents later, with no engine change.
    4. NOTHING IS STAMPED THAT BREAKS THE CITY. Every build is validated before a single tile
       lands: inside the map, never over a person, never over a portal, never a door that opens
-      onto nothing (#9), and no portal in that world may lose its last standable neighbour.
+      onto nothing (#9), and no portal in that world may lose its last standable neighbour. A room's
+      door opens onto a side you can step out on, and a lot never builds over the spot where another
+      door sets you down (#265, doorStep).
       A refused build is logged to the console and fails the smoke (§27); saying it in play is
       El Portero's job (#8, designed, not built).
 
@@ -7714,6 +7820,32 @@ function resolveBuild(b){
   });
   return {id:b.id,world:b.world,tpl:b.tpl,pick,tiles,reads,links};
 }
+/* #265 — WHICH WAY A BUILT DOOR OPENS. The way out of a room a lot carries set you down one tile
+   SOUTH of its door, always, whatever stood there: a door in a hut's north wall let you out inside
+   the hut's own wall, a hatch in the bottom edge of the map let you out off the map, and the engine
+   said nothing at boot (planted at the builder junta, 2026-09-29). The owner, 2026-09-30: "an auto,
+   choose a door for now workflow when building so exits/doors exist."
+   So the door opens onto the first side, in DOORSIDES order, that you can step out onto and walk on
+   from. The step is on the map, not solid, not a door (you would be thrown straight through it), and
+   not somebody who never moves; and beside it there is at least one more tile you can stand on,
+   because a step whose only way on is back through the door is the same trap one tile further out.
+   South comes first: it is the side every door that shipped before this already uses. A neighbour who
+   WANDERS is not a wall — he will be gone in four seconds, and a door that faced a different way
+   depending on who was walking past at boot would be a different city on every load.
+   It reads the grid it is handed: buildSafe passes the street with the lot already laid on it, so the
+   side is chosen against the lot's own walls, and a door with no side at all is refused there.
+   The sides are a local, not a top-level const: the first applyBuilds() runs at load, hundreds of
+   lines above this, and a top-level const is not there yet when it does (measured: the engine stopped). */
+function doorStep(id,g,rows,x,y){
+  const DOORSIDES=[["down",0,1],["up",0,-1],["right",1,0],["left",-1,0]];
+  const w=WORLDS[id];if(!w)return null;
+  const A=PORTALSAT[id]||{},P=PORTALS[id]||{};
+  const stand=(a,b)=>{if(a<0||b<0||a>=w.W||b>=w.H||(a===x&&b===y)||SOLID.has(g[b][a]))return false;
+    return g[b][a]!=="N"||wanders(whoAt(id,a,b));};
+  for(const [dir,dx,dy] of DOORSIDES){const sx=x+dx,sy=y+dy;
+    if(!stand(sx,sy)||A[sx+","+sy]||P[rows[sy][sx]])continue;
+    if(DOORSIDES.some(([,ox,oy])=>stand(sx+ox,sy+oy)))return {x:sx,y:sy,dir:dir};}
+  return null;}
 /* refuse anything that would wall the city in. Cheap, and it runs before a tile is written. */
 function buildSafe(spec){
   const w=WORLDS[spec.world];if(!w)return "no such world: "+spec.world;
@@ -7746,6 +7878,17 @@ function buildSafe(spec){
       return nx>=0&&ny>=0&&nx<w.W&&ny<w.H&&!SOLID.has(g[ny][nx])&&g[ny][nx]!=="N";});
     if(!ok)return "it would seal the door at "+x+","+y;
   }
+  /* #265 — never over the spot where another door sets you down: whoever came through it would stand
+     inside this lot. A lot raised earlier chose its side before this one landed, so this is the half of
+     doorStep that keeps that choice true. */
+  for(const from of Object.keys(WORLDS))for(const {x,y,p} of portalsOf(from)){
+    if(p.to===spec.world&&p.x>=0&&p.y>=0&&p.x<w.W&&p.y<w.H&&SOLID.has(g[p.y][p.x])&&!SOLID.has(w.grid[p.y][p.x]))
+      return "it would build over "+p.x+","+p.y+", where the door in "+from+" at "+x+","+y+" sets you down";}
+  /* ...and every door it links to a room opens onto a side you can step out on. The side found here,
+     on the street with this lot laid on it, is the one the room's way out uses (buildInterior). */
+  for(const l of (spec.links||[])){
+    l.step=doorStep(spec.world,g,rows,l.x,l.y);
+    if(!l.step)return "its door at "+l.x+","+l.y+" has nowhere to step out onto — whoever went in could never come out";}
   return null;
 }
 function applyBuilds(){
@@ -7781,8 +7924,10 @@ function roomNamesShared(){
 }
 /* an interior a build carries becomes a WORLD of its own, named by the lot's id, whole (#269: it was
    cut to twelve letters, so two lots whose ids share twelve were one room), with its people, its name and its arrival line
-   in both languages; the lot's door and the room's exit become coordinate portals to each other */
+   in both languages; the lot's door and the room's exit become coordinate portals to each other,
+   and the exit sets you down on the side of the door that buildSafe chose (doorStep, #265) */
 function buildInterior(from,l){
+  const st=l.step;if(!st)return;   /* no side to step out on, no room: buildSafe has already said so out loud */
   const I=l.interior,id=String(l.id);
   const rows=I.rows.slice(),grid=[],wnpcs=[],defs=I.people||{};
   rows.forEach((row,y)=>{grid.push(row.split(""));row.split("").forEach((ch,x)=>{
@@ -7793,7 +7938,7 @@ function buildInterior(from,l){
     if(I.locs)t.locs[id]=I.locs[lg]||I.locs.en||id;if(I.arrive)t.arrive[id]=I.arrive[lg]||I.arrive.en||"";});
   const ld=l.landing||[Math.floor(rows[0].length/2),rows.length-2],ex=l.exit||[Math.floor(rows[0].length/2),rows.length-1];
   (PORTALSAT[from]=PORTALSAT[from]||{})[l.x+","+l.y]={to:id,x:ld[0],y:ld[1],dir:"up",by:l.id};
-  (PORTALSAT[id]=PORTALSAT[id]||{})[ex[0]+","+ex[1]]={to:from,x:l.x,y:l.y+1,dir:"down",by:l.id};
+  (PORTALSAT[id]=PORTALSAT[id]||{})[ex[0]+","+ex[1]]={to:from,x:st.x,y:st.y,dir:st.dir,by:l.id};
 }
 /* a district's storefront ribbon: dropped once that district has opened */
 function applyRibbon(){
