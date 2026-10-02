@@ -1155,7 +1155,7 @@ function t3Actors(){
     if(hasSay(n))drawSayMark(g,2,6,"bake");
     drawEmote(n,2,6); /* the trade is drawn BESIDE the mark here too, never instead of it */
   }}));
-  PEERS.forEach(p=>{if(p.w===world)list.push({x:p.x,y:p.y,f:g=>drawPerson(g,2,6,p.look||look,{dir:t3ScreenDir(p.dir||"down"),who:p.id||p.name||"peer"})});});
+  PEERS.forEach(p=>{if(p.w===world)list.push({x:p.x,y:p.y,f:g=>drawPerson(g,2,6,peerLook(p),{dir:t3ScreenDir(p.dir||"down"),who:p.id||p.name||"peer"})});});
   if(world===AW("dog"))list.push({x:DOG.fx,y:DOG.fy,fc:DOG,f:g=>drawDog(g,2,6)});
   if(world===AW("cat"))list.push({x:CAT.fx,y:CAT.fy,fc:CAT,f:g=>drawCat(g,2,6)});
   if(world===AW("pig"))list.push({x:PIG.fx,y:PIG.fy,fc:PIG,f:g=>drawPigeon(g,2,6)});
