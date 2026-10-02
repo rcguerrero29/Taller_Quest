@@ -106,6 +106,12 @@ function findChromium() {
      this asked for an uppercase word and a space, so it has never matched anything. */
   warns.filter(w => /^(?:CRIT )?(reach|portal|world|room|wander|arrival):/i.test(w))
        .forEach(w => fails.push('the engine warned at boot and nobody was listening: ' + w));
+  /* #265: a lot the engine REFUSES is the engine doing its job — and then the city has an empty lot
+     where a room was declared, and the filter above never hears it, because "build" is not one of its
+     six words. So the log is read, not the console: every lot refused at boot is a red, in the
+     engine's own words. */
+  (await page.evaluate(() => (typeof logCrit === 'function' ? logCrit() : []).filter(e => e.kind === 'build').map(e => e.msg)))
+    .forEach(m => fails.push('the engine refused part of this city at boot, so a player finds an empty lot where a room was declared: ' + m));
 
   /* IDXNAME is passed IN because the flat list below is per game and the page cannot know which
      index it is — see the #39 block. Nothing else in here reads it. */
@@ -1225,6 +1231,231 @@ function findChromium() {
   fails.push(...leaves.filter(l => !/^COUNT-ONLY: /.test(l)));
   leaves.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
+  /* ---- THE PETALS A WALKER DROPS LIE ON THE TILE HE DROPPED THEM ON, UNDER HIM, IN EVERY CAMERA (#284) ----
+     The issue: "The marigold petals a walker drops behind them land about a tile and a half off in the iso camera:
+     east and a little south of where they were really dropped. In the top camera they land in the right place. They
+     are also painted over blocks and people instead of lying on the ground. Done when the petals lie on the tile they
+     were dropped on in every camera, under whoever stands there." Asked as pixels (docs/POSTMORTEM.md §3), through the
+     real path: the person you steer walks into a heap of loose petals the pack lays (a tile it declares petals:true)
+     and back out again with REAL arrow keys, in the iso camera, three times, so his own steps drop what his shoes
+     carried on the tile he stepped back onto. Nothing here calls a petal painter: draw() and draw3d() draw them.
+     Then, standing on that tile, every camera this shell has is asked, at 0, 25 and 50% of the petals' life:
+       · THEY SHOW: the frame with his petals minus the frame without them;
+       · ON THAT TILE: in a flat camera the tile's own ground is found by laying that one tile as "-" and diffing —
+         never by the camera's arithmetic — and nine in ten of the petals' pixels must lie on it; in 3D, which bakes
+         its floor once a world, their middle must lie inside the outline of the person standing there (#267's test);
+       · UNDER HIM: where his body and his petals meet, he is what shows (his body: his shadow is half the ground);
+       · ON ONE CLOCK: late in their life their strength, as a share of the strength they fell with, is within a fifth
+         of the top camera's at the same instant; and a moment after their life is up they are drawn by nobody.
+     THE CLOCK IS HELD STILL — petals fade by Date.now(), and so do a neighbour's sway and a door's glow — and a control
+     pair of frames must differ by nothing first, or the probe measures nothing (§13r). The season is switched off so
+     no deck strews the ground; the people of that world are taken out of the picture and off the grid, its critters
+     and animals out of the picture, the tram sent away; and everything is put back. A shell that lays no petals says so. */
+  const petals = await (async function petalsOnTheirTile(page) {
+    const out = [];
+    const setup = await page.evaluate(() => {
+      if (typeof PETALS === 'undefined' || typeof petalDrop !== 'function' || typeof HEROFEET === 'undefined') return { note: 'COUNT-ONLY: this engine drops no petals, so where they lie was not looked at' };
+      const heap = g => !!(g && TILES[g] && TILES[g].petals);
+      const ws = Object.keys(WORLDS).filter(id => WORLDS[id].rows.some(r => [...r].some(heap)));
+      if (!ws.length) return { note: 'COUNT-ONLY: no world in this shell lays loose petals on the ground (a tile declared petals:true), so no trail is dropped and where one lies was not looked at' };
+      /* the spot, from the MAP and never from where people happen to stand: a heap, and open ground beside it that is
+         not a heap, not a door, not a stop, not a stair — the D with the most open ground round it, first in scan order */
+      const bare = (wid, x, y) => { const w = WORLDS[wid];
+        if (x < 0 || y < 0 || x >= w.W || y >= w.H) return false;
+        const r = w.rows[y][x];
+        return !SOLID.has(r) && r !== 'N' && !stands(r) && !heap(r) && !DOORSET.has(r) && !portalAt(wid, x, y) && !troIsStop(wid, x, y)
+          && !DECOS.some(d => d.world === wid && d.x === x && d.y === y) && !wellDepth(w, x, y) && !stairLift(w, x, y); };
+      const ND = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, BACK = { up: 'down', down: 'up', left: 'right', right: 'left' };
+      let pick = null;
+      ws.forEach(wid => { const w = WORLDS[wid], L = troLine(wid);
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+          if (!heap(w.rows[y][x]) || portalAt(wid, x, y) || troIsStop(wid, x, y) || (L && Math.abs(y - L.row) <= 1)) continue;
+          Object.keys(ND).forEach(d => { const dx = x - ND[d][0], dy = y - ND[d][1];   /* D is the tile you step INTO the heap from, going d */
+            if (!bare(wid, dx, dy)) return;
+            let n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (bare(wid, dx + i, dy + j)) n++;
+            if (!pick || n > pick.n) pick = { wid, x: dx, y: dy, hx: x, hy: y, into: d, out: BACK[d], n }; }); } });
+      if (!pick) return { err: 'this shell lays loose petals in ' + ws.join(', ') + ', and not one heap has open ground beside it to step back onto, so where a trail lies could not be looked at — that is a red, not a pass' };
+      const w = WORLDS[pick.wid];
+      window.__p284 = { world, px, py, fx, fy, dir, cam: camMode, mv: moving, st: TRO.state, season: typeof seasonPick !== 'undefined' ? seasonPick : null,
+        yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0, petals: PETALS.slice(), feet: { hc: HEROFEET.hc, pc: HEROFEET.pc },
+        decals: typeof DECALS !== 'undefined' ? DECALS.slice() : null, people: w.npcs, grid: w.grid.map(r => r.slice()), wid: pick.wid,
+        hidden: document.getElementById('world').hidden, open: [...document.querySelectorAll('.settings')].filter(p => !p.hidden).map(p => p.id),
+        reader: document.getElementById('reader').hidden, crit: CRIT.filter(c => c.world === pick.wid).map(c => [c, c.world]),
+        drone: (typeof DRONE !== 'undefined' && DRONE) ? { on: DRONE.on, want: DRONE.want } : null };
+      /* the people of that world are taken out of the picture AND off the grid (a person is stamped into it, and a
+         stamp on the heap would stop the walk), the season switched off so no deck strews the ground, the tram sent away */
+      w.npcs = []; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (w.grid[y][x] === 'N') w.grid[y][x] = w.rows[y][x];
+      if (typeof seasonSet === 'function') seasonSet('off');
+      TRO.state = 'away';
+      PETALS.length = 0; HEROFEET.hc = 0; HEROFEET.pc = 0;
+      [...document.querySelectorAll('.settings')].forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true;
+      document.getElementById('world').hidden = false;
+      world = pick.wid; px = fx = pick.x; py = fy = pick.y; dir = 'down'; moving = false; held = null; warpT = 0; portalT = 0;
+      if (typeof DRONE !== 'undefined' && DRONE) { DRONE.on = false; DRONE.want = false; }   /* the keys walk him, not the drone; put back at the end */
+      camSet('iso'); sizeCanvas(); draw();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      return { pick };
+    });
+    if (setup.note) { out.push(setup.note); return out; }
+    if (setup.err) { out.push(setup.err); return out; }
+    const pk = setup.pick, at = '(' + pk.x + ',' + pk.y + ') in ' + pk.wid;
+    try {
+      /* THE WALK: real arrow keys, in the iso camera, the way a player crosses the heap — into it and back out, three
+         times. One drop is three petals, a few pixels each once they lie on a diamond, and the first draft of this check
+         walked once: the paint order put back went red by ONE pixel of nine where he and they met. Three drops on his
+         tile give "under him" something to measure */
+      const KEY = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, CROSS = 3;
+      const step = async (d, tx, ty) => {
+        await page.keyboard.down(KEY[d]);
+        try { await page.waitForFunction(([x, y]) => px === x && py === y, [tx, ty], { timeout: 2000 }); } catch (e) {}
+        await page.keyboard.up(KEY[d]);
+        try { await page.waitForFunction(() => !moving, null, { timeout: 2000 }); } catch (e) {}
+        return page.evaluate(() => ({ x: px, y: py, world, moving }));
+      };
+      for (let k = 0; k < CROSS; k++) {
+        const s1 = await step(pk.into, pk.hx, pk.hy);
+        if (s1.x !== pk.hx || s1.y !== pk.hy) { out.push('petals (#284): from ' + at + ' the arrow key ' + KEY[pk.into] + ' did not walk the hero into the loose petals at (' + pk.hx + ',' + pk.hy + ') — he is at (' + s1.x + ',' + s1.y + ') in ' + s1.world + ', so no trail was dropped and nothing was looked at'); return out; }
+        const s2 = await step(pk.out, pk.x, pk.y);
+        if (s2.x !== pk.x || s2.y !== pk.y) { out.push('petals (#284): from the loose petals at (' + pk.hx + ',' + pk.hy + ') the arrow key ' + KEY[pk.out] + ' did not walk the hero back out to ' + at + ' — he is at (' + s2.x + ',' + s2.y + '), so nothing was looked at'); return out; }
+      }
+      const res = await page.evaluate(([pk, CROSS]) => {
+        const P = [], at = '(' + pk.x + ',' + pk.y + ') in ' + pk.wid, w = WORLDS[pk.wid];
+        const mine = PETALS.filter(p => p.w === pk.wid && p.x === pk.x && p.y === pk.y);
+        if (!mine.length) { P.push('petals (#284): the hero walked into the loose petals at (' + pk.hx + ',' + pk.hy + ') and back out to ' + at + ' with the arrow keys, ' + CROSS + ' times, and nothing was dropped on ' + at + ' — his shoes carried nothing off the heap (' + PETALS.length + ' drop(s) in all), so there was nothing to look for'); return P; }
+        const drop = { t: Math.min(...mine.map(p => p.t)), last: Math.max(...mine.map(p => p.t)) };   /* their life is read from the first; "gone" waits for the last */
+        const has3d = typeof draw3d === 'function' && !!window.THREE && typeof T3 !== 'undefined' && CAMS.indexOf('3d') >= 0;
+        const flat = ['top', 'front', 'iso'].filter(c => CAMS.indexOf(c) >= 0), QT = Math.PI / 2;
+        const views = flat.map(c => ({ cam: c, nm: 'the ' + c + ' camera', clock: true, ages: [0, 0.25, 0.5] }))
+          .concat(has3d ? [0, 1, 2, 3].map(q => ({ cam: '3d', yaw: q * QT, nm: q ? 'the 3D camera turned ' + q + ' quarter' + (q > 1 ? 's' : '') : 'the 3D camera', clock: !q, ages: q ? [0] : [0, 0.25, 0.5] })) : []);
+        const realNow = Date.now, dp0 = drawPerson, others = PETALS.slice();
+        const ani = [['dog', typeof DOG !== 'undefined' && DOG], ['cat', typeof CAT !== 'undefined' && CAT], ['pig', typeof PIG !== 'undefined' && PIG], ['loro', typeof LORO !== 'undefined' && LORO]]
+          .filter(([k, a]) => a && AW(k) === pk.wid).map(([, a]) => [a, { x: a.x, y: a.y, fx: a.fx, fy: a.fy }]);
+        const things = [].concat(typeof DOGTHINGS !== 'undefined' ? DOGTHINGS : [], typeof BALL !== 'undefined' && BALL ? [BALL] : []).filter(o => o && o.world === pk.wid);
+        let NOW = drop.t, heroOn = true, drew3d = false;
+        const cv2 = document.getElementById('cv'), g2 = cv2.getContext('2d');
+        const frame = v => {
+          if (v.cam === '3d') { T3.turn = null; T3.yaw = v.yaw; if (!draw3d()) return null; drew3d = true;
+            const c3 = T3.renderer.domElement, c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
+            const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return { d: g.getImageData(0, 0, c.width, c.height).data, W: c.width, H: c.height }; }
+          draw(); return { d: g2.getImageData(0, 0, cv2.width, cv2.height).data, W: cv2.width, H: cv2.height }; };
+        /* what moved (by more than a shade): how many pixels, their middle, the box round them, a mask, and the summed change — the strength */
+        const cmp = (A, B, t) => { const a = A.d, b = B.d, W = A.W, m = new Uint8Array(a.length >> 2); let n = 0, sx = 0, sy = 0, s = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+          if (t === undefined) t = 30;
+          for (let i = 0; i < a.length; i += 4) { const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); if (!d) continue; s += d;
+            if (d > t) { const p = i >> 2, x = p % W, y = (p - x) / W; m[p] = 1; n++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+          return { n, s, m, W, cx: n ? sx / n : NaN, cy: n ? sy / n : NaN, x0, y0, x1, y1 }; };
+        /* HIS OUTLINE, less its edge: an edge pixel is half him and half whatever is under him, so it is not asked */
+        const core = c => { const W = c.W, m = c.m, o = new Uint8Array(m.length); for (let p = 0; p < m.length; p++) if (m[p] && m[p - 1] && m[p + 1] && m[p - W] && m[p + W]) o[p] = 1; return o; };
+        /* and HIS BODY, which is that less his shadow — a shadow pixel is the ground under it darkened by the same share in every channel */
+        const bodyOf = (c, H, B) => { const o = core(c);
+          for (let p = 0; p < o.length; p++) { if (!o[p]) continue; const i = p << 2;
+            const r = [0, 1, 2].map(k => (H.d[i + k] + 1) / (B.d[i + k] + 1)), mean = (r[0] + r[1] + r[2]) / 3;
+            if (mean < 1 && mean > 0.4 && Math.max(r[0], r[1], r[2]) - Math.min(r[0], r[1], r[2]) < 0.08) o[p] = 0; }
+          return o; };
+        const both = (a, b) => { let n = 0; for (let p = 0; p < a.length; p++) if (a[p] && b[p]) n++; return n; };
+        const show = on => { PETALS.length = 0; if (on) mine.forEach(p => PETALS.push(p)); };
+        const MIN = 20, seen = [], fades = [], ref = {};
+        const R0 = w.rows[pk.y];
+        try {
+          Date.now = () => NOW;
+          drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero && !heroOn) return; return dp0.apply(this, arguments); };
+          window.__p284.crit.forEach(([c]) => { c.world = '__frozen'; });
+          things.forEach(o => { o.__w = o.world; o.world = '__frozen'; });
+          ani.forEach(([a]) => { a.x = a.fx = -99; a.y = a.fy = -99; });
+          if (typeof DECALS !== 'undefined') DECALS.length = 0;
+          px = fx = pk.x; py = fy = pk.y; moving = false; held = null;
+          views.forEach((v, vi) => {
+            camSet(v.cam); sizeCanvas();
+            const vn = v.cam === '3d' ? '3D' + (v.yaw ? '↻' + Math.round(v.yaw / QT) : '') : v.cam;
+            /* the tile's own ground, as the camera paints it: the same frame with that one tile laid as "-" instead, minus
+               the frame without — never the camera's arithmetic. Asked of the flat cameras; 3D bakes its floor once a world */
+            let ground = null;
+            if (v.cam !== '3d') { NOW = drop.t; show(false); heroOn = false; frame(v); const B0 = frame(v);
+              w.rows[pk.y] = R0.slice(0, pk.x) + '-' + R0.slice(pk.x + 1); const G = frame(v); w.rows[pk.y] = R0;
+              ground = cmp(G, B0, 0);   /* ANY change: Meridian lays "-" as a crosswalk, and its pale stripes are within 30 shades of a pale floor */
+              if (ground.n < 60) { P.push('petals (#284): in ' + v.nm + ' the ground of ' + at + ' could not be found — laying it another colour changed ' + ground.n + ' pixels — so whether the petals lie on it was not measured; that is a red, not a pass'); ground = null; } }
+            let full = null, line = [];
+            for (const age of v.ages) {
+              NOW = drop.t + age * PETAL_MS;
+              heroOn = false; show(true); frame(v);   /* one thrown away: a first draw settling is not the trail */
+              const A = frame(v); if (!A) { P.push('petals (#284): ' + v.nm + ' could not draw at all, so the trail was not looked for there'); return; }
+              const A2 = frame(v); show(false); const B = frame(v); heroOn = true; const H = frame(v); show(true); const X = frame(v); heroOn = false;
+              const ctl = cmp(A, A2), mark = cmp(A, B), him = cmp(H, B), wh = Math.round(age * 100) + '% of their life';
+              if (ctl.n) { P.push('petals (#284): ' + v.nm + ' cannot be measured: two frames of the same scene at the same instant differ by ' + ctl.n + ' pixels'); return; }
+              if (him.n < 30) { P.push('petals (#284): in ' + v.nm + ' nobody shows standing on ' + at + ' (' + him.n + ' pixels), so whether the petals lie under him could not be asked — that is a red, not a pass'); return; }
+              if (mark.n < MIN) { P.push('petals (#284): the petals the hero dropped on ' + at + ' do not show in ' + v.nm + ' at ' + wh + ': taking them away changes ' + mark.n + ' pixels'); return; }
+              if (age === 0) full = mark;
+              /* ON THAT TILE */
+              if (ground) { const on = both(mark.m, ground.m), share = on / mark.n;
+                if (share < 0.9) { P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' do not lie on that tile: ' + (mark.n - on) + ' of their ' + mark.n + ' pixels are off its ground, and their middle is ' +
+                  Math.round(mark.cx - ground.cx) + ' px across and ' + Math.round(mark.cy - ground.cy) + ' px down from the middle of it (the tile\'s ground is ' + (ground.x1 - ground.x0 + 1) + '×' + (ground.y1 - ground.y0 + 1) + ' px) — they landed somewhere else'); return; }
+                line.push(Math.round(share * 100) + '% on it'); }
+              else if (mark.cx < him.x0 || mark.cx > him.x1 || mark.cy < him.y0 || mark.cy > him.y1) {
+                P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' are not where he dropped them: standing on the spot, their middle is at (' + Math.round(mark.cx) + ',' + Math.round(mark.cy) + '), outside his own outline (' +
+                  him.x0 + '–' + him.x1 + ' across, ' + him.y0 + '–' + him.y1 + ' down)'); return; }
+              /* UNDER HIM: where his body and his petals meet, he is what shows — the frame with both minus the frame with
+                 him alone changes nothing there. His BODY, not his shadow: a shadow is half the ground under it, and in the 3D
+                 camera a petal at his toes is nearer than the card he is painted on and rightly covers the strip of it below
+                 his feet, where the shadow is painted (looked at, 2026-10-01). Nowhere to meet is a red, not a pass. */
+              const his = bodyOf(him, H, B), over = cmp(X, H);
+              let meet = 0, shows = 0;
+              for (let p = 0; p < his.length; p++) if (his[p] && mark.m[p]) { meet++; if (over.m[p]) shows++; }
+              if (meet < 10) { P.push('petals (#284): in ' + v.nm + ' the hero standing on ' + at + ' does not stand over his own petals (' + meet + ' pixels where they and his body meet), so whether they lie under him could not be asked — that is a red, not a pass'); return; }
+              if (shows > meet * 0.2) { P.push('petals (#284): in ' + v.nm + ' the petals the hero dropped on ' + at + ' are painted over him, not under him: standing on them, ' + shows + ' of the ' + meet + ' pixels where his body and they meet show the petals (at ' + wh + ')'); return; }
+              line.push(meet + ' under his body, ' + shows + ' showing through');
+            }
+            seen.push(vn + ' ' + full.n + ' px, ' + line.slice(0, 2).join(', '));
+            if (!v.clock) return;
+            /* ON THE SAME CLOCK: the strength late in their life, as a share of it when they fell, against the reference
+               camera's. Asked of the flat cameras, which paint petals with one painter on one clock. The 3D camera's is
+               PRINTED and not asked: its petals are cut away early, below a third of their strength — a fault of its own,
+               found by this check and reported apart from #284 — so a red here would be about something else */
+            const isRef = vi === 0, sh = [];
+            if (!isRef && !Object.keys(ref).length) return;
+            for (const age of [0.5, 0.8, 0.95]) {
+              NOW = drop.t + age * PETAL_MS; heroOn = false; show(true); const F = frame(v); show(false); const G = frame(v);
+              const share = cmp(F, G).s / full.s; sh.push(Math.round(share * 100) + '%');
+              if (isRef) ref[age] = share;
+              else if (v.cam !== '3d' && Math.abs(share - ref[age]) > 0.2) { P.push('petals (#284): in ' + v.nm + ' the petals do not fade with the others: at ' + Math.round(age * 100) + '% of their life they show at ' + Math.round(share * 100) + '% of the strength they fell with, and ' + views[0].nm + ' shows them at ' + Math.round(ref[age] * 100) + '%'); break; }
+            }
+            fades.push(vn + ' ' + sh.join('/'));
+            NOW = drop.last + PETAL_MS + 1; show(true); const E = frame(v); show(false); const E2 = frame(v); const left = cmp(E, E2, 0).n;   /* drawn by nobody: ANY change, not a visible one — at a fifth of their strength petals stay under 30 shades on a pale floor (planted) */
+            if (left) P.push('petals (#284): in ' + v.nm + ' the petals are still drawn a moment after their life is up: ' + left + ' pixels of them');
+          });
+          P.push('COUNT-ONLY: petals the hero dropped on ' + at + ', walking into the heap at (' + pk.hx + ',' + pk.hy + ') and out ' + CROSS + ' times (' + mine.length + ' drops) — ' + seen.join('; ') + '; their strength at 50/80/95% of their life: ' + fades.join(', '));
+        } finally {
+          Date.now = realNow; drawPerson = dp0; w.rows[pk.y] = R0;
+          window.__p284.crit.forEach(([c, cw]) => { c.world = cw; });
+          things.forEach(o => { o.world = o.__w; delete o.__w; });
+          ani.forEach(([a, k]) => Object.assign(a, k));
+          PETALS.length = 0; others.forEach(p => PETALS.push(p));
+          window.__p284.drew3d = drew3d;
+        }
+        return P;
+      }, [pk, CROSS]);
+      out.push(...res);
+    } finally {
+      await page.evaluate(() => { const K = window.__p284; if (!K) return; const w = WORLDS[K.wid];
+        w.npcs = K.people; K.grid.forEach((r, y) => r.forEach((g, x) => { w.grid[y][x] = g; }));
+        PETALS.length = 0; K.petals.forEach(p => PETALS.push(p)); HEROFEET.hc = K.feet.hc; HEROFEET.pc = K.feet.pc;
+        if (K.decals) { DECALS.length = 0; K.decals.forEach(d => DECALS.push(d)); }
+        if (K.season !== null && typeof seasonSet === 'function') seasonSet(K.season);
+        TRO.state = K.st; moving = K.mv; held = null; if (K.drone) { DRONE.on = K.drone.on; DRONE.want = K.drone.want; }
+        world = K.world; px = K.px; py = K.py; fx = K.fx; fy = K.fy; dir = K.dir;
+        document.getElementById('world').hidden = K.hidden; document.getElementById('reader').hidden = K.reader;
+        K.open.forEach(id => { const p = document.getElementById(id); if (p) p.hidden = false; });
+        if (typeof T3 !== 'undefined' && T3) T3.yaw = K.yaw;
+        /* the 3D scene built again for the world this check came from, or the next check that reads T3.scene measures this one */
+        if (K.drew3d) { camSet('3d'); sizeCanvas(); draw3d(); }
+        camSet(K.cam); sizeCanvas();
+        delete window.__p284; });
+    }
+    return out;
+  })(page);
+  fails.push(...petals.filter(l => !/^COUNT-ONLY: /.test(l)));
+  petals.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+
   /* ---- AND A ROMP WITH SOMEBODY NEAR: THEY LAUGH, NOBODY RUNS ----
      The owner, 2026-09-29: "chasing after another character". Away from the park the greeting's roll
      cannot greet another dog, so it sends him to the nearest person in reach: he runs to their feet and
@@ -1299,6 +1530,357 @@ function findChromium() {
     return P;
   });
   fails.push(...romp);
+
+  /* ---- A DOG IS NEVER LEFT STANDING STILL (#268) ----
+     The owner, 2026-10-01: "no, i just think we can make it so he appears no matter what... i dont
+     understand why he gets stuck". And the day before: "i dont want him to leave me".
+     Why he got stuck: a dog wanders only a few steps around his own spot, and an activity that ended
+     further away than that left every step he tried refused, so he stood there until something else
+     moved him. Meridian's agility course ends seven steps from the park dog's spot. Measured on the
+     engine before this check: a dog living in Meridian's park spent 90% of his time standing like
+     that, once for 22 minutes on end (8 simulated hours).
+     Asked by driving the REAL update loop (critUpdate, ballUpdate, dogThingsUpdate: what every frame
+     calls) for a dog made here, on clocks this check HOLDS (performance.now and Date.now both read its
+     own T), with Math.random seeded and only the dog's own choice pinned. Where a person would press
+     something it is pressed: the ball, and the paw menu's Come and Sit. Swept over four seeds and two
+     frame rates. Nothing is copied from the engine (no leash radius, no wait): every bound is measured
+     here first, by a CONTROL:
+       0 · the same kind of dog at a spot with room, living freely, each activity taken away as it
+           starts: how long he stands still on his own (`p99`, `max`), and how far from his spot he
+           wanders on his own (`reach`). And nothing moves him that he did not choose — no walk home, no
+           jump: a healthy dog is left exactly as he was.
+       1 · after every activity that ends further from his spot than he wanders on his own — the
+           course, a sniff, a chase (the chaser and the one who fled), a fetch you walked away from, a
+           romp — his first step comes sooner than 99 in 100 of his own pauses, he walks (never jumps)
+           back to his spot, and he is still wandering at the end.
+       2 · you call him and he comes: he does not then leave you. A dog who follows you is not walked
+           off to his spot either.
+       3 · what no activity ends: told to Sit in the middle of the course, he still gets home, on foot;
+           and if you leave the park while he runs it, he is at his spot when you come back.
+       4 · walled in, far from his spot, he comes back to it — no sooner than 99 in 100 of a dog's own
+           pauses — and where he reappears is never your tile, never a wall, and never the tram's line
+           with a car on it.
+     A shell too small for a case says so in a NOTE: nothing it could not ask is a pass. */
+  const stuck = await page.evaluate(() => {
+    const P = [], NOTE = [], RHYTHM = [];
+    if (typeof critUpdate !== 'function' || typeof dogWhim !== 'function' || typeof dogCmd !== 'function') {
+      P.push('the engine has no dog program to ask whether a dog gets stuck'); return { P, NOTE, RHYTHM }; }
+    const K = [...DOGK][0], WALL = '#', N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const at = p => '(' + p[0] + ',' + p[1] + ')';
+    const md = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+    const sec = ms => (ms / 1000).toFixed(1) + ' s';
+    const inMap = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H;
+    const open = (wid, x, y) => { const w = WORLDS[wid]; return !!w && inMap(w, x, y) && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y); };
+    /* steps on foot from `s` to every tile: this check's own flood, never the engine's */
+    const foot = (wid, s) => { const w = WORLDS[wid], far = new Int16Array(w.W * w.H).fill(-1), q = [s]; far[s[1] * w.W + s[0]] = 0;
+      while (q.length) { const [cx, cy] = q.shift(), d0 = far[cy * w.W + cx];
+        N4.forEach(([dx, dy]) => { const x = cx + dx, y = cy + dy;
+          if (!inMap(w, x, y) || far[y * w.W + x] >= 0 || SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N') return;
+          far[y * w.W + x] = d0 + 1; q.push([x, y]); }); }
+      return (x, y) => inMap(w, x, y) ? far[y * w.W + x] : -1; };
+    const tiles = wid => { const w = WORLDS[wid], out = []; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (open(wid, x, y)) out.push([x, y]); return out; };
+    /* somewhere for the person you play to stand, out of everybody's way */
+    const aside = (wid, pts) => tiles(wid).filter(t => !pts.some(p => md(p, t) < 2))
+      .sort((a, b) => Math.min(...pts.map(p => md(p, b))) - Math.min(...pts.map(p => md(p, a))))[0] || [-9, -9];
+
+    /* ---- the world held still: clocks, dice, every critter, every person; all put back in `finally` ---- */
+    const keep = { MR: Math.random, PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
+      world, px, py, fx, fy, park: JSON.stringify(PARK), decals: DECALS.length, prefs: JSON.stringify(parkPrefs),
+      tro: Object.assign({}, TRO), lastBump, petTarget, petCrit, ball: BALL, things: DOGTHINGS.slice(), visits: DOGVISIT.slice(), props: propEdits.length };
+    const T0 = keep.PN.call(performance), D0 = keep.DN.call(Date);
+    let T = T0, DT = 16.67, queue = [], prng = keep.MR;
+    const real = CRIT.map(c => ({ c, world: c.world, next: c.next, stepT: c.stepT }));
+    /* everybody's own clocks, which a romp sets on this check's T and the page then reads on the real one: kept, and put back */
+    const people = []; Object.keys(WORLDS).forEach(id => (WORLDS[id].npcs || []).forEach(n => people.push([n, n.wnext, n.laughUntil])));
+    const walled = [], laid = [];
+    const wall = (wid, x, y) => { const w = WORLDS[wid]; walled.push([wid, x, y, w.grid[y][x]]); w.grid[y][x] = WALL; };
+    const lay = (wid, x, y, g) => { const w = WORLDS[wid]; laid.push([wid, x, y, w.rows[y], w.grid[y][x]]); w.rows[y] = w.rows[y].slice(0, x) + g + w.rows[y].slice(x + 1); w.grid[y][x] = g; };
+    const mul = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const SEEDS = [1, 2, 3, 4], RATES = [16.67, 33.33];
+    const made = (wid, spot, extra) => { const d = Object.assign({ kind: K, name: 'Probe', world: wid, x: spot[0], y: spot[1], fx: spot[0], fy: spot[1],
+      face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: spot.slice(), task: null, holdT: 0, stayT: 0 }, extra || {}); CRIT.push(d); return d; };
+    const unmake = () => { for (let i = CRIT.length - 1; i >= 0; i--) if (!real.some(r => r.c === CRIT[i])) CRIT.splice(i, 1);
+      for (let i = DOGVISIT.length - 1; i >= 0; i--) if (keep.visits.indexOf(DOGVISIT[i]) < 0) { removeChill(DOGVISIT[i].key); DOGVISIT.splice(i, 1); }
+      DOGTHINGS.length = 0; keep.things.forEach(o => DOGTHINGS.push(o)); BALL = null;
+      while (walled.length) { const [wid, x, y, g] = walled.pop(); WORLDS[wid].grid[y][x] = g; }
+      while (laid.length) { const [wid, x, y, row, g] = laid.pop(); WORLDS[wid].rows[y] = row; WORLDS[wid].grid[y][x] = g; } };
+    const tick = () => { T += DT; critUpdate(DT, T); ballUpdate(DT, T); dogThingsUpdate(DT, T); };
+    /* `ms` of the real loop, read for one dog: when he stepped, where he went and whether he was busy with an
+       activity there, and any move of more than one tile in one frame (a reappearance) with what was under him
+       the moment he landed */
+    const free = r => r.path.filter(p => !p[2]);   /* where he stood with nothing to do: an activity he chose may take him anywhere */
+    const live = (d, ms, until) => { const r = { steps: 0, first: null, last: null, path: [[d.x, d.y, !!d.task]], jumps: [] };
+      const t0 = T; let was = d.moving, lx = d.x, ly = d.y, lb = !!d.task;
+      while (T - t0 < ms) { tick();
+        if (d.moving && !was) { r.steps++; if (r.first === null) r.first = T - t0; r.last = T - t0; }
+        if (Math.abs(d.x - lx) + Math.abs(d.y - ly) > 1) { const w = WORLDS[d.world], g = w.grid[d.y] && w.grid[d.y][d.x];
+          r.jumps.push({ t: T - t0, from: [lx, ly], to: [d.x, d.y], wall: g === undefined || SOLID.has(g) || g === 'N',
+            you: world === d.world && d.x === px && d.y === py, tram: typeof troDanger === 'function' && troDanger(d.world, d.x, d.y) }); }
+        if (d.x !== lx || d.y !== ly || !!d.task !== lb) r.path.push([d.x, d.y, !!d.task]);   /* where he was, and whether he was busy with something */
+        lx = d.x; ly = d.y; lb = !!d.task; was = d.moving;
+        if (until && until(d)) break; }
+      return r; };
+    /* one case, over every seed and frame rate; `body` returns {fail}, {none} (nothing to ask), or {} */
+    const runs = body => { const out = []; SEEDS.forEach(seed => RATES.forEach(rate => { DT = rate; prng = mul(seed * 7919 + Math.round(rate)); queue = [];
+      Math.random = () => queue.length ? queue.shift() : prng();
+      let res; try { res = body(); } catch (e) { res = { fail: 'the check itself threw: ' + e.message }; } finally { unmake(); }
+      out.push(Object.assign({ tag: 'seed ' + seed + ', a frame every ' + rate + ' ms' }, res || {})); })); return out; };
+    const report = (name, out) => { const bad = out.filter(o => o.fail), none = out.filter(o => o.none);
+      if (bad.length) P.push(bad[0].fail + ' [' + bad[0].tag + '; in ' + bad.length + ' of ' + out.length + ' runs]');
+      if (none.length === out.length) NOTE.push(name + ': ' + none[0].none);
+      return out; };
+
+    try {
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      performance.now = () => T; Date.now = () => D0 + (T - T0);
+      real.forEach(r => { r.c.world = '__frozen'; });   /* every critter, not only the dogs: a cat beside him would draw the dice he was dealt */
+
+      const park = WORLDS[PL.park] ? PL.park : null, ph = park && PL.parkDogHome ? PL.parkDogHome.slice() : null;
+      /* off the park: the star dog's own street and spot where he has one, or else the roomiest room */
+      const star = real.find(r => r.c.role === 'star' && isDog(r.c));
+      const roomy = (wid, t) => tiles(wid).filter(u => md(u, t) <= 4).length;
+      let away = star && star.world !== PL.park && WORLDS[star.world] ? star.world : null, ah = away ? star.c.home.slice() : null;
+      if (!away) { Object.keys(WORLDS).filter(id => id !== PL.park).forEach(id => tiles(id).forEach(t => { const n = roomy(id, t); if (n > 12 && (!ah || n > ah.n)) { away = id; ah = t.slice(); ah.n = n; } }));
+        if (ah) ah = [ah[0], ah[1]]; }
+
+      /* ---- 0 · the control ---- */
+      const control = (wid, home) => { const gaps = []; let reach = 0; const moved = [];
+        runs(() => { const d = made(wid, home); const t0 = T; let since = T, was = false, lx = d.x, ly = d.y;
+          world = wid; px = fx = -9; py = fy = -9;
+          while (T - t0 < 120000) { tick();
+            if (d.task && d.task.type === 'home') moved.push('was sent home from ' + at([d.x, d.y]) + ', ' + md([d.x, d.y], home) + ' steps from his spot');
+            if (Math.abs(d.x - lx) + Math.abs(d.y - ly) > 1) moved.push('jumped from ' + at([lx, ly]) + ' to ' + at([d.x, d.y]));
+            if (d.task) { d.task = null; DOGTHINGS.length = 0; keep.things.forEach(o => DOGTHINGS.push(o));   /* he does not go off on anything: put back */
+              d.x = d.fx = home[0]; d.y = d.fy = home[1]; d.moving = false; d.sit = false; since = T; was = false; lx = d.x; ly = d.y; continue; }
+            if (d.moving && !was) { gaps.push(T - since); since = T; }
+            reach = Math.max(reach, md([d.x, d.y], home)); was = d.moving; lx = d.x; ly = d.y; } });
+        gaps.sort((a, b) => a - b);
+        return { home, n: gaps.length, median: gaps[gaps.length >> 1], p99: gaps[Math.floor(gaps.length * 0.99)], max: gaps[gaps.length - 1], reach, moved }; };
+      const ctl = {};
+      [[park, ph], [away, ah]].forEach(([wid, home]) => {
+        if (!wid || !home || !open(wid, home[0], home[1])) return;
+        const c = control(wid, home);
+        if (!c.n) { P.push('a dog with room to wander at ' + at(home) + ' in ' + wid + ' never took a step in 16 simulated minutes, so how a dog normally moves could not be measured'); return; }
+        ctl[wid] = c;
+        RHYTHM.push('in ' + wid + ', a dog with room to wander steps every ' + sec(c.median) + ' (median of ' + c.n + ' steps); 99 in 100 of his pauses are under ' + sec(c.p99) +
+          ', the longest ' + sec(c.max) + '; on his own he wanders up to ' + c.reach + ' steps from his spot');
+        if (c.moved.length) P.push('a dog with room to wander, living at his own spot in ' + wid + ', ' + c.moved[0] + ' — something moved a healthy dog who did not choose to go (' + c.moved.length + ' times in 16 simulated minutes)');
+      });
+      const AFTER = 45000;
+      const tail = c => Math.max(20000, 2 * c.max);   /* "still wandering at the end": a step in a last stretch longer than any pause of his own */
+      /* the verdict on one dog after one activity, in the sentence a person would say */
+      const after = (what, d, home, c) => {
+        const end = [d.x, d.y], far = md(end, home);
+        if (far <= c.reach) return { none: what + ' ended ' + far + ' steps from his spot, within the ' + c.reach + ' he wanders anyway, so it could not leave him stuck' };
+        /* the people in the room stand where the real clock left them when this check began: if one of them has shut
+           the only way home, a walk was never possible and this run asks nothing about the walk */
+        if (foot(d.world, end)(home[0], home[1]) < 0 && !N4.some(([dx, dy]) => foot(d.world, end)(home[0] + dx, home[1] + dy) >= 0))
+          return { none: what + ' ended at ' + at(end) + ' with no way home on foot at all — somebody stands in it' };
+        const r = live(d, AFTER), fin = [d.x, d.y];
+        if (r.first === null) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot ' + at(home) + ', for the whole ' + sec(AFTER) +
+          ' that followed: every step he tried was further from home than a dog may wander. The owner, 2026-10-01: "i dont understand why he gets stuck"' };
+        if (r.first > c.p99) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
+          sec(c.p99) + '). Something rescued him late; nothing took him home when the activity ended' };
+        if (r.jumps.length) return { fail: 'after ' + what + ' the dog jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot and did not walk it' };
+        if (!free(r).some(p => md(p, home) <= c.reach)) return { fail: 'after ' + what + ' the dog never got back to his spot ' + at(home) + ': ' + sec(AFTER) + ' later he is at ' + at(fin) + ', ' + md(fin, home) + ' steps away' };
+        if (r.last === null || AFTER - r.last > tail(c)) return { fail: 'after ' + what + ' the dog got home and then stood still for good at ' + at(fin) + ' — no step in the last ' + sec(AFTER - (r.last || 0)) };
+        return {};
+      };
+
+      if (park && ctl[park]) {
+        const c = ctl[park], pw = WORLDS[park];
+        /* the course: the park's own gear. If it ends within his reach, or the park has none, ONE piece is laid
+           further from his spot than he wanders (a far-away finish, planted), wherever the park has room */
+        const course = () => { const wp = agilityCourse(park);
+          if (wp.length && md(wp[wp.length - 1], ph) > c.reach + 1) return { wp, own: true };
+          const fh = foot(park, ph), spot = tiles(park).filter(t => fh(t[0], t[1]) > 0 && md(t, ph) > c.reach + 1).sort((a, b) => md(a, ph) - md(b, ph))[0];
+          if (!spot) return null;
+          for (let y = 0; y < pw.H; y++) for (let x = 0; x < pw.W; x++) if ((TILES[pw.rows[y][x]] || {}).kind === 'gear') lay(park, x, y, '.');
+          lay(park, spot[0], spot[1], '3'); return { wp: agilityCourse(park), own: false }; };
+        const NOCOURSE = 'the park has no ground further from the dog\'s spot ' + at(ph) + ' than he wanders on his own, so no course can end where he would get stuck';
+        const runCourse = (d, until) => { queue = [0.01, 0.77, 0.5, 0.5, 0.5];   /* his next choice is a whim, and the whim is the course */
+          tick();
+          if (!d.task || d.task.type !== 'run') return 'the roll that means "run the course" did not send the dog round it (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') +
+            ') — dogWhim\'s odds moved and this check has to be re-aimed';
+          const r = live(d, 90000, dd => !(dd.task && dd.task.type === 'run') || !!(until && until(dd)));
+          if (r.jumps.length) return 'the dog jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' as he ran the agility course — he had a way on foot and did not walk it';
+          return null; };
+
+        /* ---- 1 · the course ---- */
+        report('the agility course', runs(() => { const cs = course(); if (!cs) return { none: NOCOURSE };
+          const last = cs.wp[cs.wp.length - 1], d = made(park, ph); world = park;
+          const you = aside(park, [ph].concat(cs.wp)); px = fx = you[0]; py = fy = you[1];
+          const no = runCourse(d); if (no) return { fail: no };
+          if (d.task && d.task.type === 'run') return { fail: 'the dog set off round the agility course and never finished it in 90 s' };
+          if (d.x !== last[0] || d.y !== last[1]) return { fail: 'the dog finished the agility course at ' + at([d.x, d.y]) + ', not at its last piece ' + at(last) };
+          return after('running the agility course' + (cs.own ? '' : ' (its one piece laid ' + md(last, ph) + ' steps from his spot)'), d, ph, c); }));
+
+        /* ---- 1 · a sniff and a chase: a second dog as far off as the greeting reaches ---- */
+        const pal = () => { const fh = foot(park, ph); return tiles(park).filter(t => fh(t[0], t[1]) > 0 && md(t, ph) > c.reach + 1 && md(t, ph) <= 7).sort((a, b) => md(b, ph) - md(a, ph))[0] || null; };
+        const NOPAL = 'no second dog can stand within the greeting\'s reach and further from the first one\'s spot than he wanders';
+        report('a sniff', runs(() => { const b = pal(); if (!b) return { none: NOPAL };
+          const d = made(park, ph); made(park, b); world = park; const you = aside(park, [ph, b]); px = fx = you[0]; py = fy = you[1];
+          queue = [0.01, 0.86, 0.5, 0.3]; tick();
+          if (!d.task || d.task.type !== 'sniff') return { fail: 'the roll that means "greet the other dog" did not send him to sniff (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
+          live(d, 30000, dd => !(dd.task && dd.task.type === 'sniff'));
+          return after('greeting another dog', d, ph, c); }));
+        ['chasing another dog', 'being chased by another dog'].forEach((what, k) => report('a chase, ' + (k ? 'the one who fled' : 'the chaser'), runs(() => {
+          const b = pal(); if (!b) return { none: NOPAL };
+          const d = made(park, ph), o = made(park, b); world = park; const you = aside(park, [ph, b]); px = fx = you[0]; py = fy = you[1];
+          queue = [0.01, 0.86, 0.5, 0.7, 0.5]; tick();
+          if (!d.task || d.task.type !== 'chase' || !o.task || o.task.type !== 'flee') return { fail: 'the roll that means "chase the other dog" did not start a chase (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
+          const dog = k ? o : d;
+          live(dog, 30000, dd => !(dd.task && (dd.task.type === 'chase' || dd.task.type === 'flee')));
+          return after(what, dog, k ? b : ph, c); })));
+
+        /* ---- 1 · a fetch you walked away from: you throw (the real ball button), then walk off while it flies ---- */
+        report('a fetch', runs(() => { const fh = foot(park, ph);
+          const nb = N4.map(([dx, dy]) => [ph[0] + dx, ph[1] + dy]).find(t => open(park, t[0], t[1]));
+          const off = tiles(park).filter(t => fh(t[0], t[1]) > 0 && md(t, ph) > c.reach + 2).sort((a, b) => fh(a[0], a[1]) - fh(b[0], b[1]))[0];
+          if (!nb || !off) return { none: 'there is nowhere in the park to walk away to that is further from the dog\'s spot than he wanders' };
+          const d = made(park, ph, { fseq: [1, 1, 1, 1, 1, 1, 1], fi: 0 });   /* a dog who wants to fetch today */
+          world = park; px = fx = nb[0]; py = fy = nb[1]; petTarget = K; petCrit = d;   /* what standing beside him sets */
+          document.getElementById('ball').click();
+          if (!BALL) return { fail: 'standing beside the dog and pressing the ball button threw no ball' };
+          px = fx = off[0]; py = fy = off[1];
+          live(d, 4000, dd => !!(dd.task && dd.task.type === 'fetch'));
+          if (!d.task || d.task.type !== 'fetch') return { fail: 'the dog wanted to fetch and never went after the ball' };
+          const rf = live(d, 60000, dd => !(dd.task && dd.task.type === 'fetch'));
+          if (rf.jumps.length) return { fail: 'bringing the ball back to you, the dog jumped from ' + at(rf.jumps[0].from) + ' to ' + at(rf.jumps[0].to) + ' — he had a way on foot and did not walk it' };
+          if (Math.abs(d.x - px) + Math.abs(d.y - py) > 1) return { fail: 'the dog never brought the ball back to you at ' + at(off) + ': he stopped at ' + at([d.x, d.y]) };
+          return after('bringing the ball back to you ' + md(off, ph) + ' steps from his spot', d, ph, c); }));
+
+        /* ---- 2 · a dog who follows you is not walked off to his spot ---- */
+        report('a dog who follows you', runs(() => { const cs = course(); if (!cs) return { none: NOCOURSE };
+          const last = cs.wp[cs.wp.length - 1];
+          const you = tiles(park).filter(t => md(t, last) === 2 && md(t, ph) > c.reach + 2)[0];
+          if (!you) return { none: 'nowhere to stand beside the course\'s last piece that is away from the dog\'s spot' };
+          const start = N4.map(([dx, dy]) => [you[0] + dx, you[1] + dy]).find(t => open(park, t[0], t[1]));
+          if (!start) return { none: 'nowhere beside you, at the course\'s end, for a dog who follows you to stand' };
+          const d = made(park, start, { follow: true, home: ph.slice() }); world = park; px = fx = you[0]; py = fy = you[1];
+          const no = runCourse(d); if (no) return { fail: no };
+          if (d.task && d.task.type === 'run') return { fail: 'the dog who follows you never finished the course' };
+          const r = live(d, AFTER), near = free(r).find(p => md(p, ph) <= c.reach);   /* another lap of the course passes his spot; that is not leaving you */
+          if (near) return { fail: 'a dog who follows you ran the agility course beside you and then left you: he went to ' + at(near) + ', back by his spot ' + at(ph) + ', ' + md(near, you) +
+            ' steps from where you stood. The owner, 2026-09-30: "i dont want him to leave me"' };
+          return {}; }));
+
+        /* ---- 3 · told to Sit in the middle of the course ---- */
+        const midway = dd => md([dd.x, dd.y], ph) > c.reach + 1 && !dd.moving;
+        report('told to Sit in the middle of the course', runs(() => { const cs = course(); if (!cs) return { none: NOCOURSE };
+          const d = made(park, ph); world = park; const you = aside(park, [ph].concat(cs.wp)); px = fx = you[0]; py = fy = you[1];
+          const no = runCourse(d, midway); if (no) return { fail: no };
+          if (!d.task || d.task.type !== 'run') return { none: 'the course never took him further from his spot than he wanders' };
+          const was = [d.x, d.y]; queue = [0.1]; document.getElementById('cmdSit').click();
+          if (d.task || !d.sit) return { fail: 'pressing Sit in the middle of the agility course did not stop the dog' };
+          const r = live(d, AFTER), fin = [d.x, d.y];
+          if (r.first === null) return { fail: 'told to Sit in the middle of the agility course, the dog sat at ' + at(was) + ', ' + md(was, ph) + ' steps from his spot ' + at(ph) +
+            ', and never moved again in ' + sec(AFTER) + ': every step he tried was too far from home. The owner, 2026-10-01: "he appears no matter what"' };
+          if (r.jumps.length) return { fail: 'told to Sit in the middle of the course, the dog later jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot' };
+          if (!free(r).some(p => md(p, ph) <= c.reach)) return { fail: 'told to Sit in the middle of the agility course, the dog never got back to his spot ' + at(ph) + ': ' + sec(AFTER) + ' later he is at ' + at(fin) };
+          return {}; }));
+        /* ---- 3 · leaving the park while he runs the course ---- */
+        report('leaving the park while he runs the course', runs(() => { const cs = course(); if (!cs) return { none: NOCOURSE };
+          const other = Object.keys(WORLDS).find(id => id !== park); if (!other) return { none: 'this shell has only the one room, so you cannot leave it' };
+          const d = made(park, ph); world = park; const you = aside(park, [ph].concat(cs.wp)); px = fx = you[0]; py = fy = you[1];
+          const no = runCourse(d, midway); if (no) return { fail: no };
+          if (!d.task || d.task.type !== 'run') return { none: 'the course never took him further from his spot than he wanders' };
+          world = other; live(d, 3000); world = park;
+          const back = [d.x, d.y];
+          if (md(back, ph) > c.reach) return { fail: 'you left the park while the dog ran the agility course, and when you came back he was standing where you left him, at ' + at(back) + ', ' +
+            md(back, ph) + ' steps from his spot ' + at(ph) + ' — nobody was there to see him go home, so nothing took him' };
+          const r = live(d, AFTER);
+          if (r.last === null || AFTER - r.last > tail(c)) return { fail: 'you left the park while the dog ran the course; when you came back he stood still for good at ' + at([d.x, d.y]) };
+          return {}; }));
+      } else if (park) NOTE.push('the park ' + park + ' has no open tile at PLACES.parkDogHome, so nothing that happens there could be asked');
+      else NOTE.push('this shell has no park, so the course, the greeting, the ball and the follow could not be asked');
+
+      /* ---- 1 · a romp: away from the park, the nearest person further from his spot than he wanders ---- */
+      const cw = away && ctl[away] ? away : park && ctl[park] ? park : null, c2 = cw ? ctl[cw] : null;
+      if (c2) {
+        let pick = null;
+        Object.keys(WORLDS).forEach(wid => { if (pick || wid === PL.park) return; const w = WORLDS[wid];
+          const folk = (w.npcs || []).filter(n => String(n.key).indexOf('~bowl') !== 0);   /* who dogRomp would pick from */
+          if (!folk.length) return;
+          tiles(wid).forEach(h => { if (pick) return; const fh = foot(wid, h);
+            const near = folk.map(n => ({ n, far: Math.min(...N4.map(([dx, dy]) => { const f = fh(n.x + dx, n.y + dy); return f < 0 ? 99 : f; })) })).sort((a, b) => a.far - b.far)[0];
+            if (near && near.far <= 9 && md(h, [near.n.x, near.n.y]) > c2.reach + 2) pick = { wid, h, n: near.n }; }); });
+        report('a romp', runs(() => {
+          if (!pick) return { none: 'nobody stands, away from the park, where a dog could romp round them and finish further from his spot than he wanders' };
+          const d = made(pick.wid, pick.h); world = pick.wid; const you = aside(pick.wid, [pick.h, [pick.n.x, pick.n.y]]); px = fx = you[0]; py = fy = you[1];
+          queue = [0.01, 0.86, 0.5, 0.5]; tick();
+          if (!d.task || d.task.type !== 'romp') return { fail: 'the roll that means "romp round somebody" did not send him (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
+          live(d, 60000, dd => !(dd.task && dd.task.type === 'romp'));
+          return after('a romp round somebody\'s feet', d, pick.h, c2); }));
+
+        /* ---- 2 · you call him (the paw menu's Come) and he comes: then he stays with you ---- */
+        report('coming when you call', runs(() => { const h = c2.home, fh = foot(cw, h);
+          const you = tiles(cw).filter(t => fh(t[0], t[1]) > 0 && fh(t[0], t[1]) <= 30 && md(t, h) > c2.reach + 3).sort((a, b) => fh(a[0], a[1]) - fh(b[0], b[1]))[0];
+          if (!you) return { none: 'there is nowhere to call him from that is further from his spot than he wanders' };
+          const d = made(cw, h); world = cw; px = fx = you[0]; py = fy = you[1];
+          queue = [0.1]; document.getElementById('cmdCome').click();
+          if (!d.task || d.task.type !== 'come') return { fail: 'pressing Come in the paw menu did not call the dog' };
+          live(d, 60000, dd => !(dd.task && dd.task.type === 'come'));
+          const came = [d.x, d.y];
+          if (md(came, you) > 1) return { fail: 'you called the dog from ' + at(you) + ' and he stopped at ' + at(came) };
+          const r = live(d, AFTER), gone = free(r).reduce((a, p) => md(p, you) > md(a, you) ? p : a, came);
+          if (r.first === null) return { fail: 'you called the dog and he came, and then he stood beside you at ' + at(came) + ' for the whole ' + sec(AFTER) + ' without a step: ' +
+            md(came, h) + ' steps from his spot ' + at(h) + ', every step he tried was too far from home' };
+          if (md(gone, you) > c2.reach + 1) return { fail: 'you called the dog and he came, and then he left you: he went to ' + at(gone) + ', ' + md(gone, you) + ' steps from you, back toward his old spot ' +
+            at(h) + '. The owner, 2026-09-30: "i dont want him to leave me"' };
+          if (r.last === null || AFTER - r.last > tail(c2)) return { fail: 'you called the dog and he came, and then he stood still for good at ' + at([d.x, d.y]) };
+          return {}; }));
+
+        /* ---- 4 · walled in, far from his spot: he comes back, and lands somewhere he can stand ---- */
+        const h = c2.home;
+        const cell = (wid, home) => tiles(wid).filter(t => md(t, home) > c2.reach + 1 && N4.every(([dx, dy]) => inMap(WORLDS[wid], t[0] + dx, t[1] + dy)))
+          .sort((a, b) => md(a, home) - md(b, home))[0] || null;
+        const boxed = (what, wid, home, set) => { const out = report('walled in ' + what, runs(() => { const f = cell(wid, home);
+            if (!f) return { none: 'no tile in ' + wid + ' is far enough from ' + at(home) + ' to wall a dog in away from his spot' };
+            const d = made(wid, f, { home: home.slice() }); world = wid; const you = aside(wid, [home, f]); px = fx = you[0]; py = fy = you[1];
+            N4.forEach(([dx, dy]) => wall(wid, f[0] + dx, f[1] + dy));
+            const pre = set ? set(d) : null; if (pre) return pre;
+            const r = live(d, AFTER, dd => md([dd.x, dd.y], f) > 1), j = r.jumps[0];
+            if (!j) return { fail: 'a dog walled in at ' + at(f) + ', ' + md(f, home) + ' steps from his spot ' + at(home) + ' (' + what + '), was still standing there ' + sec(AFTER) +
+              ' later. The owner, 2026-10-01: "he appears no matter what"' };
+            if (j.t < c2.p99) return { fail: 'a dog walled in at ' + at(f) + ' (' + what + ') was taken home after ' + sec(j.t) + ' — sooner than 99 in 100 of a dog\'s own pauses (' + sec(c2.p99) + '), so a dog only resting would be whisked away' };
+            if (j.wall) return { fail: 'a dog walled in far from home ' + what + ' reappeared INSIDE something, at ' + at(j.to) };
+            if (j.you) return { fail: 'a dog walled in far from home ' + what + ' reappeared on your own tile, ' + at(j.to) };
+            if (j.tram) return { fail: 'a dog walled in far from home ' + what + ' reappeared on the tram\'s line at ' + at(j.to) + ', with a car on it' };
+            if (md(j.to, home) > c2.reach) return { fail: 'a dog walled in far from home ' + what + ' reappeared at ' + at(j.to) + ', ' + md(j.to, home) + ' steps from his spot ' + at(home) };
+            return { t: j.t, to: j.to }; }));
+          const ok = out.filter(o => o.t !== undefined);
+          if (ok.length) RHYTHM.push('walled in ' + what + ' in ' + wid + ', he came back after ' + sec(Math.min(...ok.map(o => o.t))) + '–' + sec(Math.max(...ok.map(o => o.t))) + ', to ' + at(ok[0].to)); };
+        boxed('with his spot free', cw, h, null);
+        boxed('with you standing on his spot', cw, h, () => { px = fx = h[0]; py = fy = h[1]; return null; });
+        boxed('with a wall where his spot was', cw, h, () => { wall(cw, h[0], h[1]); return null; });
+        const lines = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT) || [];
+        const line = lines.find(L => WORLDS[L.world] && tiles(L.world).some(t => t[1] === L.row && t[0] > L.from + 3 && t[0] < L.to - 3));
+        if (!line) NOTE.push('walled in with his spot on the tram\'s line: this shell runs no tram with open rails, so "never on the line with a car on it" could not be asked');
+        else { const rail = tiles(line.world).filter(t => t[1] === line.row && t[0] > line.from + 3 && t[0] < line.to - 3)[0];
+          boxed('with his spot on the tram\'s line and a car coming', line.world, rail, () => {
+            TRO.state = 'run'; TRO.dir = 1; TRO.x = rail[0] - troSpan(line) - 1; TRO.t = 0;   /* the car's nose a step short of his spot; held there, nothing runs the tram */
+            if (!troDanger(line.world, rail[0], rail[1])) return { fail: 'a car could not be put on the tram line beside ' + at(rail) + ' to ask where a dog reappears — troDanger says the line is clear there' };
+            return null; }); }
+      } else NOTE.push('no world in this shell has a dog with room to wander, so the romp, the call and walling him in could not be asked');
+    } finally {
+      Math.random = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
+      unmake();
+      real.forEach(r => { r.c.world = r.world; r.c.next = r.next; if (r.stepT === undefined) delete r.c.stepT; else r.c.stepT = r.stepT; });
+      people.forEach(([n, v, l]) => { n.wnext = v; if (l === undefined) delete n.laughUntil; else n.laughUntil = l; });
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
+      Object.assign(PARK, JSON.parse(keep.park)); DECALS.length = keep.decals;
+      Object.keys(parkPrefs).forEach(k => delete parkPrefs[k]); Object.assign(parkPrefs, JSON.parse(keep.prefs)); parkPersist();
+      Object.assign(TRO, keep.tro); lastBump = keep.lastBump; petTarget = keep.petTarget; petCrit = keep.petCrit; BALL = keep.ball;
+      for (let i = propEdits.length - 1; i >= keep.props; i--) { const [wid, x, y, g] = propEdits[i], w = WORLDS[wid];
+        if (w && w.grid[y]) { w.grid[y][x] = g; w.rows[y] = w.rows[y].slice(0, x) + g + w.rows[y].slice(x + 1); } }
+      propEdits.length = keep.props;
+    }
+    return { P, NOTE, RHYTHM };
+  });
+  stuck.RHYTHM.forEach(l => console.log('  DOG RHYTHM: ' + l));
+  stuck.NOTE.forEach(l => console.log('  STUCK — NOTE, measured nothing: ' + l));
+  fails.push(...stuck.P);
 
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
      Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of
@@ -2528,6 +3110,82 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...orphan);
 
+  /* ---- #265: FROM ANYWHERE YOU CAN GET TO, YOU CAN WALK BACK (the builder junta, 2026-09-29) ----
+     The check above asks whether every place can be REACHED. Nothing asked about the way back. A built
+     room let you out one tile south of its door whatever stood there: a door in a hut's north wall
+     stood you inside the hut's own wall, and a hatch in the map's bottom edge stood you off the map —
+     reached perfectly, left never. A trap is a place you can walk into and not walk out of.
+     So, with every lot raised: (a) every door sets you down on ground you can stand on — asked again
+     here because built rooms and grown districts did not exist when the boot check ran; and (b) from
+     every tile you can get to — from the spawn, the park and every place the game itself stands you
+     (arrivals(), all but the far side of a door) — some path of steps and doors leads back to the spawn. Asked TWICE: as the city
+     stands at the start, and with every lot raised — on a page of its own, because "the start" has to
+     be the city a new game walks into, and the check above puts the city back by raising every lot
+     again. Planted, that is exactly what hid a trap: a lot laid over another door's doorstep trapped
+     you at the start, and raising the lots again let that door choose another side, so a check run
+     after any re-raise saw a healed city. A new game never re-raises before you walk. Stepping onto a door IS the
+     door: the engine warps you the moment you stand on one. A neighbour who wanders is not a wall (the
+     rule auditReach uses); somebody who never moves is. The trolley is a ride, not a walk, and is not
+     counted: a district whose only way home is the tram is reported, on purpose. */
+  const wbp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+  const wbErr = [];
+  wbp.on('pageerror', e => wbErr.push(e.message));
+  await wbp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+  await wbp.goto('file://' + file);
+  await wbp.waitForTimeout(1500);
+  const walkBack = await wbp.evaluate(() => {
+    const P = [];
+    [['at the start', () => {}], ['with every lot raised', () => { for (let i = 0; i < 999; i++) done.add(i); chSeen = 999; applyGrowth(); }]].forEach(([when, grow]) => {
+      grow();
+      const name = id => (T().locs && T().locs[id]) || id;
+      const stand = (id, x, y) => { const w = WORLDS[id];
+        if (!w || x < 0 || y < 0 || x >= w.W || y >= w.H || SOLID.has(w.grid[y][x])) return false;
+        if (w.grid[y][x] !== 'N') return true;
+        const n = whoAt(id, x, y); return !!n && wanders(n); };
+      const where = (id, x, y) => { const w = WORLDS[id];
+        if (!w) return 'in a place that does not exist (' + id + ')';
+        if (x < 0 || y < 0 || x >= w.W || y >= w.H) return 'off the edge of the map, at ' + x + ',' + y + ' of a place ' + w.W + ' wide and ' + w.H + ' tall';
+        if (w.grid[y][x] === 'N') return 'on top of somebody who never moves, at ' + x + ',' + y;
+        return 'inside "' + w.rows[y][x] + '", which is solid, at ' + x + ',' + y; };
+      // (a) every door sets you down on ground
+      let doors = 0;
+      Object.keys(WORLDS).forEach(from => portalsOf(from).forEach(({ x, y, p }) => { doors++;
+        if (!stand(p.to, p.x, p.y)) P.push('#265: ' + when + ', walk through the door in ' + name(from) + ' at ' + x + ',' + y + ' and you stand ' + where(p.to, p.x, p.y) + ' in ' + name(p.to)); }));
+      // (b) forward from every way in, then backward from the spawn over the same steps
+      const K = (w, x, y) => w + '|' + x + ',' + y;
+      const next = (id, x, y) => { const pp = portalAt(id, x, y);
+        if (pp) return stand(pp.to, pp.x, pp.y) ? [[pp.to, pp.x, pp.y]] : [];
+        return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [id, x + dx, y + dy]).filter(([w, a, b]) => stand(w, a, b)); };
+      const home = [PL.home, PL.spawn[0], PL.spawn[1]], roots = [home];
+      if (PL.park && PL.parkIn) roots.push([PL.park, PL.parkIn[0], PL.parkIn[1]]);
+      /* every place the game itself stands you — but not the far side of a door: a door's landing is
+         reached through its door or not at all, and a landing nobody can walk to is auditReach's to
+         report (seeded here, a sealed-off house read as a trap you could walk into, which nobody can) */
+      const landing = new Set();
+      Object.keys(WORLDS).forEach(f => portalsOf(f).forEach(({ p }) => landing.add(K(p.to, p.x, p.y))));
+      if (typeof arrivals === 'function') arrivals().forEach(a => { if (!landing.has(K(a.world, a.x, a.y))) roots.push([a.world, a.x, a.y]); });
+      if (!stand(home[0], home[1], home[2])) P.push('#265: the walk-back check has nowhere to walk back TO — the spawn (' + PL.spawn + ') in ' + name(PL.home) + ' is not ground you can stand on');
+      const seen = new Set(), from = {}, q = [];
+      roots.forEach(([w, x, y]) => { const k = K(w, x, y); if (stand(w, x, y) && !seen.has(k)) { seen.add(k); q.push([w, x, y]); } });
+      while (q.length) { const [w, x, y] = q.shift();
+        next(w, x, y).forEach(([w2, x2, y2]) => { const k = K(w2, x2, y2); (from[k] = from[k] || []).push([w, x, y]);
+          if (!seen.has(k)) { seen.add(k); q.push([w2, x2, y2]); } }); }
+      const ok = new Set([K(home[0], home[1], home[2])]), q2 = [home];
+      while (q2.length) { const [w, x, y] = q2.shift();
+        (from[K(w, x, y)] || []).forEach(([w2, x2, y2]) => { const k = K(w2, x2, y2); if (!ok.has(k)) { ok.add(k); q2.push([w2, x2, y2]); } }); }
+      const stuck = {};
+      seen.forEach(k => { if (!ok.has(k)) { const [w, xy] = k.split('|'); (stuck[w] = stuck[w] || []).push(xy); } });
+      Object.keys(stuck).sort().forEach(w => P.push('#265: ' + when + ', ' + stuck[w].length + ' tile(s) of ' + name(w) + ' can be walked into and never walked back out of (the first at ' +
+        stuck[w].sort()[0] + ') — from there no path and no door leads back to ' + name(PL.home)));
+      P.push('COUNT-ONLY: walk-back (#265): ' + seen.size + ' tiles reached in ' + new Set([...seen].map(k => k.split('|')[0])).size + ' place(s) through ' + doors +
+        ' door(s) ' + when + '; ' + (Object.keys(stuck).length ? 'some do not walk back (above)' : 'every one walks back to ' + name(PL.home)) + (doors ? '' : ' — this pack has no doors, so only steps were walked'));
+    });
+    return P;
+  });
+  await wbp.close();
+  if (wbErr.length) walkBack.push('#265: the page threw while the city was being walked back: ' + wbErr.slice(0, 3).join(' | '));
+  fails.push(...walkBack);
+
   /* ---- #156 / TAGS L12: a world that does not end still GROWS ----
      `ENDLESS` switched off the ending panel, and the ending panel's button was the only writer of
      `chSeen` in the whole engine — the one number that decides which quests are on offer, which
@@ -3177,12 +3835,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   /* ---- and in the flat cameras the trolley is painted in its row's turn ----
      The owner, 2026-09-21, naming the weirdness: "looks like the person is laying on the trolley."
-     The front camera painted the car in the GROUND pass and the isometric camera painted it LAST,
-     after everybody: so in front a person on the platform behind the car had his feet on its roof,
-     and in iso a person standing in front of the car was painted under it and one behind it had his
-     legs cut off at its roof line — the other two readings of "laying on the trolley". A car is a
-     thing on its row, and the depth queue every camera already keeps is where it belongs: whoever
-     is nearer the camera than the rails paints over it, whoever is farther paints under it.
+     What he saw was the 3D camera, the check above. In the flat cameras the isometric camera painted
+     the car LAST, after everybody, so a person standing in front of the car was painted under it
+     (86 pixels of him, measured that day). That was moved the same day (drawIso, grep
+     `IN ITS ROW'S TURN`). The FRONT camera was not, although until 2026-10-01 this note said its
+     car had been painted in the ground pass and fixed (#276): the same day's frames were all 3D, and
+     the front camera went on painting the car before its depth queue, under every row, until
+     mq-v217 — the walk-through below is the frame that showed it. A car is a thing on its row, and
+     the depth queue every camera already keeps is where it belongs: whoever is nearer the camera
+     than the rails paints over it, whoever is farther paints under it.
      Asked as pixels in each flat camera, with the car alongside the hero's column: a person on the
      row in FRONT of the rails keeps every pixel of himself (the car changes none), and a person on
      the row BEHIND the rails yields every pixel where they overlap (he changes none of the car).
@@ -3218,27 +3879,74 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const grab = () => { draw(); return g2.getImageData(0, 0, cv2.width, cv2.height).data; };
     const ne = (A, B, i) => Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 30;
     cams.forEach(cam => { camSet(cam); sizeCanvas();
-      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => { if (row === undefined) return;
+      /* FOUR CASES, AND EACH ONE SAYS WHETHER IT MEASURED ANYTHING (#275). This used to `return` in silence when a side had
+         nowhere to stand or the two never overlapped, and three of the four did exactly that: measured inside this suite on
+         2026-10-01, only "iso, in front" put any of his body on the car (45 pixels); "iso, behind" met it with 16 pixels of
+         drop shadow and none of him, and the front camera met it with 2 and 0. A car painted under everybody in iso
+         passed. So the count is now where his BODY and the car's BODY meet — a shadow on either is a tint, not an order —
+         and a case where they never do says so out loud. A camera that draws no car, or nobody, is a red: that is the probe
+         going blind, and silence there would be a pass about nothing. */
+      [[rowS, 'in front of'], [rowN, 'behind']].forEach(([row, side]) => {
+        if (row === undefined) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can stand ' + side + ' the trolley at x=' + mid + ', so the ' + cam + ' camera was not asked about that side at rest'); return; }
         px = fx = mid; py = fy = row;
         const A = grab(), A2 = grab();
         heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
-        let control = 0, region = 0, overlap = 0, heroChangedTram = 0, tramChangedHero = 0;
-        /* his BODY, not his drop shadow: the shadow is a translucent tint and its anti-aliased rim can land within
-           tolerance of either frame; a body pixel differs from the bare ground by more than 120 */
+        let control = 0, region = 0, carSeen = 0, heroSeen = 0, meet = 0, heroChangedTram = 0, tramChangedHero = 0;
+        /* a BODY, not a drop shadow: a shadow is a translucent tint and its anti-aliased rim can land within tolerance of
+           either frame; a body pixel differs from the bare ground by more than 120 — his, and the car's */
         const solid = (P, Q, i) => Math.abs(P[i] - Q[i]) + Math.abs(P[i + 1] - Q[i + 1]) + Math.abs(P[i + 2] - Q[i + 2]) > 120;
         for (let i = 0; i < A.length; i += 4) { const hero = ne(C, D, i), tram = ne(B, D, i); if (!hero && !tram) continue;
-          region++;
+          region++; if (tram) carSeen++; if (hero) heroSeen++;
           /* a neighbour's idle bob is a sub-pixel sine of the clock: a pixel that moved between two frames of the same
              scene is left out of the count, and only a region that is mostly moving is a probe that measures nothing */
           if (ne(A, A2, i)) { control++; continue; }
-          /* "covered" means the OTHER one's pixel is what shows — a person's translucent drop shadow tinting the car
-             under it is not the car covering him, so a pixel counts only when it equals one frame and not the other */
-          if (hero && tram) { overlap++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (solid(C, D, i) && ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; } }
+          if (!solid(C, D, i) || !solid(B, D, i)) continue;     /* only where his body and the car's body meet */
+          /* "covered" means the OTHER one's pixel is what shows: a pixel counts only when it equals one frame and not the other */
+          meet++; if (ne(A, B, i) && !ne(A, C, i)) heroChangedTram++; if (ne(A, C, i) && !ne(A, B, i)) tramChangedHero++; }
         if (control > region * 0.05) { P.push('the ' + cam + ' camera cannot be measured: two frames of the same scene differ by ' + control + ' of ' + region + ' pixels around the trolley'); return; }
-        if (!overlap) return;                                   /* no overlap on this row in this camera: there is no order to get wrong */
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody standing ' + side + ' it could be measured'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + '), so that side was not measured'); return; }
+        if (!meet) { P.push('COUNT-ONLY: in the ' + cam + ' camera a person standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + ') never meets it — not one pixel of his body crosses the car\'s — so the order there was not measured at rest'); return; }
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
         if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
-      }); });
+      });
+      /* WALKING THROUGH IT, in both flat cameras (#276, #275). Standing still, two of the cases above cannot see the
+         order. In the front camera the car is drawn inside its own row and so is a person, so nobody standing beside it
+         meets it there (0 pixels behind, 2 in front, measured 2026-10-01 at Calle Principal). In iso nobody STANDING
+         behind the car meets it: the car is a flat sprite from its tile's corner, and scanned over every tile around a
+         dwelling car, bodies met it only south and east of it, nearer the camera. The one person who reaches the car's row
+         with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown from the
+         platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform your feet
+         are still BEHIND its row and the car must cover you: until mq-v217 the front camera painted the car before its
+         depth queue, so your legs went on its roof, the owner's "laying on the trolley" in the camera this note had called
+         fixed; and in iso a car painted under everybody went unnoticed. So the step is swept in eighths of a tile on each
+         side of the rails' row (the row itself, inside the car, is neither side), counting only where his BODY and the
+         car's BODY meet: a drop shadow on either is a tint, not an order (with only his body required, 4 pixels of a
+         correctly hidden person read as "in front" in iso, where the car is not opaque). A side where the two never meet
+         says so. A camera that draws no car, or nobody, there is a red and not a note: planted 2026-10-01 with the
+         front-view car blanked, the first draft of this sweep said "not measured" and the whole suite stayed green. */
+      [[L.row - 1, -1, 'behind'], [L.row + 1, 1, 'in front of']].forEach(([from, sgn, side]) => {
+        if (!open(mid, from)) { P.push('COUNT-ONLY: in ' + L.world + ' nobody can step onto the rails from ' + side + ' the trolley at x=' + mid + ', so that half of walking through it was not measured in the ' + cam + ' camera'); return; }
+        const body = (P2, Q, i) => Math.abs(P2[i] - Q[i]) + Math.abs(P2[i + 1] - Q[i + 1]) + Math.abs(P2[i + 2] - Q[i + 2]) > 120;
+        let carSeen = 0, heroSeen = 0, meet = 0, moved = 0, worst = 0, at = 0;
+        for (let k = 1; k <= 7; k++) { px = fx = mid; py = L.row; fy = L.row + sgn * k / 8;
+          const A = grab(), A2 = grab();
+          heroOn = false; const B = grab(); tramOn = false; const D = grab(); heroOn = true; const C = grab(); tramOn = true;
+          let wrong = 0;
+          for (let i = 0; i < A.length; i += 4) { if (ne(B, D, i)) carSeen++; if (ne(C, D, i)) heroSeen++;
+            if (!body(C, D, i) || !body(B, D, i)) continue;              /* only where his body and the car's body meet */
+            if (ne(A, A2, i)) { moved++; continue; }
+            meet++;
+            if (side === 'behind' ? (ne(A, B, i) && !ne(A, C, i)) : (ne(A, C, i) && !ne(A, B, i))) wrong++; }
+          if (wrong > worst) { worst = wrong; at = k; } }
+        if (!carSeen) { P.push('the ' + cam + ' camera draws no trolley where it stands in ' + L.world + ' (x=' + TRO.x + '), so nobody stepping through it from ' + side + ' it could be measured against it'); return; }
+        if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody where the hero steps ' + side + ' the trolley in ' + L.world + ', so walking through it was not measured'); return; }
+        if (moved > meet * 0.05) { P.push('the ' + cam + ' camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (meet + moved) + ' pixels where he and the car meet'); return; }
+        if (!meet) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the ' + cam + ' camera never put his body and the car\'s in the same pixel, so the order was not measured'); return; }
+        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
+        if (worst && side === 'in front of') P.push('in the ' + cam + ' camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
+      });
+    });
     window.troDraw2D = real; drawPerson = realDP; Date.now = wallNow; performance.now = pagePerf;
     if (typeof seasonSet === 'function') seasonSet(keep.season);
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d;
@@ -4571,6 +5279,145 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   droneNote.forEach(l => console.log('  ' + l));
   fails.push(...droneP);
 
+  /* ---- #269: TWO ROOMS ARE TWO ROOMS, AND A RELOAD PUTS YOU WHERE YOU STOOD ----
+     A room a lot carries was named by cutting the lot's id to twelve letters, because the save kept
+     twelve — so two lots whose ids share their first twelve letters made ONE room, silently: rename
+     Meridian's lots casita-de-don-1 and casita-de-don-2 and Doña Tencha's house, and Doña Tencha,
+     disappeared, with nothing in the log (measured 2026-09-30, in a copy of this repository). And the
+     save cut the id of whatever place you stood in to twelve letters, so a place with a longer id sent
+     you home on every reload. The owner, 2026-09-30: "why dont they have different IDs? and a warning
+     that other rooms have the same name".
+     A PROBE, SAID PLAINLY, on a page of its own: a yard whose id is longer than twelve letters, and two
+     lots whose ids share their first twelve, each carrying a room of a different width and the SAME
+     name. Real arrow keys walk into each; a real reload and a real press of Continue ask where you wake;
+     then four lots that must be refused — an id already taken by a lot, an id already taken by a
+     place, an id longer than a save keeps, and one lot with two doors into rooms. Nothing here calls the code that names a room. */
+  {
+    const names = await page.evaluate(() => (typeof logKind === 'function' ? logKind('name') : []).map(e => e.msg));
+    names.forEach(m => console.log('  NOTE: the engine says two places share a name (a warning, not a fault): ' + m));
+    const declare = () => {
+      wanderUpdate = function () {};
+      camSet('top');
+      if (SOLID.has('.') || !SOLID.has('#')) return { err: 'this pack makes "." solid or "#" walkable, so the probe yard cannot be laid in its letters' };
+      const Y = 'probe-yard-for-two-gatehouses';
+      const rows = ['#############', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#############'];
+      WORLDS[Y] = { rows: rows.slice(), rows0: rows.slice(), grid: rows.map(r => r.split('')), npcs: [], W: rows[0].length, H: rows.length };
+      Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[Y] = 'the probe yard'; t.arrive[Y] = ''; });
+      const room = w => ({ rows: w === 5 ? ['#####', '#...#', '#...#', '##.##'] : ['#######', '#.....#', '#.....#', '###.###'], locs: { en: 'the gatehouse', es: 'la caseta' } });
+      if (typeof BUILDTPL === 'undefined') window.BUILDTPL = {};
+      Object.assign(BUILDTPL, {
+        'probe-gate-a': { id: 'probe-gate-a', size: { w: 1, h: 1 }, parts: [{ id: 'door', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(5) } }] },
+        'probe-gate-b': { id: 'probe-gate-b', size: { w: 1, h: 1 }, parts: [{ id: 'door', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(7) } }] },
+        'probe-gate-two': { id: 'probe-gate-two', size: { w: 2, h: 1 }, parts: [{ id: 'left', tiles: [[0, 0, '.']], link: { door: [0, 0], interior: room(5) } },
+          { id: 'right', tiles: [[0, 1, '.']], link: { door: [0, 1], interior: room(7) } }] },
+      });
+      if (typeof BUILDS === 'undefined') window.BUILDS = [];
+      BUILDS.length = 0;   /* only the probe's lots are raised here; the page is thrown away */
+      BUILDS.push({ id: 'probe-gatehouse-1', tpl: 'probe-gate-a', world: Y, x: 2, y: 2 }, { id: 'probe-gatehouse-2', tpl: 'probe-gate-b', world: Y, x: 6, y: 2 });
+      applyBuilds();
+      return { Y };
+    };
+    const ip = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const iErr = [], IR = [];
+    ip.on('pageerror', e => iErr.push(e.message));
+    await ip.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await ip.goto('file://' + file);
+    await ip.waitForTimeout(1500);
+    const set = await ip.evaluate(declare);
+    await ip.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true; document.getElementById('card').hidden = true; });
+    const at = () => ip.evaluate(() => ({ w: world, x: px, y: py, W: (WORLDS[world] || {}).W, name: (T().locs || {})[world] || world }));
+    const walkIn = async (x, y) => {
+      await ip.evaluate(([Y, x, y]) => { world = Y; px = fx = x; py = fy = y; moving = false; held = null; dir = 'down'; warpT = 0; portalT = 0; warpPend = null; portalHold = '';
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }, [set.Y, x, y]);
+      await ip.waitForTimeout(80);
+      await ip.keyboard.down('ArrowDown');
+      try { await ip.waitForFunction(Y => world !== Y && !warpPend, set.Y, { timeout: 5000 }); } catch (e) {}
+      await ip.keyboard.up('ArrowDown');
+      try { await ip.waitForFunction(() => performance.now() > warpT && performance.now() > portalT + 30, null, { timeout: 5000 }); } catch (e) {}
+      return at();
+    };
+    const reload = async () => {
+      await ip.reload(); await ip.waitForTimeout(1500);
+      await ip.evaluate(declare);                            /* the pack's lots again, as a boot would raise them */
+      await ip.click('#continueBtn'); await ip.waitForTimeout(600);
+      return at();
+    };
+    if (set.err) IR.push(set.err);
+    else {
+      const one = await walkIn(2, 1), two = await walkIn(6, 1);
+      if (one.w === set.Y || two.w === set.Y) IR.push('walking onto a gatehouse door from the yard did not take you inside (first: ' + one.w + ', second: ' + two.w + ')');
+      else if (one.w === two.w) IR.push('the first gatehouse\'s door opened into the second one\'s room, ' + two.W + ' tiles wide where its own is 5 — two rooms whose ids share their first twelve letters became one, and the first is gone');
+      else if (one.W !== 5 || two.W !== 7) IR.push('the two gatehouse doors open into two rooms, but not their own: ' + one.W + ' and ' + two.W + ' tiles wide where they were built 5 and 7');
+      /* a reload, standing in the second gatehouse: the arrival saved; Continue must put you back */
+      const woke = await reload();
+      if (woke.w !== two.w || woke.x !== two.x || woke.y !== two.y) IR.push('you saved standing in the second gatehouse at ' + two.x + ',' + two.y + ', reloaded and pressed Continue, and woke up in ' + woke.name + ' at ' + woke.x + ',' + woke.y);
+      /* ...and in the yard, whose id is longer than twelve letters: walk out, reload, Continue */
+      await ip.keyboard.down('ArrowDown');
+      try { await ip.waitForFunction(Y => world === Y && !warpPend, set.Y, { timeout: 5000 }); } catch (e) {}
+      await ip.keyboard.up('ArrowDown');
+      try { await ip.waitForFunction(() => performance.now() > warpT, null, { timeout: 5000 }); } catch (e) {}
+      const out = await at();
+      if (out.w !== set.Y) IR.push('walking out of the second gatehouse did not bring you back to the yard (you are in ' + out.name + ')');
+      else {
+        const woke2 = await reload();
+        if (woke2.w !== set.Y || woke2.x !== out.x || woke2.y !== out.y) IR.push('you saved standing in the yard at ' + out.x + ',' + out.y + ' — a place whose id is ' + set.Y.length + ' letters long — reloaded and pressed Continue, and woke up in ' + woke2.name + ' at ' + woke2.x + ',' + woke2.y);
+      }
+      /* the warning the owner asked for: both rooms are called "the gatehouse" */
+      const warned = await ip.evaluate(() => (typeof logKind === 'function' ? logKind('name') : []).map(e => e.msg));
+      const said = warned.find(m => m.includes('probe-gatehouse-1') && m.includes('probe-gatehouse-2'));
+      if (!said) IR.push('two rooms are both called "the gatehouse" and nothing said so — he asked for a warning that other rooms have the same name');
+      else IR.push('COUNT-ONLY: room ids (#269): two rooms called "the gatehouse" are two rooms, and the engine said so: ' + said);
+      /* four lots that must be refused, raised the way a pack's are */
+      const bad = await ip.evaluate(Y => {
+        const long = 'probe-' + 'gatehouse-with-a-name-too-long-to-keep-whole';
+        BUILDS.push({ id: 'probe-gatehouse-1', tpl: 'probe-gate-a', world: Y, x: 10, y: 2 }, { id: Y, tpl: 'probe-gate-a', world: Y, x: 4, y: 5 }, { id: long, tpl: 'probe-gate-a', world: Y, x: 8, y: 5 },
+          { id: 'probe-two-doors', tpl: 'probe-gate-two', world: Y, x: 10, y: 5 });
+        applyBuilds();
+        const crit = logCrit().filter(e => e.kind === 'build').map(e => e.msg);
+        return { long, yardW: WORLDS[Y] && WORLDS[Y].W, yardBuilt: !!(WORLDS[Y] && WORLDS[Y].built), dupDoor: !!portalAt(Y, 10, 2), longDoor: !!portalAt(Y, 8, 5), yardDoor: portalAt(Y, 4, 5),
+          dupSaid: crit.find(m => m.includes('probe-gatehouse-1')), yardSaid: crit.find(m => m.includes(Y)), longSaid: crit.find(m => m.includes(long)),
+          two: [portalAt(Y, 10, 5), portalAt(Y, 11, 5)].map(p => p && p.to), twoSaid: crit.find(m => m.includes('probe-two-doors')) };
+      }, set.Y);
+      if (bad.dupDoor || !bad.dupSaid) IR.push('a second lot with the id probe-gatehouse-1 was ' + (bad.dupDoor ? 'built, its door opening into the first one\'s room' : 'left out') + (bad.dupSaid ? '' : ', and nothing said why'));
+      if (bad.yardBuilt || bad.yardW !== 13) IR.push('a lot whose id is the id of the yard ' + (bad.yardBuilt ? 'replaced the yard itself with a room ' + bad.yardW + ' tiles wide' : 'changed the yard') + (bad.yardSaid ? '' : ', and nothing said so'));
+      else if (bad.yardDoor) IR.push('a lot whose id is the id of the yard was built anyway, its door opening into a room called ' + bad.yardDoor.to + (bad.yardSaid ? '' : ', and nothing said so'));
+      else if (!bad.yardSaid) IR.push('a lot whose id is the id of the yard was left out and nothing said why');
+      if (bad.longDoor || !bad.longSaid) IR.push('a lot whose id is ' + bad.long.length + ' letters long was ' + (bad.longDoor ? 'built — a save keeps fewer, so whoever saved inside it would wake up somewhere else' : 'left out') + (bad.longSaid ? '' : ', and nothing said why'));
+      if (bad.two[0] && bad.two[0] === bad.two[1]) IR.push('a lot with two doors into two rooms was built with both doors opening into one room, ' + bad.two[0] + (bad.twoSaid ? '' : ', and nothing said so'));
+      else if (bad.two[0] || bad.two[1] || !bad.twoSaid) IR.push('a lot with two doors into two rooms was ' + (bad.two[0] || bad.two[1] ? 'built' : 'left out') + (bad.twoSaid ? '' : ', and nothing said why'));
+      if (bad.dupSaid && bad.yardSaid && bad.longSaid && bad.twoSaid) IR.push('COUNT-ONLY: room ids (#269): four lots refused, in these words: ' + [bad.dupSaid, bad.yardSaid, bad.longSaid, bad.twoSaid].join(' | '));
+    }
+    if (iErr.length) IR.push('the page threw while walking between rooms and reloading: ' + iErr.slice(0, 3).join(' | '));
+    await ip.close();
+    /* ...and a save whose place is a name every object answers to. Kept whole, "constructor" finds the one
+       Object.prototype lends WORLDS, and Continue stops the game at the title with an error; cut to twelve
+       letters, longer ones like "propertyIsEnumerable" were defused by accident — so keeping ids whole
+       must not let them all through. A Trolley Pass link reaches this same loader. Each name in a page of
+       its own (a broken page's error must not be counted against the next), planted at the title, where
+       the HUD is down and nothing saves itself over the plant on the way out (pagehide). */
+    for (const odd of ['constructor', 'propertyIsEnumerable']) {
+      const op = await browser.newPage({ viewport: { width: 480, height: 900 } });
+      const oErr = [];
+      op.on('pageerror', e => oErr.push(e.message));
+      await op.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await op.goto('file://' + file); await op.waitForTimeout(1200);
+      await op.evaluate(o => { save(); const k = SK('1'), sv = JSON.parse(localStorage.getItem(k)); sv.w = o; localStorage.setItem(k, JSON.stringify(sv)); }, odd);
+      await op.reload(); await op.waitForTimeout(1200);
+      const carried = await op.evaluate(() => (JSON.parse(localStorage.getItem(SK('1')) || '{}') || {}).w);
+      if (carried !== odd) IR.push('a save whose place is called "' + odd + '" could not be planted — the game holds "' + carried + '" — so nothing was measured, which is not a pass');
+      else {
+        try { await op.click('#continueBtn', { timeout: 5000 }); } catch (e) { oErr.push('Continue could not be pressed: ' + String(e.message || e).split('\n')[0]); }
+        await op.waitForTimeout(700);
+        const r = await op.evaluate(() => ({ w: String(world), shown: !document.getElementById('world').hidden }));
+        if (oErr.length || !r.shown || r.w === odd) IR.push('a save whose place is called "' + odd + '" — a name every object answers to — ' +
+          (!r.shown ? 'stopped the game at the title when Continue was pressed' : r.w === odd ? 'put you inside it' : 'woke you in ' + r.w) + (oErr.length ? ', and the page threw: ' + oErr[0] : ''));
+      }
+      await op.close();
+    }
+    fails.push(...IR.map(m => /^COUNT-ONLY: /.test(m) ? m : 'room ids: ' + m));
+  }
+
   /* ---- A KEY GOES TO WHAT HAS THE KEYBOARD; THE WORLD GETS ONLY WHAT NOBODY ELSE TAKES (#266, #274) ----
      On a laptop, Enter on a focused button beside a person pressed the button AND opened the
      conversation — in Meridian the gear beside Priya opened Settings and started her quest in one
@@ -4968,6 +5815,442 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (pp) await pp.close();
     await pctx.close();
     fails.push(...[...new Set(N32)], ...[...new Set(P32)].map(m => 'another player: ' + m));
+  }
+
+  /* ---- #265: A BUILT ROOM CAN BE LEFT — WALKED, NOT ASKED ----
+     A room a lot carries let you out one tile SOUTH of its door, always, whatever stood there. At the
+     builder junta (2026-09-29) two huts were planted in a copy of the gauge: one with its door in its
+     north wall, which let you out inside its own wall, and a hatch in the bottom edge of the map, which
+     let you out off the map — and the engine said nothing at boot. The owner, 2026-09-30: "an auto,
+     choose a door for now workflow when building so exits/doors exist." So a door opens onto a side you
+     can stand on and walk on from — south first, as every door that shipped already does — and a door
+     with no such side is refused out loud.
+     A PROBE, SAID PLAINLY: no game on the public site has a door that does not face south, so this
+     block declares a yard and three lots on a page of its own, raised by the same applyBuilds every
+     boot runs, and then WALKS — real arrow keys — into each room and back out, and reads where you are
+     standing. Nothing here calls the door chooser. The page is thrown away at the end, so nothing it
+     declared can reach another check. */
+  {
+    const dp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const dErr = [], DR = [];
+    dp.on('pageerror', e => dErr.push(e.message));
+    await dp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await dp.goto('file://' + file);
+    await dp.waitForTimeout(1500);
+    const yard = await dp.evaluate(() => {
+      wanderUpdate = function () {};
+      camSet('top');
+      if (SOLID.has('.') || !SOLID.has('#')) return { err: 'this pack makes "." solid or "#" walkable, so the probe yard cannot be laid in its letters' };
+      const Y = 'probe-yard', rows = ['#############', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#############'];
+      WORLDS[Y] = { rows: rows.slice(), rows0: rows.slice(), grid: rows.map(r => r.split('')), npcs: [], W: rows[0].length, H: rows.length };
+      Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[Y] = 'the probe yard'; t.arrive[Y] = ''; });
+      const room = n => ({ rows: ['#####', '#...#', '#...#', '##.##'], locs: { en: n, es: n } });
+      if (typeof BUILDTPL === 'undefined') window.BUILDTPL = {};
+      Object.assign(BUILDTPL, {
+        'probe-hut': { id: 'probe-hut', size: { w: 3, h: 2 }, parts: [{ id: 'body', tiles: [[0, 0, '#'], [0, 1, '.'], [0, 2, '#'], [1, 0, '#'], [1, 1, '#'], [1, 2, '#']],
+          link: { door: [0, 1], interior: room('the hut whose door is in its north wall') } }] },
+        'probe-hatch': { id: 'probe-hatch', size: { w: 1, h: 1 }, parts: [{ id: 'hatch', tiles: [[0, 0, '.']],
+          link: { door: [0, 0], interior: room('the cellar under a hatch in the bottom edge of the map') } }] },
+        'probe-vault': { id: 'probe-vault', size: { w: 3, h: 3 }, parts: [{ id: 'body', tiles: [[0, 0, '#'], [0, 1, '#'], [0, 2, '#'], [1, 0, '#'], [1, 1, '.'], [1, 2, '#'], [2, 0, '#'], [2, 1, '#'], [2, 2, '#']],
+          link: { door: [1, 1], interior: room('the vault whose door has a wall on every side') } }] },
+      });
+      if (typeof BUILDS === 'undefined') window.BUILDS = [];
+      BUILDS.length = 0;   /* only the probe's lots are raised here; the page is thrown away */
+      BUILDS.push({ id: 'probe-hut', tpl: 'probe-hut', world: Y, x: 2, y: 4 }, { id: 'probe-hatch', tpl: 'probe-hatch', world: Y, x: 6, y: 7 }, { id: 'probe-vault', tpl: 'probe-vault', world: Y, x: 8, y: 1 });
+      applyBuilds();
+      enterWorld(false);
+      document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true; document.getElementById('card').hidden = true;
+      return { Y, built: ['probe-hut', 'probe-hatch', 'probe-vault'].filter(id => !!WORLDS[id] && !!portalAt(Y, ...({ 'probe-hut': [3, 4], 'probe-hatch': [6, 7], 'probe-vault': [9, 2] })[id])),
+        refused: logCrit().filter(e => e.kind === 'build').map(e => e.msg) };
+    });
+    if (yard.err) DR.push(yard.err);
+    else {
+      const KEY = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+      for (const [lot, name, door, from] of [['probe-hut', 'the hut whose door is in its north wall', [3, 4], [3, 3]],
+                                             ['probe-hatch', 'the cellar under a hatch in the bottom edge of the map', [6, 7], [6, 6]]]) {
+        if (!yard.built.includes(lot)) { DR.push(name + ' was never built, so nobody can go in: ' + (yard.refused.join(' | ') || 'and the engine said nothing')); continue; }
+        await dp.evaluate(([Y, x, y]) => { world = Y; px = fx = x; py = fy = y; moving = false; held = null; dir = 'down';
+          warpT = 0; portalT = 0; warpPend = null; portalHold = '';
+          if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }, [yard.Y, from[0], from[1]]);
+        await dp.waitForTimeout(80);
+        await dp.keyboard.down('ArrowDown');                       /* onto the door, from the yard */
+        try { await dp.waitForFunction(r => world === r && !warpPend, lot, { timeout: 5000 }); } catch (e) {}
+        await dp.keyboard.up('ArrowDown');
+        const inside = await dp.evaluate(() => world);
+        if (inside !== lot) { DR.push('walking onto the door of ' + name + ' at ' + door + ' did not take you inside (you are in ' + inside + ')'); continue; }
+        try { await dp.waitForFunction(() => performance.now() > warpT && performance.now() > portalT + 30, null, { timeout: 5000 }); } catch (e) {}
+        const ex = await dp.evaluate(r => { const k = Object.keys(PORTALSAT[r] || {})[0]; if (!k) return null; const [x, y] = k.split(',').map(Number);
+          return { x, y, key: y > py ? 'down' : y < py ? 'up' : x > px ? 'right' : 'left' }; }, lot);
+        if (!ex) { DR.push(name + ' has no way out at all'); continue; }
+        await dp.keyboard.down(KEY[ex.key]);                       /* onto the room's way out */
+        try { await dp.waitForFunction(r => world !== r && !warpPend, lot, { timeout: 5000 }); } catch (e) {}
+        await dp.keyboard.up(KEY[ex.key]);
+        try { await dp.waitForFunction(() => performance.now() > warpT, null, { timeout: 5000 }); } catch (e) {}
+        const at = await dp.evaluate(() => { const w = WORLDS[world], inMap = px >= 0 && py >= 0 && px < w.W && py < w.H;
+          const step = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]].find(([, dx, dy]) => !isSolid(px + dx, py + dy) && !portalAt(world, px + dx, py + dy));
+          return { w: world, x: px, y: py, W: w.W, H: w.H, inMap, g: inMap ? w.rows[py][px] : null, solid: inMap && SOLID.has(w.grid[py][px]), step: step ? step[0] : null }; });
+        if (at.w !== yard.Y) { DR.push('walking out of ' + name + ' took you to ' + at.w + ', not back to the yard its door stands in'); continue; }
+        if (!at.inMap) { DR.push('walking out of ' + name + ' stood you OFF THE MAP, at ' + at.x + ',' + at.y + ' of a yard ' + at.H + ' tiles tall — there is no ground there at all'); continue; }
+        if (at.solid) DR.push('walking out of ' + name + ' stood you INSIDE "' + at.g + '" at ' + at.x + ',' + at.y + ' — inside its own wall');
+        if (!at.step) { DR.push('walking out of ' + name + ', the only step you can take is back through its door'); continue; }
+        await dp.keyboard.down(KEY[at.step]);
+        try { await dp.waitForFunction(a => px !== a.x || py !== a.y, at, { timeout: 3000 }); } catch (e) {}
+        await dp.keyboard.up(KEY[at.step]);
+        const moved = await dp.evaluate(a => px !== a.x || py !== a.y, at);
+        if (!moved) DR.push('walking out of ' + name + ' you stood at ' + at.x + ',' + at.y + ' and could not take a single step');
+      }
+      if (yard.built.includes('probe-vault')) DR.push('the vault whose door has a wall on every side was built anyway, and the engine said nothing — anybody who got in could never get out');
+      else if (!yard.refused.some(m => m.includes('probe-vault'))) DR.push('the vault whose door has a wall on every side is missing and the engine never said why — it was refused in silence');
+      else DR.push('COUNT-ONLY: built rooms (#265): the vault with a wall on every side of its door was refused, in these words: ' + yard.refused.find(m => m.includes('probe-vault')));
+    }
+    if (dErr.length) DR.push('the page threw while walking in and out of built rooms: ' + dErr.slice(0, 3).join(' | '));
+    await dp.close();
+    fails.push(...DR.map(m => /^COUNT-ONLY: /.test(m) ? m : 'built rooms: ' + m));
+  }
+
+  /* ---- WITH TWO PEOPLE BESIDE YOU, ENTER TALKS TO THE ONE YOU FACE (#285) ----
+     The owner, 2026-10-01: "enter talks to the person you face first sounds good", answering the order
+     put to him: the one you face, then the one with a quest for you, then the nearest. Before it, Enter
+     (and the Talk button it presses) went to whoever came first in the world's list of people: in
+     Meridian's own office, standing between Priya and Theo and facing Theo, Enter opened Priya's quest.
+     Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
+     order — which is why one person beside you must be offered exactly as before, whichever way you face.
+     REAL KEYS (POSTMORTEM §4): the hero is turned by a real arrow press toward a tile he cannot walk
+     onto — a person, or a wall — or walks in with one; Enter is a real key press. What is read is what a
+     player reads: the name on the Talk button before Enter, and the name on the card, or on the line
+     said, after it. A page of its own, the neighbours, the tram and the doorstep lines held still (§7;
+     the guard skill, "it reads the clock"), the camera on top so an arrow is one world step.
+     THE TWO PEOPLE ARE FOUND WHERE THE MAP STANDS THEM when it stands two beside one tile; where no map
+     does, one of them is moved there the way the R11 check above moves a wanderer (grep `put the
+     wanderer on EVERY tile`), and the line this prints says who was moved. A chapter is walked to where
+     it has to be, as the plan check does (grep `walk the chapters until the paper`). And a shell with
+     somebody to measure where the finder found no scene is a red about the finder, never a pass. */
+  {
+    const fp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const fErr = [], FF = [], measured = [];
+    fp.on('pageerror', e => fErr.push(e.message));
+    await fp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await fp.goto('file://' + file);
+    await fp.waitForTimeout(1500);
+    const found = await fp.evaluate(() => {
+      const $ = id => document.getElementById(id);
+      ['wanderUpdate', 'portalNudge', 'troTick'].forEach(f => { if (typeof window[f] === 'function') window[f] = function () {}; });
+      camSet('top');
+      const F = window.__face = { shown: [] };
+      new MutationObserver(rs => rs.forEach(r => {
+        if (!/\bon\b/.test(r.oldValue || '') && r.target.classList.contains('on')) F.shown.push(r.target.textContent);
+      })).observe($('toast'), { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+      const D4 = [['ArrowUp', 0, -1, 'up'], ['ArrowDown', 0, 1, 'down'], ['ArrowLeft', -1, 0, 'left'], ['ArrowRight', 1, 0, 'right']];
+      const CH = typeof CHAPTERS !== 'undefined' && CHAPTERS.length ? CHAPTERS : [];
+      const boot = { done: [...done], seen: chSeen, world, px, py, dir };
+      /* -1 is the game as it booted; ch is chapter ch open with every quest before it answered */
+      F.chapter = ch => { done.clear();
+        if (ch < 0) boot.done.forEach(q => done.add(q)); else for (let i = 0; i < ch; i++) (CH[i].quests || []).forEach(q => done.add(q));
+        chSeen = ch < 0 ? boot.seen : ch; if (typeof applyGrowth === 'function') applyGrowth(); };
+      const states = [-1].concat(CH.map((c, i) => i + 1));
+      /* a person is moved the engine's own way (wanderUpdate): the map's glyph back where they stood, a
+         person stamped where they stand now. Every move is undone before the next scene is set. */
+      const moved = [];
+      F.move = (wid, i, x, y) => { const w = WORLDS[wid], n = w.npcs[i];
+        if (!moved.some(m => m.n === n)) moved.push({ n, w, x: n.x, y: n.y });
+        if (w.grid[n.y]) w.grid[n.y][n.x] = w.rows[n.y][n.x];
+        n.x = n.fx = x; n.y = n.fy = y; w.grid[y][x] = 'N'; };
+      F.unmove = () => { while (moved.length) { const m = moved.pop(), n = m.n;
+        if (m.w.grid[n.y]) m.w.grid[n.y][n.x] = m.w.rows[n.y][n.x];
+        n.x = n.fx = m.x; n.y = n.fy = m.y; m.w.grid[m.y][m.x] = 'N'; } };
+      const says = n => pendingAt(n) !== undefined || !!n.chat;
+      /* somebody whose answer to Enter can be read: a quest is a card with their name on it, a chat is
+         a line signed with their name. Somebody who only chats AND runs something (a chair, a room)
+         answers with a panel instead, so they are left out rather than misread. */
+      const readable = n => says(n) && (pendingAt(n) !== undefined || !svcKind(n.npc, n)) && !!npcName(n.npc);
+      const nm = n => String(npcName(n.npc)).split(' ·')[0];
+      const who = (wid, n) => ({ npc: n.npc, name: nm(n), i: WORLDS[wid].npcs.indexOf(n), quest: pendingAt(n) !== undefined });
+      const stand = (wid, x, y) => { world = wid; return !isSolid(x, y) && !portalAt(wid, x, y) && !troIsStop(wid, x, y); };
+      const solid = (wid, x, y) => { world = wid; return isSolid(x, y); };
+      const at = (wid, x, y) => WORLDS[wid].npcs.find(n => n.x === x && n.y === y);
+      const talkersBy = (wid, x, y) => WORLDS[wid].npcs.filter(n => Math.abs(n.x - x) + Math.abs(n.y - y) === 1 && says(n));
+      const toward = (x, y, n) => D4.find(([, dx, dy]) => x + dx === n.x && y + dy === n.y);
+      /* how a player stands on (x,y) facing NOBODY he could talk to, with a real key: turn toward a wall
+         (or somebody with nothing to say), else walk in from a free tile so the step ends facing a tile
+         nobody with something to say stands on. In an L of two people with both other sides open, no
+         key does it — a player cannot stand there facing nobody — and that tile is not used. */
+      const nobody = (wid, x, y) => {
+        const by = [];
+        for (const [k, dx, dy, d] of D4) { const p = at(wid, x + dx, y + dy);
+          if (solid(wid, x + dx, y + dy) && !(p && says(p))) by.push({ how: 'turn', key: k, dir: d, from: [x, y], toward: p ? nm(p) + ', who has nothing to say' : 'a wall', rank: p ? 1 : 0 }); }
+        by.sort((a, b) => a.rank - b.rank);
+        if (by.length) return by[0];
+        for (const [k, dx, dy, d] of D4) { const p = at(wid, x + dx, y + dy);
+          if (stand(wid, x - dx, y - dy) && !(p && says(p))) return { how: 'walk', key: k, dir: d, from: [x - dx, y - dy], toward: 'nobody' }; }
+        return null; };
+      /* two people beside one tile where nobody else with something to say stands beside it: where the
+         map stands them, else `mover` taken to the far side of a tile beside `stay` */
+      const pair = (wid, stay, mover, needNobody, build) => {
+        for (const [, dx, dy] of D4) { const x = stay.x + dx, y = stay.y + dy;
+          if (!stand(wid, x, y)) continue;
+          let built = null;
+          if (build) { const bx = x + dx, by2 = y + dy;
+            if (Math.abs(mover.x - x) + Math.abs(mover.y - y) === 1 || !stand(wid, bx, by2)) continue;
+            built = { i: WORLDS[wid].npcs.indexOf(mover), name: nm(mover), from: [mover.x, mover.y], to: [bx, by2] };
+            F.move(wid, built.i, bx, by2); }
+          const tk = talkersBy(wid, x, y), nb = nobody(wid, x, y);
+          const ok = tk.length === 2 && tk.includes(stay) && tk.includes(mover) && (nb || !needNobody);
+          if (built) F.unmove();
+          if (ok) return { wid, x, y, nobody: nb, built,
+            dirTo: Object.fromEntries([stay, mover].map(n => [nm(n), toward(x, y, n)])) }; }
+        return null; };
+      /* one person with something to say beside a tile, and somebody with NOTHING to say on another side
+         of it — where the map stands them, else the quiet one moved to a free side */
+      const quiet = (wid, P, S, build) => {
+        for (const [, dx, dy] of D4) { const x = P.x + dx, y = P.y + dy;
+          if (!stand(wid, x, y)) continue;
+          let built = null;
+          if (build) {
+            if (Math.abs(S.x - x) + Math.abs(S.y - y) === 1) continue;
+            const to = D4.map(([, ex, ey]) => [x + ex, y + ey]).find(([sx, sy]) => stand(wid, sx, sy));
+            if (!to) continue;
+            built = { i: WORLDS[wid].npcs.indexOf(S), name: nm(S), from: [S.x, S.y], to };
+            F.move(wid, built.i, to[0], to[1]); }
+          const tk = talkersBy(wid, x, y);
+          const ok = Math.abs(S.x - x) + Math.abs(S.y - y) === 1 && tk.length === 1 && tk[0] === P;
+          const toP = toward(x, y, P), toS = toward(x, y, S);
+          if (built) F.unmove();
+          if (ok) return { wid, x, y, built, toP, toS, quiet: nm(S) }; }
+        return null; };
+      const distinct = (a, b) => nm(a) && nm(b) && nm(a) !== nm(b);
+      /* the scenes, each in the first state of the story where it exists — where the map stands them
+         first, built only when no state has it */
+      const out = { A: null, B: null, C: null, E: null, crude: { A: 0, B: 0, C: 0, E: 0 }, pre: '' };
+      for (const build of [false, true]) for (const ch of states) {
+        if (out.A && out.B && out.C && out.E) break;
+        F.chapter(ch);
+        for (const wid of Object.keys(WORLDS)) { const L = WORLDS[wid].npcs;
+          /* `crude` counts the same people the scenes are drawn from, with no geometry asked: a count above
+             zero with no scene is the finder failing, not the city having nobody */
+          for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j];
+            const two = readable(a) && readable(b) && distinct(a, b);
+            if (!build && two) out.crude.A++;
+            if (!out.A && two) {
+              const s = pair(wid, a, b, false, build) || pair(wid, b, a, false, build);
+              if (s) out.A = Object.assign(s, { ch, people: [who(wid, a), who(wid, b)] }); }
+            /* a person who only chats, listed BEFORE one with a quest for you: the only order in which
+               "the one with a quest for you" changes anything */
+            const chat = says(a) && pendingAt(a) === undefined, quest = pendingAt(b) !== undefined;
+            if (!build && chat && quest && two) out.crude.B++;
+            if (!out.B && chat && quest && two) {
+              const s = pair(wid, b, a, true, build) || pair(wid, a, b, true, build);
+              if (s) out.B = Object.assign(s, { ch, people: [who(wid, a), who(wid, b)] }); }
+            /* one who has something to say and one who has nothing, either way round */
+            for (const [P, S] of [[a, b], [b, a]]) {
+              if (!readable(P) || says(S) || !nm(S)) continue;
+              if (!build) out.crude.E++;
+              if (out.E) continue;
+              const s = quiet(wid, P, S, build);
+              if (s) out.E = Object.assign(s, { ch, people: [who(wid, P)] }); } }
+          if (!build) for (const n of L) { if (readable(n)) out.crude.C++;
+            if (out.C || !readable(n)) continue;
+            for (const [, dx, dy] of D4) { const x = n.x + dx, y = n.y + dy;
+              if (!stand(wid, x, y) || talkersBy(wid, x, y).length !== 1) continue;
+              const nb = nobody(wid, x, y); if (!nb) continue;
+              out.C = { wid, x, y, nobody: nb, built: null, ch, people: [who(wid, n)], dirTo: { [nm(n)]: toward(x, y, n) } }; break; } } } }
+      F.chapter(-1);
+      /* the finder asks isSolid in world after world, and isSolid reads the CURRENT world, so it points
+         `world` elsewhere while the hero still stands on his own tile. Left like that, the loop finds
+         him on a door in a world he is not in and walks him through it a few frames later — after the
+         first scene was set, which is how the first draft's first case found the hero at a doorway's
+         far side. Put back exactly where the game had him. */
+      world = boot.world; px = fx = boot.px; py = fy = boot.py; dir = boot.dir;
+      out.pre = `${T().talkPre}`;
+      /* a scene: the story at its chapter, anybody moved for it moved, nothing over the street, nothing
+         said yet, the hero where the case starts him, the keyboard on the page */
+      F.scene = async (s, from, d) => {
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        $('card').hidden = true; F.unmove(); F.chapter(s.ch);
+        if (s.built) F.move(s.wid, s.built.i, s.built.to[0], s.built.to[1]);
+        enterWorld(false);
+        world = s.wid; px = fx = from[0]; py = fy = from[1]; moving = false; held = null; warpT = 0; dir = d;
+        clearTimeout(toastT); toastQ.length = 0; $('toast').classList.remove('on');
+        checkTalk(); F.shown.length = 0;
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); };
+      F.state = () => ({ px, py, dir, world, talk: !$('talk').hidden, talkText: $('talk').textContent,
+        card: $('card').hidden ? null : $('npcName').textContent, said: F.shown.slice(), covered: worldCovered() });
+      return out;
+    });
+    const fst = () => fp.evaluate(() => window.__face.state());
+    const scene = (s, from, d) => fp.evaluate(([s2, f2, d2]) => window.__face.scene(s2, f2, d2), [s, from, d]);
+    /* a real arrow: held until the hero turns (toward something he cannot walk onto) or a step starts */
+    const arrow = async (key, how) => {
+      const b = await fst(); await fp.keyboard.down(key);
+      const t0 = Date.now(); let a = b;
+      while (Date.now() - t0 < 1500) { await fp.waitForTimeout(30); a = await fst();
+        if (a.px !== b.px || a.py !== b.py || (how === 'turn' && a.dir !== b.dir)) break; }
+      await fp.keyboard.up(key); await fp.waitForTimeout(how === 'walk' ? 450 : 150);
+      return fst(); };
+    /* what the player reads: who the Talk button names, and who answered Enter */
+    const named = (s, ppl) => !s.talk ? null : ppl.find(p => { const r = s.talkText.slice(found.pre.length);
+      return s.talkText.indexOf(found.pre) === 0 && (r === p.name || r.indexOf(p.name + ' — ') === 0); }) || { name: '"' + s.talkText + '"', none: true };
+    const answered = (a, ppl) => ppl.filter(p => (a.card && a.card.split(' ·')[0] === p.name) || a.said.some(t => t.indexOf('💬 ' + p.name + ':') === 0));
+    const did = (a, ppl) => { if (a.card) return 'opened ' + a.card.split(' ·')[0] + '\'s quest';
+      const line = a.said.find(t => ppl.some(p => t.indexOf('💬 ' + p.name + ':') === 0));
+      return line ? 'brought up "' + line.slice(0, 70) + '"' : a.covered ? 'opened something over the street' : 'brought nobody\'s answer up in 4 s'; };
+    const button = (s, ppl) => { const n = named(s, ppl); return !n ? 'was dark' : 'named ' + n.name; };
+    /* one case: set the scene, face with a real key, read the button, press Enter, read the answer.
+       Only what comes up AFTER Enter counts, and it is waited for: a turn toward a wall says the wall's
+       own line ("Construction fence…"), and a person's answer then waits its turn behind it, as it does
+       for a player — the first draft read the screen at once and reported the fence as the answer. */
+    const run = async (tag, s, from, d0, key, how, wantDir, want, where, why) => {
+      await scene(s, from, d0);
+      const t = await arrow(key, how);
+      if (t.px !== s.x || t.py !== s.y || t.dir !== wantDir) {
+        FF.push(tag + ' could not set the scene: a real ' + key + ' left the hero at ' + t.px + ',' + t.py + ' facing ' + t.dir + ', not on ' + s.x + ',' + s.y + ' facing ' + wantDir + ' — nothing was measured');
+        return; }
+      await fp.evaluate(() => { window.__face.shown.length = 0; });
+      await fp.keyboard.press('Enter');
+      const t0 = Date.now(); let a = await fst();
+      while (Date.now() - t0 < 4000 && !a.card && !a.covered && !answered(a, s.people).length) { await fp.waitForTimeout(100); a = await fst(); }
+      const n = named(t, s.people), got = answered(a, s.people);
+      if (!n || n.none || n.name !== want.name || got.length !== 1 || got[0].name !== want.name)
+        FF.push(tag + ' ' + where + ', the Talk button ' + button(t, s.people) + ' and Enter ' + did(a, s.people) + ' — ' + why);
+    };
+    const where = s => s.built ? ' (' + s.built.name + ' moved from ' + s.built.from.join(',') + ' to ' + s.built.to.join(',') + ' to stand there)' : ' (where the map stands them)';
+    const chap = s => s.ch < 0 ? '' : ', chapter ' + s.ch + ' open,';
+    const A = found.A, B = found.B, C = found.C, E = found.E;
+    const facing = (nb, from) => nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + from + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so he faces neither';
+    /* (face) each of the two, turned toward from facing the other: the one listed second is the red on
+       the old engine; the one listed first is the control that a rule "always the second" would fail */
+    if (A) {
+      const [p, q] = A.people;
+      for (const [tgt, other] of [[q, p], [p, q]]) {
+        const k = A.dirTo[tgt.name], from = A.dirTo[other.name];
+        await run('(face)', A, [A.x, A.y], from[3], k[0], 'turn', k[3], tgt,
+          'in ' + A.wid + chap(A) + ' standing between ' + p.name + ' and ' + q.name + ' and turned with a real ' + k[0] + ' from ' + other.name + ' to face ' + tgt.name,
+          'Enter talks to the one you face (#285; the owner, 2026-10-01: "enter talks to the person you face first sounds good")');
+      }
+      measured.push('turned to face each of ' + p.name + ' and ' + q.name + ' in ' + A.wid + where(A));
+      /* (facing nobody) between the same two: the one with a quest for you, and between two alike the
+         one the list puts first — the tie that keeps everything else as it was. Started facing the one
+         who must NOT be offered, so a turn that forgets to ask again shows. */
+      if (A.nobody) {
+        const nb = A.nobody, want = (p.quest || !q.quest) ? p : q, other = want === p ? q : p;
+        await run('(facing nobody)', A, nb.from, nb.how === 'turn' ? A.dirTo[other.name][3] : nb.dir, nb.key, nb.how, nb.dir, want,
+          'in ' + A.wid + chap(A) + ' between ' + p.name + ' and ' + q.name + ', ' + facing(nb, other.name),
+          p.quest === q.quest ? 'with nobody in front of you and the two alike, the one the list puts first is offered, as before #285' : 'with nobody in front of you, the one with a quest for you comes first (#285)');
+        measured.push('facing neither of them (' + (nb.how === 'turn' ? 'turned toward ' + nb.toward : 'walked in') + ')');
+      } else fails.push('COUNT-ONLY: no key leaves the hero between ' + p.name + ' and ' + q.name + ' facing nobody, so the order with nobody in front of you was not measured with them (#285)');
+    } else if (found.crude.A) FF.push('(face) two people in one world of this shell have something to say at the same time (' + found.crude.A + ' pair(s), counted over the chapters), and the finder set up no scene with two of them beside one tile — the finder is broken, not the city; nothing about facing was measured');
+    else fails.push('COUNT-ONLY: no two people in one world of this shell, at any chapter, have something to say at the same time that a player can read back (a quest card, or a line signed with a name), so Enter-talks-to-the-one-you-face was not measured here (#285)');
+    /* (quest first) facing nobody, between one who only chats (listed first) and one with a quest */
+    if (B) {
+      const [c, q] = B.people, nb = B.nobody, other = B.dirTo[c.name];
+      await run('(quest first)', B, nb.from, nb.how === 'turn' ? other[3] : nb.dir, nb.key, nb.how, nb.dir, q,
+        'in ' + B.wid + chap(B) + ' between ' + c.name + ', who only chats and is listed first, and ' + q.name + ', who has a quest for you, ' + (nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + c.name + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so he faces nobody'),
+        'with nobody you could talk to in front of you, the one with a quest for you comes first (#285)');
+      measured.push('quest before chat between ' + c.name + ' and ' + q.name + ' in ' + B.wid + chap(B).replace(/,$/, '') + where(B));
+    } else if (found.crude.B) FF.push('(quest first) ' + found.crude.B + ' time(s) a person who only chats is listed before one with a quest for you in the same world, and the finder set up no scene with them beside one tile facing nobody — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: in no world of this shell, at any chapter, is somebody who only chats listed before somebody with a quest for you (among people whose answer a player can read back), so quest-before-chat was not measured here (#285)');
+    /* (one person) beside one person only, facing away from them: offered exactly as before */
+    if (C) {
+      const [p] = C.people, nb = C.nobody;
+      await run('(one person)', C, nb.from, nb.how === 'turn' ? C.dirTo[p.name][3] : nb.dir, nb.key, nb.how, nb.dir, p,
+        'in ' + C.wid + chap(C) + ' beside ' + p.name + ' alone, ' + (nb.how === 'turn' ? 'turned with a real ' + nb.key + ' from ' + p.name + ' toward ' + nb.toward : 'walked in with a real ' + nb.key + ' so ' + p.name + ' is beside him and not in front'),
+        'one person beside you is offered whichever way you face, as before #285');
+      measured.push('one person, ' + p.name + ', offered while facing ' + nb.toward + ' in ' + C.wid);
+    } else if (found.crude.C) FF.push('(one person) people in this shell have something to say (' + found.crude.C + ', counted over the chapters) and the finder found no tile beside one of them alone where a key can face him away — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: nobody in this shell, at any chapter, has something to say that a player can read back, so nothing about who Enter talks to was measured here (#285)');
+    /* (facing somebody quiet) the one you face comes first only if they have something to say: turned
+       to face somebody with nothing to say, the person beside you who has something is still offered */
+    if (E) {
+      const [p] = E.people;
+      await run('(facing somebody quiet)', E, [E.x, E.y], E.toP[3], E.toS[0], 'turn', E.toS[3], p,
+        'in ' + E.wid + chap(E) + ' beside ' + p.name + ' and turned with a real ' + E.toS[0] + ' from ' + p.name + ' to face ' + E.quiet + ', who has nothing to say',
+        'the one you face comes first only when they have something to say, and ' + p.name + ', beside you, still does (#285)');
+      measured.push('facing ' + E.quiet + ', who has nothing to say, beside ' + p.name + ' in ' + E.wid + where(E));
+    } else if (found.crude.E) FF.push('(facing somebody quiet) ' + found.crude.E + ' time(s) somebody with nothing to say shares a world with somebody who has something, and the finder set up no scene with the quiet one in front and the other beside — the finder is broken, not the city');
+    else fails.push('COUNT-ONLY: nobody in this shell with nothing to say shares a world with somebody whose answer a player can read back, so facing a quiet person was not measured here (#285)');
+    if (measured.length) fails.push('COUNT-ONLY: Enter and the one you face (#285) — ' + measured.join('; '));
+    if (fErr.length) FF.push('the page threw while facing people and pressing Enter: ' + fErr.join(' | '));
+    await fp.close();
+    fails.push(...FF.map(m => 'enter: ' + m));
+  }
+
+  /* ---- A WORD IN A SAVED LOOK NEVER REACHES THE ENGINE'S OWN OBJECTS (#301, security) ----
+     A Trolley Pass is a link that carries a saved game, and boarding it makes it your save. The save keeps a
+     shirt PATTERN as any word up to ten letters, and the engine looked that word up in its table of patterns
+     the way an object looks up any name: so `__proto__` and `valueOf`, names every object already has, were
+     "found" and called. The throw left a clip on the canvas, and from then on the top and front cameras
+     repainted only a window the size of a shirt: you walked, the picture stood still, on every load,
+     until a new game (measured 2026-10-01: 188 page errors in about 3 s). In 3D the hero was drawn headless.
+     So this boards such a save the way a pass does (written as the save, the page reloaded, Continue pressed),
+     walks with real arrow keys in every camera the shell has, and asks two things a person would notice:
+     the page never throws while you walk, and after the game has drawn you, the brush can still reach the
+     whole picture (a clip left behind is the frozen screen). No page clock: under one, a throw in the game
+     loop reaches neither pageerror nor onerror (measured by the #32 builder), so this would hear nothing. */
+  for (const word of ['__proto__', 'valueOf']) {
+    /* the pass is made on one device, with the game's own passURL(), and one word in its look changed */
+    const mctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
+    const mp = await mctx.newPage();
+    let link = null;
+    try {
+      await mp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await mp.goto('file://' + file); await mp.waitForTimeout(1200);
+      await mp.click('.classes button[data-c="architect"]'); await mp.click('#begin'); await mp.waitForTimeout(400);
+      link = await mp.evaluate(w => { const u = passURL(), m = u.match(/#save=([A-Za-z0-9\-_]+)/); if (!m) return null;
+        const j = JSON.parse(unb64u(m[1])); if (!j || !j.s || !j.s.lk) return null; j.s.lk.pattern = w;
+        return u.replace(/#.*$/, '') + '#save=' + b64u(JSON.stringify(j)); }, word);
+    } catch (e) { link = null; }
+    await mctx.close();
+    /* ...and boarded on ANOTHER device, the way whoever receives it does: open the link, tap Board, Continue */
+    const sctx = await browser.newContext({ viewport: { width: 480, height: 900 } });
+    const sp = await sctx.newPage();
+    const sErr = [], SF = [];
+    sp.on('pageerror', e => sErr.push(e.message));
+    try {
+      if (!link) { SF.push('could not make a Trolley Pass to board — nothing was measured with the pattern "' + word + '"'); throw 0; }
+      await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await sp.goto(link); await sp.waitForTimeout(1200);
+      let card = await sp.evaluate(() => !document.getElementById('tpFound').hidden);
+      for (let i = 0; !card && i < 20; i++) { await sp.waitForTimeout(250); card = await sp.evaluate(() => !document.getElementById('tpFound').hidden); }
+      /* A SHELL THAT CANNOT BOARD A PASS AT ALL (#305: El Horno and the gauge throw at the card, because they
+         declare none of its words) is said out loud, and the saved look is then drawn directly: the fault this
+         guards is in the drawing, and every shell draws people. A card that fails WITHOUT an error is a red. */
+      if (!card) {
+        if (!sErr.length) { SF.push('a Trolley Pass link opened and no card offered to board it, and the page said nothing — nothing was measured with the pattern "' + word + '"'); throw 0; }
+        fails.push('COUNT-ONLY: this shell cannot board a Trolley Pass (its arrival card threw: ' + sErr[0].split('\n')[0] + ' — #305), so the pass with the pattern "' + word + '" was drawn directly instead of walked');
+      }
+      sErr.length = 0;
+      const cams = !card ? [] : await sp.evaluate(() => (typeof CAMS === 'undefined' ? ['top', 'front', 'iso', '3d'] : CAMS.slice()));
+      let kept = word;
+      if (card) {
+        await Promise.all([sp.waitForEvent('load'), sp.click('#tpBoard')]); await sp.waitForTimeout(1200);
+        await sp.click('#continueBtn'); await sp.waitForTimeout(500);
+        kept = await sp.evaluate(() => look && look.pattern);
+      }
+      for (const cam of cams) {
+        await sp.evaluate(c => camSet(c), cam); await sp.waitForTimeout(300);
+        const before = sErr.length, at0 = await sp.evaluate(() => [world, px, py]);
+        let moved = false;
+        for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) { await sp.keyboard.down(k); await sp.waitForTimeout(260); await sp.keyboard.up(k); await sp.waitForTimeout(60);
+          if (String(await sp.evaluate(() => [world, px, py])) !== String(at0)) moved = true; }
+        const threw = sErr.length - before;
+        if (threw) SF.push('with a saved look whose shirt pattern is "' + word + '" (kept by the save as "' + kept + '"), the page threw ' + threw + ' time(s) while you walked in the ' + cam + ' camera: ' + sErr[before].split('\n')[0] + ' — a Trolley Pass carrying it freezes the picture for whoever boards it');
+        if (!moved) SF.push('in the ' + cam + ' camera the hero did not move for four real arrow presses, so whether the picture follows him was not measured');
+      }
+      /* after the game has drawn you, can the brush still reach the whole picture? */
+      const clipped = await sp.evaluate(([w, boarded]) => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+        /* boarded: the look the game is wearing now; otherwise the look the save's own reading makes of the pass */
+        const lk = boarded ? look : ((sanitizeSave({ n: 'x', lk: { pattern: w } }) || {}).lk || { pattern: w });
+        let threw = null; try { drawPerson(g, 16, 16, lk, {}); } catch (e) { threw = e.message; }
+        g.globalAlpha = 1; g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 64, 64); const d = g.getImageData(0, 0, 64, 64).data; let miss = 0;
+        for (let i = 0; i < d.length; i += 4) if (!(d[i] === 255 && d[i + 1] === 0 && d[i + 2] === 255)) miss++;
+        return { threw, miss }; }, [word, card]);
+      if (clipped.threw) SF.push('drawing you in a saved look whose shirt pattern is "' + word + '" threw: ' + clipped.threw);
+      if (clipped.miss) SF.push('after drawing you in a saved look whose shirt pattern is "' + word + '", ' + clipped.miss + ' of 4096 pixels could no longer be painted — the drawing left a clip behind, which is the frozen screen');
+      if (!SF.length) fails.push('COUNT-ONLY: a saved look whose shirt pattern is "' + word + '" ' + (card ? '(a Trolley Pass made on one device, boarded on another, then Continue) was walked with real keys in ' + cams.join(', ') + ' without a single page error, and drawing you' : 'drawn directly') + ' leaves the whole picture paintable');
+    } catch (e) { if (e !== 0) SF.push('the check could not drive the game to the end, so it measured nothing: ' + String(e && e.message || e).split('\n')[0]); }
+    await sctx.close();
+    fails.push(...SF.map(m => 'saved look (#301): ' + m));
   }
 
   await page.setViewportSize({ width: 480, height: 900 });

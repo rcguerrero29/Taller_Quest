@@ -2099,6 +2099,99 @@ const CANDIDATES = [
   });
   fails.push(...season);
 
+  // ---- #283: a pup adopted while the alebrije mode is on is in Settings → Alebrijes the next time Settings opens ----
+  // Found 2026-10-01: the Alebrijes list was built when the game opened and rebuilt only when the mode, the language,
+  // a look or a name changed — so with the mode already on, a pup adopted at the park was not in the list until the
+  // game was reloaded. Every check before this one adopted first and turned the mode on after, which rebuilt the list
+  // and hid the gap. This one does it in the order a player does: the mode on from Settings → Picture; Settings
+  // opened once; a pup adopted at the park's post; Settings opened again by the gear — she must be listed — and a
+  // SECOND pup adopted the same way and Settings opened a third time, so a list refreshed only once is caught too.
+  // Then she is chosen in the list and given a look there, and she must be drawn in it. A fresh browser of its own:
+  // it leans on nothing above, leaves nothing behind.
+  {
+    const ctx = await browser.newContext();
+    const p = await ctx.newPage({ viewport: { width: 480, height: 900 } });
+    p.setDefaultTimeout(6000);
+    const errs = [], nl = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    const helpers = () => {
+      const dogOf = nm => CRIT.find(c => c.name === nm && DOGK.has(c.kind));
+      window.__pupList = {
+        // beside the park's post, every dog there held on her own spot so none stands where the player would
+        post: () => { const w = WORLDS[PL.park]; world = PL.park; setWorldTag(); moving = false;
+          CRIT.filter(c => DOGK.has(c.kind) && c.world === PL.park).forEach(c => { if (c.home) { c.x = c.home[0]; c.y = c.home[1]; } c.stayT = performance.now() + 1e9; c.task = null; c.follow = false; c.fx = c.x; c.fy = c.y; c.moving = false; });
+          for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++)
+            if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !CRIT.some(c => c.world === PL.park && c.x === x && c.y === y)
+              && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => w.grid[y + dy][x + dx] === '9')) { px = fx = x; py = fy = y; return true; }
+          return false; },
+        adopted: nm => !!dogOf(nm),
+        /* what Settings → Alebrijes offers, as a player reads it: the drawer, and the names in its list */
+        menu: () => { const d = $('drwSelf'), sel = $('aleWho');
+          if (!d || d.hidden || !sel || $('aleRow').hidden) return null;
+          return [...sel.options].map(o => ({ v: o.value, t: o.textContent })); },
+        looks: () => [...$('aleRow').querySelectorAll('button[data-look]')].map(b => ({ id: b.dataset.look, on: b.getAttribute('aria-pressed') === 'true' })),
+        wears: nm => { const d = dogOf(nm), lk = d && alebLookFor(d.kind, d.name); return lk ? lk.id : null; },
+        /* the drawing every camera paints a dog with, the clock and the pose held still */
+        draw: nm => { const d = dogOf(nm); if (!d) return null;
+          const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
+            return Array.from(g.getImageData(0, 0, 44, 44).data); }
+          finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
+      }; };
+    const call = (fn, ...a) => p.evaluate(([fn, a]) => __pupList[fn](...a), [fn, a]);
+    const diff = (a, b) => { if (!a || !b || a.length !== b.length) return -1; let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) n++; return n; };
+    // Settings, opened the way a player opens it — the gear — and the drawer that holds the list opened if it is shut
+    const openSettings = async () => { await p.click('#gear'); const m = await call('menu');
+      if (m && !await p.evaluate(() => $('drwSelf').open)) await p.click('#drwSelf summary');
+      return m; };
+    const says = m => m ? m.map(o => o.t).join(', ') : 'no Alebrijes menu at all';
+    const adopt = async nm => { if (!await call('post')) throw new Error('there is nowhere to stand beside the park\'s post');
+      await p.waitForSelector('#adopt:not([hidden])'); await p.click('#adopt'); await p.fill('#adoptName', nm); await p.click('#adoptGo'); await p.waitForTimeout(150);
+      if (!await call('adopted', nm)) throw new Error(`${nm} could not be adopted at the park's post`); };
+    try {
+      await p.goto(index); await p.waitForTimeout(900);
+      await p.click('.classes button[data-c="architect"]'); await p.click('#begin'); await p.waitForTimeout(500);
+      await p.evaluate(helpers);
+      const aid = await p.evaluate(() => { const a = Object.entries(SEASONS).find(([k, v]) => v.art && v.art.alebrije); return a && a[0]; });
+      if (!aid) nl.push('no season hands out alebrije looks — there is no Alebrijes list to be missing from, so nothing was measured, which is not a pass');
+      else {
+        // the mode on, from Settings → Picture, by the button the season row builds from content
+        await p.click('#gear'); if (!await p.evaluate(() => $('drwLook').open)) await p.click('#drwLook summary');
+        await p.click(`#seasonRow button[data-sn="${aid}"]`); await p.click('#closeSet');
+        // Settings opened once with the mode on, before anybody is adopted: the list is there, and neither pup is in it
+        const PUPS = ['Nube', 'Oso'], m0 = await openSettings(); await p.click('#closeSet');
+        if (!m0) nl.push('with the alebrije mode on, Settings has no Alebrijes list at all — nothing was measured');
+        else if (!m0.some(o => o.v !== 'you')) nl.push(`with the alebrije mode on, Settings → Alebrijes lists ${says(m0)} and no animal at all — there is nobody a new pup could join, so nothing was measured`);
+        else if (m0.some(o => PUPS.includes(o.v))) nl.push(`Settings → Alebrijes already lists ${says(m0)} before anybody was adopted — the check cannot tell a new pup from an old name`);
+        else {
+          for (const nm of PUPS) {
+            await adopt(nm);
+            const m = await openSettings();
+            if (!m || !m.some(o => o.v === nm)) nl.push(`with the alebrije mode on, ${nm} was adopted at the park, and the next time Settings opened, Alebrijes did not list her (it lists ${says(m)}) — a player cannot choose her a look until the game is reloaded`);
+            await p.click('#closeSet'); }
+          // and the entry is HER: chosen in the list, given a look that is not her own there, she is drawn in it
+          if (!nl.length) {
+            const nm = PUPS[PUPS.length - 1], bare = await call('draw', nm), own = await call('wears', nm);
+            await openSettings(); await p.selectOption('#aleWho', nm);
+            const L = await call('looks'), pick = (L.find(l => l.id !== own) || {}).id;
+            if (!pick) nl.push(`Settings → Alebrijes offers ${nm} no look other than her own — nothing was measured`);
+            else { await p.click(`#aleRow button[data-look="${pick}"]`); await p.click('#closeSet');
+              const now = await call('wears', nm), dp = diff(bare, await call('draw', nm));
+              if (now !== pick) nl.push(`${nm} was given the look ${pick} in Settings → Alebrijes, and she wears ${now}`);
+              else if (dp < 1) nl.push(`${nm} was given the look ${pick} in Settings → Alebrijes, and she is drawn exactly as before (${dp < 0 ? 'there is no drawing to compare' : 'no pixel changed'})`); }
+          }
+          if (!nl.length) console.log(`  NEW PUP, SETTINGS: with the alebrije mode on, ${PUPS.join(' and then ')} were adopted at the park, each was in Settings → Alebrijes the next time the gear opened it, and the look chosen for her there is the one she is drawn in`);
+        }
+      }
+    } catch (e) { nl.push('the check could not drive the game to the end, so it measured nothing: ' + String(e.message || e).split('\n')[0]); }
+    if (errs.length) nl.push('the page errored: ' + errs.join(' | '));
+    fails.push(...nl.map(s => '#283 a new pup in Settings: ' + s));
+    await ctx.close();
+  }
+
   // ---- #277: rename a dog, close the game, open it again — everything about her but her name is the same ----
   // Found 2026-09-30: a rename carried the bandana and the training to the new name by hand, from a list, and the
   // list did not have the alebrije look, which is kept by name too — so she went back to whatever her new name
