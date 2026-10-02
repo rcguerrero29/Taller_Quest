@@ -5279,6 +5279,121 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   droneNote.forEach(l => console.log('  ' + l));
   fails.push(...droneP);
 
+  /* ---- THE PLAYER CAN NAME THE BUILDER'S DRONE (#295) ----
+     The owner asked on 2026-10-01 that the drone's name be the player's to change. The game's own name stays
+     the default for anybody who never renames her. Asked the way a player does it, with real clicks and real
+     typing: open Settings, use the button in the drone's own row, type a name, press the panel's button; then
+     read the drone's name everywhere it is shown — the Settings row, and the card she carries while she flies
+     (flown from that row, landed with Escape) — reload and read them again; then empty the box, and the game's
+     own name has to come back, and stay after another reload.
+     The name is typed as "<Zum>bi", so the dog's cleaning (sanName: no angle brackets, no control characters)
+     has to turn it into "Zumbi". It must be kept on this device under the game's own storage prefix and never in
+     the save, and kept by an id made once (#282: every kept thing gets an id; a name is a label), so the id
+     must not change when the name does. A game that declares no builder must offer no such button (Meridian:
+     test/smoke.js holds it drone-less). It runs in a context of its own, at a window wide enough that the card
+     carries the name — on a phone the card shows only the place, by design (#271), and the row is the place
+     the name shows there. */
+  {
+    const nctx = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+    const np = await nctx.newPage();
+    const R295 = [], N295 = [], nErr = [];
+    np.on('pageerror', e => nErr.push(e.message));
+    await np.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await np.goto('file://' + file);
+    await np.waitForTimeout(1500);
+    await np.click('.classes button[data-c="architect"]');
+    await np.click('#begin');
+    await np.waitForTimeout(800);
+    const has = await np.evaluate(() => {
+      const fly = document.getElementById('openDrone');
+      /* the rename lives in the drone's own Settings row: any other button in that row */
+      const ren = fly ? [...fly.parentElement.querySelectorAll('button')].find(b => b !== fly) : null;
+      if (ren) ren.setAttribute('data-p295', 'ren');
+      return { declared: typeof BUILDER !== 'undefined' && !!BUILDER, fly: !!fly, ren: !!ren,
+        anyRen: [...document.querySelectorAll('#settings button')].some(b => /rename|renombr|name|nombre/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') || '')) && /dron/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') || ''))) };
+    });
+    const gameNames = async () => {
+      const kept = () => np.evaluate(() => { const pfx = (typeof STOREPFX === 'string' && STOREPFX) || 'mq', save = pfx + '1', out = {};
+        Object.keys(localStorage).forEach(k => { out[k] = localStorage.getItem(k); }); return { pfx, save, all: out }; });
+      return kept();
+    };
+    if (!has.declared) {
+      if (has.ren || has.anyRen) R295.push('a game that declares no builder offers to rename one in its Settings');
+      else N295.push('COUNT-ONLY: this game declares no builder, so renaming the drone was asked only to be absent here');
+    } else if (!has.fly) R295.push('this game declares a builder and its Settings has no row for the drone, so there is nowhere to rename her');
+    else if (!has.ren) R295.push('this game has a drone and her Settings row offers no way to rename her — the player cannot change the drone\'s name');
+    else {
+      const row = async () => { await np.click('#gear'); await np.waitForTimeout(150);
+        const t = await np.evaluate(() => document.getElementById('openDrone').textContent);
+        await np.click('#closeSet'); await np.waitForTimeout(150); return t; };
+      const card = async () => { await np.click('#gear'); await np.waitForTimeout(150); await np.click('#openDrone'); await np.waitForTimeout(700);
+        const t = await np.evaluate(() => { const c = document.getElementById('droneCard');
+          if (!c || c.style.display === 'none' || !c.offsetParent) return null;
+          const t1 = c.querySelector(':scope > div > div > div'); return t1 ? t1.textContent : null; });
+        await np.keyboard.press('Escape'); await np.waitForTimeout(900); return t; };
+      const rename = async text => { await np.click('#gear'); await np.waitForTimeout(150);
+        await np.click('[data-p295="ren"]'); await np.waitForTimeout(200);
+        const box = await np.evaluate(() => { const i = document.activeElement;
+          if (!i || i.tagName !== 'INPUT' || !i.offsetParent) return null;
+          const go = i.closest('.box') && i.closest('.box').querySelector('button'); if (go) go.setAttribute('data-p295', 'go');
+          i.setAttribute('data-p295', 'box'); return { go: !!go, value: i.value }; });
+        if (!box) return 'the drone\'s rename button opened no box to type in';
+        if (!box.go) return 'the box for the drone\'s name has no button to keep it';
+        await np.keyboard.press('Control+A'); await np.keyboard.press('Backspace');
+        if (text) await np.keyboard.type(text);
+        await np.click('[data-p295="go"]'); await np.waitForTimeout(300);
+        return null; };
+      const reload = async () => { await np.reload(); await np.waitForTimeout(1500);
+        const cont = await np.evaluate(() => { const b = document.getElementById('continueBtn'); return !!b && !b.hidden && !!b.offsetParent; });
+        if (cont) await np.click('#continueBtn');
+        else { await np.click('.classes button[data-c="architect"]'); await np.click('#begin'); }
+        await np.waitForTimeout(900);
+        await np.evaluate(() => { const fly = document.getElementById('openDrone'); const ren = fly ? [...fly.parentElement.querySelectorAll('button')].find(b => b !== fly) : null; if (ren) ren.setAttribute('data-p295', 'ren'); }); };
+      const idOf = st => { const out = []; Object.keys(st.all).forEach(k => { if (k === st.save) return; const v = st.all[k] || '';
+        if (!/Zumbi/.test(v) && !/"id"/.test(v)) return; try { const walk = o => { if (o && typeof o === 'object') { if (typeof o.id === 'string' && o.id) out.push(k + ':' + o.id); Object.values(o).forEach(walk); } }; walk(JSON.parse(v)); } catch (e) {} });
+        return out.join(','); };
+      const row0 = await row(), card0 = await card();
+      if (card0 === null) R295.push('the drone flown from her Settings row shows no card, so where she is named in flight was not read');
+      const said = await rename('<Zum>bi');
+      if (said) R295.push(said);
+      else {
+        const row1 = await row(), card1 = await card(), st1 = await gameNames();
+        if (!row1.includes('Zumbi')) R295.push('renamed "Zumbi", the drone\'s Settings row still says "' + row1 + '"');
+        if (/[<>]/.test(row1)) R295.push('a name typed as "<Zum>bi" kept its angle brackets on the Settings row ("' + row1 + '") — the dog\'s cleaning was not applied');
+        if (card0 !== null && !(card1 || '').startsWith('Zumbi')) R295.push('renamed "Zumbi", the card the drone carries in flight still names her "' + card1 + '"');
+        const holder = Object.keys(st1.all).filter(k => k !== st1.save && /Zumbi/.test(st1.all[k] || ''));
+        if (!holder.length) R295.push('renamed "Zumbi", nothing on this device keeps the name, so it cannot survive a reload');
+        if (holder.some(k => !k.startsWith(st1.pfx))) R295.push('the drone\'s name is kept outside this game\'s own storage prefix "' + st1.pfx + '": ' + holder.join(', '));
+        const id1 = idOf(st1);
+        if (!id1) R295.push('the drone\'s kept name carries no id — a kept thing gets an id made once, and its name is only a label (#282)');
+        await reload();
+        const row2 = await row(), card2 = await card(), st2 = await gameNames();
+        /* read AFTER the reload: the game writes its save as the page goes away, so right after renaming the save
+           still predates the name. Planted: the name written into the save, read before the reload, was green. */
+        if (!st2.all[st2.save]) R295.push('after a reload there is no save on this device (' + st2.save + '), so whether the drone\'s name went into it was not measured');
+        else if (/Zumbi/.test(st2.all[st2.save])) R295.push('the drone\'s name was written into the save, where the quests live; it belongs to the device, beside it');
+        if (!row2.includes('Zumbi')) R295.push('after a reload the drone\'s Settings row says "' + row2 + '" — the name "Zumbi" did not survive');
+        if (card0 !== null && !(card2 || '').startsWith('Zumbi')) R295.push('after a reload the card the drone carries names her "' + card2 + '" — the name "Zumbi" did not survive');
+        /* clearing it goes back to the game's own name */
+        const said2 = await rename('');
+        if (said2) R295.push('the second time: ' + said2);
+        const row3 = await row(), card3 = await card(), st3 = await gameNames();
+        if (row3 !== row0) R295.push('with the name box emptied, the drone\'s Settings row says "' + row3 + '" instead of the game\'s own "' + row0 + '"');
+        if (card3 !== card0) R295.push('with the name box emptied, the card names the drone "' + card3 + '" instead of the game\'s own "' + card0 + '"');
+        const id3 = idOf(st3);
+        if (id1 && id3 && id3 !== id1) R295.push('the drone\'s id changed when her name was cleared (' + id1 + ' → ' + id3 + ') — an id is made once, and a name is only a label');
+        await reload();
+        const row4 = await row(), card4 = await card();
+        if (row4 !== row0) R295.push('after clearing the name and reloading, the drone\'s Settings row says "' + row4 + '" instead of the game\'s own "' + row0 + '"');
+        if (card4 !== card0) R295.push('after clearing the name and reloading, the card names the drone "' + card4 + '" instead of the game\'s own "' + card0 + '"');
+        N295.push('COUNT-ONLY: the drone\'s own name here is "' + row0 + '" on the Settings row and "' + card0 + '" on the card; renamed, then cleared, through two reloads');
+      }
+    }
+    if (nErr.length) R295.push('the page threw while the drone was being named: ' + [...new Set(nErr)].slice(0, 3).join(' | '));
+    await nctx.close();
+    fails.push(...N295, ...R295.map(m => 'naming the drone: ' + m));
+  }
+
   /* ---- #269: TWO ROOMS ARE TWO ROOMS, AND A RELOAD PUTS YOU WHERE YOU STOOD ----
      A room a lot carries was named by cutting the lot's id to twelve letters, because the save kept
      twelve — so two lots whose ids share their first twelve letters made ONE room, silently: rename
