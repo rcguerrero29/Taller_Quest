@@ -662,11 +662,13 @@ const $=id=>document.getElementById(id);
    sync(state) = called after every save with the full save blob. See docs/IDEAS.md §4. */
 const NET={enabled:false,boot(){},sync(state){}};
 /* Co-presence hook: peers render like NPCs. Empty until NET fills it. Peer shape:
-   {id,name,w,x,y,dir,look} — treat every field as UNTRUSTED network data: names are
-   length-clamped and drawn as canvas text only (never DOM). NOTE (2026-09-05 review): looks
-   are NOT validated on this path yet — `p.look` reaches drawPerson raw — so whatever fills
-   PEERS must run each look through the save loader's colour checks first. PEERS are also not
-   drawn in the iso camera. See docs/IDEAS.md §4 and docs/story/el-changarrito.md §4 B1. */
+   {id,name,w,x,y,dir,look} — treat every field as UNTRUSTED network data. A look reaches
+   drawPerson only through peerLook() (#32), at every site that draws one. Names are clamped to
+   12 characters and drawn as canvas text only (never DOM), but the clamp runs after String(),
+   and a name — or, under the season's face paint, an id — that is an object whose toString is
+   not a function throws there on every frame (measured 2026-10-01, top and front cameras): that
+   is not a look and #32 does not change it. PEERS are also not drawn in the iso camera.
+   See docs/IDEAS.md §4 and docs/story/el-changarrito.md §4 B1. */
 let PEERS=[];
 /* RECORD seam — the city's record (docs/story/la-ventanilla.md §4, el-changarrito.md §4).
    A pack may declare RECORDSRC = {enabled, boot()}: the engine calls boot() once after NET and
@@ -715,6 +717,29 @@ function save(){const st={n:heroName,c:cls,lk:look,xp,he:hearts,d:[...done],px,p
    the office kept promising a quest long after its last one was answered. */
 const worldPending=id=>(WORLDS[id]?WORLDS[id].npcs:[]).some(n=>hasSay(n));
 function setWorldTag(){$("worldTag").textContent=T().locs[world]+(worldPending(world)?" · ❗":"")+(typeof destBearing==="function"?destBearing():"");}
+/* The save's own checks for one colour and one short word, and its reading of a look: named, so a
+   look that crosses any other boundary is read by the SAME code and not a copy of it (#32). */
+const saveCol=v=>(typeof v==="string"&&/^#[0-9A-Fa-f]{3,8}$/.test(v))?v:null;
+const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
+function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
+  return{shirt:saveCol(lkIn.shirt)||"#8B5CF6",skin:saveCol(lkIn.skin)||"#E5AC82",hair:saveCol(lkIn.hair)||"#26202B",
+         style:saveStr(lkIn.style,12,"cap"),outfit:saveStr(lkIn.outfit,8,"casual"),pattern:saveStr(lkIn.pattern,10,"plain")};}
+/* ANOTHER PLAYER'S LOOK (#32; the owner, 2026-10-01: "ok fix the colour check"). In multiplayer a
+   stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
+   data. It gets the save's own reading first — saveLook, the same function: a colour must be hex, a
+   word is clamped, nothing a saved look does not keep is kept (no robot body, no hard hat), and
+   whatever is missing or wrong is the game's default, never the look of the person watching. Any real
+   colour stays allowed. And one rule a save never needed, because a player's own look comes out of the
+   creator: a hair style, an outfit or a pattern must be one this game's creator offers, in any of its
+   languages, or it is the default. Measured on 6d95088, before this existed: a stranger whose pattern
+   was "__proto__" or "valueOf" — words a save keeps — threw inside the shirt's clip on every frame, the
+   clip was never restored, and the top and front cameras stopped drawing the street until a reload.
+   The guard: test/engine.smoke.js, grep "ANOTHER PLAYER'S LOOK". */
+const lookOffered=(key,v)=>typeof UI==="object"&&!!UI&&Object.keys(UI).some(l=>{const L=UI[l]&&UI[l][key];
+  return Array.isArray(L)&&L.some(o=>Array.isArray(o)&&o[0]===v);});
+function peerLook(p){const lk=saveLook(p&&typeof p==="object"?p.look:null),d=saveLook(null);
+  ["style","outfit","pattern"].forEach(k=>{if(lk[k]!==d[k]&&!lookOffered(k+"s",lk[k]))lk[k]=d[k];});
+  return lk;}
 /* Boundary sanitizer: every save that crosses a trust boundary — Trolley Pass links
    today, NET payloads tomorrow — is coerced to known-good shapes here. Numbers clamp,
    strings trim, colors must be hex, unknown keys drop, non-numeric qa keys (e.g.
@@ -722,12 +747,9 @@ function setWorldTag(){$("worldTag").textContent=T().locs[world]+(worldPending(w
 function sanitizeSave(s){
   if(!s||typeof s!=="object")return null;
   const num=(v,lo,hi,d2)=>{v=Number(v);return Number.isFinite(v)?Math.max(lo,Math.min(hi,Math.round(v))):d2;};
-  const col=v=>(typeof v==="string"&&/^#[0-9A-Fa-f]{3,8}$/.test(v))?v:null;
-  const str2=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
+  const col=saveCol,str2=saveStr;
   const n=str2(s.n,14,"");if(!n)return null;
-  const lkIn=(s.lk&&typeof s.lk==="object")?s.lk:{};
-  const lk={shirt:col(lkIn.shirt)||"#8B5CF6",skin:col(lkIn.skin)||"#E5AC82",hair:col(lkIn.hair)||"#26202B",
-            style:str2(lkIn.style,12,"cap"),outfit:str2(lkIn.outfit,8,"casual"),pattern:str2(lkIn.pattern,10,"plain")};
+  const lk=saveLook(s.lk);
   /* #132: "long" used to draw what everyone could see was a beard, and now names real long hair.
      A save that chose it chose the beard, so it keeps the beard — the face in the mirror does not
      change under anyone. Only saves written before this line carry the old meaning; from here on
@@ -2669,7 +2691,7 @@ function drawFront(){
     if(hasSay(n))drawSayMark(ctx,sx,sy);
     drawEmote(n,sx,sy);}));
   PEERS.forEach(p=>{if(p.w!==world)return;
-    act(p.x,p.y,(sx,sy)=>{drawPerson(ctx,sx,sy,p.look||look,{dir:p.dir||"down",who:p.id||p.name||"peer"});
+    act(p.x,p.y,(sx,sy)=>{drawPerson(ctx,sx,sy,peerLook(p),{dir:p.dir||"down",who:p.id||p.name||"peer"});
       ctx.font="600 8px monospace";ctx.textAlign="center";
       ctx.fillStyle="rgba(15,12,20,.75)";ctx.fillText(String(p.name||"").slice(0,12),sx+16.7,sy-1.3);
       ctx.fillStyle="#EDE9F5";ctx.fillText(String(p.name||"").slice(0,12),sx+16,sy-2);
@@ -2766,7 +2788,7 @@ function draw(){
     if(p.w!==world)return;
     const sx=p.x*TS-camX,sy=p.y*TS-camY;
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
-    drawPerson(ctx,sx,sy,p.look||look,{dir:p.dir||"down",who:p.id||p.name||"peer"});
+    drawPerson(ctx,sx,sy,peerLook(p),{dir:p.dir||"down",who:p.id||p.name||"peer"});
     ctx.font="600 8px monospace";ctx.textAlign="center";
     ctx.fillStyle="rgba(15,12,20,.75)";ctx.fillText(String(p.name||"").slice(0,12),sx+16.7,sy-1.3);
     ctx.fillStyle="#EDE9F5";ctx.fillText(String(p.name||"").slice(0,12),sx+16,sy-2);
