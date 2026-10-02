@@ -29,8 +29,10 @@ const PLACES={
 const PAPER = `
   /* @import MUST BE FIRST or CSS itself discards it, and then the engine's guard for it has
      nothing to drop and passes for the wrong reason — the silent zero this pack exists to find.
-     It is first here so it is a REAL import that a real parser accepts, and the engine has to be
-     the thing that refuses it. */
+     It is first here so it is a REAL import that a real parser accepts. Since #256 the engine
+     parses this in a constructed stylesheet, which drops an @import unread and never fetches it,
+     so what refuses it now is the parse itself; test/engine.smoke.js fails on any policy refusal
+     at all, this one included, so a return to a parse that tries the fetch is a red. */
   @import url("https://example.invalid/x.css");      /* a fetch to somewhere else */
 
   /* the good half — a keeper's log, which is what the seam exists for */

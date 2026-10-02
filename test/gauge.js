@@ -28,6 +28,7 @@ edit('script tags',
 // depth: content/gauge/index.html is two folders down from the root the public shell sits in
 edit('engine paths', /<script src="(engine\/|vendor\/|qr\.js|frame-guard\.js)/g, '<script src="../../$1');
 edit('font paths', /<link rel="stylesheet" href="vendor\/fonts\//, '<link rel="stylesheet" href="../../vendor/fonts/');
+edit('shell stylesheet', /<link rel="stylesheet" href="shell\.css">/, '<link rel="stylesheet" href="../../shell.css">');   /* the page's look (#256) */
 edit('touch icon', /<link rel="apple-touch-icon" href="icon-192\.png">/, '<link rel="apple-touch-icon" href="../../icon-192.png">');
 edit('title', /<title>[^<]*<\/title>/, '<title>El Faro — the gauge pack</title>');
 // a fixture must not claim to be an installable app, and must not fight the real one for a cache

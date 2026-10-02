@@ -37,7 +37,13 @@ const CANDIDATES = [process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium_headle
   '/opt/pw-browsers/chromium', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'].filter(Boolean);
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.css': 'text/css', '.svg': 'image/svg+xml' };
-const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
+/* WHERE THE BROWSER READS IT, not wherever the text is (#256, Zeni's review). A browser obeys a policy <meta> only
+   inside <head>, and never one inside an HTML comment; this used to take the first match anywhere in the file, so a
+   meta commented out, or moved into <body>, still read as the policy while the browser enforced nothing. Measured in
+   Chromium 2026-10-01: commented out, a <style> block and a style attribute both applied and nothing reached the
+   console; in <body>, both applied. */
+const CSP = html => { const live = html.replace(/<!--[\s\S]*?-->/g, ''), end = live.search(/<\/head\s*>|<body[\s>]/i);
+  return ((end < 0 ? '' : live.slice(0, end)).match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1]; };
 
 (async () => {
   const fails = [];
@@ -54,6 +60,14 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
   const listed = [...new Set([...((swSrc.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || "").matchAll(/"\.\/([^"]*)"/g)].map(m => m[1]).filter(Boolean))];
   if (!listed.length) { console.log("FAIL — the built sw.js lists no ASSETS this check can read, so there is nothing to test"); process.exit(1); }
   if (!listed.includes('sw-register.js')) fails.push('sw.js does not cache sw-register.js, so an offline visit would load a page whose offline switch is missing');
+  /* #256: the page's look lives in stylesheet FILES now (style-src 'self'), so a stylesheet the page wears and the
+     worker does not keep is a game that may open offline as bare text. Asked HERE, of the list, because the run
+     below cannot see a missing entry: its framed visit and its bakery visit go through the worker once it is in
+     control, and the worker stores shell.css on the way. Planted 2026-10-01 (shell.css taken off ASSETS): this
+     line went red and the offline check further down stayed green. Every link the built page carries. */
+  const sheetsWorn = [...fs.readFileSync(path.join(out, 'index.html'), 'utf8').matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1].replace(/^\.\//, ''));
+  if (!sheetsWorn.length) fails.push('the built page links no stylesheet at all, so whether its look survives offline could not be asked — nothing to measure is not a pass');
+  sheetsWorn.filter(f => !listed.includes(f)).forEach(f => fails.push('the page wears ' + f + ' and sw.js does not cache it, so offline the game opens without it'));
 
   /* the server: the built box, with one switch — hand out the NEXT version of sw.js */
   let next = false;
@@ -77,7 +91,9 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
   const context = await browser.newContext();
   const page = await context.newPage();
   const violations = [];
-  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) violations.push(m.text().slice(0, 160)); });
+  /* 400, not 160: the hash of the refused text sits past the 160th character in Chromium's older wording, and the
+     probe below is told apart from the page's own refusals by that hash */
+  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) violations.push(m.text().slice(0, 400)); });
   await context.exposeBinding('__cspViolation', (src, v) => violations.push(v));
   await context.addInitScript(() => document.addEventListener('securitypolicyviolation', e => window.__cspViolation(e.violatedDirective + ' blocked ' + (e.blockedURI || 'inline'))));
   let loads = 0;
@@ -93,6 +109,55 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     return faces.map(([f, w, s]) => f + ' ' + w + ' ' + s).filter(k => !ok.has(k));
   }, FACES).catch(e => ['(could not read: ' + e.message.split('\n')[0] + ')']);
   const booted = () => page.evaluate(() => ({ gamev: typeof GAMEV !== 'undefined' ? GAMEV : null, canvas: !!document.querySelector('canvas') })).catch(() => ({ gamev: null, canvas: false }));
+  /* every stylesheet the page links ARRIVED and parsed: a <link> whose file never came has no sheet, or one with
+     no rules in it. Asked of the page, not of the cache, so it reads what the player's browser actually applied. */
+  const unstyled = () => page.evaluate(() => [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .filter(l => { try { return !l.sheet || !l.sheet.cssRules.length; } catch (e) { return true; } }).map(l => l.getAttribute('href')))
+    .catch(e => ['(could not read: ' + e.message.split('\n')[0] + ')']);
+
+  /* 9 · IS THE POLICY ENFORCED AT ALL? (#256, Zeni's review.) Since #256 no page produces a single refusal, so
+     "the browser reported no violation" reads the same whether the policy works or is missing: a meta commented
+     out, moved into <body>, or with its directive repeated in the open form first, enforces nothing (measured in
+     Chromium). So each page is handed the two things the policy exists to refuse — a <style> block and a style
+     attribute, each setting a custom property nothing uses — and must refuse BOTH: neither value applies, and
+     exactly one style-src-elem and one style-src-attr refusal arrive. Those two are this check's own and come off
+     the violations list; anything else that arrived meanwhile stays on it. Both pages, over http, from the box. */
+  const tried = [];
+  /* the two texts the probe writes, as the browser will name them: 'sha256-' + base64 of the text, the first eight
+     characters (48 bits) being enough to tell them from anything a page would apply on its own */
+  const PROBE_HASH = [':root{--zeni:1}', '--zeni:2'].map(t => 'sha256-' + require('crypto').createHash('sha256').update(t).digest('base64').slice(0, 8));
+  const enforced = async (p, where) => {
+    const before = violations.length;
+    const r = await p.evaluate(async () => {
+      const seen = [], on = e => seen.push(e.effectiveDirective || e.violatedDirective);
+      document.addEventListener('securitypolicyviolation', on);
+      const s = document.createElement('style'); s.textContent = ':root{--zeni:1}'; document.head.appendChild(s);
+      const i = document.createElement('i'); i.setAttribute('style', '--zeni:2'); document.body.appendChild(i);
+      await new Promise(res => setTimeout(res, 300));
+      const out = { block: getComputedStyle(document.documentElement).getPropertyValue('--zeni').trim(),
+                    attr: getComputedStyle(i).getPropertyValue('--zeni').trim(), seen: seen.slice().sort() };
+      document.removeEventListener('securitypolicyviolation', on); s.remove(); i.remove();
+      return out;
+    }).catch(e => ({ err: e.message.split('\n')[0] }));
+    /* the refusals reach this file by two routes (the page's console and its event binding), each in its own time:
+       wait until 200 ms pass with nothing new, not for a fixed time a busy machine could outrun */
+    for (let k = 0, n = -1; k < 15 && violations.length !== n; k++) { n = violations.length; await settle(200); }
+    const mine = violations.splice(before);
+    /* at most this check's own two of each kind come off: one event per style, and one console line per style where
+       this page's console is read. A third is the page's own, and stays a red. A console line is this check's own
+       only if it carries the HASH of one of the two texts written above: Chromium names the refused text's sha256
+       in the line, and the words around it changed between versions ("Refused to apply inline style…" in 141,
+       "Applying inline style violates…" in the one CI installed on 2026-10-02, which left the probe's own two
+       lines on the list and turned #25 red), so the words are not the noun. */
+    const left = { ev: 2, con: 2 };
+    violations.push(...mine.filter(v => /style-src-(elem|attr) blocked inline/.test(v) && left.ev-- > 0 ? false
+      : /inline style/i.test(v) && PROBE_HASH.some(h => v.includes(h)) && left.con-- > 0 ? false : true));
+    if (r.err) { fails.push(where + ': whether the policy is enforced could not be asked (' + r.err + ') — nothing to measure is not a pass'); return; }
+    const went = [r.block === '1' && 'a <style> block', r.attr === '2' && 'a style="…" attribute'].filter(Boolean);
+    if (went.length) fails.push(where + ': ' + went.join(' and ') + ' written into the page APPLIED — the browser is not enforcing the page\'s policy (a policy <meta> counts only inside <head>, never inside a comment, and the first copy of a directive is the one in force), so every "no violation" in these suites measured nothing');
+    else if (r.seen.join() !== 'style-src-attr,style-src-elem') fails.push(where + ': the two styles written into the page did not apply, but the browser reported ' + (r.seen.length ? r.seen.join(', ') : 'no refusal at all') + ' instead of exactly one style-src-elem and one style-src-attr');
+    else tried.push(where);
+  };
 
   try {
     /* 1 · first visit */
@@ -105,8 +170,11 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     if (cached.length) fails.push('first visit: the cache "' + CACHE + '" is missing ' + cached.join(', '));
     await settle(1500);
     if (loads !== 1) fails.push('first visit: the page loaded ' + loads + ' times — a first visit has nothing stale and must not reload');
+    const bare1 = await unstyled();
+    if (bare1.length) fails.push('first visit: the stylesheet(s) ' + bare1.join(', ') + ' did not arrive, so the page is not wearing its own look');
     const noFont1 = await fontsIn(page);
     if (noFont1.length) fails.push('first visit: the typeface(s) ' + noFont1.join(', ') + ' did not load from this site');
+    await enforced(page, 'the public page');
     const shown = await page.evaluate(() => getComputedStyle(document.documentElement).display);
     if (shown === 'none') fails.push('the game hides itself in its OWN tab — frame-guard.js thinks it is framed when it is not');
 
@@ -125,6 +193,7 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     const hp = await context.newPage();
     await hp.goto(base + 'content/horno/', { waitUntil: 'load' }).catch(() => {});
     await settle(800);
+    await enforced(hp, 'el horno');
     await hp.close();
     const kept = await page.evaluate(async c => (await (await caches.open(c)).keys()).map(r => new URL(r.url).pathname).filter(p => /\/content\/(?!meridian\/)/.test(p)), CACHE);
     if (kept.length) fails.push('the worker keeps another world\'s files in Meridian\'s cache (' + kept.slice(0, 3).join(', ') + ') — they would go stale until Meridian updates');
@@ -134,6 +203,8 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     await page.reload({ waitUntil: 'load' }).catch(e => fails.push('offline: the reload failed — ' + e.message.split('\n')[0]));
     const b2 = await booted();
     if (b2.gamev !== b1.gamev || !b2.canvas) fails.push('offline: the game did not boot from the cache (GAMEV ' + b2.gamev + ', canvas ' + b2.canvas + ')');
+    const bare2 = await unstyled();
+    if (bare2.length) fails.push('offline: the stylesheet(s) ' + bare2.join(', ') + ' did not load from the cache — offline the game would open without its look');
     const noFont2 = await fontsIn(page);
     if (noFont2.length) fails.push('offline: the typeface(s) ' + noFont2.join(', ') + ' did not load from the cache — offline would look different from online');
     await context.setOffline(false);
@@ -166,9 +237,10 @@ const CSP = html => (html.match(/http-equiv="Content-Security-Policy" content="(
     if (/sw-register\.js|serviceWorker/.test(horno)) fails.push('el horno\'s shell still turns on a service worker — it is not the app and must never fight it for a cache');
     if (/<script(?![^>]*\bsrc=)[^>]*>/.test(horno)) fails.push('el horno\'s shell carries a script written inside the page');
   }
-  if (!/script-src 'self';/.test(CSP(pub) || '')) fails.push('the public page\'s policy is not script-src \'self\' only');
+  if (!CSP(pub)) fails.push('the public page has no policy in its <head> outside a comment, the only place a browser obeys one');
+  else if (!/script-src 'self';/.test(CSP(pub))) fails.push('the public page\'s policy is not script-src \'self\' only');
   fs.rmSync(out, { recursive: true, force: true });
 
   if (fails.length) { console.log('FAIL — offline play\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline with its own three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation. El Horno\'s shell matches the public policy and runs no worker.');
+  console.log('OK — the built site installs its worker, caches all ' + listed.length + ' files it lists, plays offline wearing its own ' + sheetsWorn.length + ' stylesheet(s) and three typefaces, reloads exactly once onto a new version, hides inside another site\'s frame, keeps no other world in its cache, and the browser reported no policy violation — while on ' + tried.length + ' page(s) (' + tried.join(', ') + ') it refused the <style> block and the style attribute this check wrote, so the policy is in force. El Horno\'s shell matches the public policy and runs no worker.');
 })();

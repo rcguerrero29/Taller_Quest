@@ -66,14 +66,22 @@ const CANDIDATES = [
     if (!fs.existsSync(path.resolve(__dirname, '..', '.github', 'workflows', 'pages.yml')) || !fs.existsSync(path.resolve(__dirname, '..', '.github', 'scripts', 'city-record.js'))) fails.push('no deploy writes the city record (#14)');
   }
   const browser = await chromium.launch({ executablePath: exe });
+  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent.
+  // #256: on EVERY page this file opens, not only the first, and BY CONSTRUCTION: the browser hands each new page
+  // to the watcher, so a check added later with a browser of its own is watched without anybody remembering to.
+  // The first draft called watchPolicy() at each place a page was opened; two checks landed on main the same day
+  // and opened pages that draft never saw. Since style-src is 'self' a refused style is a silent visual break.
+  const refused = [], watched = new WeakSet();
+  const watchPolicy = p => { if (watched.has(p)) return; watched.add(p); watchPolicy.n = (watchPolicy.n || 0) + 1;
+    p.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); }); };
+  { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
+    browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
+    browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', e => pageErrors.push(e.message));
   const warns = [];
   page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
-  // #254: every refusal under the page's own policy is a red — on a player's phone it is silent
-  const refused = [];
-  page.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); });
   // fail external fetches (Google Fonts) instantly — a hanging CDN must never stall the suite
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
 
@@ -5362,14 +5370,28 @@ const CANDIDATES = [
       });
     }
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const csp = (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
-    const PINNED = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'";
-    if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only');
+    /* WHERE THE BROWSER READS IT, not wherever the text is (#256, Zeni's review). A browser obeys a policy <meta> only
+       inside <head>, and never one inside an HTML comment; this used to take the first match anywhere in the file, so a
+       meta commented out, or moved into <body>, still read as the policy while the browser enforced nothing. Measured in
+       Chromium 2026-10-01: commented out, a <style> block and a style attribute both applied and nothing reached the
+       console; in <body>, both applied. */
+    const live = html.replace(/<!--[\s\S]*?-->/g, ''), headEnd = live.search(/<\/head\s*>|<body[\s>]/i);
+    const csp = ((headEnd < 0 ? '' : live.slice(0, headEnd)).match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
+    // #256 (2026-10-01): style-src is 'self' too, so every door on the list is shut. Styles come from files only.
+    const PINNED = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'";
+    if (!csp) fails.push('guarantee: index.html has no Content-Security-Policy in its <head> outside a comment, the only place a browser obeys one — the page runs with no policy at all');
+    else if (csp !== PINNED) fails.push('guarantee: index.html CSP differs from the pinned literal — widen it in a personal build only' + (/style-src[^;]*'unsafe-inline'/.test(csp || '') ? ' (it lets the page use styling written inside it again, the door #256 shut: if outside text ever reached the page, that door would let it repaint or deface the game)' : ''));
     // #254 (2026-09-27): the page runs only script FILES. Under script-src 'self' a script written inside
     // the page is blocked without a sound, so one here is dead code or the first step to reopening that door.
     const inlineJs = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].length
                    + [...html.matchAll(/<[a-z][^>]*\son[a-z]+\s*=/gi)].length;
     if (inlineJs) fails.push(`guarantee: index.html carries ${inlineJs} script(s) written inside the page (a <script> block or an on…= handler) — the page runs only script files (#254); move it into one`);
+    // #256: and styles the same way. Under style-src 'self' the browser refuses a <style> block or a style="…"
+    // attribute without a sound and the element just loses that look, so one here is a silent visual break
+    // or the first step to reopening the door. Counted, so the sentence says how much of the page went.
+    // read with the page's comments taken out (`live`, above): a comment that SAYS "<style>" is prose, not a block
+    const inlineCss = [...live.matchAll(/<style[\s>]/gi)].length, inlineAttr = [...live.matchAll(/<[a-z][^>]*\sstyle\s*=/gi)].length;
+    if (inlineCss + inlineAttr) fails.push(`guarantee: index.html carries ${inlineCss} <style> block(s) and ${inlineAttr} style="…" attribute(s) written inside the page — the policy refuses every one and a player sees the page without them (#256); the page's styles live in shell.css`);
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
     if (!/res\.ok/.test(sw)) fails.push('guarantee: sw.js caches responses without checking res.ok');
     if (!/self\.location\.origin/.test(sw)) fails.push('guarantee: sw.js does not restrict itself to its own origin');
@@ -6352,6 +6374,7 @@ const CANDIDATES = [
 
 
 
+  console.log('  NOTE: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
   if (refused.length) fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254) — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 3).join(' | '));
   if (fails.length) { console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log(`OK — ${stat.quests} quests, maxXP ${stat.maxXP}, all invariants hold.`);

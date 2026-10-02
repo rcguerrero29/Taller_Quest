@@ -4874,15 +4874,21 @@ function docRender(body,secs){
 
    FOUR THINGS MAKE THAT TRUE, and each is a thing a plant has been fired at (docs/BOUNDARY.md):
 
-   1 · THE BROWSER PARSES IT, NOT ME. The text goes into a `media="not all"` <style> — parsed,
-       never applied — and we walk the CSSOM the browser built. Hand-rolling a CSS parser is
-       where this kind of code gets it wrong: every escape becomes a quoting trick I did not
-       think of. The browser already has a correct parser and it is free.
+   1 · THE BROWSER PARSES IT, NOT ME. The text goes into a constructed stylesheet
+       (`new CSSStyleSheet()` + `replaceSync`) — parsed, never applied — and we walk the CSSOM the
+       browser built. Hand-rolling a CSS parser is where this kind of code gets it wrong: every
+       escape becomes a quoting trick I did not think of. The browser already has a correct parser
+       and it is free. (Until #256 the text went into a `media="not all"` <style> written into the
+       page; the public pages' policy is style-src 'self' now and refuses that element, so the probe
+       came back with no sheet at all. A constructed sheet needs no permission from the policy, and
+       it NEVER FETCHES an @import: the browser drops the rule while parsing, before anything here
+       sees it, where the old probe tried the fetch and left the policy to refuse it.)
    2 · EVERY SELECTOR IS RE-ROOTED. A CSS selector always selects its RIGHTMOST element, so
        prefixing with `.paper ` forces the thing being styled to be a descendant of the reader.
        `html`, `body` and `:root` need no special case — `.paper html` is a selector that
        matches nothing, which is exactly the right answer. `&` means the sheet itself.
-   3 · WHAT CANNOT BE RE-ROOTED IS DROPPED, BY ALLOW-LIST. `@import` is a fetch; `@font-face`,
+   3 · WHAT CANNOT BE RE-ROOTED IS DROPPED, BY ALLOW-LIST. `@import` is a fetch (and never reaches
+       the walk: see 1); `@font-face`,
        `@keyframes` and `@property` each register a GLOBAL name — a pack's `@keyframes bob` would
        silently replace the engine's. A name is not a subtree, so only two shapes are let through
        (a style rule and a conditional group) and everything else is dropped, including at-rules
@@ -4951,31 +4957,47 @@ function paperWalk(rules,out,warn){
     warn(paperAtName(r)+" cannot be scoped to the reader, so it was dropped");
   }
 }
+/* NO <style> IS EVER WRITTEN INTO THE PAGE (#256). Both the probe and the result are constructed
+   sheets, and the result is ADOPTED (document.adoptedStyleSheets), which the page's policy does not
+   govern because nothing is written into the page and nothing is fetched.
+   AFTER THE LAST STYLESHEET IN THE DOCUMENT still holds, and now by definition: adopted sheets come
+   after every sheet the document loads, in cascade order. That mattered once — the shell's own
+   stylesheet sat in <body>, an early version appended the paper to the head, and the engine won
+   every tie at equal specificity: a seam that is perfectly safe and silently does nothing. The gauge
+   caught it on its first run, and test/engine.smoke.js still asks.
+   AN OLDER PHONE (Safari before 16.4, March 2023) can neither construct nor adopt a sheet. There the
+   pack's paper is not applied and the reader keeps the engine's own paper — the one every Meridian
+   document is read on, same text, same buttons — and the engine says so in its log. The window is
+   Safari 16.0 to 16.3 and nothing older: drawPerson already calls canvas roundRect unguarded, which
+   Safari has only from 16.0, so an older phone cannot draw a single person in either game. A second
+   path just for that window (inserting the rules into the shell's own sheet) would be a second parser
+   door to keep closed, and it cannot even be read over file://, where every suite runs. */
+let PAPER_SHEET=null;
 function paperSkin(){
   const css=(typeof PAPER!=="undefined"&&typeof PAPER==="string")?PAPER:"";
   if(!css.trim())return "";              /* Meridian's path: nothing declared, nothing changes */
-  const probe=document.createElement("style");
-  probe.media="not all";                 /* parsed by the browser, applied to nothing */
-  probe.textContent=css;
-  document.head.appendChild(probe);
+  let probe=null;
+  try{probe=new CSSStyleSheet();}catch(e){probe=null;}
+  if(!probe||!Array.isArray(document.adoptedStyleSheets)){
+    mqwarn("paper","this browser cannot adopt a stylesheet, so the pack's PAPER was not applied and the reader keeps the engine's own paper");
+    return "";}
+  try{probe.replaceSync(css);}         /* parsed by the browser, applied to nothing, fetching nothing */
+  catch(e){mqwarn("paper","the pack's PAPER could not be parsed: "+(e&&e.message),true);return "";}
   const out=[],dropped={};
   const warn=why=>{dropped[why]=(dropped[why]||0)+1;};
-  try{paperWalk(probe.sheet.cssRules,out,warn);}
+  /* the browser drops an @import from a constructed sheet before the walk can see it; say so, so a
+     pack author is still told why that sheet never arrived */
+  if(/@import/i.test(css))warn("@import cannot be scoped to the reader, and a constructed sheet never fetches it");
+  try{paperWalk(probe.cssRules,out,warn);}
   catch(e){mqwarn("paper","the pack's PAPER could not be parsed: "+(e&&e.message),true);}
-  probe.remove();
   Object.entries(dropped).forEach(([why,n])=>mqwarn("paper","dropped "+n+" — "+why));
   if(!out.length)return "";
-  const el2=document.createElement("style");
-  el2.id="paperSkin";el2.textContent=out.join("\n");
-  /* AFTER THE LAST STYLESHEET IN THE DOCUMENT, and `document.head` is not that place — the shell's
-     own 34KB block lives in <body>, so appending to the head put the pack's paper FIRST and the
-     engine won every tie at equal specificity. A seam that is perfectly safe and silently does
-     nothing is still a broken seam; the gauge caught this on its first run. */
-  const styles=document.querySelectorAll("style,link[rel=stylesheet]");
-  const last=styles.length?styles[styles.length-1]:null;
-  if(last&&last.parentNode)last.parentNode.insertBefore(el2,last.nextSibling);
-  else (document.body||document.documentElement).appendChild(el2);
-  return el2.textContent;
+  const text=out.join("\n"),sheet=new CSSStyleSheet();
+  try{sheet.replaceSync(text);}
+  catch(e){mqwarn("paper","the pack's PAPER could not be applied: "+(e&&e.message),true);return "";}
+  document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];
+  PAPER_SHEET=sheet;
+  return text;
 }
 const PAPER_APPLIED=paperSkin();
 function docOpen(id,from){

@@ -4,421 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- CSP: everything from this site and nowhere else (#254, 2026-09-27). Scripts are files only,
-     never written inside the page; styles, fonts and pictures come from this site; the page makes
-     no background requests at all (connect-src 'none': when NET goes live, its server is added
-     here as a decision). GitHub Pages can't set headers, hence the meta tag; framing is refused by
-     frame-guard.js because a meta tag cannot say it. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'">
+     never written inside the page; so are styles since #256 (2026-10-01): the page's look is
+     shell.css, and a style block or a style attribute here would be refused without a sound.
+     Fonts and pictures come from this site; the page makes no background requests at all
+     (connect-src 'none': when NET goes live, its server is added here as a decision). GitHub Pages
+     can't set headers, hence the meta tag; framing is refused by frame-guard.js because a meta tag
+     cannot say it. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'none'; object-src 'none'">
 <!-- no page this game links to learns where the player came from -->
 <meta name="referrer" content="no-referrer">
 <script src="frame-guard.js"></script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#14121B">
 <link rel="apple-touch-icon" href="icon-192.png">
-<style>:root{color-scheme:light dark}body{margin:0;padding:0}img{max-width:100%}
-</style>
+<!-- the page's look: a file, like its scripts (#256) -->
+<link rel="stylesheet" href="shell.css">
 <title>Meridian Quest</title>
 </head>
 <body>
 <!-- the three typefaces, from this site: the page asks Google for nothing (#254) -->
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<style>
-  [hidden]{display:none !important;}
-  :root{
-    --bg:#F2F1EA; --surface:#FFFFFF; --ink:#221F2B; --muted:#635E6E; --line:#DAD7CB;
-    --accent:#7A3FE0; --accent-ink:#FFFFFF; --gold:#B07A10; --gold-bg:#F5EAD2;
-    --good:#1F7A4D; --good-bg:#E4F2E9; --bad:#B3372E; --bad-bg:#F7E7E4;
-    --mid:#8A5A14; --mid-bg:#F5EBD9;
-    --chip:#EBE9E0; --bubble:#EFEBF8; --bubble-line:#D4C7F1;
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#14121B; --surface:#1E1B29; --ink:#EAE7F0; --muted:#9C96AB; --line:#322D42;
-      --accent:#A97FFF; --accent-ink:#160F26; --gold:#E0B45C; --gold-bg:#3A2F17;
-      --good:#4CC38A; --good-bg:#173226; --bad:#E5695F; --bad-bg:#3A201D;
-      --mid:#D9A85B; --mid-bg:#38301F;
-      --chip:#292435; --bubble:#272138; --bubble-line:#453963;
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#14121B; --surface:#1E1B29; --ink:#EAE7F0; --muted:#9C96AB; --line:#322D42;
-    --accent:#A97FFF; --accent-ink:#160F26; --gold:#E0B45C; --gold-bg:#3A2F17;
-    --good:#4CC38A; --good-bg:#173226; --bad:#E5695F; --bad-bg:#3A201D;
-    --mid:#D9A85B; --mid-bg:#38301F;
-    --chip:#292435; --bubble:#272138; --bubble-line:#453963;
-  }
-  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; line-height:1.55;}
-  .wrap{max-width:560px; margin:0 auto; padding:22px 16px 60px;}
-  header{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;}
-  h1{font-family:'Unbounded',sans-serif; font-weight:700; font-size:1.2rem; margin:0;}
-  h1 span{color:var(--accent);}
-  .hud{display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--muted); margin-bottom:6px; font-variant-numeric:tabular-nums;}
-  .hearts{letter-spacing:2px;}
-  .xpbar{height:6px; background:var(--chip); border-radius:3px; overflow:hidden; margin-bottom:14px;}
-  .xpbar div{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--gold)); border-radius:3px; transition:width .3s;}
-  .panel{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px;}
-  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin:0 0 12px;}
-  .worldpanel{padding:12px;}
-  .viewport{position:relative; border-radius:10px; overflow:hidden; background:#241F2E; touch-action:none;}
-  #veil{position:absolute; inset:0; background:#0B0A12; opacity:0; transition:opacity .42s ease; pointer-events:none; z-index:5;}
-  #veil.on{opacity:1;}
-  /* THE DOORWAY (owner, 2026-09-17: "i think i want that option A"). A portal changed the world
-     between one frame and the next and then FROZE INPUT FOR 450ms with nothing drawn in that
-     window — an instant cut followed by standing still somewhere you did not walk to. The slot
-     was always there; it was empty. This fills it, in every camera at once, because it is a DIV
-     over the viewport and not something painted into a canvas: the 3D camera renders to its own
-     WebGL surface and would otherwise have needed its own copy of the whole effect.
-     It shuts in the direction you are travelling and opens the same way, so the movement is the
-     thing that says what happened — up a flight, down a well, or through a door on the flat. */
-  #door{position:absolute; inset:0; pointer-events:none; z-index:6; overflow:hidden;}
-  #door .leaf{position:absolute; left:0; right:0; height:52%; background:#0B0A12; transform:translateY(-102%); transition:transform var(--doorT,.32s) cubic-bezier(.4,0,.2,1);}
-  #door .leaf.b{top:auto; bottom:0; transform:translateY(102%);}
-  #door .leaf.a{top:0;}
-  #door.shut .leaf{transform:translateY(0);}
-  /* Travelling UP: BOTH leaves sweep off the top, so the new place rises into view. The percentages
-     are of each LEAF, not of the screen, and the two leaves do not need the same one — a leaf anchored
-     to the far edge has to cross the whole viewport to leave by the near one. -102% clears the top for
-     the leaf that starts there and only lifts the bottom one into the top half, which is a black band
-     across the new place that never goes away. Caught by the guard on its first run, not by reading. */
-  #door.open-up .leaf.a{transform:translateY(-102%);} #door.open-up .leaf.b{transform:translateY(-200%);}
-  #door.open-down .leaf.a{transform:translateY(200%);} #door.open-down .leaf.b{transform:translateY(102%);}
-  #door.open-flat .leaf.a{transform:translateY(-102%);} #door.open-flat .leaf.b{transform:translateY(102%);}
-  @media (prefers-reduced-motion: reduce){
-    /* no sweep for somebody who has asked for none: the leaves simply stop being there */
-    #door .leaf{transition:opacity var(--doorT,.32s) linear; transform:translateY(0); opacity:0;}
-    #door.shut .leaf{opacity:1;}
-    #door.open-up .leaf, #door.open-down .leaf, #door.open-flat .leaf{opacity:0; transform:translateY(0);}
-  }
-  .settings .box{touch-action:pan-y;}
-  .tlsearch{display:flex; gap:8px; margin-bottom:10px;}
-  .tlsearch input{flex:1; box-sizing:border-box; font-family:'IBM Plex Mono',monospace; font-size:.8rem; padding:8px 10px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink);}
-  .tlsearch button{font-size:.8rem; padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer;}
-  canvas{display:block; width:100%; image-rendering:pixelated;}
-  .dpad{position:absolute; left:calc(10px + env(safe-area-inset-left)); bottom:calc(10px + env(safe-area-inset-bottom)); display:grid; grid-template-columns:repeat(3,44px); grid-template-rows:repeat(3,44px); gap:2px; opacity:.92; touch-action:none; user-select:none;}
-  .dpad button{border:none; border-radius:9px; background:rgba(20,16,30,.55); color:#EDE9F5; font-size:1.05rem; cursor:pointer; backdrop-filter:blur(2px); touch-action:none;}
-  .dpad button:active{background:rgba(122,63,224,.75);}
-  .dpad .blank{visibility:hidden;}
-  .joy{position:absolute; left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom)); width:116px; height:116px; touch-action:none; user-select:none;}
-  .joybase{position:absolute; inset:0; border-radius:50%; background:rgba(20,16,30,.4); border:2px solid rgba(237,233,245,.25); backdrop-filter:blur(2px);}
-  .knob{position:absolute; left:50%; top:50%; width:48px; height:48px; border-radius:50%; background:rgba(122,63,224,.85); border:2px solid rgba(237,233,245,.5); transform:translate(-50%,-50%); transition:transform .08s;}
-  /* SAFE AREA. A phone's rounded corners, notch and home indicator eat the edges of the screen,
-     and everything anchored to an edge has to step inside them. env() is 0 on a device without
-     insets, so this costs nothing anywhere else. */
-  .gear{position:absolute; right:calc(10px + env(safe-area-inset-right)); top:calc(10px + env(safe-area-inset-top)); width:38px; height:38px; border-radius:10px; border:none; background:rgba(20,16,30,.55); color:#EDE9F5; font-size:1.05rem; cursor:pointer; z-index:4;}
-  .gear svg{display:block; width:20px; height:20px; margin:auto; pointer-events:none;}
-  #careForm input{box-sizing:border-box; min-width:0; font-family:'IBM Plex Sans',sans-serif; font-size:.85rem; padding:8px 10px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink);}
-  .palrow{display:flex; gap:6px; margin-bottom:6px;}
-  .palrow button{min-height:28px; min-width:30px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer; font-size:.8rem; padding:4px 8px;}
-  .palrow .palname{flex:1; text-align:left; font-family:'IBM Plex Sans',sans-serif;}
-  .palrow button[aria-pressed="true"]{border-color:var(--accent); background:var(--accent); color:var(--accent-ink);}
-  .palrow button:disabled{opacity:.35;}
-  .terow{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
-  .terow span{flex:1; font-family:'IBM Plex Mono',monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);}
-  .terow input[type=color]{width:52px; height:30px; border:1.5px solid var(--line); border-radius:8px; background:var(--bg); padding:2px; cursor:pointer;}
-  .wdrow{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 12px;}
-  .wdrow .sw{width:30px; height:30px; border-radius:50%; border:2px solid var(--line); cursor:pointer; padding:0; background:var(--chip); color:var(--muted); font-size:.75rem; line-height:1;}
-  .wdrow .sw[aria-pressed="true"]{border-color:var(--accent); outline:2px solid var(--accent); outline-offset:1px;}
-  #wdpv{display:block; margin:0 auto 12px; width:132px; image-rendering:pixelated; background:#241F2E; border-radius:10px;}
-  /* the chip in the corner of the world sits over live scenery — pale stone, dark water, a
-     marigold blaze — so it carries its own ground instead of trusting whatever is behind it */
-  #status{background:rgba(16,13,24,.72); color:#EDE9F5; text-shadow:0 1px 2px rgba(0,0,0,.55);}
-  .fsbtn{right:calc(54px + env(safe-area-inset-right)) !important;}
-  .mapbtn{right:calc(98px + env(safe-area-inset-right)) !important;}
-  .vmap{display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:14px; font-size:.78rem;}
-  .vmap .vrow{display:flex; gap:6px; justify-content:center; width:100%;}
-  .vmap .vm{border:1.5px solid var(--line); border-radius:8px; padding:6px 8px; background:var(--bg); text-align:center; flex:1;}
-  .vmap .vm.here{border-color:var(--accent); background:var(--accent); color:var(--accent-ink); font-weight:600;}
-  .vmap .vlink{color:var(--muted); line-height:1.1;}
-  .vmap .vm small{display:block; color:inherit; opacity:.78; font-size:.65rem;}
-  .viewport.fs{position:fixed; inset:0; z-index:50; border-radius:0; display:flex; align-items:center; justify-content:center;}
-  .viewport.fs canvas{width:100%; height:100% !important; object-fit:contain;}
-  body.noscroll{overflow:hidden;}
-  .status{position:absolute; left:calc(10px + env(safe-area-inset-left)); top:calc(10px + env(safe-area-inset-top)); background:rgba(20,16,30,.55); color:#EDE9F5; font-family:'IBM Plex Mono',monospace; font-size:.74rem; padding:5px 10px; border-radius:999px; pointer-events:none; z-index:4; letter-spacing:1px;}
-  .ticker div+div{margin-top:2px;}
-  .ticker .prev{opacity:.55;}
-  .ticker{position:absolute; left:10px; top:44px; max-width:58%; background:rgba(20,16,30,.55); color:#EDE9F5; font-family:'IBM Plex Mono',monospace; font-size:.68rem; line-height:1.35; padding:5px 9px; border-radius:10px; z-index:4; cursor:pointer;}
-  .brushes{position:absolute; left:50%; transform:translateX(-50%); top:54px; display:flex; flex-wrap:wrap; justify-content:center; max-width:88%; gap:5px; z-index:4; background:rgba(20,16,30,.55); padding:5px 7px; border-radius:12px;}
-  .brushes button{width:44px; height:48px; border-radius:8px; border:1.5px solid transparent; background:rgba(237,233,245,.12); font-size:.95rem; cursor:pointer; padding:2px 0 0; display:flex; flex-direction:column; align-items:center; gap:1px; color:#EDE9F5;}
-  .brushes button .bl{font-size:.5rem; letter-spacing:.03em; opacity:.85;}
-  .brushes button[aria-pressed="true"]{border-color:#E0B45C; background:rgba(224,180,92,.25);}
-  /* the world's action buttons: a column that fills upward from the bottom corner (Rosa 3, 7).
-     column-reverse puts the first in the markup nearest the thumb; wrap-reverse sends an
-     overflowing column left, into the world, rather than up and out of it; the cap keeps the
-     top of the stack clear of the 38px corner icons at top:10px. The container ignores taps so
-     the world can still be walked through the gaps between buttons. */
-  .acts{position:absolute; right:calc(10px + env(safe-area-inset-right)); bottom:calc(10px + env(safe-area-inset-bottom)); z-index:5;
-    display:flex; flex-direction:column-reverse; flex-wrap:wrap-reverse;
-    align-items:flex-end; align-content:flex-end; gap:8px;
-    max-height:calc(100% - 58px); pointer-events:none;}
-  .acts>button{pointer-events:auto;}
-  .talk{position:static; font-family:'Unbounded',sans-serif; font-size:.8rem; padding:12px 16px; border-radius:12px; border:none; background:var(--accent); color:var(--accent-ink); cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.35);}
-  .treat{background:#B5773A !important; color:#FFF !important;}
-  #ball{background:#7A9A4E !important;}
-  #leash{background:#2E5FA8 !important;}
-  .read{background:#F6EFDC !important; color:#2B2536 !important; box-shadow:0 2px 10px rgba(0,0,0,.35), inset 0 0 0 2px #C9BFA6 !important;}
-  #band{background:#D77FA8 !important;}
-  #adopt{background:#4E7A4A !important;}
-  #love{background:#C4586B !important;}
-  #cmd{bottom:auto !important; top:104px; right:10px !important; left:auto !important; width:42px; height:42px; padding:0 !important; border-radius:50% !important; background:rgba(20,16,30,.55) !important; font-size:1.25rem; z-index:4; backdrop-filter:blur(2px);}
-  .hint{font-size:.8rem; color:var(--muted); margin:10px 2px 0;}
-  .npc{display:flex; gap:10px; margin-bottom:12px;}
-  .avatar{flex:0 0 auto; width:44px; height:44px; border-radius:50%; background:var(--chip); display:flex; align-items:center; justify-content:center; font-size:1.4rem;}
-  .bubble{background:var(--bubble); border:1px solid var(--bubble-line); border-radius:4px 14px 14px 14px; padding:10px 13px;}
-  .bubble b{display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); margin-bottom:3px;}
-  .bubble p{margin:0; font-size:.93rem;}
-  /* the reframe line on a quest answered long after its district's Saturday: the
-     neighbour is still interested, never still waiting on you */
-  .bubble p.late{font-style:italic; color:var(--muted); font-size:.87rem; margin-bottom:6px;}
-  .settings.reader{position:fixed; inset:0; z-index:60; display:flex; justify-content:center;
-    align-items:flex-start; overflow:hidden;
-    padding:14px 10px 28px; background:rgba(16,13,24,.88);}
-  /* isolation:isolate makes the reader a stacking context, which is the STRUCTURAL half of the
-     paper seam (ARCH-LOG A15, engine.js paperSkin): a pack may restyle what is inside this sheet,
-     and nothing it writes may paint on top of the HUD, the chrome or the world. Re-rooting every
-     selector stops a pack SELECTING anything outside; this stops a descendant it legitimately
-     styles from raising itself out. `position:fixed` is stripped in the engine for the same
-     reason — it escapes the containing block, which a stacking context alone would not stop. */
-  .paper{position:relative; isolation:isolate; width:100%; max-width:640px; margin:0 auto; background:#F7F2E4; color:#2A2620;
-    border-radius:3px; padding:30px 24px 20px; box-shadow:0 10px 34px rgba(0,0,0,.5);
-    font-family:'IBM Plex Mono',monospace; font-size:.78rem; line-height:1.55;
-    box-sizing:border-box; display:flex; flex-direction:column; max-height:100%;}
-  /* the document's own scroll box. min-height:0 is what lets a flex child shrink far enough to
-     scroll at all — without it the column just grows past the screen and takes the bar with it. */
-  .paperscroll{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;}
-  /* Rosa, finding 5. One long option in a dropdown made EVERY field in the request form 70px wider
-     than the phone, and the sheet slid to x=-24 when a field took focus. A control may not be sized
-     by its longest contents: the field wins, the text inside it gets an ellipsis. And the writing
-     boxes were taking their height from the settings panel's rule rather than the form's — 220px
-     each, which put the button that files the request two screens down. */
-  /* min-width:0 on the items, not only minmax(0,1fr) on the track: a grid item's automatic minimum
-     size is its CONTENT, so a label wrapping a 392px dropdown overflowed a track that was already
-     told it could be narrow. Capping the track alone does nothing without this. */
-  .paper .dform>*{min-width:0;}
-  .paper .dfl{display:block; min-width:0;}
-  .paper .dform select, .paper .dform input, .paper .dform textarea{width:100%;}
-  .paper select, .paper input, .paper textarea{max-width:100%; box-sizing:border-box;}
-  .paper select{text-overflow:ellipsis;}
-  .paper textarea{min-height:64px; resize:vertical;}
-  .paper .dform{max-width:100%;}
-  .paper::before{content:""; position:absolute; inset:0; border-radius:3px; pointer-events:none;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,.10), inset 0 30px 40px -34px rgba(0,0,0,.18);}
-  .staple{position:absolute; top:13px; left:20px; width:15px; height:4px; background:#9AA1A8;
-    border-radius:1px; transform:rotate(-8deg); box-shadow:0 1px 0 rgba(0,0,0,.35), 20px 1px 0 -1px rgba(0,0,0,.10);}
-  /* a document held out inside a conversation — the same sheet the reader opens, folded small.
-     Same cream, same staple, so opening it reads as picking up the thing she is holding. */
-  .handed{display:inline-flex; align-items:center; gap:8px; margin:11px 0 1px; padding:9px 13px;
-    background:#F7F2E4; color:#2A2620; border:1px solid #C9BFA6; border-radius:2px; position:relative;
-    font-family:'IBM Plex Mono',monospace; font-size:.72rem; line-height:1.35; text-align:left;
-    cursor:pointer; box-shadow:0 2px 9px rgba(0,0,0,.32);}
-  .handed::before{content:""; position:absolute; top:-2px; left:10px; width:13px; height:3px;
-    background:#9AA1A8; border-radius:1px; transform:rotate(-8deg); box-shadow:0 1px 0 rgba(0,0,0,.30);}
-  .handed:hover,.handed:focus-visible{background:#FFFAEC; box-shadow:0 3px 12px rgba(0,0,0,.38);}
-  .paper h2{font-family:'Unbounded',sans-serif; font-size:.98rem; line-height:1.3; margin:6px 0 2px; color:#1E1A16;}
-  .paper .dsub{font-style:italic; color:#6B6355; margin:0 0 14px; font-size:.72rem;}
-  .paper .dtmpl{margin:0; font-size:.62rem; letter-spacing:.09em; text-transform:uppercase; color:#8A8170;}
-  .paper .dh{font-family:'Unbounded',sans-serif; font-size:.76rem; margin:18px 0 6px; color:#1E1A16;
-    border-bottom:1px solid #D8CFB8; padding-bottom:4px;}
-  .paper .dp{margin:6px 0;}
-  .paper .dnote{margin:10px 0; padding:8px 10px; background:#EFE7D2; border-left:3px solid #C2A15A; font-style:italic; color:#5A5245;}
-  .paper .dblank{margin:7px 0; display:flex; gap:8px; align-items:baseline;}
-  .paper .dblank .dline{flex:1; border-bottom:1px dashed #B7AD95; min-height:1em;}
-  .paper .dkv{display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:8px 0;}
-  .paper .dkv b{color:#6B6355; font-weight:600;}
-  .paper .dform{margin:10px 0; display:grid; grid-template-columns:minmax(0,1fr); gap:12px;}  /* minmax(0,1fr): a grid column defaults to `auto`, which is as wide as its widest child — that is how one long dropdown option made every field overflow the phone (Rosa 5) */
-  .paper .dfl{display:grid; gap:3px; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; color:#6B6355;}
-  .paper .dfl input,.paper .dfl textarea,.paper .dfl select{font:inherit; font-size:.85rem; text-transform:none; letter-spacing:0; padding:7px 9px; border:1px solid #B7AD95; border-radius:6px; background:#FFFDF7; color:#2A2620;}
-  .paper .dfl textarea{min-height:64px; resize:vertical;}
-  .paper .dchecks{display:flex; flex-wrap:wrap; gap:6px 12px; text-transform:none; letter-spacing:0; font-size:.85rem;}
-  .paper .dfrow{display:flex; gap:8px; margin-top:4px;}
-  /* the night look (READERLOOK="night"): the same paper in purple dark — a pack's choice, cream by default */
-  .paper.night{background:#1C1A22; color:#E8E4DC;}
-  .paper.night::before{display:none;}
-  .paper.night h2,.paper.night .dh{color:#FFFFFF;}
-  .paper.night .dsub,.paper.night .dtmpl,.paper.night .dkv b,.paper.night .dfl{color:#B48CFF;}
-  .paper.night .dnote{background:#26232E; border-left-color:#7A3FE0; color:#CFC9BF;}
-  .paper .dred{margin:8px 0; padding:6px 10px; color:#B3261E; border-left:3px solid #D9342B; font-weight:600;} /* critical, in red (#8) */
-  .paper.night .dred{color:#FF7B72; border-left-color:#FF5A4F;}
-  #toast.crit{color:#FF7B72; border-left:3px solid #FF5A4F;}
-  .paper.night .dfl input,.paper.night .dfl textarea,.paper.night .dfl select{background:#26232E; border-color:#3B3546; color:#E8E4DC;}
-  .paper.night button{background:#3B3546; color:#FFFFFF; border-color:#4A4358;}
-  .paper.night .dbtn{background:#7A3FE0; border-color:#7A3FE0;}
-  .paper.night .dsel select{background:#26232E; color:#E8E4DC; border-color:#3B3546;}
-  .paper.night .docbar{background:#1C1A22; border-top-color:#3B3546; box-shadow:0 -14px 16px -10px #1C1A22, 0 14px 0 0 #1C1A22;}
-  .paper.night .docbar button{background:#26232E; color:#E8E4DC; border-color:#3B3546;}
-  .paper .dtable{width:100%; border-collapse:collapse; margin:10px 0; font-size:.72rem;}
-  .paper .dtable th{text-align:left; border-bottom:1.5px solid #C6BCA2; padding:5px 6px; color:#5A5245;}
-  .paper .dtable td{border-bottom:1px solid #E2D9C2; padding:5px 6px; vertical-align:top;}
-  .paper .dq{margin:10px 0; padding:9px 11px; background:#FFFCF2; border-left:3px solid #C6BCA2;}
-  .paper .dq.ok{border-left-color:#4E8A58;} .paper .dq.mid{border-left-color:#C2A15A;} .paper .dq.bad{border-left-color:#B0533E;}
-  .paper .dq b{display:block; color:#1E1A16; margin-bottom:4px;}
-  .paper .dpick{margin:0; font-weight:600;}
-  .paper .dwhy{margin:5px 0 0; color:#6B6355; font-size:.72rem;}
-  .paper .ddocs{display:flex; flex-wrap:wrap; gap:7px; margin:10px 0;}
-  /* The way out still rides along — on a long document (Chelo's eleven-item list, Bere's
-     fifty-two) Close, Copy and Download must never be below the fold. It gets there by sitting
-     outside the scroll box now instead of floating over it: same result, and nothing underneath. */
-  /* ROSA, FINDING 2 — the page shouted about the least important thing on it.
-     `.dbtn` (the town's form buttons, and submit) carried a colour and NOTHING else:
-     no height, no padding, no spacing. So each fell back to the browser's default button — 21px
-     tall, roughly half the smallest target a thumb hits reliably — and they flowed inline flush
-     against each other, so a run of three read as one purple bar with hairlines in it. Directly
-     under them, Copy and Download were 68px with 8px of air. Her scale, three roles:
-       primary 48px, the full width of the text column, 12px below it — the things that change
-         something are the biggest, best-spaced things on the sheet, and no two ever touch
-       secondary 44px — the ones that move you or open something
-       quiet 40px, no fill — Copy and Download only copy the page
-     Hit area is 44 even where the paint is smaller. She is leaning on WCAG 2.5.5 and Apple's 44pt
-     rather than 2.5.8's 24px AA floor on purpose: the spacing exception there would let a merely
-     spread-out 21px strip formally conform and still be wrong, and the failure here was never
-     "cannot hit it", it was "hit the wrong one, silently". The 12px gap is wider than Material's 8
-     for the same reason. */
-  .paper .dbtn{display:block; width:100%; box-sizing:border-box; min-height:48px;
-    margin:12px 0 0; padding:13px 16px; font-family:'IBM Plex Sans',sans-serif; font-size:.92rem;
-    border-radius:12px; border:1.5px solid var(--accent); background:var(--accent);
-    color:var(--accent-ink); cursor:pointer; text-align:center;}
-  .paper .opt{min-height:44px; padding:11px 14px;}
-  .paper .ddocs{gap:12px;}
-  .paper .dchecks label{min-height:44px; display:inline-flex; align-items:center; gap:6px;}
-  .paper .docbar{display:flex; gap:12px;}
-  .paper .docbar button{flex:1; min-height:40px; padding:10px 12px; font-family:'IBM Plex Sans',sans-serif;
-    font-size:.82rem; font-weight:500; border-radius:10px; border:1.5px solid #C6BCA2;
-    background:transparent; color:#5A5142; cursor:pointer;}
-  .paper .docbar{flex:0 0 auto; margin-top:16px; padding:14px 0 2px; border-top:1px dashed #C6BCA2;
-    background:#F7F2E4;}
-  .codex{background:var(--gold-bg); border:1px solid var(--gold); border-radius:10px; padding:11px 14px; margin:12px 0;}
-  .codex b{display:block; font-family:'IBM Plex Mono',monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--gold); margin-bottom:4px;}
-  .codex p{margin:0; font-size:.88rem;}
-  .q{font-size:1rem; font-weight:600; margin:12px 0;}
-  .choices{display:flex; flex-direction:column; gap:10px;}
-  .choices button{font-family:'IBM Plex Sans',sans-serif; font-size:.93rem; text-align:left; padding:12px 14px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer;}
-  .choices button:hover{border-color:var(--accent);}
-  .choices button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
-  .choices button:disabled{cursor:default; opacity:.88;}
-  .choices button.right{border-color:var(--good); background:var(--good-bg);}
-  .choices button.wrong{border-color:var(--bad); background:var(--bad-bg);}
-  .choices button.midpick{border-color:var(--mid); background:var(--mid-bg);}
-  /* the room interview: no right answer, so no shuffle and no green/red — "say it my way"
-     is dashed, an earlier answer is outlined, and "that's enough" is a quiet link below */
-  .choices button.free{border-style:dashed; color:var(--muted);}
-  .choices button.was{box-shadow:inset 0 0 0 2px var(--accent);}
-  .why{font-style:italic; color:var(--muted); font-size:.85rem; margin:12px 2px 0;}
-  .rmlater{display:block; margin:12px auto 0; background:none; border:none; color:var(--muted); font-family:'IBM Plex Sans',sans-serif; font-size:.82rem; text-decoration:underline; cursor:pointer;}
-  .rmask{margin-top:12px; padding:12px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg);}
-  .rmask b{display:block; margin-bottom:4px;}
-  .rmask label{display:block; font-size:.82rem; color:var(--muted); margin-bottom:6px;}
-  .rmask textarea{width:100%; box-sizing:border-box; font-family:'IBM Plex Sans',sans-serif; font-size:.95rem; border-radius:8px; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); padding:8px; margin-bottom:8px; resize:none;}
-  .rmsheet{white-space:pre-wrap; font-family:'IBM Plex Mono',monospace; font-size:.74rem; line-height:1.45; background:var(--gold-bg); border:1px solid var(--gold); border-radius:10px; padding:12px 14px; margin:12px 0; user-select:text; -webkit-user-select:text;}
-  .rmbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
-  .rmbar .opt{flex:1;}
-  .verdict{margin-top:14px; border-radius:10px; padding:13px;}
-  .verdict.ok{background:var(--good-bg);} .verdict.no{background:var(--bad-bg);} .verdict.mid{background:var(--mid-bg);}
-  .verdict h2{font-family:'Unbounded',sans-serif; font-size:.9rem; margin:0 0 6px;}
-  .verdict.ok h2{color:var(--good);} .verdict.no h2{color:var(--bad);} .verdict.mid h2{color:var(--mid);}
-  .verdict p{margin:0 0 7px; font-size:.9rem;}
-  .verdict .beat{font-style:italic; color:var(--muted); font-size:.87rem;}
-  .concept{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:.7rem; padding:3px 10px; border-radius:999px; background:var(--chip); color:var(--muted); margin-bottom:7px;}
-  .levelup{margin-top:12px; text-align:center; font-family:'Unbounded',sans-serif; font-size:.82rem; color:var(--gold); background:var(--gold-bg); border:1px dashed var(--gold); border-radius:10px; padding:9px;}
-  .btn{margin-top:14px; width:100%; font-family:'Unbounded',sans-serif; font-weight:500; font-size:.88rem; padding:12px; border-radius:10px; border:none; background:var(--accent); color:var(--accent-ink); cursor:pointer;}
-  .btn:focus-visible{outline:2px solid var(--ink); outline-offset:2px;}
-  .intro p{margin:.5rem 0; color:var(--muted); font-size:.94rem;}
-  .intro p.lead{color:var(--ink); font-weight:500;}
-  .classes{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
-  .classes button{display:flex; gap:10px; align-items:center; text-align:left; padding:11px 13px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer; font-family:'IBM Plex Sans',sans-serif;}
-  .classes button:hover{border-color:var(--accent);}
-  .classes button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
-  .classes .ce{font-size:1.3rem;}
-  .classes b{display:block; font-size:.92rem;}
-  .classes small{color:var(--muted); font-size:.8rem;}
-  .toast{position:absolute; left:50%; transform:translateX(-50%); bottom:64px; background:rgba(20,16,30,.85); color:#EDE9F5; font-size:.8rem; padding:8px 14px; border-radius:999px; max-width:86%; text-align:center; pointer-events:none; opacity:0; transition:opacity .25s; z-index:6;}
-  .toast.on{opacity:1;}
-  .creator label{display:block; font-family:'IBM Plex Mono',monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px;}
-  /* #126 — the chair used to trap you: the creator panel grew (outfit, shirt, pattern, skin, hair colour,
-     fifteen styles, the calavera row) and had no height of its own, so on a short screen the finish button
-     fell below the fold with nothing able to scroll — at the start the page scrolls, but the chair opens
-     this over the world, where it cannot. The panel now keeps to the window and scrolls inside itself, and
-     the finish button rides the bottom so it is always in reach. */
-  .creator{box-sizing:border-box; max-height:calc(100dvh - 16px); overflow-y:auto; overscroll-behavior:contain;}
-  .creator #begin{position:sticky; bottom:0; z-index:2; box-shadow:0 -12px 16px -6px var(--surface);}
-  .creator .row{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 14px;}
-  /* #130: the seam between naming and styling. The rule and the space are what say "two
-     parts"; the heading says which part you are in. The last row loses its trailing margin
-     so the finish button does not float away from the choices it applies to. */
-  .creator .crbody{border-top:1px solid var(--line); margin-top:20px; padding-top:14px;}
-  .creator .crbody .row:last-of-type{margin-bottom:6px;}
-  .creator .crsec{margin:0 0 12px; font-family:'Unbounded',sans-serif; font-size:.82rem; color:var(--ink);}
-  .creator .crhead input[type=text]{margin-bottom:0;}
-  .creator .sw{width:34px; height:34px; border-radius:50%; border:2px solid var(--line); cursor:pointer; padding:0;}
-  .creator .sw[aria-pressed="true"]{border-color:var(--accent); outline:2px solid var(--accent); outline-offset:1px;}
-  .creator input[type=text]{width:100%; box-sizing:border-box; font-family:'IBM Plex Sans',sans-serif; font-size:1rem; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); margin-bottom:14px;}
-  .creator input[type=text]:focus-visible{outline:2px solid var(--accent); border-color:var(--accent);}
-  .creator .preview{display:flex; justify-content:center; margin-bottom:10px;}
-  .pvbox{position:relative; background:#F7F4EC; border:1px solid #D9D3C5; border-radius:12px; padding:8px 26px 4px;}
-  .pvbox.dark{background:#241F2E; border-color:var(--line);}
-  .pvtog{position:absolute; top:6px; right:6px; width:28px; height:28px; border-radius:8px; border:none; background:rgba(128,120,150,.28); cursor:pointer; font-size:.85rem; line-height:1; padding:0;}
-  #pv{width:96px; height:156px; image-rendering:pixelated;}
-  .opt{font-family:'IBM Plex Sans',sans-serif; font-size:.82rem; padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer;}
-  .opt[aria-pressed="true"]{border-color:var(--accent); background:var(--accent); color:var(--accent-ink);}
-  .drawer{border:1px solid var(--line); border-radius:10px; margin:8px 0; background:rgba(255,255,255,.02);}
-  /* #127: a drawer's dropdown is styled here with the rest of the sheet, not in the head's
-     reset where it was hiding, and by role rather than by one row's id — so the next drawer
-     that needs a select already looks right. */
-  .drawer select{font:inherit; padding:.55rem .7rem; border-radius:12px; border:1px solid var(--line);
-    background:var(--surface); color:inherit; max-width:12em;}
-  .drawer>summary{list-style:none; cursor:pointer; padding:10px 12px; font-family:'Unbounded',sans-serif;
-    font-size:.74rem; color:var(--text); display:flex; align-items:center; gap:8px; user-select:none;}
-  .drawer>summary::-webkit-details-marker{display:none;}
-  .drawer>summary::after{content:"⌄"; margin-left:auto; opacity:.6; transition:transform .18s ease; font-size:1rem; line-height:0.8;}
-  .drawer[open]>summary::after{transform:rotate(180deg);}
-  .drawer[open]>summary{border-bottom:1px solid var(--line);}
-  .drawer>summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; border-radius:10px;}
-  .drawer>label:first-of-type{margin-top:10px;}
-  .drawer>label,.drawer>.optrow{padding-left:12px; padding-right:12px;}
-  .drawer>.optrow:last-child{padding-bottom:12px;}
-  /* Rosa, finding 4. These opened INSIDE the world's frame — `position:absolute` in a box that is
-     427px tall on a laptop and 266px on a phone — so Settings arrived as a 270px slot showing one
-     and a half sections and the map arrived with the word "Close" cut through the middle. Her rule:
-     a panel whose height is not fixed by the designer does not open inside the world's frame. They
-     go over the page now, like the paperwork always has, and their way out rides the bottom of the
-     box the way the barber's chair learned to (#126) — plus Escape and a tap on the dark outside,
-     which every other program gives you. z-index sits under the reader's 60, so paper still opens
-     over a panel. */
-  .settings{position:fixed; inset:0; background:rgba(15,12,22,.78); display:flex; align-items:center; justify-content:center; z-index:55;}
-  .settings .box{background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:18px; width:82%; max-width:320px; max-height:88svh; overflow-y:auto; box-sizing:border-box;}
-  /* THE PLAN IS NOT A SETTINGS DIALOG (owner, 2026-09-16: "check out how tiny the map is, it
-     should at least be half the screen on the left if it wont let us move while using it").
-     It was borrowing `.settings .box`, which is capped at 320px because that is a sensible width
-     for a column of toggles — so on a 1440px screen the whole city was drawn inside a postage
-     stamp. His conditional is the argument and it is right: the map STOPS THE GAME, and a thing
-     that stops the game has to be worth stopping for. It gets its own width now — nearly the whole
-     phone, and a real panel on a desktop. */
-  #mapov .box{width:min(94vw,860px); max-width:none; padding:16px;}
-  #mapov #mapcv{max-height:70svh; object-fit:contain;}
-  .settings .box>.close{position:sticky; bottom:-18px; z-index:2; margin-bottom:0;
-    box-shadow:0 -14px 16px -8px var(--surface);}
-  .settings h3{font-family:'Unbounded',sans-serif; font-size:.9rem; margin:0 0 12px;}
-  /* Rosa, finding 6. These were one line whose items shared the space equally, were never allowed
-     to be narrower than their own text, and were never allowed to wrap — so in Spanish on a 1440px
-     DESKTOP the music row read "Auto | fi | Campanas | Marimba | Ata". They wrap now, and an item
-     may shrink to a floor rather than to nothing: a name is either whole or on the next line. */
-  .settings .optrow{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
-  .settings .optrow button{flex:1 1 auto; min-width:max-content; min-height:44px; font-family:'IBM Plex Sans',sans-serif; font-size:.85rem; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer;}
-  .settings .optrow button[aria-pressed="true"]{border-color:var(--accent); background:var(--accent); color:var(--accent-ink);}
-  .settings .close{width:100%; font-family:'Unbounded',sans-serif; font-size:.8rem; padding:10px; border-radius:10px; border:none; background:var(--accent); color:var(--accent-ink); cursor:pointer;}
-  .settings label{display:block; font-family:'IBM Plex Mono',monospace; font-size:.66rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px;}
-  .settings textarea{width:100%; box-sizing:border-box; height:220px; font-family:'IBM Plex Mono',monospace; font-size:.72rem; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; margin-bottom:12px;}
-  .settings input[type=range]{flex:1; accent-color:var(--accent); min-height:24px;}
-  .settings input[type=text]{width:100%; box-sizing:border-box; font-family:'IBM Plex Sans',sans-serif; font-size:.95rem; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; margin-bottom:12px;}
-  /* THE STORY IS THE BIGGEST THING ON THIS PANEL (Pili, la junta 2026-09-17, §4.4). It was the
-     other way round: a 1.05rem heading and a .88rem accent score over a .92rem italic paragraph,
-     so the score outranked the ending. The ranking is inverted — and NOT by demoting the score to
-     .78rem, which was the original proposal and which would have made it the same size, register
-     and font as the HUD line two elements above, printing the same XP twice eleven pixels apart.
-     `#endScore` keeps the grade word and loses the XP fraction instead (engine.js, endGrade), so
-     the duplicate never appears and the line can stay legible. */
-  .end h2{font-family:'Unbounded',sans-serif; font-size:.92rem; margin:0 0 4px; color:var(--muted); letter-spacing:.02em;}
-  .end .final{font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:.82rem; margin:0 0 10px;}
-  .end .epi{font-style:italic; color:var(--ink); font-size:1.02rem; line-height:1.5; margin:0 0 14px;}
-</style>
 <div class="wrap">
   <header><h1>MERIDIAN <span>QUEST</span></h1></header>
   <div class="hud" id="hud" hidden><span id="ptag"></span><span class="hearts" id="hearts"></span><span id="xp"></span></div>
@@ -427,15 +32,15 @@
   <div class="panel intro" id="intro">
     <div class="codex" id="tpFound" hidden>
       <b id="tpFoundLb"></b><p id="tpFoundTx"></p>
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <button class="opt" id="tpBoard" style="flex:1;"></button>
-        <button class="opt" id="tpSkip" style="flex:1;"></button>
+      <div class="tpbar">
+        <button class="opt" id="tpBoard"></button>
+        <button class="opt" id="tpSkip"></button>
       </div>
     </div>
     <p class="lead" id="in1"></p>
     <p id="in2"></p>
     <p id="in3"></p>
-    <p class="lead" style="margin-top:14px;" id="in4"></p>
+    <p class="lead" id="in4"></p>
     <div class="classes" id="classes">
       <button data-c="architect"><span class="ce">🏗️</span><span><b></b><small></small></span></button>
       <button data-c="diplomat"><span class="ce">🤝</span><span><b></b><small></small></span></button>
@@ -443,8 +48,8 @@
     </div>
     <button class="btn" id="continueBtn" hidden></button>
     <div class="settings" id="introLangWrap" hidden></div>
-    <p style="margin-top:12px;"><button class="opt" id="langQuick">🌐 Español</button></p>
-    <p id="verIntro" style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--muted);margin:14px 0 0;"></p>
+    <p class="langrow"><button class="opt" id="langQuick">🌐 Español</button></p>
+    <p id="verIntro"></p>
   </div>
 
   <div class="panel creator" id="creator" hidden>
@@ -481,7 +86,7 @@
       <canvas id="cv3" hidden></canvas>
       <div id="veil" aria-hidden="true"></div>
       <div id="door" aria-hidden="true"><div class="leaf a"></div><div class="leaf b"></div></div>
-      <button id="rot3d" hidden aria-label="Rotate camera" style="position:absolute; right:12px; top:58px; width:40px; height:40px; border:none; border-radius:50%; background:rgba(20,16,30,.55); color:#EDE9F5; font-size:1.15rem; cursor:pointer; backdrop-filter:blur(2px);">↻</button>
+      <button id="rot3d" hidden aria-label="Rotate camera">↻</button>
       <div class="dpad" id="dpad" hidden>
         <button class="blank"></button><button data-d="up" aria-label="Up">▲</button><button class="blank"></button>
         <button data-d="left" aria-label="Left">◀</button><button class="blank"></button><button data-d="right" aria-label="Right">▶</button>
@@ -601,7 +206,7 @@
               <button data-tn="sunset"></button>
             </div>
             <div class="optrow">
-              <button id="musMute" style="flex:0 0 38%;"></button>
+              <button id="musMute"></button>
               <input type="range" id="musVol" min="0" max="100" step="1" aria-label="music volume">
             </div>
           </details>
@@ -625,14 +230,14 @@
             </div>
           </details>
 
-          <div class="optrow"><button id="openLab" style="flex:1;"></button></div>
-          <div class="optrow"><button id="openExp" style="flex:1;"></button></div>
-          <div class="optrow"><button id="openWd" style="flex:1;" hidden></button></div>
-          <div class="optrow"><button id="openTp" style="flex:1;"></button></div>
-          <div class="optrow"><button id="openMp" style="flex:1;"></button></div>
-          <div class="optrow"><button id="replay" style="flex:1;"></button></div>
+          <div class="optrow"><button id="openLab"></button></div>
+          <div class="optrow"><button id="openExp"></button></div>
+          <div class="optrow"><button id="openWd" hidden></button></div>
+          <div class="optrow"><button id="openTp"></button></div>
+          <div class="optrow"><button id="openMp"></button></div>
+          <div class="optrow"><button id="replay"></button></div>
           <button class="close" id="closeSet"></button>
-          <p id="verTag" style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--muted);margin:10px 0 0;"></p>
+          <p id="verTag"></p>
         </div>
       </div>
       <div class="settings" id="npcMaker" hidden>
@@ -664,10 +269,10 @@
           <h3 id="exTitle"></h3>
           <div class="optrow"><button id="exTabJson"></button><button id="exTabRep"></button><button id="exTabCare" hidden></button><button id="exTabRoom" hidden></button></div>
           <label id="exHint"></label>
-          <div id="careForm" hidden style="display:flex; gap:8px; margin-bottom:10px;">
-            <input id="petName" type="text" maxlength="16" style="flex:2;">
-            <input id="petAm" type="time" style="flex:1;">
-            <input id="petPm" type="time" style="flex:1;">
+          <div id="careForm" hidden>
+            <input id="petName" type="text" maxlength="16">
+            <input id="petAm" type="time">
+            <input id="petPm" type="time">
           </div>
           <textarea id="exArea" readonly></textarea>
           <div class="optrow"><button id="exCopy"></button><button id="exDl" hidden></button><button id="exIcs" hidden></button><button id="exClose"></button></div>
@@ -675,17 +280,17 @@
       </div>
       <div class="settings" id="travel" hidden>
         <div class="box">
-          <h3 id="tvTitle" style="margin-top:0;"></h3>
-          <p id="tvNote" style="font-size:.8rem; color:var(--muted); margin:4px 0 12px;"></p>
-          <div id="tvList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
+          <h3 id="tvTitle"></h3>
+          <p id="tvNote"></p>
+          <div id="tvList"></div>
           <button class="close" id="tvClose"></button>
         </div>
       </div>
       <div class="settings" id="mapov" hidden>
         <div class="box">
           <h3 id="mapTitle"></h3>
-          <canvas id="mapcv" style="width:100%; border-radius:8px; image-rendering:pixelated;"></canvas>
-          <p id="mapNote" style="font-size:.78rem; color:var(--muted); margin:8px 0 12px;"></p>
+          <canvas id="mapcv"></canvas>
+          <p id="mapNote"></p>
           <button class="close" id="mapClose"></button>
         </div>
       </div>
@@ -702,23 +307,23 @@
           <input type="text" id="teName" maxlength="18" autocomplete="off">
           <div id="tePals"></div>
           <div id="teRows"></div>
-          <div class="optrow" style="margin-top:10px;"><button id="teFix"></button></div>
+          <div class="optrow tefix"><button id="teFix"></button></div>
           <button class="close" id="teClose"></button>
         </div>
       </div>
       <div class="settings" id="mpanel" hidden>
         <div class="box">
           <h3 id="mpTitle"></h3>
-          <p id="mpNote" style="font-size:.85rem; color:var(--muted); margin:4px 0 14px;"></p>
+          <p id="mpNote"></p>
           <button class="close" id="mpClose"></button>
         </div>
       </div>
       <div class="settings" id="parkCard" hidden>
         <div class="box">
           <h3 id="pkTitle"></h3>
-          <p id="pkSum" style="font-size:.95rem; margin:8px 0 6px;"></p>
-          <p id="pkLove" style="font-size:.9rem; margin:0 0 10px;"></p>
-          <p id="pkTeaser" style="font-size:.8rem; color:var(--muted); margin:0 0 14px;"></p>
+          <p id="pkSum"></p>
+          <p id="pkLove"></p>
+          <p id="pkTeaser"></p>
           <button class="close" id="pkClose"></button>
         </div>
       </div>
@@ -732,32 +337,32 @@
             <button data-b="chi"></button>
           </div>
           <label id="lbCoat"></label>
-          <div class="optrow" id="adoptCoats" style="gap:10px;"></div>
-          <input id="adoptName" maxlength="14" style="width:100%; box-sizing:border-box; font-size:1rem; padding:10px 12px; margin:8px 0 12px; border-radius:10px; border:1px solid var(--line); background:var(--bubble); color:var(--ink);">
-          <div class="optrow"><button id="adoptGo" style="flex:1;"></button><button id="adoptX" style="flex:1;"></button></div>
+          <div class="optrow" id="adoptCoats"></div>
+          <input id="adoptName" maxlength="14">
+          <div class="optrow"><button id="adoptGo"></button><button id="adoptX"></button></div>
         </div>
       </div>
       <div class="settings" id="dogP" hidden>
         <div class="box">
           <h3 id="dogPTitle"></h3>
-          <div class="optrow"><button id="cmdSit" style="flex:1;"></button><button id="cmdDown" style="flex:1;"></button><button id="cmdStay" style="flex:1;"></button></div>
-          <div class="optrow"><button id="cmdCome" style="flex:1;"></button><button id="cmdFollow" style="flex:1;"></button></div>
-          <div class="optrow"><button id="cmdRen" style="flex:1;" hidden></button><button id="cmdReh" style="flex:1;" hidden></button></div>
+          <div class="optrow"><button id="cmdSit"></button><button id="cmdDown"></button><button id="cmdStay"></button></div>
+          <div class="optrow"><button id="cmdCome"></button><button id="cmdFollow"></button></div>
+          <div class="optrow"><button id="cmdRen" hidden></button><button id="cmdReh" hidden></button></div>
           <button class="close" id="dogPX"></button>
         </div>
       </div>
       <div class="settings" id="renP" hidden>
         <div class="box">
           <h3 id="renTitle"></h3>
-          <input id="renName" maxlength="14" style="width:100%; box-sizing:border-box; font-size:1rem; padding:10px 12px; margin:8px 0 12px; border-radius:10px; border:1px solid var(--line); background:var(--bubble); color:var(--ink);">
-          <div class="optrow"><button id="renGo" style="flex:1;"></button><button id="renX" style="flex:1;"></button></div>
+          <input id="renName" maxlength="14">
+          <div class="optrow"><button id="renGo"></button><button id="renX"></button></div>
         </div>
       </div>
       <div class="settings" id="tpass" hidden>
         <div class="box">
           <h3 id="tpTitle"></h3>
-          <p id="tpNote" style="font-size:.8rem; color:var(--muted); margin:4px 0 10px;"></p>
-          <canvas id="tpqr" style="display:block; margin:0 auto 12px; width:190px; height:190px; image-rendering:pixelated; background:#FFF; border-radius:10px;"></canvas>
+          <p id="tpNote"></p>
+          <canvas id="tpqr"></canvas>
           <div class="optrow"><button id="tpShare"></button><button id="tpCopy"></button></div>
           <button class="close" id="tpClose"></button>
         </div>
@@ -765,7 +370,7 @@
       <div class="settings" id="wardrobe" hidden>
         <div class="box">
           <h3 id="wdTitle"></h3>
-          <p id="wdNote" style="font-size:.8rem; color:var(--muted); margin:4px 0 10px;"></p>
+          <p id="wdNote"></p>
           <div class="optrow"><button id="wdTabF">🐕 Frederick</button><button id="wdTabC">🐈 Canela</button></div>
           <canvas id="wdpv" width="66" height="44"></canvas>
           <label id="wdLbBandana"></label><div class="wdrow" id="wdRowBandana"></div>
