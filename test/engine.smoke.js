@@ -106,6 +106,12 @@ function findChromium() {
      this asked for an uppercase word and a space, so it has never matched anything. */
   warns.filter(w => /^(?:CRIT )?(reach|portal|world|room|wander|arrival):/i.test(w))
        .forEach(w => fails.push('the engine warned at boot and nobody was listening: ' + w));
+  /* #265: a lot the engine REFUSES is the engine doing its job — and then the city has an empty lot
+     where a room was declared, and the filter above never hears it, because "build" is not one of its
+     six words. So the log is read, not the console: every lot refused at boot is a red, in the
+     engine's own words. */
+  (await page.evaluate(() => (typeof logCrit === 'function' ? logCrit() : []).filter(e => e.kind === 'build').map(e => e.msg)))
+    .forEach(m => fails.push('the engine refused part of this city at boot, so a player finds an empty lot where a room was declared: ' + m));
 
   /* IDXNAME is passed IN because the flat list below is per game and the page cannot know which
      index it is — see the #39 block. Nothing else in here reads it. */
@@ -3104,6 +3110,82 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...orphan);
 
+  /* ---- #265: FROM ANYWHERE YOU CAN GET TO, YOU CAN WALK BACK (the builder junta, 2026-09-29) ----
+     The check above asks whether every place can be REACHED. Nothing asked about the way back. A built
+     room let you out one tile south of its door whatever stood there: a door in a hut's north wall
+     stood you inside the hut's own wall, and a hatch in the map's bottom edge stood you off the map —
+     reached perfectly, left never. A trap is a place you can walk into and not walk out of.
+     So, with every lot raised: (a) every door sets you down on ground you can stand on — asked again
+     here because built rooms and grown districts did not exist when the boot check ran; and (b) from
+     every tile you can get to — from the spawn, the park and every place the game itself stands you
+     (arrivals(), all but the far side of a door) — some path of steps and doors leads back to the spawn. Asked TWICE: as the city
+     stands at the start, and with every lot raised — on a page of its own, because "the start" has to
+     be the city a new game walks into, and the check above puts the city back by raising every lot
+     again. Planted, that is exactly what hid a trap: a lot laid over another door's doorstep trapped
+     you at the start, and raising the lots again let that door choose another side, so a check run
+     after any re-raise saw a healed city. A new game never re-raises before you walk. Stepping onto a door IS the
+     door: the engine warps you the moment you stand on one. A neighbour who wanders is not a wall (the
+     rule auditReach uses); somebody who never moves is. The trolley is a ride, not a walk, and is not
+     counted: a district whose only way home is the tram is reported, on purpose. */
+  const wbp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+  const wbErr = [];
+  wbp.on('pageerror', e => wbErr.push(e.message));
+  await wbp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+  await wbp.goto('file://' + file);
+  await wbp.waitForTimeout(1500);
+  const walkBack = await wbp.evaluate(() => {
+    const P = [];
+    [['at the start', () => {}], ['with every lot raised', () => { for (let i = 0; i < 999; i++) done.add(i); chSeen = 999; applyGrowth(); }]].forEach(([when, grow]) => {
+      grow();
+      const name = id => (T().locs && T().locs[id]) || id;
+      const stand = (id, x, y) => { const w = WORLDS[id];
+        if (!w || x < 0 || y < 0 || x >= w.W || y >= w.H || SOLID.has(w.grid[y][x])) return false;
+        if (w.grid[y][x] !== 'N') return true;
+        const n = whoAt(id, x, y); return !!n && wanders(n); };
+      const where = (id, x, y) => { const w = WORLDS[id];
+        if (!w) return 'in a place that does not exist (' + id + ')';
+        if (x < 0 || y < 0 || x >= w.W || y >= w.H) return 'off the edge of the map, at ' + x + ',' + y + ' of a place ' + w.W + ' wide and ' + w.H + ' tall';
+        if (w.grid[y][x] === 'N') return 'on top of somebody who never moves, at ' + x + ',' + y;
+        return 'inside "' + w.rows[y][x] + '", which is solid, at ' + x + ',' + y; };
+      // (a) every door sets you down on ground
+      let doors = 0;
+      Object.keys(WORLDS).forEach(from => portalsOf(from).forEach(({ x, y, p }) => { doors++;
+        if (!stand(p.to, p.x, p.y)) P.push('#265: ' + when + ', walk through the door in ' + name(from) + ' at ' + x + ',' + y + ' and you stand ' + where(p.to, p.x, p.y) + ' in ' + name(p.to)); }));
+      // (b) forward from every way in, then backward from the spawn over the same steps
+      const K = (w, x, y) => w + '|' + x + ',' + y;
+      const next = (id, x, y) => { const pp = portalAt(id, x, y);
+        if (pp) return stand(pp.to, pp.x, pp.y) ? [[pp.to, pp.x, pp.y]] : [];
+        return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [id, x + dx, y + dy]).filter(([w, a, b]) => stand(w, a, b)); };
+      const home = [PL.home, PL.spawn[0], PL.spawn[1]], roots = [home];
+      if (PL.park && PL.parkIn) roots.push([PL.park, PL.parkIn[0], PL.parkIn[1]]);
+      /* every place the game itself stands you — but not the far side of a door: a door's landing is
+         reached through its door or not at all, and a landing nobody can walk to is auditReach's to
+         report (seeded here, a sealed-off house read as a trap you could walk into, which nobody can) */
+      const landing = new Set();
+      Object.keys(WORLDS).forEach(f => portalsOf(f).forEach(({ p }) => landing.add(K(p.to, p.x, p.y))));
+      if (typeof arrivals === 'function') arrivals().forEach(a => { if (!landing.has(K(a.world, a.x, a.y))) roots.push([a.world, a.x, a.y]); });
+      if (!stand(home[0], home[1], home[2])) P.push('#265: the walk-back check has nowhere to walk back TO — the spawn (' + PL.spawn + ') in ' + name(PL.home) + ' is not ground you can stand on');
+      const seen = new Set(), from = {}, q = [];
+      roots.forEach(([w, x, y]) => { const k = K(w, x, y); if (stand(w, x, y) && !seen.has(k)) { seen.add(k); q.push([w, x, y]); } });
+      while (q.length) { const [w, x, y] = q.shift();
+        next(w, x, y).forEach(([w2, x2, y2]) => { const k = K(w2, x2, y2); (from[k] = from[k] || []).push([w, x, y]);
+          if (!seen.has(k)) { seen.add(k); q.push([w2, x2, y2]); } }); }
+      const ok = new Set([K(home[0], home[1], home[2])]), q2 = [home];
+      while (q2.length) { const [w, x, y] = q2.shift();
+        (from[K(w, x, y)] || []).forEach(([w2, x2, y2]) => { const k = K(w2, x2, y2); if (!ok.has(k)) { ok.add(k); q2.push([w2, x2, y2]); } }); }
+      const stuck = {};
+      seen.forEach(k => { if (!ok.has(k)) { const [w, xy] = k.split('|'); (stuck[w] = stuck[w] || []).push(xy); } });
+      Object.keys(stuck).sort().forEach(w => P.push('#265: ' + when + ', ' + stuck[w].length + ' tile(s) of ' + name(w) + ' can be walked into and never walked back out of (the first at ' +
+        stuck[w].sort()[0] + ') — from there no path and no door leads back to ' + name(PL.home)));
+      P.push('COUNT-ONLY: walk-back (#265): ' + seen.size + ' tiles reached in ' + new Set([...seen].map(k => k.split('|')[0])).size + ' place(s) through ' + doors +
+        ' door(s) ' + when + '; ' + (Object.keys(stuck).length ? 'some do not walk back (above)' : 'every one walks back to ' + name(PL.home)) + (doors ? '' : ' — this pack has no doors, so only steps were walked'));
+    });
+    return P;
+  });
+  await wbp.close();
+  if (wbErr.length) walkBack.push('#265: the page threw while the city was being walked back: ' + wbErr.slice(0, 3).join(' | '));
+  fails.push(...walkBack);
+
   /* ---- #156 / TAGS L12: a world that does not end still GROWS ----
      `ENDLESS` switched off the ending panel, and the ending panel's button was the only writer of
      `chSeen` in the whole engine — the one number that decides which quests are on offer, which
@@ -5427,6 +5509,98 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (kErr.length) K.push('the page threw while the keys were being pressed: ' + kErr.join(' | '));
     await kp.close();
     fails.push(...K.map(m => 'keys: ' + m));
+  }
+
+  /* ---- #265: A BUILT ROOM CAN BE LEFT — WALKED, NOT ASKED ----
+     A room a lot carries let you out one tile SOUTH of its door, always, whatever stood there. At the
+     builder junta (2026-09-29) two huts were planted in a copy of the gauge: one with its door in its
+     north wall, which let you out inside its own wall, and a hatch in the bottom edge of the map, which
+     let you out off the map — and the engine said nothing at boot. The owner, 2026-09-30: "an auto,
+     choose a door for now workflow when building so exits/doors exist." So a door opens onto a side you
+     can stand on and walk on from — south first, as every door that shipped already does — and a door
+     with no such side is refused out loud.
+     A PROBE, SAID PLAINLY: no game on the public site has a door that does not face south, so this
+     block declares a yard and three lots on a page of its own, raised by the same applyBuilds every
+     boot runs, and then WALKS — real arrow keys — into each room and back out, and reads where you are
+     standing. Nothing here calls the door chooser. The page is thrown away at the end, so nothing it
+     declared can reach another check. */
+  {
+    const dp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const dErr = [], DR = [];
+    dp.on('pageerror', e => dErr.push(e.message));
+    await dp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await dp.goto('file://' + file);
+    await dp.waitForTimeout(1500);
+    const yard = await dp.evaluate(() => {
+      wanderUpdate = function () {};
+      camSet('top');
+      if (SOLID.has('.') || !SOLID.has('#')) return { err: 'this pack makes "." solid or "#" walkable, so the probe yard cannot be laid in its letters' };
+      const Y = 'probe-yard', rows = ['#############', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#...........#', '#############'];
+      WORLDS[Y] = { rows: rows.slice(), rows0: rows.slice(), grid: rows.map(r => r.split('')), npcs: [], W: rows[0].length, H: rows.length };
+      Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[Y] = 'the probe yard'; t.arrive[Y] = ''; });
+      const room = n => ({ rows: ['#####', '#...#', '#...#', '##.##'], locs: { en: n, es: n } });
+      if (typeof BUILDTPL === 'undefined') window.BUILDTPL = {};
+      Object.assign(BUILDTPL, {
+        'probe-hut': { id: 'probe-hut', size: { w: 3, h: 2 }, parts: [{ id: 'body', tiles: [[0, 0, '#'], [0, 1, '.'], [0, 2, '#'], [1, 0, '#'], [1, 1, '#'], [1, 2, '#']],
+          link: { door: [0, 1], interior: room('the hut whose door is in its north wall') } }] },
+        'probe-hatch': { id: 'probe-hatch', size: { w: 1, h: 1 }, parts: [{ id: 'hatch', tiles: [[0, 0, '.']],
+          link: { door: [0, 0], interior: room('the cellar under a hatch in the bottom edge of the map') } }] },
+        'probe-vault': { id: 'probe-vault', size: { w: 3, h: 3 }, parts: [{ id: 'body', tiles: [[0, 0, '#'], [0, 1, '#'], [0, 2, '#'], [1, 0, '#'], [1, 1, '.'], [1, 2, '#'], [2, 0, '#'], [2, 1, '#'], [2, 2, '#']],
+          link: { door: [1, 1], interior: room('the vault whose door has a wall on every side') } }] },
+      });
+      if (typeof BUILDS === 'undefined') window.BUILDS = [];
+      BUILDS.length = 0;   /* only the probe's lots are raised here; the page is thrown away */
+      BUILDS.push({ id: 'probe-hut', tpl: 'probe-hut', world: Y, x: 2, y: 4 }, { id: 'probe-hatch', tpl: 'probe-hatch', world: Y, x: 6, y: 7 }, { id: 'probe-vault', tpl: 'probe-vault', world: Y, x: 8, y: 1 });
+      applyBuilds();
+      enterWorld(false);
+      document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+      document.getElementById('reader').hidden = true; document.getElementById('card').hidden = true;
+      return { Y, built: ['probe-hut', 'probe-hatch', 'probe-vault'].filter(id => !!WORLDS[id] && !!portalAt(Y, ...({ 'probe-hut': [3, 4], 'probe-hatch': [6, 7], 'probe-vault': [9, 2] })[id])),
+        refused: logCrit().filter(e => e.kind === 'build').map(e => e.msg) };
+    });
+    if (yard.err) DR.push(yard.err);
+    else {
+      const KEY = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+      for (const [lot, name, door, from] of [['probe-hut', 'the hut whose door is in its north wall', [3, 4], [3, 3]],
+                                             ['probe-hatch', 'the cellar under a hatch in the bottom edge of the map', [6, 7], [6, 6]]]) {
+        if (!yard.built.includes(lot)) { DR.push(name + ' was never built, so nobody can go in: ' + (yard.refused.join(' | ') || 'and the engine said nothing')); continue; }
+        await dp.evaluate(([Y, x, y]) => { world = Y; px = fx = x; py = fy = y; moving = false; held = null; dir = 'down';
+          warpT = 0; portalT = 0; warpPend = null; portalHold = '';
+          if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }, [yard.Y, from[0], from[1]]);
+        await dp.waitForTimeout(80);
+        await dp.keyboard.down('ArrowDown');                       /* onto the door, from the yard */
+        try { await dp.waitForFunction(r => world === r && !warpPend, lot, { timeout: 5000 }); } catch (e) {}
+        await dp.keyboard.up('ArrowDown');
+        const inside = await dp.evaluate(() => world);
+        if (inside !== lot) { DR.push('walking onto the door of ' + name + ' at ' + door + ' did not take you inside (you are in ' + inside + ')'); continue; }
+        try { await dp.waitForFunction(() => performance.now() > warpT && performance.now() > portalT + 30, null, { timeout: 5000 }); } catch (e) {}
+        const ex = await dp.evaluate(r => { const k = Object.keys(PORTALSAT[r] || {})[0]; if (!k) return null; const [x, y] = k.split(',').map(Number);
+          return { x, y, key: y > py ? 'down' : y < py ? 'up' : x > px ? 'right' : 'left' }; }, lot);
+        if (!ex) { DR.push(name + ' has no way out at all'); continue; }
+        await dp.keyboard.down(KEY[ex.key]);                       /* onto the room's way out */
+        try { await dp.waitForFunction(r => world !== r && !warpPend, lot, { timeout: 5000 }); } catch (e) {}
+        await dp.keyboard.up(KEY[ex.key]);
+        try { await dp.waitForFunction(() => performance.now() > warpT, null, { timeout: 5000 }); } catch (e) {}
+        const at = await dp.evaluate(() => { const w = WORLDS[world], inMap = px >= 0 && py >= 0 && px < w.W && py < w.H;
+          const step = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]].find(([, dx, dy]) => !isSolid(px + dx, py + dy) && !portalAt(world, px + dx, py + dy));
+          return { w: world, x: px, y: py, W: w.W, H: w.H, inMap, g: inMap ? w.rows[py][px] : null, solid: inMap && SOLID.has(w.grid[py][px]), step: step ? step[0] : null }; });
+        if (at.w !== yard.Y) { DR.push('walking out of ' + name + ' took you to ' + at.w + ', not back to the yard its door stands in'); continue; }
+        if (!at.inMap) { DR.push('walking out of ' + name + ' stood you OFF THE MAP, at ' + at.x + ',' + at.y + ' of a yard ' + at.H + ' tiles tall — there is no ground there at all'); continue; }
+        if (at.solid) DR.push('walking out of ' + name + ' stood you INSIDE "' + at.g + '" at ' + at.x + ',' + at.y + ' — inside its own wall');
+        if (!at.step) { DR.push('walking out of ' + name + ', the only step you can take is back through its door'); continue; }
+        await dp.keyboard.down(KEY[at.step]);
+        try { await dp.waitForFunction(a => px !== a.x || py !== a.y, at, { timeout: 3000 }); } catch (e) {}
+        await dp.keyboard.up(KEY[at.step]);
+        const moved = await dp.evaluate(a => px !== a.x || py !== a.y, at);
+        if (!moved) DR.push('walking out of ' + name + ' you stood at ' + at.x + ',' + at.y + ' and could not take a single step');
+      }
+      if (yard.built.includes('probe-vault')) DR.push('the vault whose door has a wall on every side was built anyway, and the engine said nothing — anybody who got in could never get out');
+      else if (!yard.refused.some(m => m.includes('probe-vault'))) DR.push('the vault whose door has a wall on every side is missing and the engine never said why — it was refused in silence');
+      else DR.push('COUNT-ONLY: built rooms (#265): the vault with a wall on every side of its door was refused, in these words: ' + yard.refused.find(m => m.includes('probe-vault')));
+    }
+    if (dErr.length) DR.push('the page threw while walking in and out of built rooms: ' + dErr.slice(0, 3).join(' | '));
+    await dp.close();
+    fails.push(...DR.map(m => /^COUNT-ONLY: /.test(m) ? m : 'built rooms: ' + m));
   }
 
   /* ---- WITH TWO PEOPLE BESIDE YOU, ENTER TALKS TO THE ONE YOU FACE (#285) ----
