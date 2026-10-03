@@ -60,6 +60,24 @@ jobs:
         run: node test/keys.js
       - name: The guards' own red cases
         run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
+      # #316: every literal part the games draw is built through the shape builder on this change's engine and
+      # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
+      # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
+      # because a gate that cannot go red protects nothing, and both read this file: keep them in one step.
+      - name: Every literal part the games draw still builds the same through the shape builder (and the shape gate's own red cases)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          node test/prims.js --selftest
+          if [ "$EVENT" = "pull_request" ]; then
+            node test/prims.js "origin/$BASE_REF"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            node test/prims.js "$BEFORE"
+          else
+            echo "the first push (or one after a force-push) has no earlier commit to compare the shape builder against; its own red cases ran above"
+          fi
       - name: Install Playwright + Chromium
         run: |
           npm install playwright@1.63.0
@@ -76,22 +94,6 @@ jobs:
         run: bash scripts/build-site.sh /tmp/_site && node test/public.js /tmp/_site
       - name: Offline play works, under a page that runs only its own script files
         run: node test/offline.js
-      # #316: every literal part the games draw is built on this change's engine and on the base's, and one
-      # byte of difference is a red. Its self-test runs first, because a gate that cannot go red protects nothing.
-      - name: Every shape the games draw still builds the same, byte for byte (and the shape gate's own red cases)
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          node test/prims.js --selftest
-          if [ "$EVENT" = "pull_request" ]; then
-            node test/prims.js "origin/$BASE_REF"
-          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            node test/prims.js "$BEFORE"
-          else
-            node test/prims.js HEAD
-          fi
       - name: A change to what players cache moves the version with it
         env:
           EVENT: ${{ github.event_name }}

@@ -13,15 +13,25 @@
      pageScript(src, label)     → the same lines as a script a page can inject before it loads (a mockup's
                                   addInitScript): it defines T3, tc and t3Note only if the page has not,
                                   and leaves t3Prim, t3MeshOf, t3BakeParts and meshGeo on window
-     loadBuilder(src, label)    → a factory; each call to .fresh() is a builder with its OWN shape cache:
-                                  { t3Prim, t3MeshOf, t3BakeParts, meshGeo, notes }
-     harvest(src, file)         → every literal part written in a pack's art.js or engine/shapes.js
-     partsOf(mesh)              → a built mesh as plain bytes and numbers, ready to compare
+     loadBuilder(src, label, three)
+                                → a factory; each call to .fresh() is a builder with its OWN shape cache:
+                                  { t3Prim, t3MeshOf, t3BakeParts, meshGeo, notes, T3, tc }. `three` is
+                                  the text of the three.js to build on, the working tree's when left out
+     harvest(src, file, keys, kinds)
+                                → every literal part written in a pack's art.js or engine/shapes.js
+     kindsOf(code)              → the primitives a builder knows, read out of its code (box, and every
+                                  s==="…" it tests for)
+     partsOf(mesh, T3)          → a built mesh as plain bytes and numbers, ready to compare: its vertices,
+                                  and what it is drawn WITH (its material, whether T3.tintables holds it,
+                                  its tag), the same for each pane of glass hung on it
 
-   The builder is evaluated against vendor/three.min.js in a node vm context. It may read THREE,
-   T3.tintables, tc and t3Note from outside its boundary and nothing else; anything more and loading it
-   says so in a sentence. tc (the day/night tint) is the identity here: a gate about shapes compares
-   the colour a part asked for, not the time of day. */
+   The builder is evaluated against a three.js in a node vm context. It may read THREE, T3.tintables, tc
+   and t3Note from outside its boundary and nothing else; anything more and loading it says so in a
+   sentence. tc is the player's colour theme (engine/engine.js, grep `const tc=`), and here it is THEME_TC:
+   the engine's own mix toward one fixed accent, the same on both sides, so a change that drops the theme
+   from a mesh changes its colours and is seen (the default theme's tc is the identity, and an identity
+   here would hide exactly that). The time-of-day wash is not tc: it is applied later to the materials in
+   T3.tintables, and partsOf reads whether each material is there. */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -57,21 +67,35 @@ function pageScript(src, label) {
     'window.t3BakeParts=typeof t3BakeParts==="function"?t3BakeParts:undefined;\n';
 }
 
-/* ---- three.js, once per process: 608 KB of minified code is evaluated one time ---- */
-let CTX = null;
-function threeContext() {
-  if (CTX) return CTX;
+/* ---- three.js, once per text per process: 608 KB of minified code is evaluated one time for each
+   different three.js asked for (the working tree's, and the base's when a change upgrades it) ---- */
+const CTX = new Map();
+const threeText = () => fs.readFileSync(path.join(ROOT, 'vendor', 'three.min.js'), 'utf8');
+function threeContext(text, label) {
+  text = text || threeText(); label = label || 'vendor/three.min.js';
+  const id = require('crypto').createHash('sha256').update(text).digest('hex');
+  if (CTX.has(id)) return CTX.get(id);
   const ctx = vm.createContext({ console });
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'vendor', 'three.min.js'), 'utf8'), ctx, { filename: 'vendor/three.min.js' });
-  if (!ctx.THREE || typeof ctx.THREE.BoxGeometry !== 'function') throw new Error('vendor/three.min.js loaded and did not define THREE, so no shape can be built in node.');
-  return (CTX = ctx);
+  vm.runInContext(text, ctx, { filename: label });
+  if (!ctx.THREE || typeof ctx.THREE.BoxGeometry !== 'function') throw new Error(label + ' loaded and did not define THREE, so no shape can be built in node.');
+  CTX.set(id, ctx);
+  return ctx;
 }
 
+/* ---- the colour theme a builder is handed: engine/engine.js's mixHex toward an accent, at the 0.16 a
+   light theme mixes at (grep `const tc=` there). The accent is forest's; any fixed one would do, as long
+   as it is not a channel swap or anything else that leaves #888888 grey, the colour most parts draw in. */
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const rgb2hex = r => '#' + r.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const mixHex = (h, t2, amt) => { const tr = hex2rgb(t2); return rgb2hex(hex2rgb(h).map((v, i) => v + (tr[i] - v) * amt)); };
+const THEME_ACCENT = '#2E7D4F';
+const THEME_TC = h => mixHex(h, THEME_ACCENT, 0.16);
+
 /* ---- the load ---- */
-function loadBuilder(src, label) {
+function loadBuilder(src, label, three, threeLabel) {
   label = label || 'the engine';
   const { code, how } = cutBuilder(src, label);
-  const ctx = threeContext();
+  const ctx = threeContext(three, threeLabel);
   const wrap = '(function(T3,tc,t3Note){\n' + code + '\n;return {' +
     'meshGeo:typeof meshGeo!=="undefined"?meshGeo:undefined,' +
     't3Prim:typeof t3Prim==="function"?t3Prim:undefined,' +
@@ -83,24 +107,38 @@ function loadBuilder(src, label) {
   const fresh = () => {
     const notes = [], T3 = { tintables: [] };
     let b;
-    try { b = factory(T3, h => h, (where, e) => notes.push(where + ': ' + String((e && e.message) || e))); }
+    try { b = factory(T3, THEME_TC, (where, e) => notes.push(where + ': ' + String((e && e.message) || e))); }
     catch (e) { throw new Error('the shape builder from ' + label + ' failed as it loaded: ' + String(e.message || e).slice(0, 160) + ' — it may only read THREE, T3, tc and t3Note from outside its boundary.'); }
     if (!b.t3MeshOf) throw new Error('the shape builder from ' + label + ' has no t3MeshOf, so nothing can ask it for a shape.');
-    return Object.assign(b, { notes, T3 });
+    return Object.assign(b, { notes, T3, tc: THEME_TC });
   };
   return { how, code, fresh };
 }
 
-/* ---- a built mesh as plain bytes ---- */
+/* ---- a built mesh as plain bytes, and what it is drawn with ----
+   An attribute the mesh does not carry is null, not a throw: a mesh with no normals is the builder's
+   doing, and the sentence says so instead of blaming the builder for an error this file raised. */
 const bytes = a => Buffer.from(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
-function partsOf(m) {
+const MATERIAL_FIELDS = ['type', 'vertexColors', 'transparent', 'opacity', 'depthWrite'];
+function partsOf(m, T3) {
+  const attr = (g, k) => g && g.attributes && g.attributes[k] && g.attributes[k].array ? bytes(g.attributes[k].array) : null;
   const geo = g => ({
-    position: bytes(g.attributes.position.array), normal: bytes(g.attributes.normal.array),
-    color: bytes(g.attributes.color.array), count: g.attributes.position.count,
+    position: attr(g, 'position'), normal: attr(g, 'normal'), color: attr(g, 'color'),
+    count: g && g.attributes && g.attributes.position ? g.attributes.position.count : null,
   });
+  /* the material as the fields that decide how it draws, and whether the time-of-day wash reaches it */
+  const drawn = mat => {
+    if (!mat) return null;
+    const o = {}; MATERIAL_FIELDS.forEach(k => { o[k] = mat[k]; });
+    o.tinted = !!(T3 && T3.tintables && T3.tintables.includes(mat));
+    return o;
+  };
+  const tag = u => { try { return JSON.stringify(u); } catch (e) { return 'a tag that cannot be written out: ' + e.message; } };
   return {
-    main: geo(m.geometry), top: m.t3Top, span: m.t3Span === null ? null : Array.from(m.t3Span),
-    glass: m.children.map(k => ({ ...geo(k.geometry), opacity: k.material.opacity, a: k.userData && k.userData.a })),
+    main: geo(m.geometry), top: m.t3Top, span: m.t3Span === null || m.t3Span === undefined ? null : Array.from(m.t3Span),
+    material: drawn(m.material), tag: tag(m.userData),
+    glass: m.children.map(k => ({ ...geo(k.geometry), material: drawn(k.material), tag: tag(k.userData),
+      opacity: k.material && k.material.opacity, a: k.userData && k.userData.a })),
   };
 }
 
@@ -109,7 +147,8 @@ function partsOf(m) {
    primitive, or a box's size. A value the file computes (a variable, a call, `i*0.2`) is not literal.
    Size fields (the cache key) must be literal or the part escapes the harvest and is counted as escaped;
    a computed place or colour is left at the builder's default, because the shape is still the shape. */
-const SHAPES = ['box', 'cyl', 'sph', 'cone', 'torus'];
+const SHAPES = ['box', 'cyl', 'sph', 'cone', 'torus'];   /* today's; the gate reads its list out of the builder with kindsOf */
+const kindsOf = code => [...new Set(['box', ...[...String(code).matchAll(/\bs\s*===\s*"(\w+)"/g)].map(m => m[1])])];
 const PART_KEYS = ['s', 'x', 'y', 'z', 'w', 'h', 'd', 'r', 'rt', 'rb', 't', 'arc', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'c', 'a'];
 const SIZE_KEYS = ['s', 'w', 'h', 'd', 'r', 'rt', 'rb', 't', 'arc'];
 /* where it stands, how it turns, what colour and how see-through: the shape is the same shape without them */
@@ -199,9 +238,11 @@ function lineFinder(src) {
 }
 
 /* keys: the part keys to accept, PART_KEYS unless the caller read more out of the builder (a key added
-   tomorrow, like arc0, is then harvested too). Any key that is not a place is treated as a size. */
-function harvest(src, file, keys) {
-  keys = keys || PART_KEYS;
+   tomorrow, like arc0, is then harvested too). Any key that is not a place is treated as a size.
+   kinds: the primitives a part may name, SHAPES unless the caller read them out of the builder (kindsOf),
+   so a primitive the builder learns tomorrow is harvested too instead of dropping out without a word. */
+function harvest(src, file, keys, kinds) {
+  keys = keys || PART_KEYS; kinds = kinds || SHAPES;
   const parts = [], escaped = [], lineOf = lineFinder(src);
   for (const [a, z] of objectSpans(src)) {
     const inner = src.slice(a + 1, z);
@@ -219,7 +260,7 @@ function harvest(src, file, keys) {
     const names = fields.map(f => f[0]);
     if (new Set(names).size !== names.length) continue;
     const sField = fields.find(f => f[0] === 's'), sVal = sField && constant(sField[1]);
-    const named = sVal && sVal.ok && SHAPES.includes(sVal.v);
+    const named = sVal && sVal.ok && kinds.includes(sVal.v);
     /* a key the builder never reads (a marker like petal:true) changes nothing it builds: a part that names
        its shape keeps the rest and drops it; anything else carrying a stranger key is not a part */
     if (!names.every(k => keys.includes(k)) && !named) continue;
@@ -252,4 +293,4 @@ function shapeSources(root) {
   return out;
 }
 
-module.exports = { BEGIN, END, cutBuilder, pageScript, loadBuilder, partsOf, harvest, objectSpans, constant, shapeSources, SHAPES, PART_KEYS, SIZE_KEYS, PLACE_KEYS, ROOT };
+module.exports = { BEGIN, END, cutBuilder, pageScript, loadBuilder, partsOf, harvest, kindsOf, objectSpans, constant, shapeSources, threeText, THEME_TC, MATERIAL_FIELDS, SHAPES, PART_KEYS, SIZE_KEYS, PLACE_KEYS, ROOT };

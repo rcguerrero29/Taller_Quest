@@ -246,7 +246,10 @@ function t3Reuse(key){
    THE SHAPE BUILDER, from here down to the closing sentinel (#316). Tests and mockups load exactly
    these lines through test/lib/parts.js — in node, against vendor/three.min.js, with no page — and
    test/prims.js builds every literal part in the games through them and through the engine on
-   origin/main, and fails if one byte differs. So the lines between the sentinels may read THREE,
+   origin/main, and fails if one byte differs, or one setting of the material a mesh is drawn with
+   (vertex colours, see-through, depth, whether the time of day reaches it), or the tag it carries. It
+   reads only these lines: the shape library's own code and the rest of this file are not in it. So
+   the lines between the sentinels may read THREE,
    T3.tintables, tc and t3Note from outside and nothing else; reach for anything more and the gate
    says it cannot load the builder. Cut by these comments, never by line number. */
 const meshGeo={};
@@ -262,11 +265,16 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   return meshGeo[key]=g.toNonIndexed();};
 /* THE BAKE, with a name a test can call (#316): a list of parts in, the merged vertices out — positions,
    normals and one colour per vertex — plus how tall the thing stands and how far it reaches. `tint` turns
-   the colour a part asks for into the colour drawn: the engine passes `tc`, the day/night tint, and a test
-   leaves it out and reads the colour as asked. Until #316 this was a closure inside t3MeshOf, so the only
-   way to read its bytes was to stand a mesh up in a scene; lifting it out changed no byte, and the gate
-   proves that against the engine as it was. */
-const t3BakeParts=(list,tint)=>{tint=tint||(h=>h);
+   the colour a part asks for into the colour drawn: the engine passes `tc`, the player's colour theme
+   (engine.js, grep `const tc=`), and left out it is `tc` as well, so a caller that forgets it still draws
+   the theme; a test that wants the colour as the part asked for it passes h=>h. The time-of-day wash is
+   not here: it is applied later, to the materials in T3.tintables. Until #316 this was a closure inside
+   t3MeshOf, so the only way to read its bytes was to stand a mesh up in a scene; lifting it out changed
+   no byte for any part whose colour three.js can read, and the gate proves that against the engine as it
+   was. (A colour three.js cannot read leaves a THREE.Color as it was: it used to inherit the last solid
+   part's colour when one Color was shared by the solid and the glass bakes, and now it draws white, as a
+   lone bad colour always did. Every colour written in the games is #rrggbb.) */
+const t3BakeParts=(list,tint)=>{tint=tint||tc;
   const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color();
   /* HOW TALL THIS THING IS, and it is the parts that say so (crew iteration 14, la ofrendera).
      `wallH` answers that question for a BOX — a formula over the glyph's declared `lift` — and a
