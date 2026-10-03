@@ -221,6 +221,11 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
         /* read after the timed span, so it costs nothing per frame: the pixel read proves the context lives, and
            only this count proves the renderer sent THIS frame — a skipped draw leaves the last frame in the buffer */
         if (!(info.render.calls > 0)) { r.P.push(id + ': the renderer sent nothing at frame ' + (i + 2) + ' — draw3d said it drew and no draw call went out, so its time is not a cost'); return r; }
+        /* and the SAME frame: each row prints frame 1's calls and triangles beside these frames' times, so a frame that
+           sent less (a redraw of only what moved, say) would print figures from two different frames. Yaz, #317's
+           second recheck: in 30 of 30 world-passes every timed frame sent exactly frame 1's counts, so this costs no
+           false red today, and a lane that really draws less must print its timed frames' own counts. */
+        if (info.render.calls !== r.calls || info.render.triangles !== r.tris) { r.P.push(id + ': frame ' + (i + 2) + ' sent ' + info.render.calls + ' draw calls and ' + info.render.triangles + ' triangles where the first frame sent ' + r.calls + ' and ' + r.tris + ' — the row would print one frame\'s counts beside another frame\'s times'); return r; }
         if (i >= WARM) { frame.push(c - a); script.push(b - a); }
       }
       r.frame = frame; r.script = script;
