@@ -82,6 +82,14 @@ function matDiff(a, b) {
   if (a.tinted !== b.tinted) out.push('tinted ' + a.tinted + ' → ' + b.tinted);
   return out.join(', ');
 }
+/* the object's own placement and showing, named field by field like the material (see partsOf) */
+function objDiff(a, b) {
+  if (a === b) return '';
+  if (!a || !b) return b ? 'an object where there was none' : 'no object at all';
+  const ja = JSON.parse(a), jb = JSON.parse(b), say = v => v === undefined ? 'undefined' : JSON.stringify(v);
+  return Object.keys({ ...ja, ...jb }).sort().filter(k => JSON.stringify(ja[k]) !== JSON.stringify(jb[k]))
+    .map(k => k + ' ' + say(ja[k]) + ' → ' + say(jb[k])).join(', ');
+}
 function geoDiff(a, b, who, d) {
   const lack = ATTRS.filter(([k]) => a[k] && !b[k]);
   lack.forEach(([, , l]) => d.push('the ' + who + ' has no ' + l));
@@ -95,6 +103,7 @@ function differs(a, b) {
   if (JSON.stringify(a.span) !== JSON.stringify(b.span)) d.push('reach (t3Span, how far they stand over their neighbours)');
   const m = matDiff(a.material, b.material); if (m) d.push('material (' + m + ')');
   if (a.tag !== b.tag) d.push('tag (userData ' + a.tag + ' → ' + b.tag + ')');
+  const o = objDiff(a.object, b.object); if (o) d.push('object (' + o + ')');
   const ga = a.glass, gb = b.glass;
   if (ga.length !== gb.length) d.push('glass (' + gb.length + ' panes where there were ' + ga.length + ')');
   else ga.forEach((g, i) => {
@@ -102,6 +111,7 @@ function differs(a, b) {
     geoDiff(g, h, 'glass', gd);
     const gm = matDiff(g.material, h.material); if (gm) gd.push('glass material (' + gm + ')');
     if (g.tag !== h.tag) gd.push('glass tag (userData ' + g.tag + ' → ' + h.tag + ')');
+    const go = objDiff(g.object, h.object); if (go) gd.push('glass object (' + go + ')');
     gd.forEach(x => { if (!d.includes(x)) d.push(x); });
   });
   return d;
@@ -329,6 +339,15 @@ function ciRuns(yml) {
   if (/\|\|/.test(body)) fails.push(CI + '\'s shape-gate step catches a red with `||` (`|| true`, say), so the gate can fail and the step still pass.');
   if (keyAt(s, 'if') >= 0 || keyAt(s, 'continue-on-error') >= 0) fails.push(CI + ' runs the shape gate only in a step with an `if:` or `continue-on-error`, so it can be skipped or ignored and no red from it stops a pull request.');
   if (keyAt(s, 'shell') >= 0) fails.push(CI + '\'s shape-gate step names a `shell:` of its own, so it may not be the bash -eo pipefail that stops at the first red; leave it to the default.');
+  /* and the shell can come from `defaults: run: shell:` above the step, for the whole workflow or for the smoke
+     job, which the step's own keys never show (Beto and Melo, #316 second recheck: three lines there and a red
+     self-test ran on into an OK) */
+  const jobsAt = lines.findIndex(l => /^jobs:\s*$/.test(l));
+  lines.forEach((l, i) => {
+    if (!/^\s*shell:/.test(l)) return;
+    const where = jobsAt >= 0 && i < jobsAt ? 'the whole workflow' : (i > job && i < first ? 'the smoke job' : null);
+    if (where) fails.push(CI + ' sets a default shell for ' + where + ' (line ' + (i + 1) + ': ' + l.trim() + '), so the shape-gate step may not run in the bash that stops at the first red; leave it to the default.');
+  });
   if (cmds.length !== 2 || cmds[0] !== SELF_LINE || cmds[1] !== CI_LINE)
     fails.push(CI + '\'s shape-gate step must run exactly `' + SELF_LINE + '` and then `' + CI_LINE + '`, and nothing else; it runs ' + (cmds.length ? cmds.map(c => '`' + c + '`').join(', then ') : 'nothing') + '. Which base to compare with is decided by --ci, where the self-test can plant it, not in the step.');
   Object.entries(CI_ENV).forEach(([k, v]) => {
@@ -448,6 +467,8 @@ function selftest() {
     { name: 'every mesh drawn without its vertex colours (white)', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:false})'), want: /material \(vertexColors true → false\)/ },
     { name: 'the solid material never handed to T3.tintables (the time of day never reaches it)', neu: e => plant(e, 'T3.tintables.push(mat);', ''), want: /material \(tinted true → false\)/ },
     { name: 'the tag never reaching userData', neu: e => plant(e, 'm.userData=tag;', 'm.userData={};'), want: /tag \(userData \{"mesh":true/ },
+    { name: 'the solid mesh hidden (visible set false where it is built)', neu: e => plant(e, 'm.userData=tag;', 'm.userData=tag;m.visible=false;'), want: /object \(visible true → false\)/ },
+    { name: 'the solid mesh stretched half as tall again', neu: e => plant(e, 'm.userData=tag;', 'm.userData=tag;m.scale.y=1.5;'), want: /object \(scale \[1,1,1\] → \[1,1\.5,1\]\)/ },
     { name: 'glass that writes depth', neu: e => plant(e, GLASS, '{vertexColors:true,transparent:true,opacity:+a,depthWrite:true}'), want: /glass material \(depthWrite false → true\)/ },
     { name: 'glass drawn solid (transparent taken out)', neu: e => plant(e, GLASS, '{vertexColors:true,opacity:+a,depthWrite:false}'), want: /glass material \(transparent true → false\)/ },
     { name: 'a mesh baked without its normals', neu: e => plant(e, 'geo.setAttribute("normal",new THREE.Float32BufferAttribute(b.nor,3));', ''), want: /the mesh has no normals \(how light falls on it\)/, never: /builder throws/ },
@@ -539,6 +560,8 @@ function selftest() {
       ['the step made conditional', () => plant(Y, RUN, '        if: false\n' + RUN, CI), /only in a step with an `if:`/],
       ['the step allowed to fail', () => plant(Y, RUN, '        continue-on-error: true\n' + RUN, CI), /`continue-on-error`/],
       ['the step given a shell that does not stop at a red', () => plant(Y, RUN, '        shell: bash {0}\n' + RUN, CI), /names a `shell:` of its own/],
+      ['a default shell for the smoke job that does not stop at a red', () => plant(Y, '  smoke:\n', '  smoke:\n    defaults:\n      run:\n        shell: bash {0}\n', CI), /sets a default shell for the smoke job/],
+      ['a default shell for the whole workflow that does not stop at a red', () => plant(Y, '\njobs:\n', '\ndefaults:\n  run:\n    shell: bash {0}\njobs:\n', CI), /sets a default shell for the whole workflow/],
       ['EVENT no longer handed to --ci', () => plant(Y, '          EVENT: ${{ github.event_name }}\n          BASE_REF: ${{ github.base_ref }}\n          BEFORE: ${{ github.event.before }}\n        run: |\n          node test/prims.js --selftest', '          EVENT: ${{ github.event_nam }}\n          BASE_REF: ${{ github.base_ref }}\n          BEFORE: ${{ github.event.before }}\n        run: |\n          node test/prims.js --selftest', CI), /no longer hands --ci `EVENT/],
     ];
     for (const [name, mk, want] of ciCases) {

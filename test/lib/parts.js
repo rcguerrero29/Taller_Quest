@@ -150,10 +150,18 @@ function partsOf(m, T3) {
     return { json: JSON.stringify(j), tinted: !!(T3 && T3.tintables && T3.tintables.includes(mat)) };
   };
   const tag = u => { try { return JSON.stringify(u); } catch (e) { return 'a tag that cannot be written out: ' + e.message; } };
+  /* how the built object itself stands and shows: where, turned how, how big, whether it is drawn at all, in
+     what order, with what shadows, on which layers. The callers set only its position (engine/engine3d.js,
+     grep `m.position.set`), so anything else t3MeshOf sets on the object reaches the player as it is: a
+     hidden mesh or one stretched half as tall again passed the gate byte for byte until this (Beto, #316
+     second recheck). */
+  const shown = o => JSON.stringify({ position: o.position.toArray(), quaternion: o.quaternion.toArray(), scale: o.scale.toArray(),
+    visible: o.visible, renderOrder: o.renderOrder, frustumCulled: o.frustumCulled, castShadow: o.castShadow,
+    receiveShadow: o.receiveShadow, layers: o.layers.mask });
   return {
     main: geo(m.geometry), top: m.t3Top, span: m.t3Span === null || m.t3Span === undefined ? null : Array.from(m.t3Span),
-    material: drawn(m.material), tag: tag(m.userData),
-    glass: m.children.map(k => ({ ...geo(k.geometry), material: drawn(k.material), tag: tag(k.userData),
+    material: drawn(m.material), tag: tag(m.userData), object: shown(m),
+    glass: m.children.map(k => ({ ...geo(k.geometry), material: drawn(k.material), tag: tag(k.userData), object: shown(k),
       opacity: k.material && k.material.opacity, a: k.userData && k.userData.a })),
   };
 }
