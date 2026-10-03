@@ -612,7 +612,10 @@ new polygonal update for all these and what we or you learned from marigolds?").
   off the frame before, the park's ×4 frame median read 1.3 ms and the run was green; with the
   draw-call count read after each timed frame it is red at frame 52 (*the renderer sent nothing*).
   Today's engine cannot reach it — `draw3d` calls the renderer on every path that says it drew — so no
-  figure above is touched; what it corrected was the claim that the read proved a frame drew.
+  figure above is touched; what it corrected was the claim that the read proved a frame drew. With
+  the count in place, all fifteen worlds at both speeds are green (6 min 17 s, measured ×3.7), so it
+  adds no false red; and the slow-down not sent, planted again against the rewritten speed check
+  (rate 1 where the slowed rate belongs), is still red with its sentence (×0.99, exit 1).
 - **Rejected:** counting rAF frames (headless throttles rAF — this log's own table); timing `draw3d`
   without the pixel read (that times the asking, not the drawing).
 - **Open:** a real phone's reading, and which slow-down stands for a mid phone (#317's question) —
