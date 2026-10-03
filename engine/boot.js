@@ -8,15 +8,15 @@
 
    `CAMERAS` is the customisation and it already existed (the seam, mq-v133): list "3d" and you get
    the 3D camera and its library; leave it out and neither is downloaded. A pack that says nothing
-   gets 3D, so Meridian and El Changarrito are byte-identical — which is what this repo requires of
-   every engine change.
+   gets 3D, so Meridian and every world that says nothing load exactly what they loaded before —
+   which is what this repo requires of every engine change.
 
-   WHY THIS IS A FILE AND NOT AN INLINE SCRIPT, and it cost a run to find out: El Changarrito's
-   shell ships a STRICTER policy than Meridian's — `script-src 'self'` with no `'unsafe-inline'`,
-   because the town reaches another site (the public shell may not even NAME that host — test/smoke.js R8 scans every file the public index loads, and it caught this comment). An inline loader parsed fine there, appeared in
-   `document.scripts`, and never executed; CSP refusals are not page errors, so nothing threw and
-   nothing was logged. The town's whole engine simply did not load. Caught because the suites run
-   against both shells, and by nothing else.
+   WHY THIS IS A FILE AND NOT AN INLINE SCRIPT, and it cost a run to find out: a shell whose
+   policy is `script-src 'self'` with no `'unsafe-inline'` — the policy every page this site
+   publishes carries today (test/public.js) — runs no script written inside the page. An inline
+   loader parsed fine there, appeared in `document.scripts`, and never executed; CSP refusals are
+   not page errors, so nothing threw and nothing was logged. That world's whole engine simply did
+   not load. Caught because the suites run against more than one shell, and by nothing else.
 
    `document.write`, deliberately: this file is parser-inserted, so a script it writes blocks and
    keeps its order exactly as the three static tags it replaces did. An appended `<script
@@ -24,7 +24,7 @@
    first seconds of a 3D world would fall back to the flat camera for no reason.
 
    The base is taken from this script's own URL so the two shells can sit at different depths —
-   `engine/boot.js` for Meridian, `../engine/boot.js` for the town — without either of them
+   `engine/boot.js` for Meridian, `../../engine/boot.js` for El Horno — without either of them
    knowing anything about the other. */
 (function(){
   var want=(typeof CAMERAS==="undefined")||(Array.isArray(CAMERAS)&&CAMERAS.indexOf("3d")>=0);

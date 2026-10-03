@@ -237,7 +237,7 @@ function t3Reuse(key){
    colour, in tile units with y up from the floor and the tile's centre at (0,0). The engine
    merges them into ONE mesh per tile with vertex colours, so a bed of six marigolds costs one
    draw call and not fifteen. Nothing here names a glyph or a colour: a pack that says nothing
-   gets the box or the billboard it always got, so the town is untouched. Segment counts are low
+   gets the box or the billboard it always got, so its world is untouched. Segment counts are low
    on purpose — this is a pixel world, and a ten-sided pot reads as made, not as smooth. The
    rotation order is yaw-first-in-the-world (YXZ), so a part can lean (rz) and the whole thing
    can still be turned to face a door (ry). The 3D-realism audit (#39) counts nothing here as
@@ -743,7 +743,7 @@ function t3Build(key){
         new THREE.MeshLambertMaterial({color:0x6E4A2C}));
       trunk.position.set(cx,0.35,cz);grp.add(trunk);
       /* the crown: what stands above this tile. A pack that declares one draws its own tree
-         (docs/ARCH-LOG.md A5) — the engine had this hardcoded, green and all, so every game on this
+         — the engine had this hardcoded, green and all, so every game on this
          engine got Meridian's jacaranda or no tree at all. Baked per glyph, because two packs may
          want two different trees. */
       const ownCrown=(typeof tileView==="function")&&tileView(gch,"crown");
@@ -1339,8 +1339,8 @@ const T3CAMD=7.4,T3CAMH=6.2,T3STUB=0.28,T3GHOST=0.68;
 /* ---- and how see-through a thing you stand UNDER is, which is not T3GHOST ----
    T3GHOST IS SHARED AND STAYS WHERE IT IS. It is the ghost for every ghosted object in both games
    — the appliances, the stalls, the lintels, the door glows. Round three of this lane moved it to
-   0.34 for the tree's sake, which would have made every see-through thing in the owner's town
-   twice as faint, with no ask there and no measurement there. An engine change is
+   0.34 for the tree's sake, which would have made every see-through thing in a second world on
+   this engine twice as faint, with no ask there and no measurement there. An engine change is
    behaviour-identical for both games or it is not an engine change. The pattern to avoid it is one
    constant below: T3TRAMGLASS exists because a tram needed a different number from a tree's and
    the tram lane did not move the tree's.
@@ -1351,18 +1351,18 @@ const T3CAMD=7.4,T3CAMH=6.2,T3STUB=0.28,T3GHOST=0.68;
    something you are UNDERNEATH rather than beside, and it is the engine's own rule rather than a
    number somebody liked.
    Measured, with the reach applied: TWELVE objects in Meridian take it and they are the twelve
-   jacarandas. IN THE TOWN IT IS NONE. Everything else in either game keeps T3GHOST, and the
+   jacarandas. IN THE SECOND WORLD IT IS NONE. Everything else in either game keeps T3GHOST, and the
    running totals are not written here on purpose — they move whenever any lane adds a prop, and a
    count copied into prose is how the round-three draft of this comment came to be wrong three
    times. The guard in test/engine.smoke.js prints them per shell on every build; that is the
    number to read.
    THE MARGIN WAS CHECKED RATHER THAN ASSUMED, and it is why this is 2.25 and not the round 2.00
-   the first draft used. El Changarrito has jacarandas of its own (pk 13,1 / 19,8 / 7,9, drawn
-   flat, 1.90 tall) and a season prop at st 12,2 that stands 1.98. At 2.00 the town cleared this
+   the first draft used. The second world has jacarandas of its own (drawn flat, 1.90 tall) and a
+   season prop that stands 1.98. At 2.00 it cleared this
    rule by two hundredths of a tile — near enough that raising one prop in the other game would
    have silently handed it a tree's ghost. At 2.25 it clears by 0.27, and Meridian's tree sits 0.48
-   above. The frames agree with the arithmetic: El Changarrito at pp 18,0 yaw 0, head against this
-   patch, is identical pixel for pixel in both seasons.
+   above. The frames agree with the arithmetic: the second world, rendered before and after this
+   change, is identical pixel for pixel in both seasons.
 
    THE LADDER, because 0.68 was never measured either. Owner: "can we make it tall so we can walk
    underneath it all ghostly?" The hero was stood on the tile Meridian's jacaranda overhangs and
@@ -1391,7 +1391,7 @@ const T3CAMD=7.4,T3CAMH=6.2,T3STUB=0.28,T3GHOST=0.68;
    thing either game can ghost is the "Y" market stall at ex 20,2, 1.886 tall. At 0.68 the stall is
    a stall and the hero's shirt already reads through it; at 0.34 the painted sign it carries
    washes out and it stops being a stall. The crown's number is not the stall's number. Between
-   1.886 and the jacaranda's 2.733 the only thing either game has is the town's 1.98 prop, and the
+   1.886 and the jacaranda's 2.733 the only thing either game has is the second world's 1.98 prop, and the
    reach clears it by 0.27.
 
    AND THE HONEST LIMIT: each crown sphere is its own transparent surface, so at two tiles, with
@@ -1471,9 +1471,9 @@ function t3Hides(h,d){return h>0.65*d+0.3;}
    single tile touching its trunk and stayed solid everywhere else, with the player painted on top
    of its canopy two tiles away. Measured before this line, in the shipped build: EVERY mesh tile
    in both games answered 1.000 — 396 of them in Meridian in season, 395 out of it, and 128 in the
-   town — while 29 of Meridian's are genuinely taller than a tile (28 out of season), the tallest
+   second world — while 29 of Meridian's are genuinely taller than a tile (28 out of season), the tallest
    of each being "J" 2.733, "Y" 1.886, "▣" 1.865, "7" 1.200, "S" 1.159, the ofrenda prop 1.149,
-   "ʘ" 1.108, "U" 1.096, "I" 1.043 — and the town's tallest is 0.950 ("W" at pp 18,1), so the town
+   "ʘ" 1.108, "U" 1.096, "I" 1.043 — and the second world's tallest is 0.950, so that world
    has none. THE COUNT IS PER OBJECT AND SAYS SO, because the round-three draft of this comment
    said 49 and that number came from a probe that grouped by GLYPH and then credited all 21 "S"
    with the tallest "S"'s height. The guard in test/engine.smoke.js counts the same objects and
@@ -1481,11 +1481,11 @@ function t3Hides(h,d){return h>0.65*d+0.3;}
    because it is the one that runs.
    THE FLOOR IS DELIBERATE AND IS THE WHOLE COMPATIBILITY STORY. `1` was the old answer for every
    mesh tile, and honest heights ALONE would quietly stop 349 + 128 short things — a bed of
-   marigolds, a traffic cone, the town's stalls — from getting out of the way at one tile, which is
+   marigolds, a traffic cone, the second world's stalls — from getting out of the way at one tile, which is
    the cure the owner asked for in #140 ("there are still overlaps with other objects where i seem
    to walk on them") and nobody asked to have taken back. Those two figures are the guard's own,
    quoted off the run that planted the fault: drop the `Math.max` and it prints "349 short props in
-   this shell" for Meridian and "128" for the town. So a mesh tile is at least as tall as the box
+   this shell" for Meridian and "128" for the second world. So a mesh tile is at least as tall as the box
    it replaced, and its real height when it is taller than that. Short things behave exactly as
    they did today; only things that are genuinely taller than a tile change, which is the ask. */
 function t3Top(o){
@@ -1600,7 +1600,7 @@ function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
   pos.needsUpdate=true;T3.leashLn.visible=true;
 }
 /* ↻ — the camera-flip wish from the iso playtest. QUARTER turns, four stops: N/E/S/W
-   as originally planned (docs/IDEAS.md). It shipped as eight 45° stops, and a 4-way
+   as originally planned. It shipped as eight 45° stops, and a 4-way
    movement grid cannot be driven from a 45°-rotated camera — at those four odd stops
    NO swipe the player can make corresponds to a straight move on screen, which is
    exactly why the owner reported "some directions are broken when i rotate". */

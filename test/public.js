@@ -81,6 +81,63 @@ textFiles.forEach(f => { const src = read(f);
   require('./keys.js').KEYS
     .forEach(([re, what]) => { if (re.test(src)) fails.push('the upload\'s ' + f + ' contains what looks like ' + what); }); });
 
+/* ---- 2a · nothing in the engine that POINTS at the private side ------------------------------
+   2026-10-03. The engine every player downloads cited, as receipts in its comments, files this
+   repository does not have: registers, story files, the folder of a private tool. A pointer to a
+   private file publishes its NAME, and the name says what the private side holds. This check cannot
+   carry the names it is looking for — that would publish them — so it asks a question with no names in
+   it: every path the engine cites must be a file or folder this repository tracks, or one in the box.
+   A receipt the public cannot follow is not a receipt; cite the decision, or the public file that has it.
+   What counts as a cited path, read from the text and not from a list of names:
+     · anything that starts with one of this repository's own top-level folders and has a slash in it
+       ("docs/…", "content/…", "engine/…"), with or without an extension;
+     · any lowercase folder path ending in a file extension a person would cite ("abc/d/e.js");
+     · any lowercase folder named with its trailing slash ("abc/"), three letters or more, ending in one;
+     · any bare document name ("NAME.md"), unless it sits in quotes — the game names files it writes
+       for a player to download, and those are not citations.
+   Arithmetic like "W/2", "dt/1000" or "Math.PI/2" is never read as a path: every name in one starts
+   with a lowercase letter, and a bare name must end in a slash or an extension. Reading no citation at
+   all is a red, not a pass: today the engine cites dozens of public files, so a scan that finds none
+   measured nothing.
+   SCOPE: the engine, the one part every world loads. Widening it is one entry in the list
+   below; the rest of the box does not pass yet. */
+const SCAN_FOR_RECEIPTS = ['engine/'];
+let receiptsRead = 0;
+{
+  const ROOT = path.join(__dirname, '..');
+  let tracked = null;
+  try { tracked = require('child_process').execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean); }
+  catch (e) { tracked = null; }
+  if (!tracked || !tracked.length) fails.push('the repository\'s own file list could not be read, so no path the engine cites was checked against it — that is a red, not a pass');
+  else {
+    const known = new Set(tracked.concat(files));
+    [...known].forEach(f => { const p = f.split('/'); for (let i = 1; i < p.length; i++) known.add(p.slice(0, i).join('/')); });
+    const bases = new Set([...known].map(f => path.posix.basename(f)));
+    const TOP = [...new Set(tracked.filter(f => f.includes('/')).map(f => f.split('/')[0]))].filter(d => /^[a-z]/.test(d));
+    const EXT = 'md|json|js|txt|css|html|sh|yml|yaml|png|svg';
+    const RE = new RegExp('(?<![\\w./\\\\^-])(?:' +
+      '((?:' + TOP.join('|') + ')\\/[\\w./-]*)' +                                   // our own top-level folder, then anything
+      '|((?:[a-z][\\w-]*\\/)+[\\w-][\\w.-]*\\.(?:' + EXT + '))(?![\\w/])' +          // a folder path to a file
+      '|([a-z][\\w-]+[a-z0-9]\\/(?:[a-z][\\w-]*\\/)*)(?=[\\s`\'"),.;:\\]]|$)' +  // a folder named with its slash
+      '|(?<!["\'])(\\w[\\w-]*\\.md)(?![\\w/"\'])' +                                  // a bare document name, not in quotes
+      ')', 'g');
+    const bad = [];
+    files.filter(f => SCAN_FOR_RECEIPTS.some(s => f.startsWith(s)) && /\.(js|html|css)$/.test(f)).forEach(f => {
+      read(f).split('\n').forEach((line, i) => { const miss = [];
+        for (const m of line.matchAll(RE)) {
+          const cite = (m[1] || m[2] || m[3] || m[4]).replace(/[.,;:]+$/, '').replace(/\/$/, '');
+          if (!cite) continue;
+          receiptsRead++;
+          if (!(m[4] ? bases.has(cite) : known.has(cite)) && !miss.includes(cite)) miss.push(cite);
+        }
+        if (miss.length) bad.push(f + ':' + (i + 1) + ' cites ' + miss.join(', '));
+      });
+    });
+    if (!receiptsRead) fails.push('the engine in the upload cites no file at all, so the check for private receipts read nothing — either the engine is missing or this scan is broken');
+    if (bad.length) fails.push(bad.length + ' line(s) of the engine every player downloads point at a file this repository does not have — a receipt nobody can follow publishes the name of what the private side holds, so cite the decision, or the public file that carries it:\n    ' + bad.join('\n    '));
+  }
+}
+
 /* ---- 3 · no page may REACH anywhere it should not, or run what it was not shipped as ----------
    A page with no token in it can still be a door. Each page's policy (CSP) is the wall.
    Until 2026-09-27 this read index.html ALONE — the bakery's shell (content/horno/index.html) shipped
@@ -162,4 +219,4 @@ if (has('sw.js')) { const sw = read('sw.js');
 if (notes.length) notes.forEach(n => console.log('note: ' + n));
 if (fails.length) { console.log('FAIL — what we are about to publish is not only the public game\n- ' + fails.join('\n- ')); process.exit(1); }
 console.log('OK — R10: the upload is ' + (PUBLIC_WORLDS.length === 1 ? 'the public game' : 'the ' + PUBLIC_WORLDS.length + ' worlds this repo publishes (' + PUBLIC_WORLDS.join(', ') + ')') + ' and nothing else. ' + files.length + ' files; no private tool, no registers, ' +
-            'no credential surface, no off-origin script, the worker\'s asset list resolves, and the game is complete.');
+            'no credential surface, no off-origin script, the worker\'s asset list resolves, the engine\'s ' + receiptsRead + ' citations all point at files this repository has, and the game is complete.');

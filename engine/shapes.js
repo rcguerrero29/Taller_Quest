@@ -1,10 +1,10 @@
 /* ---------- SHAPES — the engine's own shape library for the 3D camera ----------
-   Owner, 2026-09-22: "why didnt we update the items we updated in meridian for the
-   engine/changarrito? we should all across the template and the two please"
+   Owner, 2026-09-22: the things Meridian's furniture learned belong to the engine, for the
+   template and for every world built on it.
 
    Meridian spent four crew iterations turning its furniture from pictures into SHAPES — parts with
    a size and a colour, merged into one mesh per tile (`TILEART_MESH`, the `mesh` view). Every one
-   of them lived in `content/meridian/art.js`, so El Changarrito — the same engine, the same
+   of them lived in `content/meridian/art.js`, so a second world — the same engine, the same
    letters, the same furniture — kept standing its desks up as boxes with a photograph of a desk
    printed on the side, and so would any world built tomorrow. A shape that is true of the LETTER
    and not of the world is engine work; it was in a pack only because that is where it was written.
@@ -181,7 +181,7 @@ const SHAPES=(function(){
   const shelving=({x,y})=>{
     /* THE SPINES ARE WHY ANYBODY LOOKS AT A SHELF. The first version put them in the back half of
        a 0.34-deep carcass in five muted colours, and a picture showed what the count could not: the
-       town's shop shelves went from a bright billboard of books to a dark brown cupboard. They sit
+       second world's shop shelves went from a bright billboard of books to a dark brown cupboard. They sit
        forward now, in colours that survive a lambert in shade. */
     const CASE="#6B4A2C",BACK="#4A3220",BOARD="#8A6340",SP=["#C0392B","#2F6FB0","#3E9B6A","#E0A32E","#8E5BB5","#C86A3A"];
     const parts=[{s:"box",x:-0.3,y:0.5,z:0,w:0.06,h:1.0,d:0.34,c:CASE},
@@ -280,7 +280,7 @@ const SHAPES=(function(){
     return turned(parts,facing(x,y));};
 
   /* ---------- PICKET FENCE (F) — the biggest single thing this library does ----------
-     Ninety-three tiles of El Changarrito were a double-sided PLANE with a picture of a fence
+     Ninety-three tiles of a second world were a double-sided PLANE with a picture of a fence
      printed on it, and a plane edge-on is nothing at all. Built the way a fence is built: two
      rails running the length of the tile, pickets nailed across them at a regular pitch with
      daylight between, each picket pointed at the top, and a POST only where the run ends — a
@@ -322,7 +322,7 @@ const SHAPES=(function(){
                  {s:"box",x:0,y:H*0.55,z:0,w:0.96,h:0.04,d:0.05,c:RAILC}];   /* the mid rail */
     /* A NEWEL ONLY WHERE THE RUN ENDS — the same rule `picketFence` above works to, and it was
        missing here. A newel is the STOP at the end of a handrail; one at every tile boundary is
-       not a rail, it is a row of bollards. The nine rails upstairs in the town sit at 1.0 apart
+       not a rail, it is a row of bollards. The nine rails upstairs in a second world sit at 1.0 apart
        with the posts inset to 0.44, so two abutting tiles put two 0.085-wide newels 0.12 apart
        with a 0.035 slot between them — read as a doubled post at every joint in the frame, where
        the guard (which measures height, lip offset and run direction) reported the rail correct.
@@ -387,17 +387,17 @@ const SHAPES=(function(){
    whole lesson: ONE LETTER CAN MEAN TWO OBJECTS, and each time it has, it slipped past the lock
    built for the time before.
 
-   `I` — the engine's `I` is El Mercado's grocery counter, waist high; El Changarrito re-declares it
-   as a STOREFRONT FACE at wall height (`changarrito/content/art.js:10`). **It is simply not in the
+   `I` — the engine's `I` is El Mercado's grocery counter, waist high; a second world re-declares it
+   as a STOREFRONT FACE at wall height. **It is simply not in the
    table below, and that — not any clause in the gate — is what keeps a counter out of twelve of
-   the town's shops.** This comment used to credit the gate's `TILEMETA` clause for that, which was
+   that world's shops.** This comment used to credit the gate's `TILEMETA` clause for that, which was
    false: the clause would indeed refuse `I`, but it never gets the chance, because the letter is
    not offered. The repair is this paragraph. (The clause stays; it is right in general and it is
    labelled untested in the gate, because nothing in either game currently reaches it.)
 
    `H` — the one that got through, and the reason `SHAPETAKE` exists. The engine's `H` is an open
-   PRODUCE CRATE (`TILEDRAW["H"]` in engine/engine.js). El Changarrito lays six of them inside
-   houses and its own map calls them RACKS (`changarrito/content/maps.js`, grep "racks"). The town
+   PRODUCE CRATE (`TILEDRAW["H"]` in engine/engine.js). A second world lays six of them inside
+   houses and its own map calls them RACKS. That world
    has never drawn `H` itself — it takes the engine's drawing — so every clause in the gate that
    asks "did the pack say something?" answers NO, correctly, and the wrong object stands up anyway.
    **No table in this engine records what a world MEANS by a letter it has never drawn.** That is
@@ -406,7 +406,7 @@ const SHAPES=(function(){
    `b` — Meridian's marigold bed, and the instructive one. `b` is not solid and does not stand, so
    it could never REACH a shape; but the ground bake's contact pad
    (`engine/engine3d.js`, grep "THE PAD") asks only whether a glyph HAS a mesh, with no solidity
-   test at all. Bind `b` and ten tiles of the town get a soft radial shadow painted on the pavement
+   test at all. Bind `b` and ten tiles of a world that lays it get a soft radial shadow on the pavement
    with nothing standing on them — baked into a texture, so a scene-graph dump reports "identical"
    and the street quietly has smudges on it. That is what the gate's solidity clause is for. */
 const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
@@ -415,7 +415,7 @@ const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
 /* FIVE OF THOSE THIRTEEN ARE OFFERED AND WILL BE REFUSED ANYWAY, and they stay listed on purpose.
    `D T S K V` all have a `TILESIDE` drawing in this engine, so `wearsArt` is true for them in every
    world and the gate's clause 5 turns them down however loudly a pack asks. Listing them is not a
-   lie, it is the clause's test fixture: seventy-one tiles of El Changarrito are exactly this case,
+   lie, it is the clause's test fixture: seventy-one tiles of a second world are exactly this case,
    so the refusal is a measurement that runs on every build rather than a paragraph nobody executes.
    A pack that genuinely wants one writes `const TILEART_MESH={K:o=>SHAPES.counter(o)};` itself and clause 1 lets it
    through. THE ARROW IS MANDATORY AND IS NOT STYLE: `engine/boot.js` is the last script tag in both
@@ -423,9 +423,9 @@ const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
    exist. `TILEMESH["K"]=SHAPES.counter` throws "TILEMESH is not defined" and
    `TILEART["K"]={mesh:SHAPES.counter}` throws "SHAPES is not defined" — both were documented here
    and in four other places on 2026-09-22 and neither ran. TWO THINGS ARE REQUIRED, not one: the
-   table must be DECLARED by this pack (a town that has never written a mesh has no `TILEART_MESH`,
+   table must be DECLARED by this pack (a world that has never written a mesh has no `TILEART_MESH`,
    so `TILEART_MESH["K"]=…` throws too) and the reference must be LATE-BOUND. All three forms were
-   planted against El Changarrito on 2026-09-22; only the one above printed OK. A false mechanism
+   planted against a second world on 2026-09-22; only the one above printed OK. A false mechanism
    in the record is the same bug this round was convened to cure, so it is written down twice.
    Clause 1 lets it
    through — which is the point: the trade is available, it just is not made on the pack's behalf. */
