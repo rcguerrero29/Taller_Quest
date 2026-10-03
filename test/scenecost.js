@@ -13,10 +13,13 @@
      - how long the world's meshes take to build (`t3Build`, timed where draw3d calls it), and the
        first frame after it, which is when the new geometry is uploaded;
      - frame time over at least 120 frames (median and 95th percentile), each frame being draw3d and
-       a one-pixel read that waits until the frame is really finished. A frame counts only when the
-       read PROVES it drew: the pixel is seeded with alpha 0 first, and this canvas has no alpha, so
-       a real read returns 255 — on a lost 3D context three.js skips the draw and the read returns at
-       once, which would otherwise be timed as a nearly free frame.
+       a one-pixel read that waits until the frame is really finished. A frame counts only when two
+       things hold. The read proves the 3D CONTEXT is alive: the pixel is seeded with alpha 0 first,
+       and this canvas has no alpha, so a live read returns 255 — on a lost context three.js skips the
+       draw and the read returns at once, which would otherwise be timed as a nearly free frame. It
+       does not prove THIS frame drew: a skipped draw leaves the last frame in the buffer, and the read
+       returns 255 off that. So the renderer's draw-call count for the frame (`renderer.info`, read
+       after the timed span) proves the renderer sent it; a frame with none is red.
    Twice: once at the machine's own speed, once with the page's processor slowed through the DevTools
    protocol (Emulation.setCPUThrottlingRate, ×4 unless --rate says otherwise).
 
@@ -30,10 +33,10 @@
 
    RED, NOT A NUMBER (docs/REGRESSION.md row B: "Nothing to measure is not a pass"): a shell with no 3D engine, a
    world that draws no triangles, a world that was served from the cache instead of built, a frame
-   that did not reach the renderer, a 3D context lost while frames were timed, fewer frames than
-   asked, a slow-down that did not take, a page that crashed or closed or a browser that went away
-   (each naming the world it was drawing), or no world measured at all — each one exits 1 with the
-   sentence a person would say.
+   that did not reach the renderer, a timed frame for which the renderer sent no draw call, a 3D
+   context lost while frames were timed, fewer frames than asked, a slow-down that did not take, a
+   page that crashed or closed or a browser that went away (each naming the world it was drawing),
+   or no world measured at all — each one exits 1 with the sentence a person would say.
    Every one was planted in a copy outside the repository and went red (docs/3D-LOG.md, 2026-10-03).
 
    Run:  node test/scenecost.js                                   (Meridian, every world, both speeds)
@@ -190,8 +193,8 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       t3Invalidate();
       info.reset(); const f0 = info.render.frame;
       window.__sceneCostAt = { id, frame: 1 };
-      const t0 = performance.now(); const ok = draw3d(); const drew = finish(); const t1 = performance.now();
-      if (!drew) { r.P.push(lost(1)); r.lost = true; return r; }
+      const t0 = performance.now(); const ok = draw3d(); const live = finish(); const t1 = performance.now();
+      if (!live) { r.P.push(lost(1)); r.lost = true; return r; }
       if (!ok || T3.fail) { r.P.push(id + ' did not draw in 3D' + (T3.errors && T3.errors.length ? ' — ' + T3.errors[T3.errors.length - 1].where + ': ' + T3.errors[T3.errors.length - 1].msg : '')); return r; }
       if (builds !== 1) { r.P.push(id + ' was ' + (builds ? 'built ' + builds + ' times' : 'never built — it came out of the cache') + ' on its first frame, so its build time is not a build time'); return r; }
       /* and built NEW: t3Build hands back a kept scene when it has one, which is the same call taking no time. Asked by identity */
@@ -212,9 +215,12 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       for (let i = 0; i < WARM + N; i++) {
         info.reset();
         window.__sceneCostAt = { id, frame: i + 2 };
-        const a = performance.now(); const ok2 = draw3d(); const b = performance.now(); const drew2 = finish(); const c = performance.now();
-        if (!drew2) { r.P.push(lost(i + 2)); r.lost = true; return r; }
+        const a = performance.now(); const ok2 = draw3d(); const b = performance.now(); const live2 = finish(); const c = performance.now();
+        if (!live2) { r.P.push(lost(i + 2)); r.lost = true; return r; }
         if (!ok2 || T3.fail) { r.P.push(id + ' stopped drawing at frame ' + (i + 2)); return r; }
+        /* read after the timed span, so it costs nothing per frame: the pixel read proves the context lives, and
+           only this count proves the renderer sent THIS frame — a skipped draw leaves the last frame in the buffer */
+        if (!(info.render.calls > 0)) { r.P.push(id + ': the renderer sent nothing at frame ' + (i + 2) + ' — draw3d said it drew and no draw call went out, so its time is not a cost'); return r; }
         if (i >= WARM) { frame.push(c - a); script.push(b - a); }
       }
       r.frame = frame; r.script = script;

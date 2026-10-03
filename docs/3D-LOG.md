@@ -541,9 +541,11 @@ new polygonal update for all these and what we or you learned from marigolds?").
   `t3Build` timed where `draw3d` calls it, and 120 frames of `draw3d` each followed by a one-pixel
   read so the frame is finished — at this machine's speed, then with the page's processor slowed ×4
   (`Emulation.setCPUThrottlingRate`; the slow-down is measured on a fixed piece of script unslowed and
-  then slowed, back to back, just before the slowed pass). A frame counts only when its read proves it
-  drew: the pixel is seeded with alpha 0, and a real read of this canvas returns 255. Its first printed
-  line says it is a stand-in, not a phone.
+  then slowed, back to back, just before the slowed pass). A frame counts only when two things hold:
+  its read proves the 3D context lives (the pixel is seeded with alpha 0, and a live read of this
+  canvas returns 255), and the renderer's draw-call count for that frame, read after the timed span,
+  proves the renderer sent it — a skipped draw leaves the last frame in the buffer, so the read alone
+  returns 255 off a frame that never happened. Its first printed line says it is a stand-in, not a phone.
 - **What a stand-in is not.** There is no GPU here: WebGL is SwiftShader, software, in the browser's
   GPU process, and the ×4 does not reach it. So *frame* is mostly a CPU rasterising a 996×1164
   antialiased buffer; *script* (`draw3d` alone, before the wait for pixels) is the part the ×4 does
@@ -599,12 +601,18 @@ new polygonal update for all these and what we or you learned from marigolds?").
   shell that declines 3D; a world whose scene draws nothing; a world that never reaches the renderer;
   a world that stops drawing part-way through its frames; every world served from the cache; the
   slow-down not sent; the page crashing mid-run; a world list that matches nothing; fewer than 120
-  frames. After review, three more, all in the park as the last world measured, where a loss would
-  otherwise have ended green: the 3D context lost at a frame part-way through (`forceContextLoss`);
-  the browser's GPU process crashed (`Browser.crashGpuProcess`); the whole browser killed
-  (`Browser.crash`), which now names the park. The GPU-process crash was caught by the seeded pixel
-  alone: at the frame that went red, `isContextLost()` was still false and no `webglcontextlost` event
-  had arrived (a probe in a copy, Chromium 141).
+  frames. After review, three more, all in the park as the last world measured. Two would otherwise
+  have ended green: the 3D context lost at a frame part-way through (`forceContextLoss`); the
+  browser's GPU process crashed (`Browser.crashGpuProcess`). The third, the whole browser killed
+  (`Browser.crash`), was already red and named no world; it now names the park. The GPU-process crash
+  was caught by the seeded pixel alone: at the frame that went red, `isContextLost()` was still false
+  and no `webglcontextlost` event had arrived (a probe in a copy, Chromium 141). After the recheck, one
+  more: from frame 52 of the park at ×4, `renderer.render` made a no-op while `draw3d` still said it
+  drew — what a "don't redraw when nothing moved" saving would do. The pixel read went on returning 255
+  off the frame before, the park's ×4 frame median read 1.3 ms and the run was green; with the
+  draw-call count read after each timed frame it is red at frame 52 (*the renderer sent nothing*).
+  Today's engine cannot reach it — `draw3d` calls the renderer on every path that says it drew — so no
+  figure above is touched; what it corrected was the claim that the read proved a frame drew.
 - **Rejected:** counting rAF frames (headless throttles rAF — this log's own table); timing `draw3d`
   without the pixel read (that times the asking, not the drawing).
 - **Open:** a real phone's reading, and which slow-down stands for a mid phone (#317's question) —
