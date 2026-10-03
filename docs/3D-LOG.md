@@ -536,10 +536,14 @@ new polygonal update for all these and what we or you learned from marigolds?").
 - **Made:** `test/scenecost.js`. Headless Chromium at 390×844, device scale factor 3, touch; the whole
   city raised; the season pinned (`--season`, year-round by default, so two dates measure one city).
   For every world: draw calls and triangles in one frame (`renderer.info`, hero on the walkable tile
-  nearest the middle, first camera stop), triangles in the whole scene, `t3Build` timed where
-  `draw3d` calls it, and 120 frames of `draw3d` each followed by a one-pixel read so the frame is
-  finished — at this machine's speed, then with the page's processor slowed ×4
-  (`Emulation.setCPUThrottlingRate`). Its first printed line says it is a stand-in, not a phone.
+  nearest the middle, first camera stop), triangles in the whole scene from that spot (every
+  triangle whose object and parents are visible — the cutaway's hidden walls are not counted),
+  `t3Build` timed where `draw3d` calls it, and 120 frames of `draw3d` each followed by a one-pixel
+  read so the frame is finished — at this machine's speed, then with the page's processor slowed ×4
+  (`Emulation.setCPUThrottlingRate`; the slow-down is measured on a fixed piece of script unslowed and
+  then slowed, back to back, just before the slowed pass). A frame counts only when its read proves it
+  drew: the pixel is seeded with alpha 0, and a real read of this canvas returns 255. Its first printed
+  line says it is a stand-in, not a phone.
 - **What a stand-in is not.** There is no GPU here: WebGL is SwiftShader, software, in the browser's
   GPU process, and the ×4 does not reach it. So *frame* is mostly a CPU rasterising a 996×1164
   antialiased buffer; *script* (`draw3d` alone, before the wait for pixels) is the part the ×4 does
@@ -567,10 +571,12 @@ new polygonal update for all these and what we or you learned from marigolds?").
   **Día de Muertos** (`--season muertos`, same hour), whole scene: st 119,754, ex 85,226, pk 219,142,
   casa-w 18,632 (seven times its year-round); pk 121,842 in view; builds ×4 st 830, pk 912; script ×4
   hq 17.3 with 471 calls.
-- **What they say.** (1) The page's per-frame work follows **draw calls far more than triangles**: hq, 451
-  calls and 2,866 triangles, costs 14.8 ms of script at ×4; the park, 41 calls and 105,522 triangles,
-  4.4. At ×4 hq's script alone is close to a 60-frames-a-second frame (16.7 ms) before anything is
-  drawn, and in season it is past it. (2) **The hitch is the build**: the first walk into the park
+- **What they say** — each one relative, a world against a world or a season against the year, at the
+  same slow-down; none of it is a phone's frame rate. (1) The page's per-frame work follows **draw
+  calls far more than triangles**: hq, 451 calls and 2,866 triangles, costs about ×3.4 the park's
+  script a frame (14.8 against 4.4 ms at ×4); the park has 41 calls and 105,522 triangles. In season hq
+  gains 20 calls (451 → 471) and its script at ×4 read 17.3 against 14.8 — one run each, inside the
+  run-to-run spread below, so a direction and not a size. (2) **The hitch is the build**: the first walk into the park
   or Calle Principal at ×4 holds 0.6–1.0 s of building, then 0.4–0.9 s of first frame here (kept
   afterwards, `T3CACHE`; the first frame is mostly the software upload). The figures in the comment
   above `T3CACHE` in `engine/engine3d.js` — 1.4 to 18.4 ms a world, 111 ms for all fifteen — are no
@@ -584,15 +590,25 @@ new polygonal update for all these and what we or you learned from marigolds?").
   as much as ×2.4 (me 163 to 384); frames at ×4 most of all (pk median 113 to 240).
 - **A crash, not explained.** The first `--season muertos` run died before printing a world (*Target
   page, context or browser has been closed*); the next two completed. The script now prints each world
-  as it is measured and names the world a crash happens in.
-- **Not a CI step:** about 5 min year-round, 6–7 min in season, where the whole CI job is 3 min 47 s.
+  as it is measured; when the page crashes, the page closes or the whole browser goes away it says which
+  of the three and the world it was drawing, and any other break names that world in its FAIL line.
+- **Not a CI step:** about 5 min year-round, 6–7 min in season, where the whole CI job is 3 min 47 s;
+  and it asserts no budget, so in CI it would print times that move with the neighbours into a log
+  nobody reads. The script prints how long it took and decides nothing from it.
 - **Red, not a number** — each planted in a copy outside the repository: the 3D library missing; a
   shell that declines 3D; a world whose scene draws nothing; a world that never reaches the renderer;
   a world that stops drawing part-way through its frames; every world served from the cache; the
   slow-down not sent; the page crashing mid-run; a world list that matches nothing; fewer than 120
-  frames.
+  frames. After review, three more, all in the park as the last world measured, where a loss would
+  otherwise have ended green: the 3D context lost at a frame part-way through (`forceContextLoss`);
+  the browser's GPU process crashed (`Browser.crashGpuProcess`); the whole browser killed
+  (`Browser.crash`), which now names the park. The GPU-process crash was caught by the seeded pixel
+  alone: at the frame that went red, `isContextLost()` was still false and no `webglcontextlost` event
+  had arrived (a probe in a copy, Chromium 141).
 - **Rejected:** counting rAF frames (headless throttles rAF — this log's own table); timing `draw3d`
   without the pixel read (that times the asking, not the drawing).
-- **Open:** a real phone's reading, and which slow-down stands for a mid phone (#317's question);
+- **Open:** a real phone's reading, and which slow-down stands for a mid phone (#317's question) —
+  and with it whether hq's script at that slow-down sits under or over a 60-frames-a-second frame
+  (16.7 ms): on this instrument, run to run, 14.8 to 16.0 year-round and 17.3 in season are one reading;
   camera stops other than the first; the town. *Still open* 4, the named baseline, is half done: the
   numbers are named, the frames are not looked at.

@@ -7,11 +7,16 @@
    city, and for every world the 3D camera can show prints:
      - draw calls and triangles in one frame, read off the renderer (`renderer.info`) — what the
        camera actually sent to the GPU from the spot the hero stands on;
-     - triangles in the whole world, counted off the scene — the same number from any spot;
+     - triangles in the whole world, counted off the scene from the same spot — every triangle whose
+       object and parents are visible, culled or not (the cutaway hides walls by where the hero
+       stands, so a wall it hides there is not counted);
      - how long the world's meshes take to build (`t3Build`, timed where draw3d calls it), and the
        first frame after it, which is when the new geometry is uploaded;
      - frame time over at least 120 frames (median and 95th percentile), each frame being draw3d and
-       a one-pixel read that waits until the frame is really finished.
+       a one-pixel read that waits until the frame is really finished. A frame counts only when the
+       read PROVES it drew: the pixel is seeded with alpha 0 first, and this canvas has no alpha, so
+       a real read returns 255 — on a lost 3D context three.js skips the draw and the read returns at
+       once, which would otherwise be timed as a nearly free frame.
    Twice: once at the machine's own speed, once with the page's processor slowed through the DevTools
    protocol (Emulation.setCPUThrottlingRate, ×4 unless --rate says otherwise).
 
@@ -25,15 +30,18 @@
 
    RED, NOT A NUMBER (docs/REGRESSION.md row B: "Nothing to measure is not a pass"): a shell with no 3D engine, a
    world that draws no triangles, a world that was served from the cache instead of built, a frame
-   that did not reach the renderer, fewer frames than asked, a slow-down that did not take, a page
-   that crashed, or no world measured at all — each one exits 1 with the sentence a person would say.
+   that did not reach the renderer, a 3D context lost while frames were timed, fewer frames than
+   asked, a slow-down that did not take, a page that crashed or closed or a browser that went away
+   (each naming the world it was drawing), or no world measured at all — each one exits 1 with the
+   sentence a person would say.
    Every one was planted in a copy outside the repository and went red (docs/3D-LOG.md, 2026-10-03).
 
    Run:  node test/scenecost.js                                   (Meridian, every world, both speeds)
          node test/scenecost.js --index <shell> --worlds st,pk --frames 240 --season muertos --rate 6
    --season is `off` (year-round) by default, so two runs on different dates measure the same city.
-   NOT A CI STEP: it takes minutes, not seconds (the last line says how long). Run it by hand before
-   and after any lane that adds geometry, and put the figures in docs/3D-LOG.md with their date. */
+   NOT A CI STEP (docs/3D-LOG.md, 2026-10-03, says why); the last line says how long the run took.
+   Run it by hand before and after any lane that adds geometry, and put the figures in
+   docs/3D-LOG.md with their date. */
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -52,6 +60,8 @@ const ONLY = args.includes('--worlds') ? String(arg('--worlds', '')).split(',').
 const WARM = 5;   /* frames drawn and not counted after the first, so a lazily made texture is not one world's p95 */
 
 const fails = [];
+let at = '';   /* the world being drawn, at module level so even the last catch can name it */
+const firstLine = e => String(e && e.message || e).split('\n')[0];
 const die = msg => { console.log('FAIL\n- ' + msg); process.exit(1); };
 if (!(FRAMES >= 120)) die('asked for ' + arg('--frames') + ' frames — fewer than 120 is a glance, not a frame time');
 if (!(RATE > 1)) die('asked to slow the processor by ×' + arg('--rate') + ' — that is not a slow-down, so there would be nothing standing in for a phone');
@@ -125,6 +135,10 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     const ok = draw3d();
     if (!ok || T3.fail || !T3.renderer) { out.P.push('the 3D camera could not draw at all here' + (T3.errors && T3.errors.length ? ' — ' + T3.errors[T3.errors.length - 1].where + ': ' + T3.errors[T3.errors.length - 1].msg : '') + ', so there is no scene to cost'); return out; }
     window.__sceneCostSeen = new WeakSet([T3.group]);   /* this first scene too: a world handed back as THIS one was not built */
+    /* a lost 3D context, as the browser reports it. The event arrives after the frame loop yields, so it is
+       read after each world; the flag stays set even if the context is later restored. */
+    window.__sceneCostLost = null; window.__sceneCostAt = { id: 'before any world', frame: 0 };
+    T3.renderer.domElement.addEventListener('webglcontextlost', () => { window.__sceneCostLost = window.__sceneCostLost || Object.assign({}, window.__sceneCostAt); });
     const gl = T3.renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
     out.gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
     out.gl2 = !!T3.renderer.capabilities.isWebGL2;
@@ -163,7 +177,11 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     r.spot = best;
     world = id; px = fx = best[0]; py = fy = best[1]; moving = false; T3.yaw = 0; T3.turn = null;
     const gl = T3.renderer.getContext(), pix = new Uint8Array(4);
-    const finish = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix); /* waits for the frame to be drawn, not just asked for */
+    /* waits for the frame to be drawn, not just asked for. Seeded with alpha 0 first: this canvas has no alpha
+       channel, so a real read returns 255, and a read on a lost context leaves the seed where it was */
+    const finish = () => { pix[3] = 0; gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix); return pix[3] !== 0 && !gl.isContextLost() && !window.__sceneCostLost; };
+    const lost = n => id + ': the 3D context was lost at frame ' + n + ' — the frames after it drew nothing, so their times are not a cost';
+    if (window.__sceneCostLost || gl.isContextLost()) { r.P.push(id + ': the 3D context was already lost before its first frame' + (window.__sceneCostLost ? ' (lost at frame ' + window.__sceneCostLost.frame + ' of ' + window.__sceneCostLost.id + ')' : '') + ' — nothing after it drew, so there is no cost to read'); r.lost = true; return r; }
     const info = T3.renderer.info;
     /* the build, timed where draw3d itself calls it: a world that is not built here was served from the cache */
     const realBuild = window.t3Build; let built = NaN, builds = 0;
@@ -171,7 +189,9 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     try {
       t3Invalidate();
       info.reset(); const f0 = info.render.frame;
-      const t0 = performance.now(); const ok = draw3d(); finish(); const t1 = performance.now();
+      window.__sceneCostAt = { id, frame: 1 };
+      const t0 = performance.now(); const ok = draw3d(); const drew = finish(); const t1 = performance.now();
+      if (!drew) { r.P.push(lost(1)); r.lost = true; return r; }
       if (!ok || T3.fail) { r.P.push(id + ' did not draw in 3D' + (T3.errors && T3.errors.length ? ' — ' + T3.errors[T3.errors.length - 1].where + ': ' + T3.errors[T3.errors.length - 1].msg : '')); return r; }
       if (builds !== 1) { r.P.push(id + ' was ' + (builds ? 'built ' + builds + ' times' : 'never built — it came out of the cache') + ' on its first frame, so its build time is not a build time'); return r; }
       /* and built NEW: t3Build hands back a kept scene when it has one, which is the same call taking no time. Asked by identity */
@@ -181,7 +201,8 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       r.build = built; r.first = t1 - t0 - built;
       if (info.render.frame === f0) { r.P.push(id + ': draw3d said it drew and the renderer never ran — there is no frame to count'); return r; }
       r.calls = info.render.calls; r.tris = info.render.triangles;
-      /* the whole world, from any spot: every visible triangle in the scene, culled or not */
+      /* the whole world, from this spot: every triangle whose object and parents are visible, culled or not —
+         the cutaway hides walls by where the hero stands, and a hidden wall is not counted */
       let all = 0;
       const shown = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
       T3.scene.traverse(o => { if (!(o.isMesh || o.isSprite) || !o.geometry || !shown(o)) return;
@@ -190,8 +211,10 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       const frame = [], script = [];
       for (let i = 0; i < WARM + N; i++) {
         info.reset();
-        const a = performance.now(); const ok2 = draw3d(); const b = performance.now(); finish(); const c = performance.now();
-        if (!ok2 || T3.fail) { r.P.push(id + ' stopped drawing at frame ' + (i + 1)); return r; }
+        window.__sceneCostAt = { id, frame: i + 2 };
+        const a = performance.now(); const ok2 = draw3d(); const b = performance.now(); const drew2 = finish(); const c = performance.now();
+        if (!drew2) { r.P.push(lost(i + 2)); r.lost = true; return r; }
+        if (!ok2 || T3.fail) { r.P.push(id + ' stopped drawing at frame ' + (i + 2)); return r; }
         if (i >= WARM) { frame.push(c - a); script.push(b - a); }
       }
       r.frame = frame; r.script = script;
@@ -214,23 +237,42 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     console.log(pad(r.id, 10, true) + pad(num(r.calls), 6) + pad(num(r.tris), 11) + pad(num(r.all), 13) + pad(ms(r.build), 10) + pad(ms(r.first), 11) +
       pad(ms(med(r.frame)), 14) + pad(ms(p95(r.frame)), 8) + pad(ms(med(r.script)), 15));
   };
-  /* a page that dies under the load is the finding, not an accident of the harness: on a phone it is the tab reloading */
-  let crashed = '', at = '';
-  page.on('crash', () => { crashed = crashed || at || 'before any world'; });
+  /* a page that dies, closes, or loses its browser part-way: each names the world it was drawing */
+  let diedAt = '', pageCrashed = false, measuring = true;
+  const died = () => { if (measuring && !diedAt) diedAt = at || 'before any world'; };
+  page.on('crash', () => { pageCrashed = true; died(); });
+  page.on('close', died);
+  browser.on('disconnected', died);
   const cdp = await ctx.newCDPSession(page);
-  let cal0 = NaN;
+  /* the measured slow-down: the same fixed piece of script, unslowed and then slowed, back to back, so the
+     ratio is the throttle and not whatever the machine's neighbours did in between */
+  const speed = async rate => {
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    if (rate === 1) return 1;
+    const cal0 = (await calibrate() + await calibrate()) / 2;
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+    return ((await calibrate() + await calibrate()) / 2) / cal0;
+  };
+  let lostAt = '';
   try {
     for (const [name, rate] of [['at this machine\'s speed', 1], ['processor slowed ×' + RATE, RATE]]) {
-      await cdp.send('Emulation.setCPUThrottlingRate', { rate });
-      const cal = (await calibrate() + await calibrate()) / 2;
-      if (rate === 1) cal0 = cal;
-      const slow = cal / cal0;
+      if (lostAt) break;
+      at = 'the speed check (' + name + ')';
+      const slow = await speed(rate);
       if (rate > 1 && !(slow >= RATE * 0.5)) fails.push('the processor was asked to slow ×' + RATE + ' and the same piece of script took ×' + slow.toFixed(2) + ' its unslowed time — the slowed figures would be the unslowed ones under another name');
       console.log('');
-      console.log('— ' + name + (rate > 1 ? ' (measured ×' + slow.toFixed(1) + ' on a fixed piece of script; ' + (soft ? 'the software drawing is not slowed, so read the script column' : 'the GPU is not slowed') + ')' : '') + ' —');
+      console.log('— ' + name + (rate > 1 ? ' (measured ×' + slow.toFixed(1) + ' on a fixed piece of script, taken just before; ' + (soft ? 'the software drawing is not slowed, so read the script column' : 'the GPU is not slowed') + ')' : '') + ' —');
       console.log(head);
       const rows = [];
-      for (const id of worlds) { at = id + ' (' + name + ')'; const r = await measure(id); rows.push(r); report(r, name); }
+      for (const id of worlds) {
+        at = id + ' (' + name + ')';
+        const r = await measure(id);
+        /* the browser's own word that the context was lost reaches the page only after the frame loop yields */
+        const late = await page.evaluate(() => window.__sceneCostLost);
+        if (late && !r.lost) { r.P.push(late.id + ': the 3D context was lost at frame ' + late.frame + ' (the browser said so once its frames were done) — the frames after it drew nothing, so their times are not a cost'); delete r.frame; }
+        rows.push(r); report(r, name);
+        if (r.lost || late) { lostAt = at; break; }
+      }
       const ok = rows.filter(r => Array.isArray(r.frame) && r.frame.length);
       if (ok.length) {
         const worst = ok.reduce((a, b) => (p95(b.frame) > p95(a.frame) ? b : a));
@@ -238,17 +280,24 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
         console.log('  slowest frame: ' + worst.id + ' (p95 ' + ms(p95(worst.frame)) + ' ms) · most triangles in view: ' + heavy.id + ' (' + num(heavy.tris) + ') · all builds together ' + ms(ok.reduce((s, r) => s + r.build, 0)) + ' ms');
       }
     }
+    if (lostAt) fails.push('measuring stopped at ' + lostAt + ': a lost 3D context draws nothing in any world after it, so the worlds after it were not measured');
+    at = 'the end of the run';
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   } catch (e) {
-    if (!crashed) throw e;
-    fails.push('the page crashed while drawing ' + crashed + ' — on a phone that is the tab reloading in the middle of play; the worlds after it were never measured');
+    /* the listeners can arrive after the rejection, and a page's close before its browser's disconnect: let them settle, then say which */
+    await new Promise(r => setTimeout(r, 500));
+    if (!diedAt && (page.isClosed() || !browser.isConnected())) diedAt = at;
+    if (!diedAt) throw e;
+    const how = !browser.isConnected() ? 'the browser went away' : pageCrashed ? 'the page crashed' : 'the page closed';
+    fails.push(how + ' while drawing ' + diedAt + ' — on a phone that is the tab reloading in the middle of play; the worlds after it were never measured (' + firstLine(e) + ')');
   }
+  measuring = false;
   await browser.close().catch(() => {});
   if (pageErrors.length) fails.push('the page threw while it was being measured: ' + [...new Set(pageErrors)].slice(0, 3).join(' | '));
   const took = Math.round((Date.now() - t00) / 1000);
   console.log('');
-  console.log('  NOTE: load average ' + load() + ' at the end · hero on the walkable tile nearest each world\'s middle, camera at its first stop; "whole world" counts every visible triangle in the scene, culled or not; "script" is draw3d alone, before the wait for pixels.');
+  console.log('  NOTE: load average ' + load() + ' at the end · hero on the walkable tile nearest each world\'s middle, camera at its first stop; "whole world" counts every triangle whose object and parents are visible from that spot, culled or not; "script" is draw3d alone, before the wait for pixels.');
+  console.log('  took ' + Math.floor(took / 60) + ' min ' + (took % 60) + ' s');
   if (fails.length) { console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — ' + worlds.length + ' worlds measured at two speeds in ' + Math.floor(took / 60) + ' min ' + (took % 60) + ' s' +
-    (took > 60 ? ', which is why this is not a CI step' : ', short enough to be a CI step'));
-})().catch(e => { console.log('FAIL\n- the measurement itself broke, so nothing it printed can be trusted: ' + (e && e.message || e)); process.exit(1); });
+  console.log('OK — ' + worlds.length + ' worlds measured at two speeds');
+})().catch(e => { console.log('FAIL\n- the measurement itself broke' + (at ? ' while drawing ' + at : '') + ', so nothing it printed can be trusted: ' + firstLine(e)); process.exit(1); });

@@ -21,6 +21,7 @@ should have been caught by, and the assertions to add. Nothing here is built.*
 | `docs/templates/build-branded.js --check` | CI | the branded copies of the docs templates match the neutral ones plus `brand.yml` |
 | `test/shots.js` (`--cams`, `--index`, `--spots`) | **nobody** — by hand | four-camera screenshots of named spots; the only pixel-level look at the game |
 | `test/tilesheet.js` | by hand | the cold read of every glyph |
+| `test/scenecost.js` (`--worlds`, `--season`, `--rate`, `--index`) | **nobody** — by hand, before and after any lane that adds geometry (#317) | per world, at the machine's speed and with the page's processor slowed: draw calls and triangles in one frame, triangles in the whole scene, the build and the first frame, and frame time over 120 frames, each frame proved drawn by its pixel read. A stand-in, not a phone; it asserts no budget, so its times are figures to compare by date in `docs/3D-LOG.md`, and it is red only when there was nothing true to measure |
 
 **No suite in this repository runs either game in a landscape viewport** (checked 2026-09-13): every
 run is 480×900, 390×560 or 390×844. `docs/QA-PASS.md`'s matrix has had a landscape row since
