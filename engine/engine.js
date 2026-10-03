@@ -321,9 +321,9 @@ function syncChill(want){
      gone, and MOVES the ones whose tile changed. The third of those is why this exists: addChill
      and removeChill cannot express a move between them, so every caller hand-rolls the diff — and
      the first one to try it got it wrong in a way nothing could see.
-     What it got wrong: it evicted a body when its ROOM changed and never when its SLOT did. So in
-     El Changarrito, filing a second issue of the same tier put it first in the order, onto a tile
-     the previous one was still standing on; addChill refuses a tile already marked "N"; and the
+     What it got wrong: it evicted a body when its ROOM changed and never when its SLOT did. So a
+     caller adding a body of the same rank as one already standing put it first in the order, onto
+     a tile the previous one was still standing on; addChill refuses a tile already marked "N"; and the
      newcomer landed NOWHERE, while people, HUDFACT and the console all went on reporting it
      standing. A reload cured it, so it survived unseen for weeks.
      THE ORDERING IS THE WHOLE POINT. Every removal happens before any addition, because a body
@@ -527,12 +527,12 @@ const chClosed=c=>{const k=chClose(c);
 /* `chSeen` is how far the city has GROWN — the newest district that has opened.
    It is not a cursor that closes things behind you. A district reaching its `need`
    plays its ending beat and breaks ground on the next lot; its quests stay open
-   forever. Owner's law (docs/OWNER.md, 2026-09-01): no practice is ever missed. */
+   forever. Owner's law (docs/STORY.md, 2026-09-01): no practice is ever missed. */
 /* ---------- stakes and the grade ----------
    The GRADE is always on: every attempt at a quest is counted, the counts make a
    district's grade, and the grade picks which ending it plays. It never blocks.
    STAKES are a separate optional layer on top — `none` by default. Neither may take
-   progress, the city or the save, and neither may harm a character (docs/OWNER.md). */
+   progress, the city or the save, and neither may harm a character (docs/STORY.md). */
 const STK=()=>(typeof STAKES!=="undefined"&&STAKES)?STAKES:{mode:"none",hearts:3};
 let stakesAdmin=null;                       /* admin override, per device, never in the save */
 try{const m=localStorage.getItem(SK("stakes"));if(m)stakesAdmin={mode:m};}catch(e){}
@@ -563,16 +563,16 @@ function gradeAll(){
 /* ENDLESS: a place you inhabit has no last visit (Nacho; the owner: "i dont think it ends").
    A pack may declare `ENDLESS=true` and the ending panel never fires — no epilogue, no title, no
    "claim your reward". This mattered more than it sounds: a pack that declares no CHAPTERS gets
-   the synthesised one above, so El Changarrito — the owner's own backlog as a street, with a
-   single quest in it — ran Meridian's LAST-DAY EPILOGUE the moment he answered Don Güero. Doña
-   Chelo counting the drawer at El Mercado Robles, in a town that has no mercado and no Chelo.
+   the synthesised one above, so a second world with a single quest in it ran Meridian's LAST-DAY
+   EPILOGUE the moment that quest was answered: Doña Chelo counting the drawer at El Mercado
+   Robles, in a world that has no mercado and no Chelo.
    Meridian declares nothing and ends exactly as it always has. */
 /* TWO questions, and they had been one. "Has this district finished, so the next should open?"
    is about the CITY. "Does a curtain play?" is about the CEREMONY. `ENDLESS` switched off the
    ceremony — and the ceremony was carrying the city, because the ending panel's button was the only
    writer of `chSeen` in the engine. So an endless pack with two districts sat in district one
    forever, silently: no quests from district two, no storefront, no growth, and no error to read.
-   The town never noticed because it declares no CHAPTERS and gets one synthesised district.
+   A world with no chapters never noticed, because it gets one synthesised district.
    Tavo and Nacho reached the same first move independently, from opposite ends:
    "that is a coupling bug, not a design flaw in pushing." (#156, docs/TAGS.md L12.) */
 const chOpenDue=()=>{const L=CHS();return chSeen<L.length&&((livesOn()&&hearts<=0)||chClosed(L[chSeen]));};
@@ -659,18 +659,15 @@ const $=id=>document.getElementById(id);
 /* NET seam — the server pivot point. Deliberately empty: the cartridge model keeps
    everything on-device today, but a future game (multiplayer, cloud saves) plugs a
    backend in HERE and nowhere else. boot() = connect/auth once at startup;
-   sync(state) = called after every save with the full save blob. See docs/IDEAS.md §4. */
+   sync(state) = called after every save with the full save blob. */
 const NET={enabled:false,boot(){},sync(state){}};
 /* Co-presence hook: peers render like NPCs. Empty until NET fills it. Peer shape:
    {id,name,w,x,y,dir,look} — treat every field as UNTRUSTED network data. A look reaches
    drawPerson only through peerLook() (#32), at every site that draws one. Names are clamped to
-   12 characters and drawn as canvas text only (never DOM), but the clamp runs after String(),
-   and a name — or, under the season's face paint, an id — that is an object whose toString is
-   not a function throws there on every frame (measured 2026-10-01, top and front cameras): that
-   is not a look and #32 does not change it. PEERS are also not drawn in the iso camera.
-   See docs/IDEAS.md §4 and docs/story/el-changarrito.md §4 B1. */
+   12 characters and drawn as canvas text only (never DOM). PEERS are also not drawn in the iso
+   camera. */
 let PEERS=[];
-/* RECORD seam — the city's record (docs/story/la-ventanilla.md §4, el-changarrito.md §4).
+/* RECORD seam — the city's record.
    A pack may declare RECORDSRC = {enabled, boot()}: the engine calls boot() once after NET and
    never again. What the record holds and where it comes from is the pack's business — a
    same-origin file, or an API the pack's OWN index allows (the public build's CSP allows
@@ -687,10 +684,10 @@ const shortName=k=>String(npcName(k)||"").split(" ·")[0];   /* the name without
 const sayAs=(k,line)=>{const n=shortName(k);return "💬 "+(n?n+": ":"")+line;}; /* every spoken line is signed */
 const lvlIdx=()=>{let i=0;LEVELS.forEach((t2,j)=>{if(xp>=t2)i=j;});return i;};
 const lvlName=()=>T().levels[lvlIdx()];
-/* THE STRIP AT THE DOOR. A quest game earns a score; a place you inhabit does not. Rosa, on the
-   town's front door describing Meridian: whatever XP counts, it teaches — and in a backlog neither
-   filing more nor closing more is reliably good, while a permanent `0 XP` is a verdict delivered
-   at the door every session. So a pack may declare `HUDFACT`, a function returning what is true
+/* THE STRIP AT THE DOOR. A quest game earns a score; a place you inhabit does not. Rosa, on a
+   second world's front door describing Meridian: whatever XP counts, it teaches — and in a place
+   where neither adding more nor finishing more is reliably good, a permanent `0 XP` is a verdict
+   delivered at the door every session. So a pack may declare `HUDFACT`, a function returning what is true
    right now instead of what you have earned. A fact must be able to go DOWN as well as up, and
    neither direction is praised. Return "" and the strip stays empty rather than lying.
    A pack with no HUDFACT keeps the score, the rank and the bar exactly as before — Meridian is a
@@ -700,8 +697,8 @@ function hud(){const hs=livesOn()?("❤".repeat(Math.max(0,hearts))+"♡".repeat
   if(fact!==null){
     $("ptag").textContent=heroName;$("hearts").textContent=hs;$("xp").textContent=fact;
     $("xpbarwrap").hidden=true;                      /* no bar: there is nothing to fill */
-    /* and no empty chip in the corner of the world: before the ledger has been read there is
-       nothing true to say, so nothing is said */
+    /* and no empty chip in the corner of the world: before the pack has a fact to report there
+       is nothing true to say, so nothing is said */
     $("status").textContent=fact;$("status").hidden=!fact;return;}
   $("ptag").textContent=`${heroName} · ${lvlName()}`;$("hearts").textContent=hs;$("xp").textContent=`${xp} XP`;
   $("xpfill").style.width=Math.min(100,xp/MAXXP*100)+"%";
@@ -712,7 +709,7 @@ function save(){const st={n:heroName,c:cls,lk:look,xp,he:hearts,d:[...done],px,p
   if(NET.enabled)NET.sync(st);
   return kept;}   /* callers can ask whether it actually went in; the guard does */
 /* The ❗ on the world tag means what it means everywhere else: somebody in here has
-   something to say. Never a count, never an age (docs/OWNER.md — no practice is ever
+   something to say. Never a count, never an age (docs/STORY.md — no practice is ever
    missed, and a badge with a number on it is a backlog). It was hardcoded to hq, so
    the office kept promising a quest long after its last one was answered. */
 const worldPending=id=>(WORLDS[id]?WORLDS[id].npcs:[]).some(n=>hasSay(n));
@@ -970,7 +967,7 @@ function drawIso(){
     /* the isometric camera had its OWN hardcoded flower bed — three pink dots, three literal
        hexes, not a call to the tile's painter — so a pack overriding `b` got the new bed in three
        cameras and the old one here. Found by Pili, 2026-09-16, while costing the marigolds; it is
-       the shape docs/ARCH-LOG A7 warned about, a renderer that never asks the question. It asks. */
+       a shape this engine had been warned about, a renderer that never asks the question. It asks. */
     else if(ch==="b"){petalPal().slice(1,4).map((c,i)=>[[-7,0],[3,-3],[6,3]][i].concat(c)).forEach(f=>{
       ctx.fillStyle=f[2];ctx.beginPath();ctx.arc(cx+f[0],cy+f[1],2,0,7);ctx.fill();});}
     else if(ch==="g"){ctx.strokeStyle=tc("#5FA86A");ctx.lineWidth=1.4;ctx.lineCap="round";
@@ -1715,7 +1712,7 @@ function troLine(wid){const L=(typeof TROLLEYAT!=="undefined"&&TROLLEYAT)?TROLLE
    (troIsStop) and "where is the next one ahead of the car". The second is what braking needs and no
    amount of asking the first will ever give it to you.
    Omit `stops` and the line has none: nothing calls the car, nothing opens the pass, and the run is
-   frame-for-frame what it was. Until 2026-09-11 this was one town's letter "Y", read straight out of
+   frame-for-frame what it was. Until 2026-09-11 this was one world's letter "Y", read straight out of
    the engine in two places (docs/TAGS.md L20). */
 function troStops(L){return (L&&Array.isArray(L.stops))?L.stops.filter(function(s){return s&&typeof s.x==="number"&&typeof s.y==="number";}):[];}
 function troIsStop(wid,x,y){return troStops(troLine(wid)).some(function(s){return s.x===x&&s.y===y;});}
@@ -1812,8 +1809,8 @@ function troAtStop(L){if(!L||world!==L.world)return false;
    wander around home — which reaches row 2, the rails — and she hovers, so she could stand there
    indefinitely, and did: three of six trams in four minutes stopped for a hummingbird.
    The shipped answer to this in other games is ECO's: the player (here, the vehicle) carries a
-   threat radius that grows FORWARD with speed, and an animal inside it leaves. docs/research/
-   2026-09-11-critters-in-play.md. Ours is the same shape with a fixed lead, because our vehicle has
+   threat radius that grows FORWARD with speed, and an animal inside it leaves (looked up on
+   2026-09-11). Ours is the same shape with a fixed lead, because our vehicle has
    one speed and runs on one axis.
    The brake in troAhead is untouched and stays the backstop. This is not a way of IGNORING a critter
    on the rails — that is the blind spot this same tram had two days ago, by species, and it cost a
@@ -2099,7 +2096,7 @@ DOORSET.forEach(dch=>TILEDRAW[dch]=rc=>{const{sx,sy}=rc;
          the top of the door INSIDE Doña Tencha's living room, and the same indoors at El
          Portero's hut and the barbería. The owner saw the outside and said the three houses
          "didnt seem to share a roof"; the inside is what that look was hiding. Photographed,
-         not reasoned (docs/POSTMORTEM.md §2).
+         not reasoned.
          So the question the engine asks is not "does this glyph wear something" but "how many
          pixels of THIS TILE belong to the building above it" — a number, or a function of the
          tile when only the pack can know. Zero is the engine's own door, untouched, and that
@@ -2363,7 +2360,7 @@ if(typeof TILEART_SIDE!=="undefined")Object.assign(TILESIDE,TILEART_SIDE);
        TILEART["J"] = { top:fn, side:fn, crown:fn, iso:fn }   // fill in what you care about
 
    A bare function still means `top`, exactly as before, so nothing any pack has written changes.
-   docs/TAGS.md L15, docs/ARCH-LOG.md A5+A7. */
+   docs/TAGS.md L15. */
 const TILECROWN={},TILEISO={},TILEMESH={}; /* mesh: a list of primitives for the 3D camera (2026-09-21) */
 const TILEVIEWS=["top","side","crown","iso","mesh"];
 if(typeof TILEART!=="undefined")Object.entries(TILEART).forEach(([g,v])=>{
@@ -2476,13 +2473,13 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
        a false mechanism in the record, in the round convened to cure a false mechanism in the
        record. And a pack that has never written a mesh has no `TILEART_MESH` to add to, so
        `TILEART_MESH["K"]=…` throws as well: it has to be declared. All three wrong forms and the
-       right one were planted against El Changarrito on 2026-09-22 and only the right one printed OK.
+       right one were planted against a second world on 2026-09-22 and only the right one printed OK.
    2 · `TILEART[g]` / `TILEART_SIDE[g]` — the pack DREW this letter itself. Standing a shape where
        somebody drew a picture throws their drawing away without telling them.
-   3 · `TILEMETA[g]` — the pack said what this letter MEANS, so it means something else here. El
-       Changarrito re-declares `I` as a storefront face at wall height (`changarrito/content/art.js`);
+   3 · `TILEMETA[g]` — the pack said what this letter MEANS, so it means something else here. A
+       second world re-declares `I` as a storefront face at wall height;
        the engine's `I` is a waist-high grocery counter. **`I` IS NOT IN `SHAPEBIND`, and that — not
-       this clause — is what keeps a counter out of twelve of the town's storefronts.** The earlier
+       this clause — is what keeps a counter out of twelve of that world's storefronts.** The earlier
        version of this comment claimed the credit for clause 3 and it was false; a false sentence in
        the record is a bug here, and this is the repair. The clause stays because it is right for
        the general case, and it is honest about its own status: **no letter in either of this
@@ -2493,7 +2490,7 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
        contact pad (`engine/engine3d.js`, grep "THE PAD") asks only whether a glyph HAS a mesh, so
        binding one to a walkable letter paints a soft shadow on the pavement with nothing standing
        on it — baked into a texture, where a scene-graph dump reports "identical". Meridian's `b`,
-       the marigold bed, is ten tiles of the town and exactly this case.
+       the marigold bed, is exactly this case wherever a world lays it.
    5 · `wearsArt(g)` — it is already a drawing with volume. Above.
 
    `SHAPEGIVEN` is the list of letters this gate actually handed a shape to. It exists because the
@@ -2591,7 +2588,7 @@ function drawDecals(camX,camY){ /* the top and front cameras: on the ground, und
 /* ---------- front-profile 2.5D (IDEAS §10 step ②) ----------
    The owner's steer, verbatim: "show us a profile from the front." Square grid,
    straight-on camera. Solids keep every painted pixel of their facades and grow a
-   roof strip upward; rows render back-to-front so the town gets true depth without
+   roof strip upward; rows render back-to-front so the street gets true depth without
    losing a door, an awning, or a fence. */
 function drawFront(){
   const w=CW();
@@ -2895,8 +2892,8 @@ function drawAmbient(w,camX,camY){
 /* ANIMALS seam — the engine's own four animals (the office dog, the bodega cat, the pigeon, the
    parrot) stand where a pack puts them. Meridian's places are the defaults, byte for byte; a pack
    declares ANIMALS={dog:{world,x,y}|null, cat, pig, loro} to move one or leave it out. A null
-   animal is nowhere: never drawn, never greeted. (#38: Lorenzo floated in the town because he
-   was pinned to a fence only Meridian has at (17,5).) Held by the smoke suites: something
+   animal is nowhere: never drawn, never greeted. (#38: Lorenzo floated in a second world because
+   he was pinned to a fence only Meridian has at (17,5).) Held by the smoke suites: something
    stands under every animal, and an animal appears only in the world its pack put it in. */
 const ANIDEF={dog:{world:"hq",x:12,y:5},cat:{world:"lc",x:16,y:9},pig:{world:"st",x:4,y:1},loro:{world:"st",x:17,y:5}};
 const ANI=k=>(typeof ANIMALS!=="undefined"&&ANIMALS&&Object.prototype.hasOwnProperty.call(ANIMALS,k))?ANIMALS[k]:ANIDEF[k];
@@ -3495,7 +3492,7 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
     &&Math.abs(o.x-cr.x)+Math.abs(o.y-cr.y)<=7):null;
   /* THE ODDS: one band of the roll each, in this order: a nap, a song, the course, the greeting, a
      hole, and the other thing. Digging is canon: a puppy phase, kept to about 8% of what
-     he does (canon round 2, 2026-09-01, docs/IDEAS.md:436: "~8% of whims, was ~25%"; and on
+     he does (canon round 2, 2026-09-01: "~8% of whims, was ~25%"; and on
      2026-09-29, "ok make it about 8 percent yes").
      The course and the greeting only happen where they can, in a park with gear and with another dog
      near, and a band that cannot happen here PASSES QUIETLY: its roll never goes down the list. On
@@ -4316,7 +4313,7 @@ function tryPortal(ts){
        happens here, behind a closed door, which is the entire job a closed door has ever had, and
        the open starts on the next clean frame.
        ❗ This is also the measurement behind the memory question: cache the built scenes and the
-       stall goes with them (docs/ARCH-LOG.md A16). */
+       stall goes with them. */
     let started=false;
     const go=()=>{if(started)return;started=true;
       warpT=performance.now()+DOORMS.open;   /* input comes back when the DOOR is open, not when a guess says it should be — the stall above is unpredictable and worldArrived cannot know how long it took */
@@ -4761,7 +4758,7 @@ function docRender(body,secs){
          returns one — and it is drawn at that width inside its own horizontal scroller instead of
          being squeezed into the column. Everything else in the reader is unchanged: a section with no
          `wide` is fitted to the column exactly as it always was.
-         This is a RULE and not one town's mural: any pack with a long diagram, a timeline or a
+         This is a RULE and not one pack's mural: any pack with a long diagram, a timeline or a
          panorama wants it, and the alternative is every such pack inventing its own scroller. */
       const natural=(typeof s2.wide==="function")?s2.wide():(typeof s2.wide==="number"?s2.wide:0);
       const wide=natural>0&&natural>room-8;
@@ -4780,8 +4777,8 @@ function docRender(body,secs){
          two readings of the same downward swipe cannot both win. The browser resolves it from
          `touch-action`, and `.dart` declares none in either shell — so a gesture surface that does
          not say so loses every vertical drag to the paper's scroller and the player never reaches it.
-         This is opt-in and must stay opt-in: the town's wall is thirty-odd pictures you scroll past,
-         and an engine that took the pointer from all of them would wall the page off behind them.
+         This is opt-in and must stay opt-in: a wall of thirty-odd pictures is something you scroll
+         past, and an engine that took the pointer from all of them would wall the page off behind them.
          A section that says `grab:true` is saying "this one is worked, not read". */
       if(s2.grab){cv.style.touchAction="none";cv.style.cursor="grab";cv.setAttribute("tabindex","0");}
       if(wide){cv.style.maxWidth="none";cv.style.margin="10px 0";}
@@ -4816,12 +4813,12 @@ function docRender(body,secs){
       pk.textContent=q.pick+(q.tries>1?"  ("+q.tries+")":"");w.appendChild(pk);
       if(q.why){const wy=document.createElement("p");wy.className="dwhy";
         wy.textContent=(q.concept?q.concept+" — ":"")+q.why;w.appendChild(wy);}}
-    else if(s2.btn){ /* a button a pack's document may carry (the town's Done, its requests) —
+    else if(s2.btn){ /* a button a pack's document may carry (a Done, say) —
        the reader never knows what it does; content does, and content is never Markdown-exported */
       const b=document.createElement("button");b.className="dbtn";b.type="button";b.textContent=s2.btn;
       b.addEventListener("click",()=>{try{if(typeof s2.run==="function")s2.run();}catch(err){console.warn("DOC: button failed",err);}});
       body.appendChild(b);}
-    else if(s2.sel){ /* a dropdown a pack's document may carry (the town's filter and sort):
+    else if(s2.sel){ /* a dropdown a pack's document may carry (a filter, a sort):
        a label, options (optionally grouped), the current value; content runs the change */
       const lab=el("label","dsel");lab.appendChild(document.createTextNode(s2.sel+" "));
       const se=document.createElement("select");const groups={};
@@ -4872,7 +4869,7 @@ function docRender(body,secs){
    the scoping here is ENFORCED, not requested. A pack that writes `body{display:none}` does not
    get a warning; it gets a rule that cannot match anything.
 
-   FOUR THINGS MAKE THAT TRUE, and each is a thing a plant has been fired at (docs/BOUNDARY.md):
+   FOUR THINGS MAKE THAT TRUE, and each is a thing a plant has been fired at:
 
    1 · THE BROWSER PARSES IT, NOT ME. The text goes into a constructed stylesheet
        (`new CSSStyleSheet()` + `replaceSync`) — parsed, never applied — and we walk the CSSOM the
@@ -5009,7 +5006,7 @@ function docOpen(id,from){
      It used to render first and unhide last, and a hidden element has no width: `display:none`
      makes `#docBody.clientWidth` exactly 0, so docRender's measuring chain below fell all the way
      through to `documentElement.clientWidth` — THE WINDOW — and every drawing in the game was sized
-     to the window while sitting in a narrower column. Measured in docs/cooking-world.md: 382 drawn
+     to the window while sitting in a narrower column. Measured on a narrow reader: 382 drawn
      into a 322 box, which the CSS cap then scales down, throwing away 16.8% of the detail on a flat
      picture and 33.3% on a lit one. A picture you are meant to walk up to cannot afford either.
      Nothing flashes: this whole function is one synchronous block, the browser paints nothing until
@@ -5178,7 +5175,7 @@ function portalNudge(){
    an unrelated guard, and two other guards came back with "the chair did not open". The barber's
    chair is the owner's own ask (2026-09-07, *"open the ability to change our character outfit and
    haircut after start. maybe have a small barber"*) and the district being planned for her would have
-   switched it off for its whole length, silently, with every suite green. docs/POSTMORTEM.md §13w.
+   switched it off for its whole length, silently, with every suite green.
 
    So: a person who has a quest AND runs something offers BOTH — the quest on Talk, the service on
    its own button beside it, the same way a readable thing beside you gets its own button. The two
@@ -5942,8 +5939,8 @@ try{darkMq.addEventListener("change",applyTheme);}catch(e){}
    jobs. This comment used to say "THEMES is UI chrome and never reaches a tile", which was false
    the day it was written: tc() has always mixed the theme accent into every hex the world draws,
    and the mesh baker in engine3d.js runs every part colour through the same tc(). The owner
-   settled it on 2026-09-22 by changing the RULE rather than the code (docs/OWNER.md, the theme
-   entry). A theme may TINT; it may never REDESIGN. art(key, fallback) is how world art asks
+   settled it on 2026-09-22 by changing the RULE rather than the code, and the rule is this:
+   a theme may TINT; it may never REDESIGN. art(key, fallback) is how world art asks
    whether a season has recoloured it. The pack declares SEASONS (names, dates, colours);
    the engine never learns a name (the portability guard enforces it). seasonPick is the
    player's Settings choice: "auto" (by the calendar), "off" (year-round), or a season id.
@@ -6496,15 +6493,15 @@ function worldFlags(){
 /* ---------- who is waiting, on the plan — and a destination you choose ----------
    #160, and the owner on 2026-09-15: "i like a hybrid approach, wehre i can choose my destination,
    and i like the marking of people with quests in different colors but its hard to tell unless you
-   have a legend." The plan is docs/meetings/2026-09-14-el-mapa.md §7, and it says what a colour is
-   allowed to mean here: WHICH KIND of person is waiting — never how many, how old, or how far
-   through. A colour that counts is a list with the names removed (ARCH-LOG A3), and the mark that
-   means one thing forever (OWNER.md) is the one the street already draws.
+   have a legend." The plan for the map, agreed 2026-09-14, says what a colour is allowed to mean
+   here: WHICH KIND of person is waiting — never how many, how old, or how far through. A colour
+   that counts is a list with the names removed, and the mark that means one thing forever
+   (docs/STORY.md) is the one the street already draws.
    Colour never travels alone: about one man in twelve cannot separate these hues, so every kind
    also carries its own SHAPE and the legend names both (WCAG 1.4.1 — and his own sentence).
    A pack OPTS IN with MAPMARK, whose ORDER is which kind wins when a person is more than one at
    once. No declaration, no marks: `hasSay`'s third clause — a document to hand you — never fires
-   in Meridian and fires on every neighbour the town places, so a rule that lit every district
+   in Meridian and fires on every neighbour a second world places, so a rule that lit every district
    would not be the same game for both packs. */
 const MARKS={
   work:{c:"#E0662B",sh:"disc"},    /* somebody here has work for you — the street's own ❗, on the plan */
@@ -6704,7 +6701,7 @@ function legSeen(){
 function legSet(v){legOpen=!!v;mqStore(SK("leg"),v?"1":"0");}
 function mapLegend(){
   const host=$("mapNote");if(!host||!markKinds().length)return; /* a pack that declares no kinds
-    gets no legend and no element: the town's plan is the same object it was yesterday */
+    gets no legend and no element: that pack's plan is the same object it was yesterday */
   let box=$("mapLeg");
   if(!box){box=document.createElement("div");box.id="mapLeg";
     box.style.cssText="display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 0;align-items:center;font-size:.8rem;";
@@ -6874,7 +6871,7 @@ function destCheck(){ /* you arrived: the destination is spent, and nothing reme
    `TOWNPLAN=[{world,ox,oy},…]` is the pack saying which worlds the plan draws and where they sit on
    the paper, in tiles. The LOOP is the engine's and the LAYOUT is the pack's, which is the split
    docs/TAGS.md asks of every seam. **A pack that declares no TOWNPLAN draws PL.street at 0,0 and is
-   byte-identical** — the town and the gauge never notice this happened.
+   byte-identical** — a second world and the gauge never notice this happened.
 
    THE ONE TRAP, and it is the reason marks carry two coordinate pairs. `mapDest` is read by
    `destAim()` as a position IN A WORLD: it compares against `px,py` and hands `tx,ty` to the
