@@ -529,3 +529,70 @@ new polygonal update for all these and what we or you learned from marigolds?").
   depending on the tile. Frames: the session scratchpad (`shots/after-*`), not committed.
 - **Not measured:** the corners over a tall, thin mesh tile — `t3Top` is right for a box, and nobody
   has flown the drone over the jacaranda yet.
+
+### 2026-10-03 · #317 — what the 3D scene costs, measured headless as a stand-in for a phone
+
+- **The ask:** a number on record before the costlier lanes land, and the same measure after each.
+- **Made:** `test/scenecost.js`. Headless Chromium at 390×844, device scale factor 3, touch; the whole
+  city raised; the season pinned (`--season`, year-round by default, so two dates measure one city).
+  For every world: draw calls and triangles in one frame (`renderer.info`, hero on the walkable tile
+  nearest the middle, first camera stop), triangles in the whole scene, `t3Build` timed where
+  `draw3d` calls it, and 120 frames of `draw3d` each followed by a one-pixel read so the frame is
+  finished — at this machine's speed, then with the page's processor slowed ×4
+  (`Emulation.setCPUThrottlingRate`). Its first printed line says it is a stand-in, not a phone.
+- **What a stand-in is not.** There is no GPU here: WebGL is SwiftShader, software, in the browser's
+  GPU process, and the ×4 does not reach it. So *frame* is mostly a CPU rasterising a 996×1164
+  antialiased buffer; *script* (`draw3d` alone, before the wait for pixels) is the part the ×4 does
+  slow. A phone has a GPU and a slower everything else. Compare runs with each other, never with a phone.
+- **Figures, year-round, mq-v229** (the last of three runs that hour; times in ms):
+
+  | world | calls | triangles in view | whole scene | build ×1 → ×4 | script ×1 → ×4 | frame ×1 median / p95 |
+  |---|---|---|---|---|---|---|
+  | hq | 451 | 2,866 | 3,826 | 26 → 104 | 3.2 → 14.8 | 53 / 74 |
+  | f2 | 184 | 1,136 | 4,804 | 31 → 94 | 2.2 → 10.1 | 35 / 50 |
+  | st | 366 | 65,606 | 86,190 | 171 → 609 | 2.2 → 9.8 | 83 / 108 |
+  | ex | 151 | 28,978 | 43,364 | 72 → 272 | 2.2 → 9.9 | 72 / 94 |
+  | lo | 215 | 2,282 | 3,800 | 13 → 45 | 1.3 → 6.6 | 38 / 50 |
+  | me | 173 | 19,528 | 27,248 | 69 → 167 | 2.0 → 9.0 | 49 / 64 |
+  | lc | 170 | 6,974 | 12,476 | 40 → 124 | 1.4 → 6.0 | 40 / 58 |
+  | ta | 169 | 4,802 | 7,736 | 30 → 66 | 1.6 → 7.7 | 39 / 48 |
+  | pa | 179 | 8,532 | 12,426 | 24 → 78 | 1.9 → 8.2 | 42 / 53 |
+  | li | 179 | 5,980 | 8,302 | 28 → 69 | 1.5 → 7.2 | 44 / 65 |
+  | no | 219 | 2,478 | 5,434 | 13 → 67 | 1.4 → 7.4 | 37 / 45 |
+  | pk | 41 | 105,522 | 172,242 | 290 → 1,006 | 1.1 → 4.4 | 89 / 113 |
+  | casa-w | 205 | 2,576 | 2,588 | 7 → 30 | 1.4 → 6.9 | 39 / 57 |
+  | caseta | 160 | 586 | 586 | 3 → 14 | 1.1 → 5.8 | 29 / 35 |
+  | barberia | 206 | 2,320 | 2,332 | 6 → 53 | 1.4 → 6.6 | 40 / 67 |
+
+  **Día de Muertos** (`--season muertos`, same hour), whole scene: st 119,754, ex 85,226, pk 219,142,
+  casa-w 18,632 (seven times its year-round); pk 121,842 in view; builds ×4 st 830, pk 912; script ×4
+  hq 17.3 with 471 calls.
+- **What they say.** (1) The page's per-frame work follows **draw calls far more than triangles**: hq, 451
+  calls and 2,866 triangles, costs 14.8 ms of script at ×4; the park, 41 calls and 105,522 triangles,
+  4.4. At ×4 hq's script alone is close to a 60-frames-a-second frame (16.7 ms) before anything is
+  drawn, and in season it is past it. (2) **The hitch is the build**: the first walk into the park
+  or Calle Principal at ×4 holds 0.6–1.0 s of building, then 0.4–0.9 s of first frame here (kept
+  afterwards, `T3CACHE`; the first frame is mostly the software upload). The figures in the comment
+  above `T3CACHE` in `engine/engine3d.js` — 1.4 to 18.4 ms a world, 111 ms for all fifteen — are no
+  longer what a build costs: all fifteen take 0.82–0.85 s at ×1 here (a different harness and a
+  bigger city, so a trend, not a like-for-like). Recorded, not changed: this lane changes no engine.
+  (3) Triangles are the GPU's cost, which this cannot see; the park carries the most by far.
+- **How much to trust a time.** A shared four-core machine with other builders running: load 2.7 to
+  9.9 across the runs that gave figures, printed at the start and end of each. Calls and triangles
+  repeat exactly run to run (except a person walking into view: pa 178 or 179, li 179 or 180). Over
+  three year-round runs the script medians at ×4 moved within a third (most under 15%); builds at ×4
+  as much as ×2.4 (me 163 to 384); frames at ×4 most of all (pk median 113 to 240).
+- **A crash, not explained.** The first `--season muertos` run died before printing a world (*Target
+  page, context or browser has been closed*); the next two completed. The script now prints each world
+  as it is measured and names the world a crash happens in.
+- **Not a CI step:** about 5 min year-round, 6–7 min in season, where the whole CI job is 3 min 47 s.
+- **Red, not a number** — each planted in a copy outside the repository: the 3D library missing; a
+  shell that declines 3D; a world whose scene draws nothing; a world that never reaches the renderer;
+  a world that stops drawing part-way through its frames; every world served from the cache; the
+  slow-down not sent; the page crashing mid-run; a world list that matches nothing; fewer than 120
+  frames.
+- **Rejected:** counting rAF frames (headless throttles rAF — this log's own table); timing `draw3d`
+  without the pixel read (that times the asking, not the drawing).
+- **Open:** a real phone's reading, and which slow-down stands for a mid phone (#317's question);
+  camera stops other than the first; the town. *Still open* 4, the named baseline, is half done: the
+  numbers are named, the frames are not looked at.
