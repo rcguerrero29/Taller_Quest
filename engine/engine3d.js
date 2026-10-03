@@ -247,7 +247,7 @@ function t3Reuse(key){
    these lines through test/lib/parts.js — in node, against vendor/three.min.js, with no page — and
    test/prims.js builds every literal part in the games through them and through the engine on
    origin/main, and fails if one byte differs, or one setting of the material a mesh is drawn with
-   (vertex colours, see-through, depth, whether the time of day reaches it), or the tag it carries. It
+   (any that three.js writes out for it, and whether the time of day reaches it), or the tag it carries. It
    reads only these lines: the shape library's own code and the rest of this file are not in it. So
    the lines between the sentinels may read THREE,
    T3.tintables, tc and t3Note from outside and nothing else; reach for anything more and the gate

@@ -12,7 +12,7 @@
         size is computed escapes; a computed place or colour is left at the builder's default.
      3. Each part is built by t3MeshOf([part], tag) on both — as written, and turned to face each door —
         and the position, normal and colour bytes, how tall it stands and how far it reaches, the
-        material it is drawn with (type, vertex colours, see-through, opacity, depth, and whether
+        material it is drawn with (all of it, as three.js's toJSON writes it out, and whether
         T3.tintables holds it, which is how the time of day reaches it), its tag, and the same for its
         glass, must be identical. Then all of them at once, as one mesh. Then t3BakeParts — the
         builder's name a test can call — against the same bytes.
@@ -24,8 +24,10 @@
      5. It prints how many parts it collected and fails below a floor, because a harvest of zero passes
         every comparison there is. The primitives it expects are read out of the builder (kindsOf), and
         it fails when the harvest holds none of one, so a primitive learnt tomorrow is not skipped.
-     6. It reads .github/workflows/ci.yml and fails when CI no longer runs this file's self-test and its
-        comparison, because a gate nobody runs protects nothing.
+     6. It reads .github/workflows/ci.yml and fails when CI no longer runs this file's self-test and then
+        its --ci comparison, exactly, in one step a red can fail, because a gate nobody runs protects
+        nothing. Which commit CI compares with is decided here (--ci), not in ci.yml, so the self-test
+        can plant every branch of that choice.
 
    WHAT IT DOES NOT READ, so nobody takes its OK for more: the shape library's own code in
    engine/shapes.js (facing, the seeds, the runs: which parts a tile gets and where) is read only as
@@ -38,6 +40,8 @@
          node test/prims.js <base-ref>           … with another commit (CI passes the pull request's base)
          node test/prims.js --old-file <path>    … with an engine3d.js on disk (a copy, a mockup's engine)
          node test/prims.js --selftest           plant each way the builder can break and watch it go red
+         node test/prims.js --ci                 what CI runs: reads EVENT, BASE_REF and BEFORE from the
+                                                 environment and picks the base (grep `function ciPlan`)
 
    WHEN IT IS RED ON PURPOSE: a change that MEANS to change how some shape is built (a new segment count,
    say, or a three.js upgrade) will turn this red for exactly those shapes, and the sentence names them.
@@ -66,9 +70,17 @@ const where = h => h.file + ':' + h.line + ' ' + (h.text.length > 110 ? h.text.s
 const same = (x, y) => x === y || (!!x && !!y && x.equals(y));
 const ATTRS = [['position', 'vertex positions', 'vertex positions'], ['normal', 'normals (how light falls on them)', 'normals (how light falls on it)'], ['color', 'colours', 'vertex colours']];
 const LACKS = /^the (mesh|glass) has no /;
+/* two materials (parts.js partsOf: the whole toJSON, and whether the wash reaches it) as the keys that
+   differ and nothing else: "wireframe undefined → true", "blending undefined → 2, side undefined → 2" */
 function matDiff(a, b) {
   if (!a || !b) return a === b ? '' : (b ? 'a material where there was none' : 'no material at all');
-  return Object.keys({ ...a, ...b }).filter(k => !Object.is(a[k], b[k])).map(k => k + ' ' + a[k] + ' → ' + b[k]).join(', ');
+  const out = [];
+  if (a.json !== b.json) {
+    const ja = JSON.parse(a.json), jb = JSON.parse(b.json), say = v => v === undefined ? 'undefined' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    Object.keys({ ...ja, ...jb }).sort().forEach(k => { if (JSON.stringify(ja[k]) !== JSON.stringify(jb[k])) out.push(k + ' ' + say(ja[k]) + ' → ' + say(jb[k])); });
+  }
+  if (a.tinted !== b.tinted) out.push('tinted ' + a.tinted + ' → ' + b.tinted);
+  return out.join(', ');
 }
 function geoDiff(a, b, who, d) {
   const lack = ATTRS.filter(([k]) => a[k] && !b[k]);
@@ -154,7 +166,7 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
   }
   const parts = [...seen.values()];
   const byKind = {}; parts.forEach(x => { byKind[kind(x.part)] = (byKind[kind(x.part)] || 0) + 1; });
-  info.push('harvested ' + parts.length + ' distinct parts (' + kinds.map(k => (byKind[k] || 0) + ' ' + nameOf(k)[1]).join(', ') + ') from ' +
+  info.push('harvested ' + parts.length + ' distinct parts (' + kinds.map(k => (byKind[k] || 0) + ' ' + nameOf(k)[byKind[k] === 1 ? 0 : 1]).join(', ') + ') from ' +
     sources.length + ' files [' + sources.map(s => s.file + ' ' + (perFile[s.file] || 0)).join(', ') + ']; ' + escaped + ' more are written with a computed size and escape a literal harvest');
   if (!parts.length) { fails.push('the gate found no parts at all to build in ' + sources.map(s => s.file).join(', ') + ' — a harvest of zero would pass every comparison, so it is a red.'); return { fails, info }; }
   if (parts.length < FLOOR.distinct) fails.push('the gate collected only ' + parts.length + ' distinct parts and the floor is ' + FLOOR.distinct + ': either art was deleted (lower FLOOR in test/prims.js and say what went) or the harvest stopped reading the files, and every shape it lost is a shape nobody checks.');
@@ -238,7 +250,9 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
   for (const x of parts) {
     const b = fresh.get(x); if (!b || b.error) continue;
     const s = builtOn('the working tree', shared, [x.part]);
-    if (s.error || differs(s, b).length) crossed.push(x);
+    /* a part that already came back with another's shape has a poisoned cache under it: its twins would
+       blame every key, x and c among them, which are not in the cache key at all (Beto, #316 recheck) */
+    if (s.error || differs(s, b).length) { crossed.push(x); continue; }
     for (const k of keys) {
       const q = twin(x.part, k, kinds);
       const one = builtOn('the working tree', shared, [q]), two = builtOn('the working tree', NEW.fresh(), [q]);
@@ -247,7 +261,7 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
       if (differs(one, two).length && !forgot[k]) forgot[k] = { x, from: x.part[k], to: q[k] };
     }
   }
-  if (twins < parts.length) fails.push('the collision pass built only ' + twins + ' twins for ' + parts.length + ' parts, so a field missing from the shape cache\'s key could pass unseen.');
+  if (twins < parts.length - crossed.length) fails.push('the collision pass built only ' + twins + ' twins for ' + parts.length + ' parts, so a field missing from the shape cache\'s key could pass unseen.');
   if (crossed.length) fails.push('built one after another in one session, ' + said(crossed.length) + ' of the games\' parts came back with another part\'s shape — the shape cache files two different parts under one name. The first is ' + where(crossed[0]) + '.');
   Object.entries(forgot).forEach(([k, { x, from, to }]) => fails.push('two parts that differ only in ' + k + ' came out the same once both were built in one session: the shape cache does not tell them apart, so whichever is built first is what both look like. Seen with ' +
     where(x) + ', ' + k + ' ' + (from === undefined ? 'unset' : from) + ' and ' + to + '.'));
@@ -260,42 +274,91 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const readSources = () => P.shapeSources(ROOT).map(file => ({ file, text: fs.existsSync(path.join(ROOT, file)) ? read(file) : '' }));
 const CI = '.github/workflows/ci.yml';
 
-/* ---- does CI still run this gate? (Melo, #316) ----
+/* ---- does CI still run this gate? (Melo and Beto, #316) ----
    Nothing else reads ci.yml for it: a deleted line there would stop the gate's red cases, or its
-   comparison, from running anywhere, and every check would stay green. So the smoke job must hold a step,
-   with no `if:` and no `continue-on-error`, that runs both `node test/prims.js --selftest` and
-   `node test/prims.js "origin/$BASE_REF"`. Both the self-test and the comparison read it, so deleting
-   either line is a red from the other. (Deleting the whole step is caught by neither: that is a person's
-   reading of ci.yml, as test/protect.js says of the other suites.) */
-const SELF_LINE = 'node test/prims.js --selftest', COMPARE_LINE = 'node test/prims.js "origin/$BASE_REF"';
+   comparison, from running anywhere, and every check would stay green. So the smoke job must hold ONE
+   step that runs exactly these two lines, in this order, and nothing else:
+       node test/prims.js --selftest
+       node test/prims.js --ci
+   with no `if:`, no `continue-on-error`, no `shell:` of its own (GitHub's default runs bash -eo pipefail,
+   so the first line's red stops the step), and no `set +e` or `|| true` in the run block, each of which
+   turns a red self-test into a green step. Which base the comparison takes is not decided in ci.yml any
+   more but here (ciPlan, below), because a branch written in shell is one this file cannot plant: a
+   one-character slip in it (`pull-request`) used to stop every comparison while this check printed OK.
+   The step must still hand --ci the three facts it decides on, so its env is read too.
+   (Deleting the whole step is caught by none of this, since this file is what that step runs: a check of
+   ci.yml from outside it, the way test/protect.js reads the repository's rules, is that guard's job.) */
+const SELF_LINE = 'node test/prims.js --selftest', CI_LINE = 'node test/prims.js --ci';
+const CI_ENV = { EVENT: '${{ github.event_name }}', BASE_REF: '${{ github.base_ref }}', BEFORE: '${{ github.event.before }}' };
 function ciRuns(yml) {
   if (typeof yml !== 'string' || !yml.trim()) return [CI + ' could not be read, so nobody can say CI runs the shape gate.'];
   const lines = yml.split('\n');
+  const lead = l => /^(\s*)/.exec(l)[1].length;
   const job = lines.findIndex(l => /^\s{2}smoke:\s*$/.test(l));
   if (job < 0) return [CI + ' has no job named smoke, so the shape gate runs in no check a pull request must pass.'];
   let end = lines.findIndex((l, i) => i > job && /^\s{2}[A-Za-z_][\w-]*:\s*$/.test(l)); if (end < 0) end = lines.length;
   const first = lines.findIndex((l, i) => i > job && i < end && /^\s*- /.test(l));
   if (first < 0) return [CI + '\'s smoke job has no steps, so the shape gate runs nowhere.'];
-  const ind = /^(\s*)/.exec(lines[first])[1].length, steps = [];
+  const ind = lead(lines[first]), steps = [];
   for (let i = first; i < end; i++) {
-    const l = lines[i], lead = /^(\s*)/.exec(l)[1].length;
-    if (lead === ind && /^\s*- /.test(l)) steps.push([]);
+    const l = lines[i];
+    if (lead(l) === ind && /^\s*- /.test(l)) steps.push([]);
     if (steps.length) steps[steps.length - 1].push(l);
   }
-  /* the commands a step runs: each line, out of `run:` and split at &&, comments left out */
-  const cmds = s => s.flatMap(l => l.replace(/^\s*-?\s*run:\s*\|?\s*/, '').split('&&').map(c => c.trim())).filter(c => c && !c.startsWith('#'));
-  const keyed = (s, k) => s.some(l => new RegExp('^\\s{' + ind + '}(?:- |  )' + k + ':').test(l));
-  const fails = [];
-  const want = (line, what) => {
-    const at = steps.find(s => cmds(s).includes(line));
-    if (!at) fails.push(CI + ' no longer runs `' + line + '` in the smoke job, so ' + what + ' — and the next change that blinds the gate lands green and stays green.');
-    else if (keyed(at, 'if') || keyed(at, 'continue-on-error')) fails.push(CI + ' runs `' + line + '` only in a step with an `if:` or `continue-on-error`, so it can be skipped or ignored and ' + what + '.');
-    return at;
+  /* a step's keys sit at ind+2 (or after the "- " on its first line) */
+  const keyAt = (s, k) => s.findIndex(l => new RegExp('^\\s{' + ind + '}(?:- |  )' + k + ':').test(l));
+  /* its run block as lines, comments and blank lines left out: `run: |` and the lines indented under it,
+     or the one line after `run:`, each split at && */
+  const runOf = s => {
+    const at = keyAt(s, 'run'); if (at < 0) return null;
+    const head = s[at].replace(/^\s*-?\s*run:\s*/, '');
+    let body;
+    if (/^[|>][-+]?\s*$/.test(head)) {
+      body = [];
+      for (let i = at + 1; i < s.length && (!s[i].trim() || lead(s[i]) > ind + 2); i++) body.push(s[i]);
+      if (head[0] === '>') body.unshift(head);   /* folded: the lines run as ONE command, which is not the pair */
+    } else body = [head];
+    return body.flatMap(l => l.split('&&')).map(c => c.trim()).filter(c => c && !c.startsWith('#'));
   };
-  const a = want(SELF_LINE, 'the shape gate\'s own red cases run nowhere');
-  const b = want(COMPARE_LINE, 'no pull request is compared with its base');
-  if (a && b && a !== b) fails.push(CI + ' runs the shape gate\'s self-test and its comparison in two different steps; keep them in one, so neither is moved or dropped without the other being seen.');
+  const fails = [];
+  const mine = steps.filter(s => (runOf(s) || []).some(c => c.includes('test/prims.js')));
+  if (!mine.length) return [CI + ' no longer runs `' + SELF_LINE + '` and then `' + CI_LINE + '` in the smoke job, so the shape gate\'s own red cases run nowhere and no pull request is compared with its base — and the next change that blinds the gate lands green and stays green.'];
+  if (mine.length > 1) fails.push(CI + ' runs the shape gate in ' + mine.length + ' steps; keep its self-test and its comparison in one, so neither is moved or dropped without the other being seen.');
+  const s = mine[0], cmds = runOf(s), body = s.slice(keyAt(s, 'run')).join('\n');
+  if (/\bset\s+\+[a-z]*e|\bset\s+\+o\s+errexit/.test(body)) fails.push(CI + '\'s shape-gate step turns off stopping at the first red (`set +e`), so a red self-test runs on into the comparison and the step can come out green.');
+  if (/\|\|/.test(body)) fails.push(CI + '\'s shape-gate step catches a red with `||` (`|| true`, say), so the gate can fail and the step still pass.');
+  if (keyAt(s, 'if') >= 0 || keyAt(s, 'continue-on-error') >= 0) fails.push(CI + ' runs the shape gate only in a step with an `if:` or `continue-on-error`, so it can be skipped or ignored and no red from it stops a pull request.');
+  if (keyAt(s, 'shell') >= 0) fails.push(CI + '\'s shape-gate step names a `shell:` of its own, so it may not be the bash -eo pipefail that stops at the first red; leave it to the default.');
+  if (cmds.length !== 2 || cmds[0] !== SELF_LINE || cmds[1] !== CI_LINE)
+    fails.push(CI + '\'s shape-gate step must run exactly `' + SELF_LINE + '` and then `' + CI_LINE + '`, and nothing else; it runs ' + (cmds.length ? cmds.map(c => '`' + c + '`').join(', then ') : 'nothing') + '. Which base to compare with is decided by --ci, where the self-test can plant it, not in the step.');
+  Object.entries(CI_ENV).forEach(([k, v]) => {
+    if (!s.some(l => l.trim() === k + ': ' + v)) fails.push(CI + '\'s shape-gate step no longer hands --ci `' + k + ': ' + v + '`, so it cannot tell which commit to compare with.');
+  });
   return fails;
+}
+
+/* ---- which commit CI compares with: the branching that used to be shell in ci.yml ----
+   env: EVENT, BASE_REF and BEFORE as the step hands them. reachable(sha): whether git has that commit
+   (git cat-file -e), a stub in --selftest. Returns { base } to compare with, { none: why } when there is
+   nothing to compare (the self-test, on the line before in the same step, is then all that runs), or
+   { fail: why }. Every value is checked before it reaches git, and a branch name or a commit is never
+   allowed to start with "-", so nothing from the environment is read as an option. */
+const ZERO = /^0+$/;
+function ciPlan(env, reachable) {
+  const ev = String(env.EVENT || '').trim(), ref = String(env.BASE_REF || '').trim(), before = String(env.BEFORE || '').trim();
+  if (!ev) return { fail: 'EVENT is empty, so --ci cannot tell a pull request from a push; the step in ' + CI + ' must hand it `EVENT: ' + CI_ENV.EVENT + '`.' };
+  if (ev === 'pull_request') {
+    if (!ref) return { fail: 'this is a pull request and BASE_REF is empty, so there is no base to compare the shape builder with; the step must hand it `BASE_REF: ' + CI_ENV.BASE_REF + '`.' };
+    if (!/^[A-Za-z0-9_.][A-Za-z0-9_./-]*$/.test(ref) || ref.includes('..')) return { fail: 'BASE_REF is not a branch name --ci will hand to git (' + JSON.stringify(ref.slice(0, 60)) + ').' };
+    return { base: 'origin/' + ref, why: 'a pull request into ' + ref };
+  }
+  if (ev === 'push') {
+    if (!before || ZERO.test(before)) return { none: 'this push has no earlier commit (the first push of a branch: BEFORE is ' + (before ? 'all zeros' : 'empty') + '), so there is nothing to compare the shape builder with' };
+    if (!/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(before)) return { fail: 'BEFORE is not a commit --ci will hand to git (' + JSON.stringify(before.slice(0, 60)) + ').' };
+    if (!reachable(before)) return { none: 'the commit this push replaced (' + before.slice(0, 12) + ') is not in this clone, as after a force-push, so there is nothing to compare the shape builder with' };
+    return { base: before, why: 'a push, against the commit it replaced' };
+  }
+  return { none: 'a ' + ev + ' run has no base of its own, so there is nothing to compare the shape builder with' };
 }
 
 function report(r, okLine) {
@@ -304,9 +367,25 @@ function report(r, okLine) {
   console.log(okLine); return 0;
 }
 
+const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe'] });
+const reachable = sha => { try { git(['cat-file', '-e', sha + '^{commit}']); return true; } catch (e) { return false; } };
+
 function main(argv) {
+  if (argv.includes('--ci')) {
+    const plan = ciPlan(process.env, reachable);
+    if (plan.fail) { console.log('FAIL — the shape gate in CI: ' + plan.fail); return 1; }
+    if (plan.none) {
+      /* the CI step's other line still holds CI to it: it must run, and pass, before this one */
+      let yml; try { yml = read(CI); } catch (e) { yml = null; }
+      const f = ciRuns(yml);
+      if (f.length) { console.log('FAIL — the shape gate in CI:'); f.forEach(x => console.log('- ' + x)); return 1; }
+      console.log('OK — nothing to compare: ' + plan.none + '. The shape gate\'s own red cases ran on the line before this one, and that is all this run checks.');
+      return 0;
+    }
+    console.log('  --ci: ' + plan.why + ', so the shape builder is compared with ' + plan.base);
+    argv = [plan.base];
+  }
   let oldLabel, engineOld, threeOld, threeOldLabel;
-  const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe'] });
   const gitSaid = e => String(e.stderr || e.message).trim().split('\n')[0];
   const at = argv.indexOf('--old-file');
   if (at >= 0) {
@@ -319,6 +398,7 @@ function main(argv) {
     else threeOldLabel = 'the working tree\'s three.js, held there because none was found beside ' + path.basename(f) + ' (so a library change is not compared)';
   } else {
     const base = argv.find(a => !a.startsWith('--')) || 'origin/main';
+    if (base.startsWith('-')) { console.log('FAIL — the shape gate was asked to compare with ' + JSON.stringify(base) + ', which git would read as an option; name a branch or a commit.'); return 1; }
     oldLabel = base;
     try { engineOld = git(['show', base + ':engine/engine3d.js']); }
     catch (e) {
@@ -359,6 +439,10 @@ function selftest() {
     { name: 'the mesh drawn with a tint t3BakeParts is not given', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list,h=>h==="#888888"?"#898989":tc(h))'), want: /t3BakeParts — the name tests call — gives different bytes/ },
     { name: 'the mesh drops the theme (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default is the identity', neu: e => plant(plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)'), 'tint=tint||tc;', 'tint=tint||(h=>h);'), want: /their colours changed/ },
     { name: 'the mesh forgets to pass tc (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default keeps the theme — GREEN, which is why the default is tc', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)') },
+    { name: 'the default grey one step redder in one channel (#888888 → #898888), which a theme that folds neighbours would hide', neu: e => plant(e, 'p.c||"#888888"', 'p.c||"#898888"'), want: /colours changed/ },
+    { name: 'a wireframe left on the solid material', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,wireframe:true})'), want: /material \(wireframe undefined → true\)/ },
+    { name: 'an emissive glow on the solid material (night does not dim it)', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,emissive:0x333333})'), want: /material \(emissive 0 → 3355443\)/ },
+    { name: 'glass drawn double-sided and added instead of blended', neu: e => plant(e, GLASS, '{vertexColors:true,transparent:true,opacity:+a,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}'), want: /glass material \(blending undefined → 2, side undefined → 2\)/ },
     { name: 'how tall a thing stands, off by a hair', neu: e => plant(e, 'm.t3Top=top===-Infinity?0:top', 'm.t3Top=top===-Infinity?0:top+1e-6'), want: /their height \(t3Top/ },
     { name: 'glass drawn a little more solid', neu: e => plant(e, 'opacity:+a,', 'opacity:+a+0.01,'), want: /glass material \(opacity/ },
     { name: 'every mesh drawn without its vertex colours (white)', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:false})'), want: /material \(vertexColors true → false\)/ },
@@ -367,7 +451,7 @@ function selftest() {
     { name: 'glass that writes depth', neu: e => plant(e, GLASS, '{vertexColors:true,transparent:true,opacity:+a,depthWrite:true}'), want: /glass material \(depthWrite false → true\)/ },
     { name: 'glass drawn solid (transparent taken out)', neu: e => plant(e, GLASS, '{vertexColors:true,opacity:+a,depthWrite:false}'), want: /glass material \(transparent true → false\)/ },
     { name: 'a mesh baked without its normals', neu: e => plant(e, 'geo.setAttribute("normal",new THREE.Float32BufferAttribute(b.nor,3));', ''), want: /the mesh has no normals \(how light falls on it\)/, never: /builder throws/ },
-    { name: 'three.js upgraded by the book (legacyMode off, as r152 made the default) on the working tree only', three: t => plant(t, 'Vt={legacyMode:!0,', 'Vt={legacyMode:!1,', 'vendor/three.min.js'), want: /their colours changed/ },
+    { name: 'three.js upgraded by the book (legacyMode off, as r152 made the default) on the working tree only', three: t => plant(t, 'Vt={legacyMode:!0,', 'Vt={legacyMode:!1,', 'vendor/three.min.js'), want: /their colours(, [^.]*)? changed/ },   /* and the material's colour as three.js writes it out (color 16777215 → 16711422) */
     { name: 'a capsule the builder learns and no art draws', neu: capsule(4), want: /the harvest holds no capsule/ },
     { name: 'a capsule the builder learns and the art draws, which the base draws as a box', neu: capsule(4), src: drawsCapsule, want: /capsules? the games draw would look different/ },
     { name: 'the capsule\'s cap segments 4 → 6', neu: capsule(6), old: capsule(4), oldLabel: 'an engine with a four-segment capsule', src: drawsCapsule, want: /capsules? the games draw would look different/ },
@@ -403,22 +487,64 @@ function selftest() {
     if (r.fails.some(f => /would look different|as one mesh/.test(f))) { out.push('FAIL — a forgotten cache field showed up in the fresh per-part builds, so the selftest no longer proves the collision pass is what catches it.'); bad++; }
     else out.push('ok  the forgotten rb is invisible to fresh per-part builds and caught only by the collision pass');
   }
-  /* CI runs this file: the real ci.yml must pass, and each way of dropping it must not */
+  /* the theme stand-in is one-to-one where it matters: every colour the games write, and each one step
+     away in one channel, comes out a colour of its own, and none comes out as itself (Beto, #316 recheck) */
+  {
+    const step = (h, i, d) => { const v = parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16) + d; return v < 0 || v > 255 ? null : h.slice(0, 1 + 2 * i) + v.toString(16).padStart(2, '0') + h.slice(3 + 2 * i); };
+    const ins = new Set();
+    sources.forEach(x => (x.text.match(/#[0-9a-fA-F]{6}\b/g) || []).forEach(h => { h = h.toLowerCase(); ins.add(h); [0, 1, 2].forEach(i => [-1, 1].forEach(d => { const n = step(h, i, d); if (n) ins.add(n); })); }));
+    ins.add('#888888'); ins.add('#898888');
+    const outs = new Map(); let fold = null, still = null;
+    ins.forEach(h => { const t = P.THEME_TC(h); if (t === h) still = still || h; if (outs.has(t) && !fold) fold = [outs.get(t), h, t]; outs.set(t, h); });
+    if (fold || still) { out.push('FAIL — the colour theme the gate hands both builders (parts.js THEME_TC) ' + (fold ? 'sends ' + fold[0] + ' and ' + fold[1] + ' to the same ' + fold[2] : 'leaves ' + still + ' as it is') + ', so a change between them, or one that drops the theme, prints byte for byte.'); bad++; }
+    else out.push('ok  the colour theme the gate hands both builders sends each of ' + ins.size + ' colours (every one the games write, and each one step away in one channel) to a colour of its own, never to itself');
+  }
+  /* which commit CI compares with, every branch, with git stubbed: no network, no clone needed */
+  {
+    const SHA = 'a'.repeat(40), GONE = 'b'.repeat(40), stub = sha => sha === SHA;
+    const planCases = [
+      ['a pull request into main', { EVENT: 'pull_request', BASE_REF: 'main' }, p => p.base === 'origin/main'],
+      ['a pull request with no BASE_REF', { EVENT: 'pull_request', BASE_REF: '' }, p => p.fail && /BASE_REF is empty/.test(p.fail)],
+      ['a pull request whose BASE_REF would be read as an option', { EVENT: 'pull_request', BASE_REF: '--output=x' }, p => p.fail && /not a branch name/.test(p.fail)],
+      ['a push whose BEFORE git has', { EVENT: 'push', BEFORE: SHA }, p => p.base === SHA],
+      ['a push whose BEFORE git does not have (a force-push)', { EVENT: 'push', BEFORE: GONE }, p => p.none && /not in this clone/.test(p.none)],
+      ['a push whose BEFORE is all zeros (the first push)', { EVENT: 'push', BEFORE: '0'.repeat(40) }, p => p.none && /all zeros/.test(p.none)],
+      ['a push with no BEFORE', { EVENT: 'push', BEFORE: '' }, p => p.none && /empty/.test(p.none)],
+      ['a push whose BEFORE is not a commit', { EVENT: 'push', BEFORE: '-x' }, p => p.fail && /not a commit/.test(p.fail)],
+      ['no EVENT at all', { BASE_REF: 'main' }, p => p.fail && /EVENT is empty/.test(p.fail)],
+      ['a run by hand (workflow_dispatch)', { EVENT: 'workflow_dispatch' }, p => p.none && /no base of its own/.test(p.none)],
+    ];
+    for (const [name, env, ok] of planCases) {
+      const pl = ciPlan(env, stub), said = pl.base ? 'compare with ' + pl.base : pl.none ? 'nothing to compare: ' + pl.none : 'FAIL: ' + pl.fail;
+      if (ok(pl)) out.push('ok  --ci — ' + name + ' → ' + (said.length > 160 ? said.slice(0, 157) + '...' : said));
+      else { out.push('FAIL — --ci on ' + name + ' decided: ' + said); bad++; }
+    }
+  }
+  /* CI runs this file: the real ci.yml must pass, and each way of weakening the step must not */
   {
     let yml = null; try { yml = read(CI); } catch (e) { /* said below */ }
     const real = ciRuns(yml);
     if (real.length) { out.push('FAIL — ' + real[0]); bad++; }
-    else out.push('ok  green — ' + CI + ' runs the self-test and the comparison in one unconditional step of the smoke job');
-    const drop = (line) => { const ls = (yml || '').split('\n'), kept = ls.filter(l => l.trim() !== line); if (kept.length === ls.length) throw new Error('the line `' + line + '` is not in ' + CI + ', so the plant tests nothing'); return kept.join('\n'); };
+    else out.push('ok  green — ' + CI + ' runs the self-test and then --ci in one unconditional step of the smoke job, and nothing else in it');
+    const Y = yml || '';
+    const drop = (line) => { const ls = Y.split('\n'), kept = ls.filter(l => l.trim() !== line); if (kept.length === ls.length) throw new Error('the line `' + line + '` is not in ' + CI + ', so the plant tests nothing'); return kept.join('\n'); };
+    const RUN = '        run: |\n          node test/prims.js --selftest\n          node test/prims.js --ci\n';
     const ciCases = [
-      ['the self-test line deleted from ci.yml', () => drop(SELF_LINE), /no longer runs `node test\/prims\.js --selftest`/],
-      ['the comparison line deleted from ci.yml', () => drop(COMPARE_LINE), /no longer runs `node test\/prims\.js "origin\/\$BASE_REF"`/],
-      ['the step made conditional', () => plant(yml || '', '        run: |\n          node test/prims.js --selftest', '        if: false\n        run: |\n          node test/prims.js --selftest', CI), /only in a step with an `if:`/],
+      ['`set +e` added at the head of the run block', () => plant(Y, RUN, '        run: |\n          set +e\n          node test/prims.js --selftest\n          node test/prims.js --ci\n', CI), /turns off stopping at the first red \(`set \+e`\)/],
+      ['`|| true` after the self-test', () => plant(Y, RUN, '        run: |\n          node test/prims.js --selftest || true\n          node test/prims.js --ci\n', CI), /catches a red with `\|\|`/],
+      ['the self-test line deleted', () => drop(SELF_LINE), /must run exactly `node test\/prims\.js --selftest` and then `node test\/prims\.js --ci`/],
+      ['the --ci line deleted', () => drop(CI_LINE), /must run exactly .* it runs `node test\/prims\.js --selftest`\./],
+      ['the two lines swapped', () => plant(Y, RUN, '        run: |\n          node test/prims.js --ci\n          node test/prims.js --selftest\n', CI), /must run exactly/],
+      ['the old shell branch put back, with a one-character slip (pull-request)', () => plant(Y, RUN, '        run: |\n          node test/prims.js --selftest\n          if [ "$EVENT" = "pull-request" ]; then\n            node test/prims.js --ci\n          fi\n', CI), /must run exactly/],
+      ['the step made conditional', () => plant(Y, RUN, '        if: false\n' + RUN, CI), /only in a step with an `if:`/],
+      ['the step allowed to fail', () => plant(Y, RUN, '        continue-on-error: true\n' + RUN, CI), /`continue-on-error`/],
+      ['the step given a shell that does not stop at a red', () => plant(Y, RUN, '        shell: bash {0}\n' + RUN, CI), /names a `shell:` of its own/],
+      ['EVENT no longer handed to --ci', () => plant(Y, '          EVENT: ${{ github.event_name }}\n          BASE_REF: ${{ github.base_ref }}\n          BEFORE: ${{ github.event.before }}\n        run: |\n          node test/prims.js --selftest', '          EVENT: ${{ github.event_nam }}\n          BASE_REF: ${{ github.base_ref }}\n          BEFORE: ${{ github.event.before }}\n        run: |\n          node test/prims.js --selftest', CI), /no longer hands --ci `EVENT/],
     ];
     for (const [name, mk, want] of ciCases) {
       let f; try { f = ciRuns(mk()); } catch (e) { out.push('FAIL — ' + name + ': ' + e.message); bad++; continue; }
       const hit = f.find(x => want.test(x));
-      if (!hit) { out.push('FAIL — planted ' + name + ' and the check ' + (f.length ? 'went red for another reason: ' + f[0] : 'stayed green') + '.'); bad++; }
+      if (!hit) { out.push('FAIL — planted ' + name + ' in ci.yml and the check ' + (f.length ? 'went red for another reason: ' + f[0] : 'stayed green') + '.'); bad++; }
       else out.push('ok  red — ' + name + ': ' + (hit.length > 200 ? hit.slice(0, 197) + '...' : hit));
     }
   }
@@ -428,4 +554,4 @@ function selftest() {
 }
 
 if (require.main === module) process.exit(process.argv.includes('--selftest') ? selftest() : main(process.argv.slice(2)));
-module.exports = { gate, ciRuns, FLOOR };
+module.exports = { gate, ciRuns, ciPlan, FLOOR };

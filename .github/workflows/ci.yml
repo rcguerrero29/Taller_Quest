@@ -63,7 +63,9 @@ jobs:
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
       # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
       # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
-      # because a gate that cannot go red protects nothing, and both read this file: keep them in one step.
+      # because a gate that cannot go red protects nothing. Exactly these two lines and nothing else: which base
+      # to compare with is decided inside test/prims.js (--ci), where its self-test plants every branch, and
+      # test/prims.js reads this step and fails if it changes. Keep them in one step.
       - name: Every literal part the games draw still builds the same through the shape builder (and the shape gate's own red cases)
         env:
           EVENT: ${{ github.event_name }}
@@ -71,13 +73,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           node test/prims.js --selftest
-          if [ "$EVENT" = "pull_request" ]; then
-            node test/prims.js "origin/$BASE_REF"
-          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            node test/prims.js "$BEFORE"
-          else
-            echo "the first push (or one after a force-push) has no earlier commit to compare the shape builder against; its own red cases ran above"
-          fi
+          node test/prims.js --ci
       - name: Install Playwright + Chromium
         run: |
           npm install playwright@1.63.0

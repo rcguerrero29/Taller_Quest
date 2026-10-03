@@ -22,16 +22,17 @@
      kindsOf(code)              → the primitives a builder knows, read out of its code (box, and every
                                   s==="…" it tests for)
      partsOf(mesh, T3)          → a built mesh as plain bytes and numbers, ready to compare: its vertices,
-                                  and what it is drawn WITH (its material, whether T3.tintables holds it,
-                                  its tag), the same for each pane of glass hung on it
+                                  and what it is drawn WITH (its whole material as toJSON writes it, whether
+                                  T3.tintables holds it, its tag), the same for each pane of glass on it
 
    The builder is evaluated against a three.js in a node vm context. It may read THREE, T3.tintables, tc
    and t3Note from outside its boundary and nothing else; anything more and loading it says so in a
    sentence. tc is the player's colour theme (engine/engine.js, grep `const tc=`), and here it is THEME_TC:
-   the engine's own mix toward one fixed accent, the same on both sides, so a change that drops the theme
-   from a mesh changes its colours and is seen (the default theme's tc is the identity, and an identity
-   here would hide exactly that). The time-of-day wash is not tc: it is applied later to the materials in
-   T3.tintables, and partsOf reads whether each material is there. */
+   a fixed, ONE-TO-ONE stand-in, the same on both sides, so a change that drops the theme from a mesh
+   changes its colours and is seen (the default theme's tc is the identity, and an identity here would
+   hide exactly that), and a change of one step in one channel still comes out a different colour. The
+   time-of-day wash is not tc: it is applied later to the materials in T3.tintables, and partsOf reads
+   whether each material is there. */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -82,14 +83,17 @@ function threeContext(text, label) {
   return ctx;
 }
 
-/* ---- the colour theme a builder is handed: engine/engine.js's mixHex toward an accent, at the 0.16 a
-   light theme mixes at (grep `const tc=` there). The accent is forest's; any fixed one would do, as long
-   as it is not a channel swap or anything else that leaves #888888 grey, the colour most parts draw in. */
-const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-const rgb2hex = r => '#' + r.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-const mixHex = (h, t2, amt) => { const tr = hex2rgb(t2); return rgb2hex(hex2rgb(h).map((v, i) => v + (tr[i] - v) * amt)); };
-const THEME_ACCENT = '#2E7D4F';
-const THEME_TC = h => mixHex(h, THEME_ACCENT, 0.16);
+/* ---- the colour theme a builder is handed ----
+   It has to be ONE-TO-ONE, not just "not the identity". The first stand-in here was the engine's own mix
+   toward an accent (engine/engine.js's mixHex at 0.16), and a mix folds neighbours together: it sent
+   #888888 and #898888 to the same colour, and 122 of 765 one-step single-channel changes with them, so the
+   gate printed "byte for byte" over a default grey made one step redder (Beto, #316 recheck). Each channel
+   XORed with 0x5a: undone by itself, so no two colours land on one; #888888, the grey most parts draw in,
+   moves to #d2d2d2, so a mesh that drops the theme changes colour. Anything that is not #rrggbb (no colour
+   the games write) is handed on as it is, which keeps it one-to-one: a #rrggbb never comes out as text
+   that is not one. --selftest checks that it undoes itself on every colour the harvest holds. */
+const HEX6 = /^#[0-9a-fA-F]{6}$/;
+const THEME_TC = h => HEX6.test(h) ? '#' + (parseInt(h.slice(1), 16) ^ 0x5a5a5a).toString(16).padStart(6, '0') : h;
 
 /* ---- the load ---- */
 function loadBuilder(src, label, three, threeLabel) {
@@ -119,6 +123,9 @@ function loadBuilder(src, label, three, threeLabel) {
    An attribute the mesh does not carry is null, not a throw: a mesh with no normals is the builder's
    doing, and the sentence says so instead of blaming the builder for an error this file raised. */
 const bytes = a => Buffer.from(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
+/* the fields read straight off the material as well as out of its toJSON(), which leaves out a setting at
+   its default (vertexColors false is simply absent there): read here, a change to one of these is said as
+   "vertexColors true → false" and not "true → undefined" */
 const MATERIAL_FIELDS = ['type', 'vertexColors', 'transparent', 'opacity', 'depthWrite'];
 function partsOf(m, T3) {
   const attr = (g, k) => g && g.attributes && g.attributes[k] && g.attributes[k].array ? bytes(g.attributes[k].array) : null;
@@ -126,12 +133,21 @@ function partsOf(m, T3) {
     position: attr(g, 'position'), normal: attr(g, 'normal'), color: attr(g, 'color'),
     count: g && g.attributes && g.attributes.position ? g.attributes.position.count : null,
   });
-  /* the material as the fields that decide how it draws, and whether the time-of-day wash reaches it */
+  /* the WHOLE material, as three.js writes it out (toJSON, less the uuid and the metadata that differ on
+     every build), with the five fields above read straight off it, and whether the time-of-day wash
+     reaches it. A wireframe left on, an emissive glow, glass drawn double-sided or added instead of
+     blended: each is a setting toJSON keeps, so each is a red (Melo and Beto, #316 recheck).
+     ONE CAVEAT, so nobody reads a red on `color` for more than it is: the time-of-day wash copies its own
+     colour onto every material in T3.tintables on every frame (engine/engine3d.js, grep
+     `T3.tintables.forEach`), so on a tinted material a change to `color` ALONE may be one no player sees.
+     It is still reported, because whether the wash runs after every build is not something this reads. */
   const drawn = mat => {
     if (!mat) return null;
-    const o = {}; MATERIAL_FIELDS.forEach(k => { o[k] = mat[k]; });
-    o.tinted = !!(T3 && T3.tintables && T3.tintables.includes(mat));
-    return o;
+    let j;
+    try { j = mat.toJSON(); delete j.uuid; delete j.metadata; }
+    catch (e) { j = { toJSON: 'a material three.js cannot write out: ' + String(e.message || e).slice(0, 80) }; }
+    MATERIAL_FIELDS.forEach(k => { j[k] = mat[k]; });
+    return { json: JSON.stringify(j), tinted: !!(T3 && T3.tintables && T3.tintables.includes(mat)) };
   };
   const tag = u => { try { return JSON.stringify(u); } catch (e) { return 'a tag that cannot be written out: ' + e.message; } };
   return {
