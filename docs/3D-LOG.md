@@ -623,3 +623,50 @@ new polygonal update for all these and what we or you learned from marigolds?").
   (16.7 ms): on this instrument, run to run, 14.8 to 16.0 year-round and 17.3 in season are one reading;
   camera stops other than the first; the town. *Still open* 4, the named baseline, is half done: the
   numbers are named, the frames are not looked at.
+
+### 2026-10-03 · the agility course: a winged hurdle, a full tunnel, six weave poles — and the dog goes over, through and between
+
+- **The ask.** Owner, 2026-09-29: *"please also fix the dog agility course too - shape and beautify please"*; and
+  2026-10-03: *"please place it but most importantly you had previously provided full tunnel - should also work for
+  the pets to go through but i cant fit in it"*. The plan it was built to: real gear as shared library shapes, each
+  piece turned to the line the dog runs (keeping the one straight run the map already lays), the dog hops the bar,
+  goes through the tunnel and weaves the poles, and Meridian takes the three shapes.
+- **What it was.** Three billboards that turned with the camera (`engine3d.js`, the walkable-cutout branch), a dog that
+  ran the course on the ground — along the bar, over a picture of an arch, straight past the poles — and, in the iso
+  camera, nothing at all: gear is walkable, so the block pass skipped it, and it has no side drawing, so the standing
+  pass did too.
+- **What it is.** `engine/shapes.js`: `hurdle`, `tunnel`, `weavePoles`, bound to `3 4 5` in `SHAPEBIND` and taken by
+  name in Meridian's `SHAPETAKE="345"`. Each is turned by `gearLine` (engine.js), the same answer the dog runs by.
+  The hurdle: feet, a framed wing of three boards each side **splayed 45° back toward the run-up**, a red upright with
+  a cup, a bar taped in five at 0.30. The tunnel: ten staves round an **open bore** with a near-black lining (a
+  capped cylinder is a drum), value painted in (sky-facing staves paler, belly darker), eight raised ribs, a hoop at
+  each mouth, four sandbags lying along its foot, each at its own small angle (the only hand in the course). 0.46
+  tall: a dog fits, a person (0.92) does not. The poles: **six** on a steel rail with feet, a socket each, tape at
+  the top red and blue by turns — `GEARWEAVE` is the one set of numbers the shape and the dog's weave both read.
+  The dog: a run-up before each piece, walked round the piece; the hop is the pigeon's arc (`hopArc`, 14 px over a
+  0.30 bar, shadow left on the ground); hidden inside the tube; a sway across the line through the poles, first pole
+  at his left shoulder; one step out of the last piece. In 3D an animal on the tunnel or the poles is not pulled
+  toward the camera (`t3GearPull`), so the tube hides him and the poles stand in front of him by turns; on the hurdle
+  the pull stays, so he draws in front of the near wing — see below. In iso the gear stands as its own picture.
+- **The mock, before any of it was written** (Meridian's park, the real game, the shapes injected; yaw 0 and π/2,
+  street size and a 3× crop). Wings flat in the bar's plane: from the camera that looks along the bar the hurdle was
+  two red sticks. Bags as round lumps at the tube's foot: a blue cart on wheels; saddle bags on straps: a hand cart.
+  Six poles, not five: real sets are six or twelve, and with an even count the middle of the tile — where a run
+  pauses a frame at every piece — is a gap he crosses the line in, not a pole he would stand inside.
+- **What does not read, plainly.** The hurdle seen along its bar (yaw 0) is a stand with mass, not obviously a jump,
+  until the dog goes over it. The weave poles seen down their own line (yaw π/2) stand one behind another and read
+  as one striped post; the dog stepping left and right is what reads there. At the very mouth of the tunnel, side-on,
+  for the frame his centre crosses it, two or three pixels of his crown show over the tube's top. And the 2D drawings
+  are unchanged but for the poles, now six; the front camera still lays the gear's drawing flat on the floor.
+- **The choice that went the other way.** With the camera pull taken off on the hurdle too, he was physically right —
+  between the uprights — and the near upright and its wing cut through his body: a dog behind a red panel. The pull
+  stays on the hurdle; at the top of his hop he is drawn in front of and over it, which is what a person reads.
+- **Cost.** The park in 3D: 172,234 → 176,142 triangles (+3,908 for the three pieces), draw calls 89 → 89.
+- **Guards.** `test/engine.smoke.js`, grep `THE PARK'S GEAR IS GEAR` and `pets-only`: red first on mq-v231, then
+  fifteen plants each red in its own sentence (Meridian taking no shapes; no hop; a hop under the bar; the dog drawn
+  in the tube; a capped tube; an arch open overhead; no weave; the hurdle turned along the line; no run-up; the run-up
+  walked over the hurdle; the player ignoring the pets-only seam; the seam shutting animals out too; a declaration
+  that cuts the park; no step out of the last piece; iso not drawing the gear). Setting off from two tiles north of
+  the hurdle found a real fault the dog's own spot never shows: the shortest way to the run-up went over the hurdle.
+- **Not done.** No pack declares `PETPASS`; Meridian's tunnel stays walkable for the player until its owner decides.
+  No phone measured.

@@ -152,6 +152,12 @@ from the glyph literals of L5.
 > piece off the course**, and trimming this entry's list would take Meridian's dog off its own. Six
 > inert kinds remain. Held by `test/engine.smoke.js` (grep `A PARK DOG RUNS THE COURSE`) and
 > `test/smoke.js` (grep `out.agility`).
+>
+> **2026-10-03 (mq-v232): and the order is a LINE now.** The same reading of the map decides which way each
+> piece is turned and which way the dog takes it (`gearLine`): from the piece before to the piece after, on the
+> stronger axis. Which piece is which is `GEARROLE` (engine.js), the engine reading its own three letters; a gear
+> letter a pack invents is run straight across, as every piece was before. Held by `test/engine.smoke.js` (grep
+> `THE PARK'S GEAR IS GEAR`).
 
 ### L8 · `bridge` and `water` are one specific bridge and one specific river
 `engine.js:1004–1011`, `1242–1255`, `engine3d.js:334–368` — the geometry is the rainbow bridge, and a

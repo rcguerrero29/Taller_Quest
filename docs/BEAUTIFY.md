@@ -56,7 +56,7 @@ canopy, freestanding box, floor paint — and everything else falls through to a
 | **F fences** | site hoarding, st and ex | disconnected panels at different heights, some crossing at 90° in mid-air | one continuous hoarding | **engine** | `engine3d.js:415–431` |
 | **the bridge** | the park canal | a stack of striped beach towels, split down the middle, touching neither bank | a bridge | **engine** | `engine3d.js:334–368` |
 | **Y ×2** | trolley stop | walkable cutout (`engine3d.js:293`) | pole billboard + a real bench box | **engine** | see below |
-| **3 4 5** | agility gear | walkable cutouts | hurdle and poles fine; the tunnel wants an arch | **engine**, low value | — |
+| **3 4 5** | agility gear | walkable cutouts that turned with the camera; the dog ran along the bar; not drawn in iso at all | ~~hurdle and poles fine; the tunnel wants an arch~~ **done 2026-10-03 (mq-v232): engine shapes `hurdle` `tunnel` `weavePoles`, turned to the course's line, taken by Meridian's `SHAPETAKE`; the dog hops the bar, goes through a full tube, weaves six poles; iso stands the drawings. docs/3D-LOG.md, the entry of that date** | **engine** | the three shapes, the dog's pose on a piece |
 
 ### Correctly flat — do NOT "fix" these
 

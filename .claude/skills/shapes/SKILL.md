@@ -49,8 +49,9 @@ nobody decided people cannot walk through it, the drawing needed a box.
 
 `engine/shapes.js` holds the engine's own shapes, **named by what they are** rather than by a
 letter: `plant · tree · desk · table · crate · shelving · fridge · stove · counter ·
-draftingTable · picketFence · wellRail · doghouse`. `SHAPEBIND` in the same file says which letters
-this engine reads them as (`P J D T H S W V K A F ◺ 9`).
+draftingTable · picketFence · wellRail · doghouse · hurdle · tunnel · weavePoles`. `SHAPEBIND` in the same file says which letters
+this engine reads them as (`P J D T H S W V K A F ◺ 9 3 4 5`). The last three are turned by the line the
+park dog runs, not by `facing` (mq-v232).
 
 **THE RULE, and it is the one thing to carry out of this step: an engine default may only fill a
 hole. It never replaces a drawing, and it is never assumed — it is TAKEN.** A pack names the

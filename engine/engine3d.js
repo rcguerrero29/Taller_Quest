@@ -1173,6 +1173,19 @@ function t3ReadFace(w,x,y){
     if(ny<0||ny>=w.H||nx<0||nx>=w.W||SOLID.has(w.grid[ny][nx]))continue;
     return {ox:dx*0.66,oz:dy*0.66,h:Math.max(0.3,wh*0.6)};}
   return null;}
+/* AN ANIMAL IN THE TUNNEL OR THE WEAVE POLES STANDS WHERE HE IS (mq-v232). Every billboard is pulled 0.34 toward the
+   camera so a head does not sink into the wall behind it (t3Actors, below). In those two pieces there is no wall, and the
+   pull stood the dog outside the tube he was in and in front of every pole he wove, whichever way the camera faced. So
+   it eases out over the tile before and is gone on the piece: 0 there, 1 a tile and a half away and everywhere a world
+   lays no such piece — where it is exactly the pull it was. THE HURDLE KEEPS IT, on purpose: rendered both ways at both
+   quarter turns (2026-10-03), with no pull he stood truly between the uprights and the near one and its wing cut through
+   his body — a dog behind a red panel; pulled, at the top of his hop he is drawn over it, which is what a person reads. */
+function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
+  const cx=Math.round(cr.fx),cy=Math.round(cr.fy);
+  for(let y=cy-2;y<=cy+2;y++)for(let x=cx-2;x<=cx+2;x++){const g=w.rows[y]&&w.rows[y][x];
+    if(!g||(TILES[g]||{}).kind!=="gear"||!GEARROLE[g]||GEARROLE[g]==="hurdle")continue;
+    k=Math.min(k,Math.max(0,Math.min(1,Math.max(Math.abs(cr.fx-x),Math.abs(cr.fy-y))-0.5)));}
+  return k;}
 function t3Actors(){
   const list=[];
   const w=CW();
@@ -1193,7 +1206,7 @@ function t3Actors(){
   if(world===AW("pig"))list.push({x:PIG.fx,y:PIG.fy,fc:PIG,f:g=>drawPigeon(g,2,6)});
   if(world===AW("loro"))list.push({x:LORO.x,y:LORO.y,f:g=>drawLoro(g,2,6)});
   CRIT.forEach(cr=>{if(cr.world!==world)return;
-    list.push({x:cr.fx,y:cr.fy,fc:cr,f:g=>{
+    list.push({x:cr.fx,y:cr.fy,fc:cr,pull:t3GearPull(cr),f:g=>{
       if(cr.kind==="butterfly")drawButterfly(g,cr,2,6);
       else if(cr.kind==="colibri")drawColibri(g,cr,2,6);
       else if(cr.kind==="gato")drawGato(g,cr,2,6);
@@ -1258,7 +1271,8 @@ function t3Actors(){
     const ddx=T3.cam.position.x-ax,ddz=T3.cam.position.z-az,dl=Math.hypot(ddx,ddz)||1;
     const lift=stairLift(CW(),Math.round(a.x),Math.round(a.y)); /* on a climbing tread you stand that much higher (#62) */
     if(a.fixed)p.spr.position.set(ax+(a.ox||0),(a.h||0)+lift,az+(a.oz||0)); /* pinned to a wall: stays put (#45) */
-    else p.spr.position.set(ax+ddx/dl*0.34,(a.h||0)+lift,az+ddz/dl*0.34);
+    else{const k=a.pull===undefined?1:a.pull;       /* 1 for everyone but an animal on the agility gear (t3GearPull) */
+      p.spr.position.set(ax+ddx/dl*0.34*k,(a.h||0)+lift,az+ddz/dl*0.34*k);}
     p.spr.userData.mark=a.mark||"";
     const cs=a.sign?T3SIGN:T3PERSON;
     p.spr.scale.set(36/32*cs,48/32*cs,1);

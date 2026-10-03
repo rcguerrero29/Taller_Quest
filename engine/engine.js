@@ -117,6 +117,18 @@ const TS=32;
 const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J","⊓","◺"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4) */
 /* the content seam: a pack adds its own solid glyphs and declares which are doors */
 (typeof SOLIDX!=="undefined"?SOLIDX:"").split("").forEach(c=>SOLID.add(c));
+/* PETS THROUGH, PEOPLE NOT — the second content seam on walking (owner, 2026-10-03: "should also work for the
+   pets to go through but i cant fit in it"). A pack names, in one string, the letters an animal passes and a
+   person does not: `const PETPASS="4";` in its maps.js makes the agility tunnel a tube the dog runs through and
+   nobody can walk into. SOLID stays the one set every ANIMAL asks (dogFree, catFree, pigFree, critFree,
+   bfsStep, dogReach), so to them the tile is open; every place that decides where a PERSON may stand asks
+   `shutToPeople` instead — the player's step (isSolid), a neighbour's wander and the corridors it may not cut,
+   the reach audits, the step a door or a water bowl or a chat sets somebody down on, a trolley stop. OFF BY
+   DEFAULT: with no PETPASS this set is empty and every one of those answers is SOLID's, unchanged, so a world
+   that says nothing walks exactly as it did. test/engine.smoke.js (grep `pets-only`) declares it on a page of its
+   own and asks that the player cannot step in, the dog still goes through, and nobody loses a tile. */
+const PETWAY=new Set((typeof PETPASS==="string"?PETPASS:"").split(""));
+const shutToPeople=g=>SOLID.has(g)||PETWAY.has(g);
 const DOORSET=new Set((typeof DOORS!=="undefined"?DOORS:"+ELO").split(""));
 let world=PL.home;
 const WORLDS={};
@@ -145,7 +157,7 @@ function portalAt(id,x,y){const A=PORTALSAT[id];if(A&&A[x+","+y])return A[x+","+
 function portalsOf(id){const w=WORLDS[id],out=[];if(!w)return out;const P=PORTALS[id]||{},A=PORTALSAT[id]||{};
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){const ch=w.rows[y][x];const p=A[x+","+y]||P[ch];if(p)out.push({x,y,ch,p});}
   return out;}
-const isSolid=(x,y)=>{const w=CW();return x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N";};
+const isSolid=(x,y)=>{const w=CW();return x<0||y<0||x>=w.W||y>=w.H||shutToPeople(w.grid[y][x])||w.grid[y][x]==="N";}; /* where the PLAYER may step: a pets-only tile is shut to him (PETPASS) */
 /* the same question about a world you are not standing in — used by the discoverability audit */
 const isSolidAt=(id,x,y)=>{const w=WORLDS[id];return !w||x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N";};
 const glyphAt=(id,x,y)=>{const w=WORLDS[id];return (w&&w.rows[y]&&w.rows[y][x])||null;}; /* the glyph a tile is made of — what its art and its TILES row are looked up by. Decor that is painted ON a wall needs it (a mural has to know the wall has windows in it). */
@@ -192,7 +204,7 @@ function wanderInit(){Object.values(WORLDS).forEach(w=>w.npcs.forEach(n=>{
 function wanderCuts(id){
   const w=WORLDS[id];if(!w)return null;
   if(w._cuts)return w._cuts;
-  const ok=(x,y)=>x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x]);
+  const ok=(x,y)=>x>=0&&y>=0&&x<w.W&&y<w.H&&!shutToPeople(w.grid[y][x]);
   const all=[];for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if(ok(x,y))all.push([x,y]);
   const reach=(bx,by)=>{const st=all.find(([x,y])=>!(x===bx&&y===by));
     if(!st)return 0;const seen=new Set([st[0]+","+st[1]]),q=[st];
@@ -226,7 +238,7 @@ function wanderUpdate(dt){
     if(!wanders(n)||now<n.wnext)return;
     if(Math.abs(n.x-px)+Math.abs(n.y-py)<=1){n.wnext=now+1500;return;}
     const opts=[[1,0],[-1,0],[0,1],[0,-1]].map(d=>[n.x+d[0],n.y+d[1]]).filter(([x,y])=>
-      x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N"
+      x>=0&&y>=0&&x<w.W&&y<w.H&&!shutToPeople(w.grid[y][x])&&w.grid[y][x]!=="N"
       &&!DOORSET.has(w.rows[y][x])
       /* ...and not into the path of a tram. The owner, 2026-09-11: "lets make the road wider and
          RARELY have characters interrupt the tram." Rarely, not never — somebody already standing on
@@ -252,7 +264,7 @@ function auditWander(){const bad=[];
   Object.entries(WORLDS).forEach(([id,w])=>w.npcs.forEach(n=>{
     if(!wanders(n))return;
     const ok=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const x=n.x+dx,y=n.y+dy;
-      return x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N";});
+      return x>=0&&y>=0&&x<w.W&&y<w.H&&!shutToPeople(w.grid[y][x])&&w.grid[y][x]!=="N";});
     if(!ok)bad.push(id+":"+(n.npc||n.key)+"@"+n.x+","+n.y);}));
   return bad;}
 /* ---------- chill townsfolk ----------
@@ -301,7 +313,7 @@ function addChill(c){ /* {name:{en,es},world,x,y,look} → chat NPC; returns key
   const w=WORLDS[c.world];if(!w)return null;
   const x=c.x|0,y=c.y|0;
   if(x<0||y<0||x>=w.W||y>=w.H)return null; /* edge tiles are fine — worlds like ex have no wall border */
-  if(SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")return null;
+  if(shutToPeople(w.grid[y][x])||w.grid[y][x]==="N")return null;
   const key="~c"+(chillSeq++);
   CHILLN[key]={en:c.name.en,es:c.name.es};
   NPCLOOK[key]=c.look;
@@ -383,7 +395,7 @@ const chillLines=k=>{
     const w=WORLDS[p.to];
     if(!w){mqwarn("portal",from+":"+ch+" → missing world "+p.to,true);return;}
     const t=w.rows[p.y]&&w.rows[p.y][p.x];
-    if(t===undefined||SOLID.has(t)||w.grid[p.y][p.x]==="N")mqwarn("portal",from+":"+ch+" spawn blocked at "+p.to+" ("+p.x+","+p.y+")",true);
+    if(t===undefined||shutToPeople(t)||w.grid[p.y][p.x]==="N")mqwarn("portal",from+":"+ch+" spawn blocked at "+p.to+" ("+p.x+","+p.y+")",true);
     if(portalAt(p.to,p.x,p.y))mqwarn("portal",from+":"+ch+" spawns ON a portal tile — ping-pong risk",true);
   }));
 })();
@@ -445,7 +457,7 @@ function troAudit(){const out=[],lines=(typeof TROLLEYAT!=="undefined"&&TROLLEYA
                " — it is longer than its own line, so it can never stand clear of either end and the run never finishes");
     troStops(L).forEach(function(s){const g=w.grid[s.y]&&w.grid[s.y][s.x];
       if(g===undefined){out.push("the trolley stop in "+at(s)+" is off the edge of the map");return;}
-      if(SOLID.has(g)||g==="N")out.push("the trolley stop in "+at(s)+" is inside something — nobody can stand at it");
+      if(shutToPeople(g)||g==="N")out.push("the trolley stop in "+at(s)+" is inside something — nobody can stand at it");
       if(s.y===L.row)out.push("the trolley stop in "+at(s)+" stands on the trolley's own rails — the pass opens under the tram, and the tram brakes for whoever opened it");
       else if(Math.abs(s.y-L.row)>1||s.x<a-1||s.x>b+1)out.push("the trolley stop in "+at(s)+" is out of reach of the line it serves — nobody can tell what it is");
       if(s.x<a||s.x>b)out.push("the trolley stop in "+at(s)+" is past the end of the run its own line declares ("+a+" to "+b+")");});});
@@ -469,7 +481,7 @@ function auditReach(grown){
      be there in four seconds; somebody `still` is not, because they never move and the map really
      does have to work around them. */
   const walk=(id,x,y)=>{const w=WORLDS[id];
-    if(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x]))return false;
+    if(x<0||y<0||x>=w.W||y>=w.H||shutToPeople(w.grid[y][x]))return false;
     if(w.grid[y][x]!=="N")return true;
     const n=whoAt(id,x,y);return !!n&&wanders(n);};
   /* seed EVERY declared arrival, not just the spawn. The park has no portal — the leash carries you
@@ -1035,8 +1047,13 @@ function drawIso(){
      isoBlock paints flat faces and a diamond top, never the art, so routing them THERE turns a
      trolley stop into a coloured slab (tried it, 2026-09-04). They billboard their profile
      instead, exactly like an actor, between the blocks at this depth and the people. */
+  /* AND THE AGILITY GEAR, which this pass never drew at all (mq-v232): it is `stand` with no side drawing, so
+     `standsUp` turned it away, the block pass above skips anything walkable, and the floor pass has no case for it —
+     in this camera Meridian's park had no course. Its own drawing is already a picture of the thing standing (two
+     posts and a bar, an arch, the poles), so it stands here as that picture, the way the trolley stop does. Only a
+     `gear` tile takes this door; every other tile meets the same test it always met. */
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
-    const g=w.rows[y][x];if(!standsUp(g))continue;
+    const g=w.rows[y][x];if(!standsUp(g)&&!(stands(g)&&(TILES[g]||{}).kind==="gear"))continue;
     const[cx,cy]=P(x,y);
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-40||cy>VH+ISH+40)continue;
     const tf=sideArt(g);if(!tf)continue;
@@ -2061,10 +2078,13 @@ TILEDRAW["4"]=rc=>{const{sx,sy}=rc; /* agility tunnel: a friendly arch */
       ctx.fillStyle="#2E5FA8";ctx.beginPath();ctx.arc(sx+16,sy+26,12,Math.PI,0);ctx.fill();
       ctx.fillStyle="#1F4278";ctx.beginPath();ctx.arc(sx+16,sy+26,7.5,Math.PI,0);ctx.fill();
       ctx.fillStyle="#141220";ctx.beginPath();ctx.arc(sx+16,sy+26,6,Math.PI,0);ctx.fill();};
-TILEDRAW["5"]=rc=>{const{sx,sy}=rc; /* weave poles */
-      ["#C0392B","#F2E8D8","#2E5FA8","#F2E8D8","#C0392B"].forEach((cc,i)=>{
-        ctx.fillStyle=cc;ctx.fillRect(sx+4+i*6,sy+10,2.6,18);
-        ctx.fillStyle="#8A6F4D";ctx.fillRect(sx+3+i*6,sy+26,4.6,2);});};
+TILEDRAW["5"]=rc=>{const{sx,sy}=rc; /* weave poles: SIX on a steel base rail, each with its tape at the top — the
+      3D set's count and colours (GEARWEAVE, and SHAPES.weavePoles in engine/shapes.js), so the flat cameras and the 3D
+      camera count the same poles. It was five here until mq-v232; six is what the mock chose, and why is at GEARWEAVE. */
+      ctx.fillStyle="#7A7F88";ctx.fillRect(sx+2,sy+26,28,2.2);
+      for(let i=0;i<6;i++){const x=sx+3.5+i*5;
+        ctx.fillStyle="#F2E8D8";ctx.fillRect(x,sy+10,2.6,16.5);
+        ctx.fillStyle=i%2?"#2E5FA8":"#C0392B";ctx.fillRect(x,sy+10,2.6,4);}};
 TILEDRAW["9"]=rc=>{const{sx,sy}=rc; /* the doghouse: red roof, dark door, a bone over the arch */
       ctx.fillStyle="#8A6F4D";ctx.fillRect(sx+4,sy+12,TS-8,TS-14);
       ctx.fillStyle="#C0392B";ctx.beginPath();ctx.moveTo(sx+2,sy+13);ctx.lineTo(sx+16,sy+3);ctx.lineTo(sx+30,sy+13);ctx.closePath();ctx.fill();
@@ -3043,7 +3063,7 @@ function pigUpdate(dt,now){
   if(PIG.lift){const k=(PIG.lift.t+=dt)/PIGLIFT;
     if(k>=1){PIG.y=PIG.lift.toY;PIG.x=Math.max(0,Math.round(PIG.lift.fromX+PIG.lift.drift));
       PIG.fx=PIG.x;PIG.fy=PIG.y;PIG.hop=0;PIG.lift=null;return;}
-    PIG.hop=20*Math.sin(Math.PI*k);                       /* the height is the tell */
+    PIG.hop=hopArc(k,20);                                 /* the height is the tell (the dog's hop over a bar is this arc too) */
     PIG.fy=PIG.lift.fromY+(PIG.lift.toY-PIG.lift.fromY)*k;
     PIG.fx=PIG.lift.fromX+PIG.lift.drift*k;return;}
   pigFlee(now);
@@ -3136,7 +3156,9 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(!cr.moving&&critShy(cr,now))return;   /* the road first: a critter does not wait its turn to live */
   if(cr.moving){cr.mt+=dt/(cr.kind==="gato"?520:cr.kind==="butterfly"?300:160);
     if(cr.mt>=1){cr.moving=false;cr.fx=cr.x;cr.fy=cr.y;}
-    else{cr.fx=cr.x-cr.dx*(1-cr.mt);cr.fy=cr.y-cr.dy*(1-cr.mt);}return;}
+    else{cr.fx=cr.x-cr.dx*(1-cr.mt);cr.fy=cr.y-cr.dy*(1-cr.mt);}
+    gearSway(cr);                        /* through the weave poles on a run, the side he passes each one; nothing anywhere else */
+    return;}
   if(cr.task){const tk=cr.task;
     if(world===cr.world)dogStep(cr,now);
     else{cr.task=null;if(BALL&&BALL.dog===cr)BALL=null;}
@@ -3335,8 +3357,26 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   if(tk.type==="run"){ /* the agility course, taken at full commitment */
     const wp=tk.wp[tk.i];
-    if(!wp){cr.task=null;cr.happyT=now+2200;return;}
+    /* through the last piece and out of it, one step along its line: a dog does not stop on a bar, inside a
+       tube or halfway down the poles. Where that step is shut, he finishes on the piece, as he always did. */
+    if(!wp){const out=!tk.out&&gearSide(cr.world,tk.wp,tk.wp.length-1,1);
+      if(out&&!(cr.x===out[0]&&cr.y===out[1])&&dogWalk(cr,out[0],out[1])){tk.out=true;return;}
+      cr.task=null;cr.happyT=now+2200;return;}
     if(cr.x===wp[0]&&cr.y===wp[1]){tk.i++;return;}
+    /* EACH PIECE TAKEN ALONG ITS LINE: first the tile before it, its run-up, then through it. Without this the
+       shortest way in decides how he meets it, and from two tiles north or south of Meridian's hurdle that is
+       down its bar from one end. The list he is sent round (tk.wp) is the course and nothing else; the run-up is
+       not on it. */
+    if(tk.up!==tk.i){const up=gearSide(cr.world,tk.wp,tk.i,-1);
+      if(!up||(cr.x===up[0]&&cr.y===up[1]))tk.up=tk.i;
+      else{
+        /* ...going ROUND the piece to get there: the shortest way to a hurdle's run-up from beside it is over the
+           hurdle, and standing on it is reaching it — so from two tiles north of Meridian's hurdle he still took it
+           down its bar (found by the guard, setting off from there). For this one step the piece is a wall. */
+        const w=WORLDS[cr.world],g0=w.grid[wp[1]][wp[0]];let went=false;
+        w.grid[wp[1]][wp[0]]="#";try{went=dogWalk(cr,up[0],up[1]);}finally{w.grid[wp[1]][wp[0]]=g0;}
+        if(went)return;
+        tk.up=tk.i;}}                                     /* no way round to the run-up: straight at it, as before */
     if(!dogWalk(cr,wp[0],wp[1]))cr.task=null;
     return;}
   if(tk.type==="stick"){ /* his own stick: run it down, then carry it home, very pleased with himself */
@@ -3467,6 +3507,64 @@ function dogUnstick(cr,now){
 function agilityCourse(wid){const w=WORLDS[wid],wp=[];if(!w)return wp;
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if((TILES[w.rows[y][x]]||{}).kind==="gear")wp.push([x,y]);
   return wp;}
+/* ---------- THE COURSE AS A LINE, and what a dog does on each piece of it (mq-v232) ----------
+   Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". Until now the
+   pieces were pictures that turned with the camera and the dog ran the course along the ground — along the
+   hurdle's bar, over a picture of an arch, past the poles. The plan it was built to: each piece TURNED TO THE
+   LINE the dog runs (the hurdle's bar across it, the tunnel's bore and the row of poles along it), keeping the
+   one straight run the map already lays; the dog hops the bar, goes through the tunnel, weaves the poles.
+   GEARROLE is the engine reading its own three gear letters, in the open like SHAPEBIND: which is the jump,
+   which the tube, which the poles. A gear letter a pack invents gets the course and the line and none of these
+   motions — a piece the engine does not know is run straight across, as every piece was before. */
+const GEARROLE={"3":"hurdle","4":"tunnel","5":"weave"};
+/* THE LINE THROUGH PIECE i: from the piece before it to the piece after it, on the stronger axis — quarter turns
+   only, because that is all the camera rests on. A course of one piece runs east-west. The shapes turn by this
+   (engine/shapes.js, grep `runTurn`) and the dog takes each piece by it, so the two cannot disagree. */
+const gearLineOf=(wp,i)=>{const a=wp[i-1]||wp[i],b=wp[i+1]||wp[i];if(!a||!b)return [1,0];
+  const dx=b[0]-a[0],dy=b[1]-a[1];if(!dx&&!dy)return [1,0];
+  return Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];};
+function gearLine(wid,x,y){if(wid==null)wid=world;   /* null: the world you are in, which is the one the 3D camera builds */
+  const wp=agilityCourse(wid);return gearLineOf(wp,wp.findIndex(p=>p[0]===x&&p[1]===y));}
+/* the tile beside piece i along its line: s=-1 its run-up, s=+1 the far side he comes out on. Null where a dog
+   cannot stand — off the map, a solid, somebody standing there, a door — and he then takes the piece as he can. */
+function gearSide(wid,wp,i,s){const w=WORLDS[wid],p=wp[i];if(!w||!p)return null;
+  const L=gearLineOf(wp,i),x=p[0]+s*L[0],y=p[1]+s*L[1];
+  if(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N"||portalAt(wid,x,y))return null;
+  return [x,y];}
+/* THE WEAVE, one set of numbers in two hands: the shape stands its poles by it and the dog weaves round them by it.
+   SIX POLES, decided in the mock (2026-10-03, Meridian's park rendered at both quarter turns): real sets are six or
+   twelve, and with an even count the middle of the tile — where a run pauses a frame at every piece — is a gap the
+   dog crosses the line in. With five, the middle is a pole, and he would stand inside it for that frame. */
+const GEARWEAVE={n:6,gap:0.16,sway:0.1};
+/* THE HOP IS THE PIGEON'S (pigUpdate: a sine arc, the height is the tell), at a dog's height and over one tile: up
+   from the run-up edge, the top over the bar, down to the landing edge. DOGHOP is px on his card — 0.40 of a tile at
+   T3PERSON 0.92, over a bar the hurdle carries at 0.30 (10.4 px at his size). The guard reads both from what ships:
+   his painter's feet and the built bar. */
+const hopArc=(k,top)=>top*Math.sin(Math.PI*k);
+const DOGHOP=14;
+/* WHERE A DOG IS ON A PIECE, AND WHAT IT DOES TO HIM — read by his painters (hop, hid) and by his step (side):
+     hid  — inside the tunnel's tube, along its line: it is shut overhead, so nothing of him is drawn until he
+            comes out of a mouth. True for any animal in there, on a run or not: a tube hides what is in it.
+     hop  — on a run, across a hurdle along its line: px he is lifted (the shadow stays on the ground).
+     side — on a run, through the weave poles: tiles off their line, the first pole at his left shoulder, then
+            the line crossed between every pair, the way a dog is taught to weave.
+   Off the course it answers nothing, so every animal anywhere else is drawn and stepped exactly as before. */
+function gearPose(cr){const P={hop:0,hid:false,side:0};
+  const w=WORLDS[cr.world];if(!w)return P;
+  const tx=Math.round(cr.fx),ty=Math.round(cr.fy),g=w.rows[ty]&&w.rows[ty][tx],role=GEARROLE[g];
+  if(!role||(TILES[g]||{}).kind!=="gear")return P;
+  const L=gearLine(cr.world,tx,ty),ox=cr.fx-tx,oy=cr.fy-ty,u=ox*L[0]+oy*L[1],v=-ox*L[1]+oy*L[0];
+  if(role==="tunnel"){P.hid=Math.abs(u)<0.47&&Math.abs(v)<0.25;return P;}
+  if(!cr.task||cr.task.type!=="run")return P;
+  if(role==="hurdle"){if(Math.abs(v)<0.02)P.hop=hopArc(u+0.5,DOGHOP);return P;}
+  const G=GEARWEAVE,p0=-(G.n-1)/2*G.gap,edge=-p0;
+  const env=Math.abs(u)<=edge?1:Math.max(0,Math.sin(Math.PI/2*(0.5-Math.abs(u))/(0.5-edge)));   /* eased in and out at the tile's edges */
+  P.side=G.sway*Math.cos(Math.PI*(u-p0)/G.gap)*env;
+  return P;}
+/* the weave's side step, laid onto where he is drawn: across the line, never along it, so where he IS (x,y) and
+   how far along he has come never move — only which side of a pole he passes */
+function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
+  const L=gearLine(cr.world,Math.round(cr.fx),Math.round(cr.fy));cr.fx+=-L[1]*s;cr.fy+=L[0]*s;}
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (canon) — it stays in the repertoire, barely. In the park:
   zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
@@ -3601,7 +3699,7 @@ function dogDoor(cr,now){ /* a restaurant he can reach: he goes and sings at its
   cr.task={type:"door",phase:"go",at:best.at,step:best.step,eat:best.eat};cr.sit=false;cr.layT=0;}
 function bowlVisit(cr,tk,now){ /* whoever the pack says works there steps out onto the step, with water */
   const e=tk.eat,w=WORLDS[cr.world],[x,y]=tk.step,who=eateryWorker(e);
-  if(!who||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N"||(cr.world===world&&x===px&&y===py)
+  if(!who||shutToPeople(w.grid[y][x])||w.grid[y][x]==="N"||(cr.world===world&&x===px&&y===py)
     ||CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y))return null;
   const key="~bowl"+(chillSeq++);
   w.npcs.push({key,npc:who.npc,x,y,fx:x,fy:y,hx:x,hy:y,q:[],still:true,mv:null,mt:0,wnext:0,face:Math.sign(cr.x-x)||1});
@@ -3717,11 +3815,13 @@ function drawColibri(g,cr,sx,sy){
   g.restore();
 }
 function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, floppy ears, working tail */
+  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
   const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:130))*(happy?3.4:2.4),lemon="#E8C46A",white="#F6F2E8";
   const dy=lay?3:0,hy=howl?-3:0;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,7,2.8,0,0,7);g.fill();
+  sy-=gp.hop;                                /* over the hurdle's bar he is in the air; his shadow is not */
   g.strokeStyle=lemon;g.lineWidth=2.4;g.lineCap="round"; /* the tail: lemon, always going (slower when resting) */
   const wg=lay?wag*0.4:wag,tex2=cx-10+wg,tey=sy+11+dy;
   g.beginPath();g.moveTo(cx-7,sy+19.5+dy);g.quadraticCurveTo(cx-11,sy+15+dy+wg*0.5,tex2,tey);g.stroke();
@@ -3789,11 +3889,13 @@ function dogOverlays(g,cr,cx,sy){ /* the shared feelings layer: note, hearts, lo
   g.textAlign="start";
 }
 function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
+  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel */
   const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:150))*(happy?3.2:2),co=cr.c||"#E0C070";
   const dk=shadeHex(co,-0.25),dy=lay?3:0,hy=howl?-3:0;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,8,3,0,0,7);g.fill();
+  sy-=gp.hop;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=3;g.lineCap="round"; /* thick otter tail */
   g.beginPath();g.moveTo(cx-8,sy+20+dy);g.quadraticCurveTo(cx-12,sy+17+dy+wag*0.4,cx-11+wag,sy+13+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-8.5,sy+15.5+dy,16,9.5,4);g.fill(); /* barrel body */
@@ -3817,11 +3919,13 @@ function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
   dogOverlays(g,cr,cx,sy);
 }
 function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opinion */
+  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel */
   const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?60:120))*(happy?2.6:1.8),co=cr.c||"#C9975C";
   const dk=shadeHex(co,-0.22),dy=lay?2:0,hy=howl?-2.5:0;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.13)";g.beginPath();g.ellipse(cx,sy+27,5.5,2.2,0,0,7);g.fill();
+  sy-=gp.hop;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=1.8;g.lineCap="round"; /* thin curled tail */
   g.beginPath();g.moveTo(cx-4.5,sy+21.5+dy);g.quadraticCurveTo(cx-7.5,sy+18.5+dy+wag*0.4,cx-6+wag*0.6,sy+16.5+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-4.5,sy+20+dy,9.5,5.5,2.6);g.fill(); /* small body */
@@ -7921,7 +8025,7 @@ function doorStep(id,g,rows,x,y){
   const DOORSIDES=[["down",0,1],["up",0,-1],["right",1,0],["left",-1,0]];
   const w=WORLDS[id];if(!w)return null;
   const A=PORTALSAT[id]||{},P=PORTALS[id]||{};
-  const stand=(a,b)=>{if(a<0||b<0||a>=w.W||b>=w.H||(a===x&&b===y)||SOLID.has(g[b][a]))return false;
+  const stand=(a,b)=>{if(a<0||b<0||a>=w.W||b>=w.H||(a===x&&b===y)||shutToPeople(g[b][a]))return false;
     return g[b][a]!=="N"||wanders(whoAt(id,a,b));};
   for(const [dir,dx,dy] of DOORSIDES){const sx=x+dx,sy=y+dy;
     if(!stand(sx,sy)||A[sx+","+sy]||P[rows[sy][sx]])continue;
@@ -7956,7 +8060,7 @@ function buildSafe(spec){
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
     if(!P[rows[y][x]]&&!A[x+","+y])continue;
     const ok=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const nx=x+dx,ny=y+dy;
-      return nx>=0&&ny>=0&&nx<w.W&&ny<w.H&&!SOLID.has(g[ny][nx])&&g[ny][nx]!=="N";});
+      return nx>=0&&ny>=0&&nx<w.W&&ny<w.H&&!shutToPeople(g[ny][nx])&&g[ny][nx]!=="N";});
     if(!ok)return "it would seal the door at "+x+","+y;
   }
   /* #265 — never over the spot where another door sets you down: whoever came through it would stand
@@ -8036,7 +8140,7 @@ function growthReach(tx,ty){ /* BFS from the doorstep content nominated — open
   while(q.length){const[x,y]=q.shift();
     if(x===tx&&y===ty)return true;
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const nx=x+dx,ny=y+dy,k=nx+","+ny;
-      if(seen.has(k)||nx<0||ny<0||nx>=w.W||ny>=w.H||SOLID.has(w.grid[ny][nx])||w.grid[ny][nx]==="N")return;
+      if(seen.has(k)||nx<0||ny<0||nx>=w.W||ny>=w.H||shutToPeople(w.grid[ny][nx])||w.grid[ny][nx]==="N")return;
       seen.add(k);q.push([nx,ny]);});}
   return false;
 }
