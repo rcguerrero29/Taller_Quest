@@ -82,7 +82,7 @@ textFiles.forEach(f => { const src = read(f);
     .forEach(([re, what]) => { if (re.test(src)) fails.push('the upload\'s ' + f + ' contains what looks like ' + what); }); });
 
 /* ---- 2a · nothing in the engine that POINTS at the private side ------------------------------
-   #307 (2026-10-03). The engine every player downloads cited, as receipts in its comments, files this
+   2026-10-03. The engine every player downloads cited, as receipts in its comments, files this
    repository does not have: registers, story files, the folder of a private tool. A pointer to a
    private file publishes its NAME, and the name says what the private side holds. This check cannot
    carry the names it is looking for — that would publish them — so it asks a question with no names in
@@ -99,8 +99,8 @@ textFiles.forEach(f => { const src = read(f);
    with a lowercase letter, and a bare name must end in a slash or an extension. Reading no citation at
    all is a red, not a pass: today the engine cites dozens of public files, so a scan that finds none
    measured nothing.
-   SCOPE: the engine, the one part every world loads (#307). Widening it is one entry in the list
-   below; the rest of the box does not pass yet, and the report on #307 counts what it would find. */
+   SCOPE: the engine, the one part every world loads. Widening it is one entry in the list
+   below; the rest of the box does not pass yet. */
 const SCAN_FOR_RECEIPTS = ['engine/'];
 let receiptsRead = 0;
 {
