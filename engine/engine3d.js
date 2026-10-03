@@ -242,6 +242,13 @@ function t3Reuse(key){
    rotation order is yaw-first-in-the-world (YXZ), so a part can lean (rz) and the whole thing
    can still be turned to face a door (ry). The 3D-realism audit (#39) counts nothing here as
    flat, which is the point. */
+/* ---- shape-builder:begin ----
+   THE SHAPE BUILDER, from here down to the closing sentinel (#316). Tests and mockups load exactly
+   these lines through test/lib/parts.js — in node, against vendor/three.min.js, with no page — and
+   test/prims.js builds every literal part in the games through them and through the engine on
+   origin/main, and fails if one byte differs. So the lines between the sentinels may read THREE,
+   T3.tintables, tc and t3Note from outside and nothing else; reach for anything more and the gate
+   says it cannot load the builder. Cut by these comments, never by line number. */
 const meshGeo={};
 const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   const key=s+"|"+[p.w,p.h,p.d,p.r,p.rt,p.rb,p.t,p.arc].map(n).join("|");
@@ -253,7 +260,13 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   else if(s==="torus")g=new THREE.TorusGeometry(p.r||0.2,p.t||0.03,6,14,p.arc||Math.PI*2); /* an arch is a torus with an arc, standing in the XY plane */
   else g=new THREE.BoxGeometry(p.w||0.1,p.h||0.1,p.d||0.1);
   return meshGeo[key]=g.toNonIndexed();};
-const t3MeshOf=(parts,tag)=>{
+/* THE BAKE, with a name a test can call (#316): a list of parts in, the merged vertices out — positions,
+   normals and one colour per vertex — plus how tall the thing stands and how far it reaches. `tint` turns
+   the colour a part asks for into the colour drawn: the engine passes `tc`, the day/night tint, and a test
+   leaves it out and reads the colour as asked. Until #316 this was a closure inside t3MeshOf, so the only
+   way to read its bytes was to stand a mesh up in a scene; lifting it out changed no byte, and the gate
+   proves that against the engine as it was. */
+const t3BakeParts=(list,tint)=>{tint=tint||(h=>h);
   const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color();
   /* HOW TALL THIS THING IS, and it is the parts that say so (crew iteration 14, la ofrendera).
      `wallH` answers that question for a BOX — a formula over the glyph's declared `lift` — and a
@@ -269,22 +282,32 @@ const t3MeshOf=(parts,tag)=>{
      the player presses, because the door marker is lifted to a constant 1.0 chosen against a
      flat lid. Four numbers, three comparisons a vertex, at build time. */
   let sx0=Infinity,sx1=-Infinity,sz0=Infinity,sz1=-Infinity;
-  const bake=list=>{const pos=[],nor=[],col=[];
-    list.forEach(p=>{
-      e.set(p.rx||0,p.ry||0,p.rz||0,"YXZ");q.setFromEuler(e);sc.set(p.sx||1,p.sy||1,p.sz||1);tr.set(p.x||0,p.y||0,p.z||0);
-      m4.compose(tr,q,sc);
-      const gg=t3Prim(p).clone().applyMatrix4(m4);
-      const pa=gg.attributes.position.array,na=gg.attributes.normal.array;
-      c.set(tc(p.c||"#888888"));
-      for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);col.push(c.r,c.g,c.b);
-        if(pa[i+1]>top)top=pa[i+1];
-        if(pa[i]<sx0)sx0=pa[i]; if(pa[i]>sx1)sx1=pa[i];
-        if(pa[i+2]<sz0)sz0=pa[i+2]; if(pa[i+2]>sz1)sz1=pa[i+2];}
-      gg.dispose();});
+  const pos=[],nor=[],col=[];
+  list.forEach(p=>{
+    e.set(p.rx||0,p.ry||0,p.rz||0,"YXZ");q.setFromEuler(e);sc.set(p.sx||1,p.sy||1,p.sz||1);tr.set(p.x||0,p.y||0,p.z||0);
+    m4.compose(tr,q,sc);
+    const gg=t3Prim(p).clone().applyMatrix4(m4);
+    const pa=gg.attributes.position.array,na=gg.attributes.normal.array;
+    c.set(tint(p.c||"#888888"));
+    for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);col.push(c.r,c.g,c.b);
+      if(pa[i+1]>top)top=pa[i+1];
+      if(pa[i]<sx0)sx0=pa[i]; if(pa[i]>sx1)sx1=pa[i];
+      if(pa[i+2]<sz0)sz0=pa[i+2]; if(pa[i+2]>sz1)sz1=pa[i+2];}
+    gg.dispose();});
+  return {pos,nor,col,top,span:[sx0,sx1,sz0,sz1]};};
+const t3MeshOf=(parts,tag)=>{
+  /* the top and the reach of the WHOLE thing, solid and glass together: each bake's, folded in the order
+     they are baked with the same strict comparisons the vertex loop uses, so the answer is the one a
+     single loop over every vertex would give */
+  let top=-Infinity,sx0=Infinity,sx1=-Infinity,sz0=Infinity,sz1=-Infinity;
+  const bake=list=>{const b=t3BakeParts(list,tc);
+    if(b.top>top)top=b.top;
+    if(b.span[0]<sx0)sx0=b.span[0]; if(b.span[1]>sx1)sx1=b.span[1];
+    if(b.span[2]<sz0)sz0=b.span[2]; if(b.span[3]>sz1)sz1=b.span[3];
     const geo=new THREE.BufferGeometry();
-    geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
-    geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
-    geo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
+    geo.setAttribute("position",new THREE.Float32BufferAttribute(b.pos,3));
+    geo.setAttribute("normal",new THREE.Float32BufferAttribute(b.nor,3));
+    geo.setAttribute("color",new THREE.Float32BufferAttribute(b.col,3));
     return geo;};
   /* GLASS (crew iteration 11, la calle): a part with `a:` — an alpha under 1 — is a pane you see through.
      A vertex-coloured Lambert has no per-vertex alpha, so the panes of one tile become a second mesh,
@@ -300,6 +323,7 @@ const t3MeshOf=(parts,tag)=>{
   m.t3Top=top===-Infinity?0:top; /* the tallest ink in the thing itself, glass included — what anything set on it stands on */
   m.t3Span=top===-Infinity?null:[sx0,sx1,sz0,sz1]; /* and how far out it reaches, in the mesh's own frame */
   return m;};
+/* ---- shape-builder:end ---- */
 function t3Build(key){
   if(t3Reuse(key))return;                       /* already standing; walk back into it */
   T3.pinatas=[];
