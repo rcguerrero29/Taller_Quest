@@ -102,6 +102,7 @@ textFiles.forEach(f => { const src = read(f);
    SCOPE: the engine, the one part every world loads (#307). Widening it is one entry in the list
    below; the rest of the box does not pass yet, and the report on #307 counts what it would find. */
 const SCAN_FOR_RECEIPTS = ['engine/'];
+let receiptsRead = 0;
 {
   const ROOT = path.join(__dirname, '..');
   let tracked = null;
@@ -120,19 +121,19 @@ const SCAN_FOR_RECEIPTS = ['engine/'];
       '|([a-z][\\w-]+[a-z0-9]\\/(?:[a-z][\\w-]*\\/)*)(?=[\\s`\'"),.;:\\]]|$)' +  // a folder named with its slash
       '|(?<!["\'])(\\w[\\w-]*\\.md)(?![\\w/"\'])' +                                  // a bare document name, not in quotes
       ')', 'g');
-    let cited = 0; const bad = [];
+    const bad = [];
     files.filter(f => SCAN_FOR_RECEIPTS.some(s => f.startsWith(s)) && /\.(js|html|css)$/.test(f)).forEach(f => {
       read(f).split('\n').forEach((line, i) => { const miss = [];
         for (const m of line.matchAll(RE)) {
           const cite = (m[1] || m[2] || m[3] || m[4]).replace(/[.,;:]+$/, '').replace(/\/$/, '');
           if (!cite) continue;
-          cited++;
+          receiptsRead++;
           if (!(m[4] ? bases.has(cite) : known.has(cite)) && !miss.includes(cite)) miss.push(cite);
         }
         if (miss.length) bad.push(f + ':' + (i + 1) + ' cites ' + miss.join(', '));
       });
     });
-    if (!cited) fails.push('the engine in the upload cites no file at all, so the check for private receipts read nothing — either the engine is missing or this scan is broken');
+    if (!receiptsRead) fails.push('the engine in the upload cites no file at all, so the check for private receipts read nothing — either the engine is missing or this scan is broken');
     if (bad.length) fails.push(bad.length + ' line(s) of the engine every player downloads point at a file this repository does not have — a receipt nobody can follow publishes the name of what the private side holds, so cite the decision, or the public file that carries it:\n    ' + bad.join('\n    '));
   }
 }
@@ -218,4 +219,4 @@ if (has('sw.js')) { const sw = read('sw.js');
 if (notes.length) notes.forEach(n => console.log('note: ' + n));
 if (fails.length) { console.log('FAIL — what we are about to publish is not only the public game\n- ' + fails.join('\n- ')); process.exit(1); }
 console.log('OK — R10: the upload is ' + (PUBLIC_WORLDS.length === 1 ? 'the public game' : 'the ' + PUBLIC_WORLDS.length + ' worlds this repo publishes (' + PUBLIC_WORLDS.join(', ') + ')') + ' and nothing else. ' + files.length + ' files; no private tool, no registers, ' +
-            'no credential surface, no off-origin script, the worker\'s asset list resolves, and the game is complete.');
+            'no credential surface, no off-origin script, the worker\'s asset list resolves, the engine\'s ' + receiptsRead + ' citations all point at files this repository has, and the game is complete.');
