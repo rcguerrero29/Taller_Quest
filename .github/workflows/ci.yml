@@ -60,6 +60,20 @@ jobs:
         run: node test/keys.js
       - name: The guards' own red cases
         run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
+      # #316: every literal part the games draw is built through the shape builder on this change's engine and
+      # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
+      # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
+      # because a gate that cannot go red protects nothing. Exactly these two lines and nothing else: which base
+      # to compare with is decided inside test/prims.js (--ci), where its self-test plants every branch, and
+      # test/prims.js reads this step and fails if it changes. Keep them in one step.
+      - name: Every literal part the games draw still builds the same through the shape builder (and the shape gate's own red cases)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          node test/prims.js --selftest
+          node test/prims.js --ci
       - name: Install Playwright + Chromium
         run: |
           npm install playwright@1.63.0
