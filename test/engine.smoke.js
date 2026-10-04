@@ -2271,6 +2271,7 @@ function findChromium() {
   });
   fails.push(...onePlace.P);
   onePlace.N.forEach(l => console.log('  ONE PLACE — NOTE: ' + l));
+  if (!onePlace.P.length) console.log('  ONE PLACE: every dog kind, drawn standing while dogPose answered another pose, was that pose to the pixel (both clocks moved between the drawings); dogHomeSpot put him only where dogCanStand allowed');
 
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
      Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of
