@@ -27,5 +27,9 @@ shots/
 content/gauge/index.html
 content/gauge/index-3d.html
 content/gauge/config-3d.js
+content/gauge/index-lib.html
+content/gauge/maps-lib.js
+content/gauge/art-lib.js
+content/gauge/config-lib.js
 # same for el horno's — GENERATED from index.html by test/horno.js
 content/horno/index.html
