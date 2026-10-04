@@ -3508,13 +3508,18 @@ function dogDone(cr,tk,now){
    Where he reappears is his own spot, or the nearest free tile to it: never your tile, never a wall or a
    person, never the tram's way while a car is on it, never a door, never on another animal. */
 const DOG_STUCK=12000;
+/* MAY THIS DOG BE PUT DOWN HERE — on the map, not a wall or a hole, not your tile while you are in his room, not the
+   tram's way while a car is on it, not a door, not another animal's tile. Lifted out of dogHomeSpot word for word
+   (mq-v235), so the one answer there is to "where may a dog be set down" — home after he is stuck, or wherever a dog
+   that left the ground comes down — is asked in one place. */
+function dogCanStand(cr,x,y){const w=WORLDS[cr.world];if(!w)return false;
+  return x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N"
+    &&!(world===cr.world&&x===px&&y===py)&&!troDanger(cr.world,x,y)&&!portalAt(cr.world,x,y)
+    &&!CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y);}
 function dogHomeSpot(cr){
   const w=WORLDS[cr.world];if(!w)return null;const hx=cr.home[0],hy=cr.home[1];
-  const ok=(x,y)=>x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N"
-    &&!(world===cr.world&&x===px&&y===py)&&!troDanger(cr.world,x,y)&&!portalAt(cr.world,x,y)
-    &&!CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y);
   for(let r=0;r<=CRIT_REACH;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)
-    if(Math.abs(dx)+Math.abs(dy)===r&&ok(hx+dx,hy+dy))return[hx+dx,hy+dy];
+    if(Math.abs(dx)+Math.abs(dy)===r&&dogCanStand(cr,hx+dx,hy+dy))return[hx+dx,hy+dy];
   return null;}
 function dogPut(cr,s){if(!s)return false;
   cr.x=s[0];cr.y=s[1];cr.fx=s[0];cr.fy=s[1];cr.moving=false;cr.mt=0;cr.sit=false;cr.layT=0;return true;}
@@ -3606,9 +3611,24 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
      body, head — what the layer reads: drop − lift, and drop + nod − lift
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
 const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},pigeon:{peck:2.2}};
+/* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
+   this instant, read off his state and two clocks — nw, performance.now(), for how long a whim lasts (layT, howlT…), and
+   t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
+   read nothing else about his pose, bodyRide reads it for what he wears, and a body in another camera will read the
+   same answer instead of deciding it a third time. Lifted out of the three painters with nothing changed.
+     hid, lift, side — the agility course (gearPose): inside the tunnel, over the bar, through the poles
+     sit, lay, howl, dig, happy, love — the whims and the commands, as his painters always read them
+     drop, nod — the body lowered and the head moved, px on his card (POSEPX)
+     wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
+     face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
+const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6]}; /* ms a swing and px: calm, then happy */
+function dogPose(cr,nw,t){if(nw===undefined)nw=performance.now();if(t===undefined)t=Date.now();
+  const K=POSEPX[cr.kind]||{},W=DOGWAG[cr.kind]||DOGWAG.beagle,gp=gearPose(cr),lay=cr.layT>nw,howl=cr.howlT>nw,happy=cr.happyT>nw;
+  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love:cr.loveT>nw,
+    drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):0,wag:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
+    face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
-  if(a&&DOGK.has(kind)){const gp=gearPose(a),nw=performance.now();
-    R.hid=gp.hid;R.lift=gp.hop;R.lay=a.layT>nw;R.howl=a.howlT>nw;R.drop=R.lay?(K.lay||0):0;R.nod=R.howl?(K.howl||0):0;}
+  if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;}
   else if(a&&kind==="pigeon"){R.lift=a.hop||0;R.nod=a.peck?K.peck:0;}
   else if(kind==="colibri")R.lift=-Math.sin(Date.now()/160)*1.6;                        /* the hover */
   else if(a&&kind==="butterfly")R.lift=-Math.sin(Date.now()/300+a.home[0])*2.5;         /* the bob */
@@ -3864,13 +3884,13 @@ function drawColibri(g,cr,sx,sy){
   g.restore();
 }
 function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, floppy ears, working tail */
-  const R=bodyRide("beagle",cr);if(R.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
-  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
-  const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:130))*(happy?3.4:2.4),lemon="#E8C46A",white="#F6F2E8";
-  const dy=R.drop,hy=R.nod;
-  g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
+  const P=dogPose(cr);if(P.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
+  const lay=P.lay,howl=P.howl,dig=P.dig,t=P.t;
+  const cx=sx+16,wag=P.wag,lemon="#E8C46A",white="#F6F2E8";
+  const dy=P.drop,hy=P.nod;
+  g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,7,2.8,0,0,7);g.fill();
-  sy-=R.lift;                                /* over the hurdle's bar he is in the air; his shadow is not */
+  sy-=P.lift;                                /* over the hurdle's bar he is in the air; his shadow is not */
   g.strokeStyle=lemon;g.lineWidth=2.4;g.lineCap="round"; /* the tail: lemon, always going (slower when resting) */
   const wg=lay?wag*0.4:wag,tex2=cx-10+wg,tey=sy+11+dy;
   g.beginPath();g.moveTo(cx-7,sy+19.5+dy);g.quadraticCurveTo(cx-11,sy+15+dy+wg*0.5,tex2,tey);g.stroke();
@@ -3879,12 +3899,12 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
   g.fillStyle=lemon;g.beginPath();g.roundRect(cx-5,sy+16.5+dy,8,4.5,3);g.fill(); /* saddle */
   g.fillStyle=white; /* white freckles across the lemon coat */
   [[-4.4,17.2],[2.3,17.4],[-1.2,18.6],[1.6,20]].forEach(p=>{g.beginPath();g.arc(cx+p[0],sy+p[1]+dy,0.55,0,7);g.fill();});
-  if(!cr.sit&&!lay){g.fillRect(cx-6,sy+24.5,2.2,3.2);g.fillRect(cx+3,sy+24.5,2.2,3.2);}
+  if(!P.sit&&!lay){g.fillRect(cx-6,sy+24.5,2.2,3.2);g.fillRect(cx+3,sy+24.5,2.2,3.2);}
   if(lay)g.fillRect(cx+2,sy+24.8,7.5,2.2); /* front legs stretched out, professionally */
   if(dig){ /* paws at the ground, dirt flying */
-    g.fillRect(cx+7,sy+22+Math.sin(Date.now()/70)*2,3,4);
+    g.fillRect(cx+7,sy+22+Math.sin(t/70)*2,3,4);
     g.fillStyle="#6E5638";[[13,17],[16,13],[14,21]].forEach((p,i)=>{
-      g.fillRect(cx+p[0]+Math.sin(Date.now()/90+i*2)*2.5,sy+p[1],2,2);});
+      g.fillRect(cx+p[0]+Math.sin(t/90+i*2)*2.5,sy+p[1],2,2);});
     g.fillStyle=white;}
   g.beginPath();g.arc(cx+6.5,sy+16+dy+hy,4.6,0,7);g.fill(); /* head */
   g.fillStyle=cr.collar||"#2E5FA8"; /* the collar: blue to start, like his leash (canon) */
@@ -3912,47 +3932,37 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
   if(howl)g.beginPath(),g.arc(cx+9.6,sy+13.4+dy+hy,1.3,0,7),g.fill(); /* nose to the sky */
   else g.beginPath(),g.arc(cx+10.6,sy+17.2+dy,1.3,0,7),g.fill(); /* nose */
   g.restore(); /* text outside the mirror so it never flips */
-  g.textAlign="center";
-  if(howl){g.fillStyle="#8B6FC8";g.font="9px serif";
-    g.fillText("♪",cx+3,sy+5+Math.sin(Date.now()/200)*2);}
-  if(happy){g.fillStyle="#C4586B";g.font="8px serif";g.fillText("❤",cx-5,sy+9);}
-  if(cr.loveT>nw){ /* you said it; he heard you */
-    g.fillStyle="#C4586B";g.font="8px serif";
-    [[-8,0],[0,-3],[8,1]].forEach((p,i)=>{
-      g.globalAlpha=0.45+0.55*Math.abs(Math.sin(Date.now()/260+i*1.9));
-      g.fillText("❤",cx+p[0],sy+8+p[1]-((Date.now()/150+i*30)%14)*0.5);});
-    g.globalAlpha=1;}
-  g.textAlign="start";
+  dogOverlays(g,cr,cx,sy,P);
 }
-function dogOverlays(g,cr,cx,sy){ /* the shared feelings layer: note, hearts, love */
-  const nw=performance.now();
+function dogOverlays(g,cr,cx,sy,P){ /* the shared feelings layer: note, hearts, love — the beagle's own copy of it folded in (mq-v235) */
+  P=P||dogPose(cr);const t=P.t;
   g.textAlign="center";
-  if(cr.howlT>nw){g.fillStyle="#8B6FC8";g.font="9px serif";
-    g.fillText("♪",cx+3,sy+5+Math.sin(Date.now()/200)*2);}
-  if(cr.happyT>nw){g.fillStyle="#C4586B";g.font="8px serif";g.fillText("❤",cx-5,sy+9);}
-  if(cr.loveT>nw){g.fillStyle="#C4586B";g.font="8px serif";
+  if(P.howl){g.fillStyle="#8B6FC8";g.font="9px serif";
+    g.fillText("♪",cx+3,sy+5+Math.sin(t/200)*2);}
+  if(P.happy){g.fillStyle="#C4586B";g.font="8px serif";g.fillText("❤",cx-5,sy+9);}
+  if(P.love){g.fillStyle="#C4586B";g.font="8px serif";
     [[-8,0],[0,-3],[8,1]].forEach((p,i)=>{
-      g.globalAlpha=0.45+0.55*Math.abs(Math.sin(Date.now()/260+i*1.9));
-      g.fillText("❤",cx+p[0],sy+8+p[1]-((Date.now()/150+i*30)%14)*0.5);});
+      g.globalAlpha=0.45+0.55*Math.abs(Math.sin(t/260+i*1.9));
+      g.fillText("❤",cx+p[0],sy+8+p[1]-((t/150+i*30)%14)*0.5);});
     g.globalAlpha=1;}
   g.textAlign="start";
 }
 function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
-  const R=bodyRide("lab",cr);if(R.hid)return;   /* inside the agility tunnel */
-  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
-  const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:150))*(happy?3.2:2),co=cr.c||"#E0C070";
-  const dk=shadeHex(co,-0.25),dy=R.drop,hy=R.nod;
-  g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
+  const P=dogPose(cr);if(P.hid)return;   /* inside the agility tunnel */
+  const lay=P.lay,howl=P.howl,dig=P.dig,t=P.t;
+  const cx=sx+16,wag=P.wag,co=cr.c||"#E0C070";
+  const dk=shadeHex(co,-0.25),dy=P.drop,hy=P.nod;
+  g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,8,3,0,0,7);g.fill();
-  sy-=R.lift;                                /* over the bar, the shadow stays down */
+  sy-=P.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=3;g.lineCap="round"; /* thick otter tail */
   g.beginPath();g.moveTo(cx-8,sy+20+dy);g.quadraticCurveTo(cx-12,sy+17+dy+wag*0.4,cx-11+wag,sy+13+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-8.5,sy+15.5+dy,16,9.5,4);g.fill(); /* barrel body */
-  if(!cr.sit&&!lay){g.fillRect(cx-7,sy+24.5,2.8,3.4);g.fillRect(cx+3.5,sy+24.5,2.8,3.4);}
+  if(!P.sit&&!lay){g.fillRect(cx-7,sy+24.5,2.8,3.4);g.fillRect(cx+3.5,sy+24.5,2.8,3.4);}
   if(lay)g.fillRect(cx+2,sy+24.8,8.5,2.4);
-  if(dig){g.fillRect(cx+8,sy+22+Math.sin(Date.now()/70)*2,3,4);
+  if(dig){g.fillRect(cx+8,sy+22+Math.sin(t/70)*2,3,4);
     g.fillStyle="#6E5638";[[14,17],[17,13]].forEach((p,i)=>{
-      g.fillRect(cx+p[0]+Math.sin(Date.now()/90+i*2)*2.5,sy+p[1],2,2);});g.fillStyle=co;}
+      g.fillRect(cx+p[0]+Math.sin(t/90+i*2)*2.5,sy+p[1],2,2);});g.fillStyle=co;}
   g.fillStyle=cr.collar||"#2E5FA8";
   g.beginPath();g.roundRect(cx+2.8,sy+17.6+dy,6.4,1.8,1);g.fill();
   if(cr.band){g.fillStyle=cr.band;
@@ -3965,23 +3975,23 @@ function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
   else g.fillRect(cx+8.4,sy+12.8+dy+hy,1.3,1.3);
   g.beginPath();g.arc(cx+12.4,sy+(howl?12:15)+dy+hy,1.5,0,7);g.fill(); /* big nose */
   g.restore();
-  dogOverlays(g,cr,cx,sy);
+  dogOverlays(g,cr,cx,sy,P);
 }
 function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opinion */
-  const R=bodyRide("chi",cr);if(R.hid)return;   /* inside the agility tunnel */
-  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
-  const cx=sx+16,wag=Math.sin(Date.now()/(happy?60:120))*(happy?2.6:1.8),co=cr.c||"#C9975C";
-  const dk=shadeHex(co,-0.22),dy=R.drop,hy=R.nod;
-  g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
+  const P=dogPose(cr);if(P.hid)return;   /* inside the agility tunnel */
+  const lay=P.lay,howl=P.howl,dig=P.dig,t=P.t;
+  const cx=sx+16,wag=P.wag,co=cr.c||"#C9975C";
+  const dk=shadeHex(co,-0.22),dy=P.drop,hy=P.nod;
+  g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.13)";g.beginPath();g.ellipse(cx,sy+27,5.5,2.2,0,0,7);g.fill();
-  sy-=R.lift;                                /* over the bar, the shadow stays down */
+  sy-=P.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=1.8;g.lineCap="round"; /* thin curled tail */
   g.beginPath();g.moveTo(cx-4.5,sy+21.5+dy);g.quadraticCurveTo(cx-7.5,sy+18.5+dy+wag*0.4,cx-6+wag*0.6,sy+16.5+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-4.5,sy+20+dy,9.5,5.5,2.6);g.fill(); /* small body */
-  if(!cr.sit&&!lay){g.fillRect(cx-3.5,sy+25,1.7,2.6);g.fillRect(cx+2,sy+25,1.7,2.6);}
+  if(!P.sit&&!lay){g.fillRect(cx-3.5,sy+25,1.7,2.6);g.fillRect(cx+2,sy+25,1.7,2.6);}
   if(lay)g.fillRect(cx+1.5,sy+25,5.5,1.8);
-  if(dig){g.fillRect(cx+4.5,sy+23.5+Math.sin(Date.now()/70)*1.6,2,3);
-    g.fillStyle="#6E5638";g.fillRect(cx+9+Math.sin(Date.now()/90)*2,sy+20,1.6,1.6);g.fillStyle=co;}
+  if(dig){g.fillRect(cx+4.5,sy+23.5+Math.sin(t/70)*1.6,2,3);
+    g.fillStyle="#6E5638";g.fillRect(cx+9+Math.sin(t/90)*2,sy+20,1.6,1.6);g.fillStyle=co;}
   g.fillStyle=cr.collar||"#2E5FA8";
   g.beginPath();g.roundRect(cx+1.6,sy+19.4+dy,4.4,1.4,1);g.fill();
   if(cr.band){g.fillStyle=cr.band;
@@ -3997,7 +4007,7 @@ function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opin
   else{g.fillRect(cx+3.6,sy+14.2+dy+hy,1.5,1.5);g.fillRect(cx+6.6,sy+14.2+dy+hy,1.5,1.5);} /* enormous eyes */
   g.beginPath();g.arc(cx+8.6,sy+(howl?14:16.6)+dy+hy,1,0,7);g.fill();
   g.restore();
-  dogOverlays(g,cr,cx,sy);
+  dogOverlays(g,cr,cx,sy,P);
 }
 function drawGato(g,cr,sx,sy){ /* the street cat: Canela's silhouette, alley palette, no collar — yet */
   const cx=sx+16,sw=Math.sin(Date.now()/300+7);
