@@ -2107,10 +2107,10 @@ const CANDIDATES = [
   });
   fails.push(...season);
 
-  /* ---- NOCHE DE ALEBRIJES: WHAT AN ANIMAL WEARS GOES WHERE HE GOES (mq-v233) ----
+  /* ---- NOCHE DE ALEBRIJES: WHAT AN ANIMAL WEARS GOES WHERE HE GOES (mq-v234) ----
      The alebrije night was asked for as the dog still looking like himself, perhaps with tiny wings (2026-09-07, the
      comment over ALEB_DEF in engine/engine.js). Until
-     mq-v233 the guard on the wings was a FLOOR on their size — "a wing that does not break the silhouette is not a wing",
+     mq-v234 the guard on the wings was a FLOOR on their size — "a wing that does not break the silhouette is not a wing",
      fewer than 40 pixels outside him and the build went red — read off one dog standing still at one frozen clock. It
      guarded the opposite of that, and it was green while, over the hurdle, the beagle's wings stayed down where he
      had been standing, lying down the colour round his eye sat on his brow, inside the agility tunnel his wings showed
