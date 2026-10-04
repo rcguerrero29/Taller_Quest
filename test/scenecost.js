@@ -39,8 +39,22 @@
    or no world measured at all — each one exits 1 with the sentence a person would say.
    Every one was planted in a copy outside the repository and went red (docs/3D-LOG.md, 2026-10-03).
 
+   DOGS ON SCREEN: `--dogs N` stands N dogs of the dog program's kinds, in turn, on the walkable tiles
+   nearest the hero in every world measured, frozen where they stand, before its first frame — until then this
+   put no dog in front of the camera, and Meridian's only content dog lives on the street, so it would have priced
+   a dog's 3D body at about nothing. After the first frame each dog must have been DRAWN where he stands — a card
+   the actor pass stood there this frame, inside the camera's own frustum — read off what the engine drew and not
+   off where the dogs were put; fewer than asked is red — "asked for 6 dogs in pk, the camera saw none" — never a
+   cheap row. Planted outside the repository (2026-10-04): the dogs put in no world the camera shows, put on the
+   farthest tiles of the park, never handed to the engine at all — each red with that sentence, at both speeds.
+   They are taken away again before the next world. The "actors" column is the actor
+   pass alone (t3Actors, timed where draw3d calls it): every person and animal is a card repainted by its 2D
+   painter every frame, so that is where a dog costs today, and on alebrije night (`--season alebrije`) each
+   animal's per-pixel treatment is in it too.
+
    Run:  node test/scenecost.js                                   (Meridian, every world, both speeds)
          node test/scenecost.js --index <shell> --worlds st,pk --frames 240 --season muertos --rate 6
+         node test/scenecost.js --worlds pk --dogs 6 --season alebrije
    --season is `off` (year-round) by default, so two runs on different dates measure the same city.
    NOT A CI STEP (docs/3D-LOG.md, 2026-10-03, says why); the last line says how long the run took.
    Run it by hand before and after any lane that adds geometry, and put the figures in
@@ -60,6 +74,7 @@ const FRAMES = parseInt(arg('--frames', '120'), 10);
 const RATE = parseFloat(arg('--rate', '4'));
 const SEASON = arg('--season', 'off');
 const ONLY = args.includes('--worlds') ? String(arg('--worlds', '')).split(',').map(s => s.trim()).filter(Boolean) : null;
+const DOGS = args.includes('--dogs') ? Number(arg('--dogs', 'NaN')) : 0;
 const WARM = 5;   /* frames drawn and not counted after the first, so a lazily made texture is not one world's p95 */
 
 const fails = [];
@@ -67,6 +82,7 @@ let at = '';   /* the world being drawn, at module level so even the last catch 
 const firstLine = e => String(e && e.message || e).split('\n')[0];
 const die = msg => { console.log('FAIL\n- ' + msg); process.exit(1); };
 if (!(FRAMES >= 120)) die('asked for ' + arg('--frames') + ' frames — fewer than 120 is a glance, not a frame time');
+if (!(Number.isInteger(DOGS) && DOGS >= 0 && DOGS <= 40)) die('asked for ' + arg('--dogs') + ' dogs — a number of dogs is a whole number from 0 to 40');
 if (!(RATE > 1)) die('asked to slow the processor by ×' + arg('--rate') + ' — that is not a slow-down, so there would be nothing standing in for a phone');
 
 let chromium;
@@ -167,9 +183,10 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
   const soft = /swiftshader|llvmpipe|software|softpipe/i.test(String(setup.gpu));
   console.log('WebGL' + (setup.gl2 ? '2' : '1') + ' renderer: ' + setup.gpu + (soft ? ' — drawn in SOFTWARE on this machine\'s processor, which the slow-down does not reach' : ' — this machine\'s own GPU, not a phone\'s'));
   console.log('3D canvas: ' + setup.css.join('×') + ' CSS px → ' + setup.buf.join('×') + ' px buffer (pixel ratio ' + setup.ratio + ') · antialias ' + (setup.aa ? 'on' : 'off') + ' · ' + FRAMES + ' frames a world, after ' + WARM + ' not counted');
+  console.log('dogs: ' + (DOGS ? DOGS + ' in every world, beagle, lab and chihuahua in turn, standing still on the walkable tiles nearest the hero' : 'none put on screen (--dogs N to stand N in every world)'));
 
   /* ---- one world, measured: placed, built fresh, drawn once, then FRAMES times ---- */
-  const measure = id => page.evaluate(([id, N, WARM]) => {
+  const measure = id => page.evaluate(([id, N, WARM, DOGS]) => {
     const r = { id, P: [] };
     const w = WORLDS[id];
     /* where the hero stands: the walkable tile nearest the world's middle, so the camera sees what a person in the room sees */
@@ -179,6 +196,23 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     if (!best) { r.P.push(id + ' has no tile a person can stand on, so no camera could be put in it'); return r; }
     r.spot = best;
     world = id; px = fx = best[0]; py = fy = best[1]; moving = false; T3.yaw = 0; T3.turn = null;
+    /* the dogs, if asked for: the walkable tiles nearest the hero that a dog may stand on (not his tile, not a door,
+       not a tram's line), one dog a tile, frozen — no next move, no job, no one to follow */
+    const dogs = [];
+    if (DOGS) {
+      const kinds = typeof DOGK !== 'undefined' ? [...DOGK] : ['beagle'];
+      const spots = [];
+      const someone = (x, y) => (w.npcs || []).some(n => (Math.round(n.fx === undefined ? n.x : n.fx) === x && Math.round(n.fy === undefined ? n.y : n.fy) === y) || (n.x === x && n.y === y)) ||
+        CRIT.some(c => c.world === id && Math.round(c.fx) === x && Math.round(c.fy) === y);
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (walk(x, y) && !(x === best[0] && y === best[1]) && !someone(x, y) && !(typeof portalAt === 'function' && portalAt(id, x, y)) && !(typeof troDanger === 'function' && troDanger(id, x, y))) spots.push([x, y]);
+      spots.sort((a, b) => ((a[0] - best[0]) ** 2 + (a[1] - best[1]) ** 2) - ((b[0] - best[0]) ** 2 + (b[1] - best[1]) ** 2));
+      for (let i = 0; i < DOGS && i < spots.length; i++) { const [x, y] = spots[i];
+        dogs.push({ kind: kinds[i % kinds.length], name: 'Cost' + (i + 1), world: id, x, y, fx: x, fy: y, dx: 0, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
+          moving: false, mt: 0, next: 1e15, home: [x, y], holdT: 0, stayT: 0, task: null, follow: false, sceneCost: true }); }
+      CRIT.push(...dogs);
+      if (dogs.length < DOGS) r.P.push('asked for ' + DOGS + ' dogs in ' + id + ' and it has only ' + dogs.length + ' tiles a dog may stand on near the middle');
+    }
+    const unDog = () => { for (let i = CRIT.length - 1; i >= 0; i--) if (CRIT[i].sceneCost) CRIT.splice(i, 1); };
     const gl = T3.renderer.getContext(), pix = new Uint8Array(4);
     /* waits for the frame to be drawn, not just asked for. Seeded with alpha 0 first: this canvas has no alpha
        channel, so a real read returns 255, and a read on a lost context leaves the seed where it was */
@@ -189,6 +223,9 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     /* the build, timed where draw3d itself calls it: a world that is not built here was served from the cache */
     const realBuild = window.t3Build; let built = NaN, builds = 0;
     window.t3Build = function () { const t0 = performance.now(); try { return realBuild.apply(this, arguments); } finally { built = performance.now() - t0; builds++; } };
+    /* the actor pass, timed where draw3d calls it: every card a person or an animal is, repainted by its painter */
+    const realActors = window.t3Actors; let acted = NaN;
+    window.t3Actors = function () { const t0 = performance.now(); try { return realActors.apply(this, arguments); } finally { acted = performance.now() - t0; } };
     try {
       t3Invalidate();
       info.reset(); const f0 = info.render.frame;
@@ -204,6 +241,18 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       r.build = built; r.first = t1 - t0 - built;
       if (info.render.frame === f0) { r.P.push(id + ': draw3d said it drew and the renderer never ran — there is no frame to count'); return r; }
       r.calls = info.render.calls; r.tris = info.render.triangles;
+      /* every dog asked for was DRAWN, and in front of the camera: a card the actor pass stood this frame where that dog
+         stands (pulled toward the camera as every card is), inside the camera's own frustum. Read off what the engine
+         drew, not off where the dogs were put: a dog put somewhere the actor pass never looks costs nothing */
+      if (DOGS) {
+        T3.cam.updateMatrixWorld(); const fr = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(T3.cam.projectionMatrix, T3.cam.matrixWorldInverse));
+        const cards = T3.pool.filter(p => p.live && p.spr.visible).map(p => p.spr.position);
+        r.dogs = dogs.filter(d => { const ax = d.fx + 0.5, az = d.fy + 0.5, cx = T3.cam.position.x - ax, cz = T3.cam.position.z - az, dl = Math.hypot(cx, cz) || 1,
+          k = typeof t3GearPull === 'function' ? t3GearPull(d) : 1, ex = ax + cx / dl * 0.34 * k, ez = az + cz / dl * 0.34 * k;
+          return cards.some(q => Math.hypot(q.x - ex, q.z - ez) < 0.05 && fr.containsPoint(q)); }).length;
+        if (r.dogs < DOGS) r.P.push('asked for ' + DOGS + ' dogs in ' + id + ', the camera saw ' + (r.dogs ? r.dogs : 'none') + ' — the rest of a row with fewer dogs than asked is not what ' + DOGS + ' dogs cost');
+        if (r.P.length) return r;
+      }
       /* the whole world, from this spot: every triangle whose object and parents are visible, culled or not —
          the cutaway hides walls by where the hero stands, and a hidden wall is not counted */
       let all = 0;
@@ -211,7 +260,7 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
       T3.scene.traverse(o => { if (!(o.isMesh || o.isSprite) || !o.geometry || !shown(o)) return;
         const g = o.geometry, n = g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0); all += n / 3; });
       r.all = all;
-      const frame = [], script = [];
+      const frame = [], script = [], actors = [];
       for (let i = 0; i < WARM + N; i++) {
         info.reset();
         window.__sceneCostAt = { id, frame: i + 2 };
@@ -226,19 +275,19 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
            second recheck: in 30 of 30 world-passes every timed frame sent exactly frame 1's counts, so this costs no
            false red today, and a lane that really draws less must print its timed frames' own counts. */
         if (info.render.calls !== r.calls || info.render.triangles !== r.tris) { r.P.push(id + ': frame ' + (i + 2) + ' sent ' + info.render.calls + ' draw calls and ' + info.render.triangles + ' triangles where the first frame sent ' + r.calls + ' and ' + r.tris + ' — the row would print one frame\'s counts beside another frame\'s times'); return r; }
-        if (i >= WARM) { frame.push(c - a); script.push(b - a); }
+        if (i >= WARM) { frame.push(c - a); script.push(b - a); actors.push(acted); }
       }
-      r.frame = frame; r.script = script;
+      r.frame = frame; r.script = script; r.actors = actors;
       if (builds !== 1) r.P.push(id + ' was rebuilt ' + (builds - 1) + ' time(s) while its frames were being timed, so the frame times include a build');
       return r;
-    } finally { window.t3Build = realBuild; }
-  }, [id, FRAMES, WARM]);
+    } finally { window.t3Build = realBuild; window.t3Actors = realActors; unDog(); }
+  }, [id, FRAMES, WARM, DOGS]);
 
   /* the same fixed piece of script, timed in each pass: the measured slow-down, not the asked-for one */
   const calibrate = () => page.evaluate(() => { const t0 = performance.now(); let s = 0; for (let i = 0; i < 4e6; i++) s += Math.sqrt(i) % 7; return [performance.now() - t0, s]; }).then(v => v[0]);
 
   /* each world's row is printed the moment it is measured, so a run that dies part-way still leaves what it got */
-  const head = pad('world', 10, true) + pad('calls', 6) + pad('triangles', 11) + pad('whole world', 13) + pad('build ms', 10) + pad('1st frame', 11) + pad('frame median', 14) + pad('p95', 8) + pad('script median', 15);
+  const head = pad('world', 10, true) + pad('calls', 6) + pad('triangles', 11) + pad('whole world', 13) + pad('build ms', 10) + pad('1st frame', 11) + pad('frame median', 14) + pad('p95', 8) + pad('script median', 15) + pad('actors', 8) + (DOGS ? pad('dogs', 6) : '');
   const report = (r, pass) => {
     fails.push(...r.P.map(p => p + ' (' + pass + ')'));
     if (!Array.isArray(r.frame)) { console.log(pad(r.id, 10, true) + '  RED — ' + (r.P[0] || 'no figures came back')); return; }
@@ -246,7 +295,7 @@ const pad = (s, n, left) => { s = String(s); return left ? s.padEnd(n) : s.padSt
     if (!(r.all > 0)) fails.push(r.id + ' has no triangles anywhere in its scene (' + pass + ') — it was built empty');
     if (r.frame.length !== FRAMES || !r.frame.every(Number.isFinite)) fails.push(r.id + ': ' + r.frame.length + ' frames were timed where ' + FRAMES + ' were asked (' + pass + ')');
     console.log(pad(r.id, 10, true) + pad(num(r.calls), 6) + pad(num(r.tris), 11) + pad(num(r.all), 13) + pad(ms(r.build), 10) + pad(ms(r.first), 11) +
-      pad(ms(med(r.frame)), 14) + pad(ms(p95(r.frame)), 8) + pad(ms(med(r.script)), 15));
+      pad(ms(med(r.frame)), 14) + pad(ms(p95(r.frame)), 8) + pad(ms(med(r.script)), 15) + pad(r.actors ? med(r.actors).toFixed(2) : '—', 8) + (DOGS ? pad(r.dogs, 6) : ''));
   };
   /* a page that dies, closes, or loses its browser part-way: each names the world it was drawing */
   let diedAt = '', pageCrashed = false, measuring = true;

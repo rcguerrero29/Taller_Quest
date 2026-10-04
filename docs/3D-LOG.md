@@ -716,3 +716,35 @@ new polygonal update for all these and what we or you learned from marigolds?").
   taking them by name. The brand-new-world gauge in 3D records one new standing demand: its own barrel and desk, drawn
   as pictures, stand as boxes wearing them, and a new world is now told to shape them or say why.
 - **Not done.** The tree still has no blossom; the crate is still a crate wherever a world means something else by `H`.
+
+### 2026-10-04 · dogs on screen: what a picture-dog costs the 3D camera today
+
+- **Why now.** A dog in the 3D camera is a card repainted every frame by his 2D painter; a body made of parts
+  is the next lane, and its cost has to be measured against something. `test/scenecost.js` never stood a dog in
+  front of the camera, and Meridian's only content dog lives on the street, so it would have priced the body
+  at about nothing. Now `--dogs N` stands N dogs (beagle, lab, chihuahua in turn) on the walkable tiles nearest
+  the hero, frozen, and is red unless every one was **drawn**: a card the actor pass stood where that dog stands,
+  inside the camera's frustum, read off what the engine drew. Planted outside the repository — the dogs in no
+  world the camera shows, on the park's farthest tiles, never handed to the engine — each red ("asked for 6 dogs
+  in pk, the camera saw none"). A new column, **actors**, is `t3Actors` alone, timed where `draw3d` calls it.
+- **Figures** — the park only, the whole city raised, mq-v233, one run each, median ms a frame. A shared four-core
+  machine at load average 3.4 to 12.7 across these runs (printed in each), so read directions, not sizes.
+
+  | season | dogs | calls | triangles in view | actors ×1 | actors ×4 | script ×1 → ×4 |
+  |---|---|---|---|---|---|---|
+  | year-round | 0 | 41 | 109,424 | 0.20 | 1.00 | 1.6 → 8.6 |
+  | year-round | 6 | 47 | 109,436 | 0.50 | 2.40 | 3.3 → 17.3 |
+  | year-round | 12 | 53 | 109,448 | 0.70 | 3.30 | 4.9 → 22.7 |
+  | alebrije | 0 | 66 | 125,744 | 0.20 | 1.00 | 2.3 → 10.4 |
+  | alebrije | 6 | 72 | 125,756 | 4.80 | 25.75 | 8.4 → 38.1 |
+  | alebrije | 12 | 78 | 125,768 | 10.80 | 56.95 | 15.4 → 73.7 |
+
+- **What they say.** Each dog is one draw call and two triangles: one card. Year-round a dog costs the actor pass
+  about 0.04 ms a frame at this machine's speed. **On alebrije night about 0.75–0.9 ms each**, near twenty times as
+  much: the treatment reads the card back and multiplies every pixel of it in script (`wildDraw`'s pass B) for
+  every animal on every frame. At ×4, twelve alebrije dogs are 57 ms of actor pass, past three frames at sixty a
+  second. The 2026-10-04 crew read put it at ~0.55 ms a dog on the engine before mq-v233 (a quieter moment of the
+  same machine). Run back to back, main against mq-v233 with six alebrije dogs, twice each: ×1 4.70 and 4.50
+  against 5.85 and 4.50; ×4 26.0 and 26.2 against 30.9 and 28.1 — the wings' own sheets, two more `drawImage`s a
+  winged animal, are inside this machine's noise at ×1 and may be a tenth at ×4. Not settled by four runs.
+- **Open.** The per-pixel pass is the cost to take away, and a body of parts takes it away with the card. A phone.
