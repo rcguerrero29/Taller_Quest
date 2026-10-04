@@ -302,7 +302,7 @@ const SHAPES=(function(){
       parts.push({s:"cyl",x:fx,y:0.045,z:fz,r:0.024,h:0.09,c:FOOT}));                       /* four feet */
     parts.push({s:"box",x:0,y:0.30,z:0,w:0.62,h:0.42,d:0.54,c:BODY},                         /* the body, 0.09 to 0.51 */
       {s:"box",x:0,y:0.27,z:0.275,w:0.56,h:0.28,d:0.016,c:DOOR},                             /* the oven door, proud */
-      {s:"box",x:0,y:0.29,z:0.286,w:0.38,h:0.15,d:0.006,c:GLASS},                            /* its window */
+      {s:"box",x:0,y:0.29,z:0.286,w:0.38,h:0.15,d:0.006,c:GLASS,a:0.55},                     /* its window: glass, the one pane in the library */
       {s:"box",x:0,y:0.235,z:0.290,w:0.30,h:0.016,d:0.004,c:EMBER},                          /* and what is on in there */
       {s:"box",x:0,y:0.485,z:0.278,w:0.62,h:0.060,d:0.014,c:DARK});                          /* the fascia, under the lip */
     [-0.22,0.22].forEach(bx=>parts.push({s:"box",x:bx,y:0.435,z:0.292,w:0.028,h:0.032,d:0.036,c:LIP}));
