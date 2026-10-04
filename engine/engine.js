@@ -3593,9 +3593,9 @@ function gearPose(cr){const P={hop:0,hid:false,side:0};
    how far along he has come never move — only which side of a pole he passes */
 function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
   const L=gearLine(cr.world,Math.round(cr.fx),Math.round(cr.fy));cr.fx+=-L[1]*s;cr.fy+=L[0]*s;}
-/* WHERE AN ANIMAL'S BODY AND HEAD ARE IN THIS POSE (mq-v233) — px on its card, down positive. ONE answer, read by the
+/* WHERE AN ANIMAL'S BODY AND HEAD ARE IN THIS POSE (mq-v234) — px on its card, down positive. ONE answer, read by the
    animal's own painter AND by the alebrije layer drawn over it (wildDraw), so nothing an animal wears is left where it
-   stood. Until mq-v233 the painters moved the body themselves — the hurdle's hop, the lie-down, the howl, the pigeon's
+   stood. Until mq-v234 the painters moved the body themselves — the hurdle's hop, the lie-down, the howl, the pigeon's
    lift and peck, the hover of the hummingbird and the butterfly — and the layer stayed at the standing pose: over the
    hurdle the wings hung under his feet, lying down the colour round his eye sat on his brow, inside the tunnel his
    wings showed where the tube hid him.
@@ -4282,7 +4282,7 @@ function wildScratch(which,W,H){let c=wildTmp[which];if(!c||c.width!==W||c.heigh
    on the body is placed from sb and one on the head from sh — where bodyRide says the body and the head are now — and
    the eye ring from sh too, so neither is left at the standing pose. WINGS are [x,y,len]: the root at the WITHERS, the
    top of the shoulders just behind the neck, sunk 1–1.5 px into the back (a wing goes INTO the shoulder, the way a
-   piñata's cone goes on with a tab: until mq-v233 they sat mid-back, 1–3 px above it, with daylight between); len is
+   piñata's cone goes on with a tab: until mq-v234 they sat mid-back, 1–3 px above it, with daylight between); len is
    the forewing's, short enough that open or folded no tip rises above the head: the dog still looks like himself, with
    perhaps tiny wings, as this night was asked for at the top of this section. */
 const ALEB_KIND={
@@ -4293,7 +4293,7 @@ const ALEB_KIND={
   chi:{wings:[0.5,21.3,5],eye:[5.9,15,2.8],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.accent;g.fillRect(cx+2.4,sh+10.6,1.4,1.6);g.fillRect(cx+7,sh+10.2,1.4,1.6);
     g.fillStyle=l.pat;g.beginPath();g.arc(cx+3.1,sh+9.9,0.45,0,7);g.arc(cx+7.7,sh+9.5,0.45,0,7);g.fill();}}, /* the ears only */
   dog:{wings:[1.5,16.5,7.5],eye:[8.8,12.8,2.6],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-3,sb+18,2.4,0,7);g.fill();g.beginPath();g.arc(cx+3.4,sb+20.6,1.9,0,7);g.fill();
-    g.fillStyle=l.accent;g.beginPath();g.arc(cx-9.6,sb+16.5,1.2,0,7);g.fill();}}, /* the merle patches, the tail tip; the ring on his eye, not his nose (mq-v233) */
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx-9.6,sb+16.5,1.2,0,7);g.fill();}}, /* the merle patches, the tail tip; the ring on his eye, not his nose (mq-v234) */
   cat:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
     g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}}, /* the two bars, the ear tips */
   gato:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
@@ -4301,7 +4301,7 @@ const ALEB_KIND={
   pigeon:{eye:[4.35,18.25,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;g.beginPath();g.moveTo(cx-3.5,sb+21.5);g.lineTo(cx-1.5,sb+20);g.lineTo(cx+0.5,sb+21.5);g.stroke();}}, /* one chevron */
   loro:{tint:0.75,eye:[0.6,4.9,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sb+yy+1);g.lineTo(cx,sb+yy);g.lineTo(cx+1.3,sb+yy+1);g.stroke();});}},
   butterfly:{tint:0.95,marks:(g,l,cx,sb)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-2.6,sb+11.5,1,0,7);g.arc(cx+2.6,sb+11.5,1,0,7);g.fill();}}, /* an eye on each upper wing */
-  colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sb)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3.3,sb+12.1,1.1,0,7);g.fill();}} /* the gorget, at the throat: on the head, riding with it, it painted his eye out (mq-v233) */
+  colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sb)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3.3,sb+12.1,1.1,0,7);g.fill();}} /* the gorget, at the throat: on the head, riding with it, it painted his eye out (mq-v234) */
 };
 /* hexDark multiplies toward black, which is right for a shadow and useless for a highlight:
    a near-black hair times 1.3 is still near-black. hexLite mixes toward white instead, so the
@@ -4311,10 +4311,10 @@ const hexLite=(h,f)=>{const n=parseInt(String(h).slice(1),16);if(isNaN(n))return
 const hexDark=(h,f)=>{const n=parseInt(String(h).slice(1),16);if(isNaN(n))return h;return "rgb("+(((n>>16)&255)*f|0)+","+(((n>>8)&255)*f|0)+","+((n&255)*f|0)+")";};
 /* THE WINGS BEAT WITH THE STEP: one beat a step, read off the step's own progress and offset per animal, and only while
    the animal is going somewhere — so a resting alebrije's wings lie folded and two dogs trotting side by side do not beat
-   as one. Never the clock: until mq-v233 every wing in the world flipped on Date.now()/110, together, asleep or awake. */
+   as one. Never the clock: until mq-v234 every wing in the world flipped on Date.now()/110, together, asleep or awake. */
 const aleBeat=(a,key)=>!!(a&&a.moving)&&(((a.mt||0)+(aleHash(key)%1000)/1000)%1)<0.5;
 function wildWing(g,l,K,cx,sb,fore,open){ /* ONE cut-paper wing, painted the ordinary way on its own sheet (Pili, 2026-09-07: "an edge
-  all the way round, ribs in the pattern colour, bites out of the trailing edge"). Until mq-v233 both wings were painted
+  all the way round, ribs in the pattern colour, bites out of the trailing edge"). Until mq-v234 both wings were painted
   stroke by stroke under one destination-over, so each stroke went UNDER the one before: the ribs hid under their own
   fill, the bites showed as bumps, the forewing ended up behind the hindwing. Drawn here at a length of 8 and scaled to
   the kind's; rooted at the withers (K), folded back along the back at rest and lifted, never past the head, on the beat.
