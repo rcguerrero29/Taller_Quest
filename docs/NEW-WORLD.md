@@ -131,15 +131,24 @@ arch over a door, the bones on a pan de muerto, the handle of a cup. The engine'
 
 ### What the engine already has a shape for — and the ONE line you write to take it
 
-`engine/shapes.js` ships sixteen shapes **named by what they are**, not by a letter:
+`engine/shapes.js` ships nineteen shapes **named by what they are**, not by a letter:
 
     plant · tree · desk · table · crate · shelving · fridge · stove
     counter · draftingTable · picketFence · wellRail · doghouse
-    hurdle · tunnel · weavePoles
+    hurdle · tunnel · weavePoles · planter · grass · siteSign
 
-`SHAPEBIND` in that file is the engine's reading of its own letters (`P J D T H S W V K A F ◺ 9 3 4 5`).
-The last three are the park's agility course; each is turned to the line the dog runs through it, which the
-engine reads off the order the gear is laid on your park's map (mq-v232).
+`SHAPEBIND` in that file is the engine's reading of its own letters (`P J D T H S W V K A F ◺ 9 3 4 5 b g X`).
+`3 4 5` are the park's agility course; each is turned to the line the dog runs through it, which the
+engine reads off the order the gear is laid on your park's map (mq-v232). `b g X` are the marigold
+planter, a tuft of grass and the site sign (mq-v233).
+
+**The desk, table, bookcase, counter and stove are the engine's own drawings, standing up** (mq-v233).
+Each is built from what its letter's `TILEDRAW`/`TILESIDE` draws — the round table under a woven gingham
+cloth with two plates and two chairs, the counter at a person's waist with the espresso machine on every
+third tile, the charcoal range on feet, the bookcase against its wall with a dark gap over every row of
+books — and says so on the shape (`.drawing`). Take them by name like any other letter. Until mq-v233
+the gate refused all five, because the library's versions were plainer objects than their drawings, and a
+world that laid them got boxes with a photograph of the thing on each face — which reads as 2D.
 **It is an offer, not a default.** You take it by naming the letters you agree with, in one string
 in your `art.js`:
 
@@ -157,19 +166,21 @@ never drawn.** Only you know that, so only you can say it.
 The gate in `engine/engine.js` then also refuses a letter you named if:
 
 - you gave it a `mesh`, a `TILEART`, a `TILEART_SIDE` or a `TILEMETA` row — you already answered;
-- it can never stand (a walkable letter) — see the contact-shadow note below;
-- **it is already drawn standing up.** A solid with a `side` drawing is built as a box that wears
-  your top-down art on its lid and your side art round its four faces. The `mesh` view has no
-  texture channel at all — a part is a primitive, a place, a size, a colour and an alpha — so
-  standing a shape there would DELETE your drawing and put bare geometry where it was. That is not
-  a better version of your object, it is a different object. In El Changarrito this refuses
-  `K`(33 tiles) `S`(16) `D`(8) `T`(7) `V`(7): seventy-one tiles that look like a win to anything
-  that counts corners and like a loss to anybody looking at the screen.
+- it is walked across in your world and its shape is not one that stands on a walked tile — see the
+  contact-shadow note below. The planter and the grass are (`.walk`): taken, the gate marks the letter
+  as standing in your world, so the shape stands and its shadow has something on it. If you mean your
+  beds to be walked round rather than through, put `b` in your `SOLIDX`;
+- **it is already drawn standing up and the library's shape is not that drawing.** A solid with a
+  `side` drawing is built as a box that wears its top-down art on its lid and its side art round its
+  four faces. The `mesh` view has no texture channel at all — a part is a primitive, a place, a size,
+  a colour and an alpha — so a shape that is not the drawing would DELETE it and put a different
+  object where it stood. Since mq-v233 every library shape for such a letter is that letter's drawing
+  and says so, so this refuses nothing the engine offers; it stays for the next one.
 
-If you WANT that trade, it is yours to make — write the mesh yourself and the first clause lets it
-straight through:
+If you want a VARIANT of a library shape, write the mesh yourself and the first clause lets it
+straight through — a table cleared for whatever your world sets on it, for instance:
 
-    const TILEART_MESH = { K: o => SHAPES.counter(o) };   // yes, I know, and I want the shape
+    const TILEART_MESH = { T: o => SHAPES.table({ ...o, cleared: somethingOnIt(o) }) };
 
 **Your world means something else by a letter?** One line, in your `art.js`, and it is the same
 line whichever way you go:

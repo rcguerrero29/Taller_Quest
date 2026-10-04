@@ -662,7 +662,10 @@ function findChromium() {
        library — a winged hurdle, a full ribbed tunnel, six weave poles on a rail — taken by name in Meridian's
        SHAPETAKE. Red first, the audit's own sentences: '"3" is no longer flat in 3D — take it off this game's row'
        and the same for "4" and "5". Still flat: X (the site marker). */
-    const FLAT_BY_GAME = { 'index.html': ['X'] };
+    /* 'X' came off on 2026-10-04: the site sign is a shape from the engine's own library — a weighted foot, a post, a
+       diamond printed on both faces — taken by name in Meridian's SHAPETAKE. Red first, the audit's own sentence:
+       '"X" is no longer flat in 3D — take it off this game's row'. Still flat: nothing. */
+    const FLAT_BY_GAME = { 'index.html': [] };
     const packFlat = (typeof FLAT_OK === 'object' && FLAT_OK && Array.isArray(FLAT_OK.letters)) ? FLAT_OK : null;
     const FLAT_KNOWN = packFlat ? packFlat.letters : (FLAT_BY_GAME[IDXNAME] || FLAT_BASE);
     const laid = new Set(); Object.values(WORLDS).forEach(w => w.rows.forEach(r => r.split('').forEach(ch => laid.add(ch))));
