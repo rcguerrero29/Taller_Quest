@@ -49,17 +49,20 @@ nobody decided people cannot walk through it, the drawing needed a box.
 
 `engine/shapes.js` holds the engine's own shapes, **named by what they are** rather than by a
 letter: `plant · tree · desk · table · crate · shelving · fridge · stove · counter ·
-draftingTable · picketFence · wellRail · doghouse · hurdle · tunnel · weavePoles`. `SHAPEBIND` in the same file says which letters
-this engine reads them as (`P J D T H S W V K A F ◺ 9 3 4 5`). The last three are turned by the line the
-park dog runs, not by `facing` (mq-v232).
+draftingTable · picketFence · wellRail · doghouse · hurdle · tunnel · weavePoles · planter · grass · siteSign`.
+`SHAPEBIND` in the same file says which letters this engine reads them as (`P J D T H S W V K A F ◺ 9 3 4 5 b g X`).
+`3 4 5` are turned by the line the park dog runs, not by `facing` (mq-v232).
 
 **THE RULE, and it is the one thing to carry out of this step: an engine default may only fill a
 hole. It never replaces a drawing, and it is never assumed — it is TAKEN.** A pack names the
 letters it accepts in a `SHAPETAKE` string; saying nothing takes nothing. The gate in
 `engine/engine.js` then still refuses a letter you named if you already answered for it (`mesh`,
-`TILEART`, `TILEART_SIDE`, `TILEMETA`), if it can never stand, or if it is **already drawn standing
-up** — a solid with a `side` drawing is built as a box wearing its own art on the lid and four
-faces, and the `mesh` view has no texture channel, so a shape there deletes the drawing.
+`TILEART`, `TILEART_SIDE`, `TILEMETA`), if it can never stand (unless its shape says it stands on a
+walked tile, `.walk`), or if it is **already drawn standing up and the library's shape is not that
+drawing** — a solid with a `side` drawing is built as a box wearing its own art on the lid and four
+faces, and the `mesh` view has no texture channel, so a shape there that is not the drawing deletes it.
+Since mq-v233 the desk, table, bookcase, counter and stove ARE their drawings (`.drawing`, measured by
+`test/engine.smoke.js`), so a world takes them by name like anything else.
 
 Both halves were bought on 2026-09-22 by the same mistake in two shapes:
 
@@ -71,6 +74,12 @@ Both halves were bought on 2026-09-22 by the same mistake in two shapes:
   with a coffee machine on its front and a table with a gingham cloth and two plates with bare
   vertex-coloured blocks — 71 tiles — and the guard that was watching counted triangles and scored
   it as 71 tiles fixed.
+- **And a box wearing a picture is not the safe answer either** (2026-10-04). Refusing those shapes
+  kept the boxes, and the owner, looking at them in 3D, called them 2D: a photograph of a table on
+  four faces and a pizza on the lid. The fault was upstream of the gate — the library's shapes had
+  left off part of their own letter's drawing. **Diff a shared shape against the engine's own
+  drawing before anyone takes it**: `TILEDRAW`/`TILESIDE` is the letter's bill of materials; only a
+  festival belongs to a world.
 
 So, before step 1:
 
