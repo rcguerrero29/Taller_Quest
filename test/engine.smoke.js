@@ -2205,6 +2205,73 @@ function findChromium() {
   stuck.NOTE.forEach(l => console.log('  STUCK — NOTE, measured nothing: ' + l));
   fails.push(...stuck.P);
 
+  /* ---- A DOG'S POSE HAS ONE PLACE, AND SO DOES WHERE HE MAY BE PUT DOWN ----
+     The dog program's three painters each decided his pose for themselves — lying, howling, sitting, digging, the hop
+     over the bar, the tunnel, the wag, the hearts — off his flags and two clocks, and dogHomeSpot carried its own "may a
+     dog stand here". A body in another camera and a dog that leaves the ground will both need those two answers, and the
+     2D picture must not drift from them. Since mq-v234 they are dogPose(cr) and dogCanStand(cr,x,y), lifted out with
+     nothing changed (every dog kind, every pose, six clock phases, the mode off and on, compared with the commit before
+     outside the repository: none of 720 pictures differ, and dogHomeSpot gives the same answer on all 3,432 tiles).
+     This asks that they ARE the one place, by handing the engine a pose or a verdict and seeing whether it obeys:
+       · every dog kind drawn with his own state set to a pose, and drawn standing while dogPose answers that pose, are
+         the same picture, pixel for pixel — a painter that reads a flag of its own draws the standing dog;
+       · dogHomeSpot, while dogCanStand says yes to one tile only, puts him on that tile; while it says no to all, nowhere.
+     A pose that draws the same as standing asks nothing, and says so. The clocks are held still, and moved between the
+     two drawings, so a painter that reads a clock of its own is caught too; everything it moves is put back. Planted outside the repository: the beagle's closed eyes read off his own flag, the chihuahua's legs off
+     his own sit, the note over a howl off the dog's own clock, dogHomeSpot asking its own question — each red. */
+  const onePlace = await page.evaluate(() => {
+    const P = [], N = [];
+    if (typeof dogPose !== 'function') P.push('a dog\'s pose has no one place: there is no dogPose(cr), so each of his painters decides it alone, and a body in another camera would decide it a third time');
+    if (typeof dogCanStand !== 'function') P.push('where a dog may be put down has no one place: there is no dogCanStand(cr,x,y), so a dog set down anywhere but by dogHomeSpot asks a question of its own');
+    if (P.length) return { P, N };
+    const DN = Date.now, PN = performance.now, realPose = dogPose, realStand = dogCanStand, ctx0 = ctx, pick0 = seasonPick;
+    const D0 = 1700000000000, T0 = 5e6, LONG = T0 + 1e7;
+    const SC = 3, W = 44 * SC, H = 52 * SC, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    const shot = f => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H); g.setTransform(SC, 0, 0, SC, 6 * SC, 16 * SC); ctx = g; try { f(g); } finally { ctx = ctx0; } return g.getImageData(0, 0, W, H).data; };
+    const differ = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) n++; return n; };
+    const KN = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua' };
+    const probe = (k, o) => Object.assign({ kind: k, name: 'Posed', world: '__probe', x: 0, y: 0, fx: 0, fy: 0, dx: 1, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
+      moving: false, mt: 0, home: [0, 0], task: null }, o);
+    const poses = [['sitting', { sit: true }], ['lying down', { layT: LONG }], ['howling', { howlT: LONG }], ['howling lying down', { layT: LONG, howlT: LONG }],
+      ['digging', { digT: LONG }], ['happy', { happyT: LONG }], ['told he is loved', { loveT: LONG }], ['facing the other way', { face: -1 }]];
+    const course = typeof agilityCourse === 'function' && PL.park ? agilityCourse(PL.park) : [];
+    const piece = r => course.find(p => GEARROLE[(WORLDS[PL.park].rows[p[1]] || '')[p[0]]] === r), hur = piece('hurdle'), tun = piece('tunnel');
+    if (hur) { const L = gearLine(PL.park, hur[0], hur[1]); poses.push(['over the hurdle\'s bar', { world: PL.park, task: { type: 'run' }, moving: true, x: hur[0], y: hur[1], fx: hur[0], fy: hur[1], dx: L[0], dy: L[1], mt: 1 }]); }
+    else N.push('this pack lays no hurdle, so no dog was handed the hop over one');
+    if (tun) poses.push(['inside the tunnel', { world: PL.park, x: tun[0], y: tun[1], fx: tun[0], fy: tun[1] }]);
+    else N.push('this pack lays no tunnel, so no dog was handed the pose of being inside one');
+    try {
+      Date.now = () => D0; performance.now = () => T0; seasonSet('off');
+      [...DOGK].forEach(k => {
+        const paint = window['draw' + k[0].toUpperCase() + k.slice(1)];
+        if (typeof paint !== 'function') { P.push('the dog program has a ' + k + ' and the engine has no painter for one, so his pose could not be asked'); return; }
+        const stand = shot(g => paint(g, probe(k, {}), 0, 0));
+        poses.forEach(([pn, o]) => {
+          const posed = shot(g => paint(g, probe(k, o), 0, 0));
+          if (!differ(posed, stand)) { N.push(pn + ', the ' + (KN[k] || k) + ' draws the same as standing, so that pose asked nothing'); return; }
+          const handed = realPose(probe(k, o), T0, D0);
+          let told;   /* drawn 311 ms later by both clocks, a fraction of every swing, bob and drift a dog has: a painter that reads a clock of its own draws another moment */
+          try { dogPose = () => handed; Date.now = () => D0 + 311; performance.now = () => T0 + 50311; told = shot(g => paint(g, probe(k, {}), 0, 0)); }
+          finally { dogPose = realPose; Date.now = () => D0; performance.now = () => T0; }
+          const n = differ(posed, told);
+          if (n) P.push(pn.charAt(0).toUpperCase() + pn.slice(1) + ', the ' + (KN[k] || k) + ' drawn from his pose alone is not the ' + (KN[k] || k) + ' drawn from himself: ' + n + ' pixels differ — his painter decides something about how he is held without asking dogPose');
+        }); });
+      /* where he may be put down: one tile allowed, then none */
+      const home = (PL.parkDogHome || PL.parkDog || [0, 0]).slice(), wid = PL.park && WORLDS[PL.park] ? PL.park : Object.keys(WORLDS)[0];
+      const d = probe([...DOGK][0], { world: wid, x: home[0], y: home[1], fx: home[0], fy: home[1], home });
+      const only = [home[0] + 2, home[1] + 1];
+      let got, none;
+      try { dogCanStand = (c, x, y) => c === d && x === only[0] && y === only[1]; got = dogHomeSpot(d); dogCanStand = () => false; none = dogHomeSpot(d); }
+      finally { dogCanStand = realStand; }
+      if (!got || got[0] !== only[0] || got[1] !== only[1]) P.push('dogHomeSpot does not ask dogCanStand where a dog may be put down: told only (' + only + ') may hold him, it put him ' + (got ? 'at (' + got + ')' : 'nowhere'));
+      if (none) P.push('dogHomeSpot does not ask dogCanStand where a dog may be put down: told no tile may hold him, it put him at (' + none + ')');
+    } catch (e) { P.push('asking a dog\'s pose and where he may stand threw: ' + (e && e.message)); }
+    finally { Date.now = DN; performance.now = PN; dogPose = realPose; dogCanStand = realStand; ctx = ctx0; seasonSet(pick0); }
+    return { P, N };
+  });
+  fails.push(...onePlace.P);
+  onePlace.N.forEach(l => console.log('  ONE PLACE — NOTE: ' + l));
+
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
      Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of
      `try{localStorage.setItem(...)}catch(e){}`, so a device out of room let the game go on playing
