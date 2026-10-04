@@ -75,6 +75,24 @@ const SHAPES=(function(){
     return !!r&&r[x]===g;};
   const glyphAt=(x,y)=>{const w=(typeof CW==="function")&&CW();const r=w&&w.grid&&w.grid[y];
     return r?r[x]:undefined;};
+  /* A NUMBER FOR A TILE AND A PART, ON BOTH AXES. `seed` above is a step along a line: (x*7+y*13)%n gives the
+     tile to the east the next value, so anything built from it is its neighbour shifted by one, and a run of
+     bookcases was one bookcase stamped (measured 2026-10-04). This one is a hash of the tile and of WHICH part
+     is asking, so a shelf index and a book index are multipliers of their own. */
+  const rnd=(x,y,i,j)=>{const v=Math.sin((x|0)*12.9898+(y|0)*78.233+(i||0)*39.425+(j||0)*17.719)*43758.5453;return v-Math.floor(v);};
+  const solidAt=(gx,gy)=>{const w=(typeof CW==="function")&&CW();const r=w&&w.grid&&w.grid[gy];
+    return !r||r[gx]===undefined||(typeof SOLID!=="undefined"&&SOLID.has(r[gx]));};
+  /* WHICH WAY A THING THAT STANDS AGAINST A WALL FACES — away from the wall, and across its own run. `facing`
+     answers "the first open side", and the last bookcase of a run down a west wall has an open side to the
+     SOUTH, so it turned to face along the run while its neighbours faced the room. A wall is solid and is not
+     one of this run. `back` says a wall is behind it, so the thing is pushed back until it touches it. */
+  const backToWall=(x,y)=>{const g=glyphAt(x,y),wall=(gx,gy)=>solidAt(gx,gy)&&!same(gx,gy,g);
+    const ew=same(x-1,y,g)||same(x+1,y,g),ns=same(x,y-1,g)||same(x,y+1,g);
+    const hit=[[0,-1,0],[-1,0,Math.PI/2],[1,0,-Math.PI/2],[0,1,Math.PI]]            /* a wall to the north: face south … */
+      .filter(([dx,dy])=>ew&&!ns?dx===0:ns&&!ew?dy===0:true).find(([dx,dy])=>wall(x+dx,y+dy));
+    return hit?{ry:hit[2],back:true}:{ry:facing(x,y),back:false};};
+  const dim=(h,f)=>{const n=parseInt(h.slice(1),16),c=v=>Math.max(0,Math.min(255,Math.round(v*f)));
+    return "#"+((1<<24)|(c(n>>16&255)<<16)|(c(n>>8&255)<<8)|c(n&255)).toString(16).slice(1);};
 
   /* ---------- PLANT (P) — a thrown pot, soil, a stem and five leaf masses ----------
      A pot is thrown on a wheel, so it is round and it tapers; the rim is a separate ring of clay
@@ -142,19 +160,50 @@ const SHAPES=(function(){
       {s:"box",x:-0.27,y:0.478,z:0.06,w:0.16,h:0.005,d:0.2,c:PAPER,ry:0.18});
     return turned(parts,facing(x,y));};
 
-  /* ---------- TABLE (T) — four legs, an apron, a top, and one turn off square ----------
-     The plain one. A table is made by joining four legs to an apron and laying a top on it, so the
-     apron is set IN from the top's edge on every side and the legs sit under its corners — that
-     inset is the whole difference between a table and a block of wood seen from across a room.
-     Turned a few degrees by its own number: nobody ever pushed a table back exactly square. */
-  const table=({x,y})=>{const WOOD="#5E3B20",TOP="#7A4E2B",UNDER="#3A2413",lg=0.31;
-    const parts=[];
-    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>
-      parts.push({s:"box",x:sx*lg,y:0.24,z:sz*lg,w:0.055,h:0.48,d:0.055,c:WOOD}));
-    parts.push({s:"box",x:0,y:0.44,z:0,w:0.68,h:0.05,d:0.68,c:WOOD},        /* the apron, set in */
-      {s:"box",x:0,y:0.5,z:0,w:0.78,h:0.045,d:0.78,c:TOP},                  /* the top, overhanging it */
-      {s:"box",x:0,y:0.474,z:0,w:0.74,h:0.012,d:0.74,c:UNDER});             /* the shade under the top */
-    return turned(parts,seed(x,y,4)*0.09-0.13);};
+  /* ---------- TABLE (T) — the engine's own table: round, under a woven cloth, laid for two ----------
+     What `TILEDRAW["T"]` and `TILESIDE["T"]` in engine/engine.js say it is, and until 2026-10-04 the library said
+     something else: a bare square table, so a world that took it lost the cloth, the plates and the chairs its own
+     letter draws, and the gate refused it for that (a reason nobody had written down). Built in the order one is
+     made and laid: a foot and a pedestal; the top; a gingham cloth laid by hand and falling over the edge all round;
+     two plates set opposite; two chairs pushed in by the last people to sit there.
+     THE CLOTH IS WOVEN, so it has three values and not two: red where a red warp thread crosses a red weft, a
+     half-tone where only one of them passes, cream where neither does. A two-value checker is a PRINTED check, and a
+     printed check with a ring round it is a pizza. The check runs to the edge — quartered at the rim so no ring is
+     left — and over it as a drop of twelve panels with a level hem: the hem, with floor under it, is the tell.
+     WHAT VARIES, AND AT WHICH STEP: the tables were bought as a set, identical and never turned; the cloth came off
+     one bolt, one check size; it was laid by hand, so the check turns per table (both axes); the chairs were moved by
+     whoever sat in them, so each pulls out up to 0.02 and turns up to 5°. Nothing reaches past 0.48 from the centre.
+     CLEARED, for a world that sets something on a table (an altar, a cake): no plates, no chairs, and the cloth is the
+     top of it, so what is set down stands on the cloth — `SHAPES.table({x,y,cleared:true})`. The tallest ink decides
+     where a thing set on a shape stands, and two chair backs at 0.68 would hold it up in the air. */
+  const table=({x,y,cleared})=>{
+    const WOOD="#5E3B20",TOPW="#7A4E2C",CREAM="#F2E8D8",HALF="#D99082",RED="#C0392B",PLATE="#FFFFFF",WELL="#C9CDD2";
+    const parts=[{s:"cyl",x:0,y:0.015,z:0,r:0.16,h:0.03,c:WOOD},                       /* the foot */
+      {s:"cyl",x:0,y:0.26,z:0,r:0.04,h:0.46,c:WOOD},                                       /* the pedestal, 0.03 to 0.49 */
+      {s:"cyl",x:0,y:0.505,z:0,r:0.34,h:0.03,c:TOPW},                                      /* the top, 0.49 to 0.52 */
+      {s:"cyl",x:0,y:0.525,z:0,r:0.37,h:0.01,c:CREAM,cloth:1}];                            /* the cloth: cream, where no red thread runs */
+    const CELL=0.12,R=0.35,a=rnd(x,y,1,1)*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a);       /* laid by hand: the grid turns per table */
+    const cell=(cx,cz,w,c)=>parts.push({s:"box",x:cx*ca+cz*sa,y:0.532,z:-cx*sa+cz*ca,w,h:0.004,d:w,c,ry:a,cloth:1});
+    for(let i=-3;i<3;i++)for(let j=-3;j<3;j++){const warp=(i&1)===0,weft=(j&1)===0;if(!warp&&!weft)continue;
+      const c=warp&&weft?RED:HALF,cx=(i+0.5)*CELL,cz=(j+0.5)*CELL;
+      if(Math.hypot(Math.abs(cx)+CELL/2,Math.abs(cz)+CELL/2)<=R+0.01){cell(cx,cz,CELL,c);continue;}
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([u,v])=>{const qx=cx+u*CELL/4,qz=cz+v*CELL/4;   /* at the rim, in quarters: the check runs to the edge */
+        if(Math.hypot(Math.abs(qx)+CELL/4,Math.abs(qz)+CELL/4)<=R+0.02)cell(qx,qz,CELL/2,c);});}
+    for(let k=0;k<12;k++){const t=(k+0.5)/12*Math.PI*2+a;                                 /* the drop, all round, the warp running down it */
+      parts.push({s:"box",x:Math.sin(t)*0.374,y:0.458,z:Math.cos(t)*0.374,w:0.196,h:0.144,d:0.008,c:k%2?RED:HALF,ry:t,drop:1});} /* hem level at 0.386 */
+    if(cleared)return parts;
+    [-0.15,0.15].forEach(px=>parts.push({s:"cyl",x:px,y:0.54,z:0,r:0.085,h:0.012,c:PLATE,plate:1},   /* two plates, on the chairs' line */
+                                        {s:"cyl",x:px,y:0.547,z:0,r:0.05,h:0.004,c:WELL}));
+    /* A CHAIR IS AIR: the back legs carry on up as the back's posts, which is how a chair is made, with a crest rail
+       and one rail under it, and the floor showing between all four legs. Built facing the table from the east,
+       then turned round for the west one. The seat slides in under the hem; the back stands about 0.15 over the cloth. */
+    [1,-1].forEach((sd,k)=>{const pull=rnd(x,y,k,7)*0.02,turn=(rnd(x,y,k,8)-0.5)*0.17;
+      const chair=[{s:"box",x:0,y:0.27,z:0,w:0.2,h:0.03,d:0.2,c:WOOD}];                        /* the seat, under the hem */
+      [-0.085,0.085].forEach(lz=>chair.push({s:"box",x:-0.085,y:0.1275,z:lz,w:0.025,h:0.255,d:0.025,c:WOOD},   /* front legs */
+                                            {s:"box",x:0.085,y:0.34,z:lz,w:0.025,h:0.68,d:0.025,c:WOOD}));     /* back legs, up to the crest */
+      chair.push({s:"box",x:0.085,y:0.65,z:0,w:0.025,h:0.06,d:0.2,c:WOOD},{s:"box",x:0.085,y:0.48,z:0,w:0.02,h:0.03,d:0.2,c:WOOD});
+      turned(chair,(sd>0?0:Math.PI)+turn).forEach(p=>parts.push({...p,x:p.x+sd*(0.345+pull),chair:k}));});
+    return parts;};
 
   /* ---------- CRATE (H) — slats, and you can see between them ----------
      A crate is nailed from sawn slats onto four corner posts, so it has GAPS, and the gaps are the
@@ -173,30 +222,50 @@ const SHAPES=(function(){
     parts.push({s:"box",x:0,y:0.02,z:0,w:W,h:0.04,d:W,c:DARK});             /* the floor of it */
     return turned(parts,seed(x,y,5)*0.13-0.26);};
 
-  /* ---------- SHELVING (S) — a carcass you can see INTO ----------
-     Two uprights, a thin back, four boards with real depth, and on the boards runs of spines with
-     one leaning into the gap the way a shelf actually looks. The books are one box per run, not
-     one per book: at tile size a run of spines reads as a run of spines, and thirty boxes reads as
-     thirty draw calls. Faces the first open side, so a shelf against a wall opens to the room. */
+  /* ---------- SHELVING (S) — the engine's bookcase: against the wall, in runs, books bought one at a time ----------
+     What `TILESIDE["S"]` says it is — two uprights, the boards, books and boxes on each, the dark inside — and what the
+     library's last one was not: its books reached the board above them (no gap, so no dark line over the spines, which
+     is the one thing that says bookcase at street size); every case was its neighbour shifted by one, because its seed
+     stepped along a line; it floated a third of a tile off its wall; and its brown sat within a few values of a dark
+     wall, so a run against one melted into it. Built in the order it is made:
+       1 the carcass, flat-packed, one model — uprights, a top, a plinth set back so there is a shadow at the floor, and
+         a plain back (nothing is painted on a back);
+       2 the boards, cut on one jig and set at one pitch, so a run's board lines run straight through it;
+       3 each case stood against the wall and pushed against its neighbour: the case is the full tile wide, so the
+         uprights of two neighbours meet, and its back is on the wall wherever there is one;
+       4 the books, bought one at a time and shelved in SERIES — siblings within a series (one height, one cloth, a
+         volume or two shorter), strangers between them — with a gap of at least 0.05 over every row, one leaner at the
+         end of a series, and a flat stack or a carton on one shelf: "books and boxes", as the drawing has it.
+     The carcass and its boards are the theme's desk-top colour, as the desks are; the back is dark, so the gap over
+     the spines reads. Nothing varies before step 4. */
   const shelving=({x,y})=>{
-    /* THE SPINES ARE WHY ANYBODY LOOKS AT A SHELF. The first version put them in the back half of
-       a 0.34-deep carcass in five muted colours, and a picture showed what the count could not: the
-       second world's shop shelves went from a bright billboard of books to a dark brown cupboard. They sit
-       forward now, in colours that survive a lambert in shade. */
-    const CASE="#6B4A2C",BACK="#4A3220",BOARD="#8A6340",SP=["#C0392B","#2F6FB0","#3E9B6A","#E0A32E","#8E5BB5","#C86A3A"];
-    const parts=[{s:"box",x:-0.3,y:0.5,z:0,w:0.06,h:1.0,d:0.34,c:CASE},
-                 {s:"box",x:0.3,y:0.5,z:0,w:0.06,h:1.0,d:0.34,c:CASE},
-                 {s:"box",x:0,y:0.5,z:-0.16,w:0.6,h:1.0,d:0.03,c:BACK},
-                 {s:"box",x:0,y:0.99,z:0,w:0.66,h:0.04,d:0.36,c:CASE}];
-    [0.02,0.27,0.52,0.77].forEach((by,i)=>{
-      parts.push({s:"box",x:0,y:by,z:0,w:0.6,h:0.035,d:0.34,c:BOARD});
-      if(i===3)return;                                                       /* the top shelf left empty: a shelf is never full */
-      const n=2+((seed(x,y,3)+i)%2);                                         /* two runs, sometimes three */
-      for(let k=0;k<n;k++){const bw=0.15+((seed(x+k,y+i,3))*0.03);
-        parts.push({s:"box",x:-0.26+k*0.19+bw/2,y:by+0.13,z:0.055,w:bw,h:0.22,d:0.2,c:SP[(seed(x,y,6)+k+i)%6]});}
-      parts.push({s:"box",x:0.2,y:by+0.12,z:0.055,w:0.055,h:0.21,d:0.19,c:SP[(seed(x,y,6)+i+2)%6],rz:0.34}); /* the leaner */
-    });
-    return turned(parts,facing(x,y));};
+    const BOARD=C.deskTop,BACK="#3F2E1E",PLINTH="#2E241A",CARTON="#B0895B",
+          SP=["#C0392B","#2F6FB0","#3E9B6A","#E0A32E","#8E5BB5","#C86A3A"];                  /* spines that survive a lambert in shade */
+    const at=backToWall(x,y),D=0.34,T=0.04,IN=0.5-T,BT=0.035,BOT=[0.06,0.36,0.66],UNDER=[0.36,0.66,0.95];
+    const parts=[{s:"box",x:-(0.5-T/2),y:0.5,z:0,w:T,h:1.0,d:D,c:BOARD},                    /* 1 · the uprights, at the tile's edges */
+      {s:"box",x:0.5-T/2,y:0.5,z:0,w:T,h:1.0,d:D,c:BOARD},
+      {s:"box",x:0,y:0.97,z:0,w:1.0,h:0.04,d:D,c:BOARD},                                     /*     the top */
+      {s:"box",x:0,y:0.5,z:-D/2+0.01,w:2*IN,h:0.98,d:0.02,c:BACK},                           /*     the back, plain */
+      {s:"box",x:0,y:0.03,z:-0.01,w:2*IN,h:0.06,d:D-0.04,c:PLINTH}];                         /*     the plinth, set back 0.02 */
+    const ZB=D/2-0.02-0.12;                                                                   /* a spine 0.02 behind the board's edge, 0.24 deep */
+    const lean=Math.floor(rnd(x,y,7,1)*3),box=(lean+1+Math.floor(rnd(x,y,7,2)*2))%3,carton=rnd(x,y,7,3)<0.4;
+    BOT.forEach((b,i)=>{const floor=b+BT,cap=UNDER[i]-floor-0.05;                          /* 4 · the gap over every row is never under 0.05 */
+      parts.push({s:"box",x:0,y:b+BT/2,z:0.01,w:2*IN,h:BT,d:D-0.02,c:BOARD});                /* 2 · one jig, one pitch */
+      let cx=-IN+0.01+rnd(x,y,i,9)*0.03;
+      const n=2+(rnd(x,y,i,1)<0.5?1:0);
+      for(let k=0;k<n&&cx<IN-0.1;k++){const q=i*5+k,fam=SP[Math.floor(rnd(x,y,q,2)*SP.length)];
+        const bh=Math.min(cap,0.15+rnd(x,y,q,3)*0.09),bw=0.035+rnd(x,y,q,4)*0.02,nb=Math.max(2,Math.round((0.12+rnd(x,y,q,5)*0.1)/(bw+0.004)));
+        for(let j=0;j<nb&&cx+bw<IN-0.005;j++){const hj=bh-(j%3===1?0.012:0);                 /* siblings: one set, a volume or two shorter */
+          parts.push({s:"box",x:cx+bw/2,y:floor+hj/2,z:ZB,w:bw,h:hj,d:0.24,c:j%2?dim(fam,0.84):fam});cx+=bw+0.004;}
+        if(i===lean&&k===n-1&&cx+0.09<IN){const th=0.3,lh=Math.min(bh,cap)*0.97;            /* the leaner, at the end of its series */
+          parts.push({s:"box",x:cx+0.005+(lh/2)*Math.sin(th)+(bw/2)*Math.cos(th),y:floor+(lh/2)*Math.cos(th)+(bw/2)*Math.sin(th),z:ZB,w:bw,h:lh,d:0.24,c:dim(fam,0.92),rz:th});
+          cx+=bw+lh*Math.sin(th)+0.01;}
+        cx+=0.02+rnd(x,y,q,6)*0.03;}
+      if(i===box&&cx+0.17<IN){
+        if(carton)parts.push({s:"box",x:cx+0.085,y:floor+0.07,z:ZB-0.01,w:0.16,h:0.14,d:0.22,c:CARTON});
+        else [0,1,2].forEach(l=>parts.push({s:"box",x:cx+0.09+(rnd(x,y,i,20+l)-0.5)*0.02,y:floor+0.017+l*0.034,z:ZB,w:0.17-l*0.015,h:0.032,d:0.22,c:SP[Math.floor(rnd(x,y,i,30+l)*SP.length)]}));}});
+    if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});                                            /* 3 · its back on the wall */
+    return turned(parts,at.ry);};
 
   /* ---------- FRIDGE (W) — a white good, and white goods have a plinth ----------
      A body over a recessed plinth so it does not look glued to the floor, two doors with the seam
@@ -215,52 +284,88 @@ const SHAPES=(function(){
       {s:"box",x:-0.12,y:0.86,z:0.288,w:0.05,h:0.035,d:0.006,c:MAG}];
     return turned(parts,facing(x,y));};
 
-  /* ---------- STOVE (V) — FOUR burners, and the door is a door ----------
-     Four, because four is what a domestic range has and what four rings can be told apart at this
-     size (the owner, this week, on Meridian's: "four burners"). A body, a hob plate set on top of
-     it, four rings as flat tori — a ring reads as a ring and a disc reads as a hotplate — a oven
-     door that is INSET with a bar handle standing off it on two stubs, a glass window you can see
-     through, four knobs on the fascia and a splashback up the wall behind. */
+  /* ---------- STOVE (V) — the engine's range: charcoal, on feet, a pale lip over it ----------
+     `TILEDRAW["V"]` and `TILESIDE["V"]` draw a charcoal range (#3A3F46): burners over the edge, knobs, the oven
+     window, one ring lit. The library's last one was WHITE — the floor's own value, four apart in luma — with its hob
+     at 0.83, nearly a person's chin. Made as one is welded: four feet with the floor showing under it; the body; the
+     oven door proud of it with its window and what is on in there; the fascia and its knobs under the lip; a bar
+     handle on two brackets; the cast deck OVERHANGING the body all round (that lip is what says range and not
+     cupboard) with a PALE edge, which is what draws its top line against a dark wall; four burners, each a drip bowl,
+     a dark well, a cast grate as a cross, a cap; one of them lit; the riser at the back with its pilot. No pot: what is
+     on the fire is the world's business. Ranges come off a line, so nothing varies but which burner is on (both axes). It
+     stands with its back to the wall wherever there is one. */
   const stove=({x,y})=>{
-    const BODY="#D8DBDF",STEEL="#AEB6BE",DARK="#2F343A",RING="#4A4F55",GLASS="#3A4046",KNOB="#8E969E",FLAME="#E07A2F";
-    const parts=[{s:"box",x:0,y:0.02,z:0,w:0.6,h:0.04,d:0.52,c:DARK},        /* the recess it stands in */
-      {s:"box",x:0,y:0.42,z:0,w:0.64,h:0.76,d:0.56,c:BODY},
-      {s:"box",x:0,y:0.815,z:0,w:0.66,h:0.03,d:0.58,c:STEEL},                /* the hob plate */
-      {s:"box",x:0,y:0.9,z:-0.3,w:0.66,h:0.2,d:0.03,c:STEEL}];               /* the splashback */
-    [[-0.15,-0.13],[0.15,-0.13],[-0.15,0.13],[0.15,0.13]].forEach(([bx,bz],i)=>{
-      parts.push({s:"torus",x:bx,y:0.836,z:bz,r:0.1,t:0.018,rx:Math.PI/2,c:RING});
-      if(i===seed(x,y,4))parts.push({s:"torus",x:bx,y:0.845,z:bz,r:0.07,t:0.012,rx:Math.PI/2,c:FLAME});}); /* one ring lit */
-    parts.push({s:"box",x:0,y:0.36,z:0.276,w:0.54,h:0.46,d:0.012,c:STEEL},   /* the oven door, inset */
-      {s:"box",x:0,y:0.38,z:0.283,w:0.4,h:0.26,d:0.006,c:GLASS,a:0.55},      /* and you can see in */
-      {s:"box",x:0,y:0.6,z:0.315,w:0.5,h:0.028,d:0.028,c:STEEL},             /* the bar handle, standing off */
-      {s:"box",x:-0.2,y:0.6,z:0.297,w:0.02,h:0.02,d:0.04,c:DARK},
-      {s:"box",x:0.2,y:0.6,z:0.297,w:0.02,h:0.02,d:0.04,c:DARK});
-    [-0.21,-0.07,0.07,0.21].forEach(kx=>parts.push({s:"cyl",x:kx,y:0.73,z:0.293,r:0.032,h:0.022,c:KNOB,rx:Math.PI/2}));
-    return turned(parts,facing(x,y));};
+    const BODY="#3A3F46",DOOR="#4A5058",DECK="#2F343B",LIP="#B9BEC4",DARK="#23272C",GLASS="#1B1E22",EMBER="#C8601E",
+          KNOB="#AEB6BE",BOWL="#6A727C",CAP="#4A5058",PILOT="#E0662B",FOOT="#2A2D33",FLAME="#2E86C8";
+    const at=backToWall(x,y),parts=[];
+    [[-0.25,-0.21],[0.25,-0.21],[-0.25,0.21],[0.25,0.21]].forEach(([fx,fz])=>
+      parts.push({s:"cyl",x:fx,y:0.045,z:fz,r:0.024,h:0.09,c:FOOT}));                       /* four feet */
+    parts.push({s:"box",x:0,y:0.30,z:0,w:0.62,h:0.42,d:0.54,c:BODY},                         /* the body, 0.09 to 0.51 */
+      {s:"box",x:0,y:0.27,z:0.275,w:0.56,h:0.28,d:0.016,c:DOOR},                             /* the oven door, proud */
+      {s:"box",x:0,y:0.29,z:0.286,w:0.38,h:0.15,d:0.006,c:GLASS,a:0.55},                     /* its window: glass, the one pane in the library */
+      {s:"box",x:0,y:0.235,z:0.290,w:0.30,h:0.016,d:0.004,c:EMBER},                          /* and what is on in there */
+      {s:"box",x:0,y:0.485,z:0.278,w:0.62,h:0.060,d:0.014,c:DARK});                          /* the fascia, under the lip */
+    [-0.22,0.22].forEach(bx=>parts.push({s:"box",x:bx,y:0.435,z:0.292,w:0.028,h:0.032,d:0.036,c:LIP}));
+    parts.push({s:"cyl",x:0,y:0.435,z:0.318,r:0.016,h:0.56,c:LIP,rz:Math.PI/2});           /* the bar handle on its brackets */
+    [-0.21,-0.07,0.07,0.21].forEach(kx=>parts.push({s:"cyl",x:kx,y:0.485,z:0.298,r:0.022,h:0.020,c:KNOB,rx:Math.PI/2}));
+    parts.push({s:"box",x:0,y:0.528,z:0,w:0.68,h:0.036,d:0.60,c:DECK},                      /* the cast deck, 0.51 to 0.546, over the body all round */
+      {s:"box",x:0,y:0.537,z:0.302,w:0.69,h:0.022,d:0.016,c:LIP},                            /* its pale lip, front */
+      {s:"box",x:-0.342,y:0.537,z:0,w:0.012,h:0.022,d:0.60,c:LIP},                           /*   and sides */
+      {s:"box",x:0.342,y:0.537,z:0,w:0.012,h:0.022,d:0.60,c:LIP});
+    const lit=Math.floor(rnd(x,y,5,1)*4);
+    [[-0.155,-0.13],[0.155,-0.13],[-0.155,0.13],[0.155,0.13]].forEach(([bx,bz],bi)=>{
+      parts.push({s:"cyl",x:bx,y:0.548,z:bz,r:0.115,h:0.010,c:BOWL},                       /* the drip bowl, catching the light */
+        {s:"cyl",x:bx,y:0.554,z:bz,r:0.098,h:0.010,c:DARK});                                 /* the well in it */
+      [0,Math.PI/2].forEach(g=>parts.push({s:"box",x:bx,y:0.566,z:bz,w:0.20,h:0.016,d:0.022,c:DECK,ry:g})); /* the grate: a cross, not a ring */
+      parts.push({s:"cyl",x:bx,y:0.560,z:bz,r:0.046,h:0.016,c:CAP});                       /* the cap */
+      if(bi===lit)parts.push({s:"torus",x:bx,y:0.562,z:bz,r:0.050,t:0.010,rx:Math.PI/2,c:FLAME,flame:1});}); /* one on */
+    parts.push({s:"box",x:0,y:0.612,z:-0.275,w:0.68,h:0.130,d:0.045,c:BODY},                 /* the riser */
+      {s:"box",x:0,y:0.680,z:-0.275,w:0.68,h:0.010,d:0.045,c:LIP},                           /* its lit top */
+      {s:"box",x:0,y:0.612,z:-0.250,w:0.13,h:0.030,d:0.008,c:PILOT});                        /* the pilot */
+    if(at.back)parts.forEach(p=>{p.z-=0.2;});                                                /* the riser to the wall */
+    return turned(parts,at.ry);};
 
-  /* ---------- COUNTER (K) — laid in RUNS, so it has ends and not edges ----------
-     The carcass is the full tile wide and dead flat along the top, so a run of five reads as ONE
-     counter at one height with no seam in it; an end panel and a returned nosing stand only where
-     the run actually stops. That is the whole trick, and it is why this one reads the grid. Two
-     recessed panels on the front, a nosing along the serving edge, and a shadow gap at the floor
-     so it does not look poured into the slab. */
+  /* ---------- COUNTER (K) — the engine's café counter: waist high, in runs, the machine where the drawing puts it ----------
+     `TILESIDE["K"]` draws a counter body under a steel top (#9AA4B0) with two panels on its front, and on it "a coffee
+     machine on every third tile … the rest carry a cup and a napkin stand". The library's last one had neither, and
+     its top stood at 0.82 — chin-high on a person of 0.92. This one is laid as counters are: the carcass the full tile
+     wide, so a run is ONE counter with one top line at a person's waist (0.57); a toe-kick set back so it does not
+     look poured into the floor; a top proud of the body with a nosing along the serving edge; an end panel only where
+     the run stops; and the whole run agrees which way it serves — across itself, toward whichever side has more open
+     floor along its length. On it, where the drawing says ((x+y)%3===2): the espresso machine — a bright drip tray, the
+     body, a narrower hopper (the step is the read), the group head with AIR between it and the cup under it (no air is
+     a microwave), the portafilter, its handle, one warm light. Everywhere else a cup and a napkin stand, and the cup's
+     place is the only thing that varies: machines are identical and a run is one object. */
   const counter=({x,y})=>{const g=glyphAt(x,y);
-    const BODY=C.counter,TOP="#C9CDD2",PANEL="#6C7681",NOSE="#DDE2E6",DARK="#3A4046";
-    const ew=same(x-1,y,g)||same(x+1,y,g),ns=same(x,y-1,g)||same(x,y+1,g);
-    /* which way the run goes, and which way it faces across itself: a counter you serve over
-       faces the open side ACROSS the run, never along it. */
-    const along=ew&&!ns?0:ns&&!ew?Math.PI/2:facing(x,y);
-    const parts=[{s:"box",x:0,y:0.03,z:0,w:0.92,h:0.06,d:0.5,c:DARK},        /* the shadow gap at the foot */
-      {s:"box",x:0,y:0.42,z:0,w:1.0,h:0.72,d:0.56,c:BODY},
-      {s:"box",x:0,y:0.795,z:0,w:1.0,h:0.05,d:0.6,c:TOP},                    /* the top, proud of the body */
-      {s:"box",x:0,y:0.79,z:0.302,w:1.0,h:0.07,d:0.02,c:NOSE},               /* the nosing along the front */
-      {s:"box",x:-0.26,y:0.42,z:0.283,w:0.4,h:0.5,d:0.012,c:PANEL},
-      {s:"box",x:0.26,y:0.42,z:0.283,w:0.4,h:0.5,d:0.012,c:PANEL}];
-    /* an END PANEL where the run stops — one per open end, and a standalone counter gets both */
-    [-1,1].forEach(sd=>{const nx=x+(ew?sd:0),ny=y+(ns&&!ew?sd:0);
-      if((ew||ns)&&same(nx,ny,g))return;
-      parts.push({s:"box",x:sd*0.49,y:0.42,z:0,w:0.04,h:0.78,d:0.58,c:PANEL});});
-    return turned(parts,along);};
+    const BODY=C.counter,TOP="#9AA4B0",NOSE="#C9CFD6",PANEL="#6E7884",END="#5E6874",TOE="#2F343A",
+          MACH="#3A3F46",HOP="#23272C",TRAY="#C9CDD2",LIGHT="#E0662B",CUP="#F4F1EA",NAP="#C9B7A0";
+    const E=same(x+1,y,g),Wt=same(x-1,y,g),N=same(x,y-1,g),S=same(x,y+1,g),alongX=E||Wt||!(N||S);
+    const run=[];if(alongX){let a=x;while(same(a-1,y,g))a--;for(;same(a,y,g);a++)run.push([a,y]);}
+             else{let a=y;while(same(x,a-1,g))a--;for(;same(x,a,g);a++)run.push([x,a]);}
+    const open=(dx,dy)=>run.filter(([gx,gy])=>!solidAt(gx+dx,gy+dy)).length;
+    const ry=alongX?(open(0,1)>=open(0,-1)?0:Math.PI):(open(1,0)>=open(-1,0)?Math.PI/2:-Math.PI/2);
+    const endA=ry===0?!Wt:ry===Math.PI?!E:ry===Math.PI/2?!S:!N,endB=ry===0?!E:ry===Math.PI?!Wt:ry===Math.PI/2?!N:!S;
+    const T0=0.57,parts=[{s:"box",x:0,y:0.03,z:-0.02,w:1.0,h:0.06,d:0.72,c:TOE},             /* the toe-kick, set back */
+      {s:"box",x:0,y:0.30,z:0,w:1.0,h:0.48,d:0.8,c:BODY},                                    /* the carcass, 0.06 to 0.54, the full tile */
+      {s:"box",x:0,y:0.555,z:0.01,w:1.0,h:0.03,d:0.84,c:TOP},                                /* the top, 0.54 to 0.57, proud of it */
+      {s:"cyl",x:0,y:0.555,z:0.43,r:0.018,h:1.0,c:NOSE,rz:Math.PI/2},                        /* the nosing along the serving edge */
+      {s:"box",x:-0.24,y:0.3,z:0.405,w:0.3,h:0.26,d:0.012,c:PANEL},{s:"box",x:0.24,y:0.3,z:0.405,w:0.3,h:0.26,d:0.012,c:PANEL}];
+    if(endA)parts.push({s:"box",x:-0.49,y:0.29,z:0,w:0.02,h:0.5,d:0.8,c:END});              /* an end panel where the run stops */
+    if(endB)parts.push({s:"box",x:0.49,y:0.29,z:0,w:0.02,h:0.5,d:0.8,c:END});
+    const cup=(cx,cy,cz)=>parts.push({s:"cyl",x:cx,y:cy+0.028,z:cz,r:0.034,h:0.056,c:CUP},
+                                     {s:"torus",x:cx+0.042,y:cy+0.03,z:cz,r:0.018,t:0.007,c:CUP,ry:Math.PI/2});
+    if((((x|0)+(y|0))%3+3)%3===2){
+      parts.push({s:"box",x:0,y:T0+0.01,z:0.1,w:0.34,h:0.02,d:0.16,c:TRAY},                  /* the drip tray, bright steel */
+        {s:"box",x:0,y:T0+0.15,z:-0.08,w:0.44,h:0.3,d:0.3,c:MACH},                           /* the body */
+        {s:"box",x:0,y:T0+0.35,z:-0.1,w:0.3,h:0.1,d:0.24,c:HOP},                             /* the hopper, narrower: the step */
+        {s:"cyl",x:0,y:T0+0.18,z:0.11,r:0.04,h:0.05,c:HOP},                                  /* the group head, off the front */
+        {s:"cyl",x:0,y:T0+0.148,z:0.11,r:0.046,h:0.014,c:TRAY},                              /* the portafilter locked in */
+        {s:"box",x:0,y:T0+0.148,z:0.2,w:0.02,h:0.018,d:0.12,c:HOP},                          /* its handle */
+        {s:"box",x:-0.15,y:T0+0.24,z:0.077,w:0.05,h:0.04,d:0.014,c:LIGHT});                  /* the one warm light */
+      cup(0,T0+0.02,0.11);}                                                                   /* under the group, air between */
+    else{cup(-0.24+rnd(x,y,3,1)*0.2,T0,0.08+rnd(x,y,3,2)*0.08);                              /* a cup, where it was put down */
+      parts.push({s:"box",x:0.2,y:T0+0.06,z:0.04,w:0.18,h:0.12,d:0.07,c:NAP},{s:"box",x:0.2,y:T0+0.14,z:0.04,w:0.13,h:0.08,d:0.03,c:CUP});}
+    return turned(parts,ry);};
 
   /* ---------- DRAFTING TABLE (A) — the board is raked, and that is the object ----------
      Two feet, two columns, one stretcher between them, and a board raked back at about 23° with a
@@ -453,7 +558,91 @@ const SHAPES=(function(){
                  {s:"sph",x:px,y:0.04+PH,z:0,r:0.032,c:TAPE[k%2]});}
     return turned(parts,runTurn(x,y));};
 
-  return {plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles};
+  /* ---------- PLANTER (b) — the marigold bed, raised, as Meridian built it ----------
+     The engine draws `b` as a bed of cempasúchil (`drawBed`, engine/engine.js): soil with a lip, open heads wider than
+     they are tall with a green cup under each, and buds — and until 2026-10-04 a world that laid it got exactly that,
+     painted on the floor, because the only standing bed was in Meridian's own file. This is that construction, lifted
+     and made plain: a painted-concrete curb with a rounded lip a mason's trowel ran round, soil a hand below the lip,
+     a mound of near-black foliage, and the heads standing out of it, the middle of the bed higher and the edge heads
+     lower. A run of beds shares one curb: walls stand only where the run ends. Every head is the same flower, made of
+     the three marks that survive at tile size — a dark collar under it wider than the head (the value step the eye
+     reads it by: an orange mass with dark under it is a flower, an orange mass alone is a traffic cone), the head
+     itself flattened, and a paler crown. The colours are `petalPal()`, the engine's marigold, so the bed and its own
+     petals are one flower; what differs between heads is what differed in the field — size, place and which of the
+     packet's hues — seeded on both axes. A world's festival dress for it (papel picado, an ofrenda's arch) stays the
+     world's. It stands on a tile a person may walk across (`.walk`), so the gate stands it there rather than refuse
+     it; a world that wants its beds walked round says so in its own SOLIDX. */
+  const planter=({x,y})=>{const g=glyphAt(x,y);
+    const P=(typeof petalPal==="function"&&petalPal())||["#7A2E12","#B8410E","#E2620F","#F2870F","#FBB024","#FFD972"];
+    const CURB="#B9B0A2",LIP="#CFC7B9",SOIL="#2F2216",LEAF="#27492F",LEAF2="#3E7C4F",COLLAR="#1B3521",BUD="#4E8A58";
+    const N=!same(x,y-1,g),S=!same(x,y+1,g),E=!same(x+1,y,g),Wt=!same(x-1,y,g);
+    const x0=Wt?-0.46:-0.5,x1=E?0.46:0.5,z0=N?-0.46:-0.5,z1=S?0.46:0.5,parts=[];
+    const wall=(px,pz,ww,dd)=>parts.push({s:"box",x:px,y:0.11,z:pz,w:ww,h:0.22,d:dd,c:CURB},
+      {s:"cyl",x:px,y:0.22,z:pz,r:0.045,h:Math.max(ww,dd),c:LIP,rz:ww>dd?Math.PI/2:0,rx:ww>dd?0:Math.PI/2});   /* the lip */
+    if(N)wall((x0+x1)/2,-0.42,x1-x0,0.08);if(S)wall((x0+x1)/2,0.42,x1-x0,0.08);
+    if(Wt)wall(-0.42,(z0+z1)/2,0.08,z1-z0);if(E)wall(0.42,(z0+z1)/2,0.08,z1-z0);
+    const sx0=Wt?-0.38:-0.5,sx1=E?0.38:0.5,sz0=N?-0.38:-0.5,sz1=S?0.38:0.5;
+    parts.push({s:"box",x:(sx0+sx1)/2,y:0.16,z:(sz0+sz1)/2,w:sx1-sx0,h:0.08,d:sz1-sz0,c:SOIL});     /* the soil, a hand below the lip */
+    const cl=v=>Math.max(-0.3,Math.min(0.3,v));
+    for(let i=0;i<9;i++)parts.push({s:"sph",x:cl(-0.28+(i%3)*0.28+(rnd(x,y,i,1)-0.5)*0.1),y:0.25+rnd(x,y,i,3)*0.05,
+      z:cl(-0.28+((i/3)|0)*0.28+(rnd(x,y,i,2)-0.5)*0.1),r:0.1+rnd(x,y,i,4)*0.03,sx:1.35,sy:0.45,sz:0.9,ry:rnd(x,y,i,5)*3.14,c:i%3?LEAF:LEAF2}); /* the mound */
+    [[-0.26,-0.25],[0.01,-0.27],[0.27,-0.24],[-0.13,0],[0.14,0.02],[-0.27,0.25],[0.02,0.27],[0.27,0.25]].forEach(([hx,hz],i)=>{
+      const px=hx+(rnd(x,y,i,6)-0.5)*0.06,pz=hz+(rnd(x,y,i,7)-0.5)*0.06,r=0.075+rnd(x,y,i,8)*0.025,
+            k=1+Math.floor(rnd(x,y,i,10)*3),hy=0.38+(1-Math.min(1,Math.hypot(px,pz)/0.42))*0.08+rnd(x,y,i,9)*0.03;
+      parts.push({s:"sph",x:px,y:hy-r*0.2,z:pz,r:r*1.25,sy:0.18,c:COLLAR},                   /* the dark under it, wider than the head */
+        {s:"sph",x:px,y:hy,z:pz,r,sy:0.7,c:P[k+1]},                                           /* the head, wider than tall */
+        {s:"sph",x:px,y:hy+r*0.42,z:pz,r:r*0.55,sy:0.8,c:P[Math.min(5,k+2)]});});             /* its crown, paler */
+    [[-0.14,-0.13],[0.15,0.15]].forEach(([bx,bz],i)=>parts.push({s:"cyl",x:bx,y:0.38,z:bz,rt:0.03,rb:0.02,h:0.07,c:BUD},   /* buds: the same plant, younger */
+      {s:"sph",x:bx,y:0.425,z:bz,r:0.026,sy:1.2,c:P[2+i]}));
+    return parts;};
+
+  /* ---------- GRASS (g) — a tuft, standing ----------
+     The engine draws `g` as four blades on the floor. Meridian stood it up and nobody else could: blades from one
+     root, cones leaning outward, the ones toward the light longer and paler, one gone to straw, on a fist of soil.
+     Lifted as it was. Walked through, so `.walk`; below a person's knee. */
+  const grass=({x,y})=>{const h=Math.floor(rnd(x,y,0,1)*8),n=8+(h%3);
+    const parts=[{s:"cyl",x:0,y:0.006,z:0,r:0.13,h:0.012,c:"#5A4632"}];                      /* the soil it holds */
+    for(let i=0;i<n;i++){const a=i*(Math.PI*2/n)+h*0.35,lit=Math.cos(a+Math.PI*0.75)>0.2;
+      const len=0.18+((i*3+h)%4)*0.04+(lit?0.04:0),lean=0.35+((i*5+h)%3)*0.15,bx=Math.cos(a)*0.045,bz=Math.sin(a)*0.045;
+      parts.push({s:"cone",x:bx+Math.cos(a)*Math.sin(lean)*len*0.5,y:Math.cos(lean)*len*0.5,z:bz+Math.sin(a)*Math.sin(lean)*len*0.5,
+        r:0.022,h:len,c:lit?"#9CD486":"#5FA86A",rx:Math.sin(a)*lean,rz:-Math.cos(a)*lean});}   /* the drawing's green, and a lit one */
+    const a=h*0.9+2,len=0.16,lean=0.9;                                                        /* one blade gone to straw */
+    parts.push({s:"cone",x:Math.cos(a)*Math.sin(lean)*len*0.5,y:Math.cos(lean)*len*0.5,z:Math.sin(a)*Math.sin(lean)*len*0.5,r:0.018,h:len,c:"#C9B66E",rx:Math.sin(a)*lean,rz:-Math.cos(a)*lean});
+    return parts;};
+
+  /* ---------- SITE SIGN (X) — a diamond on a stick ----------
+     `TILEDRAW["X"]` draws a yellow board on a post, and in 3D it was that drawing on a billboard turning to face the
+     camera — in every world, Meridian's five included, the last flat picture in it. Made as one is: a weighted foot,
+     a steel post, a diamond plate bolted near the top and printed on BOTH faces (a site sign is read from both sides
+     of the street) in the drawing's yellow, with a dark border round the print and one mark on it, a bar and a dot.
+     Not the drawing's emoji — a picture of a picture — and no diagonal stripes, which read as "crossed out" here.
+     WHICH WAY IT STANDS was measured, not chosen: turned to its first open side, as the first draft of it was, a
+     sign with a fence to its south stood edge-on to the camera at its resting turn, a post and nothing else, in
+     Meridian's street (2026-10-04, rendered). Printed on both faces, it reads the same from the north as from the
+     south, so it always stands across the north-south line, and only its turn from that varies, a few degrees from
+     where it was dropped; nothing else varies. */
+  const siteSign=({x,y})=>{
+    const FOOT="#2F343A",POST="#8E969E",FACE="#E7C25A",EDGE="#2B2410",BOLT="#C9CDD2",SIDE=0.36/Math.SQRT2,B=0.025,Z=0.03,MID=0.62;
+    const parts=[{s:"box",x:0,y:0.03,z:0,w:0.30,h:0.06,d:0.20,c:FOOT},                       /* the weighted foot */
+      {s:"cyl",x:0,y:0.42,z:0,r:0.02,h:0.72,c:POST},                                          /* the post, 0.06 to 0.78 */
+      {s:"box",x:0,y:MID,z:Z,w:SIDE,h:SIDE,d:0.01,c:EDGE,rz:Math.PI/4},                       /* the plate, 0.36 across: its dark is the border */
+      {s:"box",x:0,y:MID,z:Z+0.0065,w:SIDE-2*B,h:SIDE-2*B,d:0.003,c:FACE,rz:Math.PI/4},       /* printed on the front */
+      {s:"box",x:0,y:MID,z:Z-0.0065,w:SIDE-2*B,h:SIDE-2*B,d:0.003,c:FACE,rz:Math.PI/4}];      /* and on the back */
+    [1,-1].forEach(f=>parts.push({s:"box",x:0,y:MID+0.025,z:Z+f*0.0085,w:0.026,h:0.085,d:0.002,c:EDGE},   /* the mark, both faces */
+                                 {s:"box",x:0,y:MID-0.05,z:Z+f*0.0085,w:0.026,h:0.026,d:0.002,c:EDGE}));
+    [0.09,-0.09].forEach(dy=>parts.push({s:"cyl",x:0,y:MID+dy,z:Z-0.012,r:0.01,h:0.03,c:BOLT,rx:Math.PI/2}));   /* bolted to the post */
+    return turned(parts,(rnd(x,y,2,2)-0.5)*0.34);};                                         /* ±10° from where it was dropped */
+
+  /* WHAT EACH SHAPE CLAIMS, where the gate and the suite can read it. `drawing` is the letter whose engine drawing
+     the shape was built from, part for part — the gate lets a world take a letter that already stands as a drawing
+     only when its shape says this, and test/engine.smoke.js measures every such claim against that drawing (a claim
+     with no measurement is a red there). `walk` says the shape may stand on a tile a person walks across, so the gate
+     stands it instead of refusing it (engine/engine.js, the gate, clause 4). */
+  desk.drawing="D";table.drawing="T";shelving.drawing="S";stove.drawing="V";counter.drawing="K";
+  planter.drawing="b";grass.drawing="g";siteSign.drawing="X";
+  planter.walk=true;grass.walk=true;
+
+  return {plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles,planter,grass,siteSign};
 })();
 
 /* ---------- SHAPEBIND — the engine binding its own letters, in the open ----------
@@ -467,9 +656,9 @@ const SHAPES=(function(){
    the letter in its own `SHAPETAKE` string. Silence is not consent — see the gate in
    `engine/engine.js` (grep "THE GATE") for why that had to become the rule.
 
-   THREE LETTERS ARE REFUSED, and the three refusals are three different mechanisms, which is the
-   whole lesson: ONE LETTER CAN MEAN TWO OBJECTS, and each time it has, it slipped past the lock
-   built for the time before.
+   THREE LETTERS TAUGHT THIS TABLE ITS RULES, by three different mechanisms, which is the whole
+   lesson: ONE LETTER CAN MEAN TWO OBJECTS, and each time it has, it slipped past the lock built for
+   the time before.
 
    `I` — the engine's `I` is El Mercado's grocery counter, waist high; a second world re-declares it
    as a STOREFRONT FACE at wall height. **It is simply not in the
@@ -487,30 +676,33 @@ const SHAPES=(function(){
    **No table in this engine records what a world MEANS by a letter it has never drawn.** That is
    not a hole to be plugged with a sixth clause; it is the reason a world has to ask.
 
-   `b` — Meridian's marigold bed, and the instructive one. `b` is not solid and does not stand, so
-   it could never REACH a shape; but the ground bake's contact pad
-   (`engine/engine3d.js`, grep "THE PAD") asks only whether a glyph HAS a mesh, with no solidity
-   test at all. Bind `b` and ten tiles of a world that lays it get a soft radial shadow on the pavement
-   with nothing standing on them — baked into a texture, so a scene-graph dump reports "identical"
-   and the street quietly has smudges on it. That is what the gate's solidity clause is for. */
+   `b` — the marigold bed, and the instructive one. The engine's `b` is walked across: it is neither solid nor
+   `stand`, so a shape bound to it could never be STOOD by the 3D camera; but the ground bake's contact pad
+   (`engine/engine3d.js`, grep "THE PAD") asks only whether a glyph HAS a mesh, with no solidity test at all. Bind
+   `b` naively and every tile of a world that lays it gets a soft radial shadow on the pavement with nothing standing
+   on it — baked into a texture, so a scene-graph dump reports "identical" and the street quietly has smudges on
+   it. It IS offered now (2026-10-04, with `g`): its shape says it may stand on a walked tile (`.walk`), and when a
+   world takes it by name the gate marks the letter as standing in that world, so the shape stands on the pad and
+   the pad is the shadow of something. A world that never names `b` keeps its bed painted on the floor, unchanged. */
 const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
                  W:"fridge",V:"stove",K:"counter",A:"draftingTable",
                  F:"picketFence","◺":"wellRail","9":"doghouse",
-                 "3":"hurdle","4":"tunnel","5":"weavePoles"};   /* the agility gear, mq-v232: walkable, `stand`, so the gate's solidity clause lets them through */
-/* FIVE OF THOSE SIXTEEN ARE OFFERED AND WILL BE REFUSED ANYWAY, and they stay listed on purpose.
-   `D T S K V` all have a `TILESIDE` drawing in this engine, so `wearsArt` is true for them in every
-   world and the gate's clause 5 turns them down however loudly a pack asks. Listing them is not a
-   lie, it is the clause's test fixture: seventy-one tiles of a second world are exactly this case,
-   so the refusal is a measurement that runs on every build rather than a paragraph nobody executes.
-   A pack that genuinely wants one writes `const TILEART_MESH={K:o=>SHAPES.counter(o)};` itself and clause 1 lets it
-   through. THE ARROW IS MANDATORY AND IS NOT STYLE: `engine/boot.js` is the last script tag in both
-   shells and it is what writes THIS file, so a pack is evaluated before `SHAPES` and `TILEMESH`
-   exist. `TILEMESH["K"]=SHAPES.counter` throws "TILEMESH is not defined" and
-   `TILEART["K"]={mesh:SHAPES.counter}` throws "SHAPES is not defined" — both were documented here
-   and in four other places on 2026-09-22 and neither ran. TWO THINGS ARE REQUIRED, not one: the
-   table must be DECLARED by this pack (a world that has never written a mesh has no `TILEART_MESH`,
-   so `TILEART_MESH["K"]=…` throws too) and the reference must be LATE-BOUND. All three forms were
-   planted against a second world on 2026-09-22; only the one above printed OK. A false mechanism
-   in the record is the same bug this round was convened to cure, so it is written down twice.
-   Clause 1 lets it
-   through — which is the point: the trade is available, it just is not made on the pack's behalf. */
+                 "3":"hurdle","4":"tunnel","5":"weavePoles",   /* the agility gear, mq-v232: walkable, `stand`, so the gate's solidity clause lets them through */
+                 b:"planter",g:"grass",X:"siteSign"};           /* 2026-10-04: the planters, the grass and the site sign, so a world need not draw its own */
+/* `D T S K V` ARE TAKEN LIKE ANY OTHER LETTER NOW, and why they were not is worth keeping. All five have a `TILESIDE`
+   drawing in this engine, so `wearsArt` is true for them in every world: they stand as boxes wearing that drawing
+   on four faces and the lid, which is the 2D the owner kept seeing. Until 2026-10-04 the gate's clause 5 refused
+   them however loudly a world asked, and it was right to, for a reason nobody had written down: four of the five
+   library shapes were not their letter's drawing (a bare square table, a chin-high counter with no machine, a white
+   stove, a bookcase whose books touched the board above). Taking one deleted a drawing and put a different object
+   where it stood. The library now carries each letter's own drawing, each shape says so (`.drawing`), the gate takes
+   that sentence as the condition for clause 5, and test/engine.smoke.js measures every such sentence against the
+   drawing on every build. So a world takes them by name in `SHAPETAKE`, and no longer has to keep a copy of its own.
+   A pack that wants a VARIANT still writes its own mesh, `const TILEART_MESH={T:o=>SHAPES.table({...o,cleared:onIt(o)})};`,
+   and clause 1 lets it through. THE ARROW IS MANDATORY AND IS NOT STYLE: `engine/boot.js` is the last script tag in
+   every shell and it is what writes THIS file, so a pack is evaluated before `SHAPES` and `TILEMESH` exist.
+   `TILEMESH["K"]=SHAPES.counter` throws "TILEMESH is not defined" and `TILEART["K"]={mesh:SHAPES.counter}` throws
+   "SHAPES is not defined" — both were documented here and in four other places on 2026-09-22 and neither ran. TWO
+   THINGS ARE REQUIRED, not one: the table must be DECLARED by the pack (a world that has never written a mesh has no
+   `TILEART_MESH`, so `TILEART_MESH["K"]=…` throws too) and the reference must be LATE-BOUND. All three forms were
+   planted against a second world on 2026-09-22; only the one above printed OK. */

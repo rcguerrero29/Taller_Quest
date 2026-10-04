@@ -2464,7 +2464,7 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
    five different ways. Each refusal below was bought with a measurement:
 
    THE RULE, in one sentence: **an engine default may only fill a hole — it may never replace a
-   drawing, and it is never assumed, it is TAKEN.**
+   drawing with anything but that same drawing, and it is never assumed, it is TAKEN.**
 
    That rule was written on 2026-09-22 after this gate was refuted, and both halves of it were
    bought by a letter that got past the first version:
@@ -2478,8 +2478,14 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
      catch that — which makes it the third time one letter has meant two objects here, after `I`
      and `b`. The only thing that can catch it is the world saying which letters it agrees with.
    · **It fills a hole, never a drawing** (clause 5). See `wearsArt` above. Seventy-one tiles of
-     another game stand today as boxes wearing their own art, and the first version of this gate
+     another game stood as boxes wearing their own art, and the first version of this gate
      replaced all seventy-one with untextured geometry and counted it as seventy-one tiles fixed.
+     WHY that was a loss went unwritten until 2026-10-04, and it is the half that mattered: four of
+     those five library shapes were not their letter's drawing — no cloth on the table, no machine on
+     a chin-high counter, a white stove, books touching the board above. Refusing them kept the box,
+     which the owner saw as 2D. The library now carries each letter's own drawing and says so on the
+     shape (`.drawing`), and clause 5 lets a world take a letter whose shape says that; the suite
+     measures every such sentence against the drawing (test/engine.smoke.js).
 
    1 · `TILEMESH[g]` — the pack already answered with a shape. Its answer wins, always. This is the
        line that makes Meridian byte-identical: it has its own mesh for every letter here. It is
@@ -2509,9 +2515,12 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
        that is neither can never show a shape. It can still be harmed by one: the ground bake's
        contact pad (`engine/engine3d.js`, grep "THE PAD") asks only whether a glyph HAS a mesh, so
        binding one to a walkable letter paints a soft shadow on the pavement with nothing standing
-       on it — baked into a texture, where a scene-graph dump reports "identical". Meridian's `b`,
-       the marigold bed, is exactly this case wherever a world lays it.
-   5 · `wearsArt(g)` — it is already a drawing with volume. Above.
+       on it — baked into a texture, where a scene-graph dump reports "identical". The marigold
+       bed `b` is exactly this case wherever a world lays it. Since 2026-10-04 a shape that says it
+       stands on a walked tile (`.walk`: the planter, the grass) is let through, and the letter is
+       marked as standing in that world before the shape is handed over, so the pad has something on it.
+   5 · `wearsArt(g)` and the library's shape is not that drawing (`.drawing`). Above.
+   Clauses 2 to 5 are one function, `shapeRefusal`, so the suite can ask the gate's own question.
 
    `SHAPEGIVEN` is the list of letters this gate actually handed a shape to. It exists because the
    only way to ask that question afterwards was `Object.keys(SHAPEBIND).filter(g=>TILEMESH[g])`,
@@ -2523,29 +2532,47 @@ const wearsArt=g=>{const m=TILES[g]||{lift:7,kind:"prop"};
    camera never downloads the file, and an offline visit where `sw.js` forgot to cache it must fall
    back to the boxes rather than throw. (docs/REGRESSION.md — nothing checks that everything
    SHIPPED is listed in `sw.js`, only the other direction.) */
+/* WHY THE LIBRARY WOULD NOT STAND THIS LETTER HERE, EVEN ASKED — null when it would. Clauses 2 to 5 below, as one
+   function with a sentence for each, so the gate and the suite ask the same question in the same words: a world
+   that names a letter in SHAPETAKE and still stands a box or a picture is told which clause said no
+   (test/engine.smoke.js reads it). It answers about THIS world, after its tables have loaded. */
+const shapeRefusal=g=>{
+  const fn=typeof SHAPES==="object"&&SHAPES&&typeof SHAPEBIND==="object"&&SHAPEBIND&&SHAPEBIND[g]&&SHAPES[SHAPEBIND[g]];
+  if(typeof fn!=="function")return "the library has no shape for it";
+  /* 2 · …or drew this letter itself */
+  if(typeof TILEART!=="undefined"&&TILEART[g])return "this world draws it itself (TILEART), and a shape would throw that drawing away";
+  if(typeof TILEART_SIDE!=="undefined"&&TILEART_SIDE[g])return "this world draws it itself (TILEART_SIDE), and a shape would throw that drawing away";
+  /* 3 · …or said what it means */
+  if(typeof TILEMETA!=="undefined"&&TILEMETA[g])return "this world says what it means by it (TILEMETA), so it may not mean what the library means";
+  /* 4 · IT COULD ONLY CAST A SHADOW. And the predicate is `stands`, not `standsUp` — measured, and
+     the brief this was built from said `standsUp`. `standsUp` additionally demands a SIDE
+     drawing, because it answers a question for the flat front camera (engine.js:924, :2281,
+     :2312). The 3D camera's walkable-object branch (`engine/engine3d.js:447`) asks plain
+     `stands`, so a letter declared `stand:true` with no side art — Meridian's grass `g` is
+     exactly that (`content/meridian/art.js:1829`) — renders its mesh perfectly well and
+     `standsUp` would have refused it one. A guard written with the same wrong noun reported six
+     of Meridian's grass tiles as faults before the code was read.
+     A WALKED-ON LETTER MAY STILL TAKE A SHAPE THAT SAYS IT STANDS ON ONE (`.walk`, 2026-10-04: the planter and
+     the grass). The gate then marks the letter as standing in this world before it hands the shape over, so the
+     3D camera stands the shape on the tile and the contact pad under it is the shadow of something. Walking is
+     untouched — `stand` is read by the cameras and by nothing that decides where anyone may step. */
+  if(!SOLID.has(g)&&!stands(g)&&!fn.walk)return "it is walked across in this world and the library's shape is not one you walk through, so it could only paint a shadow with nothing on it (a world that means it to be walked round lists it in SOLIDX)";
+  /* 5 · IT IS ALREADY A DRAWING WITH VOLUME. The mesh has no texture channel, so a shape that is not the drawing
+     trades art for geometry and every meter in this repository reports it as a gain. It passes only when the
+     library's shape says it was built from this letter's own drawing (`.drawing`, engine/shapes.js), a sentence
+     test/engine.smoke.js measures against that drawing on every build. */
+  if(wearsArt(g)&&fn.drawing!==g)return "it already stands as a drawing and the library's shape is not that drawing";
+  return null;};
 const SHAPEGIVEN=[];
 if(typeof SHAPES==="object"&&SHAPES&&typeof SHAPEBIND==="object"&&SHAPEBIND)
   Object.keys(SHAPEBIND).forEach(g=>{
     /* 0 · THE WORLD HAS TO ASK. `SHAPETAKE` is a plain string of the letters this pack agrees the
        engine may shape for it. No `SHAPETAKE` means no letters: silence is not consent. */
     if(typeof SHAPETAKE!=="string"||SHAPETAKE.indexOf(g)<0)return;
-    if(TILEMESH[g])return;                                      /* the pack answered */
-    if(typeof TILEART!=="undefined"&&TILEART[g])return;          /* …or drew this letter itself */
-    if(typeof TILEART_SIDE!=="undefined"&&TILEART_SIDE[g])return;
-    if(typeof TILEMETA!=="undefined"&&TILEMETA[g])return;        /* …or said what it means */
-    /* IT COULD ONLY CAST A SHADOW. And the predicate is `stands`, not `standsUp` — measured, and
-       the brief this was built from said `standsUp`. `standsUp` additionally demands a SIDE
-       drawing, because it answers a question for the flat front camera (engine.js:924, :2281,
-       :2312). The 3D camera's walkable-object branch (`engine/engine3d.js:447`) asks plain
-       `stands`, so a letter declared `stand:true` with no side art — Meridian's grass `g` is
-       exactly that (`content/meridian/art.js:1829`) — renders its mesh perfectly well and
-       `standsUp` would have refused it one. A guard written with the same wrong noun reported six
-       of Meridian's grass tiles as faults before the code was read. */
-    if(!SOLID.has(g)&&!stands(g))return;
-    /* IT IS ALREADY A DRAWING WITH VOLUME. The mesh has no texture channel, so this swap trades
-       art for geometry and every meter in this repository reports it as a gain. */
-    if(wearsArt(g))return;
-    const fn=SHAPES[SHAPEBIND[g]];if(fn){TILEMESH[g]=fn;SHAPEGIVEN.push(g);}});
+    if(TILEMESH[g])return;                                      /* 1 · the pack answered */
+    if(shapeRefusal(g))return;                                  /* 2 to 5, each in its own sentence above */
+    if(!SOLID.has(g)&&!stands(g))TILES[g]={...(TILES[g]||{}),stand:true};   /* 4 · a shape on a walked tile stands */
+    TILEMESH[g]=SHAPES[SHAPEBIND[g]];SHAPEGIVEN.push(g);});
 /* A person who works INSIDE a wall: a clerk at a window, a teller behind a counter. The pack
    marks the station with `win:"B"` — the glyph of the wall she stands in — and every camera
    draws that wall's counter in front of her and its roof over her, so the building keeps its

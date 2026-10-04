@@ -208,6 +208,10 @@ function findChromium() {
     const before = { cam: camMode, world, px, py, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
     moving = false; held = null;
     const flat = {}, flatIn = {};
+    /* A BOX WEARING ITS OWN DRAWING — the third thing a letter can stand as in 3D, and the one no audit here read.
+       `t3BoxMats` (engine/engine3d.js) pastes a letter's side drawing on four faces and its top drawing on the lid;
+       that is what the owner kept calling 2D. Counted per letter, from the scene, with the engine's own predicate. */
+    const boxArt = {}, boxIn = {}; let tileSeen = 0;
     /* ---- THE SHAPE GATE (crew iteration 14, el repartidor) — the two nouns the flat audit cannot read ----
        `engine/shapes.js` gives a glyph the engine's own shape when the pack said nothing about that
        letter. The flat audit CANNOT check that: it only counts `THREE.Sprite`s, so a letter that
@@ -255,6 +259,8 @@ function findChromium() {
       if (lintels < wantLintel) P.push(id + ': ' + (wantLintel - lintels) + ' door(s) in a tall wall have a see-through slot above them');
       if (glows < doors) P.push(id + ': ' + (doors - glows) + ' door(s) do not say "this one opens" in 3D');
       T3.group.children.forEach(o => { const u = o.userData || {}; if (u.flat) { flat[u.g] = (flat[u.g] || 0) + 1; (flatIn[u.g] = flatIn[u.g] || new Set()).add(id); } });
+      T3.group.children.forEach(o => { const u = o.userData || {}; if (u.g !== undefined && u.x !== undefined) tileSeen++;
+        if (u.box && typeof wearsArt === 'function' && wearsArt(u.g)) { boxArt[u.g] = (boxArt[u.g] || 0) + 1; (boxIn[u.g] = boxIn[u.g] || new Set()).add(id); } });
       /* ---- 1 · every letter the gate answered for actually stands, as a shape and not a box ---- */
       if (typeof SHAPEBIND === 'object' && SHAPEBIND && typeof TILEMESH !== 'undefined') {
         const at = {};
@@ -656,11 +662,14 @@ function findChromium() {
        library — a winged hurdle, a full ribbed tunnel, six weave poles on a rail — taken by name in Meridian's
        SHAPETAKE. Red first, the audit's own sentences: '"3" is no longer flat in 3D — take it off this game's row'
        and the same for "4" and "5". Still flat: X (the site marker). */
-    const FLAT_BY_GAME = { 'index.html': ['X'] };
+    /* 'X' came off on 2026-10-04: the site sign is a shape from the engine's own library — a weighted foot, a post, a
+       diamond printed on both faces — taken by name in Meridian's SHAPETAKE. Red first, the audit's own sentence:
+       '"X" is no longer flat in 3D — take it off this game's row'. Still flat: nothing. */
+    const FLAT_BY_GAME = { 'index.html': [] };
     const packFlat = (typeof FLAT_OK === 'object' && FLAT_OK && Array.isArray(FLAT_OK.letters)) ? FLAT_OK : null;
     const FLAT_KNOWN = packFlat ? packFlat.letters : (FLAT_BY_GAME[IDXNAME] || FLAT_BASE);
     const laid = new Set(); Object.values(WORLDS).forEach(w => w.rows.forEach(r => r.split('').forEach(ch => laid.add(ch))));
-    Object.keys(flat).forEach(g => { if (!FLAT_KNOWN.includes(g)) P.push('"' + g + '" (' + ((TILES[g] || {}).kind || '?') + ') stands in 3D as a flat picture in ' + [...flatIn[g]].join(',') + ' — give it a side view (TILESIDE) so it becomes a box; nothing new may ship flat (#39)'); });
+    Object.keys(flat).forEach(g => { if (!FLAT_KNOWN.includes(g)) P.push('"' + g + '" (' + ((TILES[g] || {}).kind || '?') + ') stands in 3D as a flat picture in ' + [...flatIn[g]].join(',') + ' — take the library\'s shape for it by name (SHAPETAKE, when engine/shapes.js has one), or draw a mesh (TILEART_MESH); a side view alone only stands it up as a box wearing its picture, which reads as 2D just the same; nothing new may ship flat (#39)'); });
     // a pack may give a letter another meaning (another game's I is a facade): only a glyph laid here
     // as a kind the builder could make flat counts as "no longer flat"
     const couldBeFlat = g => ['furniture', 'appliance', 'prop', 'nature', 'gear', 'marker', 'site', 'transit', 'stair', 'tree'].includes((TILES[g] || {}).kind);
@@ -670,6 +679,44 @@ function findChromium() {
       : packFlat ? '"' + g + '" is no longer flat in 3D — take it off FLAT_OK in this game\'s own files so the list keeps shrinking (#39)'
       : FLAT_BY_GAME[IDXNAME] ? '"' + g + '" is no longer flat in 3D — take it off this game\'s row of FLAT_BY_GAME in test/engine.smoke.js (the key is "' + IDXNAME + '") so the list keeps shrinking (#39)'
       : '"' + g + '" is no longer flat in 3D, and this game declares no FLAT_OK of its own, so it is held to the shared baseline: declare `const FLAT_OK={letters:[…],why:{…}}` in its own files with the letters it still keeps flat, and why (#39, #263)'); });
+    /* ---- A LETTER THE LIBRARY CAN SHAPE STANDS AS A SHAPE, OR ITS WORLD SAYS WHY — AND NOTHING STANDS AS A BOX
+       WEARING ITS OWN DRAWING (2026-10-04) ----
+       The owner, looking at a second world on this engine after every fix Meridian had: it was still 2D, and none of
+       those fixes had reached it. Two causes, and this reads both, in every shell this file is pointed at:
+       (a) A FIX MADE IN ONE WORLD'S FILE REACHES NO OTHER WORLD. Meridian's furniture is Meridian's own mesh; the
+           engine's library had plainer copies of some letters and none of others, so a world that did not write its
+           own got nothing. So every letter a world lays that the library has a shape for, and that the world means
+           as the engine means it — it has not drawn or re-declared it (TILEART, TILEART_SIDE, TILEMETA) — stands as a
+           shape, taken by name in SHAPETAKE or answered by the world's own TILEART_MESH, or the world gives a written
+           reason in its own FLAT_OK.why. Read off the GRID, where a person standing on a letter is a person.
+       (b) A BOX WEARING ITS OWN DRAWING IS THE 2D HE SAW. No audit here counted it: the flat audit counts sprites, the
+           gate's census counts shapes, and a box with a photograph of a table on four faces and the lid is neither.
+           So every such box, per letter, unless the world says why in FLAT_OK.why.
+       The remedy is never "give it a side view": a side view is exactly what turns a picture into a box wearing it.
+       Red first, against the tree before the library carried the engine's own drawings, in the gauge's third shell
+       (test/gauge.js) — the only world here that takes the engine's furniture instead of drawing its own. */
+    {
+      const why = (packFlat && packFlat.why) || {};
+      const own = g => (typeof TILEART !== 'undefined' && !!TILEART[g]) || (typeof TILEART_SIDE !== 'undefined' && !!TILEART_SIDE[g]) || (typeof TILEMETA !== 'undefined' && !!TILEMETA[g]);
+      const meshed = g => typeof TILEMESH !== 'undefined' && !!TILEMESH[g];
+      const onGrid = {}, gridIn = {};
+      Object.entries(WORLDS).forEach(([id, w]) => w.grid.forEach(r => r.forEach(ch => { onGrid[ch] = (onGrid[ch] || 0) + 1; (gridIn[ch] = gridIn[ch] || new Set()).add(id); })));
+      const where = s => [...s].slice(0, 4).join(',') + (s.size > 4 ? ',…' : '');
+      const lib = has3d && typeof SHAPEBIND === 'object' && SHAPEBIND && typeof SHAPES === 'object' && SHAPES;
+      const bare = g => !!lib && !!SHAPEBIND[g] && !!onGrid[g] && !own(g) && !meshed(g);
+      if (lib) Object.keys(SHAPEBIND).forEach(g => { if (!bare(g) || why[g]) return;
+        const asked = typeof SHAPETAKE === 'string' && SHAPETAKE.indexOf(g) >= 0;
+        const no = typeof shapeRefusal === 'function' ? shapeRefusal(g) : null;
+        P.push('"' + g + '" (' + ((TILES[g] || {}).kind || '?') + ') is laid ' + onGrid[g] + ' time(s) in ' + where(gridIn[g]) + ' and the engine\'s library has a shape for it (SHAPES.' + SHAPEBIND[g] + ')' +
+          (asked ? ', this world takes it by name, and the engine handed it nothing' + (no ? ' (' + no + ')' : '') + ' — a letter a world asks for by name stands as that shape, or the library has no business offering it'
+                 : ', and this world neither takes it (SHAPETAKE) nor answers it with a mesh of its own (TILEART_MESH) nor says why it keeps it as it is (FLAT_OK.why) — take the library\'s shape by name, or draw a mesh')); });
+      Object.keys(boxArt).sort().forEach(g => { if (why[g]) return;
+        P.push('"' + g + '" (' + ((TILES[g] || {}).kind || '?') + ') stands in 3D ' + boxArt[g] + ' time(s) in ' + where(boxIn[g]) + ' as a box wearing its own drawing — its picture pasted on four faces and the lid, which is what reads as 2D in a 3D camera; take the library\'s shape by name (SHAPETAKE), or draw a mesh (TILEART_MESH), or say why it stays a box (FLAT_OK.why)'); });
+      if (has3d && !tileSeen) P.push('the 3D census read no object standing on any tile of any world, so whether anything stands as a box wearing its own drawing was not measured');
+      /* a reason with nothing left to excuse is a stale sentence in the world's own file, and the next letter hides behind it */
+      if (has3d && packFlat) Object.keys(why).forEach(g => { if (FLAT_KNOWN.includes(g) || !onGrid[g]) return;   /* the flat row above speaks for its own letters */
+        if (!boxArt[g] && !bare(g)) P.push('FLAT_OK.why gives a reason for keeping "' + g + '" as it is, and it no longer is: it stands as a shape now — take the reason off, so it cannot excuse the next one'); });
+    }
     /* ---- the shape gate's verdict, and it reports the HONEST number ----
        The flat row above can only ever show the letters that stood as sprites. This one counts
        tiles, which is what a person walking the street actually meets. */
@@ -698,12 +745,182 @@ function findChromium() {
          channel to carry either. So a default here deletes a drawing and every meter in this
          repository scores it as a gain — 71 tiles of the town (K S D T V) went that way in the
          first draft and the triangle-counting guard above called all 71 a success. */
-      if (given && typeof wearsArt === 'function') given.forEach(g => { if (wearsArt(g))
+      /* 2026-10-04: and the one exception the gate now makes is a shape that says it WAS that drawing (`.drawing`),
+         which the parts check below measures; anything else handed to a letter that wears a drawing is still this red. */
+      if (given && typeof wearsArt === 'function') given.forEach(g => { const fn = SHAPES[SHAPEBIND[g]]; if (wearsArt(g) && !(fn && fn.drawing === g))
         P.push('the engine handed "' + g + '" its own shape, but "' + g + '" is already drawn standing up — it is a box wearing its own picture on the lid and sides, and a shape has no picture on it, so this quietly swaps a drawing for a bare block (engine/engine.js, the gate, clause 5)'); });
     } else if (wants3d) P.push('this shell asked for a 3D camera and engine/shapes.js never arrived, so every letter the pack did not draw itself stands as a box — engine/boot.js writes it inside `if(want)` and sw.js must list it, or the second, OFFLINE visit is the one that loses it');
     /* NOT a failure and NOT a shrug: a pack with no 3D camera does not download the library, by
        design (engine/boot.js). The gauge is that pack. It still says so out loud every run. */
     else P.push('COUNT-ONLY: this shell declined the 3D camera, so engine/shapes.js was never downloaded and no letter took an engine shape');
+    /* ---- THE LIBRARY CARRIES EACH LETTER'S OWN DRAWING, PART FOR PART (2026-10-04) ----
+       A world that takes a letter from engine/shapes.js gets whatever the library says that letter IS, so the library
+       has to say what the ENGINE says it is — `TILEDRAW`/`TILESIDE` in engine/engine.js is the letter's bill of
+       materials, and only a festival belongs to a world. On 2026-10-04 four of the library's shapes had dropped part
+       of their own letter's drawing: the table was bare and square where the drawing is round under a gingham cloth
+       with two plates and two chairs; the counter's top stood at 0.82, chin-high on a 0.92 person, with no machine on
+       it; the stove was white, the floor's own value, where the drawing is charcoal; and the bookcase's books touched
+       the board above, every case was its neighbour shifted by one, and it floated a third of a tile off its wall.
+       The gate refused all of them for a reason nobody had written down. So each shape is built here in a probe room
+       laid for the purpose and measured against what its drawing says, through the engine's own bake (t3BakeParts) —
+       the numbers below are the drawing's and the person's, never the shape's own. A shape that tells the gate it was
+       built from its letter's drawing (`.drawing`) and has no check here is a claim nobody reads, and is a red. */
+    if (typeof SHAPES === 'object' && SHAPES && typeof SHAPEBIND === 'object' && SHAPEBIND && typeof t3BakeParts === 'function') {
+      const R = [], tri = {};
+      const lum = h => { const n = parseInt(String(h || '#000000').slice(1, 7), 16); return 0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255); };
+      const ext = ps => { if (!ps || !ps.length) return null; const b = t3BakeParts(ps, h => h); let lo = Infinity;
+        for (let i = 1; i < b.pos.length; i += 3) if (b.pos[i] < lo) lo = b.pos[i];
+        return { lo, hi: b.top, x0: b.span[0], x1: b.span[1], z0: b.span[2], z1: b.span[3], tris: b.pos.length / 9 }; };
+      const vol = p => { const e = ext([p]); return (e.hi - e.lo) * (e.x1 - e.x0) * (e.z1 - e.z0); };
+      const f3 = v => (Math.round(v * 1000) / 1000).toFixed(3);
+      /* THE PROBE ROOM: a wall all round; a run of three bookcases on the north wall and another down the west wall;
+         two stoves on the north wall; a run of three counters (the drawing's machine falls on the middle one); a
+         table; a desk; two planters in a run; a tuft of grass; a site sign. Laid as a world for the length of this
+         block, with bookcases solid as a world that lays them says they are, and taken away after it. */
+      const PROBE = ['##########',
+                     '#.SSS.VV.#',
+                     '#........#',
+                     '#S..KKK..#',
+                     '#S.T...D.#',
+                     '#S.......#',
+                     '#.bb.g.X.#',
+                     '##########'];
+      const PID = '__library_probe', keepW = world, addS = !SOLID.has('S');
+      WORLDS[PID] = { rows: PROBE.slice(), rows0: PROBE.slice(), grid: PROBE.map(r => r.split('')), npcs: [], W: PROBE[0].length, H: PROBE.length };
+      world = PID; if (addS) SOLID.add('S');
+      const shapeOf = g => SHAPEBIND[g] && typeof SHAPES[SHAPEBIND[g]] === 'function' ? SHAPES[SHAPEBIND[g]] : null;
+      const build = (g, x, y, o) => { const fn = shapeOf(g); if (!fn) return null; try { return fn(Object.assign({ x, y }, o || {})); } catch (e) { R.push('the library\'s "' + g + '" throws when it is built at (' + x + ',' + y + '): ' + e.message); return null; } };
+      const say = (g, s) => R.push(SHAPEBIND[g] ? 'the library\'s "' + g + '" (SHAPES.' + SHAPEBIND[g] + ') is not its own letter\'s drawing: ' + s : 'the engine\'s library has no shape for its own "' + g + '" (SHAPEBIND does not bind it): ' + s);
+      const CHECKED = {};
+      try {
+        /* D — the desk the drawing draws: a slab with the floor showing under it, the screen above it */
+        CHECKED.D = 1;
+        { const ps = build('D', 7, 4); if (!ps) say('D', 'there is no shape for it at all'); else { const e = ext(ps); tri.D = e.tris;
+          const slab = ps.filter(p => (p.w || 0) >= 0.8 && (p.h || 1) <= 0.06).map(p => ext([p]).hi).sort((a, b) => b - a)[0];
+          if (!(slab >= 0.42 && slab <= 0.52)) say('D', 'its slab is not at desk height (0.42 to 0.52): ' + (slab === undefined ? 'there is no slab' : f3(slab)));
+          if (!ps.some(p => String(p.c).toUpperCase() === '#7FB3D5' && ext([p]).lo > (slab || 0))) say('D', 'there is no screen standing on it — the drawing\'s monitor, in the drawing\'s own blue');
+          const under = ps.filter(p => { const q = ext([p]); return q.lo < 0.38 && q.hi > 0.06 && q.x0 < -0.05 && q.x1 > -0.15 && q.z0 < 0 && q.z1 > 0; });
+          if (under.length) say('D', 'nothing shows under the slab — a part fills the air between the leg panel and the drawers'); } }
+
+        /* T — the round table under a woven cloth, two plates, two chairs pushed in; and the same table cleared */
+        CHECKED.T = 1;
+        { const ps = build('T', 3, 4); if (!ps) say('T', 'there is no shape for it at all'); else { const e = ext(ps); tri.T = e.tris;
+          const cloth = ps.filter(p => p.cloth), drop = ps.filter(p => p.drop), plates = ps.filter(p => p.plate), chairs = new Set(ps.filter(p => p.chair !== undefined).map(p => p.chair));
+          if (!cloth.length) say('T', 'there is no cloth on it — the drawing lays a gingham cloth over the top');
+          else { const vals = [...new Set(cloth.map(p => String(p.c).toUpperCase()))].map(lum).sort((a, b) => a - b);
+            if (vals.length !== 3) say('T', 'its gingham is ' + vals.length + ' value(s), not three — a woven check is red where two red threads cross, half-tone where one does and cream where none does, and a two-value check is a printed one, which reads as a pizza');
+            const ce = ext(cloth); if (ce.hi > 0.55) say('T', 'its cloth stands at ' + f3(ce.hi) + ', over the 0.55 a table set at a person\'s hip may stand');
+            const we = ext(cloth.filter(p => lum(p.c) < 200)), reach = we ? Math.max(-we.x0, we.x1, -we.z0, we.z1) : 0;   /* the threads, not the cream under them */
+            if (reach < 0.32) say('T', 'the check stops short of the edge (' + f3(reach) + ' of 0.32) and leaves a ring round it — the ring is the crust'); }
+          if (drop.length < 8) say('T', 'the cloth does not fall over the edge (' + drop.length + ' panels of drop, and a cloth needs one all round)');
+          else { const hems = drop.map(p => ext([p]).lo), h0 = Math.min(...hems), h1 = Math.max(...hems);
+            if (h0 < 0.30) say('T', 'the cloth falls to ' + f3(h0) + ' — the hem stops at least 0.30 above the floor, and the floor under it is what says table');
+            if (h1 - h0 > 0.01) say('T', 'the hem is not level (' + f3(h0) + ' to ' + f3(h1) + ') — one bolt, one cut'); }
+          if (plates.length !== 2) say('T', 'it is laid with ' + plates.length + ' plate(s), and the drawing lays two');
+          if (chairs.size !== 2) say('T', 'it has ' + chairs.size + ' chair(s), and the drawing has one either side');
+          if (Math.max(-e.x0, e.x1, -e.z0, e.z1) > 0.48) say('T', 'with its chairs it reaches ' + f3(Math.max(-e.x0, e.x1, -e.z0, e.z1)) + ' from its centre, past the 0.48 that keeps it inside its own tile');
+          const cl = build('T', 3, 4, { cleared: true });
+          if (cl) { const c2 = ext(cl);
+            if (cl.some(p => p.plate || p.chair !== undefined)) say('T', 'cleared, it still carries plates or chairs — a world that sets something on a table clears it first');
+            else if (cloth.length && Math.abs(c2.hi - ext(cl.filter(p => p.cloth)).hi) > 0.002) say('T', 'cleared, the cloth is not the top of it (' + f3(c2.hi) + '), so whatever is set on it floats'); } } }
+
+        /* K — a run of counters at a person's waist, one top line, the machine where the drawing puts it */
+        CHECKED.K = 1;
+        { const top = ps => { const full = ps.filter(p => { const q = ext([p]); return q.x1 - q.x0 >= 0.9 && q.z1 - q.z0 >= 0.3; }); return full.length ? full.reduce((a, p) => ext([p]).hi > ext([a]).hi ? p : a) : null; };
+          const run = [4, 5, 6].map(x => [x, build('K', x, 3)]);
+          if (run.some(r => !r[1])) say('K', 'there is no shape for it at all');
+          else { tri.K = Math.max(...run.map(r => ext(r[1]).tris));
+            run.forEach(([x, ps]) => { const t = top(ps), th = t ? ext([t]).hi : null;
+              if (th === null) { say('K', 'at (' + x + ',3) nothing spans the tile as a top'); return; }
+              if (th < 0.50 || th > 0.60) say('K', 'its top stands at ' + f3(th) + ' — the person is 0.92 and a counter top is at their waist, 0.50 to 0.60, never at their chin');
+              if (lum(t.c) > 165) say('K', 'its top is luma ' + Math.round(lum(t.c)) + ', within reach of the floor\'s own value, so the back edge of a run disappears (165 at most)');
+              const above = ps.filter(p => ext([p]).lo >= th - 0.005), tall = above.length ? Math.max(...above.map(p => ext([p]).hi)) - th : 0;
+              const machine = (((x + 3) % 3) + 3) % 3 === 2;
+              if (machine && tall < 0.25) say('K', 'at (' + x + ',3) the drawing puts its espresso machine, and nothing stands there ' + (above.length ? '(the tallest thing is ' + f3(tall) + ' over the top)' : 'at all'));
+              if (!machine && !above.length) say('K', 'at (' + x + ',3) the drawing sets a cup and a napkin stand, and the top is bare');
+              if (!machine && tall >= 0.25) say('K', 'at (' + x + ',3) something ' + f3(tall) + ' tall stands where the drawing has only a cup — a run of machines is not a counter'); });
+            const ends = ([x, ps]) => ps.filter(p => { const q = ext([p]); return q.hi - q.lo > 0.3 && (q.x0 < -0.47 || q.x1 > 0.47) && q.x1 - q.x0 < 0.08; }).length;
+            if (ends(run[1]) > 0) say('K', 'the middle of a run of three carries an end panel — a run is one counter, with ends only where it stops');
+            if (!ends(run[0]) || !ends(run[2])) say('K', 'a run of three does not stop with an end panel at each end'); } }
+
+        /* V — a charcoal range on feet with a pale lip over it, never white */
+        CHECKED.V = 1;
+        { const ps = build('V', 6, 1); if (!ps) say('V', 'there is no shape for it at all'); else { const e = ext(ps); tri.V = e.tris;
+          const body = ps.reduce((a, p) => vol(p) > vol(a) ? p : a), be = ext([body]);
+          if (lum(body.c) > 90) say('V', 'its body is luma ' + Math.round(lum(body.c)) + ' — the drawing\'s range is charcoal (#3A3F46, luma 62), and a white one is the floor\'s own value' + (lum(body.c) > 200 ? ': it is white' : ''));
+          if (be.lo < 0.05) say('V', 'its body sits on the floor (from ' + f3(be.lo) + ') — a range stands on feet, with the floor showing under it');
+          const deck = ps.filter(p => { const q = ext([p]); return q.x1 - q.x0 >= 0.6 && q.z1 - q.z0 >= 0.4 && p !== body; }).map(p => ext([p]).hi).sort((a, b) => b - a)[0];
+          if (!(deck >= 0.48 && deck <= 0.60)) say('V', 'its hob is at ' + (deck === undefined ? 'no height at all' : f3(deck)) + ' — a range\'s deck is at a person\'s waist, 0.48 to 0.60');
+          else if (!ps.some(p => { const q = ext([p]); return lum(p.c) >= 170 && Math.abs(q.hi - deck) < 0.03 && q.x1 - q.x0 >= 0.6; })) say('V', 'nothing pale runs along its deck — the lip is what draws its top line against a dark wall (luma 170 at least)'); } }
+
+        /* S — bookcases in a run: backs on the wall, touching, one board line, a gap over every row of books */
+        CHECKED.S = 1;
+        { const run = [2, 3, 4].map(x => [x, build('S', x, 1)]), down = [3, 4, 5].map(y => [y, build('S', 1, y)]);
+          if (run.concat(down).some(r => !r[1])) say('S', 'there is no shape for it at all');
+          else { tri.S = Math.max(...run.map(r => ext(r[1]).tris));
+            const boardsOf = ps => ps.filter(p => { const q = ext([p]), a = Math.max(q.x1 - q.x0, q.z1 - q.z0), b = Math.min(q.x1 - q.x0, q.z1 - q.z0); return a >= 0.5 && b >= 0.2 && q.hi - q.lo <= 0.05; });
+            const booksOf = ps => { const bs = boardsOf(ps).map(p => ext([p]).hi);
+              return ps.filter(p => { const q = ext([p]); return q.hi - q.lo >= 0.1 && Math.max(q.x1 - q.x0, q.z1 - q.z0) < 0.4 && bs.some(b => Math.abs(q.lo - b) < 0.02); }); };
+            let worst = Infinity, n = 0;
+            run.concat(down).forEach(([x, ps]) => { const bds = boardsOf(ps).map(p => ext([p])).sort((a, b) => a.lo - b.lo);
+              booksOf(ps).forEach(p => { const q = ext([p]), over = bds.find(b => b.lo > q.lo + 0.02); n++; if (over) worst = Math.min(worst, over.lo - q.hi); }); });
+            if (!n) say('S', 'there are no books on it');
+            else if (worst < 0.05) say('S', worst < 0 ? 'its books run ' + f3(-worst) + ' into the board above them — no gap, so no dark line over the spines, which is what says bookcase (0.05 at least)' : 'its books come within ' + f3(worst) + ' of the board above them — the dark gap over every row of spines is what says bookcase, and it is never under 0.05');
+            const lines = run.map(([x, ps]) => boardsOf(ps).map(p => f3(ext([p]).hi)).sort().join(' '));
+            if (new Set(lines).size > 1) say('S', 'the boards of three cases in a run are not at one height (' + lines.join(' | ') + ') — they were cut on one jig, so one board line runs through a run');
+            const mid = ext(run[1][1]), side = ext(down[1][1]);
+            if (mid.x0 > -0.49 || mid.x1 < 0.49 || side.z0 > -0.49 || side.z1 < 0.49) say('S', 'a case with a neighbour each side reaches only ' + f3(Math.min(-mid.x0, mid.x1)) + ' of the 0.5 to its neighbour — cases in a run are pushed together, and a gap between each reads as placed by a loop');
+            if (mid.z0 > -0.47 || side.x0 > -0.47) say('S', 'with the wall behind it the case stops ' + f3(Math.max(0.5 + mid.z0, 0.5 + side.x0)) + ' short of the wall — it stands with its back on it');
+            const pale = boardsOf(run[1][1]).map(p => lum(p.c)), back = run[1][1].filter(p => { const q = ext([p]); return q.x1 - q.x0 >= 0.5 && q.hi - q.lo >= 0.5 && q.z1 - q.z0 <= 0.06; });
+            if (pale.length && Math.min(...pale) < 130) say('S', 'its boards are luma ' + Math.round(Math.min(...pale)) + ' — the pale lines through a run are what reads at street size (130 at least)');
+            if (!back.length || Math.max(...back.map(p => lum(p.c))) > 60) say('S', 'it has no dark back for the gap over the books to show (luma 60 at most)');
+            /* EVERY CASE ITS OWN — the books were bought one at a time. A shelf that repeats another, book for book, in a
+               run or between rows, is the seed moving on one axis or the shelf index sharing the tile's multiplier. */
+            const shelves = (ps) => { const bds = boardsOf(ps).map(p => ext([p]).hi).sort((a, b) => a - b);
+              /* a book by what does not turn with its case: its cloth, its height and its thickness */
+              return bds.map(b => booksOf(ps).filter(p => Math.abs(ext([p]).lo - b) < 0.02).map(p => { const q = ext([p]); return String(p.c).toUpperCase() + ':' + f3(q.hi - q.lo) + ':' + f3(Math.min(q.x1 - q.x0, q.z1 - q.z0)); }).sort().join(',')).filter(Boolean); };
+            const pool = run.concat(down).map(r => shelves(r[1]));
+            const seen = new Map(); let rep = null;
+            pool.forEach((sh, ci) => sh.forEach(s => { if (seen.has(s) && seen.get(s) !== ci) rep = rep || [seen.get(s), ci]; else seen.set(s, ci); }));
+            if (rep) say('S', 'two cases in a run carry a shelf of the same books — each case is its neighbour shifted, which reads as one case stamped'); } }
+
+        /* b and g — the marigold planters and the grass, which stand on a floor you walk across */
+        CHECKED.b = 1;
+        { const a = build('b', 2, 6), c = build('b', 3, 6);
+          if (!a || !c) say('b', 'a world that lays the engine\'s marigold bed gets its flowers painted on the floor');
+          else { tri.b = ext(a).tris; const ea = ext(a);
+            if (!shapeOf('b').walk) say('b', 'it does not say it may stand on a tile a person walks across (.walk), so the gate can only refuse it or paint a shadow with nothing on it');
+            if (Math.max(-ea.x0, ea.x1, -ea.z0, ea.z1) > 0.5) say('b', 'it reaches past its own tile');
+            const wallAt = (ps, side) => ps.some(p => { const q = ext([p]); return q.hi > 0.12 && q.hi - q.lo > 0.1 && (side > 0 ? q.x1 > 0.4 && q.x0 > 0.3 : q.x0 < -0.4 && q.x1 < -0.3); });
+            if (wallAt(a, 1) || wallAt(c, -1)) say('b', 'two planters side by side keep a curb between them — a run of beds shares one curb, with walls only where the run ends');
+            if (!wallAt(a, -1) || !wallAt(c, 1)) say('b', 'a run of two planters has no curb at its ends');
+            if (ea.hi < 0.35) say('b', 'nothing in it stands above the curb — the flowers are the planter'); } }
+        CHECKED.g = 1;
+        { const ps = build('g', 5, 6); if (!ps) say('g', 'a world that lays the engine\'s grass gets it painted on the floor');
+          else { tri.g = ext(ps).tris; if (!shapeOf('g').walk) say('g', 'it does not say it may stand on a tile a person walks across (.walk)');
+            if (ext(ps).hi > 0.4) say('g', 'it stands ' + f3(ext(ps).hi) + ' tall — a tuft a person walks through is below the knee');
+            if (ps.length < 6) say('g', 'it is ' + ps.length + ' parts — a tuft is blades from one root'); } }
+
+        /* X — the site sign: a weighted foot, a post, a diamond bolted near the top, printed both faces */
+        CHECKED.X = 1;
+        { const ps = build('X', 7, 6); if (!ps) say('X', 'a world that lays the engine\'s site sign gets a picture of one that turns with the camera');
+          else { const e = ext(ps); tri.X = e.tris;
+            const dia = ps.filter(p => Math.abs(Math.abs(p.rz || 0) - Math.PI / 4) < 0.01 && lum(p.c) >= 170);
+            if (!dia.length) say('X', 'there is no diamond panel on it in the drawing\'s yellow');
+            else { const de = ext(dia); const mid = (de.lo + de.hi) / 2;
+              if (mid < 0.55 || mid > 0.7) say('X', 'its diamond is centred at ' + f3(mid) + ', not bolted near the top of the post');
+              if (dia.length < 2) say('X', 'it is printed on one face — a site sign is read from both sides of the street');
+              if (!ps.some(p => Math.abs(Math.abs(p.rz || 0) - Math.PI / 4) < 0.01 && lum(p.c) <= 60)) say('X', 'its diamond has no dark border'); }
+            if (e.hi > 0.85) say('X', 'it stands ' + f3(e.hi) + ' tall');
+            const off = r => { const q = ((r % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return Math.min(q, Math.PI / 2 - q); };   /* from the nearest quarter turn */
+            if (ps.some(p => off(p.ry || 0) > 0.18)) say('X', 'it is turned more than ten degrees from where it was dropped');
+            if (ps.some(p => { const r = Math.abs(p.rz || 0) % (Math.PI / 2); return r > 0.05 && Math.abs(r - Math.PI / 4) > 0.01; })) say('X', 'something on it is laid on a slant — diagonal stripes read as "crossed out" here'); } }
+      } finally { world = keepW; delete WORLDS[PID]; if (addS) SOLID.delete('S'); }
+      Object.keys(SHAPES).forEach(k => { const fn = SHAPES[k]; if (typeof fn === 'function' && fn.drawing && !CHECKED[fn.drawing])
+        R.push('SHAPES.' + k + ' tells the gate it was built from the engine\'s own drawing of "' + fn.drawing + '", and nothing here measures that claim — the gate lets a world take it on the strength of a sentence (add its check above)'); });
+      P.push(...new Set(R));   /* a fault true of every tile in a run is said once */
+      P.push('COUNT-ONLY: the library\'s shapes, triangles per tile: ' + Object.keys(tri).sort().map(g => g + ' ' + tri[g]).join(', '));
+    }
     P.push(...padBad.slice(0, 6));
     P.push('COUNT-ONLY: the shadow probe read ' + padSeen.worlds + ' baked grounds — ' + padSeen.real +
       ' tiles that should carry a contact shadow (' + padSeen.lit + ' of them read as darker in the middle, which is how it knows it can see one) and ' +

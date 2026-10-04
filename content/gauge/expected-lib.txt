@@ -1,0 +1,6 @@
+#131: no facade in this pack has two windows, so the spreading rule cannot be checked
+#140: no tall non-wall piece with room to stand behind it was found in any world — the check never ran
+#155: no inhabited world with a door into it was found, so the check that a missing place registers never ran
+an open document does not count as covering the world
+something the world said behind a panel was spent on nobody
+the world is still drawn N time(s) behind an open document — nobody can see any of it
