@@ -612,11 +612,13 @@ TILEART_SIDE["✿"]=rc=>{const{sx,sy,x,y}=rc;
    the time of day reach these like everything else. */
 const TILEART_MESH={};
 /* THE LETTERS THIS WORLD TAKES FROM THE ENGINE'S OWN SHAPES (engine/shapes.js, SHAPEBIND) — the three pieces of the
-   park's agility course and nothing else (mq-v232). Meridian means by 3 4 5 exactly what the engine means — a
-   hurdle, a tunnel and weave poles, the engine's own drawings, never redrawn here — so it takes the engine's shapes
-   by name rather than writing a copy: the course is the same object in every world that lays it. Every other letter
-   SHAPEBIND offers, Meridian answers for itself above and below (clause 1 of the gate), and is not named here. */
-const SHAPETAKE="345";
+   park's agility course (mq-v232) and the site sign (2026-10-04). Meridian means by 3 4 5 and X exactly what the
+   engine means — a hurdle, a tunnel, weave poles, and a yellow sign on a post at the empty lot, the engine's own
+   drawings, never redrawn here — so it takes the engine's shapes by name rather than writing a copy: each is the
+   same object in every world that lays it. X was the last letter in this world standing as a flat picture that
+   turned with the camera; it is a diamond on a stick now. Every other letter SHAPEBIND offers, Meridian answers for
+   itself above and below (clause 1 of the gate), and is not named here. */
+const SHAPETAKE="345X";
 /* A CEMPASÚCHIL HEAD IS A STACK OF WHORLS, NOT A BALL (la botánica, crew run 11, 2026-09-21, from the
    owner's three photographs). Tagetes erecta, the double kind sold for Día de Muertos: hundreds of ray
    florets on a domed receptacle, in whorls — the outermost the largest, splayed nearly flat with a wavy

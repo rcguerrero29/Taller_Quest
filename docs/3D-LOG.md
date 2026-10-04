@@ -670,3 +670,49 @@ new polygonal update for all these and what we or you learned from marigolds?").
   the hurdle found a real fault the dog's own spot never shows: the shortest way to the run-up went over the hurdle.
 - **Not done.** No pack declares `PETPASS`; Meridian's tunnel stays walkable for the player until its owner decides.
   No phone measured.
+
+### 2026-10-04 · the library carries the engine's own furniture — and the planters, the grass and the site sign — so every world gets them
+
+- **The ask.** That a fix made in one world reach every world on the engine, which it had not; and the marigold
+  planters, which had been left out.
+- **Why it had not.** A look built in one world's own file reaches no other world. Meridian's furniture, beds and grass
+  are Meridian's own meshes (`content/meridian/art.js`); the engine's library had plainer copies of some and none of
+  the others. Four of its copies were not even their own letter's drawing: a bare square table where the drawing is
+  round under a gingham cloth with plates and chairs; a counter whose top stood at 0.82, chin-high on a 0.92 person,
+  with no machine; a WHITE stove — the floor's own value — where the drawing is charcoal; a bookcase whose books
+  touched the board above, each case its neighbour shifted by one, a third of a tile off its wall. The gate refused
+  those five letters (`wearsArt`, clause 5), rightly but for a reason nobody had written down, so a world that laid
+  them got boxes wearing a photograph of the thing on four faces and the lid: 2D in a 3D camera. And the suite's own
+  remedy for a flat letter was "give it a side view so it becomes a box" — the very construction that reads as 2D.
+- **What it is.** `engine/shapes.js`: `table` (foot, pedestal, top; a WOVEN three-value gingham run to the edge, a drop of
+  twelve panels with a level hem at 0.386, two plates, two chairs pushed in with the floor under them; `cleared` for a
+  world that sets something on it), `counter` (top at 0.57, a run is one counter with end panels only where it stops,
+  the machine where the drawing puts it, a cup and a napkin stand elsewhere), `stove` (charcoal on feet, a pale lip on
+  an overhanging deck at 0.546, four burners, one lit, a riser; no pot), `shelving` (back on the wall, cases in a run
+  touching, one board line through a run, books in series with at least 0.05 over every row, a leaner, a stack or a
+  carton; seeded on both axes with the shelf index its own multiplier). New: `planter` for `b` (Meridian's raised bed,
+  made plain: a curb shared by a run, soil, a dark mound, eight heads each with a dark collar wider than the head),
+  `grass` for `g` (Meridian's tuft), `siteSign` for `X` (a weighted foot, a post, a diamond printed on both faces with a
+  dark border and a bar-and-dot; no emoji, no diagonal stripes). Each shape says which drawing it was built from
+  (`.drawing`); the planter and the grass say they stand on a walked tile (`.walk`).
+- **The gate.** Clauses 2 to 5 are one function, `shapeRefusal`, so the suite asks the gate's own question. Clause 5
+  lets a letter through when its shape says it is that letter's drawing. Clause 4 lets a `.walk` shape through and marks
+  the letter standing in that world, so the 3D camera stands it and the contact pad under it is the shadow of something;
+  walking is untouched.
+- **Meridian.** Unchanged but for one deliberate, named change: it takes `X` by name (`SHAPETAKE="345X"`), so its five
+  site signs stand as signs instead of turning pictures. Compared with origin/main under a frozen clock: 45 flat-camera
+  views identical, 14 of 15 worlds' 3D scenes identical object for object, and in the street exactly the five `X`
+  tiles changed (plus the contact shadow now baked under them). Its own meshes still answer every other letter.
+- **What does not read, plainly.** The sign is a flat plate: it stands across the north-south line so the resting camera
+  sees its face, and from the two side turns it is a post with a plate edge-on. A bookcase run seen end-on is one long
+  side panel. The stove's front is dark against a dark wall; its pale lip is what draws its top.
+- **Cost, per tile** (the engine's own bake): table 1,064 · stove 1,272 · bookcase 384–492 · counter 332–460 · desk 268
+  · planter 3,048 (Meridian's own bed is 30,780) · grass 256–304 · sign 216. No phone measured.
+- **Guards.** `test/engine.smoke.js`, grep `A LETTER THE LIBRARY CAN SHAPE STANDS` and `THE LIBRARY CARRIES EACH LETTER'S
+  OWN DRAWING`: every letter a world lays that the library shapes stands as a shape or the world says why
+  (`FLAT_OK.why`); nothing stands as a box wearing its own drawing unless the world says why; and every library shape is
+  measured against its letter's drawing in a probe room — red first on mq-v232 in every shell, in its own sentences. The
+  world that proves it is the gauge's third shell (`test/gauge.js`): a room laying nothing but the engine's letters,
+  taking them by name. The brand-new-world gauge in 3D records one new standing demand: its own barrel and desk, drawn
+  as pictures, stand as boxes wearing them, and a new world is now told to shape them or say why.
+- **Not done.** The tree still has no blossom; the crate is still a crate wherever a world means something else by `H`.
