@@ -369,7 +369,91 @@ const SHAPES=(function(){
       {s:"cyl",x:0,y:0.3,z:0.3,r:0.13,h:0.04,c:DOOR,rx:Math.PI/2}];
     return turned(parts,facing(x,y));};
 
-  return {plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse};
+  /* ---------- THE AGILITY COURSE (3 4 5) — three pieces of gear, each turned to the line the dog runs ----------
+     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". They were pictures
+     that turned with the camera ("billboard on purpose" was a crew call; the owner reversed it that day). The plan,
+     a winged hurdle with a striped bar in cups, a ribbed tunnel with dark mouths and sandbags, weave poles on a base
+     rail — and each piece TURNED TO THE LINE THE DOG RUNS, which is the engine's own answer (`gearLine` in
+     engine/engine.js, read here through `runTurn`), so a piece and the dog who takes it cannot disagree. Every piece
+     is built with the dog running along +x and then turned; the camera rests only on quarter turns and so does this.
+     Rendered in Meridian's park at both quarter turns before any of it was written (the mock, 2026-10-03), and what
+     the mock found is said at each piece. Manufactured gear comes off a jig, so nothing varies between two hurdles;
+     the only hand in the course is the one that filled and dropped the sandbags, and that is where it varies. */
+  const runTurn=(x,y)=>{const L=typeof gearLine==="function"?gearLine(null,x,y):[1,0];   /* null: the world being built */
+    return L[0]?0:Math.PI/2;};
+
+  /* HURDLE (3) — a jump stand is built in this order: feet, the wing's frame, the boards set in it, the upright the
+     cups clip onto, the cups, and last the bar laid in the cups. THE WINGS ARE SPLAYED 45°, back toward the run-up:
+     the mock stood them flat in the bar's plane first, and from the camera that looks along the bar (yaw 0, which is
+     where the jump reads best, side-on) the whole hurdle was two thin red sticks. Splayed, each wing shows most of its
+     face at both quarter turns. Seen end-on it is still the weakest view of the three pieces — a stand with mass,
+     read as a jump the moment the dog goes over it. The bar is at 0.30, under the top of his hop (DOGHOP). */
+  const hurdle=({x,y})=>{
+    const POST="#C0392B",CAP="#962C21",FRAME="#F2E8D8",BOARD=["#C0392B","#E8DCC8"],TAPE="#E0A430",CUP="#3A3440",FOOT="#8E8A84";
+    const BARH=0.30,ZP=0.25,SPLAY=Math.PI/4,ca=Math.cos(SPLAY),sa=Math.sin(SPLAY);
+    const parts=[];
+    [-1,1].forEach(sd=>{
+      /* one wing, built flat — z outward from its upright — then stood at its splay on its own side of the bar */
+      const w0=0.03,w1=0.25,top0=0.60,top1=0.42,len=w1-w0,zc=(w0+w1)/2,fall=Math.atan2(top0-top1,len);
+      const wing=[{s:"box",x:0,y:0.015,z:w1-0.02,w:0.30,h:0.03,d:0.045,c:FOOT},                          /* its foot */
+        {s:"box",x:0,y:0.04,z:zc,w:0.04,h:0.04,d:len+0.02,c:FRAME},                                       /* bottom rail */
+        {s:"box",x:0,y:(top0+top1)/2,z:zc,w:0.04,h:0.045,d:Math.hypot(len,top0-top1)+0.03,c:FRAME,rx:sd*fall},  /* top rail, falling away outward */
+        {s:"box",x:0,y:top1/2,z:w1,w:0.045,h:top1,d:0.045,c:FRAME}];                                       /* outer stile */
+      for(let i=0;i<3;i++){const z=w0+(i+0.5)*len/3,ht=top0+(top1-top0)*(z-w0)/len-0.04;                 /* three boards, each cut to the rail's fall */
+        wing.push({s:"box",x:0,y:(ht+0.06)/2,z,w:0.028,h:ht-0.06,d:len/3*0.98,c:BOARD[i%2]});}
+      wing.forEach(p=>parts.push({...p,x:(p.x||0)-p.z*sa,z:sd*(ZP+p.z*ca),ry:(p.ry||0)-sd*SPLAY}));
+      parts.push({s:"box",x:0,y:0.015,z:sd*ZP,w:0.30,h:0.03,d:0.05,c:FOOT},                               /* the upright's foot */
+                 {s:"cyl",x:0,y:0.32,z:sd*ZP,r:0.032,h:0.64,c:POST},                                       /* the upright */
+                 {s:"sph",x:0,y:0.65,z:sd*ZP,r:0.038,c:CAP},
+                 {s:"box",x:0,y:BARH-0.035,z:sd*(ZP-0.045),w:0.06,h:0.04,d:0.05,c:CUP});});                /* the cup, inside, at the bar */
+    const L=2*(ZP-0.02);                                                                                    /* the bar: one pole, taped in five */
+    for(let i=0;i<5;i++)parts.push({s:"cyl",x:0,y:BARH,z:-L/2+(i+0.5)*L/5,r:0.03,h:L/5+0.001,c:i%2?TAPE:FRAME,rx:Math.PI/2});
+    return turned(parts,runTurn(x,y));};
+
+  /* TUNNEL (4) — a FULL tube, shut overhead, that a dog runs through and a person cannot fit in (owner, 2026-10-03:
+     "you had previously provided full tunnel - should also work for the pets to go through but i cant fit in it").
+     Made the way one is: a vinyl sleeve over a spiral of wire, laid on the ground, held down with bags of sand. The
+     sleeve is ten staves round an OPEN bore — a cylinder here would be capped, and a capped tube is a drum — with a
+     near-black lining, so a mouth seen end-on is dark and the bore really is empty (the guard casts a ray down it).
+     Value is painted in: the staves that face the sky paler, the belly darker, because one sun and one ambient are
+     all the light there is. The wire shows as raised ribs, and each mouth has a hoop. 0.46 tall: a dog's head clears
+     in, a person (0.92) does not. Two things the mock threw out: bags at the foot as round lumps read as WHEELS
+     side-on (a blue cart), and saddle bags hung on straps read as a hand cart. Flat pillows lying along the foot,
+     each tied at one end, read as sandbags at both quarter turns. */
+  const tunnel=({x,y})=>{
+    const R=0.23,L=0.94,N=10,LINER="#141220",RIB="#5C86C6",HOOP="#6C93D0",BAG=["#B09766","#9C8456"],TIE="#7A6440";
+    const shade=th=>{const up=Math.cos(th);return up>0.6?"#4473BC":up>-0.2?"#2E5FA8":"#234A86";};
+    const ap=Math.cos(Math.PI/N),side=2*R*Math.sin(Math.PI/N)+0.012,r2=R-0.028;
+    const parts=[];
+    for(let k=0;k<N;k++){const th=2*Math.PI*k/N;                                                            /* the sleeve, stave by stave */
+      parts.push({s:"box",x:0,y:R+R*ap*Math.cos(th),z:R*ap*Math.sin(th),w:L,h:0.024,d:side,c:shade(th),rx:th},
+                 {s:"box",x:0,y:R+r2*ap*Math.cos(th),z:r2*ap*Math.sin(th),w:L-0.01,h:0.012,d:2*r2*Math.sin(Math.PI/N)+0.01,c:LINER,rx:th});}
+    for(let i=0;i<8;i++)parts.push({s:"torus",x:-L/2+0.07+i*(L-0.14)/7,y:R,z:0,r:R+0.012,t:0.02,c:RIB,ry:Math.PI/2});   /* the wire */
+    [-1,1].forEach(sd=>parts.push({s:"torus",x:sd*(L/2-0.01),y:R,z:0,r:R+0.004,t:0.032,c:HOOP,ry:Math.PI/2}));            /* the mouths */
+    /* the bags: filled and dropped by hand, so each lies at its own small angle — the one honest variation here */
+    [[-0.25,1],[0.25,-1],[0.25,1],[-0.25,-1]].forEach(([bx,sd],i)=>{const t=(seed(x+i,y+2*i,5)-2)*0.04;
+      parts.push({s:"box",x:bx,y:0.035,z:sd*(R+0.075),w:0.26,h:0.07,d:0.12,c:BAG[i%2],ry:t},
+                 {s:"box",x:bx+0.1,y:0.035,z:sd*(R+0.075),w:0.03,h:0.074,d:0.124,c:TIE,ry:t});});
+    return turned(parts,runTurn(x,y));};
+
+  /* WEAVE POLES (5) — a steel base rail with feet across it, a socket for every pole, the poles, the tape. SIX, at
+     GEARWEAVE's spacing (engine/engine.js), which is also where the dog weaves round them, so his line and these
+     poles are one set of numbers. White poles with the tape at the top, red and blue by turns: at 35 px a tile the
+     tops are what reads, and alternating them is what tells six poles from a fence. Seen down their own line (the
+     quarter turn that looks along the run) they stand one behind another and read as one striped post — the mock
+     says so plainly; the dog weaving left and right is what reads there. */
+  const weavePoles=({x,y})=>{
+    const G=(typeof GEARWEAVE==="object"&&GEARWEAVE)||{n:6,gap:0.16},RAIL="#7A7F88",RAILD="#5E636B",POLE="#F2E8D8",TAPE=["#C0392B","#2E5FA8"],PH=0.66;
+    const parts=[{s:"box",x:0,y:0.018,z:0,w:0.96,h:0.035,d:0.07,c:RAIL}];
+    [-0.46,0.46].forEach(fx=>parts.push({s:"box",x:fx,y:0.014,z:0,w:0.05,h:0.028,d:0.36,c:RAILD}));
+    for(let k=0;k<G.n;k++){const px=(k-(G.n-1)/2)*G.gap;
+      parts.push({s:"cyl",x:px,y:0.055,z:0,r:0.042,h:0.05,c:RAILD},
+                 {s:"cyl",x:px,y:0.035+PH/2,z:0,r:0.03,h:PH,c:POLE},
+                 {s:"cyl",x:px,y:0.035+PH-0.07,z:0,r:0.034,h:0.12,c:TAPE[k%2]},
+                 {s:"sph",x:px,y:0.04+PH,z:0,r:0.032,c:TAPE[k%2]});}
+    return turned(parts,runTurn(x,y));};
+
+  return {plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles};
 })();
 
 /* ---------- SHAPEBIND — the engine binding its own letters, in the open ----------
@@ -411,8 +495,9 @@ const SHAPES=(function(){
    and the street quietly has smudges on it. That is what the gate's solidity clause is for. */
 const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
                  W:"fridge",V:"stove",K:"counter",A:"draftingTable",
-                 F:"picketFence","◺":"wellRail","9":"doghouse"};
-/* FIVE OF THOSE THIRTEEN ARE OFFERED AND WILL BE REFUSED ANYWAY, and they stay listed on purpose.
+                 F:"picketFence","◺":"wellRail","9":"doghouse",
+                 "3":"hurdle","4":"tunnel","5":"weavePoles"};   /* the agility gear, mq-v232: walkable, `stand`, so the gate's solidity clause lets them through */
+/* FIVE OF THOSE SIXTEEN ARE OFFERED AND WILL BE REFUSED ANYWAY, and they stay listed on purpose.
    `D T S K V` all have a `TILESIDE` drawing in this engine, so `wearsArt` is true for them in every
    world and the gate's clause 5 turns them down however loudly a pack asks. Listing them is not a
    lie, it is the clause's test fixture: seventy-one tiles of a second world are exactly this case,

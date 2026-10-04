@@ -652,7 +652,11 @@ function findChromium() {
        with no `why` is one nobody has got to yet, and says "take it off" the day it gets a shape. A
        game with no declaration uses its row here, or FLAT_BASE. The history of each game's row lives
        with that game. */
-    const FLAT_BY_GAME = { 'index.html': ['3', '4', '5', 'X'] };
+    /* '3' '4' '5' came off on 2026-10-03 (mq-v232): the park's agility gear stands as shapes from the engine's own
+       library — a winged hurdle, a full ribbed tunnel, six weave poles on a rail — taken by name in Meridian's
+       SHAPETAKE. Red first, the audit's own sentences: '"3" is no longer flat in 3D — take it off this game's row'
+       and the same for "4" and "5". Still flat: X (the site marker). */
+    const FLAT_BY_GAME = { 'index.html': ['X'] };
     const packFlat = (typeof FLAT_OK === 'object' && FLAT_OK && Array.isArray(FLAT_OK.letters)) ? FLAT_OK : null;
     const FLAT_KNOWN = packFlat ? packFlat.letters : (FLAT_BY_GAME[IDXNAME] || FLAT_BASE);
     const laid = new Set(); Object.values(WORLDS).forEach(w => w.rows.forEach(r => r.split('').forEach(ch => laid.add(ch))));
@@ -806,6 +810,313 @@ function findChromium() {
     return P;
   });
   fails.push(...agility);
+
+  /* ---- THE PARK'S GEAR IS GEAR: A HURDLE HE GOES OVER, A TUNNEL HE GOES THROUGH, POLES HE WEAVES ----
+     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". And 2026-10-03:
+     "please place it but most importantly you had previously provided full tunnel - should also work for the pets to
+     go through but i cant fit in it".
+     Until mq-v232 the three pieces stood in the 3D camera as flat pictures that turned with the camera, and the dog
+     ran the course along the ground: along the hurdle's bar, over a picture of an arch, straight past the poles. This
+     asks what ships and supplies no number of its own (.claude/skills/guard, the first of the four ways):
+       · THE LINE he runs through each piece is read off his own path on a real run — critUpdate, the loop's own step,
+         on a stubbed clock — so each piece is held to where he actually goes, not to the engine's idea of it.
+       · THE PIECES are what the 3D camera built on each gear tile of the park, read by casting rays at the built mesh:
+         a bar across his line with clear ground before and after it; a tube shut overhead with an open bore along his
+         line and walls either side; a row of poles along his line.
+       · THE DOG is what his own painter draws — the one every camera uses — at each frame he is on a piece: how high
+         his feet are at the bar against the bar's height at his size (T3PERSON, the engine's own), whether anything of
+         him is drawn while he is inside the tube, and which side of each pole he passes.
+     A piece the pack keeps as a picture on purpose says so in its own FLAT_OK with a `why` (see #39 above) and is not
+     asked for a shape. A park that lays no gear has nothing to ask, and says so. The other half of the tunnel — people
+     cannot fit in it — is a seam a pack declares, and is asked on a page of its own just below. Everything this moves is
+     put back in `finally`. */
+  const gear = await page.evaluate(() => {
+    const P = [], N = [];
+    const wid = PL.park, w = WORLDS[wid];
+    if (!w) return { P, N: ['this shell names no park, so its agility gear could not be asked about'] };
+    const pieces = typeof agilityCourse === 'function' ? agilityCourse(wid) : [];
+    if (!pieces.length) return { P, N: ['the park ' + wid + ' lays no agility gear, so there was no hurdle to clear and no tunnel to go through'] };
+    const ROLE = { '3': 'hurdle', '4': 'tunnel', '5': 'weave poles' };
+    const at = p => '(' + p[0] + ',' + p[1] + ')', glyph = p => w.rows[p[1]][p[0]];
+    const name = p => 'the park\'s ' + (ROLE[glyph(p)] || 'agility gear') + ' at ' + at(p);
+    const K = (CRIT.find(c => c.role === 'star' && isDog(c)) || {}).kind || [...DOGK][0];
+    const paint = window['draw' + K[0].toUpperCase() + K.slice(1)];
+    if (typeof paint !== 'function') { P.push('the engine has no painter for a ' + K + ', so how the dog is drawn on the course could not be read'); return { P, N }; }
+    /* his own painter onto a card the size the 3D camera gives him (36×48, painted 8px down at (2,6), as t3Actors does) */
+    const cv = document.createElement('canvas'); cv.width = 36; cv.height = 48; const g = cv.getContext('2d');
+    const look = d => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 36, 48); g.setTransform(1, 0, 0, 1, 0, 8);
+      const old = ctx; ctx = g; try { paint(g, d, 2, 6); } finally { ctx = old; }
+      const px4 = g.getImageData(0, 0, 36, 48).data; let low = -1, n = 0;
+      for (let y = 0; y < 48; y++) for (let x = 0; x < 36; x++) if (px4[(y * 36 + x) * 4 + 3] >= 200) { n++; low = y; }   /* his body, not his shadow */
+      return { low, n }; };
+    const keep = { PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
+      world, px, py, fx, fy, cam: camMode, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
+    const T0 = keep.PN.call(performance), D0 = keep.DN.call(Date); let T = T0;
+    const real = CRIT.map(c => [c, c.world]);
+    const home = (PL.parkDogHome || PL.parkDog).slice();
+    /* WHERE HE SETS OFF FROM: his own spot, and two tiles off the first piece on each side of it, so that somewhere the
+       shortest way in meets the first piece from the side. From Meridian's dog's spot it never does, and a guard run
+       only from there passed with the run-up taken out (planted, 2026-10-03). */
+    const openAt = (x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y) && (TILES[w.rows[y][x]] || {}).kind !== 'gear';
+    const starts = [home].concat([[0, -2], [0, 2], [-2, 0], [2, 0]].map(([dx, dy]) => [pieces[0][0] + dx, pieces[0][1] + dy])
+      .filter(([x, y]) => openAt(x, y) && !(x === home[0] && y === home[1])));
+    const runFrom = s => {
+      const d = { kind: K, name: 'Probe', world: wid, x: s[0], y: s[1], fx: s[0], fy: s[1], face: 1, dx: 0, dy: 0, sit: false,
+        layT: 0, next: 0, home: s.slice(), task: null, holdT: 0, stayT: 0, mt: 0, moving: false };
+      const frames = []; let stand = null;
+      try {
+        performance.now = () => T; Date.now = () => D0 + (T - T0);
+        window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+        real.forEach(([c]) => { c.world = '__frozen'; });
+        CRIT.push(d);
+        world = wid; px = fx = -9; py = fy = -9;
+        stand = look(d);
+        d.task = { type: 'run', wp: agilityCourse(wid), i: 0 };
+        for (let i = 0; i < 8000 && d.task && d.task.type === 'run'; i++) {
+          T += 8; critUpdate(8, T);
+          const tx = Math.round(d.fx), ty = Math.round(d.fy), on = pieces.findIndex(p => p[0] === tx && p[1] === ty);
+          frames.push(on >= 0 ? Object.assign({ on, fx: d.fx, fy: d.fy }, look(d)) : { on, fx: d.fx, fy: d.fy });
+        }
+      } finally {
+        performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
+        const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1);
+        real.forEach(([c, cw]) => { c.world = cw; });
+        world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
+      }
+      return { s, frames, stand, unfinished: !!(d.task && d.task.type === 'run'), tag: s === home ? '' : ' (setting off from ' + at(s) + ')' };
+    };
+    const trips = starts.map(runFrom), stand = trips[0].stand;
+    if (!stand || stand.low < 0) { P.push('the dog\'s painter drew nothing of a ' + K + ' standing in the park, so how high he goes could not be read'); return { P, N }; }
+
+    /* THE ISO CAMERA drew no gear at all until mq-v232: gear is walkable, so its block pass skipped it, and it has no
+       side drawing, so its standing pass did too — "in the iso camera they are invisible". Asked by moving the object:
+       each piece lifted off the map on its own, on a frozen clock, must change what the iso camera draws. */
+    if ((typeof CAMS === 'undefined' || CAMS.indexOf('iso') >= 0) && document.getElementById('cv')) {
+      const keepI = { world, px, py, fx, fy, cam: camMode, DN: Date.now, PN: performance.now }, cvI = document.getElementById('cv');
+      const snap = () => { draw(); const dd = cvI.getContext('2d').getImageData(0, 0, cvI.width, cvI.height).data; let h = 0;
+        for (let i = 0; i < dd.length; i++) h = (Math.imul(h, 31) + dd[i]) | 0; return h; };
+      try { const t = keepI.DN.call(Date), tp = keepI.PN.call(performance); Date.now = () => t; performance.now = () => tp;
+        world = wid; px = fx = pieces[0][0]; py = fy = Math.min(w.H - 1, pieces[0][1] + 2); camSet('iso');
+        const all = snap();
+        pieces.forEach(p => { const row = w.rows[p[1]], cell = w.grid[p[1]][p[0]];
+          w.rows[p[1]] = row.slice(0, p[0]) + '.' + row.slice(p[0] + 1); w.grid[p[1]][p[0]] = '.';
+          const gone = snap(); w.rows[p[1]] = row; w.grid[p[1]][p[0]] = cell;
+          if (gone === all) P.push(name(p) + (ROLE[glyph(p)] === 'weave poles' ? ' are' : ' is') + ' not drawn in the iso camera at all: lifted off the map, the picture does not change by a pixel'); }); }
+      finally { Date.now = keepI.DN; performance.now = keepI.PN; world = keepI.world; px = keepI.px; py = keepI.py; fx = keepI.fx; fy = keepI.fy; camSet(keepI.cam); }
+    }
+    trips.forEach(t => { if (t.unfinished) P.push('the dog set off round the park\'s agility course and was still on it ' + (t.frames.length * 8 / 1000).toFixed(0) + ' simulated seconds later' + t.tag); });
+
+    /* THE LINE THROUGH EACH PIECE, from his own run off his own spot: from where he was the frame before he got on it to
+       the frame after he got off. Every other run is held to that line. */
+    const onOf = (t, k, dir) => { const p = pieces[k];
+      return t.frames.filter(f => f.on === k).map(f => Object.assign({}, f, { u: (f.fx - p[0]) * dir[0] + (f.fy - p[1]) * dir[1], v: -(f.fx - p[0]) * dir[1] + (f.fy - p[1]) * dir[0] })); };
+    const lines = pieces.map((p, k) => {
+      const fr = trips[0].frames, idx = fr.map((f, i) => f.on === k ? i : -1).filter(i => i >= 0);
+      if (!idx.length) return null;
+      const a = fr[Math.max(0, idx[0] - 1)], b = fr[Math.min(fr.length - 1, idx[idx.length - 1] + 1)];
+      const ddx = b.fx - a.fx, ddy = b.fy - a.fy;
+      return Math.abs(ddx) >= Math.abs(ddy) ? [Math.sign(ddx) || 1, 0] : [0, Math.sign(ddy) || 1]; });
+
+    /* the 3D camera's own build of the park */
+    const has3d = typeof T3 !== 'undefined' && T3 && typeof draw3d === 'function' && !!window.THREE && (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0);
+    const chosen = (typeof FLAT_OK === 'object' && FLAT_OK && FLAT_OK.why) || {};
+    const built = {};
+    if (has3d) {
+      try { world = wid; px = fx = pieces[0][0]; py = fy = Math.min(w.H - 1, pieces[0][1] + 2); camSet('3d'); draw3d(); T3.group.updateMatrixWorld(true);
+        T3.group.children.forEach(o => { const u = o.userData || {}; if ((u.mesh || u.flat) && pieces.some(p => p[0] === u.x && p[1] === u.y)) built[u.x + ',' + u.y] = o; }); }
+      finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; camSet(keep.cam); if (T3) T3.yaw = keep.yaw; }
+    } else N.push('this shell has no 3D camera, so what the park\'s gear is made of was not read — only how the dog runs it');
+    const FLATSAY = { '3': 'the dog runs along its bar instead of over it', '4': 'there is no tube for the dog to go through', '5': 'there are no poles for the dog to weave between' };
+    const rc = has3d ? new THREE.Raycaster() : null;
+
+    pieces.forEach((p, k) => {
+      const dir = lines[k], gl = glyph(p), role = ROLE[gl];
+      trips.forEach(t => { if (!t.frames.some(f => f.on === k)) P.push('on his run the dog never set foot on ' + name(p) + t.tag + ' — he was sent round ' + pieces.map(at).join(' ') + ' and missed it'); });
+      if (!dir) return;
+      let M = null;
+      if (has3d) {
+        const o = built[p[0] + ',' + p[1]];
+        if (!o) P.push('the 3D camera stood nothing at all on ' + name(p));
+        else if (o.userData.flat && !chosen[gl]) P.push(name(p) + (role === 'weave poles' ? ' are flat cut-outs that turn' : ' is a flat cut-out that turns') + ' with the camera: ' + (FLATSAY[gl] || 'it is a picture of a thing, not the thing'));
+        else if (o.userData.mesh) M = o;
+      }
+      /* tile-local (u along his line, v across it) to the world, and the rays */
+      const Wp = (u, v, y) => new THREE.Vector3(p[0] + 0.5 + u * dir[0] - v * dir[1], y, p[1] + 0.5 + u * dir[1] + v * dir[0]);
+      const down = (u, v) => { rc.set(Wp(u, v, 3), new THREE.Vector3(0, -1, 0)); rc.far = 4; const h = rc.intersectObject(M, true); return h.length ? h[0].point.y : 0; };
+      const cast = (o, e) => { const dv = e.clone().sub(o), len = dv.length(); rc.set(o, dv.normalize()); rc.far = len; const h = rc.intersectObject(M, true); return h.length ? h[0] : null; };
+      if (role === 'hurdle') {
+        let bar = null;
+        if (M) {
+          bar = down(0, 0);
+          if (bar < 0.12) P.push(name(p) + ' has nothing across the middle of the line he runs for him to go over (the highest thing there stands ' + bar.toFixed(2) + ' off the ground)');
+          const inway = [-0.42, -0.3, 0.3, 0.42].map(u => [u, down(u, 0)]).filter(([, h]) => h > 0.06);
+          if (inway.length) P.push(name(p) + ' stands along the line he runs, not across it: ' + (inway[0][0] < 0 ? 'running at it' : 'landing') + ' he meets it ' + Math.abs(inway[0][0]).toFixed(2) + ' of a tile ' + (inway[0][0] < 0 ? 'before' : 'after') + ' the bar, ' + inway[0][1].toFixed(2) + ' high');
+          if (Math.min(down(0, -0.15), down(0, 0.15)) < 0.12) P.push(name(p) + ' has no bar across his line, only something at its very middle');
+        }
+        const barPx = bar !== null && typeof T3PERSON === 'number' ? bar * 32 / T3PERSON : 0;
+        trips.forEach(t => { const on = onOf(t, k, dir); if (!on.length) return;
+          const side = on.filter(f => Math.abs(f.v) > 0.02);
+          if (side.length) P.push('the dog came onto ' + name(p) + ' from the side, along its bar' + t.tag + ' — ' + Math.abs(side[0].v).toFixed(2) + ' of a tile off the line he runs');
+          const close = on.slice().sort((a, b) => Math.abs(a.u) - Math.abs(b.u))[0], lift = stand.low - close.low;
+          if (lift <= barPx) P.push('the dog ran through ' + name(p) + ' instead of over it' + t.tag + ': at its bar his feet were ' + lift + ' px off the ground' +
+            (bar !== null ? ', and the bar stands ' + barPx.toFixed(1) + ' px high at his size (' + bar.toFixed(2) + ' of a tile)' : ''));
+          else if (!t.tag) N.push('over ' + name(p) + ' the dog\'s feet rose ' + lift + ' px at the bar, which stands ' + barPx.toFixed(1) + ' px high at his size'); });
+      }
+      if (role === 'tunnel') {
+        if (M) {
+          const open = [-0.4, -0.2, 0, 0.2, 0.4].map(u => [u, down(u, 0)]).filter(([, h]) => h < 0.35);
+          if (open.length) P.push(name(p) + ' is open overhead ' + Math.abs(open[0][0]).toFixed(2) + ' of a tile from its middle (nothing over his line higher than ' + open[0][1].toFixed(2) + ') — an arch, not a tunnel');
+          const shut = cast(Wp(-0.8, 0, 0.15), Wp(0.8, 0, 0.15));
+          if (shut) P.push('the dog could not go through ' + name(p) + ': its bore is shut ' + Math.abs(shut.distance - 0.8).toFixed(2) + ' of a tile ' + (shut.distance < 0.8 ? 'before' : 'past') + ' its middle, at the height of a dog');
+          if (!cast(Wp(0, -0.8, 0.15), Wp(0, 0.8, 0.15))) P.push(name(p) + ' has no walls either side of his line at the height of a dog — a dog in it would be seen straight through it');
+        }
+        trips.forEach(t => { const on = onOf(t, k, dir); if (!on.length) return;
+          const inside = on.filter(f => Math.abs(f.u) < 0.3 && Math.abs(f.v) < 0.1 && f.n > 0);
+          if (inside.length) P.push('the dog was drawn on top of ' + name(p) + ' while he was inside it' + t.tag + ' — ' + inside[0].n + ' pixels of him painted over a tube that should hide him');
+          /* in at one mouth and out at the other: the mouths stand at the tile's edges, and a frame comes every 0.05 of a tile */
+          const inn = on.findIndex(f => f.u <= -0.4 && Math.abs(f.v) < 0.05), out = on.findIndex(f => f.u >= 0.4 && Math.abs(f.v) < 0.05);
+          if (inn < 0 || out < inn) P.push('the dog could not go through ' + name(p) + t.tag + ': he did not go in at one mouth and come out of the other along his line'); });
+      }
+      if (role === 'weave poles') {
+        let poles = [];
+        if (M) {
+          let run = null;
+          for (let u = -0.5; u <= 0.5001; u += 0.005) {
+            const h = cast(Wp(u, -0.8, 0.35), Wp(u, 0.8, 0.35)), h2 = h && cast(Wp(u, 0.8, 0.35), Wp(u, -0.8, 0.35));
+            if (h) { const v = (h.distance - 0.8 + (h2 ? 0.8 - h2.distance : h.distance - 0.8)) / 2;   /* its middle, from both faces */
+              if (!run) run = { a: u, b: u, v }; else run.b = u; }
+            else if (run) { poles.push(run); run = null; }
+          }
+          if (run) poles.push(run);
+          if (poles.length < 5) P.push(name(p) + ' stand ' + poles.length + ' in a row along the line he runs — seen from his line they are ' + (poles.length ? 'one post' : 'nothing') + ', and a dog weaves five or more');
+        }
+        trips.forEach(t => { const on = onOf(t, k, dir); if (!on.length) return;
+          const off = on.filter(f => Math.abs(f.v) > 0.02);
+          if (!off.length) P.push('the dog ran straight down ' + name(p) + t.tag + ', through them instead of between them: he never left their line');
+          else if (poles.length >= 5) {
+            const sides = poles.map(pl => { const c = (pl.a + pl.b) / 2, f = on.slice().sort((a, b) => Math.abs(a.u - c) - Math.abs(b.u - c))[0]; return Math.abs(f.u - c) < 0.06 ? Math.sign(f.v - pl.v) : 0; });
+            const bad = sides.findIndex((sd, i) => sd === 0 || (i && sd === sides[i - 1]));
+            if (bad >= 0) P.push('the dog did not weave ' + name(p) + t.tag + ': at pole ' + (bad + 1) + ' of ' + poles.length + ' he was ' + (sides[bad] === 0 ? 'on its line' : 'on the same side as at the pole before') + ' (sides ' + sides.map(sd => sd > 0 ? 'R' : sd < 0 ? 'L' : '·').join('') + ')');
+            else if (!t.tag) N.push('the dog wove ' + name(p) + ', ' + poles.length + ' poles, passing them ' + sides.map(sd => sd > 0 ? 'R' : 'L').join(''));
+          } });
+      }
+    });
+    N.push('the dog ran the park\'s course from ' + trips.map(t => at(t.s)).join(', ') + ' (his own spot, then two tiles off the first piece on each open side)');
+    return { P: [...new Set(P)], N };
+  });
+  fails.push(...gear.P);
+  gear.N.forEach(l => console.log('  COUNT-ONLY: ' + l));
+
+  /* ---- A TUNNEL A PET GOES THROUGH AND A PERSON CANNOT FIT IN — the seam, asked on a page where it is declared ----
+     Owner, 2026-10-03: "should also work for the pets to go through but i cant fit in it". `PETPASS` is a string of the
+     letters a pack says animals pass and people do not (engine/engine.js, grep `PETPASS`). It is OFF unless a pack says
+     it: a pack that says nothing walks exactly as before — Meridian included, until its owner decides. So it is asked on
+     a second page where it IS declared: the pack's own string when it has one, and otherwise the engine's tunnel letter,
+     planted before the pack loads, which is exactly how a world would say it. That page is held to three sentences:
+       (a) the player cannot step onto a declared tile — tryStep, the step the keys take, from every open side of it;
+       (b) the dog still goes through it — the park's own course, run by dogStep, stands on every declared piece;
+       (c) nobody loses anything else — every tile the player reached on the plain page (isSolid, the predicate tryStep
+           asks, flooded from the park's arrival or a world's first open tile, a wandering neighbour not a wall, as
+           auditReach has it) is still reached, the declared tiles themselves excepted; and the engine's own reach audit
+           says nothing it did not already say. */
+  {
+    const declared = await page.evaluate(() => typeof PETPASS === 'string' ? PETPASS : null);
+    const letters = declared || '4';
+    /* `open`: the reach as it would be with the declared letters open to him (but never a solid) — the BEFORE, measured
+       on the declared page itself, so it holds when the pack declares the string in its own files and no page without it
+       can be loaded (planted 2026-10-03: a pack declaring "4^" itself was compared with itself and passed) */
+    const flood = ([L, open]) => { const out = {}, keep = { world };
+      try { Object.keys(WORLDS).forEach(id => { const w = WORLDS[id];
+        if (!w.rows.some(r => [...r].some(c => L.indexOf(c) >= 0))) return;
+        world = id;
+        const pass = (x, y) => { if (!isSolid(x, y)) return true; const g = w.grid[y] && w.grid[y][x];
+          if (open && x >= 0 && y >= 0 && x < w.W && y < w.H && L.indexOf(w.rows[y][x]) >= 0 && !SOLID.has(g) && g !== 'N') return true;
+          const n = g === 'N' && typeof whoAt === 'function' ? whoAt(id, x, y) : null; return !!n && typeof wanders === 'function' && wanders(n); };
+        let s = id === PL.park && PL.parkIn && pass(PL.parkIn[0], PL.parkIn[1]) ? [PL.parkIn[0], PL.parkIn[1]] : null;
+        for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) if (pass(x, y) && L.indexOf(w.rows[y][x]) < 0) s = [x, y];
+        if (!s) { out[id] = []; return; }
+        const seen = new Set([s.join(',')]), q = [s];
+        while (q.length) { const [cx, cy] = q.shift();
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = cx + dx, y = cy + dy, k = x + ',' + y;
+            if (x < 0 || y < 0 || x >= w.W || y >= w.H || seen.has(k) || !pass(x, y)) return; seen.add(k); q.push([x, y]); }); }
+        out[id] = [...seen]; }); }
+      finally { world = keep.world; }
+      return { out, audit: typeof auditReach === 'function' ? auditReach(true) : [] }; };
+    const plainAudit = declared ? null : await page.evaluate(() => typeof auditReach === 'function' ? auditReach(true) : []);
+    const pp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const ppErr = [];
+    pp.on('pageerror', e => ppErr.push(e.message));
+    await pp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (!declared) await pp.addInitScript(L => { window.PETPASS = L; }, letters);
+    await pp.goto('file://' + file);
+    await pp.waitForTimeout(1500);
+    const PT = [];
+    const seen = await pp.evaluate(() => typeof PETPASS === 'string' ? PETPASS : null);
+    if (seen !== letters) PT.push('the page meant to declare "' + letters + '" pets-only reads ' + JSON.stringify(seen) + ', so nothing below was asked of a world that declares it');
+    else {
+      const laidAt = await pp.evaluate(L => { const o = []; Object.keys(WORLDS).forEach(id => { const w = WORLDS[id];
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (L.indexOf(w.rows[y][x]) >= 0) o.push([id, x, y, w.rows[y][x]]); }); return o; }, letters);
+      const what = t => (t[3] === '4' ? 'the tunnel' : 'the pets-only tile "' + t[3] + '"') + ' at ' + t[0] + ' (' + t[1] + ',' + t[2] + ')';
+      if (!laidAt.length) console.log('  COUNT-ONLY: pets-only: no world lays "' + letters + '", so where a person may step was not asked');
+      else {
+        /* (a) */
+        const steps = await pp.evaluate(L => { const P = []; let n = 0;
+          enterWorld(false); document.querySelectorAll('.settings').forEach(e => { e.hidden = true; });
+          const rd = document.getElementById('reader'); if (rd) rd.hidden = true;
+          const keep = { world, px, py, fx, fy, cam: camMode, dir, held, moving };
+          try { camSet('top');
+            Object.keys(WORLDS).forEach(id => { const w = WORLDS[id];
+              for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (L.indexOf(w.rows[y][x]) < 0) continue;
+                Object.entries(DIRS).forEach(([k, [dx, dy]]) => { const sx = x - dx, sy = y - dy;
+                  world = id; if (isSolid(sx, sy) || portalAt(id, sx, sy)) return;
+                  px = fx = sx; py = fy = sy; moving = false; held = k; warpT = 0; n++;
+                  tryStep();
+                  if (px === x && py === y) P.push([id, x, y, w.rows[y][x], k]);
+                  moving = false; held = null; }); } }); }
+          finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; moving = keep.moving; camSet(keep.cam); }
+          return { P, n }; }, letters);
+        steps.P.forEach(t => PT.push('the player walked into ' + what(t) + ' going ' + t[4] + ', and he cannot fit in it'));
+        if (!steps.n) PT.push('no declared tile has an open side to step from, so whether the player can walk into one was not measured');
+        /* (b) */
+        const dog = await pp.evaluate(L => { const wid = PL.park, w = WORLDS[wid];
+          const wp = w && typeof agilityCourse === 'function' ? agilityCourse(wid) : [];
+          const want = wp.filter(p => L.indexOf(w.rows[p[1]][p[0]]) >= 0);
+          if (!want.length) return { none: true };
+          const h = (PL.parkDogHome || PL.parkDog).slice();
+          const d = { kind: [...DOGK][0], name: 'Probe', world: wid, x: h[0], y: h[1], fx: h[0], fy: h[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: h.slice(), task: { type: 'run', wp, i: 0 } };
+          const stood = new Set();
+          for (let n = 0; n < 400 && d.task; n++) { stood.add(d.x + ',' + d.y); dogStep(d, performance.now()); }
+          stood.add(d.x + ',' + d.y);
+          /* and on his own: the run's path-finder never asks whether its target is open (bfsStep searches out from it),
+             so a run would get him in even through a wall. A dog WANDERING asks critFree, and to him it must be open
+             ground too — planted 2026-10-03: a tile shut to animals as well passed the run and fails here */
+          const shut = [];
+          want.forEach(p => { const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [p[0] + dx, p[1] + dy])
+            .find(([x, y]) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && L.indexOf(w.rows[y][x]) < 0);
+            if (!nb) return;
+            const pr = { kind: d.kind, world: wid, x: nb[0], y: nb[1], home: nb.slice() };
+            if (!critFree(pr, p[0], p[1])) shut.push([wid, p[0], p[1], w.rows[p[1]][p[0]]]); });
+          return { missed: want.filter(p => !stood.has(p[0] + ',' + p[1])).map(p => [wid, p[0], p[1], w.rows[p[1]][p[0]]]), shut }; }, letters);
+        if (dog.none) console.log('  COUNT-ONLY: pets-only: the park\'s course has no declared piece, so a dog going through one was not asked');
+        else { dog.missed.forEach(t => PT.push('the dog could not go through ' + what(t) + ' — a pet passes it, and on his run he never got in'));
+          dog.shut.forEach(t => PT.push('a dog wandering beside ' + what(t) + ' may not step into it — a pet passes it, and to him it is a wall')); }
+        /* (c) */
+        const plain = await pp.evaluate(flood, [letters, true]), decl = await pp.evaluate(flood, [letters, false]);
+        const gone = new Set(laidAt.map(t => t[0] + ':' + t[1] + ',' + t[2]));
+        Object.keys(plain.out).forEach(id => { const now = new Set(decl.out[id] || []);
+          const lost = plain.out[id].filter(k => !now.has(k) && !gone.has(id + ':' + k));
+          if (lost.length) PT.push('declaring "' + letters + '" pets-only cut the player off from ' + lost.length + ' tile(s) of ' + id + ' he could reach with them open, (' + lost.slice(0, 4).join(') (') + ')' + (lost.length > 4 ? ' …' : '')); });
+        const newSaid = plainAudit ? decl.audit.filter(l => plainAudit.indexOf(l) < 0) : decl.audit;
+        if (newSaid.length) PT.push('declaring "' + letters + '" pets-only, the engine\'s own reach audit now says: ' + newSaid.slice(0, 2).join(' | '));
+        if (!PT.length) console.log('  COUNT-ONLY: pets-only, "' + letters + '" ' + (declared ? 'as this pack declares it' : 'planted as a world would declare it (this pack declares none, so its player still walks in)') +
+          ': ' + steps.n + ' step(s) toward ' + laidAt.length + ' declared tile(s) refused, the dog ran through ' + (dog.none ? 'none' : 'every one on the course') + ', and ' +
+          Object.keys(plain.out).map(id => (decl.out[id] || []).length + ' of ' + plain.out[id].length + ' tiles of ' + id).join(', ') + ' are still reached on foot');
+      }
+    }
+    if (ppErr.length) PT.push('the page declaring "' + letters + '" pets-only threw: ' + ppErr[0].split('\n')[0]);
+    await pp.close();
+    fails.push(...PT.map(m => 'pets-only: ' + m));
+  }
 
   /* ---- THE DOG DIGS ABOUT 8% OF WHAT HE DOES, WHEREVER HE IS ----
      Canon (2026-09-01, docs/IDEAS.md:436): digging was a puppy phase, cut to about 8% of
@@ -1721,7 +2032,10 @@ function findChromium() {
           const you = aside(park, [ph].concat(cs.wp)); px = fx = you[0]; py = fy = you[1];
           const no = runCourse(d); if (no) return { fail: no };
           if (d.task && d.task.type === 'run') return { fail: 'the dog set off round the agility course and never finished it in 90 s' };
-          if (d.x !== last[0] || d.y !== last[1]) return { fail: 'the dog finished the agility course at ' + at([d.x, d.y]) + ', not at its last piece ' + at(last) };
+          /* at its last piece, or the one step out of it: since mq-v232 a dog comes OUT of the last piece along its line
+             (engine.js, the run task: he does not stop on a bar, inside a tube or halfway down the poles), and finishes
+             on the piece only where that step is shut. Either way he finished the course, and that is what this asks. */
+          if (md([d.x, d.y], last) > 1) return { fail: 'the dog finished the agility course at ' + at([d.x, d.y]) + ', not at its last piece ' + at(last) + ' or the step out of it' };
           return after('running the agility course' + (cs.own ? '' : ' (its one piece laid ' + md(last, ph) + ' steps from his spot)'), d, ph, c); }));
 
         /* ---- 1 · a sniff and a chase: a second dog as far off as the greeting reaches ---- */

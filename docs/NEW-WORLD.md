@@ -131,12 +131,15 @@ arch over a door, the bones on a pan de muerto, the handle of a cup. The engine'
 
 ### What the engine already has a shape for — and the ONE line you write to take it
 
-`engine/shapes.js` ships thirteen shapes **named by what they are**, not by a letter:
+`engine/shapes.js` ships sixteen shapes **named by what they are**, not by a letter:
 
     plant · tree · desk · table · crate · shelving · fridge · stove
     counter · draftingTable · picketFence · wellRail · doghouse
+    hurdle · tunnel · weavePoles
 
-`SHAPEBIND` in that file is the engine's reading of its own letters (`P J D T H S W V K A F ◺ 9`).
+`SHAPEBIND` in that file is the engine's reading of its own letters (`P J D T H S W V K A F ◺ 9 3 4 5`).
+The last three are the park's agility course; each is turned to the line the dog runs through it, which the
+engine reads off the order the gear is laid on your park's map (mq-v232).
 **It is an offer, not a default.** You take it by naming the letters you agree with, in one string
 in your `art.js`:
 
@@ -316,13 +319,20 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT` — and a template part's `link`
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT` — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
 every storage key. Optional in the engine, **required in practice for any second world served
 from the same origin**, or it loads the first world's save and overwrites it (§8). A world with none of these is a walkable town with people and
 quests. Everything else is a layer you add when its answer arrives.
+
+**`PETPASS`** (maps.js, a string, mq-v232) — letters an animal walks through and a person cannot: `const PETPASS="4";`
+makes the agility tunnel a tube the dog runs through that nobody can walk into. Animals keep asking `SOLID`; everything
+that decides where a person may stand (the player's step, a neighbour's wander, the reach audits, where a door or a
+chat sets somebody down) asks the engine's `shutToPeople` instead. Say nothing and nothing changes. Before you
+declare a letter, make sure it is not the only way anywhere: `test/engine.smoke.js` (grep `pets-only`) declares it on
+a page of its own and fails if the player is cut off from a tile he could reach with it open.
 
 **`TROLLEYAT` — the one optional seam with a boot audit of its own, so it is worth its own paragraph.**
 One entry per line: `{world, row, from, to, stops}`. `stops` is a **list of platform tiles — the tile

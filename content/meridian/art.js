@@ -611,6 +611,12 @@ TILEART_SIDE["✿"]=rc=>{const{sx,sy,x,y}=rc;
    boards with what a person put on them. Colours go through tc() in the engine, so the theme and
    the time of day reach these like everything else. */
 const TILEART_MESH={};
+/* THE LETTERS THIS WORLD TAKES FROM THE ENGINE'S OWN SHAPES (engine/shapes.js, SHAPEBIND) — the three pieces of the
+   park's agility course and nothing else (mq-v232). Meridian means by 3 4 5 exactly what the engine means — a
+   hurdle, a tunnel and weave poles, the engine's own drawings, never redrawn here — so it takes the engine's shapes
+   by name rather than writing a copy: the course is the same object in every world that lays it. Every other letter
+   SHAPEBIND offers, Meridian answers for itself above and below (clause 1 of the gate), and is not named here. */
+const SHAPETAKE="345";
 /* A CEMPASÚCHIL HEAD IS A STACK OF WHORLS, NOT A BALL (la botánica, crew run 11, 2026-09-21, from the
    owner's three photographs). Tagetes erecta, the double kind sold for Día de Muertos: hundreds of ray
    florets on a domed receptacle, in whorls — the outermost the largest, splayed nearly flat with a wavy
