@@ -3510,7 +3510,7 @@ function dogDone(cr,tk,now){
 const DOG_STUCK=12000;
 /* MAY THIS DOG BE PUT DOWN HERE — on the map, not a wall or a hole, not your tile while you are in his room, not the
    tram's way while a car is on it, not a door, not another animal's tile. Lifted out of dogHomeSpot word for word
-   (mq-v234), so the one answer there is to "where may a dog be set down" — home after he is stuck, or wherever a dog
+   (mq-v235), so the one answer there is to "where may a dog be set down" — home after he is stuck, or wherever a dog
    that left the ground comes down — is asked in one place. */
 function dogCanStand(cr,x,y){const w=WORLDS[cr.world];if(!w)return false;
   return x>=0&&y>=0&&x<w.W&&y<w.H&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N"
@@ -3611,7 +3611,7 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
      body, head — what the layer reads: drop − lift, and drop + nod − lift
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
 const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},pigeon:{peck:2.2}};
-/* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v234). Everything the dog program's painters decide about how a dog is held
+/* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
    this instant, read off his state and two clocks — nw, performance.now(), for how long a whim lasts (layT, howlT…), and
    t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
    read nothing else about his pose, bodyRide reads it for what he wears, and a body in another camera will read the
@@ -3934,7 +3934,7 @@ function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, fl
   g.restore(); /* text outside the mirror so it never flips */
   dogOverlays(g,cr,cx,sy,P);
 }
-function dogOverlays(g,cr,cx,sy,P){ /* the shared feelings layer: note, hearts, love — the beagle's own copy of it folded in (mq-v234) */
+function dogOverlays(g,cr,cx,sy,P){ /* the shared feelings layer: note, hearts, love — the beagle's own copy of it folded in (mq-v235) */
   P=P||dogPose(cr);const t=P.t;
   g.textAlign="center";
   if(P.howl){g.fillStyle="#8B6FC8";g.font="9px serif";

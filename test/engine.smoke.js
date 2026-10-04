@@ -2426,7 +2426,7 @@ function findChromium() {
      The dog program's three painters each decided his pose for themselves — lying, howling, sitting, digging, the hop
      over the bar, the tunnel, the wag, the hearts — off his flags and two clocks, and dogHomeSpot carried its own "may a
      dog stand here". A body in another camera and a dog that leaves the ground will both need those two answers, and the
-     2D picture must not drift from them. Since mq-v234 they are dogPose(cr) and dogCanStand(cr,x,y), lifted out with
+     2D picture must not drift from them. Since mq-v235 they are dogPose(cr) and dogCanStand(cr,x,y), lifted out with
      nothing changed (every dog kind, every pose, six clock phases, the mode off and on, compared with the commit before
      outside the repository: none of 720 pictures differ, and dogHomeSpot gives the same answer on all 3,432 tiles).
      This asks that they ARE the one place, by handing the engine a pose or a verdict and seeing whether it obeys:
