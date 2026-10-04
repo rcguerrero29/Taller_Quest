@@ -3112,8 +3112,9 @@ function pigUpdate(dt,now){
     lastBump=Date.now();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
 }
 function drawPigeon(g,sx,sy){
-  sy-=(PIG.hop||0);                                       /* mid-lift she is off the ground */
-  const cx=sx+16,pk=PIG.peck?2.2:0;
+  const R=bodyRide("pigeon",PIG);
+  sy-=R.lift;                                             /* mid-lift she is off the ground */
+  const cx=sx+16,pk=R.nod;
   g.save();g.translate(cx,0);g.scale(PIG.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.12)";g.beginPath();g.ellipse(cx,sy+27,4.5,1.8,0,0,7);g.fill();
   g.fillStyle="#E0662B";g.fillRect(cx-1.5,sy+24.5,1,2.5);g.fillRect(cx+1,sy+24.5,1,2.5);
@@ -3132,7 +3133,7 @@ function loroTick(now){
     lastBump=Date.now();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
 }
 function drawLoro(g,sx,sy){
-  const bob=Math.sin(Date.now()/280)*1.1;
+  const bob=bodyRide("loro",LORO).nod;
   g.fillStyle="#2F7D3E";g.beginPath();g.ellipse(sx+16,sy+10+bob*0.4,4,5.2,0,0,7);g.fill();
   g.fillStyle="#2C5FA8";g.fillRect(sx+14.6,sy+14,2.8,9);
   g.fillStyle="#C0392B";g.beginPath();g.arc(sx+16,sy+5.2+bob,2.8,0,7);g.fill();
@@ -3592,6 +3593,27 @@ function gearPose(cr){const P={hop:0,hid:false,side:0};
    how far along he has come never move — only which side of a pole he passes */
 function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
   const L=gearLine(cr.world,Math.round(cr.fx),Math.round(cr.fy));cr.fx+=-L[1]*s;cr.fy+=L[0]*s;}
+/* WHERE AN ANIMAL'S BODY AND HEAD ARE IN THIS POSE (mq-v234) — px on its card, down positive. ONE answer, read by the
+   animal's own painter AND by the alebrije layer drawn over it (wildDraw), so nothing an animal wears is left where it
+   stood. Until mq-v234 the painters moved the body themselves — the hurdle's hop, the lie-down, the howl, the pigeon's
+   lift and peck, the hover of the hummingbird and the butterfly — and the layer stayed at the standing pose: over the
+   hurdle the wings hung under his feet, lying down the colour round his eye sat on his brow, inside the tunnel his
+   wings showed where the tube hid him.
+     hid  — nothing of him is drawn (inside the agility tunnel)
+     lift — the whole animal up off where it stands; its shadow stays down
+     drop — the body lowered (lying down)
+     nod  — the head alone, on top of the body (the howl lifts it, the peck lowers it, the parrot's bob)
+     body, head — what the layer reads: drop − lift, and drop + nod − lift
+   An animal or a pose not named here answers zeros, which is where it has always been drawn. */
+const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},pigeon:{peck:2.2}};
+function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
+  if(a&&DOGK.has(kind)){const gp=gearPose(a),nw=performance.now();
+    R.hid=gp.hid;R.lift=gp.hop;R.lay=a.layT>nw;R.howl=a.howlT>nw;R.drop=R.lay?(K.lay||0):0;R.nod=R.howl?(K.howl||0):0;}
+  else if(a&&kind==="pigeon"){R.lift=a.hop||0;R.nod=a.peck?K.peck:0;}
+  else if(kind==="colibri")R.lift=-Math.sin(Date.now()/160)*1.6;                        /* the hover */
+  else if(a&&kind==="butterfly")R.lift=-Math.sin(Date.now()/300+a.home[0])*2.5;         /* the bob */
+  else if(kind==="loro")R.nod=Math.sin(Date.now()/280)*1.1;                             /* the head bobs on the perch; the tail does not */
+  R.body=R.drop-R.lift;R.head=R.drop+R.nod-R.lift;return R;}
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (canon) — it stays in the repertoire, barely. In the park:
   zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
@@ -3814,7 +3836,7 @@ $("ball").addEventListener("click",()=>{
   $("ball").hidden=true;
 });
 function drawButterfly(g,cr,sx,sy){
-  const t2=Date.now(),fl=Math.abs(Math.sin(t2/90)),bobY=Math.sin(t2/300+cr.home[0])*2.5;
+  const t2=Date.now(),fl=Math.abs(Math.sin(t2/90)),bobY=bodyRide("butterfly",cr).body;
   const cx=sx+16,cy=sy+13+bobY;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle=cr.c;
@@ -3828,7 +3850,7 @@ function drawButterfly(g,cr,sx,sy){
   g.restore();
 }
 function drawColibri(g,cr,sx,sy){
-  const t2=Date.now(),hov=Math.sin(t2/160)*1.6,wg=Math.abs(Math.sin(t2/55));
+  const t2=Date.now(),hov=bodyRide("colibri",cr).body,wg=Math.abs(Math.sin(t2/55));
   const cx=sx+16,cy=sy+12+hov;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.globalAlpha=.45;g.fillStyle="#9CB8AE"; /* wing blur */
@@ -3842,13 +3864,13 @@ function drawColibri(g,cr,sx,sy){
   g.restore();
 }
 function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, floppy ears, working tail */
-  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
-  const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
+  const R=bodyRide("beagle",cr);if(R.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
+  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:130))*(happy?3.4:2.4),lemon="#E8C46A",white="#F6F2E8";
-  const dy=lay?3:0,hy=howl?-3:0;
+  const dy=R.drop,hy=R.nod;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,7,2.8,0,0,7);g.fill();
-  sy-=gp.hop;                                /* over the hurdle's bar he is in the air; his shadow is not */
+  sy-=R.lift;                                /* over the hurdle's bar he is in the air; his shadow is not */
   g.strokeStyle=lemon;g.lineWidth=2.4;g.lineCap="round"; /* the tail: lemon, always going (slower when resting) */
   const wg=lay?wag*0.4:wag,tex2=cx-10+wg,tey=sy+11+dy;
   g.beginPath();g.moveTo(cx-7,sy+19.5+dy);g.quadraticCurveTo(cx-11,sy+15+dy+wg*0.5,tex2,tey);g.stroke();
@@ -3916,13 +3938,13 @@ function dogOverlays(g,cr,cx,sy){ /* the shared feelings layer: note, hearts, lo
   g.textAlign="start";
 }
 function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
-  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel */
-  const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
+  const R=bodyRide("lab",cr);if(R.hid)return;   /* inside the agility tunnel */
+  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?70:150))*(happy?3.2:2),co=cr.c||"#E0C070";
-  const dk=shadeHex(co,-0.25),dy=lay?3:0,hy=howl?-3:0;
+  const dk=shadeHex(co,-0.25),dy=R.drop,hy=R.nod;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,8,3,0,0,7);g.fill();
-  sy-=gp.hop;                                /* over the bar, the shadow stays down */
+  sy-=R.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=3;g.lineCap="round"; /* thick otter tail */
   g.beginPath();g.moveTo(cx-8,sy+20+dy);g.quadraticCurveTo(cx-12,sy+17+dy+wag*0.4,cx-11+wag,sy+13+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-8.5,sy+15.5+dy,16,9.5,4);g.fill(); /* barrel body */
@@ -3946,13 +3968,13 @@ function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
   dogOverlays(g,cr,cx,sy);
 }
 function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opinion */
-  const gp=gearPose(cr);if(gp.hid)return;   /* inside the agility tunnel */
-  const nw=performance.now(),lay=cr.layT>nw,howl=cr.howlT>nw,dig=cr.digT>nw,happy=cr.happyT>nw;
+  const R=bodyRide("chi",cr);if(R.hid)return;   /* inside the agility tunnel */
+  const nw=performance.now(),lay=R.lay,howl=R.howl,dig=cr.digT>nw,happy=cr.happyT>nw;
   const cx=sx+16,wag=Math.sin(Date.now()/(happy?60:120))*(happy?2.6:1.8),co=cr.c||"#C9975C";
-  const dk=shadeHex(co,-0.22),dy=lay?2:0,hy=howl?-2.5:0;
+  const dk=shadeHex(co,-0.22),dy=R.drop,hy=R.nod;
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.13)";g.beginPath();g.ellipse(cx,sy+27,5.5,2.2,0,0,7);g.fill();
-  sy-=gp.hop;                                /* over the bar, the shadow stays down */
+  sy-=R.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=1.8;g.lineCap="round"; /* thin curled tail */
   g.beginPath();g.moveTo(cx-4.5,sy+21.5+dy);g.quadraticCurveTo(cx-7.5,sy+18.5+dy+wag*0.4,cx-6+wag*0.6,sy+16.5+dy);g.stroke();
   g.fillStyle=co;g.beginPath();g.roundRect(cx-4.5,sy+20+dy,9.5,5.5,2.6);g.fill(); /* small body */
@@ -4228,8 +4250,10 @@ function drawPerson(g,sx,sy,lk,o){
    clipped out), the animal's own darks are pulled back (multiply with the untreated draw, so the
    eye stays an eye), at most five small marks go where the kind has room (a spine of dots on a
    saddle, scales on a flank, the inner ears, a chevron on a wing), the tips take the accent —
-   and the wingless get tiny wings behind the shoulder, two crisp frames, drawn destination-over
-   so they never cross the face. Five looks, the same five on every kind, so a park full of
+   and the wingless get tiny wings rooted in the withers: folded back along the back at rest,
+   one beat a step only while the animal is going somewhere, each painted whole on its own sheet
+   and laid behind the animal, so they never cross the face. All of it sits where bodyRide says
+   the body and the head are in this pose. Five looks, the same five on every kind, so a park full of
    critters reads as one night. Colours are content's (art("alebrije") may hand {looks:[…]});
    the engine keeps a default. */
 const ALEB_DEF={looks:[
@@ -4254,24 +4278,30 @@ function alebLookFor(kind,name){const L=alebLooks();if(!L)return null;
   const cu=alePick.custom&&alePick.custom[k];return cu?{...lk,...cu,id:lk.id}:lk;}
 const wildTmp={a:null,b:null};
 function wildScratch(which,W,H){let c=wildTmp[which];if(!c||c.width!==W||c.height!==H){c=wildTmp[which]=document.createElement("canvas");c.width=W;c.height=H;}return c;}
-/* the marks each kind has room for, and where its wings root; cx is the sprite's centre column */
+/* the marks each kind has room for, where its wings root and where its eye is; cx is the sprite's centre column. A mark
+   on the body is placed from sb and one on the head from sh — where bodyRide says the body and the head are now — and
+   the eye ring from sh too, so neither is left at the standing pose. WINGS are [x,y,len]: the root at the WITHERS, the
+   top of the shoulders just behind the neck, sunk 1–1.5 px into the back (a wing goes INTO the shoulder, the way a
+   piñata's cone goes on with a tab: until mq-v234 they sat mid-back, 1–3 px above it, with daylight between); len is
+   the forewing's, short enough that open or folded no tip rises above the head: the dog still looks like himself, with
+   perhaps tiny wings, as this night was asked for at the top of this section. */
 const ALEB_KIND={
-  beagle:{wings:[[-1.5,15],[-3.5,18]],eye:[7.6,15.2,3.0],marks:(g,l,cx,sy)=>{g.fillStyle=l.pat;for(let i=0;i<4;i++){g.beginPath();g.arc(cx-4+i*2,sy+16.4,0.55,0,7);g.fill();}
-    g.fillStyle=l.accent;g.fillRect(cx+3.4,sy+19.4,1.6,1.4);}}, /* spine on the saddle, the ear tip */
-  lab:{wings:[[-1.5,13.5],[-3.5,16.5]],eye:[9,13.5,2.8],marks:(g,l,cx,sy)=>{g.strokeStyle=l.pat;g.lineWidth=0.8;[18,21].forEach((yy,r)=>{for(let i=0;i<3;i++){g.beginPath();g.arc(cx-5+i*3+(r?1.5:0),sy+yy,1.2,Math.PI,0);g.stroke();}});
-    g.fillStyle=l.accent;g.fillRect(cx+3,sy+15.8,2,1.6);}}, /* scales on the flank, the ear tip */
-  chi:{wings:[[-1,17],[-2.5,19.5]],small:true,eye:[5.9,15,2.8],marks:(g,l,cx,sy)=>{g.fillStyle=l.accent;g.fillRect(cx+2.4,sy+10.6,1.4,1.6);g.fillRect(cx+7,sy+10.2,1.4,1.6);
-    g.fillStyle=l.pat;g.beginPath();g.arc(cx+3.1,sy+9.9,0.45,0,7);g.arc(cx+7.7,sy+9.5,0.45,0,7);g.fill();}}, /* the ears only */
-  dog:{wings:[[-1,13.5],[-3,16.5]],eye:[12.1,13.8,2.6],marks:(g,l,cx,sy)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-3,sy+18,2.4,0,7);g.fill();g.beginPath();g.arc(cx+3.4,sy+20.6,1.9,0,7);g.fill();
-    g.fillStyle=l.accent;g.beginPath();g.arc(cx-9.6,sy+16.5,1.2,0,7);g.fill();}}, /* the merle patches, the tail tip */
-  cat:{wings:[[-1.5,17],[-3.5,20]],eye:[6.9,17.1,3.2],marks:(g,l,cx,sy)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
-    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sy+12.4,0.8,0,7);g.arc(cx+8.6,sy+12.6,0.8,0,7);g.fill();}}, /* the two bars, the ear tips */
-  gato:{wings:[[-1.5,17],[-3.5,20]],eye:[6.9,17.1,3.2],marks:(g,l,cx,sy)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
-    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sy+12.4,0.8,0,7);g.arc(cx+8.6,sy+12.6,0.8,0,7);g.fill();}},
-  pigeon:{eye:[4.35,18.25,2.2],marks:(g,l,cx,sy)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;g.beginPath();g.moveTo(cx-3.5,sy+21.5);g.lineTo(cx-1.5,sy+20);g.lineTo(cx+0.5,sy+21.5);g.stroke();}}, /* one chevron */
-  loro:{tint:0.75,eye:[0.6,4.9,2.2],marks:(g,l,cx,sy)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sy+yy+1);g.lineTo(cx,sy+yy);g.lineTo(cx+1.3,sy+yy+1);g.stroke();});}},
-  butterfly:{tint:0.95,marks:(g,l,cx,sy)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-2.6,sy+11.5,1,0,7);g.arc(cx+2.6,sy+11.5,1,0,7);g.fill();}}, /* an eye on each upper wing */
-  colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sy)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3,sy+10.6,1.5,0,7);g.fill();}} /* the gorget */
+  beagle:{wings:[1,18,7],eye:[7.6,15.2,3.0],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;for(let i=0;i<4;i++){g.beginPath();g.arc(cx-4+i*2,sb+16.4,0.55,0,7);g.fill();}
+    g.fillStyle=l.accent;g.fillRect(cx+3.4,sh+19.4,1.6,1.4);}}, /* spine on the saddle, the ear tip */
+  lab:{wings:[1.5,17,6.2],eye:[9,13.5,2.8],marks:(g,l,cx,sb,sh)=>{g.strokeStyle=l.pat;g.lineWidth=0.8;[18,21].forEach((yy,r)=>{for(let i=0;i<3;i++){g.beginPath();g.arc(cx-5+i*3+(r?1.5:0),sb+yy,1.2,Math.PI,0);g.stroke();}});
+    g.fillStyle=l.accent;g.fillRect(cx+3,sh+15.8,2,1.6);}}, /* scales on the flank, the ear tip */
+  chi:{wings:[0.5,21.3,5],eye:[5.9,15,2.8],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.accent;g.fillRect(cx+2.4,sh+10.6,1.4,1.6);g.fillRect(cx+7,sh+10.2,1.4,1.6);
+    g.fillStyle=l.pat;g.beginPath();g.arc(cx+3.1,sh+9.9,0.45,0,7);g.arc(cx+7.7,sh+9.5,0.45,0,7);g.fill();}}, /* the ears only */
+  dog:{wings:[1.5,16.5,7.5],eye:[8.8,12.8,2.6],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-3,sb+18,2.4,0,7);g.fill();g.beginPath();g.arc(cx+3.4,sb+20.6,1.9,0,7);g.fill();
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx-9.6,sb+16.5,1.2,0,7);g.fill();}}, /* the merle patches, the tail tip; the ring on his eye, not his nose (mq-v234) */
+  cat:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}}, /* the two bars, the ear tips */
+  gato:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}},
+  pigeon:{eye:[4.35,18.25,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;g.beginPath();g.moveTo(cx-3.5,sb+21.5);g.lineTo(cx-1.5,sb+20);g.lineTo(cx+0.5,sb+21.5);g.stroke();}}, /* one chevron */
+  loro:{tint:0.75,eye:[0.6,4.9,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sb+yy+1);g.lineTo(cx,sb+yy);g.lineTo(cx+1.3,sb+yy+1);g.stroke();});}},
+  butterfly:{tint:0.95,marks:(g,l,cx,sb)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-2.6,sb+11.5,1,0,7);g.arc(cx+2.6,sb+11.5,1,0,7);g.fill();}}, /* an eye on each upper wing */
+  colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sb)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3.3,sb+12.1,1.1,0,7);g.fill();}} /* the gorget, at the throat: on the head, riding with it, it painted his eye out (mq-v234) */
 };
 /* hexDark multiplies toward black, which is right for a shadow and useless for a highlight:
    a near-black hair times 1.3 is still near-black. hexLite mixes toward white instead, so the
@@ -4279,53 +4309,70 @@ const ALEB_KIND={
 const hexLite=(h,f)=>{const n=parseInt(String(h).slice(1),16);if(isNaN(n))return h;
   const m=c=>Math.round(c+(255-c)*f);return "rgb("+m((n>>16)&255)+","+m((n>>8)&255)+","+m(n&255)+")";};
 const hexDark=(h,f)=>{const n=parseInt(String(h).slice(1),16);if(isNaN(n))return h;return "rgb("+(((n>>16)&255)*f|0)+","+(((n>>8)&255)*f|0)+","+((n&255)*f|0)+")";};
-function wildWings(g,l,K,cx,sy,small){ /* cut-paper wings, not feathers (Pili, 2026-09-07, after the owner's "wings look off"): a hindwing
-  behind and a forewing over it, rooted at the shoulder just behind the head, swept back, big enough to break the silhouette —
-  a wing that does not is a smudge. The accent filled flat, a darker edge all the way round, ribs in the pattern colour, three
-  bites out of the trailing edge. Two frames: the flap folds the wing, it does not shrink it. */
-  const fl=(Math.floor(Date.now()/110)&1),sc=(small?0.7:1)*1.3,edge=hexDark(l.accent,0.5);
-  const wing=(dx,dy,fore)=>{g.save();g.translate(cx+dx*sc,sy+dy);g.rotate((fore?0.44:0.96)+(fl?0.15:0.55)); /* positive lifts the tip: back and UP, never into the legs */g.scale(sc,sc*(fl?0.45:1));
-    g.beginPath();
-    if(fore){g.moveTo(0,0);g.quadraticCurveTo(-3,-5,-8,-4.5);g.quadraticCurveTo(-5.5,-1.2,0,0);}            /* pointed tip */
-    else{g.moveTo(0,0);g.quadraticCurveTo(-2.5,-3.6,-5.5,-3);g.quadraticCurveTo(-6.4,-1.4,-5,-0.3);g.quadraticCurveTo(-2.5,0.6,0,0);} /* rounded tip */
-    g.closePath();g.fillStyle=l.accent;g.fill();g.lineWidth=1.2;g.strokeStyle=edge;g.stroke();
-    g.strokeStyle=l.pat;g.lineWidth=0.7;g.globalAlpha=0.6;g.beginPath();
-    (fore?[[-7.5,-4.2],[-6.5,-2.4],[-4.5,-1.2]]:[[-5,-2.6],[-4.5,-1.3]]).forEach(p=>{g.moveTo(-0.5,-0.3);g.lineTo(p[0],p[1]);});g.stroke();g.globalAlpha=1;
-    g.fillStyle=edge;(fore?[[-6.5,-3],[-4.75,-1.75],[-2.5,-0.75]]:[[-2.5,0.2]]).forEach(p=>{g.beginPath();g.arc(p[0],p[1],0.9,0,7);g.fill();});
-    g.restore();};
-  wing(K[1][0],K[1][1],false);wing(K[0][0],K[0][1],true);}
-function wildDraw(g,look,kind,fn,sx,sy,face){
+/* THE WINGS BEAT WITH THE STEP: one beat a step, read off the step's own progress and offset per animal, and only while
+   the animal is going somewhere — so a resting alebrije's wings lie folded and two dogs trotting side by side do not beat
+   as one. Never the clock: until mq-v234 every wing in the world flipped on Date.now()/110, together, asleep or awake. */
+const aleBeat=(a,key)=>!!(a&&a.moving)&&(((a.mt||0)+(aleHash(key)%1000)/1000)%1)<0.5;
+function wildWing(g,l,K,cx,sb,fore,open){ /* ONE cut-paper wing, painted the ordinary way on its own sheet (Pili, 2026-09-07: "an edge
+  all the way round, ribs in the pattern colour, bites out of the trailing edge"). Until mq-v234 both wings were painted
+  stroke by stroke under one destination-over, so each stroke went UNDER the one before: the ribs hid under their own
+  fill, the bites showed as bumps, the forewing ended up behind the hindwing. Drawn here at a length of 8 and scaled to
+  the kind's; rooted at the withers (K), folded back along the back at rest and lifted, never past the head, on the beat.
+  The forewing ends in three stepped feathers with a cut between each — the bites are cuts in the paper, not dots on it —
+  and the hindwing, a shade darker because it is the layer behind, peeks out above it. */
+  const L=(fore?1:0.72)*K[2],k=L/8,edge=hexDark(l.accent,0.5);
+  g.save();g.translate(cx+K[0]-(fore?0:0.8),sb+K[1]+(fore?0:0.3));
+  g.rotate(fore?(open?0.9:0.5):(open?1.12:0.72));                 /* positive lifts the tip: back and up, never into the legs */
+  g.scale(k,k);
+  const cut=()=>{g.beginPath();
+    if(fore){g.moveTo(0,-0.8);g.quadraticCurveTo(-2.6,-4.2,-8,-2.4);g.lineTo(-6.6,-1.5);g.lineTo(-7.3,-0.4);g.lineTo(-6,-0.2);g.lineTo(-6.3,0.9);g.quadraticCurveTo(-3,1.4,0,0.8);}
+    else{g.moveTo(0,-0.6);g.quadraticCurveTo(-2.4,-3.8,-6.8,-2.6);g.quadraticCurveTo(-8,-1.9,-7.2,-0.8);g.lineTo(-5.9,-0.7);g.lineTo(-6.3,0.4);g.quadraticCurveTo(-3,1.3,0,0.7);}
+    g.closePath();};
+  cut();g.fillStyle=fore?l.accent:hexDark(l.accent,0.86);g.fill();                                                                 /* the paper */
+  g.save();g.globalCompositeOperation="source-atop";g.strokeStyle=l.pat;g.lineWidth=0.5/k;g.lineCap="round";g.beginPath();    /* the ribs, on the paper */
+  (fore?[[-7.4,-2.1],[-6.8,-0.8],[-5.7,0.5]]:[[-6.9,-2.1],[-6,-0.5]]).forEach(p=>{g.moveTo(-0.6,-0.4);g.lineTo(p[0],p[1]);});g.stroke();g.restore();
+  cut();g.lineWidth=0.6/k;g.lineJoin="round";g.strokeStyle=edge;g.stroke();                                                       /* the edge, all the way round */
+  g.restore();}
+function wildDraw(g,look,kind,fn,sx,sy,face,an){
   const T=g.getTransform(),x0=sx-6,y0=sy-12,BW=44,BH=44,W=Math.ceil(BW*T.a),H=Math.ceil(BH*T.d);
   const t=wildScratch("a",W,H),u=wildScratch("b",W,H),tg=t.getContext("2d"),ug=u.getContext("2d");
   const M=()=>[T.a,T.b,T.c,T.d,-(T.a*x0+T.c*y0),-(T.b*x0+T.d*y0)];
   tg.setTransform(1,0,0,1,0,0);tg.clearRect(0,0,W,H);tg.setTransform(...M());
   fn(tg); /* the animal, untreated */
+  const KD=ALEB_KIND[kind]||{},cx=sx+16,R=bodyRide(kind,an),sb=sy+R.body,sh=sy+R.head;
+  if(R.hid)return; /* inside the agility tunnel nothing of him is drawn, and that includes what he wears */
   ug.setTransform(1,0,0,1,0,0);ug.clearRect(0,0,W,H);ug.drawImage(t,0,0); /* a copy of its own darks */
-  const KD=ALEB_KIND[kind]||{},cx=sx+16;
-  tg.save();tg.globalCompositeOperation="source-atop"; /* A: tint the coat, the shadow clipped out */
-  tg.beginPath();tg.rect(x0,y0,BW,25+sy-y0);tg.clip();tg.globalAlpha=KD.tint||0.62;tg.fillStyle=look.tint;tg.fillRect(x0,y0,BW,BH);tg.restore();
+  tg.save();tg.globalCompositeOperation="source-atop"; /* A: tint the coat, the shadow clipped out (lying down, his body is lower and so is the line) */
+  tg.beginPath();tg.rect(x0,y0,BW,25+R.drop+sy-y0);tg.clip();tg.globalAlpha=KD.tint||0.62;tg.fillStyle=look.tint;tg.fillRect(x0,y0,BW,BH);tg.restore();
   { /* B: the eye stays an eye — the animal's own darks pulled back by a multiply on the colour
        channels only. Done per pixel rather than with the "multiply" composite, which also thickens
        every anti-aliased edge and so moves the silhouette; the alpha channel is not touched. */
     const im=tg.getImageData(0,0,W,H),d=im.data,o=ug.getImageData(0,0,W,H).data;
     for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;d[i]=d[i]*(0.55+0.45*o[i]/255);d[i+1]=d[i+1]*(0.55+0.45*o[i+1]/255);d[i+2]=d[i+2]*(0.55+0.45*o[i+2]/255);}
     tg.save();tg.setTransform(1,0,0,1,0,0);tg.putImageData(im,0,0);tg.restore();}
-  if(KD.marks){tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);KD.marks(tg,look,cx,sy);tg.restore();} /* C: five marks at most */
+  if(KD.marks){tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);KD.marks(tg,look,cx,sb,sh);tg.restore();} /* C: five marks at most */
   if(KD.eye){ /* C½: colour round the eyes (owner: "the color can be added like around the eyes or something") — two rings, the accent and
        a thinner one in the pattern colour outside it (Pili: two rings is the alebrije look, one is a bruise), centred ON the eye
        and wider than it, so the pupil stays a pupil; inside the silhouette like everything else */
     const[ex,ey,er]=KD.eye;tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
-    tg.lineWidth=1.6;tg.globalAlpha=0.9;tg.strokeStyle=look.accent;tg.beginPath();tg.arc(cx+ex,sy+ey,er,0,7);tg.stroke();
-    tg.lineWidth=0.7;tg.globalAlpha=0.6;tg.strokeStyle=look.pat;tg.beginPath();tg.arc(cx+ex,sy+ey,er+1.1,0,7);tg.stroke();tg.restore();}
-  if(look.wings&&KD.wings){tg.save();tg.globalCompositeOperation="destination-over";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);wildWings(tg,look,KD.wings,cx,sy,KD.small);tg.restore();} /* D: wings behind */
+    tg.lineWidth=1.6;tg.globalAlpha=0.9;tg.strokeStyle=look.accent;tg.beginPath();tg.arc(cx+ex,sh+ey,er,0,7);tg.stroke();
+    tg.lineWidth=0.7;tg.globalAlpha=0.6;tg.strokeStyle=look.pat;tg.beginPath();tg.arc(cx+ex,sh+ey,er+1.1,0,7);tg.stroke();tg.restore();}
+  if(look.wings&&KD.wings){ /* D: the wings, each painted whole on its own sheet and then laid behind the animal — the forewing
+       first, so it is the one right behind him, then the hindwing behind that */
+    const v=wildScratch("w",W,H),vg=v.getContext("2d"),open=aleBeat(an,(an&&an.name)||kind);
+    [true,false].forEach(fore=>{vg.setTransform(1,0,0,1,0,0);vg.clearRect(0,0,W,H);vg.setTransform(...M());
+      vg.translate(cx,0);vg.scale(face||1,1);vg.translate(-cx,0);wildWing(vg,look,KD.wings,cx,sb,fore,open);
+      tg.save();tg.setTransform(1,0,0,1,0,0);tg.globalCompositeOperation="destination-over";tg.drawImage(v,0,0);tg.restore();});}
   g.save();g.setTransform(1,0,0,1,0,0);g.drawImage(t,T.e+T.a*x0+T.c*y0,T.f+T.b*x0+T.d*y0);g.restore();
 }
-const wild=(fn,ai,kind,faceOf)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
-  const cr=ai?a[0]:null,look=alebLookFor(cr&&cr.kind||kind,cr&&cr.name);if(!look)return fn(g,...a);
-  return wildDraw(g,look,cr&&cr.kind||kind,tg=>fn(tg,...a),a[ai],a[ai+1],faceOf?faceOf(cr):1);};
-drawDog=wild(drawDog,0,"dog",()=>DOG.face);drawCat=wild(drawCat,0,"cat",()=>CAT.face);drawPigeon=wild(drawPigeon,0,"pigeon",()=>PIG.face);drawLoro=wild(drawLoro,0,"loro",()=>1);
-drawBeagle=wild(drawBeagle,1,"beagle",c=>c.face);drawLab=wild(drawLab,1,"lab",c=>c.face);drawChi=wild(drawChi,1,"chi",c=>c.face);drawGato=wild(drawGato,1,"gato",c=>c.face);
-drawButterfly=wild(drawButterfly,1,"butterfly",c=>c.face);drawColibri=wild(drawColibri,1,"colibri",c=>c.face);
+/* `who` names the animal itself (the critter handed to the painter, or the engine's own DOG, CAT, PIG, LORO): the layer
+   reads its facing, its pose (bodyRide) and its step (aleBeat) from it */
+const wild=(fn,ai,kind,who)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
+  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&cr.kind||kind,look=alebLookFor(k,cr&&cr.name);if(!look)return fn(g,...a);
+  return wildDraw(g,look,k,tg=>fn(tg,...a),a[ai],a[ai+1],an&&an.face||1,an);};
+drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,0,"pigeon",()=>PIG);drawLoro=wild(drawLoro,0,"loro",()=>LORO);
+drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
+drawButterfly=wild(drawButterfly,1,"butterfly",c=>c);drawColibri=wild(drawColibri,1,"colibri",c=>c);
 /* ---------- movement ---------- */
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 /* One quarter-turn of the camera, as a rename of the four directions. */

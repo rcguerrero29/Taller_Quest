@@ -2034,10 +2034,10 @@ const CANDIDATES = [
           let added = 0, out = 0; for (let i = 0; i < a0.length; i++) { if (a0[i] && !a1[i]) out++; if (!a0[i] && a1[i]) { added++; const x = i % 44, y = Math.floor(i / 44); if (x < 6 + 16 - 13 || x > 6 + 16 + 13 || y > 12 + 22) out++; } }
           if (added < 12) problems.push('the winged look adds no wings to the star dog');
           if (out) problems.push('the wings cross the star dog\'s own pixels, his face, or the card\'s edge (' + out + ' pixels)');
-          // owner, 2026-09-07 (evening): "wings look off" — Pili: big enough to break the silhouette, an edge and ribs, not one flat blob
-          if (added < 40) problems.push(`the wings are a smudge — ${added} pixels; a wing that does not break the silhouette is not a wing`);
+          // owner, 2026-09-07 (evening): "wings look off". Their size, their root, their ribs and their beat are asked of every kind in every
+          // pose just below this block (NOCHE DE ALEBRIJES: WHAT AN ANIMAL WEARS…) — the floor on their size that stood here guarded the
+          // opposite of what the night was asked for (the dog still himself, perhaps with tiny wings), and its "three colours" was any anti-aliased edge
           const wcols = new Set(); for (let i = 0; i < a0.length; i++) if (!a0[i] && a1[i]) wcols.add(w1[i * 4] + ',' + w1[i * 4 + 1] + ',' + w1[i * 4 + 2]);
-          if (wcols.size < 3) problems.push('the wings are one flat colour — no edge, no ribs');
           const acc = parseInt(L[wing].accent.slice(1), 16), tgt = [(acc >> 16) & 255, (acc >> 8) & 255, acc & 255].map(v => v * 0.5 | 0);
           if (![...wcols].some(c => { const v = c.split(',').map(Number); return Math.abs(v[0] - tgt[0]) < 10 && Math.abs(v[1] - tgt[1]) < 10 && Math.abs(v[2] - tgt[2]) < 10; })) problems.push('the wings have no darker edge in their own colour — cut paper has an edge all the way round');
           // "the color can be added like around the eyes": a ring round the eye, wider than it, the pupil untouched
@@ -2106,6 +2106,210 @@ const CANDIDATES = [
     return problems;
   });
   fails.push(...season);
+
+  /* ---- NOCHE DE ALEBRIJES: WHAT AN ANIMAL WEARS GOES WHERE HE GOES (mq-v234) ----
+     The alebrije night was asked for as the dog still looking like himself, perhaps with tiny wings (2026-09-07, the
+     comment over ALEB_DEF in engine/engine.js). Until
+     mq-v234 the guard on the wings was a FLOOR on their size — "a wing that does not break the silhouette is not a wing",
+     fewer than 40 pixels outside him and the build went red — read off one dog standing still at one frozen clock. It
+     guarded the opposite of that, and it was green while, over the hurdle, the beagle's wings stayed down where he
+     had been standing, lying down the colour round his eye sat on his brow, inside the agility tunnel his wings showed
+     where the tube hid him, and every wing in the world beat on the clock, together, asleep or awake. The painters lift
+     and lower the body themselves, and the alebrije layer was pinned to the standing pose.
+     So this asks that, of every kind the engine gives wings or an eye ring (read off ALEB_KIND, so a new one cannot
+     be skipped), in every pose its painter has, facing both ways, at every eighth of its step, on the park's own hurdle
+     and in its own tunnel, with the clock held still — and then swept, where the clock is the question:
+       · THE ROOT IS IN HIS BACK — the lowest point of the wings, drawn alone, is inside him, at least ¾ px and at most
+         4 px below the top of his body in that column: not floating over him, not left behind under him;
+       · A TINY WING — nothing of the wing you can see rises above the top of his head;
+       · THE RIBS SHOW — the wing's pattern colour changes what you see of the wing;
+       · THE COLOUR ROUND HIS EYE IS ROUND HIS EYE — wherever his own painter put the eye in this pose;
+       · INSIDE THE TUNNEL NOTHING OF HIM SHOWS, wings included;
+       · THE WINGS BEAT WITH HIS STEP — still at rest whatever the clock says, beating as he walks, and three dogs
+         walking in step do not beat as one.
+     Every answer is read from pixels the engine draws: the eye from his painter with the mode off, his body from the
+     wingless look, the wings from the alebrije layer drawn over nothing (wildDraw with an empty painter); the guard
+     supplies no position of its own. Planted 2026-10-04 on a copy outside the repository, each rule red on its own plant:
+     the wings anchored at the standing pose, a root 3 px over the back, the wings grown back big, the ribs laid under the
+     paper, the ring left at the standing pose, the ring drifted 2 px, a painter lowering the body by its own number, the
+     beat on the clock, one beat for every dog, the wings drawn in the tunnel. Everything it moves is put back. */
+  const wingsRide = await page.evaluate(() => {
+    const P = [], N = [];
+    const A = typeof SEASONS === 'object' && Object.entries(SEASONS).find(([k, v]) => v.art && v.art.alebrije);
+    if (!A || typeof wildDraw !== 'function' || typeof ALEB_KIND !== 'object' || typeof alebLookFor !== 'function') {
+      P.push('NOCHE DE ALEBRIJES: this pack has no alebrije mode, or the engine no alebrije layer, so nothing an animal wears could be asked to go where he goes'); return { P, N }; }
+    const aid = A[0], pick0 = seasonPick, ale0 = JSON.stringify(alePick), DN = Date.now, PN = performance.now, ctx0 = ctx;
+    const D0 = 1700000000000, T0 = 5e6, LONG = 1e7;   /* the clock held at a fixed moment, so every run asks the same question */
+    const held = [DOG, CAT, PIG, LORO].map(o => [o, Object.assign({}, o)]);
+    const SC = 4, CWU = 44, CHU = 48, OX = 6, OY = 16, W = CWU * SC, H = CHU * SC, CX = (OX + 16) * SC;   /* the card, at 4x, with room above for a dog in the air */
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    const at = (D, T) => { Date.now = () => D; performance.now = () => T; };
+    const shot = f => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H); g.setTransform(SC, 0, 0, SC, OX * SC, OY * SC);
+      ctx = g; try { f(g); } finally { ctx = ctx0; } return g.getImageData(0, 0, W, H).data; };
+    const KN = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua', dog: 'office dog', cat: 'cat', gato: 'street cat', pigeon: 'pigeon', loro: 'parrot', colibri: 'hummingbird' };
+    const probe = (kind, name, o) => Object.assign({ kind, name, world: '__probe', x: 0, y: 0, fx: 0, fy: 0, dx: 1, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
+      moving: false, mt: 0, home: [0, 0], task: null }, o);
+    /* how each kind is drawn: the dog program's kinds and the street cat are critters with a name; the office dog, the bodega cat,
+       the pigeon and the parrot are the engine's own four, one each */
+    const ONE = { dog: DOG, cat: CAT, pigeon: PIG, loro: LORO };
+    const PAINT = { beagle: (g, a) => drawBeagle(g, a, 0, 0), lab: (g, a) => drawLab(g, a, 0, 0), chi: (g, a) => drawChi(g, a, 0, 0), gato: (g, a) => drawGato(g, a, 0, 0),
+      colibri: (g, a) => drawColibri(g, a, 0, 0), dog: g => drawDog(g, 0, 0), cat: g => drawCat(g, 0, 0), pigeon: g => drawPigeon(g, 0, 0), loro: g => drawLoro(g, 0, 0) };
+    const winged = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].wings), ringed = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].eye);
+    [...new Set([...winged, ...ringed])].filter(k => !PAINT[k]).forEach(k => P.push('NOCHE DE ALEBRIJES: the ' + k + ' has ' + (ALEB_KIND[k].wings ? 'wings' : 'a ring round its eye') + ' and this guard does not know how to draw it, so nothing it wears was asked to go where it goes — teach the guard its painter'));
+    /* where he is on the hurdle, from the park's own course, on a real run: the line through the bar, the step onto it and off it */
+    const course = typeof agilityCourse === 'function' && PL.park ? agilityCourse(PL.park) : [];
+    const hur = course.find(p => GEARROLE[(WORLDS[PL.park].rows[p[1]] || '')[p[0]]] === 'hurdle'), HL = hur ? gearLine(PL.park, hur[0], hur[1]) : null;
+    if (!hur) N.push('this pack lays no hurdle, so no dog was asked over one');
+    const over = u => { const on = u >= 0, x = hur[0] + (on ? HL[0] : 0), y = hur[1] + (on ? HL[1] : 0);
+      return { world: PL.park, task: { type: 'run' }, moving: true, dx: HL[0], dy: HL[1], x, y, mt: on ? u : 1 + u, fx: hur[0] + u * HL[0], fy: hur[1] + u * HL[1] }; };
+    const STEP = [0, 1, 2, 3, 4, 5, 6, 7].map(i => i / 8);
+    const poses = k => {
+      const L = [];
+      if (DOGK.has(k)) {
+        L.push(['standing', {}], ['sitting', { sit: true }], ['lying down', { layT: LONG }], ['howling', { howlT: LONG }], ['howling lying down', { layT: LONG, howlT: LONG }],
+          ['digging', { digT: LONG }], ['happy', { happyT: LONG }]);
+        STEP.forEach(m => L.push(['walking (' + m * 8 + '/8 of a step)', { moving: true, mt: m }]));
+        if (hur) [0, -0.15, 0.15, -0.3, 0.3].forEach(u => L.push(['over the hurdle (' + (u < 0 ? -u + ' of a tile before' : u ? u + ' of a tile past' : 'at') + ' the bar)', over(u)]));
+      } else if (k === 'pigeon') L.push(['standing', {}], ['pecking', { peck: true }], ['lifting off the rail', { hop: 10 }], ['lifted off the rail', { hop: 20 }], ['lifted off the rail, pecking', { hop: 20, peck: true }]);
+      else if (k === 'loro' || k === 'colibri') STEP.forEach(m => L.push(['at ' + m * 8 + '/8 of its bob', { clock: m }]));
+      else { L.push(['standing', { sit: false }], ['sitting', { sit: true }]); STEP.forEach(m => L.push(['walking (' + m * 8 + '/8 of a step)', { moving: true, mt: m, sit: false }])); }
+      return L; };
+    const keyOf = (k, nm) => nm || k;
+    const TURNS = new Set(Object.keys(ONE).filter(k => 'face' in ONE[k])), FACES = k => (ONE[k] && !TURNS.has(k)) ? [1] : [1, -1];   /* the parrot on its perch is never turned; everything else is asked both ways */
+    /* pose one animal: a probe for a critter, the engine's own object for the four */
+    const pose = (k, nm, o, face) => { const st = Object.assign({}, o, { face }); delete st.clock;
+      ['layT', 'howlT', 'digT', 'happyT'].forEach(f => { if (st[f]) st[f] = T0 + st[f]; });
+      if (ONE[k]) { const a = ONE[k]; Object.assign(a, { moving: false, mt: 0, sit: k === 'cat', peck: false, hop: 0 }, st); return a; }
+      return probe(k, nm, st); };
+    const paint = (k, a) => g => PAINT[k](g, a);
+    const alone = (k, nm, a, face) => g => wildDraw(g, alebLookFor(k, nm), k, () => {}, 0, 0, face, a);   /* the alebrije layer over nothing: what it wears, alone */
+    const dress = (k, nm, cu) => { const key = keyOf(k, nm); if (cu) alePick.custom[key] = cu; else delete alePick.custom[key]; };
+    let WL = -1;
+    const sayP = (k, pn, face) => pn[0].toUpperCase() + pn.slice(1) + (face < 0 ? ' and facing left' : '') + ', the ' + KN[k];
+    const firsts = {}, tally = (rule, k, msg) => { const id = rule + '|' + k + '|' + msg.replace(/^[^,]*, /, '').replace(/[\d.]+/g, '#'); if (!firsts[id]) firsts[id] = { msg, n: 0 }; firsts[id].n++; };
+    const hash = d => { let h = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) h = (Math.imul(h, 31) + d[i] + d[i - 1] * 7 + d[i - 2] * 13 + d[i - 3] * 17 + i) | 0; return h; };
+    const alphaAt = (d, x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : d[(y * W + x) * 4 + 3];
+    try {
+      /* ---- PASS 1, the mode off: where each painter puts the eye, in every pose ---- */
+      seasonSet('off');
+      const EYE = {}, TOPS = {};
+      ringed.filter(k => PAINT[k]).forEach(k => poses(k).forEach(([pn, o]) => FACES(k).forEach(face => {
+        const nm = ONE[k] ? null : 'Ala1', a = pose(k, nm, o, face); at(D0 + (o.clock || 0) * 1760, T0);
+        const d = shot(paint(k, a)), dark = new Uint8Array(W * H);
+        for (let i = 0; i < W * H; i++) { const r = d[i * 4], gg = d[i * 4 + 1], b = d[i * 4 + 2]; if (d[i * 4 + 3] >= 250 && Math.abs(r - 0x26) < 8 && Math.abs(gg - 0x20) < 8 && Math.abs(b - 0x2B) < 8) dark[i] = 1; }   /* the ink itself, not its soft edge */
+        /* the eye is the painter's small dark mark cut square — a filled rectangle no more than 2 px either way (a closed eye
+           is a bar 1.9 long); a nose is round and a beak is long, and neither is an eye */
+        const seen = new Uint8Array(W * H); let sx = 0, sy = 0, n = 0;
+        for (let i = 0; i < W * H; i++) { if (!dark[i] || seen[i]) continue; const st = [i], cells = []; seen[i] = 1;
+          while (st.length) { const j = st.pop(); cells.push(j); const x = j % W, y = (j - x) / W;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy, q = yy * W + xx; if (xx >= 0 && yy >= 0 && xx < W && yy < H && dark[q] && !seen[q]) { seen[q] = 1; st.push(q); } } }
+          let x0 = W, x1 = 0, y0 = H, y1 = 0; cells.forEach(j => { const x = j % W, y = (j - x) / W; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+          if (x1 - x0 < 2 * SC && y1 - y0 < 2 * SC && cells.length === (x1 - x0 + 1) * (y1 - y0 + 1)) cells.forEach(j => { sx += j % W; sy += Math.floor(j / W); n++; }); }
+        EYE[k + '|' + pn + '|' + face] = n ? [sx / n, sy / n] : null; })));
+      /* ---- PASS 2, the mode on ---- */
+      seasonSet(aid); WL = (alebLooks() || []).findIndex(l => l.wings);
+      if (WL < 0) P.push('NOCHE DE ALEBRIJES: none of the alebrije looks has wings, so no wing was asked anything');
+      const kinds = [...new Set([...winged, ...ringed])].filter(k => PAINT[k]);
+      kinds.forEach(k => poses(k).forEach(([pn, o]) => FACES(k).forEach(face => {
+        const nm = ONE[k] ? null : 'Ala1', key = keyOf(k, nm), a = pose(k, nm, o, face), say = sayP(k, pn, face);
+        at(D0 + (o.clock || 0) * 1760, T0); alePick.animals[key] = WL >= 0 ? WL : 0;
+        if (ALEB_KIND[k].wings && WL >= 0) {
+          dress(k, nm, { wings: false }); const S = shot(paint(k, a));
+          if (face > 0 && (pn === 'standing' || /at the bar/.test(pn))) { let top = -1; for (let i = 3; i < S.length && top < 0; i += 4) if (S[i] >= 128) top = Math.floor((i >> 2) / W); TOPS[k + '|' + pn] = top; }
+          dress(k, nm, null); const V = shot(paint(k, a)), WA = shot(alone(k, nm, a, face));
+          dress(k, nm, { pat: '#10F0F0' }); const VP = shot(paint(k, a)); dress(k, nm, null);
+          /* THE ROOT IS IN HIS BACK: the lowest point of the wings drawn alone, against the top of his body in that column */
+          let yl = -1, xs = []; for (let y = H - 1; y >= 0 && yl < 0; y--) for (let x = 0; x < W; x++) if (WA[(y * W + x) * 4 + 3] >= 128) { yl = y; xs.push(x); }
+          if (yl < 0) tally('none', k, say + ' has wings in the look and none drawn');
+          else { const xc = xs[Math.floor(xs.length / 2)], inS = y => alphaAt(S, xc, y) >= 128;
+            /* the body round that point: the run of him it sits in, or the nearest of him below it (it floats) or above it (it hangs) —
+               read down that one column, so a note or a heart over his head is not taken for his back */
+            if (inS(yl)) { let yt = yl; while (yt > 0 && inS(yt - 1)) yt--; const dp = (yl - yt) / SC;
+              if (dp < 0.75) tally('root', k, say + '\'s wings only touch the edge of his back (' + dp.toFixed(1) + ' px in): a wing goes INTO the shoulder');
+              else if (dp > 4) tally('root', k, say + '\'s wings are not on his back: their root is ' + dp.toFixed(1) + ' px below the top of it'); }
+            else { let yb = -1, ya = -1; for (let y = yl + 1; y < H; y++) if (inS(y)) { yb = y; break; } for (let y = yl - 1; y >= 0; y--) if (inS(y)) { ya = y; break; }
+              if (yb >= 0) tally('root', k, say + '\'s wings float above his back: their root is ' + ((yb - yl) / SC).toFixed(1) + ' px over it, with daylight between');
+              else if (ya >= 0) { let yt = ya; while (yt > 0 && inS(yt - 1)) yt--;
+                tally('root', k, say + '\'s wings stayed where he was standing: their root is ' + ((yl - yt) / SC).toFixed(1) + ' px below his back, out under him'); }
+              else tally('root', k, say + '\'s wings hang where there is no animal at all'); } }
+          /* A TINY WING: nothing of the wing you can see rises above the top of his head */
+          let yh = -1; for (let y = 0; y < H && yh < 0; y++) for (let x = 0; x < W; x++) if ((face > 0 ? x >= CX : x <= CX) && S[(y * W + x) * 4 + 3] >= 128) { yh = y; break; }
+          let yv = -1, vis = 0, rib = 0;
+          for (let i = 0; i < W * H; i++) { if (S[i * 4 + 3] >= 64 || V[i * 4 + 3] < 128) continue; vis++; if (yv < 0) yv = Math.floor(i / W);
+            if (Math.abs(V[i * 4] - VP[i * 4]) > 40 || Math.abs(V[i * 4 + 1] - VP[i * 4 + 1]) > 40 || Math.abs(V[i * 4 + 2] - VP[i * 4 + 2]) > 40) rib++; }
+          if (!vis) tally('seen', k, say + ' wears wings nobody can see: not one pixel of them shows round him');
+          else { if (yh >= 0 && yv < yh - 1) tally('tip', k, say + '\'s wings stand ' + ((yh - yv) / SC).toFixed(1) + ' px above the top of his head; a tiny wing keeps his outline');
+            /* THE RIBS SHOW: the wing's pattern colour changes what you see of it */
+            if (rib < Math.max(2 * SC, vis * 0.08)) tally('ribs', k, say + '\'s wings show no ribs: their pattern colour changes ' + rib + ' of the ' + vis + ' pixels you can see of the wing'); }
+        }
+        /* THE COLOUR ROUND HIS EYE IS ROUND HIS EYE, where his own painter put it in this pose */
+        if (ALEB_KIND[k].eye) {
+          const E = EYE[k + '|' + pn + '|' + face];
+          if (!E) tally('eye', k, say + ' has no eye this guard could find (the painter\'s small dark marks), so the colour round it was not asked');
+          else {
+            dress(k, nm, { accent: '#00FF00', pat: '#0000FF', tint: '#FF00FF', wings: false }); const R = shot(paint(k, a)); dress(k, nm, null);
+            const acc = (x, y) => { const i = (y * W + x) * 4; return R[i + 3] >= 96 && R[i + 1] > 150 && R[i] < 150 && R[i + 2] < 150; };
+            /* eight ways out of his eye: each meets the ring within its width, or leaves him first (the ring is clipped to him
+               there); and the ring is round the eye, not beside it — the two ways along any line meet it at the same distance,
+               give or take 1.75 px (the chihuahua's one ring goes round both his eyes, and howling his nose touches the near
+               one, so only the far eye is found) */
+            const lim = (ALEB_KIND[k].eye[2] + 1.6) * SC, D = [];
+            for (let r = 0; r < 8; r++) { const t = r * Math.PI / 4, ux = Math.cos(t), uy = Math.sin(t); let res = null;
+              for (let s = 1; s <= lim; s += 0.5) { const x = Math.round(E[0] + ux * s), y = Math.round(E[1] + uy * s);
+                if (acc(x, y)) { res = s; break; } if (alphaAt(R, x, y) < 64) { res = 'out'; break; } }
+              D.push(res); }
+            const hits = D.filter(d => typeof d === 'number').length, miss = D.filter(d => d === null).length, onEye = acc(Math.round(E[0]), Math.round(E[1]));
+            let off = 0;
+            for (let r = 0; r < 4; r++) { const a1 = D[r], a2 = D[r + 4]; if (typeof a1 !== 'number' || typeof a2 !== 'number') continue;
+              const d = (a2 - a1) / 2 / SC; if (Math.abs(d) > Math.abs(off)) off = d; }
+            if (miss || hits < 4 || onEye || Math.abs(off) > 1.75) {
+              /* the words only, never the verdict: which way the colour went, from the middle of what it painted near his eye */
+              let mx = 0, my = 0, mn = 0; const rr = (ALEB_KIND[k].eye[2] + 2.5) * SC;
+              for (let y = Math.max(0, Math.floor(E[1] - rr)); y < Math.min(H, E[1] + rr); y++) for (let x = Math.max(0, Math.floor(E[0] - rr)); x < Math.min(W, E[0] + rr); x++)
+                if (Math.hypot(x - E[0], y - E[1]) <= rr && acc(x, y)) { mx += x; my += y; mn++; }
+              const cx_ = mn ? (mx / mn - E[0]) * face : 0, cy_ = mn ? my / mn - E[1] : 0;
+              let where = !hits ? 'nowhere near it: there is none round his eye at all'
+                : Math.abs(cy_) >= Math.abs(cx_) ? (cy_ < 0 ? 'above it, on his brow' : 'below it, on his muzzle')
+                : (cx_ > 0 ? 'in front of it, toward his nose' : 'behind it');
+              if (hits && onEye) where += ', and its line runs across his eye';
+              tally('eye', k, say + '\'s colour round his eye sat ' + where); } }
+        }
+      })));
+      /* nothing to measure is not a pass: at the bar he must really be in the air, or the hurdle asked nothing */
+      if (hur) winged.filter(k => DOGK.has(k)).forEach(k => { const t0 = TOPS[k + '|standing'], t1 = TOPS[k + '|over the hurdle (at the bar)'];
+        if (!(t0 >= 0 && t1 >= 0 && t0 - t1 >= 8 * SC)) P.push('NOCHE DE ALEBRIJES: at the hurdle\'s bar the ' + KN[k] + ' was not in the air (' + (t0 >= 0 && t1 >= 0 ? ((t0 - t1) / SC).toFixed(1) + ' px up' : 'not drawn') + '), so nothing he wears was asked to go over it'); });
+      /* INSIDE THE TUNNEL NOTHING OF HIM SHOWS, and that includes what he wears */
+      const tun = course.find(p => GEARROLE[(WORLDS[PL.park].rows[p[1]] || '')[p[0]]] === 'tunnel');
+      if (tun) winged.filter(k => DOGK.has(k) && WL >= 0).forEach(k => [1, -1].forEach(face => { at(D0, T0); alePick.animals.Ala1 = WL;
+        const a = probe(k, 'Ala1', { world: PL.park, x: tun[0], y: tun[1], fx: tun[0], fy: tun[1], face }), d = shot(paint(k, a)); let n = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] >= 32) n++;
+        if (n) tally('tunnel', k, 'Inside the agility tunnel' + (face < 0 ? ' and facing left' : '') + ', the ' + KN[k] + ' is hidden and his wings are not: ' + n + ' pixels of wing show where the tube should hide him'); }));
+      else N.push('this pack lays no agility tunnel, so no dog was asked to hide his wings in one');
+      /* THE WINGS BEAT WITH HIS STEP: at rest they lie still whatever the clock says; walking, they beat; two walking side by side do not beat as one */
+      winged.filter(k => PAINT[k] && WL >= 0).forEach(k => {
+        const nm = ONE[k] ? null : 'Ala1', key = keyOf(k, nm); alePick.animals[key] = WL;
+        const rest = (DOGK.has(k) ? [['lying down', { layT: LONG }]] : []).concat([['standing', { sit: false }], ['sitting', { sit: true }]]).concat([['walking (2/8 of a step)', { moving: true, mt: 0.25, sit: false }]]);
+        rest.forEach(([pn, o]) => { const pics = new Set();
+          for (let i = 0; i < 8; i++) { at(D0 + i * 37, T0 + i * 37); pics.add(hash(shot(alone(k, nm, pose(k, nm, o, 1), 1)))); }
+          if (pics.size > 1) tally('clock', k, sayP(k, pn, 1) + '\'s wings move with the clock: over a third of a second he does not move and they make ' + pics.size + ' different pictures' + (pn === 'lying down' ? ' — asleep, they beat' : '')); });
+        at(D0, T0);
+        const beat = nm2 => STEP.map(m => hash(shot(alone(k, nm2, pose(k, nm2, { moving: true, mt: m, sit: false }, 1), 1))));
+        const b1 = beat(nm);
+        if (new Set(b1).size < 2) tally('beat', k, 'Walking, the ' + KN[k] + '\'s wings never beat: over a whole step they are one picture');
+        else if (!ONE[k]) { ['Ala2', 'Ala3'].forEach(n2 => { alePick.animals[n2] = WL; });
+          const b2 = beat('Ala2'), b3 = beat('Ala3');
+          if (b1.join() === b2.join() && b1.join() === b3.join()) tally('beat', k, 'Three ' + KN[k] + 's walking in step beat their wings as one, every frame of the step'); }
+      });
+    } catch (e) { P.push('NOCHE DE ALEBRIJES: asking what an animal wears to go where he goes threw: ' + (e && e.message)); }
+    finally {
+      Date.now = DN; performance.now = PN; ctx = ctx0; held.forEach(([o, s]) => { Object.keys(o).forEach(f => { if (!(f in s)) delete o[f]; }); Object.assign(o, s); });
+      alePick = JSON.parse(ale0); seasonSet(pick0);
+    }
+    Object.values(firsts).forEach(f => P.push('NOCHE DE ALEBRIJES: ' + f.msg + (f.n > 1 ? ' (and in ' + (f.n - 1) + ' more pose' + (f.n > 2 ? 's' : '') + ' of the same kind)' : '')));
+    if (!P.length) N.push('every winged kind (' + winged.map(k => KN[k] || k).join(', ') + ') in every pose, facing both ways, at every eighth of its step and over the hurdle: the wings root in the back, never rise above the head, show their ribs, lie still at rest whatever the clock says and beat with the step, each dog on his own beat; and the colour round the eye sits on the eye of ' + ringed.map(k => KN[k] || k).join(', '));
+    return { P, N };
+    });
+  fails.push(...wingsRide.P); wingsRide.N.forEach(n => console.log('  ALEBRIJE WINGS: ' + n));
 
   // ---- #283: a pup adopted while the alebrije mode is on is in Settings → Alebrijes the next time Settings opens ----
   // Found 2026-10-01: the Alebrijes list was built when the game opened and rebuilt only when the mode, the language,
