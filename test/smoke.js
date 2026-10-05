@@ -5533,7 +5533,7 @@ const CANDIDATES = [
     r5.tmpls.forEach(([id, t]) => { if (!files.some(f => f.startsWith(String(t)))) fails.push(`document "${id}" names template ${t} and there is no ${t}-* template (docs/templates/neutral/, or its names in docs/templates/NAMES.md)`); });
   }
 
-  // ---- the public build's guarantee (docs/story/el-changarrito.md §5 R7) ----
+  // ---- the public build's guarantee (docs/NEW-WORLD.md §8) ----
   // Meridian's public build must not know about any personal build: no API host, no
   // token, no URL-driven behaviour, a pinned CSP, every storage key through SK(), pack
   // text never interpolated into innerHTML, and a service worker that serves only its

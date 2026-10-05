@@ -71,8 +71,8 @@ leaves printed on it. **Their presence on the #39 list is the list being wrong, 
 
 **A diagonal bar across a coloured field reads as "crossed out" in this project specifically.** The
 owner said it of the first striped alebrije and it cost that pass a re-cut (`engine/engine.js`, grep
-`owner called it "crossed out"`). The town's claim sash is exactly that shape — a white diagonal
-stroked corner to corner across the shirt (`changarrito/content/record.js`, grep `SHIRT_PATTERNS.taken`)
+`owner called it "crossed out"`). A second world's claim sash is exactly that shape — a white diagonal
+stroked corner to corner across the shirt (its `record.js`, grep `SHIRT_PATTERNS.taken`)
 — and it survives only because the hard hat beside it changes the **outline** (grep `lk.hat="hard"`,
 drawn at `engine/engine.js`, grep `lk.hat==="hard"`). **That rescue is a claim about meaning and it has
 never been cold-read by anybody who had not already been told what it means.**

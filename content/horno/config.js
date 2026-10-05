@@ -5,7 +5,7 @@
 
    This is the smallest thing that is genuinely a baking THING YOU DO. It is its own pack — its
    own shell, its own prefix, its own storage — exactly the way content/gauge/ is, so it costs
-   Meridian nothing and edits none of its files. docs/story/el-changarrito.md §7½ governs a second
+   Meridian nothing and edits none of its files. docs/NEW-WORLD.md §8 governs a second
    world: it trains no role, carries no curriculum, is never a district of Meridian and never a
    chapter in its story. Nothing here reaches into content/meridian/ at runtime.
 

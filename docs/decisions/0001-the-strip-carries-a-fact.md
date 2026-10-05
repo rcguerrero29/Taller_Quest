@@ -2,13 +2,13 @@
 
 **Date:** not recorded — **2026-09-08 or later**, since it answers Rosa's review and her first
 finding is dated 2026-09-08 (`index.html:730`). Do not repeat a date this file does not have.
-**Status:** settled, built · **Files:** `engine/engine.js`, `changarrito/content/record.js`
+**Status:** settled, built · **Files:** `engine/engine.js`, and a second world's own `record.js`
 
 ## Asked
 
 > *"ok go for the facts then"*
 
-`[OWNER]`, quoted at `changarrito/content/record.js:630`. **The only copy of this quote in the repo
+`[OWNER]`, quoted in a code comment in that world's `record.js`. **The only copy of this quote
 is that code comment** — there is no row for it in `docs/ASKS.md` and no transcript here. It is
 recorded as `[CODE]`-sourced for that reason; a later session that finds the original should say so
 and upgrade the tag.
@@ -18,7 +18,7 @@ The question the owner was answering came from Rosa's review of the town's front
 ## Decided
 
 A world may replace the score strip at the top of the screen — the one that says *name, rank,
-`0 XP`* and draws a progress bar — with **one sentence that is true right now**. El Changarrito's
+`0 XP`* and draws a progress bar — with **one sentence that is true right now**. A second world's
 says things like *"14 waiting · 3 moved"*. A world that says nothing about it keeps the score
 exactly as before; Meridian is a quest game and nothing changed for it.
 
@@ -28,7 +28,7 @@ The mechanism is a pack global, `HUDFACT`, a function returning a string.
 
 **The town was wearing Meridian's front door.** It carried a rank ladder from Rookie to *AI LEGEND*
 and a permanent `0 XP` that nothing in the town could ever award, in a pack whose own header
-disclaims a curriculum (`changarrito/content/config.js:1-3`, and GitHub #154).
+disclaims a curriculum (its `config.js` header, and GitHub #154).
 
 Rosa's argument, and it is the part worth keeping:
 
@@ -59,7 +59,7 @@ neither direction is praised.*
 - `engine/engine.js:3468` and `:5102` — `$("xpbarwrap").hidden=(typeof HUDFACT==="function")` at the
   two other places the HUD is shown. **A pack seam that only one call site honours is a bug**; this
   one has three.
-- `changarrito/content/record.js:630-648` — the town's `HUDFACT()`, and the reasoning repeated for a
+- the second world's `record.js` — its `HUDFACT()`, and the reasoning repeated for a
   reader who is in the pack rather than the engine.
 - `docs/NEW-WORLD.md` §9.2 — added 2026-09-10. **It was missing from the template for three days**,
   which is why this file exists.
@@ -68,10 +68,10 @@ neither direction is praised.*
 
 `HUDFACT` fixes **the strip**. It does not touch **the door**. Verified 2026-09-10:
 
-- `changarrito/index.html:384-388` still offers The Architect / The Diplomat / The Operator as the
+- that world's `index.html` still offers The Architect / The Diplomat / The Operator as the
   first thing the town asks you, in a pack whose own header says it *"trains no role"*
-  (`changarrito/content/config.js:1-3`).
-- `changarrito/content/strings.js:32` and `:240` still carry `levels:["Junior","Delivery
+  (its `config.js` header).
+- its `strings.js` still carries `levels:["Junior","Delivery
   Lead","Senior Lead","AI LEGEND"]` in both languages. `lvlName()` is simply no longer printed.
 
 **And the town cannot fix it in the pack.** The three careers are hardcoded in the shell's markup,

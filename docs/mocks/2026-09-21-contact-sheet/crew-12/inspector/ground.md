@@ -1,6 +1,6 @@
 # ground.md — el inspector de línea, crew iteration 12, issue #228
 
-Worktree: /home/user/meridian-quest/.claude/worktrees/agent-a456ec9e07a1506bd — the tool gave it at 8313766, one
+Worktree: a fresh agent worktree — the tool gave it at 8313766, one
 docs-only commit BEHIND the 498c923 the brief names; reset to 498c923 before touching anything (git reset --hard,
 no local changes existed). All line numbers below are from 498c923.
 
@@ -38,7 +38,7 @@ shots/r1/st-5-1-3d-yE.png matches it element for element; front/top/iso at the s
 - engine/engine.js:1764-1780 drawTram/troDraw2D: the 2D tram, drawn at toScreen(TRO.x,L.row).
 - test/engine.smoke.js:1845-1924 "the trolley is a vehicle"; :1996-2030 every camera draws it; test/smoke.js:4262-4312 the
   dwell guard (reads TRO.state and TRO.x's stillness only); .github/workflows/ci.yml:27 smoke, :31-33 engine smoke both shells.
-- vendor/three.min.js; the town: CAMDEF "3d" (changarrito/content/config.js:14), swags on st row 1 (:55), NO TROLLEYAT.
+- vendor/three.min.js; the second world: CAMDEF "3d" (in its own config.js), swags on st row 1, NO TROLLEYAT.
 
 ## [MEMORY] in the brief that the code contradicts
 - "the front camera … a string that runs north–south becomes a VERTICAL LINE" — no such swag exists (:1249) and the front

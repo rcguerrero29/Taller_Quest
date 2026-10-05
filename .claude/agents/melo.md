@@ -104,7 +104,7 @@ real engine code with `/*MUTANT*/` to see whether any suite noticed, **and left 
 other work carried on around it (`docs/QA-PASS.md` E7). It was caught by a human reading
 `git status --short`. So:
 
-- Copy the repo to a scratch directory **outside** `/home/user/meridian-quest` and plant there.
+- Copy the repo to a scratch directory **outside** the repository and plant there.
 - Build the artifact with the project's own commands, never a paraphrase of them.
 - Establish the **baseline green before every single plant**, and say so. A guard that was already
   red proves nothing.

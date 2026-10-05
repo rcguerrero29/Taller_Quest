@@ -1,6 +1,6 @@
 # The decisions folder — one file per settled thing
 
-*Opened 2026-09-10, during the audit that rebuilt El Changarrito from `docs/NEW-WORLD.md` on paper
+*Opened 2026-09-10, during the audit that rebuilt a second world from `docs/NEW-WORLD.md` on paper
 to find out what the template could not say.*
 
 ## Why this exists

@@ -91,8 +91,8 @@ tokens; this spends the owner's attention. A human team runs on the same trade.
 
 ## 4 · What NOT to replicate
 
-- **Do not paint the mural.** Each Claude crew agent proposes a panel for the town's wall, and the
-  wall lives in `changarrito/` — which `AGENTS.md` §7 lists among the things you may **never** touch
+- **Do not paint the mural.** Each Claude crew agent proposes a panel for the crew's wall, and the
+  wall lives in a private pack — which `AGENTS.md` §7 lists among the things you may **never** touch
   without the owner's word. [A description of a private tool was taken out.] If you want to leave something, put the panel you would have painted
   in words in your PR, and the owner decides.
 - **Do not edit a persona file** to fit how you work. Personas are signed; a change to one goes to

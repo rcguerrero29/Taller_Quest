@@ -1,7 +1,7 @@
 # 0002 · Every popup becomes a form inside the reader
 
 **Date:** 2026-09-06 · **Status:** settled, built (`mq-v76` engine, `ch-v14` town) ·
-**Files:** `engine/engine.js`, `changarrito/content/record.js`, `test/town.smoke.js`
+**Files:** `engine/engine.js`, a second world's `record.js` and its own smoke test
 
 ## Asked
 
@@ -56,7 +56,7 @@ engine does not know what a request is. That is what makes it a seam a third wor
   action and a single choice.
 - `engine/engine.js:2883` — `docDef()` returns the object itself when handed one, so a form sheet can
   be built on the spot and never registered in `DOCS`.
-- `changarrito/content/record.js:414-424` (file a request), `:429-433` (narrow the street), `:434-436` (comment), `:437-442` (labels), `:458-465` (decide).
+- a second world's `record.js`: file a request, narrow the street, comment, labels, decide.
 - **The guard:** `test/town.smoke.js:26` fails the build if `window.prompt` or `prompt(` ever returns
   to the town's content. The rule is enforced, not remembered.
 
@@ -64,8 +64,8 @@ engine does not know what a request is. That is what makes it a seam a third wor
 
 - `docs/ASKS.md`, 2026-09-06 — "PR 2 of 3 built (`mq-v76`, `ch-v14`)".
 - Shipped with #42's dropdowns (`ch-v9`) already in place; the Decide sheet (`:458`) came in the same
-  part, answering the owner's *"your pic should open up a comment right?"* (quoted at
-  `changarrito/content/record.js:453`).
+  part, answering the owner's *"your pic should open up a comment right?"* (quoted in that
+  world's `record.js`).
 - **Not in `docs/NEW-WORLD.md` until 2026-09-10** (§9.3). A second world reading the template would
   have found one line — *"docs.js … the paper the world produces (optional)"* — and no idea the
   reader could take input at all.

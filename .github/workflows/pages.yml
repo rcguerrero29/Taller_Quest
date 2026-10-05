@@ -6,7 +6,7 @@ name: Pages
 # `pages-build-deployment` last ran 2026-09-10 (run #158) and has been silent through every merge
 # since, while THIS workflow's `actions/deploy-pages@v4` step ran and SUCCEEDED on the #202 merge at
 # [a time]. deploy-pages only takes when Source is "GitHub Actions". So the allowlist below is what
-# serves the site, and /changarrito/, /docs/ and /test/ are no longer published.
+# serves the site, and a private pack's folder, /docs/ and /test/ are no longer published.
 # The two `continue-on-error: true` that used to sit under configure-pages and deploy-pages came off
 # with that comment, and they are the more interesting half. They existed so the job could stay green
 # while the switch was still unmade — but once it was made they became a SILENT ZERO (docs/GAUGE.md):
@@ -47,10 +47,10 @@ jobs:
       # An ALLOWLIST, because the denylist that stood here shipped the whole repository.
       # It excluded .git, .github and node_modules and copied everything else into the artifact:
       # docs/ (every internal register), test/, and — the reason this changed —
-      # changarrito/, the owner's private backlog tool. CLAUDE.md says the town is never linked from the public game. NOT LINKED IS NOT THE SAME AS NOT
-      # PUBLISHED: it was reachable at /changarrito/ by anyone who guessed the path.
+      # a private pack's folder, which was never linked from the public game. NOT LINKED IS NOT THE SAME AS NOT
+      # PUBLISHED: it was reachable by anyone who guessed its path.
       # The guarantee scan in test/smoke.js forbids "api.github.com" in the public build and never
-      # caught this, because it scans what index.html LOADS and the town loads nothing from there.
+      # caught this, because it scans what index.html LOADS and that pack loads nothing from there.
       # A denylist can only name yesterday's mistake. This names what the game needs, so anything
       # added to the repo tomorrow is private until somebody says otherwise.
       - name: the site — only what the public game serves

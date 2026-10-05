@@ -10,7 +10,7 @@
    u across the pan, v toward the room, h above the sheet — and does the trigonometry for a tilted
    surface. That is a tray, a board, a griddle, a counter, any surface at any angle, for free, and
    it is the most reusable thing that pack produced. A second world may not reach into Meridian's
-   files at runtime (docs/story/el-changarrito.md §7½), so the eight-line closure lives here too.
+   files at runtime (docs/NEW-WORLD.md §8), so the eight-line closure lives here too.
    Copying it is the RULE, not a shortcut: the day Meridian re-tilts its racks, this kitchen does
    not silently re-tilt with them.
 

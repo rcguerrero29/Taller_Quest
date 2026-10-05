@@ -19,7 +19,7 @@ const CAND=[process.env.CHROMIUM_PATH,'/opt/pw-browsers/chromium_headless_shell-
   const b = await chromium.launch({ executablePath: exe });
   const pg = await b.newPage({ viewport:{width:480,height:900}, deviceScaleFactor:2 });
   await pg.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-  /* --index <file> --spots <file>: shoot another world on the same engine (El Changarrito) */
+  /* --index <file> --spots <file>: shoot another world on the same engine (a second world) */
   const arg=(k,d)=>{const i=process.argv.indexOf(k);return i>0&&process.argv[i+1]?process.argv[i+1]:d;};
   await pg.goto('file://' + path.resolve(__dirname,'..',arg('--index','index.html')));
   await pg.waitForTimeout(1200);

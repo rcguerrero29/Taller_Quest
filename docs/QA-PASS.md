@@ -44,7 +44,7 @@ alone may run the first and the last.
    node test/smoke.js
    node test/town.smoke.js
    node test/engine.smoke.js --index index.html
-   node test/engine.smoke.js --index changarrito/index.html
+   node test/engine.smoke.js --index <the other world's index.html>
    node test/gauge.js
    ```
    One engine, two games: a pass on one is half a pass. **And say how many runs your green is.**
@@ -147,17 +147,17 @@ that has not happened yet.**
 **What escaped:** `.github/workflows/pages.yml` built the site with
 `rsync -a --exclude .git --exclude .github --exclude node_modules ./ _site/` — a **denylist of three
 names**. Everything else went to GitHub Pages: `docs/` (every internal register), `test/`, and
-**`changarrito/`**, the owner's private backlog tool. `CLAUDE.md` says the town is never linked from the public game. **Not linked is not the same as not published** — it was
-reachable at `/changarrito/` by anyone who guessed the path, for as long as the site has been up.
+**a private pack's folder**, which was never linked from the public game. **Not linked is not the same as not published** — it was
+reachable by anyone who guessed the path, for as long as the site has been up.
 **Which row would have caught it:** none, and worse — **a guard built for exactly this did not fire.**
 `test/smoke.js`'s guarantee scan forbids `api.github.com`, `github_pat`, `net.local` and
-`Authorization` in the public build. It never saw the town, because it scans **what `index.html`
-loads**, and the town loads nothing from there. The guard watched the front door of a house with no
+`Authorization` in the public build. It never saw that folder, because it scans **what `index.html`
+loads**, and that pack loads nothing from there. The guard watched the front door of a house with no
 walls.
 **What the list is now:** the deploy is an **allowlist** of what the public game serves, and
 `test/public.js` inspects **the artifact rather than the source tree** — the only honest question is
 what is inside the box we upload. Proven red against the old deploy: thirteen findings, first line
-`changarrito/`.
+that folder.
 **The general lesson, and it is the same one as E3:** *a denylist can only name yesterday's mistake.*
 Three names were right on the day they were written and wrong the moment a second world was added to
 the repository. An allowlist makes anything added tomorrow private until somebody says otherwise.

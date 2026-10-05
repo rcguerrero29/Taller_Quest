@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /* R10 — WHAT WE ARE ABOUT TO PUBLISH. The security gate, run on the built artifact.
-   (docs/REGRESSION.md §3. Registered 2026-09-10 after El Changarrito was found on the public
+   (docs/REGRESSION.md §3. Registered 2026-09-10 after a private pack was found on the public
    internet. Owner: "this is a major risk and it could keep ya healthy too.")
 
    WHY THIS EXISTS AND WHY IT IS NOT R8. R8 was built on 2026-09-06 to close exactly this class —
    its stated gap was "a second public pack would go unscanned" — and the mechanism it chose was
    "derive the shell from the public index's script tags." That mechanism is what made it blind:
-   changarrito/ is not loaded by index.html, so it was never in the scanned set, and the town shipped to GitHub Pages behind a green suite.
+   that pack's folder is not loaded by index.html, so it was never in the scanned set, and it shipped to GitHub Pages behind a green suite.
    **The fix for the last exposure was the cause of this one.** So R10 does not derive anything.
    It reads the directory we are about to upload and asks what is in it.
 
@@ -40,9 +40,21 @@ const textFiles = files.filter(f => /\.(js|html|json|webmanifest|md|txt|css|svg)
 /* ---- 1 · nothing whose PRESENCE is private ------------------------------------------------- */
 // Named rather than derived, because deriving is what failed. A directory added to this repo
 // tomorrow is private by default: it is not on the allowlist in pages.yml, so it never arrives.
-const NEVER = ['changarrito', 'docs', 'test', '.github', '.git', 'node_modules', '.claude', 'scripts'];
+const NEVER = ['docs', 'test', '.github', '.git', 'node_modules', '.claude', 'scripts'];
 NEVER.forEach(d => { const hit = files.filter(f => f === d || f.startsWith(d + '/'));
   if (hit.length) fails.push('the upload contains ' + d + '/ — ' + hit.length + ' file(s), e.g. ' + hit[0]); });
+// A private pack's folder is not on that list, because naming it here would publish its name. It is
+// caught without one: every folder at the top of the box must be a folder this repository tracks, so a
+// folder copied in from anywhere else is a red, whatever it is called.
+{
+  let top = null;
+  try { top = new Set(require('child_process').execFileSync('git', ['ls-files', '-z'], { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    .split('\0').filter(f => f.includes('/')).map(f => f.split('/')[0])); }
+  catch (e) { top = null; }
+  if (!top || !top.size) fails.push('the repository\'s own file list could not be read, so no folder in the upload was checked against it — that is a red, not a pass');
+  else [...new Set(files.filter(f => f.includes('/')).map(f => f.split('/')[0]))].filter(d => !top.has(d))
+    .forEach(d => fails.push('the upload contains ' + d + '/, a folder this repository does not track — it came from somewhere else, and a folder from somewhere else is private until somebody decides it is not'));
+}
 /* ---- 1a · WHICH WORLDS ARE MEANT TO BE OUT HERE, by name --------------------------------------
    Added 2026-09-22, the day El Horno shipped and this file said "the upload is the public game and
    nothing else" about an upload holding TWO games. Everything above is a BLOCKLIST of six folder

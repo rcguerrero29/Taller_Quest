@@ -194,7 +194,7 @@ guarantee scan that could not see the thing it guarded (E5). Ask every time:
 
 - **Read the whole diff.** Not the summary of the diff.
 - **Run every suite yourself**, both shells: `test/smoke.js`, `test/town.smoke.js`,
-  `test/engine.smoke.js --index index.html`, `--index changarrito/index.html`, `test/gauge.js`,
+  `test/engine.smoke.js --index index.html` (and `--index` on any other world it reaches), `test/gauge.js`,
   and `test/public.js` on a built artifact. `CHROMIUM_PATH=/opt/pw-browsers/chromium` where needed.
 - **If it is visual, LOOK at it.** Take the screenshot. Twice now a number said a thing was fixed and
   the owner's eyes said it was not, and his eyes were right both times.
@@ -297,8 +297,8 @@ per agent but they can collaborate with one too" → then "remind them to be cre
 doesnt have to be a report, just to reflect what is the persona - good representation so they have to
 keep adding to the mural in the same amount of effort, if possible."*
 
-**Every agent on a run proposes one mural panel.** It goes on the town's wall at
-`changarrito/content/murals.js` — you propose it, the calling session paints it, exactly like a
+**Every agent on a run proposes one mural panel.** It goes on the crew's wall, which
+lives in a private pack — you propose it, the calling session paints it, exactly like a
 persona edit. It is not optional and it is not a summary of your report.
 
 > **2026-09-14, the owner, after the cooking-game run painted nothing:** *"ensure any crew mode
@@ -362,7 +362,7 @@ art:    (g,W,H)=>{ ... }   — real canvas 2D. Use MURPAL, murGround/murPaper/mu
   `12px`) and every panel is drawn in **fractions of `W` and `H`**, so the two scales come apart the
   moment your panel is a different size from the one you copied. **Size your people against the
   LETTERING, not against the frame.** `murBody`'s height is the ruler and its width now follows it
-  (`changarrito/content/murals.js`, grep `function murBody`) — until 2026-09-13 it was five pixels
+  (the wall's own file, grep `function murBody`) — until 2026-09-13 it was five pixels
   wide at any height, which made one painter's crew ants under 12px type and another's clerk a pencil,
   and cost three repaints in an hour (`docs/POSTMORTEM.md` §13l).
 - **Add and improve, never remove.** `docs/crew/MURAL-LEDGER.txt` fingerprints every panel's WORDS

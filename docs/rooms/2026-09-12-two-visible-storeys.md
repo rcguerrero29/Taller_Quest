@@ -2,7 +2,7 @@
 
 *Asked by the owner, 2026-09-12: **"the building is supposed to be multiple stories...we have room
 for that in theory, just another thing to fix with don guero. do we need help building skyscrapers?
-we wont need them most likely but a thought for 2 floors to be visible in this changarrito to test
+we wont need them most likely but a thought for 2 floors to be visible in this [second world] to test
 for the rest."***
 
 **Nothing here is built.** This is the answer and its price, checked against the code, so the
@@ -35,7 +35,7 @@ facade ships `lift:13` ≈ **1.10 units**. A person is 0.84 and a door box is ex
 "building" is barely taller than its own door.**
 
 A pack can already do two storeys with no engine change: `TILEMETA` merges into `TILES`, and the town
-already declares its own facades that way (`changarrito/content/art.js`). `lift:~30` gives ≈1.81
+already declares its own facades that way (in its own `art.js`). `lift:~30` gives ≈1.81
 units. The cheapest honest version is **one new pack glyph whose `TILEART` draws two storeys inside
 its own 32×32** — ground band, floor line, upper windows — on a doorless run. Content only. In 3D
 that one bake is stretched over the whole box, which is what makes it work at all.
@@ -52,7 +52,7 @@ that one bake is stretched over the whole box, which is what makes it work at al
    colour **with no face art**. At two storeys that is a full storey of flat grey above every door in
    the run. So the test building must be a run with **no door in it and no door orthogonally
    adjacent** — and the neighbour search takes west first, so it is order-dependent and fragile.
-4. **Not on `B`.** La ventanilla works inside city hall's wall, and her roof strip is also `h-1` deep
+4. **Not on `B`.** The window clerk works inside city hall's wall, and her roof strip is also `h-1` deep
    — two storeys hangs a full-storey curtain over the one person on the street you can talk to.
 5. **The flat front camera gains nothing.** The extra height is `lift` pixels of plain roof colour
    above the tile; the art stays in its 32px square. On `st` row 0 that band is drawn above y=0 with

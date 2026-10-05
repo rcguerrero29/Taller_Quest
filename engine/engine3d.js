@@ -1240,7 +1240,7 @@ function t3Actors(){
     f:g=>drawDoorMark(g,2,30,0,d.mark)})); /* mark:"door" so a guard can find the arrow and read where it ACTUALLY ended up, instead of doing this line's arithmetic a second time and agreeing with itself */
   /* a poster on a WALL hangs on the wall's open face, mid-height, and is not pulled toward the
      camera (that would push it inside the wall). It used to float 1.15 up wherever it stood, which
-     put the board beside la ventanilla above city hall's roof (#45: "poster next to teller is off,
+     put the board beside a window clerk above city hall's roof (#45: "poster next to teller is off,
      a bit too high"). A readable thing that is not a wall (the desk) keeps the float. */
   if(typeof readMarks==="function")readMarks().forEach(d=>{
     const face=t3ReadFace(w,d.x,d.y);

@@ -6,7 +6,7 @@ owner asked for personas "so that if we ever proceed we have agents know what th
 
 ## The discovery that shaped the names
 
-**El Changarrito's six house clerks already are the work-kinds.** The town was built as the
+**A private pack's six house clerks already are the work-kinds.** That world was built as the
 owner's backlog rendered as a street, one house per kind of work, long before anyone thought about
 a crew:
 

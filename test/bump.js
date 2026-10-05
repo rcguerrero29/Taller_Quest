@@ -52,38 +52,9 @@ const precached = [...swSrc.matchAll(/"\.\/([^"]+)"/g)].map(m => m[1]).filter(Bo
 const watched = changed.filter(f => f.startsWith('engine/') || precached.includes(f));
 const touchedEngine = watched;
 
-/* ---- the same question for the TOWN, whose only signal is its own version string ----
-   The owner's copy learns there is something to pull exactly one way: record.js's behind()
-   fetches main's changarrito/content/config.js and compares the WHOLE GAMEV string against its
-   own (`changarrito/content/record.js`, grep `behind()`). Nothing guarded that the string moved,
-   and the objection to guarding it was that a bump would be owed on comment-only commits.
-   MEASURED before this was written (Yaz, 2026-09-15): of 71 commits touching changarrito/, TEN
-   left GAMEV unchanged, and every one of the ten changed code the town actually runs — murals.js,
-   record.js, strings.js, index.html, config.js. NONE was documentation-only. The feared cost is
-   not what the misses were, so the owner said guard it ("Yes, guard it", 2026-09-15).
-   The noun is the one behind() reads — did the STRING move — and not `ch-v` as a number: the town's
-   version carries the engine it was built on ("ch-v105 · engine mq-v160"), so an engine bump moves
-   the string legitimately without moving the town's own count, and a number guard would red it.
-   Extension, not folder: a change to a .md under changarrito/ is not something the town serves. */
-const TOWN_SERVED = /\.(html|js|mjs|css|json|png|jpe?g|svg|webp|ico|woff2?)$/i;
-const townTouched = changed.filter(f => f.startsWith('changarrito/') && TOWN_SERVED.test(f));
-const townFails = [];
-if (townTouched.length) {
-  const TCFG = 'changarrito/content/config.js';
-  const gamevOf = src => (src.match(/GAMEV\s*=\s*"([^"]+)"/) || [])[1] || null;
-  let twas = null;
-  try { twas = gamevOf(git('show', base + ':' + TCFG)); } catch (e) { twas = null; }
-  const tnow = gamevOf(head === 'HEAD' ? require('fs').readFileSync(TCFG, 'utf8') : git('show', head + ':' + TCFG));
-  if (!tnow) townFails.push('FAIL — ' + TCFG + ' no longer declares a GAMEV this check can read, and the town\'s copy compares that exact string.');
-  else if (twas !== null && twas === tnow) townFails.push(
-    'FAIL — this change edits files the town actually serves and its version string did not move.\n' +
-    '- it touches ' + townTouched.join(', ') + '\n' +
-    '- and ' + TCFG + ' still says "' + tnow + '"\n' +
-    '- behind() compares that whole string against main\'s, so the owner\'s copy is never told to pull\n' +
-    '  and plays yesterday\'s town until some unrelated change happens to move it.');
-}
+/* A second world on this engine keeps its own version string and its own check that it moved, in
+   its own repository. This file guards what this repository serves, and nothing else. */
 if (!watched.length) {
-  if (townFails.length) { console.log(townFails.join('\n')); process.exit(1); }
   console.log('OK — this change touches nothing the offline app has already cached, so no bump is owed.'); process.exit(0);
 }
 
@@ -100,6 +71,4 @@ if (was === now) {
     '  learns there is anything newer. Bump CACHE in sw.js and GAMEV in every pack config together.');
   process.exit(1);
 }
-if (townFails.length) { console.log(townFails.join('\n')); process.exit(1); }
-console.log('OK — engine/ changed and the cache moved with it: "' + was + '" → "' + now + '"'
-  + (townTouched.length ? ', and the town\'s own version moved too.' : '.'));
+console.log('OK — engine/ changed and the cache moved with it: "' + was + '" → "' + now + '".');

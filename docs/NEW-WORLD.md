@@ -38,7 +38,7 @@ default is that it ends.** A pack that says nothing gets a last day, an epilogue
 
 Ask it first, because every later answer depends on it, and because getting it wrong is not a
 setting you notice — it is Meridian's goodbye speech printing itself into somebody else's game.
-That already happened to El Changarrito before this flag existed.
+That already happened to a second world before this flag existed.
 
 | | **A world that ENDS** (the default) | **A world that does not** |
 |---|---|---|
@@ -156,9 +156,9 @@ in your `art.js`:
 
 **No `SHAPETAKE` means no shapes.** That is deliberate and it cost something to learn: the first
 version of this gate bound every letter a pack had not spoken about, reading silence as agreement.
-But a world that never mentioned a letter has not agreed about it — it has said nothing. El
-Changarrito lays six `H` and calls them RACKS in its houses; the engine's `H` is an open PRODUCE
-CRATE. The town had never drawn `H` at all, so every question the gate knew how to ask ("did this
+But a world that never mentioned a letter has not agreed about it — it has said nothing. A
+second world lays six `H` and calls them RACKS in its houses; the engine's `H` is an open PRODUCE
+CRATE. That world had never drawn `H` at all, so every question the gate knew how to ask ("did this
 pack draw it? declare it? give it a mesh?") answered *no*, correctly, and six crates of tomatoes
 stood up in the bedrooms. **Nothing in this engine records what a world MEANS by a letter it has
 never drawn.** Only you know that, so only you can say it.
@@ -187,8 +187,8 @@ line whichever way you go:
 
     TILEMETA["I"] = { lift:13, kind:"facade" };   // MY I is a shopfront, not a grocery counter
 
-That is a real example. El Changarrito's `I` is a storefront face at wall height; the engine's `I`
-is a waist-high counter. Without that row the town would have a counter standing inside twelve of
+That is a real example. A second world's `I` is a storefront face at wall height; the engine's `I`
+is a waist-high counter. Without that row that world would have a counter standing inside twelve of
 its shops.
 
 **And to borrow a shape for a letter the engine spells differently:**
@@ -202,7 +202,7 @@ shells and it is what loads `engine/shapes.js`, so your pack file is evaluated B
 literal is built the moment your file runs. The arrow defers the lookup to draw time. **And you
 must DECLARE the table**: a world that has never written a mesh has no `TILEART_MESH` to add a key
 to, so `TILEART_MESH["K"] = …` throws *"TILEART_MESH is not defined"*. All three wrong forms and the
-right one were planted against El Changarrito on 2026-09-22 and only the right one printed OK. This
+right one were planted against a second world on 2026-09-22 and only the right one printed OK. This
 is written here because the eager form was documented in five places and not one of them ran.
 
 **Why it is a line you write and not a default you inherit — three reasons, and all three were
@@ -226,8 +226,8 @@ You do not have to draw a single part. Here is exactly what you get:
 | a fence (`kind:"fence"`) | an upright plane with your drawing on both sides |
 | a walkable tile | painted flat into the floor, as in every other camera |
 
-**That is a real, shippable world** — it is what Meridian looked like until 2026-09-21 and what El
-Changarrito looked like until 2026-09-22. It reads as a board game with cardboard standees, which
+**That is a real, shippable world** — it is what Meridian looked like until 2026-09-21 and what a
+second world looked like until 2026-09-22. It reads as a board game with cardboard standees, which
 for some worlds is exactly right. Choose it on purpose, and know that `test/engine.smoke.js` will
 list every letter still standing as a picture (`Still flat in 3D (#39): …`) every single run, so
 the cost is always in front of you and never a surprise.
@@ -244,7 +244,7 @@ wheels and the driver stay the engine's). A part with `a:` under 1 is glass: a s
 the tile's. A pack that answers none of them gets the boxes it always got. (Crew iteration 11, 2026-09-21.)
 
 **A layer costs nothing to have.** It costs one drawing wherever you want to differ, and partial is
-normal: El Changarrito runs a whole world on **nine drawings** across 45 glyphs, and Meridian has
+normal: a second world runs a whole map on **nine drawings** across 45 glyphs, and Meridian has
 18 solid glyphs with no side drawing at all.
 
 ## 0⅞ · If the world is meant to be CALM, say what replaces the pressure — before you build (2026-09-11)
@@ -295,17 +295,17 @@ content/<name>/
   docs.js        DOCS READS DOCUI  — the paper the world produces (optional)
 ```
 
-**Nine is Meridian's number, not the engine's.** A pack may drop files and add its own — El
-Changarrito has no `room.js` and adds `record.js` (its `RECORDSRC`, §9). Two rules that only
+**Nine is Meridian's number, not the engine's.** A pack may drop files and add its own — a
+second world has no `room.js` and adds `record.js` (its `RECORDSRC`, §9). Two rules that only
 became visible once a second world existed:
 
-- **Dropping a file means dropping its `<script>` tag too.** El Changarrito's shell loaded
-  `content/room.js` for weeks with no such file behind it — a 404 on every load of the town since
+- **Dropping a file means dropping its `<script>` tag too.** A second world's shell loaded
+  `content/room.js` for weeks with no such file behind it — a 404 on every load of that world since
   the folder was made. It was harmless (`INTERVIEW` stays undefined and the engine does less, which
   is the intended off state) and that is exactly why nothing noticed: a browser does not throw for
   a `<script>` that 404s, so `pageerror` never fires and an aborted-request harness never sees it.
   **Both halves are fixed and this paragraph is kept because the SHAPE of it recurs.** The tag is
-  gone (`changarrito/index.html`, where it stood there is now a comment saying why), and the check
+  gone (in that world's `index.html`, where it stood there is now a comment saying why), and the check
   now exists: `test/engine.smoke.js` reads the shell's HTML **off disk** and fails on any
   `<script src=` with no file behind it — *"this shell loads "…" and there is no such file — every
   load of it is a 404 nobody sees"*. It runs against both shells on every CI build.
@@ -424,8 +424,8 @@ the day two worlds need to live in one deploy.
   worlds whose people a dog may befriend — only worlds you have), `upstairs` (the map's ⇧), `eateries`
   (the places that serve food, and who works there: a dog sings at the door and they bring him water).
   Pavement colours per world come from `FLOORS`. A pack that declares neither gets Meridian's
-  table byte for byte; a pack with its own names declares its own (`changarrito/content/config.js`
-  is the worked example). The smoke fails the build if a world id is ever spelled in `engine/`
+  table byte for byte; a pack with its own names declares its own, in its
+  own `config.js`. The smoke fails the build if a world id is ever spelled in `engine/`
   again, and `test/engine.smoke.js` checks that every role a pack declares points at a real,
   walkable place. **The full table, every role the engine reads** (owner, 2026-09-07: *"update
   here and meridian and template so we have a good amount of metadata that includes these"*;
@@ -505,7 +505,7 @@ world's own maps, no engine change. The keys, all optional:
 | `facepaint:true` or `{looks:[5]}` | calavera paint on everyone (the engine's five, or the pack's) |
 | `alebrije:{looks:[5]}` | every animal tinted, marked and (the wingless) winged, keeping its silhouette |
 
-Copy the town's `muertos` block from `changarrito/content/config.js`, keep the palettes, and re-place every
+Copy Meridian's `muertos` block from `content/meridian/config.js`, keep the palettes, and re-place every
 `world/x/y` on your maps. A `props` entry with `sill:true` lands on a window of the facade it names: the
 engine picks which window (`w` in the entry names one; without it, several candies on one front take
 that front's windows in turn) and cuts the candy to two thirds of the pane, so it never covers the glass
@@ -658,9 +658,9 @@ stays exactly where he stood, and nothing about a flight is ever saved. It is a 
 is off until a pack asks for it, and Meridian does not. `name:{en:"…",es:"…"}` renames it; nothing
 else in `BUILDER` is read, and the engine says so at boot if you write anything else.
 
-## 8 · What 2026-09-05 added to this template *(El Changarrito, the first world built from it)*
+## 8 · What 2026-09-05 added to this template *(a private pack, the first world built from it)*
 
-The backlog town — `docs/story/el-changarrito.md` — is the first second world, and building
+A private pack is the first second world, and building
 its foundations changed four answers above. A world started after this date inherits them.
 
 - **`STOREPFX` is the first line of a new `config.js`.** `mq-v65` put every storage key the
@@ -669,11 +669,11 @@ its foundations changed four answers above. A world started after this date inhe
   hero and then overwrites that save. GitHub Pages serves every project site on an account
   from **one origin**; `localStorage` is per-origin. The guarantee test fails a literal key.
 - **The switch is a folder.** §2 said there is no pack selector; the chosen answer is a
-  second `index.html` in its own folder (`changarrito/`) that loads `../engine/` and its own
+  second `index.html` in its own folder that loads `../engine/` and its own
   `content/`. One CI covers both, and the first world's index is untouched.
 
   **⚠️ "Nothing is copied" was written of the engine and the content, and it is false of the
-  shell.** Corrected 2026-09-10 by reading both files. `changarrito/index.html` is 791 lines
+  shell.** Corrected 2026-09-10 by reading both files. That world's `index.html` is 791 lines
   against the public shell's 803, and roughly 770 of them are the same CSS and markup —
   including the comments that record *why* each rule is there (Rosa's findings, #126, #127, #130
   appear verbatim in both). The differences are real but small: there is no manifest and no service worker (`:788`), the title
@@ -701,8 +701,8 @@ its foundations changed four answers above. A world started after this date inhe
   part is a PR that ends green. The nine steps of §5 still apply inside part two.
 - **The rule of weight travels.** If the world reads a ledger (issues, a task list), a label
   picks the body: a named person carries a real task, townsfolk a small one, a note on a board
-  the rest, and animals nothing. `el-changarrito.md` §1.
-- **What a second world must never do to the first** — five rules, `el-changarrito.md` §7½:
+  the rest, and animals nothing.
+- **What a second world must never do to the first** — five rules:
   the first world's purpose is fixed; every engine change is behaviour-identical for it and
   proven the same day; its content is never edited for another world's sake; its public build
   knows nothing about a personal one; sittings are ranked by the owner, not by the new world.
@@ -715,13 +715,13 @@ its foundations changed four answers above. A world started after this date inhe
 
 ## 9 · A world that is not a story — the five seams the town runs on *(added 2026-09-10)*
 
-*Written after an audit that did the exercise the owner asked for: pretend El Changarrito does not
+*Written after an audit that did the exercise the owner asked for: pretend the second world does not
 exist and rebuild it from this file alone. Everything in §0–§8 was reachable. **Nothing below was.**
 Every one of these is a real, guarded, tested engine seam that a stranger following this template
 could only have found by reading `engine/engine.js`.*
 
 **This is the shape of the gap.** §0–§8 describe a *story* world: districts, quests, chapters,
-seasons, cameras. El Changarrito is not a story, it is **a live view of something outside the game**,
+seasons, cameras. The second world is not a story, it is **a live view of something outside the game**,
 and the engine already has seams for exactly that — they were simply never written down here.
 
 ### 9.1 · `RECORDSRC` — where a world's people come from something that is not a map
@@ -731,7 +731,7 @@ and the engine already has seams for exactly that — they were simply never wri
 > holds and where it comes from is entirely the pack's business — a same-origin file, or an API the
 > **pack's own** `index.html` allows in its CSP. The public build's CSP allows neither, by test.
 
-This is the whole of El Changarrito: `changarrito/content/record.js:9` declares it, and everything
+This is the whole of the second world: its `record.js` declares it, and everything
 else in that 649-line file hangs off `boot()`. Without this seam in the template, a second world that
 wants to show live data has no idea the engine will hand it a starting gun at the right moment, and
 would try to run at script-load time — before `WORLDS` exists.
@@ -750,7 +750,7 @@ the two reviews above.
 > lying.
 
 The reasoning is the part worth keeping, and it lives only in a code comment today
-(`engine.js:393-400`, and again at `changarrito/content/record.js:630-637`): *whatever XP counts, it
+(`engine.js:393-400`, and again in the second world's `record.js`): *whatever XP counts, it
 teaches* — and in a backlog neither filing more nor closing more is reliably good, while a permanent
 `0 XP` is a verdict delivered at the door every session. **The rule: a fact must be able to go DOWN as
 well as up, and neither direction is praised.** The town's is `HUDFACT()` at `record.js:638-648` —
@@ -828,7 +828,7 @@ Four rules the town paid for, none of them in this file until now:
 
 1. **A placed person may carry a `doc`, and then behaves differently**: they wear the mark, stand
    still instead of wandering, and open the document when talked to (`engine.js:376-382`, and
-   `changarrito/content/record.js:616-618` sets `n.doc`, `n.tier`, `n.issue`).
+   the second world's `record.js` sets `n.doc`, `n.tier`, `n.issue`).
 2. **Placing a person writes `"N"` into the grid, and removing them must give the tile back.** Get
    this wrong and the map grows permanent invisible walls. `test/town.smoke.js:76` walks every tile of
    every world and fails on any `"N"` with nobody on it — **that check belongs in the shared suite,
