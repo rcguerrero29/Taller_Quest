@@ -2446,8 +2446,8 @@ function casaRoof2D(sx,sy){
    dead at Doña Tencha's doorway and her house read as two stubs with a grey gap between them.
    `cap` is the engine's seam for exactly this (engine/engine.js, the DOORSET body): a door may
    say what the BUILDING above it wears, the body is drawn in the 8 px it has left, and a door
-   that says nothing is untouched — which is every other door in Meridian and all of El
-   Changarrito's, none of which is a `⌂`. Every `⌂` in this game is stamped by BUILDTPL.casa,
+   that says nothing is untouched — which is every other door in Meridian and every door in a second
+   world, none of which is a `⌂`. Every `⌂` in this game is stamped by BUILDTPL.casa,
    so this cap and that template are the same decision written twice.
    Deliberately NOT in the 3D bake: the engine passes `rc.bake` there and skips the cap, because
    in 3D the roof is real geometry standing OVER the door slab and a second one painted onto the

@@ -21,7 +21,7 @@ supposed to keep in mind the customizeable and ability to use as template for ot
 technology."* Realism here is never Meridian's realism. Every rendering improvement must arrive as
 one of two things and nothing else:
 
-- **a RULE** — it belongs in `engine/`, it is behaviour-identical for Meridian, El Changarrito and
+- **a RULE** — it belongs in `engine/`, it is behaviour-identical for Meridian, for a second world and
   any world built from the template, and it is proven the same day by every suite CI runs; or
 - **a SEAM** — the engine asks, the content pack answers, and a pack that says nothing gets a sane
   default. `PLACES · GROWTH · SEASONS · CHAPTERS · ENDLESS · HUDFACT · TILEART · DECOART · CRITTERS ·

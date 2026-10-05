@@ -81,7 +81,7 @@ const {chromium}=require('playwright-core');
 const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,
   args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});
 const p=await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});
-await p.goto('file:///home/user/meridian-quest/index.html');
+await p.goto('file://'+process.cwd()+'/index.html');
 ```
 
 Scratch scripts go in the repo root as `*.tmp.js` and are **deleted when you finish**. Screenshot

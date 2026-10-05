@@ -73,7 +73,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 Glyph→meaning really is data. `SOLIDX`, `DOORS`, `DOORLOOK`, `TILEMETA` (`lift`/`kind`/`win`/`awn`),
 `MAPCOL`, `MAPDOT`, `TOWNLBL`, `TILEART`/`TILEART_SIDE`, `DECOART`, world ids, portal keys, NPC
 letters, `PLACES`, `STOREPFX`, the `SEASONS` key set, `BUILDTPL` part ids, and the `ok/mid/bad`
-grade. **The town proves it:** `changarrito/content/art.js:6` adds one glyph with a `TILEMETA` row
+grade. **A second world proves it:** its `art.js` adds one glyph with a `TILEMETA` row
 and no engine change at all.
 
 ---
@@ -171,9 +171,9 @@ Meridian never noticed because its quest list is finished; a template's never is
 single largest blocker to an open-world template.**
 
 ### L10 · The town already fails the test, visibly
-`changarrito/content/config.js:1–3` declares the pack *"trains no role, carries no curriculum and
-awards no grade that means anything about the player."* `changarrito/content/strings.js:32` ships
-`levels:["Junior","Delivery Lead","Senior Lead","AI LEGEND"]` and `:76` ships
+A second world's `config.js` declares the pack *"trains no role, carries no curriculum and
+awards no grade that means anything about the player."* Its `strings.js` ships
+`levels:["Junior","Delivery Lead","Senior Lead","AI LEGEND"]` and
 `repL.roles:"Roles practiced"`. Meridian's career ladder, copied whole into a world that explicitly
 disclaims having one. Nobody decided it; it rode along in a copied file. **The config is the true
 side.**
@@ -202,11 +202,11 @@ and pays nothing.
 > Found by building a real two-district endless pack and pressing Next, not by reading — `chSeen`
 > went 0→1 with no ending panel. It is measured, not inferred.
 
-`engine/engine.js:303`, `:3439`, `changarrito/content/config.js:10`. It reads as "skip the epilogue."
+`engine/engine.js:303`, `:3439`, and that world's `config.js`. It reads as "skip the epilogue."
 It is not. `chDue()` returns false when `ENDLESS` is set, so the ending panel never opens — and
 `$("endGo")`'s click handler is the **only** writer of `chSeen` in the engine. `chSeen` gates which
 quests are on offer (`:291`), which storefronts are up (`ribbonUp`, `:305`) and `GROWTH` staging.
-**An endless pack with two or more districts never opens the second, silently.** El Changarrito is
+**An endless pack with two or more districts never opens the second, silently.** That world is
 immune only because it declares no `CHAPTERS` and receives one synthesised district.
 It is two settings wearing one coat — *"does an ending panel play"* and *"how does this world open
 its next district"* — and the second has no tag at all. The recommendation on the register is to
@@ -352,7 +352,7 @@ helper, and the person who hits it will be reading their content files, not `san
 
 | Word | How many meanings | Where |
 |---|---|---|
-| `kind` | **six** — tile class, critter species, decal type, fiesta prop, dog command, sign subtype | `engine.js:1329`, `:1839`, `:1398`, `config.js:148`, `:4599`, `changarrito/content/maps.js:192` |
+| `kind` | **six** — tile class, critter species, decal type, fiesta prop, dog command, sign subtype | `engine.js:1329`, `:1839`, `:1398`, `config.js:148`, `:4599`, a second world's `maps.js` |
 | `mark` | **four** — portal direction, calavera accent colour, per-quest attempt tally, `kind:"marker"` | `maps.js:185`, `engine.js:2345`, `:261`, `:1338` |
 | one district | **four names** — chapter id `mercado`, world id `me`, ribbon id `me`, DOCS key `mercado`, plus a 1-based `district:` number inferred from array position | `config.js:213/66/78`, `docs.js:119` |
 | walkability | **three overlapping tags** — `SOLID`, `stand`, `standsUp`, plus `kind:"door"` duplicating `DOORSET` | `engine.js:1359–1360`, `:4882` |
@@ -370,8 +370,8 @@ helper, and the person who hits it will be reading their content files, not `san
 - **Tile kinds that do not exist:** a vehicle (the tram is hand-built boxes driven by `TRO`), a thing
   that hangs at a height (piñatas are welded to a seasonal seam), a thing you climb, a roof or
   ceiling, a liquid other than water, a window in a floor.
-- **A cast vocabulary.** The town had to invent "named person / townsfolk / note / animal" in prose
-  (`docs/story/el-changarrito.md` §1) because no field says what a person *is*.
+- **A cast vocabulary.** A second world had to invent "named person / townsfolk / note / animal" in prose
+  (in its own story file) because no field says what a person *is*.
 - **A choice that sets world state.** The only thing an answer can change is index-keyed `GROWTH`.
   No flags: nothing can remember that you took the money.
 - **Declared unlock relations.** Meridian's order lives in *prose* — Chelo phones Tacho inside a
@@ -528,13 +528,13 @@ reads like a declarative API: hand it the cast, it makes the world match. **It d
 bakes `NPCLOOK[key]=c.look` **once** (grep `NPCLOOK[key]=c.look`), along with the name (`CHILLN[key]`)
 and the egg (`CHILLEGG[key]`), and `syncChill` returns early for any body already standing on its tile
 (grep `if(here&&c&&c.world===at.world`). So **`look`, `name` and `egg` are write-once per id.** Only
-the fields a pack decorates itself afterwards are live: El Changarrito re-writes `doc`, `tier` and
-`issue` on every `place()` (`changarrito/content/record.js`, grep `n.doc=this.doc(i)`), which is
+the fields a pack decorates itself afterwards are live: a second world re-writes `doc`, `tier` and
+`issue` on every `place()` (its `record.js`, grep `n.doc=this.doc(i)`), which is
 exactly why a document change lands on a person already standing and a shirt change does not.
 
 **What a second pack hits.** Any state it wants to *show* on a person — claimed, sick, on shift,
 holding something — must be **part of the id**, or the world is right after a reload and wrong for the
-whole session. El Changarrito pays this in `bodyId` (`changarrito/content/record.js`, grep
+whole session. A second world pays this in `bodyId` (its `record.js`, grep
 `bodyId(i,slot)`), which concatenates the claim into the id so `syncChill` sends the old body home and
 spawns a new one on the same tile.
 
@@ -553,7 +553,7 @@ than quietly, per `docs/SOURCES.md` rule 5.
 
 ## Leak register · near-miss, 2026-09-13 — **a crew persona, caught at plan time**
 
-**Proposed:** make Meridian's tram driver *Rigo the tranviario* — the `changarrito` crew persona,
+**Proposed:** make Meridian's tram driver *Rigo the tranviario* — a crew persona from a private pack,
 forty-one years on the trolleys, nine as line inspector.
 
 **Refused before a file was touched**, by Nacho, on the rule in `CLAUDE.md`: Meridian's content is
@@ -611,8 +611,8 @@ is not merely unvalidated: **it is dropped on the next load, silently.** Two of 
 `wc`) are the dog's three cosmetic slots.
 
 `passURL()` (`:4881`) serialises `{v:1,l:lang,s:loadSave()}` — **the engine's save and nothing
-else.** Everything a pack persists goes through `SK()` (`:13`) into its own key, as the town does
-(`changarrito/content/record.js:113`, `:494`, `SK("filter")`), and therefore **never crosses the
+else.** Everything a pack persists goes through `SK()` (`:13`) into its own key, as a second world does
+(`SK("filter")`), and therefore **never crosses the
 Trolley Pass, never appears in the export, and is never sanitised on arrival.** `SK("room")` — the
 INTERVIEW answers, which `docs/OWNER.md` calls the design conversation with [partner] — is in that category
 today.
@@ -644,8 +644,7 @@ chosen. **This is the most expensive instance of L1 precisely because it is the 
 `[CODE]` The engine supplies **widgets**: a dropdown with option groups (`s2.sel`,
 `engine/engine.js:3475`), a form (`s2.form`, `:3485`), a table (`s2.t`, `:3457`). The **index** —
 categories, tag search, sort, persistence, plain-language hits — is ~500 lines of *pack* code in
-`changarrito/content/record.js` (`search` `:96`, `indexDoc()` `:248`, `setFilter/setSort`
-`:492-497`). `tlFindNext` (`engine/engine.js:4592`) is find-in-a-textarea in the admin text lab, not
+a second world's `record.js` (`search`, `indexDoc()`, `setFilter/setSort`). `tlFindNext` (`engine/engine.js:4592`) is find-in-a-textarea in the admin text lab, not
 a search over content.
 
 **What a second game hits.** "Find my recipe with beans" is not a seam it turns on; it is a thing it

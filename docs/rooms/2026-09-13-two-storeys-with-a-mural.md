@@ -7,7 +7,7 @@ This note is what they settle and what is his. Nothing is built.*
 ## The finding that reframes it (Cuca)
 
 **A readable thing has no height; it has a floor-plan address.** A wall document opens from a tile
-(`READS` in `changarrito/content/docs.js`, `readAt` in the engine, first match wins). So an upstairs
+(`READS` in a pack's `docs.js`, `readAt` in the engine, first match wins). So an upstairs
 mural is reachable **from the street, trivially, and only from the street** — never from the loft,
 which is a different world — and **two documents cannot share a tile**: a facade column carries a
 ground-floor sign *or* an upstairs mural, not both.

@@ -275,11 +275,11 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
 
 ## Open threads (promises already on the wall)
 
-- **La ventanilla** — the city's own record, kept by a government NPC, separate from the
+- **The window clerk** — the city's own record, kept by a government NPC, separate from the
   player's office. *(Owner steer 2026-09-02.)* Two documents that do not quite agree is
   the truest thing you can say about a barrio: your office holds what the neighbours said
   about you; the window holds what the city has on paper. Three laws, all load-bearing:
-  she is **not a villain and not an obstacle** (a *ventanilla* clerk on the barrio's side
+  she is **not a villain and not an obstacle** (a *window* clerk on the barrio's side
   and bound by paperwork — the comedy is she needs the form, the warmth is she wants you
   to pass); she **speaks only about what is filed, never about what is missing**, past
   tense only, or she becomes a quest log with a face; and she is **droppable like the
@@ -298,7 +298,7 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   **Deferral dated 2026-09-03 (la junta):** SIGNED means the design is agreed, not that
   she exists. She is in no file — no name, no look, no world, no glyph — and stays
   deferred until a sitting is priced for her. Do not read SIGNED as shipped.
-  **Planned 2026-09-05:** `docs/story/la-ventanilla.md` — what she reads, where she could
+  **Planned 2026-09-05:** a story file of her own — what she reads, where she could
   stand, every seam she touches with its tag, and the personal build (❗La puerta trasera).
 - **The names inside quests are people who can walk on** (2026-09-13). Rigo is the first off-screen
   name in this city to take a tile. The rule it establishes is general and belongs to any pack: a
@@ -319,7 +319,7 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   Give him a name and a mouth and the first question every player asks him is *what is
   up north* — and he either answers, and the promise is spent by a man instead of a
   skyline, or he refuses, which is a character built to dodge. If the MQT ever needs a
-  human voice it is la ventanilla's, at a window the player can walk to — public works,
+  human voice it is the window clerk's, at a window the player can walk to — public works,
   asked-only, already signed — never the driver's, behind glass where nothing can be
   asked at all.
   **The window is now its only surface** (2026-09-02). The promise is visible from `f2`
@@ -753,15 +753,15 @@ what conflicts, why it is not Nacho's to decide, and the options. Owner's instru
   written down. A player on their fifth ride notices the hand move before they notice
   why. **Revisit trigger, and only this one: the day a second HUMAN passenger rides**
   (`ARCH-LOG` A13¾'s pivot — the dog does not count, because a dog does not make the car
-  a room with people in it). Then he is named out of la ventanilla's world — a city
+  a room with people in it). Then he is named out of the window clerk's world — a city
   employee, never a Robles.
   **Refused in advance, both expected within the month:** *a wise old motorman who says
   one thing about the journey* — there is no press, no ❗ and no trigger a line could hang
   off, so it would fire unprompted into a beat containing nothing else, which makes it
   not a line but the entire content of the ride, i.e. the cutscene A12 exists to prevent;
-  and **"the driver is Rigo"** — Rigo is `changarrito` content, and putting a crew persona
-  into the public game is a leak, not a cameo (`CLAUDE.md`; `docs/story/el-changarrito.md`
-  §7½). His forty-one years belong on the wall that records how we work, not in a barrio
+  and **"the driver is Rigo"** — Rigo is a private pack's content, and putting a crew persona
+  into the public game is a leak, not a cameo (`CLAUDE.md`; `docs/NEW-WORLD.md`
+  §8). His forty-one years belong on the wall that records how we work, not in a barrio
   he was never a neighbour of.
 
 - 2026-09-13 · ❗El chofer, segunda parte · **the owner overruled the refusal above and asked for a

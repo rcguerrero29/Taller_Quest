@@ -6,7 +6,7 @@
    talked to, every document builds, every camera draws every world, every door stands in 3D,
    every animal has something under it, and nothing is stored outside the pack's prefix.
    Run:  node test/engine.smoke.js --index index.html
-         node test/engine.smoke.js --index changarrito/index.html
+         node test/engine.smoke.js --index <another world's index.html>
    (CHROMIUM_PATH if Chromium is not where Playwright looks). */
 const path = require('path');
 const fs = require('fs');   /* module scope: findChromium() below needs it, and it was declared only INSIDE two functions */
@@ -93,8 +93,8 @@ function findChromium() {
   }
 
   /* ---- every script this shell loads has to exist ----
-     changarrito/index.html loaded content/room.js from the day the folder was made, and that file
-     was never created: a 404 on every load of the town, for weeks, seen by nobody. It was harmless
+     a second world's index.html loaded content/room.js from the day the folder was made, and that file
+     was never created: a 404 on every load of that world, for weeks, seen by nobody. It was harmless
      — INTERVIEW stays undefined and the engine does less, which is the intended off state — but
      NOTHING CAUGHT IT, and the next dropped file will not be harmless. The suites cannot see it
      from inside the page: they abort every non-file:// request and collect `pageerror`, and a
@@ -215,7 +215,7 @@ function findChromium() {
     /* ---- THE SHAPE GATE (crew iteration 14, el repartidor) — the two nouns the flat audit cannot read ----
        `engine/shapes.js` gives a glyph the engine's own shape when the pack said nothing about that
        letter. The flat audit CANNOT check that: it only counts `THREE.Sprite`s, so a letter that
-       stood as a BOX (K, S, D, T, V — 71 tiles of El Changarrito) never appeared on any row, and
+       stood as a BOX (K, S, D, T, V — 71 tiles of a second world) never appeared on any row, and
        `couldBeFlat` does not even list 'fence', which is F's 93 tiles and ◺'s 9. The audit sees 37
        of the 208 tiles this change stands up. So two checks of my own, each reading its own noun:
 
@@ -3613,7 +3613,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   /* ---- THE CROWN'S GHOST IS THE CROWN'S, AND THE SHARED ONE IS EVERYBODY'S ----
      A tree needed to be fainter than 0.68 so the owner could be seen standing under it. T3GHOST is
      the ghost for EVERY see-through object in BOTH games, so moving it would have made the
-     appliances and stalls in El Changarrito twice as faint for a tree the town does not have —
+     appliances and stalls in a second world twice as faint for a tree that world does not have —
      an engine change that is not behaviour-identical, which is the one rule this repo does not
      bend. The cure is a second constant with a reach: T3CROWNGLASS, for things whose honest top is
      over T3OVERHEAD tiles.
@@ -3622,7 +3622,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      camera and the pixels. It can say the town's glass is still 0.68; it cannot say 0.68 looks
      right — that was decided by looking at a picture, and always is.
      It is not vacuous in a shell with no tall things: the town takes the crown value zero times,
-     and zero is PRINTED, so the day somebody plants a tree in El Changarrito the line moves in
+     and zero is PRINTED, so the day somebody plants a tree in that world the line moves in
      front of whoever reads the output. */
   const ghostVals = await page.evaluate(() => {
     const P = [];
@@ -3648,7 +3648,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       });
     }
     /* THE SENTENCE THAT MATTERS: the shared number must still be the one the other game shipped
-       with. 0.68 is not a taste here — it is the value El Changarrito was measured and signed off
+       with. 0.68 is not a taste here — it is the value the second world was measured and signed off
        at, and this lane had no ask to change it. */
     if (Math.abs(T3GHOST - 0.68) > 1e-9)
       P.push('T3GHOST is ' + T3GHOST.toFixed(2) + ' and it shipped at 0.68 — that is the ghost for every see-through object in BOTH games, so ' +
@@ -4659,7 +4659,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      season-prop pass asked `wallH(g)` — 0.55 + the glyph's declared `lift` × 0.042, which is the
      height of a BOX — for a tile whose shape is a MESH. `wallH("T")` is 0.802; the table's own parts
      stop at 0.550. The number that is right for a box is exactly the one that is wrong for a mesh,
-     which is why this asks BOTH: Meridian's table is a mesh, El Changarrito's is still a box.
+     which is why this asks BOTH: Meridian's table is a mesh, a second world's is still a box.
      WHAT IT READS, and it is two things measured out of the BUILT SCENE and nothing out of the
      engine's arithmetic (docs/POSTMORTEM.md §0, .claude/skills/guard/SKILL.md §1):
        · where the prop was set down — the object's own y in the 3D group;
@@ -5137,7 +5137,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     });
     /* 2 — a DECLARED spot, against what the doors alone say. Asked with every declaration
        suppressed (`pure`), because the first draft asked with them in place and mis-read a CYCLE:
-       El Changarrito's hq and f2 each reach the other and neither is drawn, so each APPEARED
+       A second world's hq and f2 each reach the other and neither is drawn, so each APPEARED
        derivable while in fact the other's declaration was the only thing holding either on the
        map. Delete both and both vanish. So the three answers are kept apart:
          · the doors find it and agree     → the written-down copy is redundant, and a copy's only
@@ -5266,7 +5266,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
        · the panel plastering the whole tile again → the same two, at st 21,0 through 27,0, which
          is the owner's sentence in numbers.
      The first draft of check 1 measured something else — the mean of one row through the window
-     against the wall beside it — and EL CHANGARRITO FAILED IT WHILE DRAWING A GOOD WINDOW, because
+     against the wall beside it — and A SECOND WORLD FAILED IT WHILE DRAWING A GOOD WINDOW, because
      that row crossed the shop's dark sign. It is written up where it happened, in `judge`. */
   const sills = await page.evaluate(() => {
     const P = [], L = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
@@ -5289,7 +5289,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const judge = (d, r, where) => {
       const [wx, wy, ww, wh] = r, bad = [];
       /* DEPTH, not "different from the wall". The first draft compared the mean of one row through
-         the window against the wall beside it, and El Changarrito failed it while drawing a
+         the window against the wall beside it, and a second world failed it while drawing a
          perfectly good window: that row crossed the shop's dark sign and the lit corner, and the
          mean landed 23 luma from the plaster. The mean of a picture is not the picture. What a
          window HAS and a patch of wall has not is internal range — glass, bars, a reflection. A

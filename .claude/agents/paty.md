@@ -80,7 +80,7 @@ and neither is the draft. Read `CLAUDE.md`, `docs/OWNER.md` and `docs/STORY.md` 
   Spanish that reads like a manual in a place that talks like a neighbour is a failure even when
   every word is right.
 - **Mexican Spanish, specifically.** This is Nacho's world and it is not neutral Latin American
-  copy. *Ahorita*, *changarrito*, *el chiste*, *ahí le seguimos* — the register is somebody's
+  copy. *Ahorita*, *chamba*, *el chiste*, *ahí le seguimos* — the register is somebody's
   actual voice.
 - **Length.** Spanish runs long. A row of buttons that fits in English and overflows in Spanish is
   a real bug — it shipped here, on a desktop. Say when a translation needs to be shorter than the

@@ -29,7 +29,7 @@ wired, and the first human play of the mercado is still the next thing that shou
 
 # The rest of the story — four districts, ready to write
 
-Read in full: `/home/user/meridian-quest/docs/OWNER.md`, `/home/user/meridian-quest/docs/STORY.md`, `/home/user/meridian-quest/docs/CITY.md`, `/home/user/meridian-quest/docs/BACKLOG.md`, `/home/user/meridian-quest/docs/templates/README.md`, `/home/user/meridian-quest/content/meridian/quests.en.js` (the eight mercado quests), the mercado half of `/home/user/meridian-quest/content/meridian/quests.es.js`, `/home/user/meridian-quest/content/meridian/strings.js`, `/home/user/meridian-quest/content/meridian/npcs.js`, `/home/user/meridian-quest/content/meridian/config.js`, and the XP rule in `/home/user/meridian-quest/test/smoke.js`.
+Read in full: `docs/OWNER.md`, `docs/STORY.md`, `docs/CITY.md`, `docs/BACKLOG.md`, `docs/templates/README.md`, `content/meridian/quests.en.js` (the eight mercado quests), the mercado half of `content/meridian/quests.es.js`, `content/meridian/strings.js`, `content/meridian/npcs.js`, `content/meridian/config.js`, and the XP rule in `test/smoke.js`.
 
 **The count, so the smoke test stays green.** `MAXXP` = 10 per quest + 10 per choice that has `next`. Every pack below has exactly four two-node quests, like the mercado: **120 XP per pack**, so `MAXXP` goes 350 → 470 → 590 → 710 → 830. Indices: taller 24-31, espiga 32-39, velázquez 40-47, nolasco 48-55. `need: 5` everywhere.
 
@@ -428,7 +428,7 @@ b — Who signs it? *An assistant's rules are the business's rules. The owner si
 - 55 Nolasco — EN "The drawer with your name is still empty, colega. Empty isn't closed." · ES "El cajón con tu nombre sigue vacío, colega. Vacío no es cerrado."
 
 ### Continuity threads planted
-Old lead's page: the fifth page in the folder (q52) — the reveal the other three pages point at. Xochi: "Do you own a jacket?" — the one good jacket, for the inauguración (q52). Frederick: asked if he's a notario (q48); Nolasco's note that he should host (grade-3 ending). Cat: Timbre, the doorbell. Trolley: the strangers at intake are the line's first arrivals (q54). Franchise: third landing, lightest — its people are among the strangers; no offer yet (that's ❗La sombra, S6/S7). Furniture: **the file cabinet** where the report lives — the paperwork man gives the record a body. The ventanilla clerk (signed 2026-09-02) is planted only as a place — Bere says "the window at city hall" — no name, no promise.
+Old lead's page: the fifth page in the folder (q52) — the reveal the other three pages point at. Xochi: "Do you own a jacket?" — the one good jacket, for the inauguración (q52). Frederick: asked if he's a notario (q48); Nolasco's note that he should host (grade-3 ending). Cat: Timbre, the doorbell. Trolley: the strangers at intake are the line's first arrivals (q54). Franchise: third landing, lightest — its people are among the strangers; no offer yet (that's ❗La sombra, S6/S7). Furniture: **the file cabinet** where the report lives — the paperwork man gives the record a body. The window clerk (signed 2026-09-02) is planted only as a place — Bere says "the window at city hall" — no name, no promise.
 
 ---
 

@@ -6,7 +6,7 @@ description: Turn what the owner reports into well-formed tickets in this repo's
 # Filing a ticket in Meridian's ledger
 
 The issues on this repo **are** the backlog, and the owner reads them as a street in
-El Changarrito, not as a list on GitHub. So a ticket is a piece of writing for a person
+a private pack, not as a list on GitHub. So a ticket is a piece of writing for a person
 standing in a town, not a bug report for a queue. Everything below follows from that.
 
 ## Before you write anything
@@ -55,8 +55,6 @@ scroll, so the only way out is to reload" beats "UI overflow issue".
 | `tier: high` | it traps the player, loses work, or blocks a release |
 | `tier: normal` | the default |
 | `tier: low` | it can wait a season |
-| `changarrito` | the town is the subject, not just the reader |
-| `ventanilla` | it belongs to la ventanilla's thread |
 | `work: how it looks` | art and readability |
 | `work: docs & templates` | the ledger, the guides, the template |
 

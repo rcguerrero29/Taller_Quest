@@ -30,7 +30,7 @@ const hTrayGlyph=()=>{try{return WORLDS[H_TRAY.w].grid[H_TRAY.y][H_TRAY.x];}catc
 
    AND THEN IT CLOSES THE READER BY PRESSING THE READER'S OWN CLOSE BUTTON, which is not a
    flourish — it is the bug this pack shipped in its first draft and it is worth the paragraph.
-   The first version did `$("reader").hidden=true`, copied off changarrito/content/record.js.
+   The first version did `$("reader").hidden=true`, copied off another world's reader code.
    That HIDES the card and does nothing else. But OPENING the card ran exitFsForCard()
    (engine.js, grep `exitFsForCard`): it strips `.fs` off #vp, drops `noscroll` off the body, exits
    browser fullscreen, and records `wasFs=true`. Only restoreFs() puts any of that back, and only

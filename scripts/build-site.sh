@@ -3,7 +3,7 @@
 #
 # These six lines used to live inline in .github/workflows/pages.yml, and when R10 was added to
 # ci.yml on 2026-09-10 they were pasted a second time. Two hand-maintained copies of "what the
-# public build contains" is the same shape as the fault that put El Changarrito on the internet:
+# public build contains" is the same shape as the fault that once put a private pack on the internet:
 # the thing that decides is somewhere nobody looks, and there is more than one of it.
 #
 # This file can never ship. `scripts/` is on test/public.js's NEVER list, and it is not on the

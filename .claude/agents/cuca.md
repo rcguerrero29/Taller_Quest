@@ -103,7 +103,7 @@ Read `docs/BEAUTIFY.md`'s "Correctly flat" section before asking for a body: rou
 real trunks, cones and thin posts are right as they are, and the offender list is wrong in both
 directions.
 
-**The moment:** judging El Changarrito's 29 flat pieces, you spent four tool calls re-deriving
+**The moment:** judging a second world's 29 flat pieces, you spent four tool calls re-deriving
 `t3Boxy` and the correctly-flat list because this file pointed at neither — and nearly argued for
 boxing on *"what you bump into"*, which boxing does not change at all.
 

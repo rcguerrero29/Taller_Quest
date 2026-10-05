@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v235";
+const GAMEV="mq-v236";
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
 /* default camera for this pack. TRUE 3D as of 2026-09-01 (owner: "please make 3d
@@ -14,7 +14,7 @@ const MAXXP=880;   /* +50 for la esquina: 10 a quest x4, and 10 for the one choi
    key for key (the smoke fails the build if they drift), written out here so the metadata lives
    with the content — owner, 2026-09-07: "update here and meridian and template so we have a
    good amount of metadata that includes these". A role you leave out falls back to the default.
-   The town's copy is changarrito/content/config.js; the template is docs/NEW-WORLD.md §3. */
+   A second world keeps its own copy; the template is docs/NEW-WORLD.md §3. */
 const PLACES={
   home:"hq",                 /* the room a new game and a broken save land in */
   spawn:[10,11],             /* the tile in `home` you land on — must be walkable */

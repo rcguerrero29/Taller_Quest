@@ -22,7 +22,7 @@ what `TILEART_MESH` is.
 ## What the seam is, in one paragraph
 
 The 3D camera builds a tile from a LIST OF PARTS when the pack declares one: `TILEART_MESH[g]` in
-**your pack's** `art.js` (`content/meridian/art.js`, `changarrito/content/art.js`, or whatever
+**your pack's** `art.js` (`content/meridian/art.js`, `content/horno/art.js`, or whatever
 `content/<world>/art.js` you are building — this seam belongs to every pack, not to Meridian), or
 equivalently `TILEART[g].mesh`, a function `({x,y}) => parts` or a plain list.
 A part is `{s:"box"|"sph"|"cyl"|"cone"|"torus", x,y,z, w,h,d | r | rt,rb,h | r,t,arc, c:"#hex",
@@ -40,7 +40,7 @@ Three keys are not glyphs but KINDS the engine builds itself and asks the pack t
 a tile with `stand:true` in `TILEMETA` (grass). A tile that is neither — water, the bridge deck `^`,
 a door — never reaches the hook; the bridge got its own key for that reason. If your thing is not
 SOLID and you add it to `SOLIDX` in your pack's `maps.js` (Meridian's is
-`content/meridian/maps.js`, the town's is `changarrito/content/maps.js`), say `ASSUMED:` in the comment —
+`content/meridian/maps.js`, El Horno's is `content/horno/maps.js`), say `ASSUMED:` in the comment —
 nobody decided people cannot walk through it, the drawing needed a box.
 
 ## Step 0 — LOOK IN `SHAPES` FIRST, before you draw anything
@@ -66,7 +66,7 @@ Since mq-v233 the desk, table, bookcase, counter and stove ARE their drawings (`
 
 Both halves were bought on 2026-09-22 by the same mistake in two shapes:
 
-- **Silence is not consent.** The engine's `H` is an open produce crate; El Changarrito means a
+- **Silence is not consent.** The engine's `H` is an open produce crate; a second world means a
   RACK by `H` and had never drawn it, so every "did the pack say something?" question answered *no*
   and six crates of tomatoes stood up in the bedrooms. One letter, two objects — the third time,
   after `I` (counter vs storefront) and `b` (marigold bed vs a shadow with nothing over it).
@@ -91,7 +91,7 @@ So, before step 1:
    built at pack-evaluation time and throws "SHAPES is not defined". The arrow defers the lookup to
    draw time, which is long after. **And you must DECLARE the table** — a world that has never
    written a mesh has no `TILEART_MESH`, so `TILEART_MESH["▯"]=…` throws too. Both halves were
-   planted against El Changarrito on 2026-09-22; the eager form, the undeclared form and
+   planted against a second world on 2026-09-22; the eager form, the undeclared form and
    `{mesh:SHAPES.x}` all failed, and only the line above printed OK. It was documented wrong in five
    places first.
 1½. **Does your world mean the same OBJECT by that letter?** Not the same kind of thing — the same
@@ -148,7 +148,7 @@ pack, and what is left when you take those off is what belongs to the letter.
    you reason about it (the round-1 pane looked right in the code and was a bathtub wall in the
    frame).
 8. **Run both engine smokes and the pack's suites.** `node test/engine.smoke.js --index index.html`,
-   `--index changarrito/index.html`, `test/smoke.js`, `test/town.smoke.js`, `test/gauge.js`. The
+   `--index` on every other world's shell, `test/smoke.js`, `test/town.smoke.js`, `test/gauge.js`. The
    known-flat list in `test/engine.smoke.js` (`FLAT_BY_GAME`) only shrinks: take your glyph out of it,
    red first. If you wrote a guard, plant its violation in a copy OUTSIDE the repository and quote what
    it printed (`.claude/skills/guard/SKILL.md`).
