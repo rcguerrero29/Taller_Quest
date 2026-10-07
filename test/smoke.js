@@ -267,8 +267,12 @@ const CANDIDATES = [
     QEN.forEach((q, i) => { if (QES[i] && shape(q) !== shape(QES[i])) problems.push('quest ' + i + ' EN/ES shape mismatch'); });
     if (shape(FQEN) !== shape(FQES)) problems.push('fred quest EN/ES shape mismatch');
 
-    let max = 0;
-    QEN.forEach(q => { max += 10; Object.values(q.nodes).forEach(n => n.ch.forEach(c => { if (c.next) max += 10; })); });
+    /* what one quest pays in one perfect attempt: 10 for each step that leads on and 10 for the right last
+       call (the engine's amounts, pinned by real play in section 3). Counted ONCE, here: the save's room
+       check (4c) is handed these same numbers rather than counting them a second way. */
+    const pays = q => { let n = 10; Object.values(q.nodes).forEach(nd => nd.ch.forEach(c => { if (c.next) n += 10; })); return n; };
+    const award = QEN.map(pays), awardSide = pays(FQEN);
+    const max = award.reduce((a, b) => a + b, 0);
     if (max !== MAXXP) problems.push('MAXXP=' + MAXXP + ' but max achievable=' + max);
 
     /* WHO ACTUALLY ASKS IT — the people standing in the rooms, not the table they are seeded from.
@@ -311,7 +315,7 @@ const CANDIDATES = [
     if (auditReach().length) problems.push('post-obra reachability: ' + auditReach().join(' | '));
     if (isSolid(px, py)) problems.push('the staged build left the hero inside a wall');
     done = new Set(); world = 'hq'; px = fx = 10; py = fy = 11;
-    return { problems, quests: QEN.length, maxXP: max };
+    return { problems, quests: QEN.length, maxXP: max, award, awardSide };
   });
   fails.push(...stat.problems);
 
@@ -850,6 +854,77 @@ const CANDIDATES = [
     if (sec.pass.bandana !== null) fails.push('bad wear color not rejected');
   }
   if (sec.peerDrawOk !== true) fails.push('peer draw failed: ' + sec.peerDrawOk);
+
+  // ---- 4c. the save has room for everything the game can give ----
+  // 4b pins that the save cuts a hostile save down to size. Those sizes were chosen when the game was
+  // smaller, and nothing ever held them against what it grew into: a district that pushes the XP past
+  // what the save keeps, a quest numbered past the save's range, or one quest too many with a best
+  // score would quietly take part of a player's afternoon away on the next open, with every check green.
+  // Both sides are read at run time. What the game gives comes from its own quests (the stat block's
+  // count above). Every limit is read by handing sanitizeSave a save past it and looking at what comes
+  // back, never typed here, so this goes red when the content grows AND when somebody lowers a clamp.
+  // The proof is the round trip a player makes: a game with every quest played through is written by
+  // save() and read back by loadSave(), the same two calls Continue goes through.
+  const saveRoom = await page.evaluate(({ award, awardSide }) => {
+    const problems = [], say = [];
+    const N = award.length, inQuests = award.reduce((a, b) => a + b, 0), total = inQuests + awardSide;
+    if (!N) { problems.push('the game has no quests to hold the save against, so its room could not be measured'); return { problems, say }; }
+    const probe = extra => sanitizeSave(Object.assign({ n: 'probe' }, extra));
+    if (!probe({})) { problems.push('the save refuses a plain save with a name in it, so its limits could not be read'); return { problems, say }; }
+    // the limits, as the save itself applies them
+    const BIG = 1e7, has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, String(k));
+    const keepsNumber = (field, k) => { const s = probe(field === 'd' ? { d: [k] } : { [field]: { [k]: 1 } });
+      return field === 'd' ? Array.isArray(s.d) && s.d.includes(k) : has(s[field], k); };
+    const top = field => { let k = 0; while (k < 1e5 && keepsNumber(field, k)) k++; return k - 1; };
+    const many = n => { const o = {}; for (let k = 0; k < n; k++) o[k] = 1; return o; };
+    const lim = {
+      xp: probe({ xp: BIG }).xp,
+      doneTop: top('d'), bestTop: top('qa'), gradeTop: top('mk'),
+      bestCount: Object.keys(probe({ qa: many(1000) }).qa || {}).length,
+      bestValue: (probe({ qa: { 0: BIG } }).qa || {})[0],
+    };
+    // nothing to read is not room: a limit that came back empty is a red of its own
+    if (!(lim.xp > 0)) problems.push(`the save keeps no XP at all from a save holding ${BIG} (it came back as ${lim.xp}), so its room could not be read`);
+    if (!(lim.bestCount > 0) || !(lim.bestValue > 0)) problems.push('the save keeps no best score at all from a save holding a thousand, so its room could not be read');
+    if (lim.doneTop < 0 || lim.bestTop < 0 || lim.gradeTop < 0) problems.push('the save keeps not even quest number 0, so its range could not be read');
+    if (problems.length) return { problems, say };
+    // the round trip: every quest played through, its best paid in full, one clean attempt each
+    const keep = { xp, done, qa, marks, raw: localStorage.getItem(SK('1')) };
+    let back = null;
+    try {
+      xp = total; done = new Set(award.map((_, i) => i));
+      qa = { '-1': awardSide }; award.forEach((a, i) => { qa[i] = a; });
+      marks = {}; award.forEach((_, i) => { marks[i] = 1; });
+      if (!save()) problems.push('a game with every quest played through could not be written to storage');
+      back = loadSave();
+    } finally {
+      xp = keep.xp; done = keep.done; qa = keep.qa; marks = keep.marks;
+      if (keep.raw === null) localStorage.removeItem(SK('1')); else localStorage.setItem(SK('1'), keep.raw);
+    }
+    if (!back) { problems.push('a game with every quest played through did not come back from the save at all'); return { problems, say }; }
+    const nums = award.map((_, i) => i), list = a => a.length > 6 ? a.slice(0, 6).join(', ') + ' and ' + (a.length - 6) + ' more' : a.join(', ');
+    if (back.xp !== total) problems.push(`a player who plays every quest through has earned ${total} XP (${inQuests} in the ${N} quests, ${awardSide} in the side quest) and the save keeps ${back.xp}: the next time they open the game, ${total - back.xp} XP is gone`);
+    const notDone = nums.filter(i => !(back.d || []).includes(i));
+    if (notDone.length) problems.push(`the save does not keep quest ${list(notDone)} as answered: it keeps quest numbers up to ${lim.doneTop}, and the last quest is number ${N - 1}`);
+    const noGrade = nums.filter(i => !has(back.mk, i));
+    if (noGrade.length) problems.push(`the save forgets the grade of quest ${list(noGrade)}: it keeps grades for quest numbers up to ${lim.gradeTop}, and the last quest is number ${N - 1}`);
+    const noBest = nums.filter(i => !has(back.qa, i)).map(i => 'quest ' + i).concat(has(back.qa, -1) ? [] : ['the side quest']);
+    if (noBest.length) problems.push(`the game has ${N + 1} quests that keep a best score (${N} and the side quest) and the save keeps ${Object.keys(back.qa || {}).length}: it forgets ${list(noBest)}, so playing ${noBest.length > 1 ? 'them' : 'it'} again pays the XP a second time`);
+    const short = nums.filter(i => has(back.qa, i) && back.qa[i] !== award[i]).map(i => `quest ${i} (${award[i]})`)
+      .concat(has(back.qa, -1) && back.qa[-1] !== awardSide ? [`the side quest (${awardSide})`] : []);
+    if (short.length) problems.push(`${list(short)} pay${short.length > 1 ? '' : 's'} more in one perfect attempt than the save keeps as a best (it tops a best at ${lim.bestValue}): every replay pays the difference again`);
+    if (problems.length) return { problems, say };
+    // green: say how much room is left, so the next district sees it before this goes red
+    const richest = Math.max(awardSide, ...award);
+    say.push(`the save keeps ${lim.xp} XP and the game awards ${total} (${inQuests} in its ${N} quests, ${awardSide} in the side quest): room for ${lim.xp - total}`);
+    const numTop = Math.min(lim.doneTop, lim.bestTop, lim.gradeTop);
+    say.push(`the save keeps quest numbers up to ${numTop} and the last quest is number ${N - 1}: room for ${numTop - (N - 1)} more`);
+    say.push(`the save keeps a best score for ${lim.bestCount} quests and the game has ${N + 1} (${N} and the side quest): room for ${lim.bestCount - (N + 1)} more`);
+    say.push(`the save keeps one quest's best up to ${lim.bestValue} XP and the richest quest pays ${richest}: room for ${lim.bestValue - richest}`);
+    return { problems, say };
+  }, { award: stat.award, awardSide: stat.awardSide });
+  fails.push(...saveRoom.problems);
+  if (!saveRoom.problems.length) saveRoom.say.forEach(s => console.log('  SAVE ROOM: ' + s));
 
   // ---- 5. Trolley Pass: pass URL round-trips a save; boarding restores it ----
   await page.evaluate(() => { heroName = 'Traveler'; xp = 42; save(); });
