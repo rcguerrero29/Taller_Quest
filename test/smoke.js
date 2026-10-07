@@ -1764,6 +1764,43 @@ const CANDIDATES = [
   });
   fails.push(...bake);
 
+  // ---- and on a 3x phone: every world keeps its full sharpness ----
+  // The bake factor is ONE number for the whole game, chosen from its largest world (engine3d.js, grep
+  // `function t3Factor`): a single world big enough to pass the texture budget at 3x drops every 3x phone
+  // a level, in every world, the small ones too. The check above stands in for a 2x phone only, so one
+  // oversized map could soften the whole game on every 3x phone and leave this suite green. This stands
+  // in for the 3x phone, reads the factor the engine itself chose, and names the world that decided it.
+  // No tile count is typed here: how far the largest world may grow is asked of t3Factor itself.
+  const bake3 = await page.evaluate(() => {
+    const problems = [], say = [];
+    const before = { cam: camMode, world, px, py };
+    camSet('3d'); world = 'hq'; px = fx = 10; py = fy = 11; moving = false; held = null;
+    if (!draw3d() || T3.fail) { problems.push('3D did not render headless — the 3x phone could not be checked'); return { problems, say }; }
+    let big = null;
+    Object.entries(WORLDS).forEach(([id, w]) => { const n = w.W * w.H; if (!big || n > big.n) big = { id, n, W: w.W, H: w.H }; });
+    if (!big || !(big.n > 0)) { problems.push('there are no worlds to bake, so the 3x phone had nothing to measure'); return { problems, say }; }
+    const pr0 = T3.renderer.getPixelRatio();
+    try {
+      T3.renderer.setPixelRatio(3); draw3d();
+      const K = T3.K;
+      if (K !== 3) problems.push(`on a 3x phone every world is baked at ${K}, not 3, because the largest world is ${big.n} tiles (${big.id}, ${big.W} by ${big.H}): one oversized map softens every world on the phone`);
+      else {
+        // the room left: a stand-in world in the largest one's proportions, grown a tile at a time
+        // until the engine's own rule gives the phone less than 3
+        const PROBE = '\u0000room', grow = a => { const s = Math.sqrt(a / big.n); WORLDS[PROBE] = { W: big.W * s, H: big.H * s }; };
+        let a = big.n;
+        try { while (a < 1e5) { grow(a + 1); if (t3Factor() !== 3) break; a++; } } finally { delete WORLDS[PROBE]; }
+        say.push(`every world bakes at 3 on a 3x phone; the largest is ${big.id}, ${big.n} tiles, and a world in its proportions may reach ${a} before the phone drops a level: room for ${a - big.n} tiles`);
+      }
+    } finally {
+      T3.renderer.setPixelRatio(pr0); draw3d();
+      camSet(before.cam); world = before.world; px = fx = before.px; py = fy = before.py; held = null; moving = false;
+    }
+    return { problems, say };
+  });
+  fails.push(...bake3.problems);
+  if (!bake3.problems.length) bake3.say.forEach(s => console.log('  3X PHONE: ' + s));
+
   // ---- seasons: a season changes colour, never design (IDEAS §15.9) ----
   // The bridge's six bands were literal hex inside the engine, which is why no palette
   // could ever reach them. Now world art goes through art(key, fallback); a season is
