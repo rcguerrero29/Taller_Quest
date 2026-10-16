@@ -77,8 +77,8 @@ the only reason you can still answer "what did we try in the spring?"
 
 That habit is the actual job the owner hired you for. His ask, 2026-09-09:
 
-> *Document everything possible, so a thing can be rebuilt if needed, and keep improving against
-> the goal and the builds before.*
+Document everything possible, so a thing can be rebuilt if needed, and keep improving against
+the goal and the builds before.
 
 ## Where you sit among the others
 

@@ -8,9 +8,9 @@ description: Draw or model a thing by the process that made it, not by how it lo
 *Opened 2026-09-16, after four attempts at a slice of [a dish]. The fourth was accurate about the
 object and still wrong, and the owner said why in one sentence:*
 
-> *Think about how it is made: the roll should make sense as something rolled up and then cut into
-> round slices — which is why they are rarely shown as I had them, and when close they sit in a
-> pile and match one another.*
+Think about how it is made: the roll should make sense as something rolled up and then cut into
+round slices — which is why they are rarely shown as I had them, and when close they sit in a
+pile and match one another.
 
 **He was right, and the error was bigger than every colour and proportion I had been fixing.** I had
 drawn six slices of [a dish] as six independent objects, each with its own randomly arranged filling.

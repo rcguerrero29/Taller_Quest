@@ -70,7 +70,7 @@ leaves printed on it. **Their presence on the #39 list is the list being wrong, 
 *Pili, 2026-09-13; re-verified against the code 2026-09-14.*
 
 **A diagonal bar across a coloured field reads as struck through in this project specifically.** The
-owner said it of the first striped alebrije and it cost that pass a re-cut (`engine/engine.js`, grep
+owner said as much of the first striped alebrije and it cost that pass a re-cut (`engine/engine.js`, grep
 `said it looked struck through`). A second world's claim sash is exactly that shape — a white diagonal
 stroked corner to corner across the shirt (its `record.js`, grep `SHIRT_PATTERNS.taken`)
 — and it survives only because the hard hat beside it changes the **outline** (grep `lk.hat="hard"`,
@@ -552,11 +552,11 @@ the costume of a fix.
 
 ## The art we can reach — the standing approach, as he set it — 2026-09-17
 
-> *Write down that the skills and lessons learned from [partner]'s mocks go into making the map a
-> better image. Nobody is being hired, so the work moves forward with the art within reach, to
-> learn at least, and to have a backup.*
->
-> — the owner, `docs/ASKS.md`, 2026-09-17. **This is the settled approach, not a workaround.**
+The skills and lessons learned from [partner]'s mocks go into making the map a better image.
+Nobody is being hired, so the work moves forward with the art within reach, to learn at least,
+and to have a backup.
+
+Set by the owner, `docs/ASKS.md`, 2026-09-17. **This is the settled approach, not a workaround.**
 
 He asked for it to be written down, so here it is, and it has three parts he actually said:
 

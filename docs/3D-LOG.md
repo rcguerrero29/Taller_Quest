@@ -66,7 +66,7 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ## The log
 
-### 2026-09-08 · #134 — "things are looking a bit blurry"
+### 2026-09-08 · #134 — the picture looked blurry
 - **Goal served:** the grid is never softened.
 - **Measured before:** edge energy of a rendered street **2.26**.
 - **Diagnosis:** every texture was sampled through a linear filter somewhere. Linear *blending* is

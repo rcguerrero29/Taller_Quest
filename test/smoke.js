@@ -5633,7 +5633,7 @@ const CANDIDATES = [
     const tdir = path.join(__dirname, '..', 'docs', 'templates', 'neutral');
     /* The templates are the owner's and stay private; the PUBLIC copy carries their names only
        (docs/templates/NAMES.md, from public-overlay/). The owner, 2026-09-27: never publish their
-       URL, but their names are no risk. Where the templates are here, the published
+       URL; he did not think their names were a risk. Where the templates are here, the published
        list must name exactly them, so the two cannot drift; where neither is here, that is a red. */
     const namesOf = p => fs.existsSync(p) ? [...fs.readFileSync(p, 'utf8').matchAll(/^- `([^`]+)`$/gm)].map(m => m[1]) : null;
     const listed = namesOf(path.join(__dirname, '..', 'docs', 'templates', 'NAMES.md'));

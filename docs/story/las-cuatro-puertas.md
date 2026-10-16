@@ -1,6 +1,6 @@
 # Las cuatro puertas — the rest of the story (Nacho, 2026-09-02)
 
-*Nacho's plan for the four remaining businesses, written at the auto shop's depth so four writers could draft the quests from it. The owner asked for the rest of the story, now if possible. Kept verbatim; the decision log records what was picked from its open questions.*
+*Nacho's plan for the four remaining businesses, written at the auto shop's depth so four writers could draft the quests from it. The owner asked for the rest of the story, now if possible. The plan is kept verbatim; the decision log records what was picked from its open questions.*
 
 ## Decisions taken on this plan (main session, 2026-09-02)
 

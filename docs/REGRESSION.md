@@ -1,6 +1,6 @@
 # The regression map — what the suites hold, what they missed, what to add
 
-*Opened 2026-09-05 at the owner's ask: Lorenzo was floating, so regression tests were missing;
+*Opened 2026-09-05 at the owner's ask: Lorenzo was floating, which showed regression tests were missing;
 keep them up to date for Meridian Quest itself and for the templates. This file is the map: every suite, what it holds, what the last five days' findings
 should have been caught by, and the assertions to add. Nothing here is built.*
 

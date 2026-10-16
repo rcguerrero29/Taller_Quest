@@ -196,8 +196,9 @@ beauty queen's band, a seatbelt and a bandolier before it read as "somebody is o
 When a measurement is handed to you, say which of the three it proved before you agree with it. And two
 consequences: at the size these games are actually played, **the outline is the only thing that can
 carry a meaning**, so a new meaning usually has to leave the shirt and go to the head, the hands or the
-height — and **a diagonal bar across a coloured field reads as "crossed out"** in this project
-specifically, because the owner has already called one that (grep `crossed out` in `engine/engine.js`).
+height — and **a diagonal bar across a coloured field reads as struck through** in this project
+specifically, because the owner has already said as much of one (grep `said it looked struck through`
+in `engine/engine.js`).
 *(Applied 2026-09-13 from your own post-flight.)*
 
 **Check the object against the thing it STANDS ON, not only against the wall behind it.** The sweet's

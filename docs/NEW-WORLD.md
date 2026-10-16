@@ -867,8 +867,8 @@ Named rather than smoothed over, per the rule at the top of `docs/OPEN.md`:
 
 ## The north star for this document — the owner, 2026-09-15
 
-> *These teach the templates, but one day a template should come from one prompt
-> or one questionnaire.*
+These teach the templates, but one day a template should come from one prompt
+or one questionnaire.
 
 **Where this document is going.** Today a new world is built by a person reading this file and making
 a few hundred decisions in the right order. The destination is that a world is built from **one

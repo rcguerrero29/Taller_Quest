@@ -2070,7 +2070,7 @@ function findChromium() {
 
   /* ---- A DOG IS NEVER LEFT STANDING STILL (#268) ----
      The owner, 2026-10-01: a dog must never stay stuck, whatever happens, and he could not
-     see why it happened. And the day before: the dog should not wander off from him.
+     see why it happened. And the day before: the dog should not wander off from the player.
      Why he got stuck: a dog wanders only a few steps around his own spot, and an activity that ended
      further away than that left every step he tried refused, so he stood there until something else
      moved him. Meridian's agility course ends seven steps from the park dog's spot. Measured on the
@@ -2302,7 +2302,7 @@ function findChromium() {
           if (d.task && d.task.type === 'run') return { fail: 'the dog who follows you never finished the course' };
           const r = live(d, AFTER), near = free(r).find(p => md(p, ph) <= c.reach);   /* another lap of the course passes his spot; that is not leaving you */
           if (near) return { fail: 'a dog who follows you ran the agility course beside you and then left you: he went to ' + at(near) + ', back by his spot ' + at(ph) + ', ' + md(near, you) +
-            ' steps from where you stood. The owner asked that the dog stay with him' };
+            ' steps from where you stood. The owner asked that the dog stay with the player' };
           return {}; }));
 
         /* ---- 3 · told to Sit in the middle of the course ---- */
@@ -2367,7 +2367,7 @@ function findChromium() {
           if (r.first === null) return { fail: 'you called the dog and he came, and then he stood beside you at ' + at(came) + ' for the whole ' + sec(AFTER) + ' without a step: ' +
             md(came, h) + ' steps from his spot ' + at(h) + ', every step he tried was too far from home' };
           if (md(gone, you) > c2.reach + 1) return { fail: 'you called the dog and he came, and then he left you: he went to ' + at(gone) + ', ' + md(gone, you) + ' steps from you, back toward his old spot ' +
-            at(h) + '. The owner asked that the dog stay with him' };
+            at(h) + '. The owner asked that the dog stay with the player' };
           if (r.last === null || AFTER - r.last > tail(c2)) return { fail: 'you called the dog and he came, and then he stood still for good at ' + at([d.x, d.y]) };
           return {}; }));
 

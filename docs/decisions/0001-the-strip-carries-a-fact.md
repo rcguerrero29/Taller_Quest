@@ -6,7 +6,7 @@ finding is dated 2026-09-08 (`index.html:730`). Do not repeat a date this file d
 
 ## Asked
 
-> *The owner chose the facts.*
+The owner chose the facts.
 
 `[OWNER]`, quoted in a code comment in that world's `record.js`. **The only copy of this quote
 is that code comment** — there is no row for it in `docs/ASKS.md` and no transcript here. It is

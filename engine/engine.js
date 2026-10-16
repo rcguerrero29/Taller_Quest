@@ -2041,7 +2041,7 @@ TILEDRAW["^"]=rc=>{const{sx,sy,x,y}=rc; /* the rainbow bridge: walk the whole sp
       The six bands are what a season recolours; planks and rails are design. One season may
       also STREW the deck (art("bridgeStyle")==="petals"): Día de Muertos lays cempasúchil petals
       over dark planks, the way petals are laid as a path for the souls to follow home — the
-      owner's ask, 2026-09-07: marigold petals on it as well. Deterministic per tile, so the
+      owner's ask, 2026-09-07: marigolds on it, and petals as well. Deterministic per tile, so the
       3D bake and the four cameras agree on where each petal fell. */
       const bands=art("bridge",BRIDGE_BANDS);
       if(art("bridgeStyle","bands")==="petals"){ /* a bridge MADE of petals (the owner asked for a bridge

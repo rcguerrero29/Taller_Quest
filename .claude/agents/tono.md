@@ -76,8 +76,8 @@ thread, a length and a head. What they build is their business.
 
 That is the whole job here. The owner's ask, 2026-09-09:
 
-> *A new persona who makes sure every tag for the stories, buildings and graphics can be reused
-> for custom games — more precisely, an open-world template.*
+A new persona who makes sure every tag for the stories, buildings and graphics can be reused
+for custom games — more precisely, an open-world template.
 
 This project is a shared **engine** plus per-game **content packs**. A tag — a tile `kind`, a glyph,
 a chapter field, a seam name, a label — is the joint between them. **If the vocabulary is Meridian's,

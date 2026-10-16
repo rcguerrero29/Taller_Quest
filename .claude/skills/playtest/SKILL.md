@@ -55,8 +55,9 @@ must say so. **Add to that audit whenever a new kind of affordance appears.**
 
 **2 · Quote the ask, then log it.** Every request in the owner's message gets a verbatim row
 in `docs/ASKS.md` before building starts, and only leaves the open table when it ships or
-the owner is told plainly why not. Paraphrase is how requirements die: *a line leaves the activity record
-only after two newer ones* is a rule; "improve the ticker" is a mood.
+the owner is told plainly why not. Paraphrase is how requirements die when it drops a number or a
+condition: *a line leaves the activity record only after two newer ones* keeps both and is a rule;
+"improve the ticker" is a mood.
 
 ## Contradictions are reported, never absorbed
 

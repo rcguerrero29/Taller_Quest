@@ -333,7 +333,7 @@ lands hardest of all. The owner asked for the harsh ones by name.
 
 ### The effort bar, as he set it
 
-> *A good likeness, kept up on the mural with the same effort as the work, where possible.*
+A good likeness, kept up on the mural with the same effort as the work, where possible.
 
 **The same effort as the work.** A panel dashed off in four lines while the report ran to four
 thousand words is the wall telling the truth about what you thought mattered, and it is the wrong
