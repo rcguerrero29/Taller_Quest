@@ -31,7 +31,8 @@
          engine/engine.js and scripts/clean-copy.js); any other folder is refused, never emptied.
          node scripts/clean-copy.js --selftest
 
-   The map is JSON, or markdown holding one ```json block — a list of rules:
+   The map is JSON, or markdown holding one ```json block as its only fenced block (beside an example above it, only
+   the first ```json block would be read, so such a map is refused) — a list of rules:
      {"id":3, "kind":"partner", "rule":"replace", "find":["..."], "to":"[partner]", "ci":true, "suffix":["s"],
       "path":{"old-name":"new-name"}}
      {"id":4, "kind":"health", "rule":"drop", "find":["..."], "with":["..."], "note":"...", "files":"^docs/"}
@@ -43,9 +44,11 @@
    break, at a table cell's |, or at a blank line. "with" limits a drop to sentences that also hold one of
    those words (any case). "files" limits a rule to paths matching that regex. keep: does nothing; it is
    listed so the map says what was decided.
-   A rule carries no key but id kind rule find pattern to ci path files with suffix note, each holding its own
-   kind of value (ruleFault below): a key in the wrong case or unknown ("CI" for "ci"), or one holding the wrong
-   kind, would be ignored or read another way, so the map is refused instead, naming the rule by its number. */
+   A rule carries no key but id kind rule find pattern to ci path files with suffix note, each once and holding its
+   own kind of value (ruleFault below; "files" a regular expression, never a glob's /*): a key in the wrong case or
+   unknown ("CI" for "ci"), written twice, or holding the wrong kind would be ignored or read another way, so the map
+   is refused instead, naming the rule by its number. So is a kind holding a detail of the list, which is printed,
+   and a "files" limit that matches none of the copy's text files, which cleans nothing. */
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -61,8 +64,17 @@ const wordRe = (body, flags, open = true, shut = true) => new RegExp((open ? '(?
 const isWordEdge = ch => /[\p{L}\p{N}_]/u.test(ch || '');
 const inside = (p, root) => { const r = path.relative(root, path.resolve(p)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
 /* a name as a reader reads it: any case, no accents, and every run of anything but a letter or a digit one
-   space ("docs/Brañoville_Trip2.md" reads "docs branoville trip2 md") */
-const fold = s => String(s).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+   space ("docs/Brañoville_Trip2.md" reads "docs branoville trip2 md"); a letter Unicode does not take apart reads
+   as its plain letters ("Ølstad" reads "olstad", "Großweil" reads "grossweil") */
+const BARE = { ß: 'ss', æ: 'ae', œ: 'oe', ø: 'o', ł: 'l', đ: 'd', ð: 'd', ħ: 'h', ı: 'i', þ: 'th' };
+const fold = s => String(s).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[ßæœøłđðħıþ]/g, c => BARE[c]).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const glue = s => fold(s).replace(/ /g, '');
+/* a file's text, or null for a picture. Text that starts with a UTF-16 mark (what Windows PowerShell 5.1's > writes)
+   is text, though every other byte of it is a 0; anything else with a 0 in its first 8000 bytes is a picture. UTF-16
+   written with no mark is still taken for a picture: a limit of this reading */
+const utf16 = b => b.length > 1 && ((b[0] === 0xff && b[1] === 0xfe) || (b[0] === 0xfe && b[1] === 0xff));
+const textOf = b => !utf16(b) ? (b.subarray(0, 8000).includes(0) ? null : b.toString('utf8'))
+  : b[0] === 0xff ? b.subarray(2).toString('utf16le') : Buffer.from(b.subarray(2, b.length - (b.length % 2))).swap16().toString('utf16le');
 /* a file's fingerprint: the first 8 hex digits of the sha256 of its path. Its place in git ls-files order is
    right only on the tree that was read (a pull request is read as its merge, where another file can come
    before it); the fingerprint is the same on any tree. FIND_HINT says how to turn it back into a name, from any
@@ -89,7 +101,9 @@ const isText = v => typeof v === 'string';
 const RULE_KEYS = {
   id: Number.isInteger, kind: isText, rule: isText, find: isTerms, pattern: isTerms, to: isText, ci: v => typeof v === 'boolean',
   path: v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(s => typeof s === 'string' && s.trim() !== ''),
-  files: v => { if (typeof v !== 'string' || v.trim() === '') return false; try { new RegExp(v); return true; } catch (e) { return false; } },
+  /* a regular expression, never a glob: "engine/*.js" read as one matches "engine" and a run of no slashes, so it
+     looks in the one file that happens to match and passes the rest; a folder's star is refused */
+  files: v => { if (typeof v !== 'string' || v.trim() === '' || /\/\*/.test(v)) return false; try { new RegExp(v); return true; } catch (e) { return false; } },
   with: isTerms, suffix: isTerms, note: isText,
 };
 const ruleName = (r, i) => r && Number.isInteger(r.id) ? 'rule #' + r.id : 'rule number ' + (i + 1) + ' in the list';
@@ -99,15 +113,47 @@ function ruleFault(r) {
   const unknown = keys.filter(k => !Object.prototype.hasOwnProperty.call(RULE_KEYS, k)).length;
   if (unknown) return 'has ' + unknown + ' key(s) this tool does not know, so they would be ignored (a name misspelt or in the wrong case; the keys are ' + Object.keys(RULE_KEYS).join(' ') + ')';
   const wrong = keys.filter(k => !RULE_KEYS[k](r[k]));
-  if (wrong.length) return 'has ' + wrong.join(', ') + ' holding the wrong kind of value (id is a whole number; kind, rule, to and note are text; find, pattern, with and suffix are lists of words; ci is true or false; path is an object of new names; files is a regular expression)';
+  if (wrong.length) return 'has ' + wrong.join(', ') + ' holding the wrong kind of value (id is a whole number; kind, rule, to and note are text; find, pattern, with and suffix are lists of words; ci is true or false; path is an object of new names; files is a regular expression, not a glob, so never /*)';
   return '';
+}
+
+/* THE LIST a map holds: its ```json block, or the whole file when it is JSON (the check's secret). The list is the
+   map's ONLY fenced block: beside another (an example above it, or the list itself in ~~~json), the first ```json
+   block would be read in the list's place, so null is returned and the map is refused */
+function listText(src) {
+  const s = String(src), m = s.match(/```json\s*\n([\s\S]*?)```/);
+  if (m && (s.match(/```|~~~/g) || []).length > 2) return null;
+  return m ? m[1] : s;
+}
+/* the place in the list of the first rule that writes a key twice in one object, or -1. JSON keeps the last and
+   drops the first without a word ("ci":true, ... "ci":false reads false). Read only from text that has parsed. */
+function dupKeyAt(json) {
+  const s = String(json), open = [];
+  let at = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') {
+      let j = i + 1; while (j < s.length && s[j] !== '"') j += s[j] === '\\' ? 2 : 1;
+      let k = j + 1; while (/\s/.test(s[k] || '')) k++;
+      const keys = open[open.length - 1];
+      if (keys && s[k] === ':') { const key = JSON.parse(s.slice(i, j + 1)); if (keys.has(key)) return at; keys.add(key); }
+      i = j;
+    } else if (c === '{') open.push(new Set());
+    else if (c === '[') open.push(null);
+    else if (c === '}' || c === ']') open.pop();
+    else if (c === ',' && open.length === 1) at++;
+  }
+  return -1;
 }
 
 function readMap(file) {
   const src = fs.readFileSync(file, 'utf8');
-  const m = src.match(/```json\s*\n([\s\S]*?)```/);
-  const rules = JSON.parse(m ? m[1] : src);
+  const list = listText(src);
+  if (list === null) throw new Error('the map holds a fenced block beside its ```json list (an example, or a second list), and only the first ```json block would be read: keep the list as its only block');
+  const rules = JSON.parse(list);
   if (!Array.isArray(rules) || !rules.length) throw new Error('the map holds no rules');
+  const twice = dupKeyAt(list);
+  if (twice >= 0) throw new Error(ruleName(rules[twice], twice) + ' has a key written twice, and only the last would be read');
   rules.forEach((r, i) => {
     const fault = ruleFault(r);
     if (fault) throw new Error(ruleName(r, i) + ' ' + fault);
@@ -135,6 +181,9 @@ const replaceRe = (r, f, flags) => {
 const patternRe = (r, p, flags) => new RegExp(p, flags + (r.ci ? 'i' : ''));
 const dropRes = r => (r.find || []).map(f => new RegExp(words(f), 'i')).concat((r.pattern || []).map(p => new RegExp(p, 'i')));
 
+/* an error this tool wrote, which names rules by number and quotes nothing: the check may print it as it is */
+const plainError = m => Object.assign(new Error(m), { plain: true });
+
 /* compile once: longest spelling first, so "for-x" is replaced before "x" */
 function compile(rules) {
   const reps = [], drops = [];
@@ -151,8 +200,14 @@ function compile(rules) {
   });
   /* a note that holds its own drop term would be dropped again forever: refuse the map instead */
   rules.filter(r => r.note && r.rule === 'drop').forEach(r => drops.forEach(d => {
-    if (d.re.test(r.note)) throw new Error('rule #' + r.id + '\'s note holds a term rule #' + d.r.id + ' drops');
+    if (d.re.test(r.note)) throw plainError('rule #' + r.id + '\'s note holds a term rule #' + d.r.id + ' drops');
   }));
+  /* a rule's kind is printed on every line about its rule, by the check and by the copy: a kind that holds a detail
+     of the list, read the way a name is read, would print it, so the map is refused instead */
+  const sees = seenIn(rules, checksOf(rules));
+  rules.forEach((r, i) => {
+    if (typeof r.kind === 'string' && sees(r.kind)) throw plainError(ruleName(r, i) + '\'s kind holds a private detail of the list, as a reader reads it, and a kind is printed on every line about its rule');
+  });
   reps.sort((a, b) => b.f.length - a.f.length);
   return { reps, drops };
 }
@@ -389,9 +444,8 @@ function renamePath(rel, rules) {
   return out;
 }
 
-/* the read-back: every replace and drop term and pattern, anywhere in the copy (code strings included)
-   and in every file name — reported as rule id + kind + file:line, never the term */
-function survivors(files, rules) {
+/* every replace and drop term and pattern, and every folder name the map renames, as the check the read-back runs */
+function checksOf(rules) {
   const checks = [];
   rules.forEach(r => {
     if (r.rule === 'replace') {
@@ -401,29 +455,35 @@ function survivors(files, rules) {
     if (r.rule === 'drop') dropRes(r).forEach(re => checks.push({ r, re, with: withRe(r), files: filesRe(r) }));
     if (r.path) Object.keys(r.path).forEach(k => checks.push({ r, re: new RegExp('(?<![A-Za-z0-9_])' + esc(k) + '(?![A-Za-z0-9_])', r.ci ? 'i' : '') }));
   });
-  /* whether a name may be printed is decided the way a reader reads it, not by a rule's own match: every
-     replace and drop word and every folder name the map renames, folded and with every space and apostrophe
-     taken out, anywhere in the name read the same way (so a digit or another word glued on still holds it, and
-     so does a term of two words, or with an apostrophe, written as one), and every check again in any case (a
-     pattern too) */
-  const glue = s => fold(s).replace(/ /g, '');
+  return checks;
+}
+
+/* whether a name (or a rule's kind, which is printed too) holds a private detail the way a reader reads it, not
+   only by a rule's own match: every replace and drop word and every folder name the map renames, folded and with
+   every space and apostrophe taken out, anywhere in the name read the same way (so a digit or another word glued on
+   still holds it, and so does a term of two words, or with an apostrophe, written as one), and so does anything
+   else given (what the checks found in the text: a pattern's match, glued); and every check again in any case (a
+   pattern too) in each folder and file name, read with - _ . as spaces and with a word broken where a capital or a
+   digit starts ("OakHollow2" reads "Oak Hollow 2") */
+function seenIn(rules, checks) {
   const plain = rules.filter(r => r.rule === 'replace' || r.rule === 'drop').flatMap(r => Array.isArray(r.find) ? r.find : [])
     .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(glue).filter(Boolean);
   const anyCase = checks.map(c => new RegExp(c.re.source, c.re.flags.replace(/[gi]/g, '') + 'i'));
-  const P = [];
-  files.forEach(({ file, text, n, from }, i) => {
-    /* a file name: each folder and file name read with - _ . as spaces; a rule's "files" scope does not
-       apply here, because a name is published whatever the rule was written for. Only a rule's own match
-       is a red, as before. But a name that holds ANY rule's detail, as a reader would read it, is never
-       printed, not even in part and not on the lines about its text: every line about that file names it
-       by its place in git ls-files order (n, or its place in the list given) and the fingerprint of its
-       path (from: the original a copied file was made from), which FIND_HINT turns back into its name */
-    const segs = file.split('/'), flat = glue(file);
-    const named = checks.filter(c => segs.some(seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '))));
-    const hide = named.length > 0 || plain.some(t => flat.includes(t)) || anyCase.some(re => segs.some(seg => re.test(seg) || re.test(seg.replace(/[-_.]+/g, ' '))));
-    const where = hide ? 'file ' + (n || i + 1) + ' in git ls-files order, fingerprint ' + fingerprint(from || file) + ' (its name holds a private detail, so it is not printed)' : null;
-    named.forEach(c => P.push('rule #' + c.r.id + ' (' + c.r.kind + '): a file name carries it: ' + where));
-    if (text == null) return;
+  const views = seg => { const sp = seg.replace(/[-_.]+/g, ' '); return [seg, sp, sp.replace(/\p{Ll}(?=\p{Lu})|\p{L}(?=\p{N})|\p{N}(?=\p{L})/gu, '$& ')]; };
+  return (name, found = []) => {
+    const flat = glue(name), segs = String(name).split('/');
+    return plain.some(t => flat.includes(t)) || found.some(t => flat.includes(t)) || anyCase.some(re => segs.some(seg => views(seg).some(v => re.test(v))));
+  };
+}
+
+/* the read-back: every replace and drop term and pattern, anywhere in the copy (code strings included)
+   and in every file name — reported as rule id + kind + file:line, never the term */
+function survivors(files, rules) {
+  const checks = checksOf(rules);
+  /* first every match in every file's text, so what a pattern found anywhere is known before any name is printed */
+  const found = files.map(({ file, text }) => {
+    const H = [];
+    if (text == null) return H;
     checks.forEach(c => {
       if (c.files && !c.files.test(file)) return;
       const g = new RegExp(c.re.source, c.re.flags.replace('g', '') + 'g');
@@ -431,32 +491,58 @@ function survivors(files, rules) {
       while ((m = g.exec(text))) {
         if (m[0] === '') { g.lastIndex++; continue; }
         if (c.with) { const [x, y] = sentenceSpan(text, m.index); if (!c.with.test(text.slice(x, y))) continue; }
-        const line = text.slice(0, m.index).split('\n').length;
-        P.push('rule #' + c.r.id + ' (' + c.r.kind + ') survives at ' + (where ? 'line ' + line + ' of ' + where : file + ':' + line)
-          + (kindOf(file) === 'prose' ? '' : ' (' + (kindOf(file) === 'data' ? 'a data file, never rewritten' : 'in code: a string or code is never rewritten') + '; decide it)'));
+        H.push({ c, m: m[0], line: text.slice(0, m.index).split('\n').length });
       }
     });
+    return H;
+  });
+  const sees = seenIn(rules, checks), matched = [...new Set(found.flat().map(h => glue(h.m)).filter(Boolean))];
+  const P = [];
+  files.forEach(({ file, n, from }, i) => {
+    /* a file name: each folder and file name read with - _ . as spaces; a rule's "files" scope does not
+       apply here, because a name is published whatever the rule was written for. Only a rule's own match
+       is a red, as before. But a name that holds ANY rule's detail as a reader would read it (seenIn), or
+       anything a check found in any file's text, is never printed, not even in part and not on the lines
+       about its text: every line about that file names it by its place in git ls-files order (n, or its
+       place in the list given) and the fingerprint of its path (from: the original a copied file was made
+       from), which FIND_HINT turns back into its name */
+    const segs = file.split('/');
+    const named = checks.filter(c => segs.some(seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '))));
+    const where = named.length > 0 || sees(file, matched) ? 'file ' + (n || i + 1) + ' in git ls-files order, fingerprint ' + fingerprint(from || file) + ' (its name holds a private detail, so it is not printed)' : null;
+    named.forEach(c => P.push('rule #' + c.r.id + ' (' + c.r.kind + '): a file name carries it: ' + where));
+    found[i].forEach(({ c, line }) => P.push('rule #' + c.r.id + ' (' + c.r.kind + ') survives at ' + (where ? 'line ' + line + ' of ' + where : file + ':' + line)
+      + (kindOf(file) === 'prose' ? '' : ' (' + (kindOf(file) === 'data' ? 'a data file, never rewritten' : 'in code: a string or code is never rewritten') + '; decide it)')));
   });
   return P;
 }
 
-function run(mapFile, outDir, manifestFile) {
+/* a rule limited by "files" looks only in the text of the paths that limit matches: one that matches none of the
+   files whose text was read (written wrong, or matching only pictures) cleans nothing and looks for its words
+   nowhere. The check and the copy refuse it by this one reading, each in its own words; '' when no rule does */
+function scopeFault(rules, files, where, so) {
+  const texts = files.filter(f => f.text != null);
+  const i = rules.findIndex(r => r.rule !== 'keep' && r.files !== undefined && !texts.some(f => new RegExp(r.files).test(f.file)));
+  return i < 0 ? '' : ruleName(rules[i], i) + ' is limited by "files" to paths that match none of the ' + texts.length + ' ' + where + ', so ' + so;
+}
+
+/* root: the repository the copy is made from; only the self-test names another one, a repository it makes itself */
+function run(mapFile, outDir, manifestFile, root = ROOT) {
   if (!mapFile || !outDir) throw new Error('usage: --map <file outside the repo> --out <folder outside the repo> [--manifest <file>]');
-  if (inside(mapFile, ROOT)) throw new Error('the map is inside the repository: it must never be, not even untracked');
-  if (inside(outDir, ROOT)) throw new Error('the output folder is inside the repository: put it outside');
+  if (inside(mapFile, root)) throw new Error('the map is inside the repository: it must never be, not even untracked');
+  if (inside(outDir, root)) throw new Error('the output folder is inside the repository: put it outside');
   /* the folder is emptied below, so only a new one, an empty one, or an earlier copy may be named */
-  if (inside(ROOT, outDir)) throw new Error('the output folder holds this repository: emptying it would delete the originals');
+  if (inside(root, outDir)) throw new Error('the output folder holds this repository: emptying it would delete the originals');
   if (fs.existsSync(outDir)) {
     const st = fs.statSync(outDir);
     const earlier = st.isDirectory() && fs.existsSync(path.join(outDir, 'engine', 'engine.js')) && fs.existsSync(path.join(outDir, 'scripts', 'clean-copy.js'));
     if (!st.isDirectory() || (fs.readdirSync(outDir).length && !earlier)) throw new Error('the output folder is not empty and is not an earlier clean copy, so it is not emptied: name a new folder');
   }
   const rules = readMap(mapFile);
-  const allow = readManifest(manifestFile || path.join(ROOT, 'scripts', 'public-manifest.txt'));
+  const allow = readManifest(manifestFile || path.join(root, 'scripts', 'public-manifest.txt'));
   const C = compile(rules);
   const counts = {};
   const tally = (r, what) => { const k = '#' + r.id + ' ' + r.kind + ' ' + what; counts[k] = (counts[k] || 0) + 1; };
-  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
   const overlay = tracked.filter(f => f.startsWith(OVERLAY + '/'));
   const list = tracked.filter(f => !f.startsWith(OVERLAY + '/') && allow.some(re => re.test(f)));
   const unused = allow.filter(re => !tracked.some(f => re.test(f))).map(re => re.source);
@@ -464,20 +550,23 @@ function run(mapFile, outDir, manifestFile) {
   const written = new Map();
   let binaries = 0, changed = 0;
   const put = (rel, dest) => {
-    let buf; try { buf = fs.readFileSync(path.join(ROOT, rel)); } catch (e) { return; }
+    let buf; try { buf = fs.readFileSync(path.join(root, rel)); } catch (e) { return; }
     fs.mkdirSync(path.dirname(path.join(outDir, dest)), { recursive: true });
-    if (buf.subarray(0, 8000).includes(0)) { fs.writeFileSync(path.join(outDir, dest), buf); binaries++; written.set(dest, { from: rel, text: null }); return; }
-    const src = buf.toString('utf8');
+    /* a picture, and text in UTF-16, are copied byte for byte and never rewritten; what the UTF-16 says is still read back */
+    const src = textOf(buf);
+    if (src === null || utf16(buf)) { fs.writeFileSync(path.join(outDir, dest), buf); if (src === null) binaries++; written.set(dest, { from: rel, text: src }); return; }
     const out = cleanText(src, dest, C, tally);
     if (out !== src || dest !== rel) changed++;
     fs.writeFileSync(path.join(outDir, dest), out);
-    try { fs.chmodSync(path.join(outDir, dest), fs.statSync(path.join(ROOT, rel)).mode); } catch (e) {}
+    try { fs.chmodSync(path.join(outDir, dest), fs.statSync(path.join(root, rel)).mode); } catch (e) {}
     written.set(dest, { from: rel, text: out });
   };
   list.forEach(rel => put(rel, renamePath(rel, rules)));
   overlay.forEach(rel => put(rel, rel.slice(OVERLAY.length + 1)));
   const at = new Map(tracked.map((f, i) => [f, i + 1]));   /* a masked name is reported by its original's place */
   const files = [...written].map(([file, w]) => ({ file, text: w.text, n: at.get(w.from), from: w.from }));
+  const scope = scopeFault(rules, files, 'text files in the copy', 'it cleaned nothing and its words were looked for nowhere');
+  if (scope) throw new Error(scope);
   return { rules, counts, tracked: tracked.length, copied: list.length, overlay: overlay.length, changed, binaries, unused,
     pairs: [...written].map(([file, w]) => ({ file, from: w.from })), left: survivors(files, rules) };
 }
@@ -680,6 +769,41 @@ function selftest() {
   mark(/not emptied/.test(e4) && kept, 'a folder that is not an earlier copy is refused, and nothing in it is deleted', e4 + (kept ? '' : ' (and the file was deleted)'));
   let e5 = ''; try { run('/nonexistent/map.json', path.dirname(ROOT)); } catch (e) { e5 = e.message; }
   mark(/holds this repository/.test(e5), 'a folder that holds the repository is refused', e5);
+  /* a name a PATTERN finds, its two words glued or with a digit after its \b: the pattern misses the
+     name, a reader does not. Nor does a reader miss it in lower case, glued, where another file's text holds it */
+  const zib = 'Zib' + ' Marrow', zex = 'Zo' + 'rblex';
+  const RP = [{ id: 5, kind: 'place', rule: 'replace', pattern: ['\\bZib[\\s-]+Marrow\\b'], to: '[city]', ci: true }, { id: 3, kind: 'partner', rule: 'replace', pattern: ['\\bZorbl[ae]x\\b'], to: '[partner]', ci: true },
+    { id: 6, kind: 'place', rule: 'replace', find: [T.town], to: '[city]' }];
+  const lpat = survivors([{ file: 'docs/' + glued(zib) + '-trip.md', text: 'x\n\nWe sailed to ' + zib + ' in May.' }, { file: 'docs/letters/' + zex.toLowerCase() + '2.md', text: 'Dear ' + zex + ',' },
+    { file: 'docs/' + glued(zib).toLowerCase() + '.md', text: 'In ' + T.town + '.' }, { file: 'docs/b.md', text: 'Dear ' + zex + ',' }], RP);
+  mark(lpat.length === 4 && lpat.slice(0, 3).every((l, k) => l.indexOf('line ' + [3, 1, 1][k] + ' of file ' + (k + 1) + ' in git ls-files order') > 0 && [glued(zib), zex].every(t => l.toLowerCase().indexOf(t.toLowerCase()) < 0)) && lpat[3] === 'rule #3 (partner) survives at docs/b.md:1',
+    'a name holding what a pattern finds, glued, in any case or with a digit after it, is not printed; a clean name with the match only in its text still is', JSON.stringify(lpat));
+  /* letters Unicode does not take apart (ø ł đ ß æ œ ı ħ þ): a name spelt with their plain letters reads the same */
+  const bareNames = [['Ør' + 'blund', 'docs/orblund-summer.md'], ['Stra' + 'ßberg', 'docs/strassberg.md'], ['Æ' + 'lmsby', 'docs/Aelmsby.md'], ['Łu' + 'kowo', 'docs/lukowo-2.md'], ['Þ' + 'orvik', 'docs/thorvik.md']];
+  const lbare = survivors(bareNames.map(([t, file]) => ({ file, text: 'Two weeks at ' + t + '.' })), bareNames.map(([t], k) => ({ id: 20 + k, kind: 'place', rule: 'replace', find: [t], to: '[city]', ci: true })));
+  mark(lbare.length === 5 && lbare.every((l, k) => l.indexOf('line 1 of file ' + (k + 1) + ' in git ls-files order') > 0 && !/orblund|strassberg|aelmsby|lukowo|thorvik/i.test(l)),
+    'a name spelt with the plain letters of ø ß æ ł þ and the rest is not printed', JSON.stringify(lbare));
+  /* a "files" limit that matches none of the copy's text files cleans nothing and is read back nowhere, so the copy
+     printed OK over a detail it never looked for; the check refused the same list */
+  const scopeRun = files => {
+    const o = fs.mkdtempSync(path.join(require('os').tmpdir(), 'clean-copy-scope-'));
+    fs.writeFileSync(path.join(o, 'map.json'), JSON.stringify([{ id: 7, kind: 'health', rule: 'drop', find: [T.sick], note: 'A health detail was raised.', files }]));
+    fs.writeFileSync(path.join(o, 'allowed.txt'), '^scripts/clean-copy\\.js$\n');
+    try { run(path.join(o, 'map.json'), path.join(o, 'copy'), path.join(o, 'allowed.txt')); return ''; } catch (e) { return e.message; } finally { fs.rmSync(o, { recursive: true, force: true }); }
+  };
+  const s0 = scopeRun('^nowhere/'), s1 = scopeRun('^scripts/');
+  mark(/^rule #7 is limited by "files" to paths that match none of the \d+ text files in the copy, so it cleaned nothing/.test(s0) && s1 === '',
+    'a "files" limit that matches none of the copy\'s text files is a red in the copy too; one that matches still copies', JSON.stringify([s0 || 'it did not fail', s1]));
+  /* Node's own JSON and regular-expression errors quote what they could not read, which here is the map */
+  const cli = text => {
+    const o = fs.mkdtempSync(path.join(require('os').tmpdir(), 'clean-copy-cli-'));
+    fs.writeFileSync(path.join(o, 'map.json'), text); fs.writeFileSync(path.join(o, 'allowed.txt'), '^scripts/clean-copy\\.js$\n');
+    try { execFileSync(process.execPath, [__filename, '--map', path.join(o, 'map.json'), '--out', path.join(o, 'copy'), '--manifest', path.join(o, 'allowed.txt')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); return 'it did not fail'; }
+    catch (e) { return String(e.stdout || '') + String(e.stderr || ''); } finally { fs.rmSync(o, { recursive: true, force: true }); }
+  };
+  const quoted = [cli('[{"id":3,"kind":"partner","rule":"replace","find":["' + T.who + '",],"to":"[partner]"}]'), cli('[{"id":3,"kind":"partner","rule":"replace","pattern":["(' + T.who + '|' + T.who.slice(0, 4) + 'i"],"to":"[partner]"}]')];
+  mark(quoted.every(o => /^FAIL\n- the map or the allowed list holds JSON or a regular expression that does not parse/.test(o) && o.indexOf(T.who) < 0),
+    'the copy\'s command line never passes on Node\'s own JSON or regular-expression error, which quotes the map', JSON.stringify(quoted.map(o => o.replace(new RegExp(T.who, 'g'), '<the made-up name>'))));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only, no map read.');
   process.exit(0);
@@ -690,7 +814,8 @@ if (require.main === module) {
   const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
   let res;
   try { res = run(arg('--map'), arg('--out'), arg('--manifest')); }
-  catch (e) { console.log('FAIL\n- ' + e.message); process.exit(1); }
+  /* Node's own JSON and regular-expression errors quote what they could not read, which here is the map */
+  catch (e) { console.log('FAIL\n- ' + (e instanceof SyntaxError ? 'the map or the allowed list holds JSON or a regular expression that does not parse (Node\'s own message quotes it, so it is not printed)' : e.message)); process.exit(1); }
   console.log('Copied ' + res.copied + ' of ' + res.tracked + ' tracked files' + (res.overlay ? ', plus ' + res.overlay + ' written for the public copy' : '')
     + ' (' + res.binaries + ' binary, copied as they are; images are not read); ' + res.changed + ' changed.');
   Object.keys(res.counts).sort().forEach(k => console.log('  ' + k + ': ' + res.counts[k]));
@@ -717,4 +842,4 @@ if (require.main === module) {
   process.exit(0);
 }
 
-module.exports = { readMap, readManifest, ruleFault, ruleName, compile, cleanText, renamePath, survivors, fingerprint, FIND_HINT, sentenceSpan, jsPieces, kindOf, run, checkCode };
+module.exports = { readMap, readManifest, listText, dupKeyAt, textOf, scopeFault, ruleFault, ruleName, compile, cleanText, renamePath, survivors, fingerprint, FIND_HINT, sentenceSpan, jsPieces, kindOf, run, checkCode };

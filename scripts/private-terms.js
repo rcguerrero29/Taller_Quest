@@ -19,8 +19,12 @@
    look for, and a single rule that is not exactly keep, replace or drop, or has no word or pattern of its
    own, FAIL too: a check that read nothing must not look like a pass. So does a rule with a key the tool does
    not know or in the wrong case ("CI" for "ci"), or a known key holding the wrong kind of value, which would be
-   ignored or read another way; and a rule whose "files" limit matches none of the files whose text was read,
-   which would look for its words nowhere. The OK line counts only the rules that look for something.
+   ignored or read another way, or a key written twice, of which only the last would be read; a rule whose "files"
+   limit matches none of the files whose text was read, which would look for its words nowhere, or holds a glob's
+   /*, which matches by chance; a kind that holds a detail of the list, which every line about its rule prints; and
+   a map holding a fenced block beside its list, whose first ```json block would be read in the list's place. Every
+   entry git lists is read, a link by the text git stores for it and UTF-16 text as text. The OK line counts only
+   the rules that look for something.
 
    Run:  PRIVATE_TERMS="$(cat map.json)" node scripts/private-terms.js
          node scripts/private-terms.js --map <file outside the repository>
@@ -36,13 +40,16 @@ const tool = () => { if (!CC) throw new Error('scripts/clean-copy.js is missing,
 
 /* read the rules without ever echoing them: every failure becomes one fixed sentence */
 function rulesFrom(text) {
-  let rules;
-  try {
-    const m = String(text).match(/```json\s*\n([\s\S]*?)```/);
-    rules = JSON.parse(m ? m[1] : text);
-  } catch (e) { throw new Error('the private list could not be read (it is not valid JSON); nothing was checked'); }
-  if (!Array.isArray(rules)) throw new Error('the private list holds no rule to check; nothing was checked');
   const cc = tool();
+  /* the list is the map's only fenced block (cc.listText): beside an example above it, the first ```json block
+     would be read in its place */
+  const list = cc.listText(text);
+  if (list === null) throw new Error('the private list holds a fenced block beside its ```json list (an example, or a second list), and only the first ```json block would be read; nothing was checked');
+  let rules;
+  try { rules = JSON.parse(list); } catch (e) { throw new Error('the private list could not be read (it is not valid JSON); nothing was checked'); }
+  if (!Array.isArray(rules)) throw new Error('the private list holds no rule to check; nothing was checked');
+  const twice = cc.dupKeyAt(list);
+  if (twice >= 0) throw new Error(cc.ruleName(rules[twice], twice) + ' has a key written twice, and only the last would be read; nothing was checked');
   /* every rule is read, not only counted: one written slightly wrong ("Replace", "CI" for "ci", or a word list
      left empty) would check less than it says while the rest of the list passed. Its keys and their kinds are
      read by the copy's own ruleFault. A rule is named by its number, never by its words. */
@@ -57,18 +64,24 @@ function rulesFrom(text) {
   if (!rules.some(r => r.rule === 'replace' || r.rule === 'drop')) throw new Error('the private list holds no rule to check; nothing was checked');
   let C;
   try { C = cc.compile(rules); }
-  catch (e) { throw new Error('the private list has a rule that cannot be compiled (a pattern or a note is malformed); nothing was checked'); }
+  /* the copy's own refusals (a kind or a note holding a term) name rules by number and quote nothing; Node's do */
+  catch (e) { throw new Error(e.plain ? e.message + '; nothing was checked' : 'the private list has a rule that cannot be compiled (a pattern or a note is malformed); nothing was checked'); }
   if (!C.reps.length && !C.drops.length) throw new Error('the private list has rules, but not one word or pattern to look for; nothing was checked');
   return rules;
 }
 
 function trackedFiles(root) {
+  const cc = tool();
   const list = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
+  /* every entry git lists is read by its name; a link by the text git stores for it, never by what it points at
+     (on any machine but the owner's that can be nothing); one that cannot be opened (a submodule's folder) keeps
+     its name and has no text. Text marked as UTF-16 is text (cc.textOf). n: its place in git ls-files order, the
+     only way a report names a file whose name holds a term */
   return list.map((file, i) => {
-    let buf; try { buf = fs.readFileSync(path.join(root, file)); } catch (e) { return null; }
-    /* n: its place in git ls-files order, the only way a report names a file whose name holds a term */
-    return { file, n: i + 1, text: buf.subarray(0, 8000).includes(0) ? null : buf.toString('utf8') };
-  }).filter(Boolean);
+    const p = path.join(root, file);
+    let buf; try { buf = fs.lstatSync(p).isSymbolicLink() ? fs.readlinkSync(p, { encoding: 'buffer' }) : fs.readFileSync(p); } catch (e) { return { file, n: i + 1, text: null }; }
+    return { file, n: i + 1, text: cc.textOf(buf) };
+  });
 }
 
 function check(text, files) {
@@ -76,13 +89,9 @@ function check(text, files) {
   if (!files.length) throw new Error('not one file was read (git listed none, or none could be opened); nothing was checked');
   const cc = tool();
   /* a rule limited by "files" looks for its words only in the text of the paths that limit matches: one that
-     matches none of them (a glob written where a regular expression belongs, "docs/*.md") looks nowhere */
-  const read = files.filter(f => f.text != null);
-  rules.forEach((r, i) => {
-    if (r.rule === 'keep' || r.files === undefined) return;
-    const re = new RegExp(r.files);
-    if (!read.some(f => re.test(f.file))) throw new Error(cc.ruleName(r, i) + ' is limited by "files" to paths that match none of the ' + read.length + ' files whose text was read, so its words were looked for nowhere; nothing was checked');
-  });
+     matches none of them looks nowhere. The copy refuses it by the same reading (cc.scopeFault) */
+  const scope = cc.scopeFault(rules, files, 'files whose text was read', 'its words were looked for nowhere');
+  if (scope) throw new Error(scope + '; nothing was checked');
   let hits;
   try { hits = cc.survivors(files, rules); }
   catch (e) { throw new Error('the private list could not be applied (a rule is malformed); nothing was checked'); }
@@ -148,6 +157,68 @@ function selftest() {
   const scoped = check(JSON.stringify([good, { id: 6, kind: 'place', rule: 'replace', find: [T.town], to: '[city]', files: '^docs/.*\\.md$' }]), [{ file: 'docs/moving-day.md', text: 'in ' + T.town }]).hits;
   mark(nowhere.every(m => /^rule #6 /.test(m) && /nothing was checked/.test(m) && m.indexOf(T.town) < 0) && scoped.length === 1 && /^rule #6 /.test(scoped[0]),
     'a "files" limit that matches none of the files read is a red naming its rule; one that matches still checks', JSON.stringify(nowhere.map(m => m || 'it did not fail').concat(scoped)));
+  /* a map document with an example in a fenced block above its list: only the first ```json block was read, so
+     the check and the copy read the example and never the list (and a list in ~~~json was never read at all) */
+  const os = require('os'), lo = T.who.toLowerCase(), sick = 'glim' + 'pox';
+  const example = '```json\n[{"id": 0, "kind": "example", "rule": "replace", "find": ["Firstname Lastname"], "to": "[a person]"}]\n```\n';
+  const v11 = ['# The private map, v11\n\nA new rule looks like this (copy it into the list below):\n\n' + example + '\n## The list\n\n```json\n' + map + '\n```\n',
+    '# The private map\n\n' + example + '\n## The list\n\n~~~json\n' + map + '\n~~~\n'];
+  const asMap = (text, fn) => { const f = path.join(os.tmpdir(), 'private-terms-map-' + process.pid + '.md'); try { fs.writeFileSync(f, text); fn(f); return ''; } catch (e) { return e.message; } finally { fs.rmSync(f, { force: true }); } };
+  const dinner = [{ file: 'docs/dinner.md', text: '# Notes\n\nDinner with ' + T.who + ' on Friday.\n' }];
+  const twice = v11.map(t => asMap(t, () => check(t, dinner))), twiceCopy = v11.map(t => asMap(t, f => tool().readMap(f)));
+  mark(twice.every(m => /fenced block/.test(m) && /nothing was checked/.test(m)) && twiceCopy.every(m => /fenced block/.test(m)) && twice.concat(twiceCopy).every(m => m.indexOf(T.who) < 0),
+    'a map holding a fenced block beside its list (an example above it) is a red, in the check and in the copy: only the first ```json block would be read', JSON.stringify(twice.concat(twiceCopy).map(m => m || 'it did not fail')));
+  /* a repository made here, its git settings kept out (a hook's GIT_DIR would point git at another one) */
+  const noGit = fn => { const saved = {}; Object.keys(process.env).filter(k => /^GIT_/.test(k)).forEach(k => { saved[k] = process.env[k]; delete process.env[k]; }); try { return fn(); } finally { Object.assign(process.env, saved); } };
+  const lab = files => noGit(() => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'private-terms-lab-'));
+    Object.entries(files).forEach(([f, v]) => { const p = path.join(dir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); if (typeof v === 'object' && !Buffer.isBuffer(v)) fs.symlinkSync(v.link, p); else fs.writeFileSync(p, v); });
+    execFileSync('git', ['init', '-q'], { cwd: dir, stdio: 'ignore' }); execFileSync('git', ['add', '-A'], { cwd: dir, stdio: 'ignore' });
+    return dir;
+  });
+  /* a tracked entry the check could not open was dropped, name and all: a link to a file on the owner's own disk
+     points nowhere on any other machine, and its name and the text git stores for it went unread */
+  let linked = { hits: [] };
+  const LK = lab({ 'a.md': 'clean words', ['docs/' + lo + '-recipes.md']: { link: '/nowhere/house/recipes.md' }, 'docs/notes.md': { link: '/nowhere/' + T.who + '/notes.md' } });
+  try { linked = check(map, noGit(() => trackedFiles(LK))); } catch (e) { linked.err = e.message; } finally { fs.rmSync(LK, { recursive: true, force: true }); }
+  mark(linked.files === 3 && linked.hits.length === 2 && /^rule #3 \(partner\): a file name carries it: file 3 in git ls-files order, fingerprint [0-9a-f]{8} /.test(linked.hits[1]) && linked.hits[0] === 'rule #3 (partner) survives at docs/notes.md:1' && linked.hits.every(h => h.toLowerCase().indexOf(lo) < 0),
+    'a link git tracks is read by its name and by the text git stores for it, even where it points nowhere', JSON.stringify(linked));
+  /* UTF-16 text (what Windows PowerShell 5.1's > writes) has a 0 in every other byte and was taken for a picture */
+  const say = 'Standup notes\r\n' + T.who + ' starts at the clinic on Monday, so I am out Tuesday.\r\n';
+  const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(say, 'utf16le')]), be = Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(say, 'utf16le').swap16()]);
+  const UT = lab({ 'docs/standup.txt': le, 'docs/standup-be.txt': be }), box = fs.mkdtempSync(path.join(os.tmpdir(), 'private-terms-copy-'));
+  let wide = { hits: [] }, wideCopy = { left: [] }, same = false;
+  try {
+    wide = check(map, noGit(() => trackedFiles(UT)));
+    fs.writeFileSync(path.join(box, 'map.json'), map); fs.writeFileSync(path.join(box, 'allowed.txt'), '^docs/standup\n');
+    wideCopy = noGit(() => tool().run(path.join(box, 'map.json'), path.join(box, 'copy'), path.join(box, 'allowed.txt'), UT));
+    same = fs.readFileSync(path.join(box, 'copy', 'docs', 'standup.txt')).equals(le);
+  } catch (e) { wide.err = e.message; } finally { fs.rmSync(UT, { recursive: true, force: true }); fs.rmSync(box, { recursive: true, force: true }); }
+  const wideLines = ['rule #3 (partner) survives at docs/standup-be.txt:2 (a data file, never rewritten; decide it)', 'rule #3 (partner) survives at docs/standup.txt:2 (a data file, never rewritten; decide it)'];
+  mark(JSON.stringify(wide.hits) === JSON.stringify(wideLines) && JSON.stringify(wideCopy.left) === JSON.stringify(wideLines) && same,
+    'text that starts with a UTF-16 mark is read as text, by the check and by the copy\'s read-back, and copied byte for byte', JSON.stringify([wide.hits, wideCopy.left, wide.err, 'same bytes ' + same]));
+  /* a glob read as a regular expression matches by chance: "engine/*.js" matches engine/engine.js through "engine"
+     and a run of no slashes, and no other engine file, so the rule looked in one file and passed the rest */
+  const glob = { id: 12, kind: 'work', rule: 'drop', find: [T.town + ' Labs'], note: 'An employer was named.', files: 'engine/*.js' };
+  const globbed = fails([good, glob], [{ file: 'engine/engine.js', text: 'x' }, { file: 'engine/engine3d.js', text: 'x\n// the fog tuning came from a call with the ' + T.town + ' Labs rendering team' }]);
+  const globCopy = tool().ruleFault(glob);
+  mark(/^rule #12 has files holding the wrong kind of value .*not a glob/.test(globbed) && /nothing was checked/.test(globbed) && /^has files holding/.test(globCopy) && globbed.indexOf(T.town) < 0,
+    'a "files" limit holding a glob\'s folder star is a red naming its rule, in the check and in the copy, even where it matches a file by chance', JSON.stringify([globbed || 'it did not fail', globCopy || 'it did not fail']));
+  /* a key written twice in one rule: JSON keeps the last and drops the first without a word ("ci":true then
+     "ci":false reads false, and a name in lower case passes); a renamed folder written twice keeps only the last */
+  const dupe = ['[{"id":3,"kind":"partner","rule":"replace","find":["' + T.who + '"],"to":"[partner]","ci":true,"note":"nicknames too","ci":false}]',
+    '[' + map.slice(1, -1) + ',{"id":8,"kind":"home","rule":"replace","find":["' + lo + '-den"],"to":"[home]","path":{"' + lo + '-den":"den","' + lo + '-den":"den2"}}]'];
+  const dupes = dupe.map(t => { try { check(t, [{ file: 'docs/dinner.md', text: '# Notes\n\nDinner with ' + lo + ' on Friday.\n' }]); return ''; } catch (e) { return e.message; } });
+  const dupesCopy = dupe.map(t => asMap(t, f => tool().readMap(f)));
+  mark(/^rule #3 has a key written twice/.test(dupes[0]) && /^rule #8 has a key written twice/.test(dupes[1]) && dupes.every(m => /nothing was checked/.test(m)) && /^rule #3 has a key written twice/.test(dupesCopy[0]) && /^rule #8 /.test(dupesCopy[1]) && dupes.concat(dupesCopy).every(m => m.toLowerCase().indexOf(lo) < 0),
+    'a key written twice in one rule is a red naming the rule, in the check and in the copy: only the last would be read', JSON.stringify(dupes.concat(dupesCopy).map(m => m || 'it did not fail')));
+  /* a rule's kind is printed on every line about its rule, so a kind holding a word of the list prints it */
+  const kinds = [lo + '-health', lo + '_health', 'health' + lo].map(kind => ({ id: 40, kind, rule: 'drop', find: [sick], note: 'A health detail was raised.' }));
+  const kinded = kinds.map(k => fails([good, k], [{ file: 'docs/visiting-week.md', text: '# Visiting week\n\nShe has ' + sick + ', so no feather pillows.\n' }]));
+  const kindCopy = kinds.map(k => { try { tool().compile([good, k]); return ''; } catch (e) { return e.message; } });
+  mark(kinded.every(m => /^rule #40's kind holds a private detail/.test(m) && /nothing was checked/.test(m)) && kindCopy.every(m => /^rule #40's kind holds/.test(m)) && kinded.concat(kindCopy).every(m => m.toLowerCase().indexOf(lo) < 0)
+    && check(JSON.stringify([good, { id: 9, kind: 'schedule', rule: 'drop', find: [sick] }]), [{ file: 'a.md', text: 'clean words' }]).hits.length === 0,
+    'a kind that holds a word of the list, as a reader reads it, is a red naming its rule, in the check and in the copy; a kind holding none still checks', JSON.stringify(kinded.concat(kindCopy).map(m => m || 'it did not fail')));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);
