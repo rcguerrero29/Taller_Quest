@@ -37,9 +37,9 @@ and a tomato read as produce.
 ## The interview — twelve questions, asked of a person, not a file
 
 Ask them in the person's own words. Never ask about a mechanic; ask about a feeling or a
-memory. Their phrasing is the design material: write it down as they said it — except the
-owner's, which stays in the conversation (read back what the spec will say, and write what he
-confirms) — and turn anything that identifies a real person into a stand-in.
+memory. Their phrasing is the design material, and it stays in the conversation — theirs as
+much as the owner's: read back what the spec will say, write down only what they confirm, and
+turn anything that identifies a real person into a stand-in.
 
 **Whose room is it**
 1. Whose room is this, and does it become theirs or is it already theirs?
@@ -68,7 +68,7 @@ confirms) — and turn anything that identifies a real person into a stand-in.
 
 ## What this skill produces — `docs/rooms/<name>.md`
 
-1. **One sentence.** What the room is, in the person's own words (the owner's: as he confirmed it).
+1. **One sentence.** What the room is, as the person confirmed it when you read it back.
 2. **The doorway frame.** What the player sees on entry, described in one paragraph. This
    is the acceptance test, so write it before anything else.
 3. **The prop list**, 5–8 items, each with *why it is there* and *what it says about the
@@ -107,7 +107,8 @@ it as an unscored conversation and writes a plain sheet with a Copy button (also
 Settings → Export → *The room*). The person answers on their own phone; the owner copies
 the sheet and pastes it here. **Treat the sheet as the interview record** — do not
 re-ask what it already answers; ask only what it lists under *Not answered yet* and
-anything marked *wants to tell you this one out loud*. Reference: Meridian's
+anything marked *wants to tell you this one out loud*. The sheet stays in the conversation like the
+rest of their words; the spec still holds only what they confirm when you read it back. Reference: Meridian's
 `content/meridian/room.js` (Nacho asks feel, Don Güero asks build).
 
 ## First job — done (v1, 2026-09-02)

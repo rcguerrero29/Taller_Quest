@@ -55,7 +55,8 @@ must say so. **Add to that audit whenever a new kind of affordance appears.**
 
 **2 · Write the ask back, then log it.** Every request in the owner's message is written
 back to him first: the goal in a sentence or two, then each decision as a numbered rule.
-Once he confirms it, it gets a row in `docs/ASKS.md` before building starts, identifying no
+Every requirement stays exact (every number, every "not", every condition), and nothing is
+built until he confirms it. Once he confirms it, it gets a row in `docs/ASKS.md` before building starts, identifying no
 one (every personal detail a bracketed stand-in) and quoting nothing; his own words stay in
 the conversation. It only leaves the open table when it ships or
 the owner is told plainly why not. Paraphrase is how requirements die: *"the activity record
