@@ -89,7 +89,8 @@ they all read the registers before answering. **You still check them.**
 
 An agent is only as good as what it was told. A brief that works here has five parts:
 
-1. **The symptom in the owner's words**, verbatim. Not your summary of it.
+1. **The symptom as the owner confirmed it**, copied from its `docs/ASKS.md` row or his issue. Not
+   a summary he never saw.
 2. **What is already known to be true**, with file:line — so they do not re-derive it or contradict it.
 3. **What has already been tried and failed**, from the registers. The sugar skulls were "fixed"
    twice by changing a size and the owner came back twice; the third fix only worked because the
@@ -128,8 +129,9 @@ insubordination. Two rules follow, and they are cheap:
 - **Mark every line of your brief with where it came from.** `[CODE]` means the session opened the
   file this hour. `[MEMORY]` means the session believes it and did not check. **A brief with no
   `[MEMORY]` lines is a brief that has not been honest about itself.**
-- **Never write "settled" over anything but a quote.** If you cannot paste the owner's words and the
-  file they live in, it is your inference, and it must be labelled as one and put to him.
+- **Never write "settled" over anything but his word.** If you cannot point at it (a confirmed goal in
+  `docs/ASKS.md`, a row there from before 2026-10-16, or an issue he wrote) and the file it lives in, it is your
+  inference, and it must be labelled as one and put to him.
 
 ## Step 2½ — the MOCK: show what DONE looks like before you fix anything
 
@@ -348,7 +350,7 @@ MURAL PANEL
 id:     <agent>-<three-or-four-words-in-spanish-or-english>
 by:     "<agent>"          (lowercase; the wall files the panel in that painter's bay)
 title:  {en, es}
-said:   {en, es}   — the sentence. Yours. Short enough to sting
+said:   {en, es}   — the sentence. Yours, never the owner's (no panel quotes him). Short enough to sting
 state:  {en, es}   — where you are NOW, as a position held today, not a feeling
 who:    {en, es}   — you, in one clause, in the third person
 cap:    {en, es}   — what it cost to find. Two or three sentences, no file paths
@@ -455,7 +457,7 @@ A fix that leaves no trace teaches nobody. Route it:
 - outside-sourced research (`[WEB]`) → the full sweep to `docs/research/YYYY-MM-DD-<topic>.md`, tags
   and URLs intact, **and at least one rule to `docs/GENRE-RULES.md`** with its trap. A sweep that
   ends in a task output is a sweep nobody will ever read again
-- the owner's words → `docs/ASKS.md`, verbatim, **before** the work starts
+- the owner's goal, written back to him and confirmed → `docs/ASKS.md`, **before** the work starts
 - what the engine demands of a new world → `docs/GAUGE.md`
 
 ## Is this in the game?

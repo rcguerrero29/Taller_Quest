@@ -79,7 +79,8 @@ challenge inside it. The two are separable, and most people want both once asked
 
 ## After they answer
 
-- Write the answers into the project's standing-rules file, quoting them.
+- Write the answers into the project's standing-rules file, quoting them — except the owner's:
+  write each of his back to him and file it once he confirms it, quoting nothing of his.
 - Anything ambiguous: ask once more, do not guess.
 - Hand the tagged answers to whoever plans content (`/don-guero`) and story
   (`/nacho`) — the tags are the handoff.

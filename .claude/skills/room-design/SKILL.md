@@ -37,7 +37,9 @@ and a tomato read as produce.
 ## The interview — twelve questions, asked of a person, not a file
 
 Ask them in the person's own words. Never ask about a mechanic; ask about a feeling or a
-memory. Write down their phrasing verbatim — their words are the design material.
+memory. Their phrasing is the design material: write it down as they said it — except the
+owner's, which stays in the conversation (read back what the spec will say, and write what he
+confirms) — and turn anything that identifies a real person into a stand-in.
 
 **Whose room is it**
 1. Whose room is this, and does it become theirs or is it already theirs?
@@ -66,7 +68,7 @@ memory. Write down their phrasing verbatim — their words are the design materi
 
 ## What this skill produces — `docs/rooms/<name>.md`
 
-1. **One sentence.** What the room is, in the person's own words.
+1. **One sentence.** What the room is, in the person's own words (the owner's: as he confirmed it).
 2. **The doorway frame.** What the player sees on entry, described in one paragraph. This
    is the acceptance test, so write it before anything else.
 3. **The prop list**, 5–8 items, each with *why it is there* and *what it says about the

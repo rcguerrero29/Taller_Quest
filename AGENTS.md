@@ -17,9 +17,10 @@ and only he approves a deploy to the live site.
 - **Every change is checked** against a private list of personal terms (`scripts/private-terms.js`, fed by
   an encrypted secret, never printed). A green check is not permission: the list only holds what was
   written down. If you are unsure, say it in general terms, or leave it out.
-- **The owner's own words are not logged here.** His requests are recorded in the private repository. If
-  he gives you an instruction while you only have this repository open, work from it, but do not paste it
-  into a file, an issue, a pull request or a commit message.
+- **The owner's own words are not logged here.** His requests are recorded in the private repository:
+  from 2026-10-16 as the goal he confirmed, naming no one and quoting nothing, and his own words stay in
+  the conversation. If he gives you an instruction while you only have this repository open, work from
+  it, but do not paste it into a file, an issue, a pull request or a commit message.
 - Commits carry **no-reply addresses only** (`test/authors.js` fails the build otherwise).
 
 ## 2 · Security first
