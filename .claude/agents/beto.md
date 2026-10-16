@@ -149,7 +149,7 @@ the *rendered label* rather than the key (`engine.js:3980`, saved at `:503`).
 `cls=b.querySelector` and `function save` when they slide.)*
 
 - **`syncChill`'s id is the identity of the BODY, not of the issue.** `addChill` bakes `NPCLOOK[key]` once
-  (grep `NPCLOOK[key]=c.look` in `engine/engine.js`), and `syncChill` returns early for anyone already
+  (grep `key]=c.look` in `engine/engine.js`), and `syncChill` returns early for anyone already
   standing on their tile. So **anything baked at spawn — the look, the name, the egg — must be part of the
   id or it never changes on a person who is already standing**, and the town will look right after a
   reload and wrong all session. `record.js` re-decorates `doc`, `tier` and `issue` on every `place()`,

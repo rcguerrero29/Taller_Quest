@@ -6,7 +6,7 @@
    for every spelling this repository writes a pointer in, and a pointer whose words are on no line of that
    file fails the build, named by its own file:line and the file it names.
 
-   The spellings, the file always in backticks: (<file>, grep <words>), grep <words> in <file> and
+   The spellings, the file in backticks (or, with a folder, written bare): (<file>, grep <words>), grep <words> in <file> and
    <file> (grep <words>), the words in backticks or in double quotes. A pointer may be broken over one line
    break, and the next line may go on inside a quote (> ).
 
@@ -17,8 +17,9 @@
      A pointer into its own file does not count its own lines: a pointer always finds itself.
    - The file named is not tracked here. Since the split some pointers name a file in the private
      repository, which this check cannot read: those files are named in ELSEWHERE below, and a pointer to
-     one of them is LISTED as not checkable, never red and never guessed. So is a bare name with no folder
-     (it names no file exactly; write the path from the root to make it checkable).
+     one of them is LISTED as not checkable, never red and never guessed. A bare name with no folder is checked
+     against the one tracked file of that name; if no tracked file or several have it, it is listed (it names no
+     file exactly; write the path from the root to make it checkable). A bare name in ELSEWHERE is a private file.
    - Any other path with a folder that is not tracked here is red, whatever the folder: a file that moved
      or was renamed, here or in a folder both repositories keep. Closed by default: a pointer to another
      private file is red until somebody adds that file to ELSEWHERE.
@@ -34,17 +35,19 @@ const ROOT = path.join(__dirname, '..');
 
 /* the files the private repository holds that pointers here name today, by their path from the root: a pointer to
    one of these is listed as not checkable. Any other path with a folder that this repository does not track is red */
-const ELSEWHERE = ['docs/POSTMORTEM.md', 'docs/meetings/2026-09-14-la-cuadrilla-run-8.md', 'test/town.smoke.js'];
+const ELSEWHERE = ['record.js', 'docs/ASKS.md', 'docs/POSTMORTEM.md', 'docs/meetings/2026-09-14-la-cuadrilla-run-8.md', 'test/town.smoke.js'];
 
 const T = '`';
 const GAP = '(?:[ \\t]+|[ \\t]*\\n[ \\t>]*)';              // a space, or one line break and the indent (or quote) after it
 const BREAK = /[ \t]*\n[ \t>]*/g;                          // that line break, as grep would read the words: one space
 const WORDS = q => q + '([^' + q + '\\n]+(?:\\n[^' + q + '\\n]+)?)' + q;   // the words in backticks or double quotes, broken over one line at most
-const FILE = T + '([^`\\s]+)' + T;                         // the file: a code span with no space in it
+/* the file: a code span with no space in it, or a path with a folder written bare, as a code comment writes it
+   (2026-10-16, round 2: engine/engine.js said test/engine.smoke.js (grep …) and nothing read it) */
+const FILE = '(?:' + T + '([^`\\s]+)' + T + '|(?<![\\w.\\/-])((?:[\\w.-]+\\/)+[\\w.-]*[\\w-]\\.[A-Za-z0-9]+))';
 const FORMS = [T, '"'].flatMap(q => [
-  { re: new RegExp('\\bgrep' + GAP + WORDS(q) + GAP + 'in' + GAP + FILE, 'gi'), words: 1, file: 2 },   // grep <words> in <file>
-  { re: new RegExp(FILE + ',' + GAP + 'grep' + GAP + WORDS(q), 'gi'), words: 2, file: 1 },             // (<file>, grep <words>)
-  { re: new RegExp(FILE + GAP + '\\(grep' + GAP + WORDS(q), 'gi'), words: 2, file: 1 },                // <file> (grep <words>)
+  { re: new RegExp('\\bgrep' + GAP + WORDS(q) + GAP + 'in' + GAP + FILE, 'gi'), words: 1, file: 2 },     // grep <words> in <file>
+  { re: new RegExp(FILE + ',' + GAP + 'grep' + GAP + WORDS(q), 'gi'), words: 3, file: 1 },             // (<file>, grep <words>)
+  { re: new RegExp(FILE + GAP + '\\(grep' + GAP + WORDS(q), 'gi'), words: 3, file: 1 },                // <file> (grep <words>)
 ]);
 const isFileName = f => /^[\w.\/-]*[\w-]\.[A-Za-z0-9]+$/.test(f);
 
@@ -57,9 +60,10 @@ function find(files) {
     FORMS.forEach(({ re, words, file: fi }) => {
       re.lastIndex = 0; let m;
       while ((m = re.exec(text))) {
-        if (!isFileName(m[fi])) continue;
+        const name = m[fi] || m[fi + 1];   // the file in backticks, or written bare
+        if (!isFileName(name)) continue;
         const from = text.slice(0, m.index).split('\n').length;
-        out.push({ at: file + ':' + from, file, from, to: from + (m[0].match(/\n/g) || []).length, names: m[fi], words: m[words].replace(BREAK, ' ') });
+        out.push({ at: file + ':' + from, file, from, index: m.index, end: m.index + m[0].length, to: from + (m[0].match(/\n/g) || []).length, names: name, words: m[words].replace(BREAK, ' ') });
       }
     });
   });
@@ -80,14 +84,27 @@ function holds(line, words) {
 function check(files, elsewhere = ELSEWHERE) {
   const text = new Map(files.map(f => [f.file, f.text]));
   const pointers = find(files), reds = [], unchecked = []; let checkable = 0;
+  /* every pointer's own text is blanked in the file it is written in: a pointer always holds its own words, so it
+     is never the line another pointer means (2026-10-16, round 2: two pointers to one row found each other once the
+     row was reworded, and so did a pointer and the pointer back) */
+  const written = new Map();
+  pointers.forEach(p => { if (!written.has(p.file)) written.set(p.file, []); written.get(p.file).push(p); });
+  const unpointed = (file, body) => body == null ? body : (written.get(file) || []).reduce((t, p) => t.slice(0, p.index) + t.slice(p.index, p.end).replace(/[^\n]/g, ' ') + t.slice(p.end), body);
   pointers.forEach(p => {
-    const q = p.at + ' points at ' + p.names + ' for ' + T + p.words + T;
-    if (text.has(p.names)) {
+    let q = p.at + ' points at ' + p.names + ' for ' + T + p.words + T;
+    /* a bare name is the one tracked file of that name (2026-10-16, round 2: engine.js was listed, so its pointers died green) */
+    const same = p.names.includes('/') || text.has(p.names) || elsewhere.includes(p.names) ? [] : files.filter(f => f.file.split('/').pop() === p.names);
+    const names = same.length === 1 ? same[0].file : p.names;
+    if (names !== p.names) q = q.replace(' points at ' + p.names, ' points at ' + p.names + ' (' + names + ', the one tracked file of that name)');
+    if (text.has(names)) {
       checkable++;
-      const body = text.get(p.names);
+      const body = unpointed(names, text.get(names));
       if (body == null) { reds.push(q + ', and ' + p.names + ' is not a text file, so nothing can be found in it'); return; }
+      /* grep reads its words as a pattern: [ opens a set of letters, and ^ or $ at an end is the edge of a line, so the
+         line that holds those words literally is not found (2026-10-16, round 2: grep NPCLOOK[key]=c.look found nothing) */
+      if (/\[|^\^|\$$/.test(p.words)) { reds.push(q + ', and grep reads [ (or ^ or $ at an end) as a pattern, so grep finds no line for those words. Point at words without it.'); return; }
       /* a pointer into its own file does not find itself: its own lines are not the line it means */
-      const lines = body.split('\n').filter((l, i) => p.file !== p.names || i + 1 < p.from || i + 1 > p.to);
+      const lines = body.split('\n').filter((l, i) => p.file !== names || i + 1 < p.from || i + 1 > p.to);
       if (!lines.some(l => holds(l, p.words)))
         reds.push(q + ', and no line of ' + p.names + ' holds those words' + (holds(lines.join(' ').replace(/\s+/g, ' '), p.words)
           ? ': they are there only broken over two lines, and grep reads one line at a time. Point at a part that sits on one line.'
@@ -96,7 +113,7 @@ function check(files, elsewhere = ELSEWHERE) {
     }
     const folder = p.names.includes('/');
     if (folder && !elsewhere.includes(p.names)) { checkable++; reds.push(q + ', and this repository does not track ' + p.names + ', and it is not one of the files the private repository holds (ELSEWHERE in test/pointers.js): the file moved or was renamed. Point it at the file the words are in now.'); return; }
-    unchecked.push(p.at + ' names ' + p.names + ', which this repository does not track' + (folder ? ' (one of the files the private repository holds)' : ' (a bare name with no folder: write the path from the root to make it checkable)'));
+    unchecked.push(p.at + ' names ' + p.names + ', which this repository does not track' + (folder || elsewhere.includes(p.names) ? ' (one of the files the private repository holds)' : ' (a bare name with no folder that ' + (same.length ? same.length + ' tracked files have' : 'no tracked file has') + ': write the path from the root to make it checkable)'));
   });
   if (!pointers.length) reds.push('no pointer was found in ' + files.length + ' tracked files, so nothing was checked; a check that read nothing is a red, not a pass');
   else if (!checkable) reds.push(pointers.length + ' pointers were found and none names a file this repository tracks, so nothing was checked; that is a red, not a pass');
@@ -127,7 +144,7 @@ function selftest() {
   mark(r.pointers === 1 && r.checkable === 1 && !r.reds.length, 'the other form, grep <words> in <file>, is read and green', JSON.stringify(r));
   r = run(doc('the turn is ' + inB('engine/quill.js', 'function quandary')), code);
   mark(r.reds.length === 1 && /^docs\/n\.md:2 points at engine\/quill\.js /.test(r.reds[0]) && /no line of engine\/quill\.js holds/.test(r.reds[0]), 'a dead pointer is red, named by its own file:line and the file it names', JSON.stringify(r.reds));
-  r = run(doc(inB('engine/quill.js', 'zorbleck') + ' and ' + inB('docs/LEDGER.md', 'the tamarind row') + ' and ' + inB('quill.js', 'zorbleck')), code);
+  r = run(doc(inB('engine/quill.js', 'zorbleck') + ' and ' + inB('docs/LEDGER.md', 'the tamarind row') + ' and ' + inB('quire.js', 'zorbleck')), code);   // a bare name no tracked file has
   mark(!r.reds.length && r.pointers === 3 && r.checkable === 1 && r.unchecked.length === 2 && /^docs\/n\.md:2 names docs\/LEDGER\.md, which this repository does not track/.test(r.unchecked[0]) && /bare name/.test(r.unchecked[1]),
     'a pointer to a file this repository does not track is listed as not checkable, not red (a named private file, and a bare name)', JSON.stringify(r));
   r = run(doc(inB('engine/quill.js', 'zorbleck') + ' and ' + inB('engine/gone.js', 'zorbleck')), code);
@@ -150,6 +167,20 @@ function selftest() {
   mark(r.pointers === 1 && r.reds.length === 1 && /reworded or removed/.test(r.reds[0]), 'a pointer into its own file does not find its own line', JSON.stringify(r));
   r = run(doc('see further down ' + inB('docs/n.md', 'the zorbleck row') + '\nthe zorbleck row is here'), code);
   mark(r.pointers === 1 && !r.reds.length, 'and finds the line it means there', JSON.stringify(r));
+  /* round 2 (2026-10-16): each of these got past the check above it */
+  r = run(doc('/* guarded in engine/quill.js (grep ' + T + 'function quandary' + T + ') and (engine/quill.js, grep ' + '"VELLUM=3") */'), code);
+  mark(r.pointers === 2 && r.checkable === 2 && r.reds.length === 1 && /for `function quandary`/.test(r.reds[0]), 'a path with a folder written bare, as a code comment writes it, is read: the dead one is red and the live one green', JSON.stringify(r));
+  r = run(doc(inB('quill.js', 'function quandary') + ' and ' + inB('quill.js', 'function zorbleck')), code);
+  mark(r.pointers === 2 && r.checkable === 2 && r.reds.length === 1 && /quill\.js \(engine\/quill\.js, the one tracked file of that name\) for `function quandary`/.test(r.reds[0]), 'a bare name that one tracked file has is checked against that file', JSON.stringify(r));
+  r = run(doc(inB('engine/quill.js', 'NOTE[k]=1')), { file: 'engine/quill.js', text: 'NOTE[k]=1;\n' });
+  mark(r.pointers === 1 && r.reds.length === 1 && /grep reads \[/.test(r.reds[0]), 'words grep reads as a pattern ([ ... ]) are red: grep finds no line for them', JSON.stringify(r));
+  const row = 'the zorbleck row';
+  r = run({ file: 'docs/n.md', text: 'one\nsee ' + inB('docs/n.md', row) + '\nthe zorbleck rows, reworded\nand again ' + inB('docs/n.md', row) + '\n' }, code);
+  mark(r.pointers === 2 && r.reds.length === 2, 'two pointers to one row of their own file do not find each other once the row is reworded', JSON.stringify(r));
+  r = run({ file: 'docs/n.md', text: 'one\nits row ' + inB('docs/m.md', row) + '\n' }, { file: 'docs/m.md', text: 'the row, reworded\nback to ' + inB('docs/n.md', row) + '\n' }, code);
+  mark(r.pointers === 2 && r.reds.length === 2, 'a pointer and the pointer back, for the same words, do not find each other', JSON.stringify(r));
+  r = run({ file: 'docs/n.md', text: 'one\nits row ' + inB('docs/m.md', row) + '\n' + row + ' is here too\n' }, { file: 'docs/m.md', text: row + ' is here\nback to ' + inB('docs/n.md', row) + '\n' }, code);
+  mark(r.pointers === 2 && !r.reds.length, 'and the same two are green while each file still holds the row', JSON.stringify(r));
   r = run(doc('no pointer here, only the word grep and a ' + T + 'span' + T), code);
   mark(r.pointers === 0 && r.reds.length === 1 && /^no pointer was found in 2 tracked files, so nothing was checked/.test(r.reds[0]), 'zero pointers found is red: a check that read nothing', JSON.stringify(r));
   r = run(doc(inB('docs/LEDGER.md', 'the tamarind row')), code);
