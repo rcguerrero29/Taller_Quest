@@ -424,14 +424,26 @@ function run(mapFile, outDir, manifestFile) {
 
 /* THE DIFF CHECK (--check-code <path to acorn>): proves the copy changed no code. It does not trust this
    file's own comment-finder: JavaScript is read by a real parser (acorn, installed OUTSIDE the repository,
-   never a dependency of it) and every token outside comments must match the original, in order. CSS, HTML,
-   YAML and shell must match once their comments are stripped; data and images must match byte for byte.
-   Prose is reported by how many lines changed, never by what they said. */
+   never a dependency of it) and every token outside comments must match the original, in order, and so must
+   whether a line break stands before it (2026-10-16: a comment rewrapped after a return passed as comments only,
+   and the function then returned nothing). CSS, HTML, YAML and shell must match once their comments are
+   stripped; data and images must match byte for byte. Prose is reported by how many lines changed, never by
+   what they said. */
 function checkCode(pairs, outDir, acornPath) {
   const acorn = require(path.resolve(acornPath));
+  /* each token is its kind and value, led by a line break when a line terminator (\n, \r, U+2028, U+2029) stands
+     between it and the token before, in whitespace or inside a comment: a line break can end a statement, so a
+     comment that gains or loses one there is a change to the code, not to a comment */
   const toks = src => {
     for (const sourceType of ['script', 'module']) {
-      try { return [...acorn.tokenizer(src, { ecmaVersion: 'latest', sourceType, allowHashBang: true, allowReturnOutsideFunction: true })].map(t => t.type.label + ':' + JSON.stringify(t.value)); }
+      try {
+        let end = null;
+        return [...acorn.tokenizer(src, { ecmaVersion: 'latest', sourceType, allowHashBang: true, allowReturnOutsideFunction: true })].map(t => {
+          const br = end !== null && /[\n\r\u2028\u2029]/.test(src.slice(end, t.start));
+          end = t.end;
+          return (br ? '\n' : '') + t.type.label + ':' + JSON.stringify(t.value);
+        });
+      }
       catch (e) { /* try the other kind of file */ }
     }
     return null;
@@ -574,6 +586,34 @@ function selftest() {
   mark(o === 'Ok.', 'and still cleans the notes it is scoped to, leaving no gap', JSON.stringify(o));
   let e0 = ''; try { compile([{ id: 7, kind: 'x', rule: 'drop', find: ['loop'], note: 'a loop' }]); } catch (e) { e0 = e.message; }
   mark(/holds a term/.test(e0), 'a note that holds its own drop term is refused, not looped on', e0);
+  /* the code check reads a line break between tokens (2026-10-16): a comment rewrapped after a return passed as
+     comments only, while the function then returned nothing, because a line break there ends the statement. The
+     cases run on a stand-in for acorn written here, so they run where acorn is not installed (CI does not install
+     it); --selftest --check-code <path to acorn> runs them on the real parser instead */
+  const cc = fs.mkdtempSync(path.join(require('os').tmpdir(), 'clean-copy-code-'));
+  /* names, numbers and single marks, with whitespace and comments stepped over; this note stays outside the
+     function, because its source text is what the stand-in file is written from */
+  function* standIn(s) {
+    const re = /\s+|\/\*[\s\S]*?\*\/|\/\/.*|([\w$]+|\S)/g; let m;
+    while ((m = re.exec(s))) if (m[1]) yield { type: { label: /^[\w$]+$/.test(m[1]) ? 'name' : m[1] }, value: m[1], start: m.index, end: re.lastIndex };
+  }
+  fs.writeFileSync(path.join(cc, 'stand-in.cjs'), 'exports.tokenizer = ' + standIn.toString() + ';\n');
+  const parser = (i => i > 0 ? process.argv[i + 1] : path.join(cc, 'stand-in.cjs'))(process.argv.indexOf('--check-code'));
+  const verdict = (a, b) => {
+    fs.mkdirSync(path.join(cc, 'out'), { recursive: true });
+    fs.writeFileSync(path.join(cc, 'a.js'), a); fs.writeFileSync(path.join(cc, 'out', 'a.js'), b);
+    const D = checkCode([{ file: 'a.js', from: path.relative(ROOT, path.join(cc, 'a.js')) }], path.join(cc, 'out'), parser);
+    return D.codeChanged.length ? 'code changed' : D.codeOk ? 'comments only' : JSON.stringify(D);
+  };
+  try {
+    const plant = 'function f(x) {\n  return /* a */ x;\n}\n';
+    const breaks = ['\n', '\r', '\u2028', '\u2029'].map(nl => verdict(plant, plant.replace('/* a */', '/* a,' + nl + ' b */')))
+      .concat(verdict(plant, plant.replace('/* a */ x', '/* a */\n  x')));
+    mark(breaks.every(v => v === 'code changed'), 'the code check reads a line break: a comment rewrapped after a return, which then returns nothing, is code changed', breaks.join(', '));
+    const own = 'function f(x) {\n  /* a */\n  return x;\n}\n';
+    o = verdict(own, own.replace('/* a */', '/* a, reworded\n     over two lines */'));
+    mark(o === 'comments only', 'a comment reworded on its own line, over two lines now, is still comments only', o);
+  } finally { fs.rmSync(cc, { recursive: true, force: true }); }
   /* the refusals that keep the map and the copy out of the repository, and an empty list from publishing nothing */
   let e1 = ''; try { run(path.join(ROOT, 'map.json'), '/tmp/x'); } catch (e) { e1 = e.message; }
   mark(/inside the repository/.test(e1), 'a map inside the repository is refused', e1);
