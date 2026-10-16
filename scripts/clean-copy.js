@@ -452,19 +452,49 @@ function checkCode(pairs, outDir, acornPath) {
   const strip = {
     css: t => t.replace(/\/\*[\s\S]*?\*\//g, ''),
     html: t => t.replace(STYLE, (x, a, b, c) => a + b.replace(/\/\*[\s\S]*?\*\//g, '') + c).replace(/<!--[\s\S]*?-->/g, ''),
-    /* a # line inside a heredoc is the text the heredoc writes, not a comment: it is kept, so a copy that rewrites it
-       is code changed. A heredoc runs from the line that opens it (<<WORD, <<-WORD, <<'WORD', <<"WORD"; a <<< here-
-       string opens none) to the line that is its word alone after any indent; one that never closes keeps every line */
-    hash: t => { let end = null; return t.split('\n').filter(l => {
-      if (end !== null) { if (l.replace(/^\s+/, '') === end) end = null; return true; }
-      const h = !/^\s*#/.test(l) && l.match(HEREDOC); if (h) end = h[1] || h[2] || h[3];
-      return !/^\s*#(?!!)/.test(l); }).join('\n'); },
+    /* a # line is a comment only where YAML or the shell reads one, and every other line is kept, so a copy that
+       rewrites it is code changed. In a YAML file the text of a block (key: | or key: >) is kept whole, unless the key
+       is run:, whose text is a script (2026-10-16: a heading in an env: block was rewritten and called comments only).
+       In a script, a line inside a heredoc is kept: from the line that opens it (<<WORD, <<-WORD, <<'WORD', <<"WORD";
+       a <<< here-string opens none) to the line that is its word alone after any indent, and one that never closes
+       keeps every line. So is a line inside a quoted string that runs over lines (the same day, a heading in an
+       echo "…" over three lines) */
+    hash: (t, file) => {
+      const yml = /\.ya?ml$/i.test(file || '');
+      let block = yml ? null : { col: -1, sh: true }, end = null, q = [];
+      return t.split('\n').filter(l => {
+        if (block && yml && l.trim() && l.search(/\S/) <= block.col) { block = null; end = null; q = []; }
+        if (!block) {
+          const b = l.match(/^(\s*(?:-\s+)?)(?:([\w.-]+)\s*:\s*)?[|>][-+0-9]*\s*(?:#.*)?$/);
+          if (b && (b[2] || /-\s+$/.test(b[1]))) block = { col: b[2] ? b[1].length : b[1].indexOf('-'), sh: b[2] === 'run' };
+          return !/^\s*#(?!!)/.test(l);
+        }
+        if (!block.sh) return true;
+        if (end !== null) { if (l.replace(/^\s+/, '') === end) end = null; return true; }
+        const top = () => q[q.length - 1], inside = q.length > 0 && top() !== '(';
+        if (!inside && /^\s*#/.test(l)) return /^\s*#!/.test(l);
+        for (let i = 0; i < l.length; i++) {      // the quotes still open, and $( … ) inside them, which quotes anew
+          const c = l[i], o = top();
+          if (o === "'") { if (c === "'") q.pop(); }
+          else if (c === '\\') i++;
+          else if (c === '$' && l[i + 1] === '(') { q.push('('); i++; }
+          else if (o === '"') { if (c === '"') q.pop(); }
+          else if (c === "'" || c === '"') q.push(c);
+          else if (o === '(' && (c === '(' || c === ')')) { if (c === '(') q.push(c); else q.pop(); }
+          else if (c === '#' && (i === 0 || /[\s;|&()]/.test(l[i - 1]))) break;
+        }
+        const h = !inside && l.match(HEREDOC); if (h) end = h[1] || h[2] || h[3];
+        return true;
+      }).join('\n');
+    },
   };
   const R = { same: 0, codeOk: 0, unparsed: [], codeChanged: [], dataChanged: [], prose: [], added: 0 };
   pairs.forEach(({ file, from }) => {
     const a = fs.readFileSync(path.join(ROOT, from)), b = fs.readFileSync(path.join(outDir, file));
-    if (from.startsWith(OVERLAY + '/')) { R.added++; return; }
-    if (a.equals(b)) { R.same++; return; }
+    /* a file written for the public copy is checked like the rest: the copy rewrites its comments too */
+    const added = from.startsWith(OVERLAY + '/');
+    if (added) R.added++;
+    if (a.equals(b)) { if (!added) R.same++; return; }
     const kind = kindOf(file), A = a.toString('utf8'), B = b.toString('utf8');
     if (kind === 'prose') {
       const seen = new Map(); A.split('\n').forEach(l => seen.set(l, (seen.get(l) || 0) + 1));
@@ -477,7 +507,7 @@ function checkCode(pairs, outDir, acornPath) {
       if (!tb || ta.length !== tb.length || ta.some((t, i) => t !== tb[i])) R.codeChanged.push(file); else R.codeOk++;
       return;
     }
-    if (strip[kind]) { if (strip[kind](A) === strip[kind](B)) R.codeOk++; else R.codeChanged.push(file); return; }
+    if (strip[kind]) { if (strip[kind](A, file) === strip[kind](B, file)) R.codeOk++; else R.codeChanged.push(file); return; }
     R.dataChanged.push(file);
   });
   return R;
@@ -636,6 +666,24 @@ function selftest() {
     mark(o === 'code changed, code changed, code changed', 'a # line inside a heredoc is the text it writes: rewording it is code changed (<<\'EOF\', <<-"END-NOTE" in a step, <<\\END-X)', o);
     o = [reword('a.sh', here, '# a note'), reword('a.yml', step, '# a note'), reword('c.sh', bare, '# a note'), reword('b.sh', 'tr a-z A-Z <<< word\n# a note\n', '# a note')].join(', ');
     mark(o === 'comments only, comments only, comments only, comments only', 'a # comment outside a heredoc, after its end or after a <<< here-string, is still comments only', o);
+    /* a # line in a YAML block of text, or inside a quoted string over lines, is text too; and a file written for
+       the public copy is read like the rest (2026-10-16, round 2: each was rewritten and called comments only) */
+    const env = 'steps:\n  - env:\n      SUMMARY: |\n        # a heading the summary shows\n        more text\n    run: echo "$SUMMARY"\n# a note\n';
+    const quoted = 'echo "\n# a heading the summary shows\nmore text" >> out.md\n# a note, it\'s a comment\n';
+    const stepq = 'steps:\n  - run: |\n      echo "\n      # a heading the summary shows\n      more text" >> out.md\n      # a note\n';
+    o = [reword('d.yml', env, '# a heading the summary shows'), reword('d.sh', quoted, '# a heading the summary shows'), reword('e.yml', stepq, '# a heading the summary shows')].join(', ');
+    mark(o === 'code changed, code changed, code changed', 'a # line in a YAML block of text (env: | …), or in a quoted string over lines (in a script and in a run: step), is text: rewording it is code changed', o);
+    const subst = 'v="$(sed -n \'s/^v="\\([^"]*\\)".*/\\1/p\' f)"\n# a note\n';
+    o = [reword('d.yml', env, '# a note'), reword('d.sh', quoted, '# a note'), reword('e.yml', stepq, '# a note'), reword('f.sh', subst, '# a note')].join(', ');
+    mark(o === 'comments only, comments only, comments only, comments only', 'a # comment after the block ends, after the string closes, or after a "$( … )" with quotes of its own, is still comments only', o);
+    const over = (a, b) => {
+      fs.writeFileSync(path.join(cc, 'o.yml'), a); fs.writeFileSync(path.join(cc, 'out', 'o.yml'), b);
+      /* the path is read as a file written for the public copy, and resolves to the file just written */
+      const D = checkCode([{ file: 'o.yml', from: OVERLAY + '/../' + path.relative(ROOT, path.join(cc, 'o.yml')) }], path.join(cc, 'out'), parser);
+      return D.codeChanged.length ? 'code changed' : D.codeOk ? 'comments only' : JSON.stringify(D);
+    };
+    o = over(step, step.replace('# a heading the file keeps', '# a heading the file keeps, reworded'));
+    mark(o === 'code changed', 'a file written for the public copy is checked like the rest: a heredoc line it rewrote is code changed', o);
   } finally { fs.rmSync(cc, { recursive: true, force: true }); }
   /* the refusals that keep the map and the copy out of the repository, and an empty list from publishing nothing */
   let e1 = ''; try { run(path.join(ROOT, 'map.json'), '/tmp/x'); } catch (e) { e1 = e.message; }
