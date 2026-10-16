@@ -114,7 +114,7 @@ Before you plan a fix, **identify the room from the picture, not from the ticket
 "the loft stair" and the well upstairs is railed on three sides with a guard that counts all nine
 panels (`test/town.smoke.js`, grep `nine`); the photograph was the *other* flight, downstairs, and the
 tell was one pixel-fact — the dark square at the head is `▲`, `BASECOL["▲"]="#241F2E"`, and `▲` exists
-only in `hq` (`test/smoke.js`, grep `"▲"`). **A guard printing green and an owner pointing at the fault
+only in `hq` (`test/smoke.js`, grep `'▲': 'hq'`). **A guard printing green and an owner pointing at the fault
 are not a contradiction: they are two different rooms.** Find the discriminator in the art before you
 find the fix in the map.
 

@@ -98,7 +98,7 @@ sitting three feet away that could not see it.
   logged verbatim: all world-readable, all permanent, none of them in any guard's extraction step.
   **When somebody says "it's only in `docs/`", ask who else can read `docs/`.** *(Applied 2026-09-14
   from crew run 8; both lines verified on applying — `test/public.js`, grep `const NEVER`;
-  `CLAUDE.md`, grep `the repo is public`.)*
+  `CLAUDE.md`, grep `This is the public`.)*
 - **A denylist can only name yesterday's mistake.** Say so every time you see one, including in a
   guard that was written to fix a denylist.
 - **The blindness looks exactly like the pass.** `OK` printed by a check that matched nothing is

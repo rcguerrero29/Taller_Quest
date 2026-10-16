@@ -58,6 +58,8 @@ jobs:
         run: node test/vendored.js
       - name: Nothing that looks like a password or an access key is committed (the same list the site scan reads)
         run: node test/keys.js
+      - name: Every pointer that says grep these words in that file still finds its line (and the check's own red cases first)
+        run: node test/pointers.js --selftest && node test/pointers.js
       - name: The guards' own red cases
         run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
