@@ -17,8 +17,10 @@
    on nothing: a fork's work is brought into a branch of this repository by a session that reviews it,
    and the check runs there (docs/PRIVACY.md). A run that read no file, a list with no word or pattern to
    look for, and a single rule that is not exactly keep, replace or drop, or has no word or pattern of its
-   own, FAIL too: a check that read nothing must not look like a pass. The OK line counts only the rules
-   that look for something.
+   own, FAIL too: a check that read nothing must not look like a pass. So does a rule with a key the tool does
+   not know or in the wrong case ("CI" for "ci"), or a known key holding the wrong kind of value, which would be
+   ignored or read another way; and a rule whose "files" limit matches none of the files whose text was read,
+   which would look for its words nowhere. The OK line counts only the rules that look for something.
 
    Run:  PRIVATE_TERMS="$(cat map.json)" node scripts/private-terms.js
          node scripts/private-terms.js --map <file outside the repository>
@@ -40,17 +42,19 @@ function rulesFrom(text) {
     rules = JSON.parse(m ? m[1] : text);
   } catch (e) { throw new Error('the private list could not be read (it is not valid JSON); nothing was checked'); }
   if (!Array.isArray(rules)) throw new Error('the private list holds no rule to check; nothing was checked');
-  /* every rule is read, not only counted: one written slightly wrong ("Replace", or a word list left empty)
-     would check nothing while the rest of the list passed. A rule is named by its number, never by its words. */
+  const cc = tool();
+  /* every rule is read, not only counted: one written slightly wrong ("Replace", "CI" for "ci", or a word list
+     left empty) would check less than it says while the rest of the list passed. Its keys and their kinds are
+     read by the copy's own ruleFault. A rule is named by its number, never by its words. */
   const word = s => typeof s === 'string' && s.trim() !== '';
   rules.forEach((r, i) => {
-    const at = r && Number.isInteger(r.id) ? 'rule #' + r.id : 'rule number ' + (i + 1) + ' in the list';
+    const at = cc.ruleName(r, i), fault = cc.ruleFault(r);
+    if (fault) throw new Error(at + ' ' + fault + '; nothing was checked');
     if (!r || !['keep', 'replace', 'drop'].includes(r.rule)) throw new Error(at + ' is not keep, replace or drop, so it would check nothing; nothing was checked');
     const list = k => r[k] === undefined || (Array.isArray(r[k]) && r[k].every(word));
     if (r.rule !== 'keep' && !(list('find') && list('pattern') && (r.find || []).concat(r.pattern || []).length)) throw new Error(at + ' is a ' + r.rule + ' rule without a word or pattern to look for (or with an empty one); nothing was checked');
   });
   if (!rules.some(r => r.rule === 'replace' || r.rule === 'drop')) throw new Error('the private list holds no rule to check; nothing was checked');
-  const cc = tool();
   let C;
   try { C = cc.compile(rules); }
   catch (e) { throw new Error('the private list has a rule that cannot be compiled (a pattern or a note is malformed); nothing was checked'); }
@@ -70,8 +74,16 @@ function trackedFiles(root) {
 function check(text, files) {
   const rules = rulesFrom(text);
   if (!files.length) throw new Error('not one file was read (git listed none, or none could be opened); nothing was checked');
-  let hits;
   const cc = tool();
+  /* a rule limited by "files" looks for its words only in the text of the paths that limit matches: one that
+     matches none of them (a glob written where a regular expression belongs, "docs/*.md") looks nowhere */
+  const read = files.filter(f => f.text != null);
+  rules.forEach((r, i) => {
+    if (r.rule === 'keep' || r.files === undefined) return;
+    const re = new RegExp(r.files);
+    if (!read.some(f => re.test(f.file))) throw new Error(cc.ruleName(r, i) + ' is limited by "files" to paths that match none of the ' + read.length + ' files whose text was read, so its words were looked for nowhere; nothing was checked');
+  });
+  let hits;
   try { hits = cc.survivors(files, rules); }
   catch (e) { throw new Error('the private list could not be applied (a rule is malformed); nothing was checked'); }
   /* rules: only the ones that look for something; a keep rule records a decision and checks nothing */
@@ -117,6 +129,25 @@ function selftest() {
   const onMerge = check(map, [{ file: 'CHANGELOG.md', text: 'x' }, { file: 'a.md', text: 'x' }, { file: masked, text: 'we met ' + T.who }]).hits;
   mark(onBranch.length === 2 && onMerge.length === 2 && /file 2 /.test(onBranch[0]) && /file 3 /.test(onMerge[0]) && onBranch.concat(onMerge).every(h => h.indexOf('fingerprint ' + fp + ' ') > 0 && h.indexOf(T.town) < 0 && h.indexOf(T.who) < 0),
     'a file named by its place also carries a fingerprint of its path, the same whatever else the tree holds', JSON.stringify(onBranch.concat(onMerge)));
+  /* a key the tool does not know is ignored, so its rule checks less than it says: "CI" for "ci" leaves a name in
+     lower case unseen; a known key holding the wrong kind of value is quietly read another way (a "suffix" of one
+     word instead of a list leaves the plural unseen, a "files" of true limits the rule to paths holding "true").
+     Read by the check and by the copy alike, each is a red naming its rule, never what the key holds */
+  const lower = [{ file: 'docs/b.md', text: 'we met ' + T.who.toLowerCase() + ', and two ' + T.who + 's' }];
+  const keyed = [{ ...good, CI: true }, { ...good, suffix: 's' }, { ...good, files: true }, { ...good, ci: 'yes' }].map(r => fails([r], lower));
+  const mapFile = path.join(require('os').tmpdir(), 'private-terms-keys-' + process.pid + '.json');
+  let copied = '';
+  try { fs.writeFileSync(mapFile, JSON.stringify([{ ...good, CI: true }])); tool().readMap(mapFile); } catch (e) { copied = e.message; } finally { fs.rmSync(mapFile, { force: true }); }
+  mark(keyed.concat(copied).every(m => /^rule #3 /.test(m) && m.toLowerCase().indexOf(T.who.toLowerCase()) < 0) && keyed.every(m => /nothing was checked/.test(m)),
+    'a rule key in the wrong case or unknown, or a known key holding the wrong kind of value, is a red naming the rule, in the check and in the copy', JSON.stringify(keyed.concat(copied).map(m => m || 'it did not fail')));
+  /* a "files" limit that matches none of the files whose text was read (a glob written where a regular expression
+     belongs, or one that matches only pictures) looks for its rule's words in no text at all, so they pass */
+  const scopeOf = files => fails([good, { id: 6, kind: 'place', rule: 'replace', find: [T.town], to: '[city]', files }],
+    [{ file: 'docs/moving-day.md', text: 'The new flat in ' + T.town + ' has two rooms.' }, { file: 'docs/moving-day.png', text: null }]);
+  const nowhere = [scopeOf('docs/*.md'), scopeOf('\\.png$')];
+  const scoped = check(JSON.stringify([good, { id: 6, kind: 'place', rule: 'replace', find: [T.town], to: '[city]', files: '^docs/.*\\.md$' }]), [{ file: 'docs/moving-day.md', text: 'in ' + T.town }]).hits;
+  mark(nowhere.every(m => /^rule #6 /.test(m) && /nothing was checked/.test(m) && m.indexOf(T.town) < 0) && scoped.length === 1 && /^rule #6 /.test(scoped[0]),
+    'a "files" limit that matches none of the files read is a red naming its rule; one that matches still checks', JSON.stringify(nowhere.map(m => m || 'it did not fail').concat(scoped)));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);

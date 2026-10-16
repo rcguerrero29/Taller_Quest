@@ -42,7 +42,10 @@
    drop: anywhere, any case; the sentence around it goes. A sentence ends at . ! ? before a space or line
    break, at a table cell's |, or at a blank line. "with" limits a drop to sentences that also hold one of
    those words (any case). "files" limits a rule to paths matching that regex. keep: does nothing; it is
-   listed so the map says what was decided. */
+   listed so the map says what was decided.
+   A rule carries no key but id kind rule find pattern to ci path files with suffix note, each holding its own
+   kind of value (ruleFault below): a key in the wrong case or unknown ("CI" for "ci"), or one holding the wrong
+   kind, would be ignored or read another way, so the map is refused instead, naming the rule by its number. */
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -62,10 +65,12 @@ const inside = (p, root) => { const r = path.relative(root, path.resolve(p)); re
 const fold = s => String(s).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 /* a file's fingerprint: the first 8 hex digits of the sha256 of its path. Its place in git ls-files order is
    right only on the tree that was read (a pull request is read as its merge, where another file can come
-   before it); the fingerprint is the same on any tree. FIND_HINT says how to turn it back into a name. */
+   before it); the fingerprint is the same on any tree. FIND_HINT says how to turn it back into a name, from any
+   folder of the clone: "--full-name :/" lists every tracked file by its path from the top, wherever it is run
+   (plain git ls-files lists only the folder it is run in, by paths relative to it, and finds nothing). */
 const fingerprint = p => crypto.createHash('sha256').update(p, 'utf8').digest('hex').slice(0, 8);
-const FIND = String.raw`git ls-files -z | node -e "require('fs').readFileSync(0,'utf8').split('\0').filter(Boolean).forEach(f=>console.log(require('crypto').createHash('sha256').update(f).digest('hex').slice(0,8),f))" | grep '^<fingerprint> '`;
-const FIND_HINT = 'A file named by its place and fingerprint: the place is its line in git ls-files on the tree this run read (a pull request is read as its merge, so on your own branch the place can be off); the fingerprint, the first 8 hex digits of the sha256 of its path, is the same on any tree. In your own clone this prints its name (put the fingerprint in place of <fingerprint>):\n  '
+const FIND = String.raw`git ls-files -z --full-name :/ | node -e "require('fs').readFileSync(0,'utf8').split('\0').filter(Boolean).forEach(f=>console.log(require('crypto').createHash('sha256').update(f).digest('hex').slice(0,8),f))" | grep '^<fingerprint> '`;
+const FIND_HINT = 'A file named by its place and fingerprint: the place is its line in git ls-files on the tree this run read (a pull request is read as its merge, so on your own branch the place can be off); the fingerprint, the first 8 hex digits of the sha256 of its path, is the same on any tree. Run anywhere in your own clone, this prints its name (put the fingerprint in place of <fingerprint>):\n  '
   + FIND + '\nNever paste that name into an issue or a log.';
 
 /* how a file is cleaned: prose a paragraph at a time; code in its comments only; anything else not at all
@@ -74,15 +79,41 @@ const kindOf = f => /\.(md|markdown)$/i.test(f) ? 'prose'
   : /\.(js|mjs|cjs)$/i.test(f) ? 'js' : /\.css$/i.test(f) ? 'css' : /\.html?$/i.test(f) ? 'html'
   : /\.(ya?ml|sh)$/i.test(f) ? 'hash' : 'data';
 
+/* THE KEYS a rule may carry, each with the kind of value it must hold. A key this tool does not know ("CI" for
+   "ci") is ignored, and a known one holding the wrong kind is read another way (a "suffix" of "s" instead of ["s"]
+   is skipped, a "files" of true limits the rule to paths holding "true"): either way the rule quietly checks less
+   than it says. ruleFault names what is wrong by the key, never by what the key holds, and the private-term
+   check reads every rule with it too. */
+const isTerms = v => Array.isArray(v) && v.every(s => typeof s === 'string' && s.trim() !== '');
+const isText = v => typeof v === 'string';
+const RULE_KEYS = {
+  id: Number.isInteger, kind: isText, rule: isText, find: isTerms, pattern: isTerms, to: isText, ci: v => typeof v === 'boolean',
+  path: v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(s => typeof s === 'string' && s.trim() !== ''),
+  files: v => { if (typeof v !== 'string' || v.trim() === '') return false; try { new RegExp(v); return true; } catch (e) { return false; } },
+  with: isTerms, suffix: isTerms, note: isText,
+};
+const ruleName = (r, i) => r && Number.isInteger(r.id) ? 'rule #' + r.id : 'rule number ' + (i + 1) + ' in the list';
+function ruleFault(r) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return 'is not a rule (a rule is an object of keys)';
+  const keys = Object.keys(r);
+  const unknown = keys.filter(k => !Object.prototype.hasOwnProperty.call(RULE_KEYS, k)).length;
+  if (unknown) return 'has ' + unknown + ' key(s) this tool does not know, so they would be ignored (a name misspelt or in the wrong case; the keys are ' + Object.keys(RULE_KEYS).join(' ') + ')';
+  const wrong = keys.filter(k => !RULE_KEYS[k](r[k]));
+  if (wrong.length) return 'has ' + wrong.join(', ') + ' holding the wrong kind of value (id is a whole number; kind, rule, to and note are text; find, pattern, with and suffix are lists of words; ci is true or false; path is an object of new names; files is a regular expression)';
+  return '';
+}
+
 function readMap(file) {
   const src = fs.readFileSync(file, 'utf8');
   const m = src.match(/```json\s*\n([\s\S]*?)```/);
   const rules = JSON.parse(m ? m[1] : src);
   if (!Array.isArray(rules) || !rules.length) throw new Error('the map holds no rules');
   rules.forEach((r, i) => {
-    if (!['keep', 'replace', 'drop'].includes(r.rule)) throw new Error('rule #' + (r.id || i) + ' has no known rule (keep, replace, drop)');
-    if (r.rule === 'replace' && (!(Array.isArray(r.find) || Array.isArray(r.pattern)) || typeof r.to !== 'string')) throw new Error('replace rule #' + r.id + ' needs find[] or pattern[], and to');
-    if (r.rule === 'drop' && !(Array.isArray(r.find) || Array.isArray(r.pattern))) throw new Error('drop rule #' + r.id + ' needs find[] or pattern[]');
+    const fault = ruleFault(r);
+    if (fault) throw new Error(ruleName(r, i) + ' ' + fault);
+    if (!['keep', 'replace', 'drop'].includes(r.rule)) throw new Error(ruleName(r, i) + ' has no known rule (keep, replace, drop)');
+    if (r.rule === 'replace' && (!(Array.isArray(r.find) || Array.isArray(r.pattern)) || typeof r.to !== 'string')) throw new Error('replace ' + ruleName(r, i) + ' needs find[] or pattern[], and to');
+    if (r.rule === 'drop' && !(Array.isArray(r.find) || Array.isArray(r.pattern))) throw new Error('drop ' + ruleName(r, i) + ' needs find[] or pattern[]');
   });
   return rules;
 }
@@ -371,10 +402,13 @@ function survivors(files, rules) {
     if (r.path) Object.keys(r.path).forEach(k => checks.push({ r, re: new RegExp('(?<![A-Za-z0-9_])' + esc(k) + '(?![A-Za-z0-9_])', r.ci ? 'i' : '') }));
   });
   /* whether a name may be printed is decided the way a reader reads it, not by a rule's own match: every
-     replace and drop word and every folder name the map renames, folded, anywhere in the folded name (so a
-     digit or another word glued on still holds it), and every check again in any case (a pattern too) */
+     replace and drop word and every folder name the map renames, folded and with every space and apostrophe
+     taken out, anywhere in the name read the same way (so a digit or another word glued on still holds it, and
+     so does a term of two words, or with an apostrophe, written as one), and every check again in any case (a
+     pattern too) */
+  const glue = s => fold(s).replace(/ /g, '');
   const plain = rules.filter(r => r.rule === 'replace' || r.rule === 'drop').flatMap(r => Array.isArray(r.find) ? r.find : [])
-    .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(fold).filter(Boolean);
+    .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(glue).filter(Boolean);
   const anyCase = checks.map(c => new RegExp(c.re.source, c.re.flags.replace(/[gi]/g, '') + 'i'));
   const P = [];
   files.forEach(({ file, text, n, from }, i) => {
@@ -384,7 +418,7 @@ function survivors(files, rules) {
        printed, not even in part and not on the lines about its text: every line about that file names it
        by its place in git ls-files order (n, or its place in the list given) and the fingerprint of its
        path (from: the original a copied file was made from), which FIND_HINT turns back into its name */
-    const segs = file.split('/'), flat = fold(file);
+    const segs = file.split('/'), flat = glue(file);
     const named = checks.filter(c => segs.some(seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '))));
     const hide = named.length > 0 || plain.some(t => flat.includes(t)) || anyCase.some(re => segs.some(seg => re.test(seg) || re.test(seg.replace(/[-_.]+/g, ' '))));
     const where = hide ? 'file ' + (n || i + 1) + ' in git ls-files order, fingerprint ' + fingerprint(from || file) + ' (its name holds a private detail, so it is not printed)' : null;
@@ -572,6 +606,26 @@ function selftest() {
   const plainLow = s => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
   mark(ln.length === 5 && ln.slice(0, 4).every((l, k) => l.indexOf('file ' + (k + 1) + ' in git ls-files order') > 0 && [T.town, 'bra' + 'noville', lo, 'plo' + 'vik'].every(t => plainLow(l).indexOf(plainLow(t)) < 0)) && /docs\/b\.md:1$/.test(ln[4]),
     'a name a reader would recognise is not printed, whatever its case, accents, separators or a digit glued on; a name with nothing in it still is', JSON.stringify(ln));
+  /* a term of two words, or with an apostrophe in it, glued together in a name: a reader still reads it there */
+  const two = 'Zib' + ' Marrow', apo = 'O\'Va' + 'rrix', glued = s => s.replace(/[ ']/g, '');
+  const RG = [{ id: 11, kind: 'place', rule: 'replace', find: [two], to: '[city]' }, { id: 12, kind: 'partner', rule: 'replace', find: [apo], to: '[partner]', ci: true }];
+  const lg = survivors([{ file: 'docs/' + glued(two) + '-notes.md', text: 'We sailed to ' + two + '.' }, { file: 'docs/letters/' + glued(apo).toLowerCase() + '.md', text: 'Dear ' + apo + ',' },
+    { file: 'docs/b.md', text: 'about ' + two }], RG);
+  mark(lg.length === 3 && lg.slice(0, 2).every((l, k) => l.indexOf('file ' + (k + 1) + ' in git ls-files order') > 0 && [two, apo].every(t => l.toLowerCase().indexOf(glued(t).toLowerCase()) < 0)) && /docs\/b\.md:1$/.test(lg[2]),
+    'a term of two words or with an apostrophe, glued together in a name, still keeps the name from print; a clean name with the term only in its text is still printed', JSON.stringify(lg));
+  /* the printed lookup turns a fingerprint back into a name from any folder of the clone, not only from its top */
+  const clone = fs.mkdtempSync(path.join(require('os').tmpdir(), 'clean-copy-find-'));
+  const noGitEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k)));
+  let found = '';
+  try {
+    fs.mkdirSync(path.join(clone, 'a')); fs.mkdirSync(path.join(clone, 'b'));
+    fs.writeFileSync(path.join(clone, 'a', 'x.md'), 'x'); fs.writeFileSync(path.join(clone, 'b', 'y.md'), 'y');
+    execFileSync('git', ['init', '-q'], { cwd: clone, env: noGitEnv, stdio: 'ignore' });
+    execFileSync('git', ['add', '.'], { cwd: clone, env: noGitEnv, stdio: 'ignore' });
+    found = execFileSync('/bin/sh', ['-c', FIND.replace('<fingerprint>', fingerprint('b/y.md'))], { cwd: path.join(clone, 'a'), env: noGitEnv, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch (e) { /* the lookup found nothing (grep exits 1), or git is missing: either way nothing was found */ }
+  finally { fs.rmSync(clone, { recursive: true, force: true }); }
+  mark(found === fingerprint('b/y.md') + ' b/y.md', 'the printed lookup finds a name from any folder of the clone, by its full path', found || 'it found nothing');
   const left2 = survivors([{ file: 'b.md', text: 'x\nabout ' + T.sick + ' y' }], rules);
   mark(left2.length === 1 && left2[0].indexOf('b.md:2') > 0 && left2[0].indexOf(T.sick) < 0, 'a surviving detail is named by rule and line, never by the term', JSON.stringify(left2));
   const left3 = survivors([{ file: 'c.md', text: 'we met in Two\nWords' }], rules);
@@ -663,4 +717,4 @@ if (require.main === module) {
   process.exit(0);
 }
 
-module.exports = { readMap, readManifest, compile, cleanText, renamePath, survivors, fingerprint, FIND_HINT, sentenceSpan, jsPieces, kindOf, run, checkCode };
+module.exports = { readMap, readManifest, ruleFault, ruleName, compile, cleanText, renamePath, survivors, fingerprint, FIND_HINT, sentenceSpan, jsPieces, kindOf, run, checkCode };
