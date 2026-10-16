@@ -4,7 +4,7 @@
    enforces the main lock on public repositories only, so once this repository is private nothing at
    GitHub's end stops a push to its `main`. This is the part we can build ourselves: every session in
    this project runs it before a push (.claude/settings.json), and it refuses one that lands on `main`:
-   `main`, `HEAD:main`, `+main`, `:main`, `refs/heads/main`, `--delete main`, `--mirror`, `--all`, or a bare
+   `main`, `HEAD:main`, `+main`, `:main`, `refs/heads/main` or git's shorthand `heads/main`, `--delete main`, `--mirror`, `--all`, or a bare
    `git push`, `git push origin HEAD` or `git push origin @` while standing on `main`. A push to any other branch passes, a forced one included (a
    session's own branch may need it). It guards sessions only: a person at a terminal, or another tool,
    is not stopped by it. The alarm that notices anything that gets past is test/mainwatch.js.
@@ -37,7 +37,9 @@ function verdict(p, branchOf, headsOf) {
     return 'a push whose remote or branch only the run knows (a $VARIABLE or a command substitution) may land on main; name them: git push <remote> <branch>';
   const refspecs = pos.slice(1);
   for (const r of refspecs) {
-    let dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^refs\/heads\//, ''), here = '';
+    let dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^(?:refs\/)?heads\//, ''), here = '';
+    /* refs/heads/main and heads/main are both git's names for main (the third review, 2026-10-16: `heads/main` was
+       allowed); a branch really named heads/<x> is then read as <x>, which over-refuses heads/main only */
     /* HEAD or @ with no :<dst> updates the remote branch named like the one checked out where the push runs
        (the branch's second review, 2026-10-16: standing on main, `git push origin HEAD` was allowed) */
     if (!r.includes(':') && (dest === 'HEAD' || dest === '@')) {
@@ -118,6 +120,11 @@ function selftest() {
     ['git push origin HEAD', 'claude/x', false],
     ['git push -u origin @', 'claude/x', false],
     ['git push origin HEAD:claude/x', 'main', false],
+    /* the branch's third review (2026-10-16): `heads/main` is git's own shorthand for refs/heads/main (a
+       dry run prints refs/heads/main for each), so each of these lands on main. From claude/x they were allowed */
+    ['git push origin heads/main', 'claude/x', true],
+    ['git push origin HEAD:heads/main', 'claude/x', true],
+    ['git push origin +heads/main', 'claude/x', true],
   ];
   cases.forEach(([cmd, branch, want]) => {
     const got = judge(cmd, on(branch)).length > 0;
