@@ -211,7 +211,7 @@ function loadList(env, exists) {
   catch (e) { return { why: 'the private list (' + where + ') could not be used: ' + (/nothing was checked/.test(e.message) ? e.message : 'it could not be read') }; }
   return { text };
 }
-const HOW_TO_LOAD = 'Load it for this session: read the owner\'s list from his Google Drive with a read-only tool ' +
+const HOW_TO_LOAD = 'Load it for this session: read the owner\'s list from where he keeps it, with a read-only tool ' +
   '(read or download; never copy, share or move it), write it to ~/.private-terms/map.md, outside every repository ' +
   '(or to a file PRIVATE_TERMS_FILE names), and delete that file when the session ends. Never put the list in a ' +
   'repository, a comment, a message or a log.';
@@ -561,7 +561,7 @@ function selftest() {
   expect('a no-reply address whole in one cell, a word in the next, passes (the join glues nothing onto it)', call('mcp__Google_Sheets__update_values', { spreadsheetId: 's', values: [['Author', noreply, 'Claude'], ['12345+someone@users.noreply.github.com', 'x']] }), true);
 
   /* no list: every write refused, with how to load it; a read still passes (above) */
-  expect('with no list, a clean write is refused, saying how to load the list', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'plain words' }, env(NO_LIST)), false, /not loaded.*Google Drive with a read-only tool.*delete that file when the session ends/);
+  expect('with no list, a clean write is refused, saying how to load the list', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'plain words' }, env(NO_LIST)), false, /not loaded.*from where he keeps it, with a read-only tool.*delete that file when the session ends/);
   expect('with no list, a private repository\'s comment is refused too: it cannot be known private', call('mcp__github__add_issue_comment', { owner: OWNER, repo: T.attic, issue_number: 1, body: 'plain words' }, env(NO_LIST)), false, /not loaded/);
   expect('with no list, a deep field name is not printed', call('mcp__x__write', { a: { [T.who]: personal } }, env(NO_LIST)), false, /in a \(somewhere inside\)/);
 
