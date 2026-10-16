@@ -8,14 +8,17 @@
    THE TERMS ARE NEVER IN THIS REPOSITORY. CI hands them in as an encrypted repository secret
    (PRIVATE_TERMS: the map's JSON rules, exactly as its ```json block holds them). GitHub masks a secret's
    whole value in logs, not the pieces of it, so this file prints only a rule's number, its kind and a
-   file:line (a file whose name holds a term is named by its place in git ls-files order instead, never by
-   any part of its name), and it never lets an error message through: Node's own JSON and regular-expression
-   errors quote their input, which here would be the owner's details on a public log.
+   file:line (a file whose name holds a term as a reader would read it, in any case and without its accents,
+   is named instead by its place in git ls-files order and a fingerprint of its path, never by any part of
+   its name), and it never lets an error message through: Node's own JSON and regular-expression errors
+   quote their input, which here would be the owner's details on a public log.
 
    Where the secret is absent (a pull request from a fork gets no secrets), this FAILS rather than passing
    on nothing: a fork's work is brought into a branch of this repository by a session that reviews it,
-   and the check runs there (docs/PRIVACY.md). A run that read no file, or a list with no word or pattern
-   to look for, FAILS too: a check that read nothing must not look like a pass.
+   and the check runs there (docs/PRIVACY.md). A run that read no file, a list with no word or pattern to
+   look for, and a single rule that is not exactly keep, replace or drop, or has no word or pattern of its
+   own, FAIL too: a check that read nothing must not look like a pass. The OK line counts only the rules
+   that look for something.
 
    Run:  PRIVATE_TERMS="$(cat map.json)" node scripts/private-terms.js
          node scripts/private-terms.js --map <file outside the repository>
@@ -36,7 +39,17 @@ function rulesFrom(text) {
     const m = String(text).match(/```json\s*\n([\s\S]*?)```/);
     rules = JSON.parse(m ? m[1] : text);
   } catch (e) { throw new Error('the private list could not be read (it is not valid JSON); nothing was checked'); }
-  if (!Array.isArray(rules) || !rules.some(r => r && (r.rule === 'replace' || r.rule === 'drop'))) throw new Error('the private list holds no rule to check; nothing was checked');
+  if (!Array.isArray(rules)) throw new Error('the private list holds no rule to check; nothing was checked');
+  /* every rule is read, not only counted: one written slightly wrong ("Replace", or a word list left empty)
+     would check nothing while the rest of the list passed. A rule is named by its number, never by its words. */
+  const word = s => typeof s === 'string' && s.trim() !== '';
+  rules.forEach((r, i) => {
+    const at = r && Number.isInteger(r.id) ? 'rule #' + r.id : 'rule number ' + (i + 1) + ' in the list';
+    if (!r || !['keep', 'replace', 'drop'].includes(r.rule)) throw new Error(at + ' is not keep, replace or drop, so it would check nothing; nothing was checked');
+    const list = k => r[k] === undefined || (Array.isArray(r[k]) && r[k].every(word));
+    if (r.rule !== 'keep' && !(list('find') && list('pattern') && (r.find || []).concat(r.pattern || []).length)) throw new Error(at + ' is a ' + r.rule + ' rule without a word or pattern to look for (or with an empty one); nothing was checked');
+  });
+  if (!rules.some(r => r.rule === 'replace' || r.rule === 'drop')) throw new Error('the private list holds no rule to check; nothing was checked');
   const cc = tool();
   let C;
   try { C = cc.compile(rules); }
@@ -61,7 +74,8 @@ function check(text, files) {
   const cc = tool();
   try { hits = cc.survivors(files, rules); }
   catch (e) { throw new Error('the private list could not be applied (a rule is malformed); nothing was checked'); }
-  return { rules: rules.length, files: files.length, hits };
+  /* rules: only the ones that look for something; a keep rule records a decision and checks nothing */
+  return { rules: rules.filter(r => r.rule !== 'keep').length, files: files.length, hits };
 }
 
 function selftest() {
@@ -89,6 +103,20 @@ function selftest() {
   leak(() => check('', []), 'an empty secret is a red, not a pass');
   leak(() => check(map, []), 'a run that read no file is a red, not a pass');
   leak(() => check(JSON.stringify([{ id: 2, kind: 'k', rule: 'replace', find: [], to: 'x' }, { id: 4, kind: 'k', rule: 'drop', pattern: [] }]), [{ file: 'a.md', text: 'clean words' }]), 'a list whose rules hold no word or pattern to look for is a red, not a pass');
+  /* one rule written slightly wrong, beside good ones: "Replace" for "replace", or a word list left empty */
+  const good = { id: 3, kind: 'partner', rule: 'replace', find: [T.who], to: '[partner]' };
+  const fails = (rules, files) => { try { check(JSON.stringify(rules), files); return ''; } catch (e) { return e.message; } };
+  const typo = fails([good, { id: 5, kind: 'place', rule: 'Replace', find: [T.town], to: '[city]' }], [{ file: 'docs/moving-day.md', text: 'The new flat in ' + T.town + ' has two rooms.' }]);
+  const blank = fails([good, { kind: 'k', rule: 'drop', find: [''] }], [{ file: 'a.md', text: 'clean words' }]);
+  const counted = check(JSON.stringify([{ id: 1, kind: 'pet-name', rule: 'keep', find: ['Bis' + 'cuit'] }, good]), [{ file: 'a.md', text: 'clean words' }]).rules;
+  mark(/^rule #5 /.test(typo) && /^rule number 2 in the list /.test(blank) && [typo, blank].every(m => /nothing was checked/.test(m) && m.indexOf(T.town) < 0 && m.indexOf(T.who) < 0) && counted === 1,
+    'a rule that is not exactly keep, replace or drop, or has no word to look for, is a red naming its number; the OK line counts only rules that look for something', JSON.stringify([typo || 'it did not fail', blank || 'it did not fail', 'counted ' + counted]));
+  /* a place in git ls-files order is right only on the tree that was checked, and a pull request is checked as its merge */
+  const masked = 'docs/' + T.town + '-notes.md', fp = require('crypto').createHash('sha256').update(masked).digest('hex').slice(0, 8);
+  const onBranch = check(map, [{ file: 'a.md', text: 'x' }, { file: masked, text: 'we met ' + T.who }]).hits;
+  const onMerge = check(map, [{ file: 'CHANGELOG.md', text: 'x' }, { file: 'a.md', text: 'x' }, { file: masked, text: 'we met ' + T.who }]).hits;
+  mark(onBranch.length === 2 && onMerge.length === 2 && /file 2 /.test(onBranch[0]) && /file 3 /.test(onMerge[0]) && onBranch.concat(onMerge).every(h => h.indexOf('fingerprint ' + fp + ' ') > 0 && h.indexOf(T.town) < 0 && h.indexOf(T.who) < 0),
+    'a file named by its place also carries a fingerprint of its path, the same whatever else the tree holds', JSON.stringify(onBranch.concat(onMerge)));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);
@@ -113,11 +141,12 @@ if (require.main === module) {
   catch (e) { console.log('FAIL: ' + (/nothing was checked/.test(e.message) ? e.message : 'the check could not run; nothing was checked')); process.exit(1); }
   if (r.hits.length) {
     console.log('FAIL: ' + r.hits.length + ' personal detail(s) from the private list are in this repository. Rephrase them or move them to the private repository; the list itself is never printed.');
-    r.hits.slice(0, 50).forEach(h => console.log('- ' + h));
-    if (r.hits.some(h => / in git ls-files order /.test(h))) console.log('A file named by its place: git ls-files | sed -n \'<place>p\' shows its name on your own machine; never paste that name into an issue or a log.');
+    const shown = r.hits.slice(0, 50);
+    shown.forEach(h => console.log('- ' + h));
+    if (shown.some(h => /, fingerprint [0-9a-f]{8} /.test(h))) console.log(tool().FIND_HINT);
     process.exit(1);
   }
-  console.log('OK: ' + r.files + ' files and their names read against ' + r.rules + ' private rules; nothing personal found. (The rules are never printed.)');
+  console.log('OK: ' + r.files + ' files and their names read against ' + r.rules + ' private rules, each with a word or pattern to look for; nothing personal found. (The rules are never printed.)');
 }
 
 module.exports = { rulesFrom, check };

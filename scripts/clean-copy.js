@@ -19,8 +19,9 @@
       "why we built it this way" note) are copied in last at the same path, and cleaned like the rest.
    4. READ-BACK: the whole copy is read again, code strings included, and every file name too. A mapped
       detail anywhere is a red, named by rule id and file:line and never by the term (a file whose name
-      holds one is named by its place in git ls-files order, never by any part of its name). A detail in a
-      code STRING is red on purpose: whether to change what a player sees is a decision, not a find-and-replace.
+      holds one as a reader would read it, in any case and without its accents, is named by its place in
+      git ls-files order and a fingerprint of its path, never by any part of its name). A detail in a code
+      STRING is red on purpose: whether to change what a player sees is a decision, not a find-and-replace.
 
    No real term is in this file; the self-test makes up its own.
 
@@ -45,6 +46,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const OVERLAY = 'public-overlay';
 
@@ -55,6 +57,16 @@ const W = '\\p{L}\\p{N}_';                            // a word character in any
 const wordRe = (body, flags, open = true, shut = true) => new RegExp((open ? '(?<![' + W + '])' : '') + '(?:' + body + ')' + (shut ? '(?![' + W + '])' : ''), flags + 'u');
 const isWordEdge = ch => /[\p{L}\p{N}_]/u.test(ch || '');
 const inside = (p, root) => { const r = path.relative(root, path.resolve(p)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+/* a name as a reader reads it: any case, no accents, and every run of anything but a letter or a digit one
+   space ("docs/Brañoville_Trip2.md" reads "docs branoville trip2 md") */
+const fold = s => String(s).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+/* a file's fingerprint: the first 8 hex digits of the sha256 of its path. Its place in git ls-files order is
+   right only on the tree that was read (a pull request is read as its merge, where another file can come
+   before it); the fingerprint is the same on any tree. FIND_HINT says how to turn it back into a name. */
+const fingerprint = p => crypto.createHash('sha256').update(p, 'utf8').digest('hex').slice(0, 8);
+const FIND = String.raw`git ls-files -z | node -e "require('fs').readFileSync(0,'utf8').split('\0').filter(Boolean).forEach(f=>console.log(require('crypto').createHash('sha256').update(f).digest('hex').slice(0,8),f))" | grep '^<fingerprint> '`;
+const FIND_HINT = 'A file named by its place and fingerprint: the place is its line in git ls-files on the tree this run read (a pull request is read as its merge, so on your own branch the place can be off); the fingerprint, the first 8 hex digits of the sha256 of its path, is the same on any tree. In your own clone this prints its name (put the fingerprint in place of <fingerprint>):\n  '
+  + FIND + '\nNever paste that name into an issue or a log.';
 
 /* how a file is cleaned: prose a paragraph at a time; code in its comments only; anything else not at all
    (it is still read back, so a detail in it is a red, not a pass) */
@@ -358,16 +370,24 @@ function survivors(files, rules) {
     if (r.rule === 'drop') dropRes(r).forEach(re => checks.push({ r, re, with: withRe(r), files: filesRe(r) }));
     if (r.path) Object.keys(r.path).forEach(k => checks.push({ r, re: new RegExp('(?<![A-Za-z0-9_])' + esc(k) + '(?![A-Za-z0-9_])', r.ci ? 'i' : '') }));
   });
+  /* whether a name may be printed is decided the way a reader reads it, not by a rule's own match: every
+     replace and drop word and every folder name the map renames, folded, anywhere in the folded name (so a
+     digit or another word glued on still holds it), and every check again in any case (a pattern too) */
+  const plain = rules.filter(r => r.rule === 'replace' || r.rule === 'drop').flatMap(r => Array.isArray(r.find) ? r.find : [])
+    .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(fold).filter(Boolean);
+  const anyCase = checks.map(c => new RegExp(c.re.source, c.re.flags.replace(/[gi]/g, '') + 'i'));
   const P = [];
-  files.forEach(({ file, text, n }, i) => {
+  files.forEach(({ file, text, n, from }, i) => {
     /* a file name: each folder and file name read with - _ . as spaces; a rule's "files" scope does not
-       apply here, because a name is published whatever the rule was written for. A name that holds ANY
-       rule's detail is never printed, not even in part and not on the lines about its text: every line
-       about that file names it by its place in git ls-files order instead (n, or its place in the list
-       given), which finds it (git ls-files | sed -n '<n>p') without the name reaching a log */
-    const segs = file.split('/');
+       apply here, because a name is published whatever the rule was written for. Only a rule's own match
+       is a red, as before. But a name that holds ANY rule's detail, as a reader would read it, is never
+       printed, not even in part and not on the lines about its text: every line about that file names it
+       by its place in git ls-files order (n, or its place in the list given) and the fingerprint of its
+       path (from: the original a copied file was made from), which FIND_HINT turns back into its name */
+    const segs = file.split('/'), flat = fold(file);
     const named = checks.filter(c => segs.some(seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '))));
-    const where = named.length ? 'file ' + (n || i + 1) + ' in git ls-files order (its name holds a private detail, so it is not printed)' : null;
+    const hide = named.length > 0 || plain.some(t => flat.includes(t)) || anyCase.some(re => segs.some(seg => re.test(seg) || re.test(seg.replace(/[-_.]+/g, ' '))));
+    const where = hide ? 'file ' + (n || i + 1) + ' in git ls-files order, fingerprint ' + fingerprint(from || file) + ' (its name holds a private detail, so it is not printed)' : null;
     named.forEach(c => P.push('rule #' + c.r.id + ' (' + c.r.kind + '): a file name carries it: ' + where));
     if (text == null) return;
     checks.forEach(c => {
@@ -423,7 +443,7 @@ function run(mapFile, outDir, manifestFile) {
   list.forEach(rel => put(rel, renamePath(rel, rules)));
   overlay.forEach(rel => put(rel, rel.slice(OVERLAY.length + 1)));
   const at = new Map(tracked.map((f, i) => [f, i + 1]));   /* a masked name is reported by its original's place */
-  const files = [...written].map(([file, w]) => ({ file, text: w.text, n: at.get(w.from) }));
+  const files = [...written].map(([file, w]) => ({ file, text: w.text, n: at.get(w.from), from: w.from }));
   return { rules, counts, tracked: tracked.length, copied: list.length, overlay: overlay.length, changed, binaries, unused,
     pairs: [...written].map(([file, w]) => ({ file, from: w.from })), left: survivors(files, rules) };
 }
@@ -544,6 +564,14 @@ function selftest() {
   mark(lp.length === 1 && lp[0].indexOf(T.ini.toLowerCase() + '-') < 0, 'a mapped name inside a file name is red, and the name is not printed whole', JSON.stringify(lp));
   const lb = survivors([{ file: 'a.md', text: 'fine' }, { file: 'docs/' + T.town + '/notes.md', text: 'about ' + T.sick, n: 7 }], rules);
   mark(lb.length === 2 && lb.every(l => l.indexOf(T.town) < 0 && l.indexOf(T.sick) < 0 && /file 7 in git ls-files order/.test(l)), 'a file whose name and text both hold a detail is named by its place in git ls-files order on every line, never by its name', JSON.stringify(lb));
+  /* names a rule's own match misses and a reader does not: lower case, no accent, a digit glued on, a renamed folder in another case */
+  const acc = 'Bra' + 'ñoville', den = 'plo' + 'vik-den';
+  const RN = rules.concat([{ id: 6, kind: 'place', rule: 'replace', find: [acc], to: '[city]' }, { id: 8, kind: 'home', rule: 'replace', find: [den], to: '[home]', path: { [den]: 'den' } }]);
+  const ln = survivors([{ file: 'docs/rooms/' + T.town.toLowerCase() + '-office.md', text: '# The ' + T.town + ' office' }, { file: 'docs/bra' + 'noville-trip.md', text: 'We drove to ' + acc + ' on Sunday.' },
+    { file: 'docs/letters/' + lo + '2.md', text: 'Dear ' + T.who + ',' }, { file: 'docs/Plo' + 'vik_Den/notes.md', text: 'about ' + T.who }, { file: 'docs/b.md', text: 'about ' + T.who }], RN);
+  const plainLow = s => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+  mark(ln.length === 5 && ln.slice(0, 4).every((l, k) => l.indexOf('file ' + (k + 1) + ' in git ls-files order') > 0 && [T.town, 'bra' + 'noville', lo, 'plo' + 'vik'].every(t => plainLow(l).indexOf(plainLow(t)) < 0)) && /docs\/b\.md:1$/.test(ln[4]),
+    'a name a reader would recognise is not printed, whatever its case, accents, separators or a digit glued on; a name with nothing in it still is', JSON.stringify(ln));
   const left2 = survivors([{ file: 'b.md', text: 'x\nabout ' + T.sick + ' y' }], rules);
   mark(left2.length === 1 && left2[0].indexOf('b.md:2') > 0 && left2[0].indexOf(T.sick) < 0, 'a surviving detail is named by rule and line, never by the term', JSON.stringify(left2));
   const left3 = survivors([{ file: 'c.md', text: 'we met in Two\nWords' }], rules);
@@ -625,9 +653,14 @@ if (require.main === module) {
   } else console.log('Diff check NOT RUN: pass --check-code <path to acorn> to prove no code changed.');
   if (codeRed) { console.log('FAIL: the copy changed code or data, which the clean copy must never do.'); process.exit(1); }
   if (res.unused.length) { console.log('FAIL: ' + res.unused.length + ' line(s) of the allowed list match no tracked file (a typo publishes nothing, silently):'); res.unused.forEach(u => console.log('- ' + u)); process.exit(1); }
-  if (res.left.length) { console.log('FAIL: ' + res.left.length + ' mapped detail(s) survived:'); res.left.slice(0, 80).forEach(p => console.log('- ' + p)); if (res.left.length > 80) console.log('- … and ' + (res.left.length - 80) + ' more'); process.exit(1); }
+  if (res.left.length) {
+    const shown = res.left.slice(0, 80);
+    console.log('FAIL: ' + res.left.length + ' mapped detail(s) survived:'); shown.forEach(p => console.log('- ' + p)); if (res.left.length > 80) console.log('- … and ' + (res.left.length - 80) + ' more');
+    if (shown.some(p => /, fingerprint [0-9a-f]{8} /.test(p))) console.log(FIND_HINT);
+    process.exit(1);
+  }
   console.log('OK: no mapped detail survives in the copy.');
   process.exit(0);
 }
 
-module.exports = { readMap, readManifest, compile, cleanText, renamePath, survivors, sentenceSpan, jsPieces, kindOf, run, checkCode };
+module.exports = { readMap, readManifest, compile, cleanText, renamePath, survivors, fingerprint, FIND_HINT, sentenceSpan, jsPieces, kindOf, run, checkCode };
