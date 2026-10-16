@@ -20,15 +20,21 @@ const { execFileSync } = require('child_process');
 /* every `git ... push ...` in a command line, as its words after `push` and the directory it runs in. The
    reader is test/authors.js's, shared so the two hooks cannot read one command two ways (2026-10-16: it
    lived here until then; it now also finds git by full path or in quotes, follows `cd`, `env -C`,
-   `--git-dir` and GIT_DIR=, reads `sh -c` scripts, and marks a directory it cannot tell as unknown) */
+   `--git-dir` and GIT_DIR=, reads `sh -c` scripts, and marks a directory it cannot tell as unknown). Found in
+   the branch's review, the same day: a command substitution is one word only the run knows, so `git -C $(echo DIR)`
+   is a directory this cannot tell, a remote or branch built that way (`git push origin $(echo main)`) may be
+   main and is refused, and so is a push whose git or command is built at run time (`$(which git) push`) */
 const { isPush, pushes } = require('./authors.js');
 
 /* why one push lands on main, or null; branchOf(dir) answers "which branch is checked out there", and
    headsOf(dir, remote) lists the remote's branches (it throws when the remote cannot be read) */
 function verdict(p, branchOf, headsOf) {
+  if (p.unread) return 'a push this check cannot read: git, or its command, is built at run time (a $VARIABLE or a command substitution); write the command out';
   const flags = p.args.filter(a => a.startsWith('-')), pos = p.args.filter(a => !a.startsWith('-'));
   if (flags.some(f => f === '--mirror')) return 'a --mirror push rewrites every branch on the remote, main included';
   if (flags.some(f => f === '--all')) return 'an --all push sends every local branch, main included';
+  if (p.args.some((a, n) => !a.startsWith('-') && p.dyn && p.dyn[n]))
+    return 'a push whose remote or branch only the run knows (a $VARIABLE or a command substitution) may land on main; name them: git push <remote> <branch>';
   const refspecs = pos.slice(1);
   for (const r of refspecs) {
     const dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^refs\/heads\//, '');
@@ -87,6 +93,13 @@ function selftest() {
     ['/usr/bin/git push origin main', 'claude/x', true],
     ['"git" push origin main', 'claude/x', true],
     ['git --git-dir /repo/.git push origin main', 'claude/x', true],
+    /* the branch's review (2026-10-16): a command substitution in a push; each of these was allowed before */
+    ['git -C $(echo /repo) push origin main', 'claude/x', true],
+    ['git -C `echo /repo` push origin main', 'claude/x', true],
+    ['$(echo git) push origin main', 'claude/x', true],
+    ['git push origin $(echo main)', 'claude/x', true],
+    ['git push `echo origin main`', 'claude/x', true],
+    ['git push -u origin claude/x && echo $(date)', 'claude/x', false],
   ];
   cases.forEach(([cmd, branch, want]) => {
     const got = judge(cmd, on(branch)).length > 0;
@@ -98,6 +111,8 @@ function selftest() {
   const onMain = d => d === '/on-main' ? 'main' : 'claude/x';
   mark(judge('cd /on-main && git push', onMain).length === 1, 'refused: cd /on-main && git push (main checked out there, not here)', 'got allowed');
   mark(judge('cd $SOMEWHERE && git push', on('claude/x')).length === 1, 'refused: a bare push from a directory the words do not tell', 'got allowed');
+  mark(judge('git -C $(echo /on-main) push', onMain).length === 1, 'refused: git -C $(echo /on-main) push (a directory a substitution builds is not known)', 'got allowed');
+  mark(judge('git -C `echo /on-main` push', onMain).length === 1, 'refused: git -C `echo /on-main` push (the backtick form)', 'got allowed');
   /* the one exception: creating main in a repository with no branches at all */
   const heads = list => () => list, unreadable = () => { throw new Error('offline'); };
   const ex = [

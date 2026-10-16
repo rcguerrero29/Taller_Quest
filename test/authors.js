@@ -142,10 +142,18 @@ function readFiles(root) {
    - the script of `sh -c` / `bash -lc` and the words after `eval` are read again as a command line;
    - a directory the words cannot tell (`cd -`, `popd`, a `$VARIABLE`, a command substitution) is
      refused, never guessed.
+   - A COMMAND SUBSTITUTION, `$( … )` or backticks, is ONE word whose value only the run knows (found in
+     the branch's review, the same day: until then the reader split a word at its `$(`, so `git -C $(echo DIR) push`
+     was read as no push at all and `cd $(echo DIR)` as a bare `cd`, home; both hooks then checked the wrong
+     directory and let the push through). The command inside an unquoted one is read as a command line of
+     its own. And git, or its command, built at run time — `$(which git) push`, `$GIT push`,
+     `git $(echo push)` — is a push this reader cannot read, so it is refused.
    One reader, shared: test/pushguard.js asks it the same question. WHAT STILL PASSES, said plainly: a push
-   made by another program — a node or python one-liner, a script file, a git alias, a git name the shell
-   builds at run time — and every `gh` write (`gh pr merge`, `gh issue comment`, `gh api`). None of those
-   is `git push` in the words; only CI reads what they published, after. Still read as before: the range
+   made by another program — a node or python one-liner, a script file, a git alias, a `sh -c` script built
+   at run time — a push inside a QUOTED command substitution (`"$(git push …)"`: its inside is not read as
+   commands, because a commit message written as `-m "$(cat <<EOF … EOF)"` would then be), and every `gh`
+   write (`gh pr merge`, `gh issue comment`, `gh api`). None of those is `git push` in the words; only CI
+   reads what they published, after. Still read as before: the range
    is origin/main..HEAD of the repository the push leaves from, so a repository with no origin/main is
    refused (its commits cannot be ranged), and a push of a branch that is not checked out is read by
    HEAD's commits. The connector tools (GitHub's, Drive's) are test/toolguard.js's. */
@@ -155,12 +163,37 @@ const PUSH = /(?:^|[\s;&|(])git(?:\s+(?:-C\s+\S+|-c\s+\S+|--[\w-]+(?:=\S+)?))*\s
 const WIDE = /(?:^|[^A-Za-z0-9_.-])git(?:\.exe)?(?![A-Za-z0-9_-])[\s\S]*?(?<![A-Za-z0-9_])push(?![A-Za-z0-9_])|(?:^|[^A-Za-z0-9_.-])git-push(?![A-Za-z0-9_-])/;
 const isPush = cmd => { const s = String(cmd || ''); return PUSH.test(s) || WIDE.test(s) || pushes(s).length > 0; };
 
+/* a command substitution that starts at s[i], `$( … )` or a backtick pair: { inner: the command line inside
+   it, end: the index just past it }. An unclosed one runs to the end of the line */
+function substitution(s, i) {
+  if (s[i] === '`') {
+    let j = i + 1, inner = '';
+    while (j < s.length && s[j] !== '`') {
+      if (s[j] === '\\' && j + 1 < s.length) { inner += '$`\\'.includes(s[j + 1]) ? s[j + 1] : s[j] + s[j + 1]; j += 2; continue; }
+      inner += s[j++];
+    }
+    return { inner, end: Math.min(j + 1, s.length) };
+  }
+  let j = i + 2, depth = 1;
+  while (j < s.length) {
+    const c = s[j];
+    if (c === '\\') { j += 2; continue; }
+    if (c === "'") { const k = s.indexOf("'", j + 1); j = k < 0 ? s.length : k + 1; continue; }
+    if (c === '"') { j++; while (j < s.length && s[j] !== '"') j += s[j] === '\\' ? 2 : 1; j++; continue; }
+    if (c === '(') depth++;
+    else if (c === ')' && !--depth) break;
+    j++;
+  }
+  return { inner: s.slice(i + 2, Math.min(j, s.length)), end: Math.min(j + 1, s.length) };
+}
+
 /* a command line as a shell splits it: words, with quotes and backslashes removed (`dyn` when a `$` or a
    backtick in it means its value is known only at run time), and operators. A redirection and its target
-   are dropped, so `2>&1` is neither an operator nor an argument. */
+   are dropped, so `2>&1` is neither an operator nor an argument. A command substitution stays inside its
+   word, which is then `dyn`; the command line inside an unquoted one follows as a `sub` token */
 function shellTokens(cmd) {
   const s = String(cmd || ''), out = [];
-  let i = 0, w = null, dyn = false, tick = false, skip = false;
+  let i = 0, w = null, dyn = false, skip = false;
   const end = () => { if (w !== null) { if (skip) skip = false; else out.push({ w, dyn }); } w = null; dyn = false; };
   const op = o => { end(); skip = false; out.push({ op: o }); };
   const add = c => { w = (w === null ? '' : w) + c; };
@@ -172,13 +205,13 @@ function shellTokens(cmd) {
       let j = i + 1, buf = '';
       while (j < s.length && s[j] !== '"') {
         if (s[j] === '\\' && j + 1 < s.length && '"\\$`\n'.includes(s[j + 1])) { buf += s[j + 1]; j += 2; continue; }
-        if (s[j] === '$' || s[j] === '`') dyn = true;
+        if ((s[j] === '$' && s[j + 1] === '(') || s[j] === '`') { const x = substitution(s, j); buf += s.slice(j, x.end); dyn = true; j = x.end; continue; }
+        if (s[j] === '$') dyn = true;
         buf += s[j++];
       }
       add(buf); i = j + 1; continue;
     }
-    if (c === '$' && s[i + 1] === '(') { op('('); i += 2; continue; }
-    if (c === '`') { op(tick ? ')' : '('); tick = !tick; i++; continue; }
+    if ((c === '$' && s[i + 1] === '(') || c === '`') { const x = substitution(s, i); add(s.slice(i, x.end)); dyn = true; out.push({ sub: x.inner }); i = x.end; continue; }
     if (c === '$') { dyn = true; add(c); i++; continue; }
     if (c === '>' || c === '<' || (c === '&' && s[i + 1] === '>')) {
       if (w !== null && /^\d+$/.test(w)) { w = null; dyn = false; } else end();
@@ -242,7 +275,7 @@ function readSimple(W, s, out) {
       else if (x === '--chdir' || (x === '-C' && W.slice(k, j).some(y => nameOf(y.w) === 'env'))) { at = step(at, W[j + 1]); j++; }
       else if (x.startsWith('--chdir=')) at = step(at, { w: x.slice(8), dyn: W[j].dyn });
     }
-    let j = i + 1, sub = name === 'git-push' ? 'push' : null;
+    let j = i + 1, sub = name === 'git-push' ? 'push' : null, subDyn = false;
     while (!sub && j < W.length) {                            /* git's own options, up to its command */
       const x = W[j].w;
       if (x === '-C') { at = step(at, W[j + 1]); j += 2; }
@@ -252,14 +285,19 @@ function readSimple(W, s, out) {
       else if (x.startsWith('--work-tree=')) { workTree = { w: x.slice(12), dyn: W[j].dyn }; j++; }
       else if (x === '-c' || x === '--namespace' || x === '--config-env' || x === '--super-prefix') j += 2;
       else if (x.startsWith('-')) j++;
-      else { sub = x; j++; }
+      else { sub = x; subDyn = W[j].dyn; j++; }
     }
+    if (sub !== 'push' && subDyn) { out.push({ args: W.slice(j).map(x => x.w), dyn: W.slice(j).map(x => x.dyn), dir: at.dir, unknown: true, unread: true }); return s; }
     if (sub !== 'push') { i = j - 1; continue; }
     if (workTree) at = step(at, workTree);
     else if (gitDir) { const g = step(at, gitDir); at = { dir: g.dir != null && nameOf(g.dir) === '.git' ? path.dirname(g.dir) : g.dir, unknown: g.unknown }; }
-    out.push({ args: W.slice(j).map(x => x.w), dir: at.dir, unknown: at.unknown });
+    out.push({ args: W.slice(j).map(x => x.w), dyn: W.slice(j).map(x => x.dyn), dir: at.dir, unknown: at.unknown });
     return s;
   }
+  /* git, or its command, built at run time (`$(which git) push`, `$GIT push`): a word only the run knows,
+     before a plain word `push`. A push this reader cannot read */
+  const p = W.findIndex((x, n) => n > k && x.w === 'push' && !x.dyn);
+  if (p > k && W.slice(k, p).some(x => x.dyn)) out.push({ args: W.slice(p + 1).map(x => x.w), dyn: W.slice(p + 1).map(x => x.dyn), dir: s.dir, unknown: true, unread: true });
   return s;
 }
 
@@ -277,20 +315,22 @@ function readLine(cmd, s0, out) {
     else if (o === ')' && stack.length) s = stack.pop();
     if (!piped) before = s;
   };
-  shellTokens(cmd).forEach(t => { if (t.op) done(t.op); else cur.push(t); });
+  /* the command inside an unquoted substitution runs in a shell of its own, from where this one stands */
+  shellTokens(cmd).forEach(t => { if (t.op) done(t.op); else if (t.sub != null) readLine(t.sub, s, out); else cur.push(t); });
   done(null);
   return out;
 }
 
-/* every `git push` in a command line: { args: the words after push, dir: where it runs (null: the hook's
-   cwd; relative: from there), unknown: true when the words cannot tell the directory } */
+/* every `git push` in a command line: { args: the words after push, dyn: which of them only the run knows,
+   dir: where it runs (null: the hook's cwd; relative: from there), unknown: true when the words cannot tell
+   the directory, unread: true when they cannot tell git or its command either } */
 const pushes = cmd => readLine(cmd, { dir: null, unknown: false, gitDir: null, workTree: null }, []);
 
 /* the repositories a command line's pushes leave from, absolute against the hook's cwd. No push found
    (an over-read of the wide net): the cwd itself, so the over-read still runs the check */
 function pushDirs(cmd, cwd) {
   const P = pushes(cmd), at = d => path.resolve(cwd, d == null ? '.' : d);
-  return { pushes: P.length, unknown: P.some(p => p.unknown), dirs: [...new Set((P.length ? P.map(p => p.dir) : [null]).map(at))] };
+  return { pushes: P.length, unknown: P.some(p => p.unknown), unread: P.some(p => p.unread), dirs: [...new Set((P.length ? P.map(p => p.dir) : [null]).map(at))] };
 }
 
 function selftest() {
@@ -387,9 +427,17 @@ function selftest() {
     ['two pushes, two repositories', 'git -C /a push && git -C /b push', P0, ['/a', '/b']],
     ['~ is the home folder', 'cd ~/r && git push', P0, [path.join(os.homedir(), 'r')]],
     ['an over-read with no push in it checks the cwd', 'git commit -m "about git push"', P0, ['/proj']],
+    /* the branch's review (2026-10-16): a command substitution is one word whose value is known only at run
+       time, and the command inside an unquoted one is read as a command line of its own */
+    ['a push inside an unquoted command substitution', 'echo $(git -C /a push)', P0, ['/a']],
+    ['a push inside backticks', 'echo `git -C /a push`', P0, ['/a']],
+    ['a push whose branch is a substitution: its directory is still known', 'git -C /a push origin $(git branch --show-current)', P0, ['/a']],
   ];
   dirCases.forEach(([what, cmd, cwd, want]) => { const r = pushDirs(cmd, cwd); mark(!r.unknown && JSON.stringify(r.dirs) === JSON.stringify(want), 'the hook checks the repository of ' + what, JSON.stringify(r)); });
-  const unknownCases = ['cd $REPO && git push', 'cd - && git push', 'git -C "$(pwd)/x" push', 'popd; git push'];
+  const unknownCases = ['cd $REPO && git push', 'cd - && git push', 'git -C "$(pwd)/x" push', 'popd; git push',
+    /* the branch's review: each of these checked the hook's cwd, exit 0, before */
+    'git -C $(echo /other) push', 'git -C `echo /other` push', 'git -C /a$(echo /b) push', 'cd $(echo /other) && git push',
+    '$(echo git) push origin x', '`which git` push origin x', '"$(which git)" push origin x', 'git $(echo push) origin x'];
   unknownCases.forEach(cmd => { const r = pushDirs(cmd, P0); mark(r.unknown, 'a directory the words cannot tell is refused, not guessed: ' + cmd, JSON.stringify(r)); });
   /* what test/pushguard.js reads as the push's arguments: a redirection is not a refspec */
   const args = pushes('git push origin claude/x 2>&1 | tail -2');
@@ -412,8 +460,10 @@ if (require.main === module) {
     /* the repository the push leaves from, not this checkout (2026-10-16): -C, cd, a worktree, the hook's cwd */
     const from = pushDirs(typeof cmd === 'string' ? cmd : '', cwd || ROOT);
     if (from.unknown) {
-      process.stderr.write('PUSH REFUSED by test/authors.js — this command pushes from a directory its words do not tell (`cd -`, `popd`, a $VARIABLE or a command substitution), so this check cannot say which repository it would publish.\n' +
-        'Name the directory: `git -C <directory> push …`.\n');
+      process.stderr.write('PUSH REFUSED by test/authors.js — ' + (from.unread
+        ? 'this command builds git, or its command, at run time (a $VARIABLE or a command substitution), so this check cannot read the push, nor which repository it would publish.\n'
+        : 'this command pushes from a directory its words do not tell (`cd -`, `popd`, a $VARIABLE or a command substitution), so this check cannot say which repository it would publish.\n') +
+        'Write it out: `git -C <directory> push …`.\n');
       process.exit(2);
     }
     /* A check that never finishes refuses; it does not wave a push through (#279). The check below

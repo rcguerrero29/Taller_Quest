@@ -13,14 +13,18 @@
       merges), fork and create a repository (a new place to publish), delete a file, and push files or
       create or update a file (a commit straight onto a branch, from no checkout any hook reads).
    2. This file, the PreToolUse hook on every tool whose name starts with mcp__. CLOSED BY DEFAULT:
-      - A tool is a READ only if the last part of its name starts with get_, list_, search_, read_,
-        download_, query, fetch or export, or is one of NAMED_READS below, each with its reason. A read
-        passes untouched. Everything else is a WRITE, a name this file has never seen included.
+      - A tool is a READ only if the last part of its name starts with get_, list_, search_, read_ or
+        download_ AND no word of it is a write word (WRITE_WORDS below: create, update, delete, send, post,
+        run, upload and the rest), or it is one of NAMED_READS below, named with its server and its reason.
+        A read passes untouched. Everything else is a WRITE, a name this file has never seen included.
       - Sharing is refused on any server: a name with the word `share` in it (Drive's share_file), and a
         write that changes who can see a thing (collaborators, permissions). It is the owner's to do.
       - A write's EVERY string is read, at any depth, field names too — not a list of named fields, which
-        a new tool would walk round. A string that is base64 of text is read decoded as well. A write with
-        no string at all cannot be read, so it is refused.
+        a new tool would walk round. A string that is base64 of text is read decoded as well, and a number
+        or a yes/no as its text. The strings are also read JOINED, each with the next and all of them in
+        order, with nothing and with a space between them, so a term split between a title and a body is
+        found (it is named `across fields`). A write with no string at all (numbers, yes/no or nothing)
+        says nothing of what it does, so it is refused.
       - An address that is not a no-reply one, anywhere in a write, refuses it: test/authors.js's rule,
         asked of test/authors.js (judgeFiles), not typed again.
       - The private-term check reads the owner's list from the file PRIVATE_TERMS_FILE names, else
@@ -41,18 +45,31 @@
    path (`files[1].content line 2`), and a field name that is not a plain name, or that itself hits,
    prints as `…`.
 
-   What it does not stop, said plainly: a tool whose read name hides a write (`export` is trusted as a
-   read); what a read sends out in its own arguments (a search query, a fetched address); a term spelled
-   another way, split across two strings, or encoded any way but base64; a session that edits
-   .claude/settings.json, or runs with hooks off; a hook that cannot start or runs out of time (Claude
-   Code then lets the call through). The switches that hold regardless are the owner's.
+   FOUND IN THE BRANCH'S REVIEW, the same day: a prefix alone made a read (and query, fetch and export were
+   prefixes), so export_repository, fetch_and_overwrite and query_then_post passed as reads; a term split
+   between two fields, or a detail in a number field, passed; and the hook had no time limit of its own.
+
+   THE TIME LIMIT. Claude Code stops a hook at the `timeout` .claude/settings.json gives it (30 s) and then
+   lets the call THROUGH. So the reading runs in a child process (`--decide`) that the hook stops at
+   LIMIT_MS (20 s), well under that cap, and a check stopped there refuses, in its own sentence. A read is
+   told by its name alone, before any child starts.
+
+   What it does not stop, said plainly: a write whose read-like name holds no write word, or runs one into
+   another word (`get_reportandmail`); what a read sends out in its own arguments (a search query, a
+   fetched address); a term spelled another way, split between strings that are not next to each other in
+   the call, or encoded any way but base64; a session that edits .claude/settings.json, or runs with hooks
+   off; a hook that cannot start at all, or a machine so loaded that even the 20 s refusal misses the 30 s
+   cap (Claude Code then lets the call through). Claude Code from 2.1.295 takes `"onFailure": "block"` on a
+   hook, which refuses even then; it is the owner's to set, because which version his laptop runs is not
+   known here. The switches that hold regardless are the owner's.
 
    Run:  node test/toolguard.js --hook       (Claude Code's PreToolUse hook: reads the call on stdin)
+         node test/toolguard.js --decide     (the hook's child: the call on stdin, its decision on stdout)
          node test/toolguard.js --selftest   (made-up terms and addresses, assembled at run time) */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 /* what reads the rules and the addresses: loaded only for a write, so a read costs nothing but the parse */
@@ -65,32 +82,50 @@ function partsOf(name) {
   const p = String(name || '').split('__');
   return p[0] === 'mcp' && p.length >= 3 ? { server: p[1], tool: p.slice(2).join('__') } : { server: '', tool: p[p.length - 1] };
 }
-const READ = /^(?:get_|list_|search_|read_|download_|query|fetch|export)/;
-/* plain reads whose names do not start that way, one by one, each with why it only reads */
+/* a READ: the tool part starts get_, list_, search_, read_ or download_, and no word of it is a write word.
+   Words split at _ - and a capital (get_fileAndDelete is get, file, and, delete); whole words only, so the
+   nouns `requests` and `shared` (list_pull_requests, list_shared_drives) are not `request` and `share` */
+const READ = /^(?:get|list|search|read|download)_/;
+const WRITE_WORDS = new Set(('create update delete write push merge post send share copy trash move overwrite add remove set put ' +
+  'patch insert append clear submit revoke fork trigger run enable disable resolve request reply upload edit archive rename').split(' '));
+const wordsOf = tool => String(tool).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+/* the server as NAMED_READS names it: lower case, with the claude.ai connector prefix taken off, so the owner's
+   laptop's mcp__claude_ai_GitHub__ is the same `github` as a cloud session's mcp__github__ */
+const serverKey = server => String(server || '').toLowerCase().replace(/^claude_ai_/, '');
+/* plain reads the rule above does not take, one by one, by server and name, each with why it only reads. A
+   name here on any other server is not a read: `export` or `search` elsewhere is whatever that server made it */
 const NAMED_READS = {
-  issue_read: 'GitHub: one issue, its comments, labels, parent or sub-issues (its method is one of a fixed list of gets)',
-  pull_request_read: 'GitHub: one pull request, its diff, files, reviews, comments or checks (a fixed list of gets)',
-  actions_get: 'GitHub: one workflow, run, job or artifact',
-  actions_list: 'GitHub: workflows, runs, jobs or artifacts',
-  read: 'Claude Docs: the text of a doc',
-  search: 'a server-wide search: results come back, nothing is stored',
-  guide: 'Claude Docs: its own instructions',
+  'github/issue_read': 'GitHub: one issue, its comments, labels, parent or sub-issues (its method is one of a fixed list of gets)',
+  'github/pull_request_read': 'GitHub: one pull request, its diff, files, reviews, comments or checks (a fixed list of gets)',
+  'github/actions_get': 'GitHub: one workflow, run, job or artifact',
+  'github/actions_list': 'GitHub: workflows, runs, jobs or artifacts',
+  'github/get_check_run': 'GitHub: one CI check run and its output (its `run` is the check, not an order to run one)',
+  'claude_docs/read': 'Claude Docs: the text of a doc',
+  'claude_docs/guide': 'Claude Docs: its own instructions',
+  'claude_docs/query': 'Claude Docs: a doc\'s or a tab\'s comment history, listed',
+  'claude_docs/export': 'Claude Docs: one tab handed back inline, as base64; nothing is stored or sent anywhere else',
+  'fireflies/fireflies_fetch': 'Fireflies: one meeting\'s transcript, by its id',
+  'granola/query_granola_meetings': 'Granola: a question about his meetings, answered from his notes; nothing is stored',
+  'zoom_for_claude/search': 'Zoom: its search, marked read-only by Zoom; results come back, nothing is stored',
 };
 const SHARE = /(?:^|_)share(?:_|$)|shareable/;
 const WHO_SEES = /collaborator|permission/;
 function kindOf(name) {
-  const { tool } = partsOf(name);
+  const { server, tool } = partsOf(name);
   if (SHARE.test(tool)) return 'share';
-  if (READ.test(tool) || Object.prototype.hasOwnProperty.call(NAMED_READS, tool)) return 'read';
+  if (Object.prototype.hasOwnProperty.call(NAMED_READS, serverKey(server) + '/' + tool)) return 'read';
+  if (READ.test(tool) && !wordsOf(tool).some(w => WRITE_WORDS.has(w))) return 'read';
   if (WHO_SEES.test(tool)) return 'share';
   return 'write';
 }
 
-/* every string in a call's input, at any depth — values and field names — each with where it sits */
+/* every string in a call's input, at any depth — values and field names — each with where it sits; a number
+   or a yes/no as its text, marked `num` */
 function stringsOf(input) {
   const out = [];
   const walk = (v, at) => {
     if (typeof v === 'string') out.push({ at, s: v });
+    else if (typeof v === 'number' || typeof v === 'boolean') out.push({ at, s: String(v), num: true });
     else if (Array.isArray(v)) v.forEach((x, i) => walk(x, at.concat(i)));
     else if (v && typeof v === 'object') Object.keys(v).forEach(k => { out.push({ at: at.concat(k), s: k, key: true }); walk(v[k], at.concat(k)); });
   };
@@ -114,6 +149,7 @@ function decoded(s) {
    deeper names are safe to print (no list loaded) */
 const PLAIN = /^[A-Za-z_][A-Za-z0-9_]{0,40}$/;
 function fieldOf(item, hidden, shallow) {
+  if (item.across !== undefined) return 'across fields (' + (item.across ? fieldOf(item.across[0], hidden) + ' and ' + fieldOf(item.across[1], hidden) : 'the strings read joined, in order') + ')';
   const at = shallow ? item.at.slice(0, 1) : item.at;
   let out = '';
   at.forEach(k => {
@@ -194,7 +230,8 @@ function privateWrite(name, input, listText, pin) {
 
 /* every hit of the list in a call: [{ id, item, line }] — never the term */
 function termHits(items, input, listText) {
-  const found = [], handled = new Set();
+  const found = [], handled = new Set(), alone = new Set();
+  const free = unscoped(listText), idOf = h => (/^rule #(\S+)/.exec(h) || [])[1], NAME_HIT = /: a file name carries it: /;
   const byAt = new Map(items.filter(it => !it.key && !it.decoded).map(it => [JSON.stringify(it.at), it]));
   /* a file the write names is read as that file, at its path, scopes and all (as CI reads it) */
   const files = [];
@@ -219,11 +256,38 @@ function termHits(items, input, listText) {
      NAME is not the payload's and is not counted; every other hit counts, even one this cannot place, so
      a change in how scripts/private-terms.js words a hit refuses rather than passes */
   const rest = items.filter(it => !handled.has(it));
-  terms().check(unscoped(listText), rest.map((it, i) => ({ file: 's' + i + '.md', text: it.s }))).hits.forEach(h => {
-    if (/: a file name carries it: /.test(h)) return;
+  terms().check(free, rest.map((it, i) => ({ file: 's' + i + '.md', text: it.s }))).hits.forEach(h => {
+    if (NAME_HIT.test(h)) return;
     const at = h.lastIndexOf(' survives at s'), m = at < 0 ? null : /^ survives at s(\d+)\.md:(\d+)$/.exec(h.slice(at));
-    found.push({ id: (/^rule #(\S+)/.exec(h) || [])[1], item: m ? rest[+m[1]] : null, line: m ? +m[2] : null });
+    found.push({ id: idOf(h), item: m ? rest[+m[1]] : null, line: m ? +m[2] : null });
+    alone.add(String(idOf(h)));
   });
+  /* ACROSS FIELDS: a term split between two strings, a title and a body, is in neither. So the
+     strings (field names left out, numbers as text) are read again: each with the next, with nothing and
+     with a space between them, and all of them in order, the same two ways, every rule with its scope off.
+     A rule counts here only when no string holds it on its own (a file's content included, read with no
+     scope), so a file's scoped term that CI passes still passes, and a term whole in one field is named
+     there once. A hit this cannot place still counts, as across fields */
+  const values = items.filter(it => !it.key && !it.decoded);
+  if (values.length < 2) return found;
+  if (handled.size) terms().check(free, [...handled].map((it, i) => ({ file: 'f' + i + '.md', text: it.s }))).hits.forEach(h => { if (!NAME_HIT.test(h)) alone.add(String(idOf(h))); });
+  const SEP = '\u0000\n\n', pairs = [], starts = [];   /* no word, no space, a blank line: nothing reads across it */
+  let line = 1;
+  for (let i = 0; i + 1 < values.length; i++) [values[i].s + values[i + 1].s, values[i].s + ' ' + values[i + 1].s].forEach(t => {
+    starts.push(line); pairs.push(t); line += t.split('\n').length + 1;
+  });
+  const pairOf = n => { let a = 0, b = starts.length - 1; while (a < b) { const c = (a + b + 1) >> 1; if (starts[c] <= n) a = c; else b = c - 1; } return a >> 1; };
+  const all = values.map(it => it.s), byPair = new Set();
+  const joined = terms().check(free, [{ file: 'pairs.md', text: pairs.join(SEP) }, { file: 'joined.md', text: all.join('') }, { file: 'spaced.md', text: all.join(' ') }]).hits
+    .filter(h => !NAME_HIT.test(h) && !alone.has(String(idOf(h))));
+  joined.forEach(h => {
+    const m = / survives at pairs\.md:(\d+)$/.exec(h);
+    if (!m) return;
+    const i = pairOf(+m[1]);
+    byPair.add(String(idOf(h)));
+    found.push({ id: idOf(h), item: { across: [values[i], values[i + 1]] }, line: null });
+  });
+  joined.forEach(h => { if (!/ survives at pairs\.md:\d+$/.test(h) && !byPair.has(String(idOf(h)))) found.push({ id: idOf(h), item: { across: null }, line: null }); });
   return found;
 }
 
@@ -235,9 +299,9 @@ function decide(name, input, env) {
   if (kind === 'read') return { ok: true };
   if (kind === 'share') return { ok: false, why: ['sharing a file, or changing who can see one, is the owner\'s to do, on any server; a session never does it'] };
   const items = stringsOf(input);
-  if (!items.some(it => !it.key)) return { ok: false, why: ['this write carries no text at all, so nothing in it can be read, and a write that cannot be read is refused'] };
+  if (!items.some(it => !it.key && !it.num)) return { ok: false, why: ['this write carries no text at all (numbers, yes/no or nothing), so nothing in it says what it does, and a write that cannot be read is refused'] };
   if (items.reduce((n, it) => n + it.s.length, 0) > LIMIT_CHARS) return { ok: false, why: ['this write is over 8 MB of text, too much to read inside the hook\'s time; split it'] };
-  items.filter(it => !it.key).forEach(it => { const d = decoded(it.s); if (d != null) items.push({ at: it.at, s: d, decoded: true }); });
+  items.filter(it => !it.key && !it.num).forEach(it => { const d = decoded(it.s); if (d != null) items.push({ at: it.at, s: d, decoded: true }); });
   const addressed = items.filter(it => hasAddress(it.s));
   const hidden = new Set(addressed.filter(it => it.key).map(it => it.s));
   const list = env.list();
@@ -254,7 +318,7 @@ function decide(name, input, env) {
   addressed.forEach(it => why.push('an address that is not a no-reply one, in ' + fieldOf(it, hidden)));
   const seen = new Set();
   found.forEach(f => {
-    const s = ruleNo(f.id) + ' of the private list, in ' + (f.item ? fieldOf(f.item, hidden) : 'a field') + (f.line && f.item && /\n/.test(f.item.s) ? ' line ' + f.line : '');
+    const s = ruleNo(f.id) + ' of the private list, ' + (!f.item ? 'in a field' : (f.item.across !== undefined ? '' : 'in ') + fieldOf(f.item, hidden)) + (f.line && f.item && /\n/.test(f.item.s) ? ' line ' + f.line : '');
     if (!seen.has(s)) { seen.add(s); why.push(s); }
   });
   if (!why.length) return { ok: true };
@@ -275,7 +339,7 @@ function selftest() {
   let total = 0; const bad = [];
   const mark = (ok, what, why) => { total++; console.log((ok ? '  ok   ' : '  FAIL ') + what + (ok ? '' : '  (' + why + ')')); if (!ok) bad.push(what); };
   /* made-up terms and addresses, assembled here, so no string in this file is on any list */
-  const T = { who: 'Zo' + 'rblax', town: 'Qwerty' + 'ville', attic: 'qwerty' + '-attic', word: 'Plo' + 'ndrel' };
+  const T = { who: 'Zo' + 'rblax', town: 'Qwerty' + 'ville', attic: 'qwerty' + '-attic', word: 'Plo' + 'ndrel', two: 'Blo' + 'rp Fennick', num: '4242' + '1717' };
   const at = (u, d) => u + '@' + d;
   const SECRET = 'someone.private', MAILDOM = 'zorb' + '-mail.test', personal = at(SECRET, MAILDOM), noreply = at('noreply', 'anthropic.com');
   const SAID = 'said-only-' + 'here';                 /* a payload word that must never come back in a refusal */
@@ -284,13 +348,15 @@ function selftest() {
     { id: 5, kind: 'place', rule: 'replace', find: [T.town], to: '[city]' },
     { id: 7, kind: 'repository', rule: 'replace', find: [T.attic], to: '[the private repository]' },
     { id: 9, kind: 'notes-only', rule: 'replace', find: [T.word], to: '[x]', files: '^docs/' },
+    { id: 11, kind: 'name', rule: 'replace', find: [T.two], to: '[a name]' },
+    { id: 13, kind: 'number', rule: 'replace', find: [T.num], to: '[a number]' },
   ];
   const LIST = '# a made-up list\n\n```json\n' + JSON.stringify(RULES) + '\n```\n';
   const OWNER = 'plant-owner';
   const NO_LIST = { why: 'the owner\'s private list is not loaded (~/.private-terms/map.md is absent or unreadable)' };
   const env = list => ({ list: () => list || { text: LIST }, pin: () => OWNER });
   const call = (name, input, e) => fromHook(JSON.stringify({ tool_name: name, tool_input: input }), e || env());
-  const secrets = [T.who, T.who.toLowerCase(), T.town, T.attic, T.word, SECRET, MAILDOM, SAID];
+  const secrets = [T.who, T.who.toLowerCase(), T.town, T.attic, T.word, T.two, T.num, SECRET, MAILDOM, SAID];
   const leaked = r => (r.why || []).some(w => secrets.some(t => w.indexOf(t) >= 0));
   const expect = (what, r, ok, re) => mark(r.ok === ok && !leaked(r) && (!re || re.test((r.why || []).join(' | '))), what,
     leaked(r) ? 'it printed a term, an address or the payload' : (r.ok ? 'allowed' : 'refused: ' + (r.why || []).join(' | ')));
@@ -324,6 +390,16 @@ function selftest() {
   expect('the same term in a file inside its scope is refused', call('mcp__github__create_or_update_file', { owner: 'o', repo: 'r', branch: 'b', message: 'm', path: 'docs/x.md', content: 'about ' + T.word }), false, /rule #9 .*in content/);
   expect('the same term in a comment is refused: a comment has no path to scope by', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'about ' + T.word }), false, /rule #9 .*in body/);
   expect('a term in a file name is refused', call('mcp__github__push_files', { owner: 'o', repo: 'r', branch: 'b', message: 'm', files: [{ path: 'docs/' + T.who + '.md', content: 'clean' }] }), false, /rule #3 .*files\[0\]\.path/);
+  /* the branch's review (2026-10-16): a term split between two fields is in neither, so the strings are also read
+     joined, pair by pair and all in order, with nothing and with a space between them; a number or a yes/no is
+     read as its text */
+  expect('a term split between the title and the body is refused, as across fields', call('mcp__github__issue_write', { method: 'create', owner: 'o', repo: 'r', title: 'about ' + T.who.slice(0, 3), body: T.who.slice(3) + ' and more' }), false, /rule #3 of the private list, across fields \(title and body\)/);
+  expect('a two-word term split between two fields is refused, read with a space between them', call('mcp__github__issue_write', { method: 'create', owner: 'o', repo: 'r', title: T.two.split(' ')[0], body: T.two.split(' ')[1] + ' wrote' }), false, /rule #11 of the private list, across fields \(title and body\)/);
+  expect('a term split three ways is found in the strings read joined in order', call('mcp__x__write_note', { a: 'one. ', b: T.who.slice(0, 2), c: T.who.slice(2, 5), d: T.who.slice(5) + ' two' }), false, /rule #3 of the private list, across fields \(the strings read joined, in order\)/);
+  expect('a term whole in one field is named by that field only, not again as across fields', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: body(T.town) }), false, /^rule #5 of the private list, in body line 2$/);
+  expect('a private number in a number field is refused', call('mcp__x__write_note', { note: 'clean', code: +T.num }), false, /^rule #13 of the private list, in code$/);
+  const nb = stringsOf({ a: true, b: 7 });
+  mark(nb.some(it => it.s === 'true' && it.at[0] === 'a') && nb.some(it => it.s === '7' && it.at[0] === 'b'), 'a boolean and a number are read as their text', JSON.stringify(nb));
 
   /* addresses: the same rule as test/authors.js, list or no list, private repository or not */
   expect('a comment holding a personal address is refused, and neither the address nor its domain is printed', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'write to ' + personal }), false, /an address that is not a no-reply one, in body/);
@@ -345,6 +421,7 @@ function selftest() {
   expect('a write with no string at all is refused', call('mcp__x__do_thing', { n: 3, flag: true }), false, /no text at all/);
   expect('a write with an empty input is refused', call('mcp__x__do_thing', {}), false, /no text at all/);
   expect('a write with no input is refused', call('mcp__x__do_thing', undefined), false, /no text at all/);
+  expect('a write named like a read, carrying a term, is a write: refused', call('mcp__x__export_repository', { note: T.town }), false, /rule #5 of the private list, in note/);
   expect('a write too large to read in time is refused', call('mcp__x__do_thing', { a: 'x'.repeat(LIMIT_CHARS + 1) }), false, /8 MB/);
   mark(!fromHook('not json', env()).ok, 'a call that is not JSON is refused', 'allowed');
   mark(!fromHook(JSON.stringify({ tool_input: { body: 'x' } }), env()).ok, 'a call that names no tool is refused', 'allowed');
@@ -356,7 +433,15 @@ function selftest() {
     ['mcp__claude_ai_GitHub__get_commit', 'read'], ['mcp__Google_Drive__list_shared_drives', 'read'],
     ['mcp__github__merge_pull_request', 'write'], ['mcp__github__add_issue_comment', 'write'], ['mcp__github__update_pull_request', 'write'],
     ['mcp__github__run_secret_scanning', 'write'], ['mcp__Google_Drive__copy_file', 'write'], ['mcp__Google_Drive__trash_file', 'write'],
-    ['mcp__x__getaway', 'write'], ['mcp__x__readme_write', 'write'], ['mcp__x__get_share_link', 'share'], ['mcp__x__update_permissions', 'share']];
+    ['mcp__x__getaway', 'write'], ['mcp__x__readme_write', 'write'], ['mcp__x__get_share_link', 'share'], ['mcp__x__update_permissions', 'share'],
+    /* the branch's review: a read's prefix followed by a write word is a write, and so is query, fetch or export: a read the
+       prefixes do not cover is named, with its server */
+    ['mcp__x__export_repository', 'write'], ['mcp__x__fetch_and_overwrite', 'write'], ['mcp__x__query_then_post', 'write'],
+    ['mcp__x__get_or_create_file', 'write'], ['mcp__x__list_and_delete_files', 'write'], ['mcp__x__download_then_upload', 'write'],
+    ['mcp__x__read_and_send', 'write'], ['mcp__x__get_fileAndDelete', 'write'], ['mcp__x__export', 'write'], ['mcp__x__read', 'write'],
+    ['mcp__x__search', 'write'], ['mcp__Fireflies__fireflies_fetch', 'read'], ['mcp__github__get_check_run', 'read'],
+    ['mcp__claude_ai_GitHub__issue_read', 'read'], ['mcp__github__list_pull_requests', 'read'], ['mcp__Granola__query_granola_meetings', 'read'],
+    ['mcp__Zoom_for_Claude__search', 'read']];
   names.forEach(([n, want]) => mark(kindOf(n) === want, n + ' is a ' + want, 'got ' + kindOf(n)));
 
   /* the list file: absent, broken, inside a repository, good — and never echoed */
@@ -374,6 +459,25 @@ function selftest() {
     r = loadList({ PRIVATE_TERMS_FILE: f }, p => p === path.join(path.dirname(tmp), '.git'));
     mark(!r.text && /inside a git repository/.test(r.why), 'a list inside a repository is refused', JSON.stringify(r));
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  /* the hook as Claude Code runs it, the call on stdin: exit 0 or 2. And its own time limit: Claude Code
+     stops a hook at the 30 s .claude/settings.json gives it and then lets the call THROUGH, so the hook stops its
+     check sooner and refuses in its own words. --limit-ms (only ever lower) and --stall (a check that never ends)
+     are this self-test's, so the real limit need not be waited out */
+  const hookTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'toolguard-hook-'));
+  try {
+    const lf = path.join(hookTmp, 'map.md'); fs.writeFileSync(lf, LIST);
+    const hook = (input, extra) => spawnSync(process.execPath, [__filename, '--hook'].concat(extra || []), { input: JSON.stringify(input), encoding: 'utf8', timeout: 15000, env: Object.assign({}, process.env, { PRIVATE_TERMS_FILE: lf }) });
+    const said = h => 'exit ' + h.status + ': ' + String(h.stderr || '').split('\n')[0].slice(0, 160);
+    let h = hook({ tool_name: 'mcp__brand_new__frobnicate', tool_input: { note: 'plain words' } });
+    mark(h.status === 0, 'the hook itself: a clean write exits 0', said(h));
+    h = hook({ tool_name: 'mcp__brand_new__frobnicate', tool_input: { note: body(T.town) } });
+    mark(h.status === 2 && /rule #5 of the private list, in note line 2/.test(h.stderr) && !secrets.some(t => String(h.stderr).indexOf(t) >= 0), 'the hook itself: a term exits 2, named by rule and field and never quoted', said(h));
+    h = hook({ tool_name: 'mcp__github__get_file_contents', tool_input: { owner: 'x', repo: 'y', path: T.who } });
+    mark(h.status === 0, 'the hook itself: a read exits 0', said(h));
+    const t1 = Date.now();
+    h = hook({ tool_name: 'mcp__brand_new__frobnicate', tool_input: { note: 'plain words' } }, ['--limit-ms', '1000', '--stall']);
+    mark(h.status === 2 && /still running after 1 s/.test(h.stderr) && Date.now() - t1 < 10000, 'a check still running at the hook\'s own limit is stopped there and refused, in its own sentence', said(h));
+  } finally { fs.rmSync(hookTmp, { recursive: true, force: true }); }
   mark(ownerFromUrl('https://github.com/Some-One/a-repo') === 'some-one' && ownerFromUrl(at('git', 'github.com:someone/r.git')) === 'someone' && ownerFromUrl('https://example.test/a/b') === null,
     'the owner is read from a GitHub origin, and from nothing else', 'misread');
 
@@ -398,23 +502,65 @@ function selftest() {
   process.exit(0);
 }
 
-if (require.main === module) {
-  if (process.argv.includes('--selftest')) return void selftest();
-  if (process.argv.includes('--hook')) {
-    let input = ''; try { input = fs.readFileSync(0, 'utf8'); } catch (e) {}
-    let pinned;
-    const env = { list: () => loadList(process.env), pin: () => (pinned === undefined ? (pinned = ownerOf(ROOT)) : pinned) };
-    let r;
-    /* a check that throws refuses: it never says what it could not read, so only the error's kind is printed */
-    try { r = fromHook(input, env); }
-    catch (e) { r = { ok: false, tool: 'this call', why: ['the check itself failed (' + (e && e.name) + '), and a check that cannot finish refuses'] }; }
-    if (r.ok) process.exit(0);
-    process.stderr.write('TOOL CALL REFUSED by test/toolguard.js — ' + r.tool + ': ' + r.why.join('; ').replace(/\.?$/, '.') + '\n' +
-      'Nothing of the call is printed here: a rule is named by its number and a field by its path. Rephrase it, or write it to the private repository; ' +
-      'merging, sharing and changing who can see a file are the owner\'s.\n');
+/* THE HOOK (.claude/settings.json): the call on stdin; exit 0, or a refusal on stderr and exit 2. A read is told
+   by its name here; anything else is decided by a child (`--decide`) that this stops at its own limit, under
+   Claude Code's 30 s, and a check stopped there refuses. --limit-ms (only ever lower) and --stall (a child that
+   never answers) are the self-test's, so it need not wait 20 s */
+const LIMIT_MS = 20000;
+function hook(argv) {
+  const t0 = Date.now(), li = argv.indexOf('--limit-ms');
+  const limit = li >= 0 && +argv[li + 1] > 0 ? Math.min(LIMIT_MS, +argv[li + 1]) : LIMIT_MS;
+  const refuse = (tool, why) => {
+    try {
+      fs.writeSync(2, 'TOOL CALL REFUSED by test/toolguard.js — ' + tool + ': ' + why.join('; ').replace(/\.?$/, '.') + '\n' +
+        'Nothing of the call is printed here: a rule is named by its number and a field by its path. Rephrase it, or write it to the private repository; ' +
+        'merging, sharing and changing who can see a file are the owner\'s.\n');
+    } catch (e) {}
     process.exit(2);
-  }
-  console.log('usage: node test/toolguard.js --hook | --selftest');
+  };
+  const late = () => refuse('this call', ['the check was still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where it normally takes about a second, ' +
+    'so it was stopped before Claude Code\'s own limit (which would let the call through); a check that cannot finish refuses']);
+  const timer = setTimeout(late, limit);
+  let input = '', started = false;
+  const go = () => {
+    if (started) return; started = true;
+    let j = null; try { j = JSON.parse(input); } catch (e) { j = null; }
+    if (j && typeof j === 'object' && typeof j.tool_name === 'string' && kindOf(j.tool_name) === 'read') process.exit(0);
+    const left = limit - (Date.now() - t0);
+    if (left <= 0) return late();
+    const r = spawnSync(process.execPath, [__filename, '--decide'].concat(argv.includes('--stall') ? ['--stall'] : []),
+      { input, encoding: 'utf8', timeout: left, killSignal: 'SIGKILL', maxBuffer: 4 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] });
+    clearTimeout(timer);
+    if (r.error && r.error.code === 'ETIMEDOUT') return late();
+    let out = null; try { out = JSON.parse(String(r.stdout || '').trim().split('\n').pop()); } catch (e) { out = null; }
+    if (r.status !== 0 || !out || typeof out.ok !== 'boolean') return refuse('this call', ['the check itself failed (it ended without an answer), and a check that cannot finish refuses']);
+    if (out.ok === true) process.exit(0);
+    refuse(typeof out.tool === 'string' ? out.tool : 'this call', Array.isArray(out.why) && out.why.length ? out.why.map(String) : ['the check refused it']);
+  };
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', d => { input += d; });
+  process.stdin.on('end', go);
+  process.stdin.on('error', go);
 }
 
-module.exports = { kindOf, partsOf, stringsOf, decide, fromHook, loadList, ownerFromUrl, reposOf, NAMED_READS };
+/* the child: the call on stdin, the decision on stdout as one line of JSON. It never prints the payload: a
+   check that throws says only the error's kind */
+function decideMain(argv) {
+  let input = ''; try { input = fs.readFileSync(0, 'utf8'); } catch (e) {}
+  if (argv.includes('--stall')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);   /* the self-test's check that never ends */
+  let pinned;
+  const env = { list: () => loadList(process.env), pin: () => (pinned === undefined ? (pinned = ownerOf(ROOT)) : pinned) };
+  let r;
+  try { r = fromHook(input, env); }
+  catch (e) { r = { ok: false, tool: 'this call', why: ['the check itself failed (' + (e && e.name) + '), and a check that cannot finish refuses'] }; }
+  fs.writeSync(1, JSON.stringify(r) + '\n');
+}
+
+if (require.main === module) {
+  if (process.argv.includes('--selftest')) return void selftest();
+  if (process.argv.includes('--hook')) return void hook(process.argv);
+  if (process.argv.includes('--decide')) return void decideMain(process.argv);
+  console.log('usage: node test/toolguard.js --hook | --decide | --selftest');
+}
+
+module.exports = { kindOf, partsOf, stringsOf, decide, fromHook, loadList, ownerFromUrl, reposOf, NAMED_READS, WRITE_WORDS, LIMIT_MS };
