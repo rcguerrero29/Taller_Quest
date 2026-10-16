@@ -89,8 +89,8 @@ The same shape, with three additions, so the cast can one day file its own:
 
 ## A worked example
 
-The owner said: *"there is a bug when i talk to naye robles, i cant scroll down to exit
-once i edited."* One symptom, so one ticket. The pass found the cause in the shell: the
+The owner reported a bug: after editing with Naye Robles, he could not scroll down to
+exit. One symptom, so one ticket. The pass found the cause in the shell: the
 panel has no height limit and no scrolling of its own, and the chair opens it over the
 world where the page cannot scroll either. That became:
 

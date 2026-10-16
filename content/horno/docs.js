@@ -62,9 +62,9 @@ function hToTray(){
 const DOCS={
   /* ---- LA MASA — THE SECOND VERB, AND IT IS A STROKE AND NOT A PRESS ----
 
-     Owner, 2026-09-22: "are you planning some kneading in there? would be cool" and then, correcting
-     the session, which had priced it as a wait needing a clock: "i know the time seems strange but
-     KNEADING COULD BE THERAPEUTIC." He is right and the correction is the design. A wait is time you
+     Owner, 2026-09-22: kneading in there would be good, and then, correcting
+     the session, which had priced it as a wait needing a clock: the time may look odd, but
+     KNEADING CAN BE SOOTHING. He is right and the correction is the design. A wait is time you
      spend to be allowed something. A rhythm is a thing you do because doing it is the point, and it
      advances per gesture with no clock anywhere — which is also the only shape this pack can have,
      because it refuses a timer by construction (see config.js).

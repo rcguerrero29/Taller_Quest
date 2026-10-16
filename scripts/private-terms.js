@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* THE PRIVATE-TERM CHECK — no personal detail enters the public repository in new work.
-   The owner, 2026-09-28: the game's work moves to the public repository and "at least wont have info
-   about my peronal life". The clean copy was made once, by the private map (scripts/clean-copy.js). This
+   The owner, 2026-09-28: the game's work moves to the public repository and carries nothing about
+   his personal life. The clean copy was made once, by the private map (scripts/clean-copy.js). This
    is what keeps it clean afterwards: every file and every file name in the repository is read against
    the same map's terms on every push and pull request, and any hit fails the build.
 

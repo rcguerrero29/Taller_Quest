@@ -1,9 +1,8 @@
 # Two visible storeys — what it costs, from Doña Cuca
 
-*Asked by the owner, 2026-09-12: **"the building is supposed to be multiple stories...we have room
-for that in theory, just another thing to fix with don guero. do we need help building skyscrapers?
-we wont need them most likely but a thought for 2 floors to be visible in this [second world] to test
-for the rest."***
+*Asked by the owner, 2026-09-12: **the building should have several storeys — there is room for
+that in theory, one more thing to fix with Don Güero. Skyscrapers are most likely not needed, but
+two visible floors in this [second world] would test it for the rest.***
 
 **Nothing here is built.** This is the answer and its price, checked against the code, so the
 decision is his and the next session does not re-derive it. Every `file:line` was read on the day;

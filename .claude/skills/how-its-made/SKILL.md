@@ -8,9 +8,9 @@ description: Draw or model a thing by the process that made it, not by how it lo
 *Opened 2026-09-16, after four attempts at a slice of [a dish]. The fourth was accurate about the
 object and still wrong, and the owner said why in one sentence:*
 
-> *"think about how it is made too right? so the roll should make sense in terms of how it is rolled
-> up and the sliced into round slices — thats why rarely are they displayed like you did or if it
-> close it is in a pile and they have more congruence"*
+> *Think about how it is made: the roll should make sense as something rolled up and then cut into
+> round slices — which is why they are rarely shown as I had them, and when close they sit in a
+> pile and match one another.*
 
 **He was right, and the error was bigger than every colour and proportion I had been fixing.** I had
 drawn six slices of [a dish] as six independent objects, each with its own randomly arranged filling.
@@ -57,12 +57,12 @@ cut the same way, so they cannot all be the same shape:
 | carrot | **julienned** | four or five thin slivers with gaps — *never one fat orange block* |
 | spinach | blanched and **wrung out** | a dense band with no straight edge anywhere |
 
-The owner's words, and they are the test: *"a carrot isnt square like that — at best square-ish."*
+The owner's point, and it is the test: a carrot is never that square, only roughly so.
 **When every part of an object is the same primitive in a different colour, the recursion has not
 been done.** That is the second most common way a drawing reads as generated.
 
 **Commit to a KIND. Do not average a family.**
-*"…but depends on the type of [a dish]."* A tuna roll, a cheese roll and a vegetable roll have
+*It varies with the kind of [a dish].* A tuna roll, a cheese roll and a vegetable roll have
 different things inside and they are different shapes. Averaging the family gives you a filling that
 no actual roll contains. Pick one and be right about that one.
 
@@ -87,7 +87,7 @@ it lies on it like a sticker. **Whenever you cut a length off something, ask how
 and draw that.**
 
 **A container ROUNDS what it holds.**
-The owner: *"its more of a pile that gets rounded together inside a cilinder."* The filling was built
+The owner: it is more a pile pressed round inside a cylinder. The filling was built
 as a rectangular grid of long rows, which is what a pile looks like **before** it is wrapped. Rolling
 squeezes it into a roughly circular cluster, so each row is a **chord of a circle** — narrow at the
 top and bottom, widest across the middle — and the whole pile is smaller and tighter than a grid

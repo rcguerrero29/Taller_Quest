@@ -5,7 +5,7 @@
 
 ## Asked
 
-> *"show me what you mean for #2 please"* · *"5. ok i think that works"*
+> *The owner asked to be shown what #2 meant, then approved item 5.*
 
 `[OWNER]`, 2026-09-06, quoted verbatim in `docs/ASKS.md` (the PR-2-of-3 row). These are the owner
 approving item 2 of eight proposals he had been offered; the proposal itself was the session's.
@@ -64,7 +64,7 @@ engine does not know what a request is. That is what makes it a seam a third wor
 
 - `docs/ASKS.md`, 2026-09-06 — "PR 2 of 3 built (`mq-v76`, `ch-v14`)".
 - Shipped with #42's dropdowns (`ch-v9`) already in place; the Decide sheet (`:458`) came in the same
-  part, answering the owner's *"your pic should open up a comment right?"* (quoted in that
+  part, answering the owner's question whether the picture should open a comment (recorded in that
   world's `record.js`).
 - **Not in `docs/NEW-WORLD.md` until 2026-09-10** (§9.3). A second world reading the template would
   have found one line — *"docs.js … the paper the world produces (optional)"* — and no idea the

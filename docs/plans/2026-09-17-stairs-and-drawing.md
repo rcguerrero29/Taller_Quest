@@ -1,9 +1,9 @@
 # Two plans, 2026-09-17 — the `/stairs` skill, and the drawing lessons into the template
 
 *Written to be read, argued with, and signed or refused. Nothing in here is built. The owner's own
-words for the first one:* **"lets just plan a fix skill for stairs and world so it makes 'sense' thus
-the map also can help us map our world through portals to keep track of this - update template too
-please."**
+ask for the first one:* **plan a fix skill for stairs and worlds so they make sense, so that the map
+can also help chart the world through its portals and keep track of them — and update the template
+too.**
 
 ---
 
@@ -22,8 +22,8 @@ lesson was written into a register and then not read by the next person to touch
 | three cameras that never read `wellDepth` | `docs/BEAUTIFY.md` | — |
 
 **A skill is listed to every session; a document is not.** That is the whole of the argument, and it
-is the owner's own from 2026-09-16 (*"did you write any skills or updates for agents to avoid these
-four faults"*), which is how `.claude/skills/guard/` exists.
+is the owner's own from 2026-09-16 (he asked whether any skills or agent updates had been written to avoid these
+four faults), which is how `.claude/skills/guard/` exists.
 
 ### What the skill is FOR
 
@@ -34,8 +34,8 @@ agree and today nothing checks that they do:
 2. **The portal** — where a door puts you, and at which end of the flight.
 3. **The map** — where the plan says that place IS, relative to the place you came from.
 
-Number 3 is the one nobody has looked at, and it is the owner's own addition to this plan: *"thus
-the map also can help us map our world through portals to keep track of this."*
+Number 3 is the one nobody has looked at, and it is the owner's own addition to this plan: the map
+can also help chart the world through its portals and keep track of them.
 
 ### The finding that makes 3 worth building
 

@@ -5,9 +5,9 @@ description: Interview someone about ONE room or building they want — an offic
 
 # Room design — *diseña el cuarto*
 
-**Draft opened 2026-09-02**, owner's ask: *"it would be cool for [partner] to design an office with your help so we should start documenting the skill to design a room or
-building. I may use our template to create a virtual office for you and the team as well
-as [partner]."*
+**Draft opened 2026-09-02**, owner's ask: [partner] designs an office with the session's help, so the skill of designing a room or
+building gets written down; the owner may use the template for a virtual office for the crew as well
+as for [partner].
 
 ## Why this exists when two neighbouring skills already do
 

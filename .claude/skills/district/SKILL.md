@@ -6,8 +6,8 @@ description: The pre-flight for a DISTRICT — a business with quests, a chapter
 # District — how many endings can this thing actually show?
 
 *Opened 2026-09-23 at the owner's question, which was the right one: after being told a district
-signed at `need:2` could never show its middle ending, he asked* **"have we logged this lesson as a
-skill for the fix and added tests?"** *The answer was no to both. The lesson had been written into
+signed at `need:2` could never show its middle ending, he asked* **whether this lesson had been logged as a
+skill for the fix, with tests added.** *The answer was no to both. The lesson had been written into
 `docs/CITY.md` as a paragraph in 2026-09-16 and guarded nowhere for a week.* **A skill is listed to
 every session; a ledger entry is read by whoever goes looking.**
 

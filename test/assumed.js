@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* test/assumed.js — every place an agent said "ASSUMED:", in one list.
 
-   Written 2026-09-20 at the owner's word: "start a request for labeling and organizing code so that
-   a human can if they need to only- find any thing that may have been assumed by AI and not commented
-   to show or delineate any specific features."
+   Written 2026-09-20 at the owner's word: label and organise the code so that a person, only if they
+   need to, can find anything an AI may have assumed without a comment that shows or marks out the
+   feature.
 
      node test/assumed.js          list every ASSUMED: marker in the tree, by file, and the count.
                                    ALWAYS EXITS 0 — an assumption is not a fault; an UNMARKED one is,
@@ -17,7 +17,7 @@ const ROOT = path.resolve(__dirname, '..');
 let files = [];
 try { files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean); }
 catch (e) { console.log('assumed: git ls-files failed, so nothing was scanned — that is not "nothing assumed".'); process.exit(0); }
-/* CODE ONLY — "labeling and organizing code" is what he asked for. A doc that mentions the marker
+/* CODE ONLY — labelling and organising code is what he asked for. A doc that mentions the marker
    (AGENTS.md defines it) is not an assumption in the code, and the first run of this listed the
    definition as three findings. Docs have their own registers. */
 const CODE = /\.(js|mjs|html|css|sh|ya?ml|json)$/;

@@ -4,9 +4,9 @@
    Two neighbours stand in the bare office upstairs and ask the player what the
    room should be. There is no right answer, no score, no XP; nothing here lands
    in the career report. What the player says becomes a plain sheet with a Copy
-   button — that sheet is the whole back-and-forth (owner, 2026-09-02: "lets make
-   it so that [partner] can interact through the characters with you if possible ... i
-   dont want an api setup"). The owner hands the sheet to whoever builds the room.
+   button — that sheet is the whole back-and-forth (the owner's ask:
+   [partner] talks to the game through its characters where possible, with no
+   API to set up). The owner hands the sheet to whoever builds the room.
 
    Everything with a name lives HERE. The engine reads only shapes — hosts, steps,
    opts, ui — and a pack that declares no INTERVIEW gets no people, no tab, no
@@ -110,8 +110,8 @@ const INTERVIEW={
      world:"f2",x:12,y:8,look:(typeof NPCLOOK!=="undefined"&&NPCLOOK.f)||{shirt:"#E0A430",skin:"#C08356",hair:"#8E8E96",style:"short"},
      talk:{en:"The work order",es:"La orden de trabajo"},
      steps:[
-      /* line one of any work order — owner, 2026-09-02: "that should be a question in the
-         creation - who is the room for". A count, not a feeling: it changes what every
+      /* line one of any work order — the owner asked for this question at
+         creation: who the room is for. A count, not a feeling: it changes what every
          other line on Güero's form means. (Nacho + Don Güero.) */
       {id:"forwho",
        say:{en:"Nacho does feelings, I do corners. Before I write anything down, I need to know how many people this room is for.",

@@ -182,7 +182,7 @@ const CANDIDATES = [
         // nothing stands on the line — no wall, no lot, no person, no door
         const bad = troBlocked(L.world);
         if (bad.length) problems.push(`something stands on the trolley's line in ${L.world}: ${bad.join(' ')}`);
-        /* #125, the owner: "a trolley icon stands at the end of the construction — why?" It was a real
+        /* #125, the owner asked why a trolley icon stood at the end of the construction. It was a real
            stop, standing two rows off its own rails at the far corner of the site, past the end of the
            run. Nothing on screen could tell you it was a stop, because it was nowhere near a trolley.
            A stop belongs beside the line it serves, within reach of where the trolley actually goes. */
@@ -1151,8 +1151,8 @@ const CANDIDATES = [
         "Meridian's dog no longer runs its course as it always has, hurdle (9,8), tunnel (11,8), weave (13,8): it was sent on " + (sent || 'no course at all');
     }
     // and a restaurant to sing at. La Cocina's door opens onto Calle Principal at (6,5), and it
-    // is Rosa who brings the water (owner, 2026-09-29: "awooing infront of a restaurant and a worker brings
-    // them a water bowl"). Without this, taking the restaurant out of PLACES would leave the engine's own
+    // is Rosa who brings the water (the owner's picture: a dog howling outside a restaurant, and a worker bringing
+    // it a water bowl). Without this, taking the restaurant out of PLACES would leave the engine's own
     // check asking a pack that serves nothing, and passing. Asked through the whim, for a dog made here
     // in the star dog's own corner of the street, so nobody real moves.
     {
@@ -1554,8 +1554,8 @@ const CANDIDATES = [
   fails.push(...rot);
 
   // ---- maps and doors must be structurally plausible, not just reachable ----
-  // Added 2026-09-01 after the owner asked why TDD had not caught "broken doors and
-  // non-realistic maps". Honest result: it would NOT have — every door in the shipped
+  // Added 2026-09-01 after the owner asked why TDD had not caught broken doors and
+  // unrealistic maps. Honest result: it would NOT have — every door in the shipped
   // maps passes these rules, so what looks wrong is RENDERING, not layout. Kept as a
   // guard so a future map edit cannot introduce the structural version of the problem.
   // (First draft of these rules produced 10 findings and all 10 were false positives:
@@ -1625,7 +1625,7 @@ const CANDIDATES = [
     if (world !== 'st') problems.push('with the hold cleared, standing on the door still did nothing');
     /* Y (the trolley stop) must stay step-only: a menu you dismissed must not reopen under your feet.
        THE TILE COMES FROM THE LINE, and it used to be typed here as (0,1). The owner moved the stop one
-       tile east on 2026-09-22 ("ok move one tile east") and this check went on standing on (0,1) — a
+       tile east on 2026-09-22, as he asked, and this check went on standing on (0,1) — a
        tile that is no longer a stop, where the menu could never have opened and the check could never
        have failed. It would have printed OK for ever. A guard that names a coordinate the content also
        names is two copies of one fact, and content is the copy that moves. */
@@ -1682,7 +1682,7 @@ const CANDIDATES = [
     // #22 (mq-v73): exactly one billboard — the hero — is drawn through walls; everyone else sits in the scene
     const through = T3.pool.filter(p => p.live && p.spr.material.depthTest === false);
     if (through.length !== 1) problems.push(`${through.length} billboards draw through walls — the hero, and only the hero, must`);
-    // owner, 2026-09-07: "when we walk behind people it seems like im walking on them" — the hero was
+    // the owner saw himself walking on people when he passed behind them — the hero was
     // drawn LAST, over everyone. Billboards draw in order of distance from the camera: whoever is
     // nearer the camera than you draws over you, whoever is farther draws under; the hero still
     // ignores depth so a wall never hides them.
@@ -1700,7 +1700,7 @@ const CANDIDATES = [
       else { world = 'hq'; px = fx = n.x; py = fy = n.y - 1; T3.yaw = 0; draw3d(); problems.push(...order().slice(0, 2));
         py = fy = n.y + 1; if (!isSolidAt('hq', n.x, n.y + 1)) { draw3d(); problems.push(...order().slice(0, 2)); } }
     }
-    // #92 (owner: "when im going downstairs, im walking on the wall again"): sunk in the well the hero is
+    // #92 (the owner saw himself on the wall again, going downstairs): sunk in the well the hero is
     // depth-tested, so the lip and the rail in front hide their legs; on the floor they draw through walls
     world = 'f2'; px = fx = 11; py = fy = 14; T3.yaw = 0; draw3d();
     { const hero = T3.pool.find(p => p.live && p.spr.userData.mark === '' && Math.abs(p.spr.position.x - 11.5) < 0.6 && p.spr.position.y < -0.1);
@@ -1714,7 +1714,7 @@ const CANDIDATES = [
     // and whoever crosses it stands on the deck.
     world = 'pk'; px = fx = 2; py = fy = 6; T3.yaw = 0; draw3d();
     const decks = T3.group.children.filter(o => o.userData && o.userData.bridge);
-    // owner, 2026-09-07 (night): "make it a bit wider - the bridge, twice as wide" — two rows of deck, rails only on the open edges
+    // the owner asked for the bridge twice as wide — two rows of deck, rails only on the open edges
     if (decks.length !== 4) problems.push(`the rainbow bridge is ${decks.length} deck(s) in 3D, not four (two wide, two long)`);
     const pkw = WORLDS.pk, deckRows = new Set(); for (let yy = 0; yy < pkw.H; yy++) for (let xx = 0; xx < pkw.W; xx++) if ((TILES[pkw.rows[yy][xx]] || {}).kind === 'bridge') deckRows.add(yy);
     if (deckRows.size < 2) problems.push('the bridge is one tile wide');
@@ -1724,7 +1724,7 @@ const CANDIDATES = [
     if (typeof bridgeEdges !== 'function') problems.push('the engine does not know which edges of a deck are open');
     else { const kw = world; world = 'pk'; const e5 = bridgeEdges(3, 5), e6 = bridgeEdges(3, 6); world = kw; if (e5 !== '10' || e6 !== '01') problems.push(`the deck's open edges read ${e5}/${e6}, not north-only/south-only`); }
     if (typeof DECK_PETALS === 'undefined' || DECK_PETALS.reduce((a, b) => a + b, 0) < 4500) problems.push('the deck carries fewer than four and a half thousand petals a tile — the owner asked for fifty times');
-      // then ten times that, behind the frame (owner: "definitely do like 10x the amount of petals for the bridge"): a fresh tile queues a deep bake that fills in slices
+      // then ten times that, behind the frame (the owner asked for ten times more on the bridge): a fresh tile queues a deep bake that fills in slices
       if (typeof DECK_DEEP === 'undefined' || typeof petalDeepStep !== 'function' || DECK_PETALS.reduce((a, b) => a + b, 0) + DECK_DEEP < 45000) problems.push('the deck does not fill in to forty-five thousand petals behind the frame');
       else { const sid0 = seasonPick; seasonSet(Object.keys(SEAS()).find(k => SEAS()[k].art && SEAS()[k].art.bridgeStyle === 'petals') || 'off'); PETALCACHE.clear(); PETALDEEP.length = 0; const c2 = document.createElement('canvas'); c2.width = 32; c2.height = 32; const o2 = ctx; ctx = c2.getContext('2d'); try { TILEDRAW['^']({ sx: 0, sy: 0, x: 3, y: 6, canopy: () => {} }); } finally { ctx = o2; }
         if (petalDeepPending() < DECK_DEEP) problems.push('a fresh deck tile queues no deep bake (' + petalDeepPending() + ' pending, style ' + art('bridgeStyle', 'bands') + ', season ' + seasonNow() + ')');
@@ -1737,7 +1737,7 @@ const CANDIDATES = [
     const rails = T3.group.children.filter(o => o.userData && o.userData.bridgeRail);
     if (rails.length < 4) problems.push(`the rainbow bridge has ${rails.length} rail pieces in 3D — it needs a rail each side`);
     if (rails.some(r => r.position.y <= 0.2)) problems.push('a bridge rail stands on the water, not on the deck');
-    // the crossing arches (owner, 2026-09-08: "make the bridge a bit better, some arching and or dimesionality")
+    // the crossing arches (the owner asked for a better bridge, with some arch or depth)
     if (typeof bridgeCamber !== 'function' || typeof bridgeSlope !== 'function') problems.push('the bridge does not arch');
     else { const pk2 = WORLDS[PL.park], deckT = [];
       for (let y2 = 0; y2 < pk2.H; y2++) for (let x2 = 0; x2 < pk2.W; x2++) if ((TILES[pk2.rows[y2][x2]] || {}).kind === 'bridge') deckT.push([x2, y2]);
@@ -1902,7 +1902,7 @@ const CANDIDATES = [
     if (art('bridge', 'X') !== S.art.bridge) problems.push('with the season forced, art("bridge") is not the pack palette');
     const on = bake();
     if (S.art.bridgeStyle === 'petals') {
-      // owner, 2026-09-07: "marigold, and petals too" — the deck is strewn with the season's petals:
+      // the owner asked for marigold petals as well — the deck is strewn with the season's petals:
       // many pixels of the palette scattered over the tile, not six stripes
       const c = document.createElement('canvas'); c.width = 32; c.height = 32;
       const o = ctx; ctx = c.getContext('2d'); try { TILEDRAW['^']({ sx: 0, sy: 0, x: 3, y: 6, canopy: () => {} }); } finally { ctx = o; }
@@ -1912,8 +1912,8 @@ const CANDIDATES = [
       // stripes paint every row one colour edge to edge; petals leave no row uniform
       let mixed = 0; for (let yy = 5; yy < 27; yy++) { const seen = new Set(); for (let xx = 2; xx < 30; xx++) { const i = (yy * 32 + xx) * 4; seen.add([px[i], px[i + 1], px[i + 2]].join()); } if (seen.size > 1) mixed++; }
       if (mixed < 15) problems.push(`the deck in season reads as stripes, not petals (${mixed} of 22 rows vary)`);
-      // owner, 2026-09-07 (evening): "the bridge turns into one mostly made out of the petals, they dont even look like the
-      // correct petals" — a bridge MADE of petals: no plank shows, the heap has a value range, a petal is a fan with a rib
+      // the owner asked for a bridge made mostly of petals, and petals that look like the right ones
+      // — a bridge MADE of petals: no plank shows, the heap has a value range, a petal is a fan with a rib
       if (typeof petalShape !== 'function') problems.push('the engine has no petal shape — the deck is gravel');
       else {
         const seen = new Set(); let plank = 0; for (let i = 0; i < px.length; i += 4) { const h = '#' + [px[i], px[i + 1], px[i + 2]].map(v => v.toString(16).padStart(2, '0')).join(''); if (pal.includes(h)) seen.add(h); if (['#6e4e30', '#c9b99a', '#8a6f4d'].includes(h)) plank++; }
@@ -1927,7 +1927,7 @@ const CANDIDATES = [
       }
     } else if (on.toLowerCase() !== S.art.bridge[0].toLowerCase()) problems.push(`the bridge's first band is ${on}, not the season's ${S.art.bridge[0]}`);
     if (on === off) problems.push('the season changed nothing on the bridge');
-    if (S.art.bridgeStyle === 'petals') { // owner, 2026-09-07: "full of the petals, they spill into water and the floor and a trail forms behind characters"
+    if (S.art.bridgeStyle === 'petals') { // the owner's ask: a bridge full of petals, spilling into the water and onto the floor, a trail behind people
       const keep = { cam: camMode, world, px, py };
       const pal = S.art.bridge.map(h => h.toLowerCase());
       const offCount = fn => { const c = document.createElement('canvas'); c.width = 32; c.height = 32; const o = ctx; ctx = c.getContext('2d'); try { fn(); } finally { ctx = o; }
@@ -1964,7 +1964,7 @@ const CANDIDATES = [
         if (!trails) problems.push('the top and front cameras never draw the trail');
         // the trail: a step ON THE DECK drops three petals, drawn on the ground, three flat planes in 3D;
         // the two steps after it still shed what the shoes carried; a step anywhere else drops nothing
-        // (owner, 2026-09-07: "i meant for the bridge only lol. there are that many petals on the bridge")
+        // (the owner meant the trail for the bridge only, where the petals are)
         const deck = (() => { for (let y = 0; y < pk.H; y++) for (let x = 0; x < pk.W; x++) if ((TILES[pk.rows[y][x]] || {}).kind === 'bridge') return [x, y]; return null; })();
         const feet = {}; PETALS.length = 0; petalDrop(PL.park, PL.parkIn[0], PL.parkIn[1], feet);
         if (PETALS.length) problems.push('a step far from the bridge drops petals — the trail is the bridge\'s only');
@@ -1996,7 +1996,7 @@ const CANDIDATES = [
       }
       camSet(keep.cam); world = keep.world; px = fx = keep.px; py = fy = keep.py;
     }
-    if (S.art.swags) { // LA FIESTA (owner: "lets hang papel picado all over. put a pinata in there as well as tamales"; Nacho's plan)
+    if (S.art.swags) { // LA FIESTA (the owner asked for papel picado everywhere, a piñata and tamales; Nacho's plan)
       if (typeof fiestaSwags !== 'function' || typeof fiestaHangs !== 'function' || typeof drawPinata !== 'function') problems.push('the engine has no fiesta (fiestaSwags / fiestaHangs / drawPinata)');
       else {
         const keep = { cam: camMode, world, px, py }, rows0 = JSON.stringify(Object.fromEntries(Object.entries(WORLDS).map(([k, w]) => [k, w.rows])));
@@ -2009,16 +2009,16 @@ const CANDIDATES = [
         const flags = T3.group.children.filter(o => o.userData && o.userData.swag && o.userData.flag);
         const nfl = flags.reduce((a, f) => a + (f.userData.flags || 1), 0);
         if (nfl < 200) problems.push(`the street carries ${nfl} swag flags in 3D — it is not dressed`);
-        // owner, 2026-09-07 (evening): "papel picado all over the place" — Pili: cut paper with punched holes, two rows, by place
+        // the owner asked for papel picado everywhere — Pili: cut paper with punched holes, two rows, by place
         if (flags.some(f => !f.material.map)) problems.push('the papel picado in 3D is plain bunting — no cut, no holes');
         if (!flags.some(f => f.userData.row === 1)) problems.push('the papel picado hangs in one row');
         if (typeof drawCalaverita !== 'function' || typeof canopyDress !== 'function' || typeof fiestaProps !== 'function' || typeof drawPapelRow !== 'function') problems.push('the engine has no calaveritas, no dressed trees, no cut paper');
         else {
           const pal2 = (art('papel', []) || []);
-          // owner, 2026-09-07 (night): "the papel picado can be everywhere and more colorful" — every base world strung, ten colours in the cut
+          // the owner asked for papel picado everywhere, and more colourful — every base world strung, ten colours in the cut
           Object.keys(WORLDS).filter(k => !WORLDS[k].built).forEach(wid => { if (!fiestaSwags(wid).length) problems.push('no papel picado in ' + wid); });
           if (pal2.length < 9) problems.push('the cut has only ' + pal2.length + ' colours');
-        // owner, 2026-09-08: "the alebrijes mode has some overlay issues still in the park" — a swag must never share a
+        // the owner still saw overlaps in the park in the alebrijes mode — a swag must never share a
         // line with the deck: the bridge hangs its own marigold cut, and two strings in one line tangle at the deck's end
         Object.keys(WORLDS).filter(k => !WORLDS[k].built).forEach(wid => { const w = WORLDS[wid];
           fiestaSwags(wid).forEach(sw => { const hor = sw.from[1] === sw.to[1], ln = hor ? sw.from[1] : sw.from[0];
@@ -2026,7 +2026,7 @@ const CANDIDATES = [
               if ((TILES[w.rows[y][x]] || {}).kind === 'bridge' && (hor ? y : x) === ln)
                 problems.push(`a swag in ${wid} shares the bridge's ${hor ? 'row' : 'column'} ${ln} — the deck hangs its own cut there`); }); });
           const pr = art('props', []) || []; if (!pr.some(p => p.kind === 'calaverita')) problems.push('no calaveritas de azúcar anywhere');
-          // "the candied skulls are probably better in a window sill (as in human reality)": every calaverita sits on a facade's window
+          // the candied skulls belong on a window sill, as in real life: every calaverita sits on a facade's window
           pr.filter(p => p.kind === 'calaverita').forEach(p => { if (!p.sill) problems.push('a calaverita is not on a sill at ' + p.world + ' ' + p.x + ',' + p.y); else if (typeof propSill !== 'function' || !propSill(p.world, p)) problems.push('a sill calaverita has no window under it at ' + p.world + ' ' + p.x + ',' + p.y); });
           // ❗La ofrenda: one at the foot of the bridge, one on Doña Tencha's table; it draws; it stands in 3D
           const ofr = pr.filter(p => p.kind === 'ofrenda'); if (typeof drawOfrenda !== 'function') problems.push('the engine has no ofrenda');
@@ -2087,7 +2087,7 @@ const CANDIDATES = [
         if (wanders(mn)) problems.push('Doña Meche wanders off from her pot — she would step onto the trolley\'s landing');
         if (!SOLID.has('ʘ') || !TILESIDE['ʘ'] || (TILES['ʘ'] || {}).kind !== 'appliance') problems.push('the pot is not a solid box with a side view — it would ship flat (#39)'); }
     }
-    if (S.art.papel) { // "and papel picado": in 3D the season hangs cut-paper flags over the crossing; none out of season
+    if (S.art.papel) { // papel picado too: in 3D the season hangs cut-paper flags over the crossing; none out of season
       const keep = { cam: camMode, world, px, py };
       camSet('3d'); world = PL.park; px = fx = PL.parkIn[0]; py = fy = PL.parkIn[1]; moving = false; held = null;
       seasonSet(id); draw3d();
@@ -2146,13 +2146,13 @@ const CANDIDATES = [
           let added = 0, out = 0; for (let i = 0; i < a0.length; i++) { if (a0[i] && !a1[i]) out++; if (!a0[i] && a1[i]) { added++; const x = i % 44, y = Math.floor(i / 44); if (x < 6 + 16 - 13 || x > 6 + 16 + 13 || y > 12 + 22) out++; } }
           if (added < 12) problems.push('the winged look adds no wings to the star dog');
           if (out) problems.push('the wings cross the star dog\'s own pixels, his face, or the card\'s edge (' + out + ' pixels)');
-          // owner, 2026-09-07 (evening): "wings look off". Their size, their root, their ribs and their beat are asked of every kind in every
+          // the owner found the wings wrong. Their size, their root, their ribs and their beat are asked of every kind in every
           // pose just below this block (NOCHE DE ALEBRIJES: WHAT AN ANIMAL WEARS…) — the floor on their size that stood here guarded the
           // opposite of what the night was asked for (the dog still himself, perhaps with tiny wings), and its "three colours" was any anti-aliased edge
           const wcols = new Set(); for (let i = 0; i < a0.length; i++) if (!a0[i] && a1[i]) wcols.add(w1[i * 4] + ',' + w1[i * 4 + 1] + ',' + w1[i * 4 + 2]);
           const acc = parseInt(L[wing].accent.slice(1), 16), tgt = [(acc >> 16) & 255, (acc >> 8) & 255, acc & 255].map(v => v * 0.5 | 0);
           if (![...wcols].some(c => { const v = c.split(',').map(Number); return Math.abs(v[0] - tgt[0]) < 10 && Math.abs(v[1] - tgt[1]) < 10 && Math.abs(v[2] - tgt[2]) < 10; })) problems.push('the wings have no darker edge in their own colour — cut paper has an edge all the way round');
-          // "the color can be added like around the eyes": a ring round the eye, wider than it, the pupil untouched
+          // colour round the eyes, as the owner suggested: a ring round the eye, wider than it, the pupil untouched
           const KB = ALEB_KIND.beagle; if (!KB || !KB.eye) problems.push('the star dog has no colour round the eyes');
           else { alePick.animals[SN] = noWing; const ringed = dog(); const eye = KB.eye; delete KB.eye; const bare = dog(); KB.eye = eye;
             let ring = 0, pupil = 0; for (let i = 0; i < a0.length; i++) { const x = i % 44 - 6 - 16 - eye[0] * (star.face || 1), y = Math.floor(i / 44) - 12 - eye[1], r = Math.hypot(x, y);
@@ -2173,7 +2173,7 @@ const CANDIDATES = [
           const lum = hex => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
           for (let i = 0; i < 5; i++) { alePick.hero = i; const d = face('hero', true); if (count(d, F[i].base) < 30) problems.push('the hero\'s calavera look ' + F[i].id + ' leaves no base on the face (' + count(d, F[i].base) + ')');
             // a Día de Muertos makeup review (2026-09-07): white bone + black voids IS the symbol — a dark base reads as a mask.
-            // Owner: "having one with all dark is a bit of a no no - not really even looking like a skeleton"
+            // The owner ruled out an all-dark one: it stops reading as a skeleton
             if (lum(F[i].base) < 0.8) problems.push('calavera look ' + F[i].id + ' has a dark base — it would not read as a skull');
             if (lum(F[i].dark) > 0.3) problems.push('calavera look ' + F[i].id + ' has no dark sockets');
             if (count(d, F[i].dark) < 20) problems.push('calavera look ' + F[i].id + ' paints no sockets or grin on the hero (' + count(d, F[i].dark) + ')'); }
@@ -2184,7 +2184,7 @@ const CANDIDATES = [
           const pair = (WORLDS.hq.npcs || []).slice(0, 2).map(n => faceLookFor(n.npc || n.key, false).id);
           const ids = new Set((WORLDS.hq.npcs || []).map(n => faceLookFor(n.npc || n.key, false).id));
           if ((WORLDS.hq.npcs || []).length >= 5 && ids.size < 3) problems.push('the crowd in HQ wears fewer than three calavera looks');
-          // owner, 2026-09-07 (night): "a menu to choose the different alebrije styles" — Settings → Alebrijes: who, then the look by name
+          // the owner asked for a menu of alebrije styles — Settings → Alebrijes: who, then the look by name
           const row = $('aleRow'), sel = $('aleWho');
           if (!row || row.hidden || !sel) problems.push('Settings has no Alebrijes menu in season');
           else { const opts = [...sel.options].map(o => o.value); if (!opts.includes('you') || !opts.includes(SN)) problems.push('the menu offers neither your face nor the star dog (' + opts.join(',') + ')');
@@ -2195,7 +2195,7 @@ const CANDIDATES = [
             $('aleWho').value = 'you'; $('aleWho').dispatchEvent(new Event('change')); const fb = [...$('aleRow').querySelectorAll('button')];
             if (fb.length !== 5) problems.push('the menu lists ' + fb.length + ' calavera looks for your face, not five'); else { fb[2].click(); if (alePick.hero !== 2) problems.push('picking a face from the menu did not paint it'); }
             delete alePick.animals[SN]; alePick.hero = 0; }
-          // "leave it in the architecture to have the ability to upgrade to customize the look": a custom seam over the pick
+          // the architecture leaves room to customise a look later, as the owner asked: a custom seam over the pick
           alePick.custom = { [SN]: { tint: '#123456' }, you: { ring: '#654321' } };
           if (alebLookFor('beagle', SN).tint !== '#123456') problems.push('a custom look for the star dog is not laid over his pick');
           if (faceLookFor('hero', true).ring !== '#654321') problems.push('a custom face is not laid over your pick');
@@ -2203,7 +2203,7 @@ const CANDIDATES = [
           alePick.custom = {};
           seasonSet('off'); if (faceLookFor('tacho', false) || alebLooks()) problems.push('with the mode off, the paint and the looks remain');
           if ($('aleRow') && !$('aleRow').hidden) problems.push('with the mode off, the Alebrijes menu stays');
-          // "we also should be able to wear the make up during dia de los muertos": the calavera in Muertos, the buttons act on your face
+          // the owner asked to wear the makeup during Día de los Muertos too: the calavera in Muertos, the buttons act on your face
           if (S.art.facepaint === undefined) problems.push('Día de Muertos hands out no face paint');
           else { seasonSet(id); if (!faceLookFor('tacho', false) || !faceLookFor('hero', true)) problems.push('in Día de Muertos nobody is painted');
             applyCtl(); if ($('aleRnd') && $('aleRnd').hidden) problems.push('in Día de Muertos the look buttons hide'); const h0 = alePick.hero; alePress(false); if (alePick.hero === h0) problems.push('in Día de Muertos the next-look button does not change your face'); alePick.hero = h0; alePersist();
@@ -2800,8 +2800,8 @@ const CANDIDATES = [
   }
 
   // ---- a piece of furniture is drawn for the camera that sees it ----
-  // Owner 2026-09-02: "some furniture still looks bad like the table and fences and the
-  // coffee machine". Root cause, from the frames: every prop was drawn from ABOVE and
+  // The owner found some furniture still poor — the table, the fences and the
+  // coffee machine. Root cause, from the frames: every prop was drawn from ABOVE and
   // then stood up as a cutout in the front and 3D cameras — a gingham table stood up is
   // a dartboard. The professional fix is a second drawing per prop, made for the view
   // that sees it standing (HD-2D games draw every object from the front, never from
@@ -2824,8 +2824,8 @@ const CANDIDATES = [
   fails.push(...side);
 
   // ---- a person with something to say beats an animal for the button ----
-  // Owner 2026-09-02: "i get logs of the crosswalk while im trying to talk who i thought was
-  // don guero". The crosswalk line is the pigeon's. She wanders the street, and when she
+  // The owner got crosswalk lines while trying to talk to somebody he took for
+  // Don Güero. The crosswalk line is the pigeon's. She wanders the street, and when she
   // stepped beside the player the pet button appeared next to Talk; tap the wrong one and
   // you get the bird. A quest person adjacent now hides the animal button.
   const yield_ = await page.evaluate(() => {
@@ -2849,8 +2849,8 @@ const CANDIDATES = [
   fails.push(...yield_);
 
   // ---- a fence stands along its run in 3D, and a corner has two panels ----
-  // Owner 2026-09-02: the construction fences "are sideways ... laying around instead of
-  // fencing in construction". Every fence tile was a flat panel facing south, so a
+  // The owner saw the construction fences lying sideways instead of
+  // fencing in the site. Every fence tile was a flat panel facing south, so a
   // north-south run showed as a row of edge-on slats.
   const fence3d = await page.evaluate(() => {
     const problems = [];
@@ -2903,7 +2903,7 @@ const CANDIDATES = [
   fails.push(...fence3d);
 
   // ---- a marker floats over a door you are near, and only over doors that lead somewhere ----
-  // Owner 2026-09-02: "i think we should have a marker- would be good." The third door
+  // The owner asked for a marker. The third door
   // affordance: within three steps of a door that goes somewhere, a bouncing arrow.
   const marks = await page.evaluate(() => {
     const problems = [];
@@ -3029,7 +3029,7 @@ const CANDIDATES = [
   fails.push(...city);
 
   // ---- the record keeps every decision — it never silently drops your earliest work ----
-  // Owner 2026-09-02: "I thought we fixed this 200 entries thing". It was not fixed: the
+  // The owner had thought the 200-entry limit was fixed. It was not fixed: the
   // play log was cut to its last 200 entries on every write, so a five-district city
   // would lose its first districts from the portfolio without a word. Nothing you make
   // is taken away — the cap is gone, and a storage failure is warned about, not hidden.
@@ -3049,7 +3049,7 @@ const CANDIDATES = [
   fails.push(...keep);
 
   // ---- the city can raise more than one storefront, and each says where you stand ----
-  // Owner 2026-09-02: "not stopping at a certain amount of store fronts" — it was still
+  // The owner asked that storefronts not stop at a fixed number — it was still
   // stopping at one: GROWTH.ribbon held a single storefront, and the handover walked you
   // to the mercado's front step, hardcoded in the engine. Now a pack declares ribbons[]
   // (the old singular ribbon still works), each with its own doorstep.
@@ -3095,8 +3095,8 @@ const CANDIDATES = [
   fails.push(...ribs);
 
   // ---- the room upstairs: two neighbours ask, nothing is graded, the sheet is hers ----
-  // Owner 2026-09-02: "lets make it so that [partner] can interact through the characters with
-  // you if possible ... i dont want an api setup". So: the characters ask IN the game,
+  // The owner's ask: [partner] talks to the game through its characters where
+  // possible, with no API to set up. So: the characters ask IN the game,
   // her answers are kept on the phone, and the game writes a plain sheet with a Copy
   // button that the owner hands to Claude. Everything with a name lives in
   // content/meridian/room.js (INTERVIEW); the engine reads only shapes, and a pack
@@ -3111,7 +3111,7 @@ const CANDIDATES = [
     const $ = id => document.getElementById(id);
     if (typeof INTERVIEW === 'undefined' || typeof RM !== 'function' || !RM()) return ['no INTERVIEW declared by the pack (content/meridian/room.js)'];
     const I = RM(), U = I.ui[lang];
-    // the office opens MID-MOVE (owner 2026-09-02: "for the move it should be mid"), and
+    // the office opens MID-MOVE (the owner chose mid-move), and
     // nothing else: the old lead's desk, the stairs, the three window panes, four taped
     // moving boxes on the pack's own glyph, one of Don Güero's cones, a plant still in
     // its pot. Don Güero's grid; the arrival tile and the sight line from the stairs to
@@ -3346,8 +3346,8 @@ const CANDIDATES = [
   }
 
   // ---- the version is on the opening page, not only buried in Settings ----
-  // Owner 2026-09-02: "move the version to the first/opening page so i know which im
-  // using. also keep in settings but i want it there." Both must show GAMEV exactly.
+  // The owner asked for the version on the opening page, so he knows which one he is
+  // using, and kept in Settings as well. Both must show GAMEV exactly.
   const ver = await page.evaluate(() => {
     const problems = [];
     const a = document.getElementById('verIntro'), b = document.getElementById('verTag');
@@ -3468,8 +3468,8 @@ const CANDIDATES = [
        stove `V` was the last box left in the room and the count fell to zero the moment it got a shape —
        the guard went red on a room where every single thing had just been improved. `box` was a PROXY for
        "stands up as a thing with sides"; a mesh answers that noun too. So the demand is derived from what
-       the room itself lays (docs/POSTMORTEM.md, the owner: "can we make the guards smarter instead of just
-       making them notes?"): EVERY furniture/appliance glyph on La Cocina's map must come back as a box or
+       the room itself lays (docs/POSTMORTEM.md, the owner asked for smarter guards rather than
+       more notes): EVERY furniture/appliance glyph on La Cocina's map must come back as a box or
        as a shape, and none of them as a billboard. That is strictly more than the old count of one — it
        names the glyph that failed — and it cannot be satisfied by one lucky table. Planted both ways
        (la mueblería, crew iteration 12): with `V`'s mesh and side view taken away at runtime it prints
@@ -3499,9 +3499,9 @@ const CANDIDATES = [
     else if (b3.glyphs.includes('P')) fails.push('a plant became a box');
 
     /* ---- EVERY MARIGOLD HAS SOMETHING DARK BEHIND IT, AND IT IS WIDER THAN THE FLOWER ----
-       The owner has come back about the marigolds four times — "the marigolds can use another try",
-       "everything looks good except the marigolds", and on 2026-09-22 "the marigold decor is also not
-       very well defined". Three of the fixes before this one changed a SIZE (docs/POSTMORTEM.md §1:
+       The owner has come back about the marigolds four times — they needed another try, they were
+       the one thing that did not look good, and on 2026-09-22 the marigold decor was poorly
+       defined too. Three of the fixes before this one changed a SIZE (docs/POSTMORTEM.md §1:
        when the second fix is the same KIND as the first, the cause is not the thing you keep
        changing). The cause is the light. DAY_AMB 0.66 and DAY_SUN 0.42 give a Lambert face 1.00 /
        0.88 / 0.78 / 0.66 and nothing else, so FORM cannot separate two orange things — only value
@@ -4019,7 +4019,7 @@ const CANDIDATES = [
 
     // an unbegun panel is plaster and nothing else; a graded one paints.
     // MEASURED IN THE MURAL FIELD, not over the whole tile: since 2026-09-17 the panel keeps the
-    // wall's own window (owner: "the store front icon or mural can go around it"), so a whole-tile
+    // wall's own window (the owner asked for the shopfront icon or mural to go around it), so a whole-tile
     // colour count reads glass, a lintel and a stone ledge as "the panel painted something" and
     // this guard failed on a wall that was behaving. The noun it means is the EMBLEM, and the
     // emblem lives in the field beside the kept window — x2..16, measured: the lintel and the ledge
@@ -4081,7 +4081,7 @@ const CANDIDATES = [
        teleported" but cannot require a shell to HAVE a flight — the gauge's five-tile world owes
        it nothing, and said so on the first run. Meridian has one, so Meridian is held to it here:
        Nolasco's well is real, it is deep enough to be a storey rather than a dip, and the avenue
-       door lands you at its foot. Owner, 2026-09-17: "ok lets do b." */
+       door lands you at its foot. The owner chose option B on 2026-09-17. */
     const climb = await page.evaluate(() => {
       const P = [], w = WORLDS.no;
       if (!w) return ['the Nolasco stair room is gone'];
@@ -4099,8 +4099,8 @@ const CANDIDATES = [
     });
     fails.push(...climb);
 
-    /* EVERY PLACE IN THIS CITY IS ON ITS MAP. Owner, 2026-09-17: "yeah i mean a map implies this
-       lol" — and six of fifteen worlds were on the plan in no form at all, the park among them,
+    /* EVERY PLACE IN THIS CITY IS ON ITS MAP. The owner, 2026-09-17: a map implies
+       it — and six of fifteen worlds were on the plan in no form at all, the park among them,
        which is the third-largest world in the game. The engine's suite cannot demand this of every
        future world (a pack may hide a place on purpose — a memory, a dream, a menu) so it reports
        the count there; Meridian has no such place, so Meridian is held to all fifteen here. */
@@ -4270,8 +4270,8 @@ const CANDIDATES = [
       });
       // the office is somewhere the Trolley Pass will take you
       // A trolley stops where there are rails. Every destination must be a world that actually
-      // holds a trolley tile — which is why the office came off the list (owner, 2026-09-03:
-      // "i dont like that i go from a train to a floor... i asked to make the world realistic").
+      // holds a trolley tile — which is why the office came off the list (the owner, 2026-09-03:
+      // a ride must not end on an upper floor; he had asked for a realistic world).
       TRV.forEach(d => { const L = troLine(d.w);
         if (!WORLDS[d.w]) return;
         if (!L || !troStops(L).length) problems.push('the trolley stops somewhere with no trolley stop in it: ' + d.w); });
@@ -4382,8 +4382,8 @@ const CANDIDATES = [
             const reach = auditReach().filter(m => m.includes(id)); if (reach.length) problems.push('the casa is not reachable: ' + reach.join('; '));
             if (room.rows.some(r => r.includes('▦'))) problems.push('the room has a reja inside it');
           }
-          // the chair (owner, 2026-09-07: "open the ability to change our character outfit and haircut after start...
-          // a small barber"): a barbería lot from a template, Naye behind the chair, Talk reopens the creator with the
+          // the chair (the owner asked to change outfit and haircut after the start,
+          // at a small barber): a barbería lot from a template, Naye behind the chair, Talk reopens the creator with the
           // name locked, what you pick is saved, progress untouched; in season the calavera looks sit in the same panel
           const bl = BUILDS.find(bd => bd.tpl === 'barberia');
           if (!bl) problems.push('no barbería is declared — outfit and hair are decided once, at the start');
@@ -4399,7 +4399,7 @@ const CANDIDATES = [
               const bn = broom.npcs.find(n => n.npc === who); const keep = { world, px, py, xp, style: look.style, cam: camMode, hero: alePick.hero };
               world = bid; px = fx = bn.x; py = fy = bn.y + 1; moving = false; held = null; checkTalk();
               if ($('talk').hidden || $('talk').dataset.chatn !== who) problems.push('standing before the barber, Talk does not offer the chair');
-              // the bubble hints what the chair changes (owner, 2026-09-07: "make it easy to tell... their thought bubble at least has a hint")
+              // the bubble hints what the chair changes (the owner asked for it to be easy to tell, with at least a hint in the bubble)
               if (!/✂️/.test($('talk').textContent) || !$('talk').textContent.includes(UI[lang].chairHint)) problems.push('the barber\'s bubble does not say what the chair changes: ' + $('talk').textContent);
               // the fashion options: patterns on the shirt, four to pick, drawn inside the shirt, saved with the look
               if (!UI.en.patterns || UI.en.patterns.length < 4 || (UI.es.patterns || []).length !== UI.en.patterns.length) problems.push('the shirt offers fewer than four patterns in both languages');
@@ -4483,7 +4483,7 @@ const CANDIDATES = [
     fails.push(...street);
 
     // ❗A SHAPED HOUSE — the casita faces that answer the `mesh` view (el albañil, crew 14, from the
-    // owner's "should we shape and beautify buildings? ... just do one or two and show me").
+    // owner's ask to shape and beautify one or two buildings and show him first).
     // Three questions a picture cannot answer, and they cannot all fail the same way: one reads the
     // geometry the engine places things against, one reads the drawing the front camera shows, and
     // one reads whether the roof carries over the door you walk through.
@@ -4540,7 +4540,7 @@ const CANDIDATES = [
 
       // (2) THE ROOF CARRIES OVER THE FRONT DOOR. A `⌂` is a door, not a facade, so it has no mesh
       // of its own — if each face stopped at its own tile edge the roofline would break exactly
-      // where you walk in, which is the owner's "three boxes, not one building" all over again.
+      // where you walk in, which is three boxes and not one building, as the owner saw it, all over again.
       const doorAt = [];
       for (let y = 0; y < WORLDS.ex.H; y++) for (let x = 0; x < WORLDS.ex.W; x++)
         if (DOORSET.has(WORLDS.ex.rows[y][x]) && !SOLID.has(WORLDS.ex.grid[y][x])) doorAt.push([x, y]);
@@ -4648,8 +4648,8 @@ const CANDIDATES = [
       if (!shaped.some(buries)) problems.push('the buried-decor check found no shaped wall whose face stands proud of 0.505, so it cannot tell a buried poster from a visible one and measured nothing — that is a red, not a pass');
       // (7) AND NO CASITA FACE GOES UP ON A STREET WITHOUT A SHAPE. ▦ la reja is drawn, wears the
       // shared 2D roofline, and stands on NO lot in the shipped game — BUILDTPL.casita uses it and
-      // no row of BUILDS uses that template. It was left a box on purpose: the owner said "just do
-      // one or two and show me" and an hour on a tile nobody can walk to is an hour of his tokens.
+      // no row of BUILDS uses that template. It was left a box on purpose: the owner asked for
+      // one or two and a look first, and an hour on a tile nobody can walk to is an hour of his tokens.
       // What must never happen QUIETLY is the day somebody builds a casita lot: a flat-lidded box
       // would stand in the middle of a pitched roof, in 3D only, and the two cameras would disagree
       // about the same house with nothing anywhere to say so. This is that day's alarm.
@@ -4965,8 +4965,8 @@ const CANDIDATES = [
   }
 
   // ---- 30. paper a person hands you ----
-  // The owner, 2026-09-04: "no she says it and shows a fake doc- the important ones are the
-  // ones for AI roles but lets help me see it and live it." A node may name a document. This
+  // The owner, 2026-09-04: she says it and hands over a mock document; the documents that
+  // matter are the AI-role ones, but the player should see this one and live it. A node may name a document. This
   // section is here because a mistyped id would show a button that opens nothing, and because
   // closing that document has to put you back in front of the person, not out on the street.
   {
@@ -5102,7 +5102,7 @@ const CANDIDATES = [
   }
 
   // ---- 31. a staircase stands up ----
-  // Owner, 2026-09-04: "those stairs are trash. not realistic." The drawing was only half of
+  // The owner rejected those stairs as unrealistic. The drawing was only half of
   // it — "1" is walkable, and the engine had exactly two categories, flat ground art or solid
   // geometry. So the front camera and the 3D ground bake painted the stair's TOP-DOWN art flat
   // onto the floor and the iso pass drew a gold lozenge: it read as a gate lying down in three
@@ -5470,8 +5470,8 @@ const CANDIDATES = [
   }
 
   // ---- 35. the flowers that show the souls the way are walked THROUGH, not around ----
-  // Owner, 2026-09-22: "ok can you try to lookinto making petals? that i can walk and interact
-  // through as if they were mounds of items piled up"
+  // The owner asked for petals you can walk through and stir, like mounds of things
+  // piled up.
   //
   // The park lays cempasuchil from a flower bed to the ofrenda, and the map's own comment says
   // why: "Marigolds are how the souls are shown the way — the flower IS the arrow … Walkable, so
@@ -5569,8 +5569,8 @@ const CANDIDATES = [
     const r1 = await page.evaluate(() => {
       const problems = [];
       if (typeof ANIMALS !== 'undefined') problems.push('Meridian declares ANIMALS — its animals are the engine defaults by design');
-      // #25 (owner, 2026-09-07: "update here and meridian and template so we have a good amount of
-      // metadata that includes these"): Meridian DECLARES its rooms, one line per role with a note,
+      // #25 (the owner asked for it in Meridian and in the template, so there is a good amount of
+      // metadata that includes these): Meridian DECLARES its rooms, one line per role with a note,
       // and the declaration must match the engine's default table key for key — it is documentation
       // of the seam, never a divergence from it. A role the engine knows and Meridian does not name
       // is metadata missing; a role Meridian names and the engine does not read is a lie.
@@ -5632,8 +5632,8 @@ const CANDIDATES = [
     // the neutral set is the source; the branded set is generated from it (build-branded.js --check holds that)
     const tdir = path.join(__dirname, '..', 'docs', 'templates', 'neutral');
     /* The templates are the owner's and stay private; the PUBLIC copy carries their names only
-       (docs/templates/NAMES.md, from public-overlay/). Owner, 2026-09-27: "dont publish their url but
-       would their names really be a risk? i dont thnk so". Where the templates are here, the published
+       (docs/templates/NAMES.md, from public-overlay/). The owner, 2026-09-27: never publish their
+       URL, but their names are no risk. Where the templates are here, the published
        list must name exactly them, so the two cannot drift; where neither is here, that is a red. */
     const namesOf = p => fs.existsSync(p) ? [...fs.readFileSync(p, 'utf8').matchAll(/^- `([^`]+)`$/gm)].map(m => m[1]) : null;
     const listed = namesOf(path.join(__dirname, '..', 'docs', 'templates', 'NAMES.md'));
@@ -5723,8 +5723,8 @@ const CANDIDATES = [
   }
 
   /* ---- everything alive that can reach the rails is something the tram can SEE ----
-     docs/OWNER.md, settled by the owner 2026-09-11: "a realistic trolley, in my boook does stop for
-     traffic- pedestrian, vehicle or even fauna", and the sentence under it — "braking for the
+     docs/OWNER.md, settled by the owner 2026-09-11: a realistic trolley stops for traffic, whether
+     a person, a vehicle or an animal; and the sentence under it — "braking for the
      hummingbird and running over the pigeon is not a policy, it is a blind spot."
      Meridian did that, by species, by name, literally. Chava filmed Paloma being drawn INSIDE the
      tram's third window, twice inside sixty seconds of standing at the stop, on the same rails where
@@ -5851,8 +5851,8 @@ const CANDIDATES = [
   fails.push(...under);
 
   /* ---- the small things keep off the rails, and the tram does not have to stop for them ----
-     The owner, 2026-09-11: "i mean she should be small enough and smart enough to stay away from the
-     tram please." "She" is the colibri. CRITTERS declares her at st(16,4) and the engine lets a
+     The owner asked that she be small and smart enough to keep away from the
+     tram. She is the colibri. CRITTERS declares her at st(16,4) and the engine lets a
      critter wander four tiles of Manhattan around home, which reaches row 2 — the rails. She hovers
      rather than walks, so she can stand on the line indefinitely, and she did: three of six trams in
      four minutes stopped dead for a hummingbird.
@@ -5966,9 +5966,8 @@ const CANDIDATES = [
   fails.push(...cornered);
 
   /* ---- it waits at the stop for somebody walking up to it, and the waiting ends ----
-     The owner, 2026-09-11: "why wouldnt they stop for me? if im walking close to the tram, it should
-     wait if it is already at the tram stop, if i missed it then its ok, itll take me a second and
-     then i should be at the stop anyhow and wont mind a second to arrive."
+     The owner asked why the tram would not stop for him: walking close while it is already at the
+     stop, it should wait the moment he needs to arrive; if he has missed it, that is fine.
      Until now `stops` was read by exactly two things — the boot audit and the summon check — so the
      car passed its own platform at full speed with a passenger standing on it, and the summon made
      that WORSE rather than better: standing at the stop called a tram every 8.5 seconds and not one
@@ -6047,10 +6046,10 @@ const CANDIDATES = [
   fails.push(...dwell);
 
   /* ---- and you RIDE it: the pass no longer swaps the world under you ----
-     The owner, 2026-09-11: "lets have the teleport survive for now but maybe the tram goes quickly
-     if im on it, honks and everyone gets out of the way and we zip by in a 'slow' teleport or
-     teleport with animation… am i describing literal decoration?" Then, 2026-09-12: "lets just
-     build one and i'll give you feedback."
+     The owner, 2026-09-11: keep the teleport for now, but maybe the tram runs fast while he
+     rides, honks, everyone clears the way and it zips through — a slow teleport, or a teleport
+     with an animation — and he wondered if that was only decoration. Then, 2026-09-12: build
+     one, and he will give feedback.
      Four nouns, and the third is the one with the trap in it:
      1. picking a destination does NOT change the world on that frame;
      2. it does change it, by itself, by the end of the line;
@@ -6146,9 +6145,9 @@ const CANDIDATES = [
   fails.push(...trapped);
 
   /* ---- the window sills are not HIDDEN — asked with a ray, which is what that word means ----
-     The owner has reported this four times: 2026-09-08 "the sugar skulls share a sill", 2026-09-09
-     and 2026-09-10 "the skulls are still hidden on the sills", 2026-09-12 "another attempt at
-     showing the window sills". Four answers were shipped and all four were about SIZE — 8 pixels of
+     The owner has reported this four times: 2026-09-08, the sugar skulls shared a sill; 2026-09-09
+     and 2026-09-10, the skulls still looked hidden; 2026-09-12, one more try at showing the
+     window sills themselves. Four answers were shipped and all four were about SIZE — 8 pixels of
      sweet, then 5, then 0.85 of the pane, then the whole pane lit. Each was measured. Each was
      defensible. He came back every time.
      Two things were actually wrong and neither is a dimension. **There was never a sill**: propSill
@@ -6229,8 +6228,8 @@ const CANDIDATES = [
   fails.push(...sills);
 
   /* ---- THE ALTAR HAS A TABLE UNDER IT, AND IT IS THE ALTAR'S SIZE ----
-     Owner, 2026-09-22: "dona tenchas table is too small. take it out when its dia de los muertos or
-     alebrijes mode and replae it with a bigger table for the altar. please"
+     The owner found Doña Tencha's table too small: in the Día de los Muertos or alebrijes season
+     it gives way to a bigger table for the altar.
 
      WHAT THIS ASKS, AND WHY IT IS NOT A WIDTH. The obvious check is "is the table's bounding box at
      least as wide as the altar's", and it is proxy #9 all over again — the tram's skirt reached the
@@ -6532,8 +6531,8 @@ const CANDIDATES = [
 
 
   /* ---- the plan says where somebody is waiting, and it says it in PIXELS ----
-     #160, and the owner's word of 2026-09-15: "i like the marking of people with quests in
-     different colors but its hard to tell unless you have a legend." docs/meetings/2026-09-14-el-mapa.md
+     #160, and the owner's word of 2026-09-15: he likes people with quests marked in different
+     colours, but they are hard to read without a legend. docs/meetings/2026-09-14-el-mapa.md
      §7 is the plan. This guard is written the way REGRESSION.md §3 says to write it: not
      "drawPlanMarks was called N times" — a call count where the noun is a mark on a tile is the
      commonest wrong guard in this repo — but blank the one painter and read what the plan lost,

@@ -5,11 +5,10 @@ description: Convene Meridian's expert agents — Nacho (story), Don Güero (cit
 
 # Meeting of da minds — *la junta*
 
-**Opened 2026-09-03**, owner's ask: *"i want another review from /don-guero and /nacho to
-check with another agent who is an expert in 3d game design so we can setup for success
-with this type of character … use it as a learning experience, not just for this exercise.
-write it as a skill of meeting-of-da-minds … call it a meeting once you are all excited to
-show me cool things."*
+**Opened 2026-09-03**, owner's ask: another review from Don Güero and Nacho, with an agent
+expert in 3D game design, to set this kind of character up for success; a learning
+experience, not only this exercise; written as the meeting-of-da-minds skill; and called a
+meeting once everyone is excited to show him something good.
 
 A meeting is what you call when the questions on the table are **entangled** — a story
 beat that needs a building, a building that needs art, art that needs an engine seam — and
@@ -74,7 +73,7 @@ with what each item unlocks.
 
 **5 · The readout, and only then the excitement.** Take it to the owner when there is
 something to be excited about: concrete, visual, and describable in one sentence each.
-*"Call it a meeting once you are all excited to show me cool things."* A readout that is a
+*It is a meeting once everyone is excited to show him something good.* A readout that is a
 list of concerns is not a meeting, it is a status update.
 
 ## The rules that make it worth the tokens
@@ -91,8 +90,8 @@ list of concerns is not a meeting, it is a status update.
    for someone who is not in the code today.
 5. **Nothing is built during a meeting.** The panel plans; the session builds afterwards,
    in the agreed order, with the owner's go.
-6. **Stay on the requirements at hand.** *"while you are allowed to learn parallel skills to
-   make them/you better for this project, please be consious of the requirements at hand."*
+6. **Stay on the requirements at hand.** Learning side skills that make the crew better for this
+   project is allowed, but the requirements at hand come first.
    A meeting may pick up a technique it needs; it may not turn into a research project. If
    the panel wants a tangent, it goes in the readout as a recommendation, not into the work.
 
@@ -105,7 +104,7 @@ list of concerns is not a meeting, it is a status update.
   findings to `docs/IDEAS.md` §15.
 - **The learning.** Every meeting writes down at least one thing the project now knows that
   outlives the topic — a principle, a rule of thumb, a trap with a name. That is the part
-  the owner asked for: *"use it as a learning experience, not just for this exercise."*
+  the owner asked for: a learning experience, not only this exercise.
   If a meeting produced no durable lesson, say that too; it is a finding about the meeting.
 - **New experts,** recommended with a one-line case, never appointed.
 

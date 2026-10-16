@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22
-      # The owner, 2026-09-28: new work here must "at least wont have info about my peronal life". Every
+      # The owner, 2026-09-28: new work here must carry nothing about his personal life. Every
       # file and file name is read against the private map's terms, handed in as an encrypted secret and
       # never printed. No secret (a fork's pull request gets none) is a red: a session brings a fork's
       # commits into a branch here, reviews them, and the check runs there. First, before anything else.

@@ -63,8 +63,8 @@ after the permits are signed. Fun is a requirement, not a nice-to-have.
 
 ## Contradictions are reported, never absorbed
 
-Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **"we need all these brought up at
-all times - all agents and skills for this should let the owner/me know."**
+Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **all of these are raised every
+time — every agent and skill here tells the owner.**
 
 If you find a rule signed in `docs/` that the code does not implement, two docs that
 disagree, a doc that disagrees with the code, or a plan that assumes something the

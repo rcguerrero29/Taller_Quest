@@ -1,7 +1,7 @@
 # The pass — Lupe's list
 
-*Opened 2026-09-09 at the owner's word: "we should have personas who are QA testers meaning they have
-to test both on full screen and phone mode right."*
+*Opened 2026-09-09 at the owner's word: some personas are QA testers, which means they test both
+in full screen and in phone mode.*
 
 **This file is the checklist, and the record of what escaped it.** The list grows from real escapes
 and from nothing else. A check nobody can point at a bug for is a ritual, and rituals get skipped.
@@ -72,7 +72,7 @@ page: every row here is a row of the matrix that did not exist yet.*
 
 ### E1 · The fullscreen blur — 2026-09-08
 **What escaped:** #134 was diagnosed, measured (edge energy **2.26 → 2.72**), fixed and shipped. The
-owner came straight back: *"its still blurry in full screen."*
+owner came straight back: still blurry in full screen.
 **What it actually was:** a **second, unrelated fault**. The 3D buffer kept the game's 10:8 while
 fullscreen gave the element the screen's shape, so the browser rescaled and letterboxed a 2880×2304
 render. Measured afterwards at **0.885 fullscreen against 2.24 windowed**.

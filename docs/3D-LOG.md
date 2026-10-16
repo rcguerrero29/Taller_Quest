@@ -1,7 +1,7 @@
 # The 3D log — Chema's contact sheet
 
-*Opened 2026-09-09 at the owner's word: "we should make sure that they document everything possible
-so they can recreate it if needed and try to continuously improve depending on goal and past builds."*
+*Opened 2026-09-09 at the owner's word: the crew documents everything it can, so a thing can be
+rebuilt if needed, and keeps improving against the goal and the builds before.*
 
 **This file is the record of every attempt, not the record of the rules.** The rules — what the
 engine does today and why — live in `docs/NEW-WORLD.md` §3⅝, §3⅚ and §3⅔. This file says what was
@@ -16,9 +16,9 @@ Read it before proposing anything about the 3D view. Append to it before moving 
 
 > **A pixel world that obeys real light and real depth — without ever stopping being a pixel world.**
 
-**And the second half of the goal, in the owner's words (2026-09-09):** *"the standing goal is also
-supposed to keep in mind the customizeable and ability to use as template for other games with
-technology."* Realism here is never Meridian's realism. Every rendering improvement must arrive as
+**And the second half of the goal, as the owner set it (2026-09-09):** *the standing goal also keeps
+in mind that it is customisable, and can serve as a template for other games built on this
+technology.* Realism here is never Meridian's realism. Every rendering improvement must arrive as
 one of two things and nothing else:
 
 - **a RULE** — it belongs in `engine/`, it is behaviour-identical for Meridian, for a second world and
@@ -110,7 +110,7 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 ### 2026-09-08 · the camera turn
 - **Shipped:** 300ms ease-in-out, offered as a setting (`instant / quick / easy / slow` =
   0 / 150 / 300 / 520ms). `instant` is exactly the old behaviour.
-- **Reasoning worth keeping:** [partner] called the old *automatic* turn "too confusing" (#65) and the cure
+- **Reasoning worth keeping:** [partner] found the old *automatic* turn confusing (#65) and the cure
   then was to make it manual. But the confusion was never that it turned — it was that the turn had
   no motion to follow, so the eye had to re-find the whole street from scratch. **A move you can
   watch is a move you can follow.**
@@ -124,7 +124,7 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 - **Shipped:** `alphaTest` (0.25) on every baked billboard.
 - **Proof used:** two renders of the HQ doorway, before and after. Three quest marks return.
 
-### 2026-09-09 · #140 — "i seem to walk on them"
+### 2026-09-09 · #140 — seeming to walk on them
 - **Goal served:** a person can always tell where they are.
 - **Diagnosis, and the real lesson:** the near-wall rule was written as a list of *kinds* — walls,
   facades, lintels, doors, window pieces — and it measured height with `geometry.parameters.height`,
@@ -148,8 +148,8 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ## Still open, in the order I would take them
 
-1. **The trolley's art** — the owner: *"make the trolley more realistic, even the old one seemed cute
-   and realistic though 2d."* The structural half of #125 shipped; this is the half that is a
+1. **The trolley's art** — the owner asked for a more realistic trolley, though even the old one
+   looked charming and realistic for 2D. The structural half of #125 shipped; this is the half that is a
    judgment about how it reads, and it wants Pili beside me.
 2. **Rosa's remaining 3D notes**, chiefly her call that the world's height should stop being derived
    from the 2D tile grid — partly addressed by the screen-share change, not finished.
@@ -273,8 +273,8 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ### 2026-09-21 · the `mesh` view: shapes from parts, and the first three — the bed, the pot, the shelf
 
-- **The ask, in his words:** *"i still see squares and not polygonal shapes, i thought we logged a
-  skill. can we not try this finally?"* The skill existed (how-its-made, which says *model* as well
+- **The ask:** he still saw squares rather than polygon shapes, thought a skill had been logged,
+  and asked to try it properly at last. The skill existed (how-its-made, which says *model* as well
   as draw); the seam did not. `engine3d.js` built the whole world from `BoxGeometry`, `PlaneGeometry`
   and `Sprite` — 24 boxes, 9 planes, 1 cylinder, 1 torus, counted — so a pack had exactly two answers
   to "what shape is this": a box wearing a picture, or a picture standing up.
@@ -327,8 +327,8 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ### 2026-09-21 · five more shapes: grass, the cone, the doghouse, the tree with its dress, the altar — and the marigolds back
 
-- **The ask:** *"lets try the grass and the cones, dog house, and altar. we are now missing the marigold
-  in the bushes though. can we also do the tree with its decor?"* — after playing the `mesh` view for
+- **The ask:** the grass, the cones, the dog house and the altar; the marigolds now missing from
+  the bushes; and the tree with its decor — after playing the `mesh` view for
   ten minutes. Same seam, same builder; two small additions to the engine: a `torus` primitive (an
   arch is a torus with an arc) and a hook in the season-prop pass so a prop asked for BY KIND —
   `"prop:ofrenda"` — goes through the same table as a glyph. `mq-v179`.
@@ -377,9 +377,9 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ### 2026-09-21 · the second try on the marigolds and the dress; tables; poles; the altar in detail; the cone's base
 
-- **The ask:** *"the marigolds can use another try and same with the decor. please update, tables too,
-  poles with the paper picado and please try to add more detail to the altar. the cone looks better
-  but it overwrites/paints tiles."* `mq-v180`.
+- **The ask:** another try at the marigolds and the decor, the tables too, the poles that carry the
+  papel picado, and more detail on the altar; the cone looked better but still painted over the
+  tiles. `mq-v180`.
 - **A marigold is not a ball.** Eight spheres read as eight balls from a phone. A cempasúchil is a
   pom-pom of ruffled petals: `meshMarigold` builds a core wider than tall, nine lobes round its upper
   half — the lit side in the crown colour, the shaded side in the undercut — a crown sphere where the
@@ -415,13 +415,13 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 ### 2026-09-21 · crew iteration 11: the marigold by a botanist, fourteen shapes by two builders, Pili's direction — and the lid
 
 *The method these five sittings arrived at — the seam, the ten steps, what the marigold taught — is one
-file now: `.claude/skills/shapes/SKILL.md` (owner, the same day: "did you log how we can recreate this
-new polygonal update for all these and what we or you learned from marigolds?"). Merged as #224.*
+file now: `.claude/skills/shapes/SKILL.md` (the owner asked the same day whether the way to rebuild this
+polygon update for all of these, and what the marigolds taught, had been logged). Merged as #224.*
 
-- **The ask:** *"everything looks good except the marigolds. lets do a crew mode to try to fix as many
-  things but lets have an expert on flora help the design on the marigolds so they are realistic …
-  computers, rails, fences, coffee machines, fridge, bridge, petals, trolley, desks, fruit stands, car
-  lifts, tires, car,and tool boxes. make sure even mural gets done please."* `mq-v182`. Run
+- **The ask:** everything good except the marigolds; a crew pass to fix as much as it could, with a
+  flora expert on the marigolds so they are realistic — computers, rails, fences, coffee machines,
+  the fridge, the bridge, petals, the trolley, desks, fruit stands, car lifts, tires, the car and
+  tool boxes — and the mural done as well. `mq-v182`. Run
   `docs/runs/2026-09-21-claude-d8e4.md`.
 - **The lid (Pili).** An engine box wears its TOP-DOWN drawing on its lid (`t3BoxMats` → `t3BakeGlyph(g,true,…)`)
   and takes its height from the tallest ink in the side drawing. That is why the café counter's cups
@@ -626,9 +626,9 @@ new polygonal update for all these and what we or you learned from marigolds?").
 
 ### 2026-10-03 · the agility course: a winged hurdle, a full tunnel, six weave poles — and the dog goes over, through and between
 
-- **The ask.** Owner, 2026-09-29: *"please also fix the dog agility course too - shape and beautify please"*; and
-  2026-10-03: *"please place it but most importantly you had previously provided full tunnel - should also work for
-  the pets to go through but i cant fit in it"*. The plan it was built to: real gear as shared library shapes, each
+- **The ask.** Owner, 2026-09-29: fix the dog agility course too, shaped and beautified; and
+  2026-10-03: place it, and above all keep the full tunnel offered before — a pet goes through it and the player
+  cannot fit. The plan it was built to: real gear as shared library shapes, each
   piece turned to the line the dog runs (keeping the one straight run the map already lays), the dog hops the bar,
   goes through the tunnel and weaves the poles, and Meridian takes the three shapes.
 - **What it was.** Three billboards that turned with the camera (`engine3d.js`, the walkable-cutout branch), a dog that

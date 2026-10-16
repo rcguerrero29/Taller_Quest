@@ -1,7 +1,7 @@
 # The engine, for a stranger — technical specifications you can hand to anyone
 
-*Opened 2026-09-25, owner: "can you provide a stranger safe way to provide the answers for the
-technical specifications". True at game version `mq-v200`; if the game is newer, a number below
+*Opened 2026-09-25: the owner asked for a way to give the technical specifications that is safe to
+hand a stranger. True at game version `mq-v200`; if the game is newer, a number below
 may be too.*
 
 **What "stranger safe" means here, so the next session keeps it that way.** This page names no

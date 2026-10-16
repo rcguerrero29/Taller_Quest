@@ -49,8 +49,8 @@ Read them before proposing anything he might have already ruled on, and when he 
 4. **Say what you did not check.** An unchecked thing named is worth more than a confident summary
    that quietly skipped it.
 
-**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: "you should ask the owner
-or me when that arises… im here so feel free to ask qs.")* A doc that disagrees with the code, two
+**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: when that arises, ask
+him; he is here, and questions are welcome.)* A doc that disagrees with the code, two
 registers that disagree with each other, a settled rule that seems to forbid the thing you were just
 asked for — **do not pick one and proceed quietly, and do not average them.** Say plainly which two
 things collide, what each would have you do, and what you need from him. He is available and he
@@ -163,8 +163,8 @@ in the plan instead of guessing.
 
 ## Contradictions are reported, never absorbed
 
-Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **"we need all these brought up at
-all times - all agents and skills for this should let the owner/me know."**
+Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **all of these are raised every
+time — every agent and skill here tells the owner.**
 
 If you find a rule signed in `docs/` that the code does not implement, two docs that
 disagree, a doc that disagrees with the code, or a plan that assumes something the

@@ -107,21 +107,21 @@ on top of a business that already exists.)*
   still in its pot (`P`). The desk, the stairs and the three panes never moved. The sight
   line from the stairs to the window stays clear (Nacho's "nothing in the way" is an
   answer a player can pick, so it has to be true), the arrival tile (17,11) stays clear,
-  and every walkable tile stays reachable. Owner: *"i think for the move it should be
-  mid and we can have don guero provide estimates and possible furniture to furnish"* —
+  and every walkable tile stays reachable. The owner chose mid-move, with Don Güero
+  offering estimates and furniture to furnish it —
   the furniture catalogue with per-piece estimates is `docs/BACKLOG.md` §6.
 - 2026-09-02 — **Se acabó el tope**: the city stopped stopping at one storefront and
   the record stopped forgetting. `GROWTH.ribbons[]` with a shim so the singular `ribbon`
   still works, each storefront carrying its own `doorstep`; and the play log keeps EVERY
-  decision instead of its last 200. Owner: *"I thought we fixed this 200 entries thing
-  and not stopping at a certain amount of store fronts"* — it was not fixed when they
+  decision instead of its last 200. The owner had thought the 200-entry limit was fixed,
+  and that storefronts no longer stopped at a fixed number — it was not fixed when they
   said it; it is now. Both under test.
 - 2026-09-02 — **Muebles de frente**: the front and 3D cameras stop standing top-down art
   up like cardboard signs. `TILESIDE` holds a second drawing per prop for the cameras that
   see it standing (table, counter with a coffee machine every third tile, stove), the
   barricade `G` is an orange board with white stripes instead of a ladder, and every door
   in 3D wears a light frame with a bigger pool of light under it. Owner's report:
-  "hard to see some doors" and "the table and fences and the coffee machine". IDEAS §15.11.
+  some doors were hard to see, and so were the table, the fences and the coffee machine. IDEAS §15.11.
 - 2026-08-31 — **World upgrade wave 1**: draw() tile chain became the TILEDRAW
   registry (28 glyphs + doors as data; content packs override via TILEART) — the
   entities-as-data law now covers ART. Visible: per-tile floor variation, walls cast
@@ -219,10 +219,10 @@ would have none left unless looks key by npc instead.
   EMPTY frame, nobody named ("That one's for whoever needs it") — never the old AI lead, who
   vanished and did not die. Not built: the fiesta shipped the swags, the piñata and Doña Meche;
   the ofrendas wait on this word.
-- ✅ **❗La silla — BUILT as a service (`mq-v105`, 2026-09-07).** Owner: *"we should really open the
-  ability to change our character outfit and haircut after start. maybe have a small barber we can
-  share with meridian quest as some could be hispanic businesses and they have the ability to help
-  with the fit. see if any of our characters would like to do that or if they train another agent."*
+- ✅ **❗La silla — BUILT as a service (`mq-v105`, 2026-09-07).** The owner asked to change outfit and
+  haircut after the start, perhaps at a small barber shared with Meridian Quest, since some of its
+  businesses could be Hispanic ones able to help with the look; one of the characters might take it on,
+  or train another agent to.
   Nacho: nobody in the cast has a fit-and-style streak except Xochi, and Xochi's thread is clothing
   the barrio one business at a time — so **Xochi trains a new one**: **Naye Robles, 29**, Doña Chelo's
   niece, eleven years cutting hair between the crates of her tía's abarrotes. **Barbería y Estética El
@@ -237,9 +237,9 @@ would have none left unless looks key by npc instead.
     the photo, the last cut and the time; Naye confirms at the mirror before anything is cut.
   - ⏳ **❗La fachada** — the shop wears the casa's facade today. A barbershop glyph of its own (a pole,
     the mirror wall from the sidewalk) needs one cold read; or keep the facade and hang a sign.
-- ✅ **❗El camino — ANSWERED A, WITH A REAL TROLLEY (`mq-v114`/`ch-v56`, 2026-09-08).** Owner: *"do the street
-  with a troley at the end or build the trolley that comes in periodically and ther is no building, person or
-  house in the way, or it stops for people crossing or if i call it."* Calle Dos becomes one lane (`ex` row 1)
+- ✅ **❗El camino — ANSWERED A, WITH A REAL TROLLEY (`mq-v114`/`ch-v56`, 2026-09-08).** The owner chose the street
+  with a trolley at its end: a trolley that comes by now and then with no building, person or house in its
+  way, and stops for people crossing or when called. Calle Dos becomes one lane (`ex` row 1)
   with the sidewalk its two houses stand on below it (row 2, was bed — Doña Tencha's casa and El Portero's
   caseta were literally stamped in the road), and a crossing at each of their doors. Calle Principal keeps both
   lanes and its crossing. **El trolley** (`TROLLEYAT` in the pack, `TRO`/`troUpdate` in the engine): **⚠️ this paragraph described a
@@ -260,8 +260,8 @@ would have none left unless looks key by npc instead.
   "canal-side"; CITY.md says Naye's door opens onto the bed; OWNER.md says the papel picado hangs "over the
   crossing"; the leash still moves you town-to-park with no gate and the park's door is one-way out). And the
   original review, for the record:
-- ⏳ **❗El camino — what is that grey strip, and where do people cross it?** *(Don Güero, 2026-09-08; owner:
-  "the road in meridian doesnt make sense at the moment - don guero has to review")* — **In plain words:** one
+- ⏳ **❗El camino — what is that grey strip, and where do people cross it?** *(Don Güero, 2026-09-08; the owner
+  found Meridian's road made no sense yet, and gave it to Don Güero to review)* — **In plain words:** one
   strip runs along the top of both maps and nobody agrees what it is. The ledger calls it a trolley bed, Doña
   Tencha calls it the water's edge, and the paint says road — `TILEDRAW["≈"]` is grey asphalt with a lane line,
   walkable end to end, and the only marking on it is a crosswalk at st (13–14, 2–3). It does not read as a
@@ -286,8 +286,8 @@ would have none left unless looks key by npc instead.
   picado "over the crossing" (the swags hang over st row 1, the facade); and the leash moves you town-to-park
   with no gate while the park's only door is one-way out — the 2026-09-03 train-to-a-floor rule wearing a collar.
 
-- ✅ **❗El espejo — ANSWERED B (owner, 2026-09-09: "if nacho recommends ill say yes"). NOT YET BUILT.**
-  **CORRECTED 2026-09-17 (owner: "make the correction lol") — FOUR quests, `need:3`, not three and two.**
+- ✅ **❗El espejo — ANSWERED B (owner, 2026-09-09: yes, on Nacho's recommendation). NOT YET BUILT.**
+  **CORRECTED 2026-09-17 (the owner approved the correction) — FOUR quests, `need:3`, not three and two.**
   *The shape as signed could never have played its own middle ending, and the arithmetic is the whole
   argument:* `gradeOf` grades on the fraction of ANSWERED quests that landed first try, and a
   district's last visit fires the instant `need` is met — so with `need:2` exactly two are answered
@@ -304,9 +304,9 @@ would have none left unless looks key by npc instead.
   — and it has to be APPENDED, never inserted, because `chSeen` is a saved integer index into `CHAPTERS`
   (`content/meridian/config.js`, grep `chSeen` is a SAVED INTEGER INDEX): insert anywhere but the end and
   every existing save points at a different district.
-  **AND LA ESQUINA KEEPS THE CITY'S LAST WORD, at the owner's ruling, 2026-09-23:** *"i mean append- the
-  first- why cant it be an expansion pack or something. the end is not a harsh rule in an open world model
-  for us -maybe for other games yes but not her"*. The session and the planner had both assumed appending
+  **AND LA ESQUINA KEEPS THE CITY'S LAST WORD, at the owner's ruling, 2026-09-23:** append it, first, as
+  something like an expansion pack; in an open-world model the end is not a hard rule for this game, even
+  if it may be for others. The session and the planner had both assumed appending
   forces la esquina to hand off. **It does not: `open` is ONLY a toast key** (`engine/engine.js`, grep
   `function epiKeys`), and what opens a district is `qOpen`, which is `c<=chSeen`. So El Espejo's quests
   open the moment la esquina closes whatever the toast says, `esquina.open` stays `endStayToast`, and that
@@ -315,7 +315,7 @@ would have none left unless looks key by npc instead.
   so the marker works, and this ledger already noted that Calle Dos has six people and not one has ever
   carried one. One fewer string changed than the planner's version, and no finale demoted.
 
-  **WHO CARRIES THEM — settled 2026-09-23, owner: *"if option b is easiest, go for it."*** The four
+  **WHO CARRIES THEM — settled 2026-09-23, the owner chose option B, if it is the easiest.** The four
   quests go to **Yaz, the apprentice**; **Naye keeps her chair.** This started as a way around a bug —
   a person with an unanswered quest could not also run a service, so quests on Naye switched off the
   barber's chair the owner asked for on 2026-09-07 — but **the engine was fixed first** (`svcKind`/
@@ -330,8 +330,8 @@ would have none left unless looks key by npc instead.
   person in the city holding a tool that cannot be undone, and the beat she carries is human-in-the-loop with
   scissors. Next: Nacho writes the three quests EN+ES, Don Güero places the district, and the chapter block goes
   in `content/meridian/config.js` after `nolasco`. The original options are kept below for the record.
-- ⏳ **❗El espejo — does the chair get a story, and when** *(Nacho, 2026-09-07; owner: "barber - cool
-  can we reuse for MQ then for the story, nacho?")* — **In plain words:** Naye cuts hair on Calle Dos
+- ⏳ **❗El espejo — does the chair get a story, and when** *(Nacho, 2026-09-07; the owner liked the barber
+  and asked Nacho whether it could be reused for MQ, then for the story)* — **In plain words:** Naye cuts hair on Calle Dos
   and nobody in Meridian has said a word about her yet. She is the only person in the city holding a
   tool that cannot be undone. The beat she carries is the one the taller only half-taught: the brief is
   not the request, and somebody confirms before the irreversible step. A customer brings a photo of a
@@ -346,20 +346,20 @@ would have none left unless looks key by npc instead.
   - **C — A full eight-quest district** with a mural panel — the five signed roles are spent, and a
     sixth trade before la inauguración moves the finale further away.
   Nacho's bible lines are on STORY.md already (the arc and Xochi's line); the quests wait on the pick.
-  ~~Not absorbed: Nacho found `chelo` declared twice in `npcs.js`~~ **Fixed 2026-09-07 (owner: "nacho/you
-  fix it and choose a new name that fits with the story"):** the mercado keeps Chelo Robles (older canon,
+  ~~Not absorbed: Nacho found `chelo` declared twice in `npcs.js`~~ **Fixed 2026-09-07 (the owner gave it to
+  Nacho or the session to fix, with a new name that fits the story):** the mercado keeps Chelo Robles (older canon,
   Naye's tía); the casa's neighbour is **Doña Tencha** — Hortensia, forty years on Calle Dos, the first
   house Don Güero built with the door in the middle because she asked, no relation to the Robles; her
   lines are unchanged (she was already the woman who says "take a plant when you go"). The smoke now
   fails a cast key declared twice. "Wardrobe / Vestidor" still names the animals' fitting room; the
   chair never uses that word.
-  **❗La silla, the second half — DECIDED 2026-09-07 (owner: "la silla - you choose but all these may need
-  architecture to grow right?"):** a *service* today, and yes, the architecture to grow it is already
+  **❗La silla, the second half — DECIDED 2026-09-07 (the owner left la silla to the crew, noting
+  all of these may need architecture to grow):** a *service* today, and yes, the architecture to grow it is already
   there and named: a template room's `people` carry `q:[...]` like any station, so Naye takes quests the
   day a `CHAPTERS` entry names an `espejo` district — nothing in the engine changes for that. Nacho's
   plan for what those quests are is ❗El espejo below.
-- ✅ **❗La piñata / ❗El tamal — BUILT the owner's way (`mq-v98`, 2026-09-07).** Owner: *"put a
-  pinata in there as well as tamales, etc."* Nacho's picks taken: the piñata hangs over the
+- ✅ **❗La piñata / ❗El tamal — BUILT the owner's way (`mq-v98`, 2026-09-07).** The owner asked for a
+  piñata, tamales and the like. Nacho's picks taken: the piñata hangs over the
   paletera's corner on Calle Dos and only sways — never hit, gives nothing; Doña Meche, a new
   neighbour with a pot at the trolley stop, three lines in both languages and a fourth that
   asks the season, permanent and never a parcel. Kike says he hung the piñata; Doña Tencha sets
@@ -368,16 +368,16 @@ would have none left unless looks key by npc instead.
   canal is a doc that never became a tile; a season cannot add a person, which is why Doña
   Meche is year-round.
 
-- ✅ **❗El zaguán — BUILT the owner's way (`mq-v92`, 2026-09-07).** Owner on #7: *"i think you
-  expand the building for meridian in the right side and add the staircase through a door from
-  that room."* Not the well in the corner: Nolasco's office grew EAST by a stair room (16×8 →
+- ✅ **❗El zaguán — BUILT the owner's way (`mq-v92`, 2026-09-07).** The owner on #7: extend
+  Meridian's building on the right and add the stairs behind a door from
+  that room. Not the well in the corner: Nolasco's office grew EAST by a stair room (16×8 →
   24×8), a doorway `+` at (15,2) between the rooms, the engine's railed well at (16–20,4) with
   `▼` at (17,4) the way down to the avenue; the office's desks, cabinets, rug and chairs did not
   move. The avenue door `$` is the foot of the stairs — you come up unseen and appear at the top
   (21,4), facing the well. The last old `1` left the city; the stand-tile smoke (§31) now proves
   its category on the street's cone. ❗El despacho chico is moot: nothing in the office was
   displaced.
-- ✅ **❗La reja — BUILT (`mq-v91`, 2026-09-07).** Owner on #9: *"work on this please."* The
+- ✅ **❗La reja — BUILT (`mq-v91`, 2026-09-07).** The owner on #9 asked for the work. The
   casita's `▦` no longer draws a door on a wall: it is a closed reja — the recess, iron bars, a
   chain and a padlock, the step kept so it is the same house; the template part is still `door`,
   the name of the tile that carries the front. `buildSafe()` refuses any build that lays a tile
@@ -385,9 +385,9 @@ would have none left unless looks key by npc instead.
   and the smoke fails on any declared lot the engine refuses. Proven red first; inert in the
   town (no `BUILDTPL`). Open with it: ❗La cuadra (do the two casitas go back on Calle Dos as
   homes) and ❗El portero (the owner's design on #8: a room, counts, red for critical).
-- ✅ **❗La llave — PAID (`mq-v93`, 2026-09-07).** Owner on #10: *"lets take this on don guero!"*,
-  *"lets start this fix too. templates will help us and the game grow without having to build
-  with you."* Portals are keyed by WHERE a door stands as well as by its letter: `PORTALSAT`,
+- ✅ **❗La llave — PAID (`mq-v93`, 2026-09-07).** The owner on #10 handed it to Don Güero
+  and asked for this fix too: templates let the game grow without building everything
+  with a session. Portals are keyed by WHERE a door stands as well as by its letter: `PORTALSAT`,
   `portalAt(id,x,y)`, `portalsOf(id)` — every read site in the engine asks those, never the
   tables. A template part may `link` its door to an interior the template carries (rows, people,
   a name and an arrival line in both languages); the build stamps that room as a world of its own
@@ -397,8 +397,8 @@ would have none left unless looks key by npc instead.
   water's edge on Calle Dos (`casa` template, `BUILDS`), a home, never a business. Still his:
   Don Güero saying a line about what he built (Meridian has no Don Güero station yet).
 - ✅ **❗La caja de escalera — BUILT, town first (`mq-v75`/`ch-v12`), then Meridian (`mq-v81`, 2026-09-07).**
-  Don Güero's candidate B, the owner's *"sounds good don Guerito, go for it"* on #4, then *"the
-  stairs going up looks good"* after walking the town, then *"send the stairs to templates and MQ"*.
+  Don Güero's candidate B, approved by the owner on #4; then, after walking the town, he found the
+  stairs going up good, and asked for the stairs in the templates and in MQ.
   HQ and Floor 2 grew three rows SOUTH: a lobby at the front door (10,16), a stair hall behind the
   door at (10,13), a four-tile mass at (11–14,13) carrying the flight in profile, three rising
   treads and the head ▲ at (14,14) that is the portal up; upstairs a railed well — a hole in the
@@ -426,11 +426,11 @@ would have none left unless looks key by npc instead.
 
 - ✅ **❗La oficina** — signed 2026-09-02: the barrio furnishes it, one piece per
   business. Built the same day (S2 v1), with the interview. ⚠️ **AMENDED 2026-09-02 by
-  the owner: the office opens MID-MOVE, not bare** (*"i think for the move it should be
-  mid"*). The furnishing rule is untouched; only the day-one state changed. Retires owner
+  the owner: the office opens MID-MOVE, not bare** (he chose to show it
+  mid-move). The furnishing rule is untouched; only the day-one state changed. Retires owner
   call #2 in `docs/rooms/partner-office.md` §8.
-- ✅ **La vía que se acerca** — approved in principle 2026-09-02 (owner: *"I do like the
-  idea of seeing a neighborhood incoming"*). Content-only on top of the built window, a
+- ✅ **La vía que se acerca** — approved in principle 2026-09-02 (the owner liked the
+  idea of seeing a neighbourhood on its way). Content-only on top of the built window, a
   third of a sitting; still **waits on S1**, because it cannot be tested until districts
   close.
 - ✅ **Furniture deliveries may be GROUPS** — answered by architecture, not by a build: a
@@ -487,8 +487,8 @@ would have none left unless looks key by npc instead.
 
 ## The open city — Phases 2-5 (planned 2026-08-31)
 
-Owner retired weeks as the organizing principle ("we dont have to follow weeks any
-longer") and asked for all four remaining businesses planned at once. Weeks One and
+Owner retired weeks as the organizing principle (weeks no longer have to be
+followed) and asked for all four remaining businesses planned at once. Weeks One and
 Two stay in the fiction — they are written and shipped — but nothing new is gated
 behind a calendar.
 
@@ -555,29 +555,29 @@ stays live until the Phase 2 refactor lands.
   correction stands: the trolley runs south of HQ, so a north window cannot look "onto
   the trolley line".
 - 2026-09-02 · ❗La ventana: how much window on the north wall · **three panes, season
-  sky** (Don Güero's pick, Nacho agreed; owner delegated: "maybe /nacho and /don-guero can
-  work something cool out") · one pane is invisible from the stairs and the staged version
+  sky** (Don Güero's pick, Nacho agreed; the owner left it to Nacho
+  and Don Güero) · one pane is invisible from the stairs and the staged version
   cannot be tested until districts close — the band grows into it later as a content edit,
   with no new glyph and no redraw. The floor light under it was skipped: content cannot
   wrap the engine's floor drawing without a seam for it.
 - 2026-09-02 · ❗Quién sube: whose room is it · **Don Güero asks it, first line of his
-  form** (owner: "that should be a question in the creation - who is the room for") · the
+  form** (the owner asked for it at creation: who the room is for) · the
   answer changes the furniture math, not the mood, so it belongs to the builder — and it
   RETIRES owner call #4 in docs/rooms/partner-office.md §8, because the sheet now states whose
   room it is instead of the build session guessing.
 - 2026-09-02 · ❗La mudanza: bare or mid-move · **MID-MOVE, and Don Güero prices the
-  furniture** (owner: *"i think for the move it should be mid and we can have don guero
-  provide estimates and possible furniture to furnish"*) · supersedes the "opens bare"
+  furniture** (the owner chose mid-move, with Don Güero
+  offering estimates and furniture to furnish it) · supersedes the "opens bare"
   half of ❗La oficina and retires owner call #2. One new glyph `□` (the taller's
   reservations `0 6 7 8 = % i` are NOT spent), four boxes, a cone, a plant; the window
   sight line and the arrival tile stay clear. Nacho's talk title became *Before you
   unpack* (Güero's suggestion; Nacho may rename).
 - 2026-09-02 · ❗Quién sube (asked again): whose office is it · **the owner's own room —
-  and still a template** (owner: *"In this case it is mine but of course this is to be a
-  template for the skill"*) · `f2` is the owner's office in Meridian's pack;
+  and still a template** (the owner: his own room this time, but still a
+  template for the skill) · `f2` is the owner's office in Meridian's pack;
   `content/<pack>/room.js` stays the copyable interview so [partner]'s pack asks its own person.
 - 2026-09-02 · ❗La vía que se acerca: the window's view advancing · **approved in
-  principle** (owner: *"I do like the idea of seeing a neighborhood incoming"*) · four
+  principle** (the owner liked the idea of seeing a neighbourhood on its way) · four
   drawings, four cold reads, content-only; held until districts close so it can be tested.
 - 2026-09-01 · ❗El taller: the shop's footprint · **shop plus an apron** — one door and
   one interior like the mercado, and the ribbon also drops the Caprice and a tire stack
@@ -599,8 +599,8 @@ stays live until the Phase 2 refactor lands.
   ONE piece of furniture with its own pack, declared in that district's own data so
   nobody re-opens `f2`'s map five times. Supersedes the counter-proposal below.
 - 2026-09-01 · ❗La pared: where the record lives · **counter-proposal, now SIGNED above
-  as ❗La oficina.** Original note kept: Owner: *"i think an office should become mine
-  somewhere so i can access these."* Supersedes the mural-wall-only option. For whoever
+  as ❗La oficina.** Original note kept: The owner asked for an office of his own
+  somewhere, to reach these from. Supersedes the mural-wall-only option. For whoever
   specs it: **`f2` already exists** — "Floor 2 · Expansion", portal wired from HQ at
   `PORTALS.hq["1"]` *(since `mq-v81` it is `PORTALS.hq["▲"]`, the head of the flight — the smoke
   forbids `hq["1"]` from existing; Don Güero's correction, 2026-09-07)*, arrive text *"Quiet up here… for now."* An empty floor with a door,
@@ -640,14 +640,14 @@ stays live until the Phase 2 refactor lands.
 - 2026-08-31 · ❗Negocio: the southeast lot · **plan all four remaining businesses**
   — taller, panadería, limpieza, tax/notario, one per phase · the owner wants the
   city grown, not a single storefront.
-- 2026-08-31 · ❗Semana: weekly chapters · **retired** — "we dont have to follow weeks
-  any longer" · districts open and stay open; the city has no credits, it grows.
+- 2026-08-31 · ❗Semana: weekly chapters · **retired** — weeks no longer have to be
+  followed · districts open and stay open; the city has no credits, it grows.
 - 2026-08-31 · ❗Reporte: two jobs in one report · **role summary on top, chronological
   detail underneath** · a hiring manager reads the job they are hiring for. BUILT.
 - 2026-08-31 · ❗Corazones (open city): what three bad calls cost · **hearts are the
   grade on a business's ending, scoped per business, and never block anything** ·
-  owner: "this is for story mode so no big deal just so i learn, and we can reuse the
-  same for other stories" — so the rule is one sentence and takes nothing away.
+  the owner: this is for story mode, so it is minor — it is for learning, and the same
+  can be reused for other stories — so the rule is one sentence and takes nothing away.
 - 2026-08-31 · ❗Siguiente: build order · **front-profile 2.5D first, then close the
   signed-not-built gap (open-city refactor + per-business hearts), then build the four
   packs** · owner set the order directly.
@@ -666,7 +666,7 @@ stays live until the Phase 2 refactor lands.
   such: ❗El recado (a quest played away from its lot), the grade-read world (Tuerca on the
   Caprice is words only, Nacho's H), the view advancing per finished business.
 - 2026-09-02 · The mercado gate · **waived for the writing, not for the playing** · S4 was
-  gated on a human playing the mercado; the owner's "now please" wrote the packs anyway.
+  gated on a human playing the mercado; the owner asked for them then, and the packs were written anyway.
   *(Corrected 2026-09-05: the mercado WAS played; the `mq-v52` save bug erased the record.
   The first human play of the four newer packs is the gate, and they will be revised against it.)*
 
@@ -731,8 +731,8 @@ per owner instruction — nothing built this round.
 
 ## ⏳ Phase 6 proposal — El Zócalo de Meridian (Don Güero, 2026-09-09) — NOT BUILT
 
-*The owner: "it seems crowded. it wouldnt pass in [state]. we really cant do better for these
-cities? ... please make/grow the world ... beautiful gardens or fountains or something."*
+*The owner found it crowded — it would not pass in [state] — and asked for better cities: grow
+the world, with beautiful gardens or fountains or the like.*
 
 **Measured, not asserted.** `st`'s southern half is **178 contiguous walkable tiles — 37% of the
 street map — holding ten objects** (two pots, two grass tufts, four jacarandas, a Caprice, a tire

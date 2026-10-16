@@ -11,7 +11,7 @@
    Default "mq": Meridian's keys are unchanged, byte for byte. Guarded by the smoke suite:
    no literal key may remain in engine/. */
 const SK=k=>((typeof STOREPFX==="string"&&STOREPFX)||"mq")+k;
-/* ---------- THE LOG (#8, IDEAS §15.5 — owner: "efficient and low storage") ----------
+/* ---------- THE LOG (#8, IDEAS §15.5 — asked for: lean, and small on storage) ----------
    What went wrong, kept small: thirty entries under the pack's prefix, one per kind|message
    with a count and a last-seen instead of N copies, a 16 KB ceiling (halved once if crossed),
    private mode tolerated. `crit` marks what must be discussed sooner than later — a refused
@@ -26,7 +26,7 @@ function mqwarn(kind,msg,crit){const m=String(msg||"?").slice(0,160),key=kind+"|
   try{let j=JSON.stringify(mqLog);if(j.length>LOGKB){mqLog=mqLog.slice(-Math.floor(LOGN/2));j=JSON.stringify(mqLog);}localStorage.setItem(SK("log"),j);}catch(err){}
   console.warn((crit?"CRIT ":"")+kind+": "+m);}
 /* ---------- EVERY WRITE GOES THROUGH HERE, AND A FAILED ONE IS NOT SILENT (2026-09-16) ----------
-   The owner asked: *"how do we fix the save failing silently?"* It was nineteen copies of
+   The owner asked how to stop the save failing silently. It was nineteen copies of
    `try{localStorage.setItem(...)}catch(e){}` — so when the device ran out of room the game went on
    playing perfectly and simply stopped remembering, with no error, no warning, and nothing in the
    log. A player would close the tab and find their afternoon gone. This is the shape `docs/GAUGE.md`
@@ -111,14 +111,14 @@ const FLOORDEF={st:["#C6C4BB","#BFBDB4"],lo:["#D9DCE0","#D1D5DA"]};
 const FLOORC=(typeof FLOORS==="object"&&FLOORS)||FLOORDEF;
 const FQ=()=>lang==="es"?FQES:FQEN;
 const TS=32;
-/* "C" (the traffic cone) left this set on 2026-09-04. Owner: "I think a cone shouldnt make me
-   have to go around it. i should be able to kick it." A cone is not a wall — it is a thing one
+/* "C" (the traffic cone) left this set on 2026-09-04: the owner asked that a cone not force a
+   walk around it, but be kicked aside. A cone is not a wall — it is a thing one
    person moves with a foot. It is a `stand` tile now: walkable, still drawn standing. */
 const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J","⊓","◺"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4) */
 /* the content seam: a pack adds its own solid glyphs and declares which are doors */
 (typeof SOLIDX!=="undefined"?SOLIDX:"").split("").forEach(c=>SOLID.add(c));
-/* PETS THROUGH, PEOPLE NOT — the second content seam on walking (owner, 2026-10-03: "should also work for the
-   pets to go through but i cant fit in it"). A pack names, in one string, the letters an animal passes and a
+/* PETS THROUGH, PEOPLE NOT — the second content seam on walking (the owner's ask: a gap a
+   pet fits through and the player cannot). A pack names, in one string, the letters an animal passes and a
    person does not: `const PETPASS="4";` in its maps.js makes the agility tunnel a tube the dog runs through and
    nobody can walk into. SOLID stays the one set every ANIMAL asks (dogFree, catFree, pigFree, critFree,
    bfsStep, dogReach), so to them the tile is open; every place that decides where a PERSON may stand asks
@@ -164,8 +164,8 @@ const glyphAt=(id,x,y)=>{const w=WORLDS[id];return (w&&w.rows[y]&&w.rows[y][x])|
 /* ---------- townsfolk on the move ----------
    Anyone with NO quests drifts around their own corner. A quest-giver never moves: a person
    you are looking for has to be where you left them, which is the entire reason the doorstep
-   nudge exists. Room hosts never move either. Owner, 2026-09-03: "why cant they walk around?
-   then they can test our world for free" — the walking is for life; the free test is the boot
+   nudge exists. Room hosts never move either. The owner asked for them to walk,
+   partly so they would test the world for free — the walking is for life; the free test is the boot
    check below, which is deterministic where a random walk would only be lucky.
    A wanderer stays within WANDER_R of where the pack put them, never steps onto a door, never
    onto the tile you are standing on, and holds still while you are beside them so a
@@ -180,7 +180,7 @@ function wanders(n){return !!n&&!n.still&&(!n.doc||n.roams)&&(!n.q||!n.q.length)
 function wanderInit(){Object.values(WORLDS).forEach(w=>w.npcs.forEach(n=>{
   n.fx=n.x;n.fy=n.y;n.hx=n.x;n.hy=n.y;n.wnext=0;n.mv=null;n.mt=0;n.face=1;}));}
 /* ═══════════ NOBODY STANDS IN THE DOORWAY (R11, owner 2026-09-16) ═══════════
-   He asked the right question: "why doesnt r11 walk around?" — and the answer is that there is
+   He asked the right question — why R11 did not walk around — and the answer is that there is
    nothing to walk around. A person is stamped into the grid as the literal character `"N"`, and
    three readers treat `"N"` exactly as they treat a wall: `isSolid`, `isSolidAt`, and
    `auditReach`'s own `walk`. None of them knows it is a person. So when a wanderer steps into a
@@ -240,8 +240,8 @@ function wanderUpdate(dt){
     const opts=[[1,0],[-1,0],[0,1],[0,-1]].map(d=>[n.x+d[0],n.y+d[1]]).filter(([x,y])=>
       x>=0&&y>=0&&x<w.W&&y<w.H&&!shutToPeople(w.grid[y][x])&&w.grid[y][x]!=="N"
       &&!DOORSET.has(w.rows[y][x])
-      /* ...and not into the path of a tram. The owner, 2026-09-11: "lets make the road wider and
-         RARELY have characters interrupt the tram." Rarely, not never — somebody already standing on
+      /* ...and not into the path of a tram. The owner asked for a wider road,
+         with people interrupting the tram only RARELY. Rarely, not never — somebody already standing on
          the line when a car appears still stops it, and should. This is the other half: a person
          does not step in FRONT of one. Same question every animal in this engine now asks, and the
          last mover in the game that was not asking it. */
@@ -281,15 +281,15 @@ let starNow=null;
 const DEFACT=["💬","☕"]; /* fallback activity emotes for anyone NPCACT does not name */
 function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy from any angle */
   /* a dog romping round their feet: they laugh, and for that long it is the one thing over their head
-     (owner, 2026-09-29: "chasing after another character" — play, never a flight). Its clock is the
+     (the owner's ask: a dog chasing another character — play, never a flight). Its clock is the
      loop's, the one the romp set it by, not the trade's; and it comes BEFORE the trade's window, which
      is left exactly as its own guard reads it (test/smoke.js, grep `the job-icon window`). */
   if(n.laughUntil>performance.now()){ctx.font="10px serif";ctx.textAlign="center";
     ctx.fillText("😄",sx+25,sy+1);ctx.textAlign="start";return;}
   const acts=(typeof NPCACT!=="undefined"&&NPCACT[n.npc])||DEFACT;
   const nw=Date.now(),ph=((nw/1000)+n.x*7.3+n.y*13.7)%13;
-  /* Drawn BESIDE the ❗ now, never instead of it (owner, 2026-09-03: "its hard to tell
-     people apart"). The `else` on all four camera paths meant the 28 people who give you
+  /* Drawn BESIDE the ❗ now, never instead of it (the owner found people
+     hard to tell apart). The `else` on all four camera paths meant the 28 people who give you
      work were the only ones in town whose trade you never saw. The window widened from
      2.4s of every 13 to 6s: this icon is now identity, not decoration. */
   if(ph>=6)return;
@@ -366,8 +366,8 @@ function syncChill(want){
    A pack may declare INTERVIEW (content/<pack>/room.js): people who stand in a room and
    ask questions with no right answer, whose answers become a plain sheet the player
    can copy. The engine reads only SHAPES — hosts, steps, opts, ui — never a name. A
-   pack that declares nothing gets nothing: no people, no tab, no storage key (the off-switch law). Owner, 2026-09-02: "[partner] can interact through the characters ... i dont want an
-   api setup" — the sheet IS the back-and-forth. */
+   pack that declares nothing gets nothing: no people, no tab, no storage key (the off-switch law). The owner's ask: [partner] talks to the game through its characters, with no
+   API to set up — the sheet IS the back-and-forth. */
 const RM=()=>(typeof INTERVIEW!=="undefined"&&INTERVIEW&&Array.isArray(INTERVIEW.hosts)&&INTERVIEW.ui)?INTERVIEW:null;
 const RMU=()=>{const r=RM();return r?(r.ui[lang]||r.ui.en||{}):{};};
 const roomHosts={}; /* chill key → host declaration */
@@ -470,8 +470,8 @@ function troAudit(){const out=[],lines=(typeof TROLLEYAT!=="undefined"&&TROLLEYA
    audit could not see a district fall off the map: delete one portal line and Taller Herrera leaves
    the city — 161 walkable tiles, three people, eight quests — and this function returned []. Worse,
    severing the door TILE instead reported "st: 5 walkable tiles unreachable", the leftover pocket of
-   pavement, pointing away from the fault. (#155; the owner: "do fix the part where a missing world
-   wouldn't register.") */
+   pavement, pointing away from the fault. (#155; the owner asked for the fix where a missing world
+   went unreported.) */
 function auditReach(grown){
   const probs=[],seen={};Object.keys(WORLDS).forEach(k=>seen[k]=new Set());
   /* A PERSON WHO MOVES IS NOT A WALL. Reachability is a property of the ground, and `"N"` was
@@ -572,7 +572,7 @@ function gradeAll(){
   const clean=ans.filter(i=>marks[i]===1).length/ans.length;
   return clean>=0.9?3:clean>=0.6?2:1;
 }
-/* ENDLESS: a place you inhabit has no last visit (Nacho; the owner: "i dont think it ends").
+/* ENDLESS: a place you inhabit has no last visit (Nacho; the owner agreed it does not end).
    A pack may declare `ENDLESS=true` and the ending panel never fires — no epilogue, no title, no
    "claim your reward". This mattered more than it sounds: a pack that declares no CHAPTERS gets
    the synthesised one above, so a second world with a single quest in it ran Meridian's LAST-DAY
@@ -733,7 +733,7 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
   return{shirt:saveCol(lkIn.shirt)||"#8B5CF6",skin:saveCol(lkIn.skin)||"#E5AC82",hair:saveCol(lkIn.hair)||"#26202B",
          style:saveStr(lkIn.style,12,"cap"),outfit:saveStr(lkIn.outfit,8,"casual"),pattern:saveStr(lkIn.pattern,10,"plain")};}
-/* ANOTHER PLAYER'S LOOK (#32; the owner, 2026-10-01: "ok fix the colour check"). In multiplayer a
+/* ANOTHER PLAYER'S LOOK (#32; the owner approved fixing the colour check). In multiplayer a
    stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
    data. It gets the save's own reading first — saveLook, the same function: a colour must be hex, a
    word is clamped, nothing a saved look does not keep is kept (no robot body, no hard hat), and
@@ -772,8 +772,8 @@ function sanitizeSave(s){
     const ki=num(k2,-1,98,null);if(ki!==null)qa[ki]=num(s.qa[k2],0,99,0);});
   /* cs (districts claimed), mk (grades) and so (opening toasts seen) were NOT carried
      through here, so every Continue reset the district counter to zero: the last ending
-     played again on the next open and the grades vanished (owner, 2026-09-03: "it says
-     out on the street again"). v stamps a save written after the fix. */
+     played again on the next open and the grades vanished (the owner saw the last
+     ending play again). v stamps a save written after the fix. */
   const mk={};
   if(s.mk&&typeof s.mk==="object")Object.keys(s.mk).slice(0,128).forEach(k2=>{
     const ki=num(k2,0,98,null);if(ki!==null)mk[ki]=num(s.mk[k2],1,3,1);});
@@ -824,7 +824,7 @@ let toastHeld=[],wasCovered=false;   /* what the street said while you were not 
 function toast(msg,ms,crit){
   /* The activity record mirrors recent messages so a short interaction can be re-read
      after the toast fades (owner ask). Owner, 2026-09-01: keep the last TWO. Owner,
-     2026-09-03: "should only delete after two activities, the timer is too fast" — so
+     2026-09-03: a line goes only after two newer ones, the timer was too fast — so
      there is NO timer at all now. A line leaves when two newer lines have pushed it out,
      or when the player taps the record away. It sits on the LEFT rail, under the XP pill,
      where the owner judged it does not crowd the screen.
@@ -842,7 +842,7 @@ function toast(msg,ms,crit){
   toastShow(msg,ms,crit);}
 /* Putting a message on screen, now or when its turn comes. Never writes the record (#278). */
 function toastShow(msg,ms,crit){const el=$("toast");el.classList.toggle("crit",!!crit); /* red for what must be discussed sooner (#8) */
-  /* Owner: "capture events if happening in background." The trolley still comes and the dog still
+  /* The owner asked that what happens in the background still be caught. The trolley still comes and the dog still
      does what it does while you are reading a sheet — but a toast played out behind an opaque panel
      is a message delivered to nobody, and it takes its turn in the queue with it. Held instead, and
      said when you put the paper down. The record in toast() has it either way. */
@@ -860,7 +860,7 @@ const hasSay=n=>pendingAt(n)!==undefined||roomPending(n)||!!(n&&n.doc); /* a doc
 /* ---------- canvas ---------- */
 const cv=$("cv");let ctx=cv.getContext("2d"); /* let: the 3D baker borrows ctx to render tile art into textures */
 const VW=10*TS,VH=8*TS;
-/* THE FLOOR FOR IN-SCENE TEXT (Rosa's 3D note; the owner: "i say best practices").
+/* THE FLOOR FOR IN-SCENE TEXT (Rosa's 3D note; the owner chose best practice).
    Text painted into the world is drawn in tile units — 32 to a tile — and then the camera decides
    how big that lands. Measured on a phone: one tile is about 90 device pixels in 3D and about 66
    in the flat cameras, so a unit is roughly 2.1–2.8 device pixels, or about one CSS pixel. A glyph
@@ -918,7 +918,7 @@ let camXg=0,camYg=0;
    picking 3D and reloading silently dropped you to another camera, and CAMDEF="3d"
    was ignored outright. */
 /* WHICH cameras this game has — a pack's choice, not the engine's (docs/TAGS.md L15).
-   The owner, 2026-09-10: "maybe a game doesnt need 3d." A pack declaring ["top","front"] shows two
+   The owner's point: a game may not need 3D. A pack declaring ["top","front"] shows two
    buttons, never offers a camera it has no art for, and never pays for a renderer it does not use.
    Say nothing and you get all four, so neither shipping game changes. Unknown names are dropped
    rather than trusted: a typo must not put a button on screen that leads nowhere. */
@@ -1023,7 +1023,7 @@ function drawIso(){
         ctx.beginPath();ctx.arc(cx+q[0]+t2,cy-16+q[1],1.6,0,7);ctx.fill();});canopyDress(ctx,cx+t2,cy-16);}});
     else R.push({d:x+y,f:()=>isoBlock(cx,cy,ISOCOL[gch]||ISOCOL[w.rows[y][x]]||C.wall,isoH(w,x,y))});
   }
-  /* THE WELL, LOOKED INTO (owner, 2026-09-17: "lets do b"). This camera drew the hole as ordinary
+  /* THE WELL, LOOKED INTO (the owner chose option B). This camera drew the hole as ordinary
      floor with a chevron on it and stood the hero on top — the same fault the front camera had.
      It is drawn in the DEPTH pass rather than the floor pass on purpose: a sunken lid reaches
      half a diamond past its own tile, and in the floor pass the next row would paint over it.
@@ -1100,8 +1100,8 @@ function drawIso(){
      test/smoke.js exercises top, front and 3D by name and skips iso, which is why nobody saw it.
      Found by Chava, riding it. `P` is this camera's own tile-to-screen, so the tram lands on the
      rails rather than on a guess.
-     IN ITS ROW'S TURN, not last (the owner, 2026-09-21: "looks like the person is laying on the
-     trolley"): painted after everybody, the car covered a person standing in FRONT of it — 86 pixels
+     IN ITS ROW'S TURN, not last (the owner saw a person who
+     seemed to be lying on the trolley): painted after everybody, the car covered a person standing in FRONT of it — 86 pixels
      of him under a car that was behind him, measured. It is a thing on its row: it takes the depth
      queue at its own centre, so whoever is nearer the camera paints over it and whoever is farther
      paints under it, the way the people already do. (The line inspector, crew iteration 12.)
@@ -1157,7 +1157,7 @@ TILEDRAW["J"]=rc=>{const{sx,sy,x,y}=rc; /* jacaranda: trunk here, canopy in a la
       ctx.fillStyle="#6E4A2C";ctx.fillRect(sx+13,sy+12,6,17);
       ctx.fillStyle="#59391F";ctx.fillRect(sx+13,sy+12,2,17);
       rc.canopy(sx,sy);};
-/* ═══════════ THE FLOWER BED IS CEMPASÚCHIL (owner, 2026-09-16: "add some marigolds please") ═══════
+/* ═══════════ THE FLOWER BED IS CEMPASÚCHIL (the owner asked for marigolds) ═══════
    Measured before drawing, and the measurements are the argument:
      · There is not one marigold FLOWER anywhere in this game. Everything named marigold is a
        PETAL — the bridge deck's heap, the trail, the ofrenda's arch, the garland — or a colour
@@ -1309,8 +1309,8 @@ TILEDRAW["A"]=rc=>{const{sx,sy,x,y}=rc; /* drafting table: tilted board, bluepri
       ctx.strokeStyle="#DDE8F5";ctx.lineWidth=0.8;
       ctx.beginPath();ctx.moveTo(sx+9,sy+12);ctx.lineTo(sx+22,sy+10);ctx.moveTo(sx+9,sy+14.5);ctx.lineTo(sx+22,sy+12.5);ctx.moveTo(sx+9,sy+17);ctx.lineTo(sx+18,sy+15.4);ctx.stroke();};
 /* Produce silhouettes for the mercado. Five coloured dots of identical size read as
-   "generic dots" at tile scale (owner, 2026-09-01: "the fruits are too general in
-   shape"), so each item gets its own OUTLINE instead — the shape carries the meaning,
+   "generic dots" at tile scale (the owner found the fruit
+   shapes too generic), so each item gets its own OUTLINE instead — the shape carries the meaning,
    not the colour. Sized for a 32px tile: simple, high-contrast, no interior detail. */
 function produce(px,py,kind,scale){
   const g=ctx,k=scale||1;
@@ -1374,15 +1374,15 @@ TILEDRAW["~"]=rc=>{const{sx,sy,x,y}=rc; /* river water: cool blue, drifting glin
       ctx.fillRect(sx+4,sy+8+ph*2,11,2);ctx.fillRect(sx+17,sy+21-ph*2,10,2);
       ctx.fillStyle="rgba(255,255,255,.25)";ctx.fillRect(sx+7,sy+9+ph*2,4,1);};
 const BRIDGE_BANDS=["#D95B5B","#E0A430","#E7C25A","#7A9A4E","#5E93BC","#8B6FC8"]; /* year-round */
-/* ---------- petals off the bridge (owner, 2026-09-07: "it should be full of the petals, they spill
-   into water and the floor and a trail forms behind characters") ----------
+/* ---------- petals off the bridge (the owner's ask: a bridge full of petals
+   that spill into the water and onto the floor, leaving a trail behind characters) ----------
    petalSpill: every ground painter (top, front, iso, the 3D bake) calls it after a tile's own art;
    within three tiles of a bridge deck it strews petals, thickest beside the deck, thinning out —
    onto water and floor alike, deterministic per tile. petalDrop: whoever finishes a step in season
    leaves three petals on that tile; the trail fades over a minute and a half. Nothing without
    art("bridgeStyle")==="petals". */
-/* ---------- LA FIESTA (owner, 2026-09-07: "lets hang papel picado all over. put a pinata in there
-   as well as tamales"; Nacho's plan the same day: swags, not wallpaper — five flags a tile, a swag
+/* ---------- LA FIESTA (the owner asked for papel picado everywhere, a piñata
+   and tamales; Nacho's plan the same day: swags, not wallpaper — five flags a tile, a swag
    of five to nine tiles tied to something you can see it tied to; dress by what a place is FOR) ----------
    The season hands art("swags") — [{world,from:[x,y],to:[x,y]}] horizontal spans — and art("hangs")
    — [{world,x,y,kind:"pinata"}]. Never a map row: a string hangs above the ground and changes no
@@ -1415,15 +1415,15 @@ function fiestaDraw2D(wid,toScreen,front,defer){ /* toScreen(x,y) → the tile's
   fiestaProps(wid).forEach(p=>{cur=p.y;const[sx,sy]=toScreen(p.x,p.y);const ox=(p.ox===undefined?0.5:p.ox)*TS,oy=(p.oy===undefined?0.5:p.oy)*TS;
     if(p.kind==="ofrenda"){const solid=isSolidAt(wid,p.x,p.y);put(solid,()=>drawOfrenda(ctx,sx,sy-(front&&solid?10:0)));return;}
     if(p.kind!=="calaverita")return;
-    const win=propSill(wid,p); /* on a window sill (owner: "as in human reality"): the facade's own window says where */
+    const win=propSill(wid,p); /* on a window sill (the owner asked for it as in real life): the facade's own window says where */
     if(win){const z=win.size; /* centred on its own window, standing on the sill, small enough to leave glass around it */
       if(front)put(true,()=>drawSillBox(ctx,sx+win.cx-sillBoxW(win.w)/2,sy+win.sill-win.h,win.w,win.h,p.foil,z)); /* a sill is always in a facade */
       else drawCalaverita(ctx,sx+win.cx-z/2,sy+TS-1-z,p.foil,z);
       return;}
     const solid=isSolidAt(wid,p.x,p.y);
     put(solid,()=>drawCalaverita(ctx,sx+ox-4,front?(solid||p.h?sy+2:sy+TS-9):sy+oy-4,p.foil));});}
-/* Which window a sill prop stands in, and how big it may be there (#131, owner: "sugar skull on
-   sills are overlapping"). Two faults lived in the one line this replaces.
+/* Which window a sill prop stands in, and how big it may be there (#131, the owner saw the sugar
+   skulls on the sills overlapping). Two faults lived in the one line this replaces.
    The candy is drawn 8px wide. Meridian's shopfront window is SEVEN, and the engine's is eight —
    so the sweet was as wide as the pane it stood in, or wider, and taller than the opening on a
    6px window. It read as a skull pasted over the glass, which is exactly what the owner saw. A
@@ -1440,7 +1440,7 @@ function sillWindow(wid,p,n){
 function propSill(wid,p){
   /* winsKept, not TILES.win: a candy may only stand in a window the wall actually SHOWS. At
      st(22,0) the mural panel plasters the left one over, and reading the raw list put the sweet
-     where a window used to be — which is the "non existing or visible window sill" the owner
+     where a window used to be — which is the sill that was not there, as the owner
      reported on 2026-09-17. `w:` in the content indexes what is left, not what was declared. */
   if(!p.sill)return null;const g=glyphAt(wid,p.x,p.y),wins=winsKept(wid,p.x,p.y);
   if(!wins.length)return null;
@@ -1448,15 +1448,15 @@ function propSill(wid,p){
   /* #131 cut the candy from a flat 8 to two thirds of the pane, because at 8 in an 8-pixel window it
      filled the glass edge to edge and its crown poked over the frame. Two thirds was my number and it
      was too small: 8x8 to 5x5 is SIXTY-ONE PERCENT of the sweet gone, and on a wall 1.1 units high seen
-     from twelve tiles back that is three screen pixels. The owner, 2026-09-09: "the skulls are still
-     hidden on the sills." They were never hidden. They were shrunk, by me, fixing the opposite fault.
+     from twelve tiles back that is three screen pixels. The owner reported the skulls
+     still hidden on the sills. They were never hidden. They were shrunk, by me, fixing the opposite fault.
      0.85 leaves a pixel of glass each side — a sweet ON a sill, not a sweet AVOIDING one. */
   const size=Math.max(4,Math.min(8,Math.round(win[2]*0.85),Math.round(win[3]*0.9)));
   return {cx:win[0]+win[2]/2,sill:win[1]+win[3],size,i,w:win[2],h:win[3],g};}
 /* ---------- THE SILL ITSELF — the fourth attempt, and the first one that is not about size ----------
    The owner has asked four times. 2026-09-08: the skulls share a sill. 2026-09-09 and 2026-09-10:
-   "the skulls are still hidden on the sills." 2026-09-12: "another attempt at showing the WINDOW
-   SILLS." Read that last one literally, because it is the clue the three previous fixes all missed:
+   the skulls still look hidden. 2026-09-12: one more try, at showing the WINDOW
+   SILLS themselves. Read that last one literally, because it is the clue the three previous fixes all missed:
    he is not only asking to see the candy. **There was never a sill.** `propSill` computes a y called
    `sill` and nothing has ever DRAWN one — the candy stood on the bottom edge of a hole in a wall.
    The three answers so far were all the same answer: 8px of sweet, then 5px, then 0.85 of the pane,
@@ -1489,9 +1489,9 @@ function drawSillLedge(g,x,y,w){
   g.fillStyle="#8A7F66";g.fillRect(x,y+3,W,1);                    /* its hard underside — the edge that does the work */
   g.fillStyle="rgba(16,12,22,.42)";g.fillRect(x+1,y+4,W-2,2);}    /* and what it throws on the wall */
 /* ---------- AND THE WINDOW UNDER IT (owner, 2026-09-17) ----------
-   "the skull on a non existing or visible window sill overlaps a store front that was initially a
-   placeholder for a mural… if there were a window sill there, it should be drawn and then a skull
-   can be included and then the store front icon or mural can go around it."
+   The owner saw a skull on a sill that is not there, overlapping a shopfront that began as a
+   placeholder for a mural. If a sill is there, it should be drawn, the skull set on it, and the
+   shopfront icon or mural drawn around it.
 
    Rendered at 8x before touching anything, which is the only reason this is the right fix: the
    plain facade `B` painted its two windows as ONE FLAT RECTANGLE each, a shade off the wall — no
@@ -1548,7 +1548,7 @@ function drawSillBox(g,x,y,w,h,foil,z){
     g.save();g.fillStyle="rgba(26,20,32,.45)";g.fillRect(cx-0.8,by-z-0.8,z+1.6,z+0.8);g.restore();
     drawCalaverita(g,cx,by-z,foil,z);}
   drawSillLedge(g,x,by,w);}
-function drawOfrenda(g,x,y){ /* la ofrenda (Nacho, 2026-09-07; the owner: "sounds like a good idea"): a tiered table under a marigold arch —
+function drawOfrenda(g,x,y){ /* la ofrenda (Nacho, 2026-09-07; the owner agreed): a tiered table under a marigold arch —
   the cloth, three candles, pan de muerto, a calaverita, and at the top an EMPTY frame, nobody named: "that one's for whoever needs it".
   The owner's own document with the basics refines this when it arrives. */
   const P=petalPal();
@@ -1570,7 +1570,7 @@ function drawPapelRow(g,x0,x1,ly,pal,seed){ /* a string of cut paper (Pili, 2026
     g.fillStyle=col;g.fillRect(px-1.8,fy,3.6,3.6);
     g.beginPath();g.moveTo(px-1.8,fy+3.6);g.lineTo(px-0.9,fy+4.8);g.lineTo(px,fy+3.6);g.lineTo(px+0.9,fy+4.8);g.lineTo(px+1.8,fy+3.6);g.closePath();g.fill();
     g.fillStyle="rgba(40,30,20,.55)";g.fillRect(px-0.4,fy+1.2,0.8,0.8);}});}
-/* A LIT WINDOW behind a sill candy (#131 again, owner 2026-09-10: "skulls are still hidden").
+/* A LIT WINDOW behind a sill candy (#131 again: the owner still found the skulls hidden).
    Twice now this was answered by changing the sweet's SIZE — 8px to 5px, then back up to 0.85 of
    the pane — and twice the owner came back saying he still could not see them. He was right both
    times, and the size was never the fault. A calaverita is eight pixels on a forty-pixel tile, on a
@@ -1606,7 +1606,7 @@ function drawCalaverita(g,x,y,foil,size){ /* a calaverita de azúcar, 8×8 (Pili
   g.fillStyle="#2FA5A0";g.fillRect(x+3.5,y+3.7,1,1);
   g.fillStyle="#3A2E26";g.fillRect(x+3,y+5.7,0.5,1);g.fillRect(x+4.5,y+5.7,0.5,1);
   }finally{if(sc!==1)g.restore();}}
-function canopyDress(g,cxT,cyT){ /* the trees dressed for the night (owner, 2026-09-07: "trees can be decorated"; Pili's recipe): a garland of
+function canopyDress(g,cxT,cyT){ /* the trees dressed for the night (the owner asked for decorated trees; Pili's recipe): a garland of
   petals slung across the canopy, three papel streamers hanging BELOW it into the trunk — hanging is what reads as decorated rather than
   repainted — and one sugar-skull lantern on a thread. One; three is a Christmas tree. Nothing without a season. */
   const pal=art("papel",null);if(!pal)return;const P=petalPal();
@@ -1630,9 +1630,9 @@ function petalShape(g,px,py,a,s,col,rib){ /* one cempasúchil petal (Pili, 2026-
   else{g.fillStyle=col;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(-1.9,-1.6,-1.5,-3.4);g.lineTo(-0.5,-4.2);g.lineTo(0,-3.6);g.lineTo(0.5,-4.2);g.lineTo(1.5,-3.4);g.quadraticCurveTo(1.9,-1.6,0,0);g.fill();
     if(rib!==false){g.strokeStyle=rib||"rgba(60,20,5,.35)";g.lineWidth=0.6;g.beginPath();g.moveTo(0,-0.5);g.lineTo(0,-2.8);g.stroke();}}
   g.setTransform(m);}
-const DECK_PETALS=[2000,1700,1100],DECK_DEEP=43200; /* a deck tile: fifty times the first cut at once (owner, 2026-09-07: "multiply the amount of
-   leaves times 10", "do 50x the petals, it does look better"), then TEN times that ("definitely do like 10x the amount of petals for the
-   bridge") filled in behind the frame — 48,000 a tile would stall a phone for seconds if baked in one go, so the rest is drawn in
+const DECK_PETALS=[2000,1700,1100],DECK_DEEP=43200; /* a deck tile: fifty times the first cut at once (the owner asked
+   for ten times the petals, then fifty, and liked it), then TEN times that (asked for once more, on the
+   bridge) filled in behind the frame — 48,000 a tile would stall a phone for seconds if baked in one go, so the rest is drawn in
    idle slices of twelve hundred (PETALDEEP) and the 3D lid re-bakes once when the last slice lands. Only the surface ever shows. */
 const PETALDEEP=[];let petalDeepTimer=0;
 function petalDeepQueue(c,seed,n,rn,rs){PETALDEEP.push({c,seed,left:n,done:0,y0:rn?2.5:0,y1:c.height-(rs?2.5:0)});petalDeepArm();}
@@ -1678,8 +1678,8 @@ function petalSpill(w,x,y,sx,sy,scale){
   ctx.drawImage(c,sx,sy);}
 /* ---------- el trolley (owner, 2026-09-08) — it comes on its own, it stops for anyone on the line, and it comes
    when you stand at a stop. Content declares the line in TROLLEYAT; the engine knows nothing about where. ---------- */
-/* TRO_SPEED 3.4 -> 6.0, owner 2026-09-11 ("ok tram can be faster", then "do both the wheel and
-   speed please"). At 3.4 the tram was 18% SLOWER than the hero's legs (240 ms/tile = 4.17 tiles/s),
+/* TRO_SPEED 3.4 -> 6.0: the owner asked for a faster tram, then for both the wheel and the
+   speed. At 3.4 the tram was 18% SLOWER than the hero's legs (240 ms/tile = 4.17 tiles/s),
    which is why it could never be transport and why "convenience, not transport" was the only
    coherent reading of it. At 6.0 it is 44% faster.
    The window, measured rather than argued. FLOOR 5.4: a person notices a speed difference at about
@@ -1734,8 +1734,8 @@ function troLine(wid){const L=(typeof TROLLEYAT!=="undefined"&&TROLLEYAT)?TROLLE
 function troStops(L){return (L&&Array.isArray(L.stops))?L.stops.filter(function(s){return s&&typeof s.x==="number"&&typeof s.y==="number";}):[];}
 function troIsStop(wid,x,y){return troStops(troLine(wid)).some(function(s){return s.x===x&&s.y===y;});}
 /* ---- HOW MANY CARS — the one word a pack may say about a TRAIN, and why it is the only one ----
-   The owner, 2026-09-22: "we want to make this custom as possibly can turn in to a train of trolleys
-   in other games and a new level unless you recommmend otherwise."
+   The owner wanted this as customisable as it can be — a train of trolleys in other games, a new
+   level — unless the crew advised otherwise.
    `cars: n` (omit it and it is 1) rides on the LINE's own row, not on the car, because the number of
    cars is not a livery: it is set by how long the platform is and how long the terminus track is, and
    both of those belong to the route. Rigo again, and he is the reason this is one key and not five.
@@ -1787,8 +1787,8 @@ function troAhead(L){const sp=troSpan(L),nose=TRO.x+(TRO.dir>0?sp:0),near=v=>{co
   const w=WORLDS[L.world];if(w&&w.npcs.some(n=>n.y===L.row&&near(n.x)))return true;
   if((typeof CRIT!=="undefined"?CRIT:[]).some(c=>c.world===L.world&&Math.round(c.y)===L.row&&near(c.x)))return true;
   /* ...and the animals the engine moves through their own globals rather than through CRITTERS.
-     The owner, 2026-09-11: "braking for the hummingbird and running over the pigeon is not a policy,
-     it is a blind spot." Meridian did exactly that, by species, by name — the colibri is declared in
+     Braking for the hummingbird and running over the pigeon is not a policy,
+     it is a blind spot. Meridian did exactly that, by species, by name — the colibri is declared in
      CRITTERS so the tram braked for her, and Paloma was a separate global so it drove through her.
      Chava filmed her being drawn INSIDE the tram's third window, twice inside sixty seconds of
      standing at the stop, on the same rails where the same tram stopped dead for him and waited
@@ -1821,8 +1821,8 @@ function troAtStop(L){if(!L||world!==L.world)return false;
    troDanger answers one question with no side effects: is that tile a rail with a car close enough
    to matter? It is deliberately WIDER than the brake window (TRO_SHY against TRO_LOOK), so
    a critter is already moving by the time the tram would have had to stop, and the tram never has to.
-   The owner, 2026-09-11: "i mean she should be small enough and smart enough to stay away from the
-   tram please." That is the colibri, declared in CRITTERS at st(16,4) with a four-tile Manhattan
+   The owner asked that she be small and smart enough to keep away from the
+   tram. That is the colibri, declared in CRITTERS at st(16,4) with a four-tile Manhattan
    wander around home — which reaches row 2, the rails — and she hovers, so she could stand there
    indefinitely, and did: three of six trams in four minutes stopped for a hummingbird.
    The shipped answer to this in other games is ECO's: the player (here, the vehicle) carries a
@@ -1839,9 +1839,8 @@ function troDanger(wid,x,y){const L=troLine(wid);
 /* ---- which platform the car's doors are at, and whether it should stand there ----
    The train always spans [TRO.x, TRO.x+troSpan(L)] whichever way it is pointed — one car is TRO_LEN
    of that and is the whole of it; only the nose, and which car leads, swap ends.
-   The owner, 2026-09-11: "why wouldnt they stop for me? if im walking close to the tram, it should
-   wait if it is already at the tram stop, if i missed it then its ok, itll take me a second and then
-   i should be at the stop anyhow and wont mind a second to arrive."
+   The owner asked why the tram would not stop for him: walking close while it is already at the
+   stop, it should wait the moment he needs to arrive; if he has missed it, that is fine.
    Both halves of that sentence are in troDwell. It waits — and the waiting ENDS, TRO_DWELL per
    platform per run, so one person standing on a kerb can never park the line. The budget is keyed by
    platform (`dwellAt`) rather than by run, because a line with two stops must be patient at the
@@ -1852,7 +1851,7 @@ function troDanger(wid,x,y){const L=troLine(wid);
    the car had entered the street: on Calle Principal it stood at x=-2, its whole body past the west
    edge — off-screen in the top and front cameras, hanging in the dark in 3D — ran its dwell out there,
    and then ran past the person it had stopped for. The dwell guard read "dwell" and was satisfied; a
-   state is a proxy for a picture. (The owner, 2026-09-21: "the trolley weirdness"; ridden by the line
+   state is a proxy for a picture. (The owner reported the trolley acting oddly; ridden by the line
    inspector, crew iteration 12.) troClampX is the one fact — where a car may stand on this street — read
    by the two things that stand a car at a platform: serving, below, and the ride's bell in rideStart. */
 function troClampX(L,x){const w=L&&WORLDS[L.world];return w?Math.max(0,Math.min(w.W-troSpan(L),x)):x;}
@@ -1868,7 +1867,7 @@ function troDwell(L,dt){const s=troServing(L);
   if(!s||world!==L.world)return false;
   const k=s.x+","+s.y;
   if(TRO.dwellAt!==k){TRO.dwellAt=k;TRO.dwelt=0;}
-  if(TRO.dwelt>=TRO_DWELL)return false;                       /* "if i missed it then its ok" */
+  if(TRO.dwelt>=TRO_DWELL)return false;                       /* missed it: that is fine */
   if(Math.abs(px-s.x)+Math.abs(py-s.y)>TRO_REACH)return false; /* nobody walking up: it does not dawdle */
   TRO.dwelt+=dt;return true;}
 function troCall(){TRO.called=true;}
@@ -1890,14 +1889,13 @@ function troUpdate(dt){const L=troLine();
   const end=L.to+TRO.dir*troSpan(L);   /* the run is over when the LAST car is off the street, not the first */
   if((TRO.dir>0&&TRO.x>end)||(TRO.dir<0&&TRO.x<end)){TRO.state="away";TRO.t=0;}}
 /* ---------- EL PASEO — you ride it, you do not blink and arrive ----------
-   The owner has circled this for days. 2026-09-11: "lets have the teleport survive for now but maybe
-   the tram goes quickly if im on it, honks and everyone gets out of the way and we zip by in a
-   'slow' teleport or teleport with animation before it lol am i describing literal decoration?" And
-   2026-09-12, closing it: "so we still need clarification on the trolley? lets just build one and
-   i'll give you feedback."
+   The owner has circled this for days. 2026-09-11: keep the teleport for now, but maybe
+   the tram runs fast while he rides, honks, everyone clears the way and it zips through — a slow
+   teleport, or a teleport with an animation before it — and he wondered if that was only decoration. And
+   2026-09-12, closing it: build one, and he will give feedback.
    So: built, and built to be argued with. Picking a destination in the pass no longer swaps the
    world under you. The bell rings, the car you are standing at takes you, it runs the line at
-   RIDE_ZIP instead of TRO_SPEED — "we zip by" — and the world changes at the END of the line, where
+   RIDE_ZIP instead of TRO_SPEED — the zip — and the world changes at the END of the line, where
    a ride ends. Everything that must happen on arrival still goes through worldArrived(), the one
    place it lives, because the last time the trolley had its own arrival path it quietly skipped the
    dog you were walking.
@@ -1991,8 +1989,8 @@ function troDraw2D(wid,toScreen,front,car){const L=troLine(wid);
   for(let i=0;i<n;i++){if(car!==undefined&&car!==i)continue;
     const[sx,sy]=toScreen(TRO.x+i*(TRO_LEN+TRO_GAP),L.row);drawTram(ctx,sx,sy,front,i===lead);}}
 const HEROFEET={}; /* what the hero's shoes carry off the deck */
-/* the moment on the deck (owner, 2026-09-07: "if one hangs on the petals, the character picks one up and looks at it
-   saying something like 'we will meet once again, love...'"): stand still on the bridge in season for a breath and you
+/* the moment on the deck (the owner's ask: linger on the petals and the
+   character picks one up, looks at it, and says a line of farewell): stand still on the bridge in season for a breath and you
    bend for a petal, hold it up, and say one of the pack's lines — once per crossing. The bridge is the park's; this is
    what it is for. */
 let deckIdle=0,petalMoment=false,petalSaid=false;
@@ -2001,12 +1999,12 @@ function petalMomentTick(dt){const w=CW();
     if(deckIdle>=2200&&!petalSaid){petalSaid=true;petalMoment=true;const L=(T().petalLines||[]);if(L.length)toast(L[Math.floor(Math.random()*L.length)],4200);}}
   else{deckIdle=0;petalMoment=false;if(!w||bridgeDist(w,px,py)!==0)petalSaid=false;}}
 const petalHeap=g=>!!(TILES[g]&&TILES[g].petals); /* a tile a world declares as LOOSE PETALS lying on the ground */
-function petalDrop(wid,x,y,feet){ /* owner, 2026-09-07: the trail "for the bridge only" — a step on the deck scatters
+function petalDrop(wid,x,y,feet){ /* the owner wanted the trail on the bridge only — a step on the deck scatters
   petals; the two steps after it still shed what the shoes carried; nowhere else does a step drop anything.
-  AND SO DOES A HEAP OF LOOSE PETALS, WHATEVER THE SEASON (owner, 2026-09-22: "petals … that i can walk and
-  interact through as if they were mounds of items piled up"). That is the whole of "interact through": you
+  AND SO DOES A HEAP OF LOOSE PETALS, WHATEVER THE SEASON (the owner asked for petals
+  you walk through and stir, like mounds piled up). That is the whole of walking through them: you
   put a foot in a mound of flowers, some of it comes away with you, and it lies where you drop it until it
-  fades — which is the owner's own picture of it from 2026-09-07, "a trail forms behind characters". It costs
+  fades — which is the owner's own picture of it from 2026-09-07, a trail left behind people. It costs
   no new machinery: PETALS, petalTrail and t3Petals already carry it in all four cameras.
   IT IS A RULE AND NOT A LETTER. Any world may write `petals:true` in TILEMETA and its heaps behave this way;
   the engine never learns which glyph that is, nor the name of a season. The two clauses are deliberately
@@ -2043,15 +2041,15 @@ TILEDRAW["^"]=rc=>{const{sx,sy,x,y}=rc; /* the rainbow bridge: walk the whole sp
       The six bands are what a season recolours; planks and rails are design. One season may
       also STREW the deck (art("bridgeStyle")==="petals"): Día de Muertos lays cempasúchil petals
       over dark planks, the way petals are laid as a path for the souls to follow home — the
-      owner's word, 2026-09-07: "marigold, and petals too". Deterministic per tile, so the
+      owner's ask, 2026-09-07: marigold petals on it as well. Deterministic per tile, so the
       3D bake and the four cameras agree on where each petal fell. */
       const bands=art("bridge",BRIDGE_BANDS);
-      if(art("bridgeStyle","bands")==="petals"){ /* a bridge MADE of petals (owner, 2026-09-07: "the bridge turns
-           into one mostly made out of the petals") — no plank shows. Pili's recipe: the heap's own shadow under
+      if(art("bridgeStyle","bands")==="petals"){ /* a bridge MADE of petals (the owner asked for a bridge
+           made mostly of petals) — no plank shows. Pili's recipe: the heap's own shadow under
            everything, three passes of fan petals back to front (big and dark, then middle, then small and pale),
            a few dark blots between passes so the heap is deep, every angle on the wheel, drawn past the tile's
            edge and clipped so no seam bands the deck; the rails are the heap's colour with petals over the lip.
-           Then the owner: "multiply the amount of leaves times 10" — DECK_PETALS, nine hundred and sixty a tile,
+           Then the owner asked for ten times as many — DECK_PETALS, nine hundred and sixty a tile,
            baked ONCE a tile into petalBake() and blitted every frame after, so the frame stays cheap.
            A rail stands only on an edge with no deck beyond it: the bridge may be two tiles wide. */
         const c=petalBake("deck|"+x+"|"+y+"|"+bridgeEdges(x,y),TS,TS,(g,rnd)=>{const P=petalPal(),[rn,rs]=bridgeEdges(x,y).split("");
@@ -2115,7 +2113,7 @@ DOORSET.forEach(dch=>TILEDRAW[dch]=rc=>{const{sx,sy}=rc;
          — wore the terracotta course on both sides of itself: a strip of roof tiles across
          the top of the door INSIDE Doña Tencha's living room, and the same indoors at El
          Portero's hut and the barbería. The owner saw the outside and said the three houses
-         "didnt seem to share a roof"; the inside is what that look was hiding. Photographed,
+         did not look as if they shared a roof; the inside is what that look was hiding. Photographed,
          not reasoned.
          So the question the engine asks is not "does this glyph wear something" but "how many
          pixels of THIS TILE belong to the building above it" — a number, or a function of the
@@ -2158,8 +2156,8 @@ TILESIDE["T"]=rc=>{const{sx,sy}=rc; /* a restaurant table from the front: chair 
       ctx.fillStyle="#C0392B";for(let i=1;i<7;i+=2)ctx.fillRect(sx+3+i*4,sy+17,4,3);
       ctx.fillStyle="#FFFFFF";[10,22].forEach(px=>{ctx.beginPath();ctx.ellipse(sx+px,sy+12.5,4,1.6,0,0,7);ctx.fill();});
       ctx.fillStyle="#7A4E2C";ctx.fillRect(sx+5,sy+23,3,7);ctx.fillRect(sx+24,sy+23,3,7);};
-TILESIDE["D"]=rc=>{const{sx,sy}=rc; /* a desk from the front (#39, the 3D-realism audit: "2d image looking
-      objects"): a slab on two legs with a drawer unit on the right, the monitor standing on it, a
+TILESIDE["D"]=rc=>{const{sx,sy}=rc; /* a desk from the front (#39, the 3D-realism audit: objects
+      that looked like flat pictures): a slab on two legs with a drawer unit on the right, the monitor standing on it, a
       sheet of paper. With a side view the desk is a BOX in 3D, walked around, not a cutout. */
       ctx.fillStyle="#2B2F38";ctx.fillRect(sx+9,sy+4,13,9);ctx.fillRect(sx+15,sy+13,2,2);ctx.fillRect(sx+12,sy+14.5,8,1.2); /* monitor, stand */
       ctx.fillStyle="#7FB3D5";ctx.fillRect(sx+10,sy+5,11,7); /* screen */
@@ -2194,9 +2192,9 @@ TILESIDE["K"]=rc=>{const{sx,sy,x,y}=rc; /* a counter from the front. A coffee ma
       else{ctx.fillStyle="#F4F1EA";ctx.fillRect(sx+7,sy+10,5,4);ctx.fillRect(sx+12,sy+11,1.5,2);   /* a cup */
         ctx.fillStyle="#C9B7A0";ctx.fillRect(sx+19,sy+9,6,5);ctx.fillStyle="#F4F1EA";ctx.fillRect(sx+20,sy+7,4,3);}};
 /* ---------- THE STAIR MASS IS A WALL, NOT A SECOND STAIRCASE (#4, owner 2026-09-16) ----------
-   The owner, twice: "clearly fucked up stairs", and then — after I explained why they were fine —
-   "i still think the stair railing screenshot i sent is wrong, even if it were a seethrough wall
-   thats not right." He was right both times and the first answer was me defending the engine.
+   The owner, twice: the stairs were plainly broken, and then — after I explained why they were fine —
+   the railing in his screenshot was still wrong, and would be wrong even as a see-through wall.
+   He was right both times and the first answer was me defending the engine.
 
    WHAT WAS ACTUALLY WRONG, read off the map rather than argued about. Both games have this row:
        13  ##########+⊓⊓⊓⊓#####     the stair MASS
@@ -2205,7 +2203,7 @@ TILESIDE["K"]=rc=>{const{sx,sy,x,y}=rc; /* a counter from the front. A coffee ma
    second full flight of steps** — its own treads, risers and nosings — one tile north of the real
    one, so the screen showed the same staircase twice, a tile apart. Worse, the two climbed at
    different rates: the mass invented `22/n` while the flight rises by `STAIRH` per tread, so the
-   duplicate was not even parallel to the original. That is the whole of "abstract artish".
+   duplicate was not even parallel to the original. That is the whole of why it looked abstract.
 
    And a third thing, which is why it looked wrong from every angle: with no `TILESIDE` entry, this
    one painter was used for the block's TOP face as well as its sides — a flight drawn in profile,
@@ -2259,7 +2257,7 @@ function stairRun(w,x,y){const row=(w&&w.rows&&w.rows[y])||"";if(row[x]!=="≡"&
 function wellDepth(w,x,y){const row=(w&&w.rows&&w.rows[y])||"";
   if(row[x]==="▼"){let L=0;while(row[x+1+L]==="≡")L++;return L?STAIRH*(L+1):0;}
   const r=stairRun(w,x,y);if(!r||!r.well)return 0;return STAIRH*(r.L-r.i);}
-/* THE SAME DROP, IN THE FLAT CAMERAS' OWN UNITS (owner, 2026-09-17: "lets do b").
+/* THE SAME DROP, IN THE FLAT CAMERAS' OWN UNITS (the owner chose option B).
    wellDepth is in tile units and only engine3d.js ever read it, so in top, front and iso the well
    was a flat floor with a chevron painted on it and the hero standing on top of the hole. What a
    unit of height is worth in pixels is already settled by the facades: a wall is `lift:13` and
@@ -2268,7 +2266,7 @@ function wellDepth(w,x,y){const row=(w&&w.rows&&w.rows[y])||"";
 const UNITPX=12, ISOUNITPX=18;   /* iso is 1.5x the flat cameras, which is not a choice either: `izh` already converts a lift with `Math.round(lift*1.5)` */
 const wellPx=(w,x,y)=>Math.round(wellDepth(w,x,y)*UNITPX);
 const isoWellPx=(w,x,y)=>Math.round(wellDepth(w,x,y)*ISOUNITPX);
-/* AND THE OTHER TWO KINDS OF HEIGHT (owner, 2026-09-17: "6. do it"). The first pass at this did
+/* AND THE OTHER TWO KINDS OF HEIGHT (the owner approved item 6). The first pass at this did
    wells only and said so; the owner took the follow-up. `stairLift` is the signed answer for all
    three — positive up a climbing tread or on the bridge's arched deck, negative down a well — and
    it was, like `wellDepth`, read by engine3d.js and by nothing else. So in the flat cameras the
@@ -2279,8 +2277,8 @@ const isoWellPx=(w,x,y)=>Math.round(wellDepth(w,x,y)*ISOUNITPX);
 const liftPx=(w,x,y)=>Math.round(-stairLift(w,x,y)*UNITPX);
 const isoLiftPx=(w,x,y)=>Math.round(-stairLift(w,x,y)*ISOUNITPX);
 /* the height anyone standing on (x,y) stands at: up a climbing tread, DOWN a well tread */
-/* the crossing ARCHES (owner, 2026-09-08: "for water, make the bridge a bit better, some arching and or
-   dimesionality"): the deck rises from each bank to a crown over the middle of the water. The height at a
+/* the crossing ARCHES (the owner asked for a better bridge over water,
+   with some arch or depth): the deck rises from each bank to a crown over the middle of the water. The height at a
    point along the run is a half sine; a tile takes the average of its two edges, and the difference between
    them is the slope it is laid at. Everything else — the rails, the hero, the petals — reads the same two. */
 const BRIDGE_ARCH=0.30;
@@ -2373,8 +2371,8 @@ if(typeof TILEART_SIDE!=="undefined")Object.assign(TILESIDE,TILEART_SIDE);
    TILEART said the top, TILEART_SIDE said the profile, the leafy top of a tree was hardcoded in
    engine3d.js with a hardcoded green, and there was nowhere at all to describe the isometric view.
    Four views of one object, in four unrelated shapes, two of which a content pack could not reach.
-   The owner, 2026-09-10: "why cant we have like a pack can draw its own tree and layer for art?
-   maybe im mixing but just trying ot reuse what we can." He was not mixing them up — they are one
+   The owner asked why a pack could not draw its own tree, with layers for its art, and wondered
+   whether he was mixing two things up while trying to reuse what we can. He was not mixing them up — they are one
    thing, and the fix is one list with slots rather than four more globals:
 
        TILEART["J"] = { top:fn, side:fn, crown:fn, iso:fn }   // fill in what you care about
@@ -2422,7 +2420,7 @@ Object.assign(TILES,{
      categories, flat ground art or solid geometry, and a staircase is neither: you walk onto
      it and it has to stand up. Without this the front camera and the 3D ground bake paint a
      stair's top-down art flat onto the floor, which is why it read as a gate lying down
-     (owner, 2026-09-04: "those stairs are trash"). Replaces a hardcoded "345" glyph list
+     (the owner rejected those stairs outright). Replaces a hardcoded "345" glyph list
      that lived in engine3d.js — engine code naming a pack's glyphs is the portability law
      wearing a different hat. */
   "1":{lift:9,kind:"stair",stand:true},
@@ -2603,7 +2601,7 @@ function drawDecor(camX,camY){DECOS.forEach(d=>{if(d.world!==world)return;
   const sx=d.x*TS-camX,sy=d.y*TS-camY;
   if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;f(sx,sy,d);});}
 /* temporary ground marks — dug holes and the other thing; they fade on their own.
-   IN EVERY CAMERA (#267, the owner's issue, 2026-09-29: "You see the dog dig and no hole appears"). Only
+   IN EVERY CAMERA (#267, the owner's issue: a dog digs and no hole shows). Only
    the top and front cameras painted these, so in 3D — the camera Meridian opens in — and in iso there
    was nothing on the ground at all, and while you played in 3D nothing ever let go of a faded one.
    Now there is one clock and one painter, the way the stick and the bowl share drawDogThing:
@@ -2633,7 +2631,7 @@ function drawDecals(camX,camY){ /* the top and front cameras: on the ground, und
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
     drawDecal(ctx,sx,sy,dc,a);});}
 /* ---------- front-profile 2.5D (IDEAS §10 step ②) ----------
-   The owner's steer, verbatim: "show us a profile from the front." Square grid,
+   The owner's steer: a profile seen from the front. Square grid,
    straight-on camera. Solids keep every painted pixel of their facades and grow a
    roof strip upward; rows render back-to-front so the street gets true depth without
    losing a door, an awning, or a fence. */
@@ -2678,8 +2676,8 @@ function drawFront(){
      fiesta is drawn because a prop on a solid tile is queued into it (fiestaDraw2D's `defer`) */
   const R=[];
   petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);
-  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner's "looks like the person is laying on
-     the trolley" (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
+  /* THE TROLLEY IN ITS ROW'S TURN (#276), the rule drawIso has kept since the owner saw a person who
+     seemed to lie on the trolley (2026-09-21): a car is a thing on its row, so it takes the depth queue just ahead of a person standing on
      that row (people are y+0.55) — whoever is nearer the camera than the rails paints over it, whoever is farther paints
      under it. Until mq-v217 this camera painted it right here, before the queue and so under every row, while a note in
      test/engine.smoke.js said it had been moved. At rest nobody in this camera reaches the car's row, so nothing showed;
@@ -2703,7 +2701,7 @@ function drawFront(){
       const m=TILES[gch]||TILES[ch]||{lift:7,kind:"prop"},L=m.lift|0,kd=m.kind;
       if(kd==="wall"||kd==="facade"||kd==="fence"){
         /* structure: a roof strip only where the run starts, so interior rows of a
-           building connect cleanly instead of banding ([partner]: "walls are clunky") */
+           building connect cleanly instead of banding ([partner] found the walls heavy) */
         if(L>0&&(y===0||!SOLID.has(w.grid[y-1][x]))){
           ctx.fillStyle=tc(roofCol(gch));ctx.fillRect(sx,sy-L,TS,L);
           ctx.fillStyle="rgba(255,255,255,.14)";ctx.fillRect(sx,sy-L,TS,1.5);
@@ -3053,8 +3051,8 @@ function drawCat(g,sx,sy){
 /* ---------- Paloma the pigeon (street) & Lorenzo the parrot (perched on the fence) ---------- */
 const PIG=aniXY("pig",{x:4,y:1,fx:4,fy:1,moving:false,mt:0,dx:0,dy:0,face:1,next:0,peck:false});
 function pigFree(x,y){const w=WORLDS[AW("pig")];if(!w)return false;return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")&&!(world===AW("pig")&&x===px&&y===py)&&!troDanger(AW("pig"),x,y);}
-/* PALOMA GETS OUT OF THE WAY (owner, 2026-09-11: "paloma shouldnt be run over, can she be smart
-   enough to jump away?"). A bird, not a rule: she hears it coming three tiles out and lifts off the
+/* PALOMA GETS OUT OF THE WAY (the owner asked that Paloma not be run over,
+   and be smart enough to hop away). A bird, not a rule: she hears it coming three tiles out and lifts off the
    rail — 560 ms, a sine arc about two thirds of a tile high, drifting a little downstream, landing
    on the kerb. Three things decide whether a player reads it as a bird or as a glitch, all three
    measured by Chava in a ten-minute hack before any of this was built: she must LEAVE THE GROUND
@@ -3209,7 +3207,7 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(cr.kind==="gato"?1500+Math.random()*3500:400+Math.random()*900);return;}
   cr.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
-  if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* he appears no matter what (#268) */
+  if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* a dog must never stay stuck (#268) */
     cr.next=now+900;return;}
   const d=dirs[Math.floor(Math.random()*dirs.length)];
   cr.dx=d[0];cr.dy=d[1];if(d[0])cr.face=d[0];
@@ -3374,7 +3372,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
   if(tk.type==="come"){
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
     if(d<=1){cr.task=null;cr.sit=true;cr.happyT=now+2200;cr.next=now+2600;
-      cr.home=[cr.x,cr.y]; /* where you called him is where he stays, as when the whistle carries across the city (#268; owner, 2026-09-30: "i dont want him to leave me") */
+      cr.home=[cr.x,cr.y]; /* where you called him is where he stays, as when the whistle carries across the city (#268; the owner asked that he not wander off) */
       toast("🐶 "+(T().cmdOkCome||"!"),2400);return;}
     if(!dogWalk(cr,px,py))cr.task=null;
     return;}
@@ -3475,7 +3473,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
   cr.task=null;
 }
 /* ---------- THE ONE RULE: a job that ends far from home ends with him going home (#268) ----------
-   The owner, 2026-10-01: "i dont understand why he gets stuck". Because a dog wanders only within
+   The owner asked why he gets stuck. Because a dog wanders only within
    CRIT_REACH steps of his own spot (critFree refuses any step further), and a job could end further away
    than that: the agility course ends seven steps from the park dog's spot, a romp at somebody's feet, a
    sniff beside another dog. Every step he tried after that was refused, and he stood there until
@@ -3485,8 +3483,8 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
    this is the rule that ends every job with it — written once, where critUpdate steps every job and sees
    every way one ends, including the one the router never sees: you leaving the room in the middle of it.
    · He has his beat first — the sit, the wag, whatever the job ended in — then sets off (`wait`).
-   · A dog who follows you is with YOU: the follow brings him back to you, never to his spot (owner,
-     2026-09-30: "i dont want him to leave me"). And Come makes where you called him his spot.
+   · A dog who follows you is with YOU: the follow brings him back to you, never to his spot (the owner
+     asked that he not wander off). And Come makes where you called him his spot.
    · Nobody in the room: he is simply home.
    · A walk home that could not finish is not tried again from here; the stuck clock has it. */
 function dogDone(cr,tk,now){
@@ -3494,7 +3492,7 @@ function dogDone(cr,tk,now){
   if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=CRIT_REACH)return;
   if(cr.world!==world){dogPut(cr,dogHomeSpot(cr));return;}
   cr.task={type:"home",wait:cr.next};}
-/* ---------- "he appears no matter what" (owner, 2026-10-01): the stuck clock ----------
+/* ---------- a dog must never stay stuck: the stuck clock ----------
    Whatever else leaves him somewhere he cannot wander from — told to Sit in the middle of the course, a
    wall where there was none, a walk home cut off — a dog who tried to step and could not, and has not
    managed a single step for DOG_STUCK while free (no job, not told to hold, not following you, you in
@@ -3541,7 +3539,7 @@ function agilityCourse(wid){const w=WORLDS[wid],wp=[];if(!w)return wp;
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if((TILES[w.rows[y][x]]||{}).kind==="gear")wp.push([x,y]);
   return wp;}
 /* ---------- THE COURSE AS A LINE, and what a dog does on each piece of it (mq-v232) ----------
-   Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". Until now the
+   The owner asked for the dog agility course to be fixed too, shaped and beautified. Until now the
    pieces were pictures that turned with the camera and the dog ran the course along the ground — along the
    hurdle's bar, over a picture of an arch, past the poles. The plan it was built to: each piece TURNED TO THE
    LINE the dog runs (the hurdle's bar across it, the tunnel's bore and the row of poles along it), keeping the
@@ -3660,7 +3658,7 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   /* THE ODDS: one band of the roll each, in this order: a nap, a song, the course, the greeting, a
      hole, and the other thing. Digging is canon: a puppy phase, kept to about 8% of what
      he does (canon round 2, 2026-09-01: "~8% of whims, was ~25%"; and on
-     2026-09-29, "ok make it about 8 percent yes").
+     2026-09-29, the owner settled on about 8 percent).
      The course and the greeting only happen where they can, in a park with gear and with another dog
      near, and a band that cannot happen here PASSES QUIETLY: its roll never goes down the list. On
      2026-09-01 those two were slotted in above digging with their conditions in the else-if, so every
@@ -3729,7 +3727,7 @@ function dogStick(cr,now){ /* he finds a stick, flings it, and runs it down */
   const o={kind:"stick",world:cr.world,sx:cr.x,sy:cr.y,fx:cr.x,fy:cr.y,tx,ty,t:0,phase:"fly",dog:cr};
   DOGTHINGS.push(o);
   cr.task={type:"stick",phase:"go",o,hx:cr.x,hy:cr.y};cr.sit=false;cr.layT=0;cr.face=Math.sign(tx-cr.x)||cr.face;}
-function dogRomp(cr,now){ /* the nearest person in reach, for a romp round their feet (owner: "chasing after another character") */
+function dogRomp(cr,now){ /* the nearest person in reach, for a romp round their feet (the owner's ask: a dog chases another character) */
   /* near ON FOOT: within ten steps of their feet. By straight distance the first one picked a man behind
      a fence, three tiles off, and ran the long way round (looked at, 2026-09-29) */
   const w=WORLDS[cr.world],steps=dogSteps(cr,10);let best=null;
@@ -4060,8 +4058,8 @@ function faceLooks(){const a=art("facepaint",null);if(!a)return null;
 function faceLookFor(who,hero){const L=faceLooks();if(!L)return null;
   const i=hero?alePick.hero:(aleHash(who||"?")+alePick.off),lk=L[((i%L.length)+L.length)%L.length];
   const cu=hero&&alePick.custom&&alePick.custom.you;return cu?{...lk,...cu,id:lk.id}:lk;}
-/* the shirt's pattern (owner, 2026-09-07: "[partner] is busy so she cant review fashion right now but keep making a couple
-   more options"; #82: "flourish, patterns, stripes, etc to differentiate"): drawn INSIDE the shirt's rounded rectangle, in a
+/* the shirt's pattern (the owner asked for a few more options
+   while fashion review waits; #82: flourishes, patterns and stripes to tell looks apart): drawn INSIDE the shirt's rounded rectangle, in a
    darker or paler take on the shirt's own colour so any shirt wears any pattern. `plain` is the default and draws nothing.
    A pack may add patterns: SHIRT_PATTERNS[id]=(g,x,y,w,h,lk)=>{...} and a row in T().patterns. */
 const SHIRT_PATTERNS={
@@ -4102,14 +4100,14 @@ function drawPerson(g,sx,sy,lk,o){
   g.fillStyle=lk.skin;g.beginPath();g.arc(sx+16,sy+5+bh,6.5,0,7);g.fill();
   g.strokeStyle="rgba(15,12,20,.3)";g.lineWidth=.8;g.stroke();
   const st=lk.style||"cap",hx=sx+16,hy=sy+5+bh;
-  /* calavera paint for EVERYONE when the season hands art("facepaint") — owner, 2026-09-07: "everyone
-     should also have that, not just me... have only a number of changes - 5 perhaps". Five looks, and
+  /* calavera paint for EVERYONE when the season hands art("facepaint") — the owner asked that
+     everyone have it, not only the hero, in a handful of variants, perhaps five. Five looks, and
      every one keeps the four marks that make a skull at this size (a Día de Muertos makeup review,
      2026-09-07): a LIGHT base over the whole face, two big dark sockets (ringed in colour or petals,
      tall ovals for the Catrina), the nose (a heart in one look), the stitched grin (a red lip line in
      one). The extras go where there is room: dots or a web on a brow the hair leaves bare, a tear under
-     the eye, a dot on the chin. Never a dark base — owner: "having one with all dark is a bit of a no
-     no - not really even looking like a skeleton". The hero picks; a person's look comes from who they
+     the eye, a dot on the chin. Never a dark base — the owner ruled out
+     an all-dark one, which stops reading as a skeleton. The hero picks; a person's look comes from who they
      are, never from where they stand. Hair and eyes go on over it. */
   const fp=faceLookFor(o.who,!!o.hero);
   const paint=()=>{const brow=["buzz","fade","bald","flat"].includes(st);
@@ -4255,7 +4253,7 @@ function drawPerson(g,sx,sy,lk,o){
 /* ---------- ALEBRIJES (asked for on 2026-09-07: the dog still looks like himself, in different
    colours and perhaps tiny wings; Pili's direction the same day) ----------
    An alebrije is a real animal in impossible colours. The first cut striped the animal and the
-   owner called it "crossed out". Now, inside the animal's own alpha mask (the silhouette is
+   owner said it looked struck through. Now, inside the animal's own alpha mask (the silhouette is
    byte-identical, and the test says so): the coat is TINTED (source-atop, 62%, the contact shadow
    clipped out), the animal's own darks are pulled back (multiply with the untreated draw, so the
    eye stays an eye), at most five small marks go where the kind has room (a spine of dots on a
@@ -4277,8 +4275,8 @@ function alebLooks(){const a=art("alebrije",null);if(!a)return null;
   return (a.looks&&a.looks.length)?a.looks:ALEB_DEF.looks;}
 /* the player's picks: one per named animal, one for the hero, an offset that shifts the crowd */
 let alePick={hero:0,off:0,animals:{},custom:{}};
-/* `custom` is the seam for a later editor (owner, 2026-09-07: "leave it in the architecture to have the ability to
-   upgrade to customize the look of the alebrije"): custom[key] = {tint,pat,accent,wings} for an animal by name, or
+/* `custom` is the seam for a later editor (the owner asked that the architecture leave room
+   to customise an alebrije's look later): custom[key] = {tint,pat,accent,wings} for an animal by name, or
    custom.you = {base,ring,dark,...} for the face — laid over the picked look's fields. Nothing writes it yet. */
 try{const a0=JSON.parse(localStorage.getItem(SK("ale"))||"{}");if(a0&&typeof a0==="object")alePick={hero:a0.hero|0,off:a0.off|0,animals:(a0.animals&&typeof a0.animals==="object")?a0.animals:{},custom:(a0.custom&&typeof a0.custom==="object")?a0.custom:{}};}catch(e){}
 function alePersist(){mqStore(SK("ale"),JSON.stringify(alePick));}
@@ -4361,7 +4359,7 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
     for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;d[i]=d[i]*(0.55+0.45*o[i]/255);d[i+1]=d[i+1]*(0.55+0.45*o[i+1]/255);d[i+2]=d[i+2]*(0.55+0.45*o[i+2]/255);}
     tg.save();tg.setTransform(1,0,0,1,0,0);tg.putImageData(im,0,0);tg.restore();}
   if(KD.marks){tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);KD.marks(tg,look,cx,sb,sh);tg.restore();} /* C: five marks at most */
-  if(KD.eye){ /* C½: colour round the eyes (owner: "the color can be added like around the eyes or something") — two rings, the accent and
+  if(KD.eye){ /* C½: colour round the eyes (the owner suggested colour around the eyes) — two rings, the accent and
        a thinner one in the pattern colour outside it (Pili: two rings is the alebrije look, one is a bruise), centred ON the eye
        and wider than it, so the pupil stays a pupil; inside the silhouette like everything else */
     const[ex,ey,er]=KD.eye;tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
@@ -4436,7 +4434,7 @@ function tryStep(){
    (openTravel). Everything that must happen on arrival lives here, in one place, because when it
    did not, the trolley quietly skipped it — you rode from Meridian Street to Calle Dos and the dog
    you had been walking with was still standing at the stop, still set to follow. */
-/* ---------- THE DOORWAY (owner, 2026-09-17: "i think i want that option A") ----------
+/* ---------- THE DOORWAY (the owner chose option A) ----------
    `tryPortal` changed the world between one frame and the next — four assignments, no transition of
    any kind — and `worldArrived` then froze input for 450 milliseconds with NOTHING DRAWN in that
    window. The worst pairing available: an instant cut, and then standing still somewhere you did not
@@ -4449,8 +4447,8 @@ function tryStep(){
    It is a DIV over the viewport, not paint on a canvas, for one reason worth writing down: the 3D
    camera renders to its own WebGL surface, so anything drawn into the 2D context is invisible there.
    One overlay covers all four cameras and cannot drift between them. `curtain()` above already
-   proved the shape on the growth change (the owner, 2026-09-03: "a building appears ... not a smooth
-   switch") — this is the same idea at a door, and faster, because you are walking.
+   proved the shape on the growth change (the owner saw a building pop in rather
+   than change smoothly) — this is the same idea at a door, and faster, because you are walking.
 
    130ms to shut, 330 to open. Input is held for exactly as long as the door is moving and not one
    frame more, which is why worldArrived's 450 became the open: the old number outlasted the (absent)
@@ -4478,7 +4476,7 @@ function doorKind(fromW,fromX,fromY){
 function worldArrived(fromW,fromX,fromY){
   warpT=performance.now()+DOORMS.open;portalT=performance.now()+900;portalHold=world+":"+px+","+py;
   save();destCheck();{const ar=T().arrive[world];toast(typeof ar==="function"?ar():ar,2200);} /* a line may ask the season (Nacho, 2026-09-07) */
-  propsReset();                    /* "they'll just reappear when i leave the screen" — the owner's scope */
+  propsReset();                    /* they come back once you leave the screen — the owner's scope */
   dogsFollow(fromW,fromX,fromY);   /* a dog at your heels comes with you */
   dogsRoam(world);                 /* unseen pups drift toward their favorite townsperson */
 }
@@ -4867,8 +4865,8 @@ function loop(ts){
   }
   if(!$("world").hidden&&!covered)draw();
 }
-/* the door marker — the third door affordance (owner, 2026-09-02: "i think we should have a
-   marker"). Within three steps of a door that LEADS somewhere, a bouncing arrow floats over
+/* the door marker — the third door affordance (the owner asked for a
+   marker). Within three steps of a door that LEADS somewhere, a bouncing arrow floats over
    it in every camera. Doors that are only decoration (no portal) get nothing. */
 /* Everything a document may read, handed over as plain data so a pack never reaches into
    engine internals — and so [partner]'s pack can build entirely different paper from the same play. */
@@ -4920,8 +4918,8 @@ function docMarkdown(id){
 /* THE READER'S BLOCKS, in one place, so the reader and the suite walk the same path. Lifted out
    of docOpen 2026-09-11 to add `art`: until then a pack could put WORDS in front of a person and
    nothing else, so the biggest picture this game could show was a 32-pixel tile seen from twelve
-   tiles back. The owner: "you see tiles/icons from afar but you get close and can interact to see
-   it full screen- then thats how pixels/art can be used there by agents."
+   tiles back. The owner's idea: tiles and icons seen from afar, and close up you interact to see
+   one full screen — which is how agents can put pixel art there.
    A block the reader does not know is skipped, exactly as before. */
 function docRender(body,secs){
   const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;
@@ -4940,8 +4938,8 @@ function docRender(body,secs){
       const room=(body.clientWidth||(body.parentElement&&body.parentElement.clientWidth)||
                   (document.documentElement&&document.documentElement.clientWidth)||520);
       /* ---- A PICTURE MAY BE WIDER THAN THE PAGE, AND YOU WALK ALONG IT ----
-         The owner, 2026-09-12, on the crew's wall: "you get what a mural is right? this isnt going to
-         be pages." A mural is one surface you walk along; a mural that fits in a phone column is a
+         The owner, on the crew's wall: a mural is not a set of
+         pages. A mural is one surface you walk along; a mural that fits in a phone column is a
          postcard. So a section may declare `wide` — a natural width in CSS pixels, or a function that
          returns one — and it is drawn at that width inside its own horizontal scroller instead of
          being squeezed into the column. Everything else in the reader is unchanged: a section with no
@@ -5213,8 +5211,8 @@ let docCur=null,docBack=null;   /* "card" while a document is being read inside 
    The city could only ever be read by finding the right person. A pack declares READS
    (where a readable thing stands) and DOCS (what it says), and the engine renders the
    sections; it never knows what a bakery is. A pack that declares neither gets no marker,
-   no button and no panel — tested. Owner, 2026-09-03: "give us a way to interact with
-   things ... obviously i would need a marker to know its interactive". */
+   no button and no panel — tested. The owner asked for a way to interact with
+   things, and a marker to show what is interactive. */
 const RD=()=>((typeof READS!=="undefined"&&Array.isArray(READS))?READS:[]).concat(bldReads||[]);
 const DC=()=>(typeof DOCS!=="undefined"&&DOCS)?DOCS:{};
 const DCU=()=>((typeof DOCUI!=="undefined"&&DOCUI[lang])||(typeof DOCUI!=="undefined"&&DOCUI.en)||{});
@@ -5224,8 +5222,8 @@ const readAt=(x,y)=>RD().find(r=>r.world===world&&r.x===x&&r.y===y&&DC()[r.doc])
 /* Every readable thing in the room you are standing in wears its mark — no distance limit.
    Paper on a wall is visible from the doorway; that is what a wall is for. It used to be
    three tiles, which meant the owner walked into his own office, stood at the stairs where
-   the game puts you, and saw nothing at all (2026-09-03: "i still couldnt find my posters
-   and laptop... ive achieved things in the game"). A marker that only appears once you are
+   the game puts you, and saw nothing at all (2026-09-03: he still could not find the posters
+   and laptop his progress had earned). A marker that only appears once you are
    already touching the thing is not a marker. The door arrow keeps its three tiles: a door
    is a place you walk to, not a thing you read. */
 function readMarks(){const out=[];
@@ -5278,8 +5276,8 @@ function drawSayMark(g,bx,by,mode){
   const B=1.5*k;
   g.fillStyle="rgba(20,16,28,.22)";                       /* it sits over the head, so it shades it */
   g.beginPath();g.ellipse(cx,by+3*k,5.5*k,1.8*k,0,0,7);g.fill();
-  /* A HALO, BECAUSE A DARK KEYLINE ON A DARK BUILDING IS NOT A KEYLINE (owner, 2026-09-16:
-     "i see building line overlapping with the explamation mark animation").
+  /* A HALO, BECAUSE A DARK KEYLINE ON A DARK BUILDING IS NOT A KEYLINE (the owner saw
+     a building's outline overlapping the exclamation mark).
      Measured before changing anything, because the obvious diagnosis was wrong: the mark is not
      floating up by the awning and it is not behind the wall. It sits ON the head — four pixels of
      overlap — and the occlusion is correct. What fails is SEPARATION: at the market the balloon's
@@ -5315,8 +5313,8 @@ function doorMarks(){const w=CW(),out=[];
   for(let y=Math.max(0,py-3);y<=Math.min(w.H-1,py+3);y++)for(let x=Math.max(0,px-3);x<=Math.min(w.W-1,px+3);x++){
     const ch=w.rows[y][x],p=Math.abs(x-px)+Math.abs(y-py)<=3&&portalAt(world,x,y);if(p)out.push({x,y,ch,mark:p.mark||""});}
   /* It used to ask DOORSET.has(ch) as well, which is how the STAIRS — the only way to the
-     office — ended up as the one portal in the city wearing no marker (owner, 2026-09-03:
-     "it is hard knowing where to go"). P[ch] already means "this tile leads somewhere",
+     office — ended up as the one portal in the city wearing no marker (the owner found it
+     hard to know where to go). P[ch] already means "this tile leads somewhere",
      which is the whole question. Adding the stair glyphs to DOORS instead would have
      repainted them as a brown door in five places, and stood a door slab in the stairwell. */
   return out;}
@@ -5361,8 +5359,8 @@ function portalNudge(){
 
    Found 2026-09-23 by a plant aimed at something else entirely: a quest was moved onto Naye to test
    an unrelated guard, and two other guards came back with "the chair did not open". The barber's
-   chair is the owner's own ask (2026-09-07, *"open the ability to change our character outfit and
-   haircut after start. maybe have a small barber"*) and the district being planned for her would have
+   chair is the owner's own ask (2026-09-07: change outfit and haircut after the start, perhaps at
+   a small barber) and the district being planned for her would have
    switched it off for its whole length, silently, with every suite green.
 
    So: a person who has a quest AND runs something offers BOTH — the quest on Talk, the service on
@@ -5402,7 +5400,7 @@ function svcRun(who,n){
   return false;
 }
 /* WHO TALK OFFERS, AND SO WHO ENTER TALKS TO, when more than one person is beside you (#285). The
-   owner, 2026-10-01: "enter talks to the person you face first sounds good" — answering the order put
+   owner agreed that Enter talks to the person you face first — answering the order put
    to him: the one you face, then the one with a quest for you, then the nearest. It used to be whoever
    came first in the world's list: between Priya and Theo, facing Theo, Enter opened Priya's quest.
    Everybody offered is one step away, so "the nearest" is always a tie, and a tie keeps the list's
@@ -5433,7 +5431,7 @@ function checkTalk(){
     else if(rh){ /* a host says what the talk is about, like a quest does */
       tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${rh.talk[lang]||rh.talk.en}”`;
       tb.dataset.chatn=n.npc;delete tb.dataset.qi;}
-    else if(n.npc===GRW().barberNpc&&T().chairHint){ /* the bubble says what the chair changes (owner: "make it easy to tell... their thought bubble at least has a hint") */
+    else if(n.npc===GRW().barberNpc&&T().chairHint){ /* the bubble says what the chair changes (the owner asked for it to be easy to tell, with at least a hint in the bubble) */
       tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${T().chairHint}”`;tb.dataset.chatn=n.npc;delete tb.dataset.qi;}
     else if(n.npc===GRW().wardrobeNpc&&T().wdHint){ /* and what the fitting room changes: the animals' wear, never yours */
       tb.textContent=`${T().talkPre}${npcName(n.npc).split(" ·")[0]} — “${T().wdHint}”`;tb.dataset.chatn=n.npc;delete tb.dataset.qi;}
@@ -5452,8 +5450,8 @@ function checkTalk(){
     const sb=$("serve");if(sb){sb.hidden=true;delete sb.dataset.svcn;}}
 }
 /* the Read button: a readable thing one step away. It answers EVERY time it is pressed —
-   silence reads as a broken control (owner, 2026-09-03: "even if they just say an npc line
-   that way we know the button or key is working"). */
+   silence reads as a broken control (the owner: even a plain line
+   from somebody shows the button or key works). */
 function checkRead(){
   const b=$("read");if(!b)return;
   if(DRONE.on){b.hidden=true;return;}
@@ -5553,8 +5551,8 @@ $("talk").addEventListener("click",()=>{
     if(svcRun(tb.dataset.chatn))return;
     const L=chillLines(tb.dataset.chatn)||(T().chat||{})[tb.dataset.chatn]||[];
     /* A line with nobody's name on it is a line you cannot place: half the barrio sounds
-       alike on a phone screen (owner, 2026-09-03: "its hard to tell people apart, should
-       they have their name when they speak?"). Tile flavour stays unsigned on purpose —
+       alike on a phone screen (the owner found people hard to tell
+       apart and asked for a name on what they say). Tile flavour stays unsigned on purpose —
        the crosswalk is not a person. */
     if(L.length){let ln=L[Math.floor(Math.random()*L.length)];if(typeof ln==="function")ln=ln(); /* a line may be counted at the moment it is said (El Portero, #8) */
       const crit=!!(ln&&ln.crit);ln=(ln&&ln.t!==undefined)?ln.t:ln;toast(sayAs(tb.dataset.chatn,ln),2800,crit);}return;}
@@ -5566,8 +5564,8 @@ let petTarget=null,petCrit=null;
 function fredCheck(){ /* now the generic animal-interaction check: every creature is reachable and greetable */
   let tgt=null,label="";
   /* a person with a quest beside you wins the buttons — the pigeon wandered next to the
-     player at Don Güero's side and her button took the tap meant for him (owner,
-     2026-09-02: "logs of the crosswalk while im trying to talk"). Step away to pet her. */
+     player at Don Güero's side and her button took the tap meant for him (the owner
+     got crosswalk lines while trying to talk). Step away to pet her. */
   const personFirst=!$("talk").hidden&&$("talk").dataset.qi!==undefined;
   if(!$("world").hidden&&!moving&&!personFirst){
     if(world===AW("dog")&&!DOG.moving&&Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1){tgt="fred";label=T().treatLb;}
@@ -5878,8 +5876,8 @@ document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("clic
   $("intro").hidden=true;$("creator").hidden=false;
   buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();pvDraw();
 }));
-/* ---------- the chair (owner, 2026-09-07: "we should really open the ability to change our character
-   outfit and haircut after start... a small barber") — the creator reopens over the world with the name locked;
+/* ---------- the chair (the owner asked to change outfit
+   and haircut after the start, at a small barber) — the creator reopens over the world with the name locked;
    what you pick is saved on the way out. In season the calavera looks sit in the same panel. ---------- */
 let chairOpen=false;
 function buildPaintRow(){const row=$("rowPaint"),lb=$("lbPaint");if(!row)return;const F=faceLooks(),on=!!F;row.innerHTML="";row.hidden=!on;if(lb){lb.hidden=!on;lb.textContent=T().lbPaint||"Calavera";}
@@ -5976,7 +5974,7 @@ $("replay").addEventListener("click",()=>{
 /* ---------- the curtain ----------
    A map change the player is standing next to happens behind a short dark curtain: the
    build was applied the instant the pick landed, so the site had already changed when
-   the card closed — "a building appears ... not a smooth switch" (owner, 2026-09-03). */
+   the card closed — the owner saw a building pop in rather than change smoothly. */
 let growthPend=false;
 function curtain(apply,after){const v=$("veil");
   if(!v){apply();if(after)after();return;}
@@ -5985,8 +5983,8 @@ function curtain(apply,after){const v=$("veil");
 /* ---------- the settings drawers ----------
    A settings panel you have to scroll is a settings panel you stop reading. Four groups,
    each opening and closing like a drawer, and the phone remembers which ones YOU keep open
-   (owner, 2026-09-03: "each setting can also just expand or close like a drawer ... use best
-   gaming practices"). Controls opens by default because it is the one a new player needs;
+   (the owner asked for each setting to open and close like a drawer,
+   as good games do). Controls opens by default because it is the one a new player needs;
    the action buttons underneath are not settings and never hide. */
 const DRAWERS=["drwCtl","drwLook","drwSelf","drwSound","drwGame"];  /* drwSelf: appearance, its own subject (#127) */
 function drawersInit(){
@@ -6349,7 +6347,7 @@ function musApply(){
   mqStore(SK("mus"),musOn?"1":"0");mqStore(SK("vol"),String(musVol));
   if(musOn)musStart();else musStop();
 }
-function musChirp(){ /* instant audible proof the audio path works (owner: "no tune") */
+function musChirp(){ /* instant audible proof the audio path works (the owner heard no music) */
   if(!MUSIC.ctx||MUSIC.ctx.state!=="running")return;
   const d=musDef(),t0=MUSIC.ctx.currentTime+0.03;
   [0,2,4].forEach((deg,i)=>musVoice(d.root+12+d.scale[deg],t0+i*0.09,0.4,d.lead,0.22,d.bright));}
@@ -6501,8 +6499,8 @@ function logDecision(o,c){const n=(curQ&&curQ.nodes[node])||{};
   dlog.push({t:Date.now(),quest:curQ.title,qi:cur,npc:curQ.npc,ask:n.q||"",pick:c?c.t:"",
              concept:o.concept||"",why:o.why||"",result:o.r});
   /* the record keeps EVERY decision — it used to be cut to the last 200, which would have
-     dropped a player's first districts from the portfolio without a word (owner,
-     2026-09-02: "I thought we fixed this 200 entries thing"). If the phone refuses the
+     dropped a player's first districts from the portfolio without a word (the owner
+     had thought the 200-entry limit was fixed). If the phone refuses the
      write, the in-memory record stands and the failure is said once, not hidden. */
   /* the play log is the one write that was ALREADY honest about failing — it just told the
      console, which nobody reads. It goes through the same door as everything else now, and it is
@@ -6679,9 +6677,8 @@ function worldFlags(){
   return f;
 }
 /* ---------- who is waiting, on the plan — and a destination you choose ----------
-   #160, and the owner on 2026-09-15: "i like a hybrid approach, wehre i can choose my destination,
-   and i like the marking of people with quests in different colors but its hard to tell unless you
-   have a legend." The plan for the map, agreed 2026-09-14, says what a colour is allowed to mean
+   #160, and the owner on 2026-09-15: a hybrid, where he chooses his destination, and people with
+   quests marked in different colours — which are hard to read without a legend. The plan for the map, agreed 2026-09-14, says what a colour is allowed to mean
    here: WHICH KIND of person is waiting — never how many, how old, or how far through. A colour
    that counts is a list with the names removed, and the mark that means one thing forever
    (docs/STORY.md) is the one the street already draws.
@@ -6713,7 +6710,7 @@ function markOf(n){ /* one person, one kind, in the order the pack declared */
      · `gx,gy` — where it is DRAWN on the plan. The plan is paper and the paper has panels on it.
    They were identical while the plan drew one world at 0,0, which is why one field did both jobs
    and why the day a second panel appeared was the day the arrow would have started lying. */
-/* ---------- WHERE A WORLD IS, ON THE PLAN (owner, 2026-09-17: "5. yeah i mean a map implies this") ----------
+/* ---------- WHERE A WORLD IS, ON THE PLAN (the owner on item 5: a map implies it) ----------
    Asked whether an interior belongs on a street map at all, that was his whole answer, and he is
    right: a map that cannot say where a place is is a picture of a street.
 
@@ -6786,8 +6783,8 @@ function drawMark(g,cx,cy,k,r){ /* ONE painter, two surfaces: the plan and its o
   g.save();g.fillStyle="rgba(58,44,20,.26)";
   g.beginPath();g.ellipse(cx+r*0.16,cy+r*0.62,r*0.92,r*0.38,0,0,7);g.fill();g.restore();
   /* ---- A MARK SAYS WHAT IT IS, AND AT NINE PIXELS THAT MEANS SILHOUETTE ----
-     Owner, 2026-09-16: "the squares/dots for people are garbage, we really cant improve this so i
-     can tell what things are?" He is right, and the arithmetic says why: `r` is `s*0.45` on a ten
+     The owner called the squares and dots for people useless and asked for marks that say
+     what things are. He is right, and the arithmetic says why: `r` is `s*0.45` on a ten
      pixel tile, so `work` was a nine-pixel disc carrying an exclamation mark ONE AND A HALF PIXELS
      wide. Nothing was ever going to be legible inside it. Two of the three were the same idea —
      a coloured blob with a tiny tick — separated by a shape nobody could name.
@@ -6840,7 +6837,7 @@ function drawPlanMarks(g2,s){
   /* the ring is the destination HE chose. Nothing here nominates a "next" — that was the one call
      the plan left open and his hybrid answered it (el-mapa §7.3). */
   /* ---- AND YOU CAN SEE THAT YOU TAPPED IT (owner, 2026-09-16) ----
-     "the map says tap a mark, but cannot tell if a mark is tapped." He was right twice over. The
+     The map said to tap a mark and did not show that one was tapped. He was right twice over. The
      confirmation was a TWO-PIXEL RING in #7A3FE0 — which is the same purple as the you-are-here
      dot, so on the one occasion it did catch the eye it said "here" rather than "going there", and
      the only other feedback was a caption under the canvas he was not looking at.
@@ -6872,14 +6869,14 @@ function drawPlanMarks(g2,s){
   drawMark(g2,cx,cy,mapDest.k||((planMarks().find(m=>m.gx===mapDest.gx&&m.gy===mapDest.gy)||{}).k),s*0.56);}
 /* The legend is REAL TEXT under the plan, built here rather than in the shell so a pack gets it
    without touching its own index.html. The line it stands beside is drawn at 8 canvas pixels —
-   about 7.5 CSS px on a phone — which is what "its hard to tell" measures like. */
+   about 7.5 CSS px on a phone — the size at which a key is too hard to read. */
 /* ---- THE LEGEND OPENS ITSELF ONCE, THEN GETS OUT OF THE WAY ----
    Owner, 2026-09-15, choosing between three: the key is open the FIRST time you see the plan and
    collapses to an `i` after that, and what you leave it as is what you get next time.
    The reason that shape and not "always open" is the phone: the plan is already the tightest thing
    in the game at 390px, and a key that is permanently three rows tall is three rows the map does
-   not have. The reason it is not "behind an `i` from the start" is his own sentence — "its hard to
-   tell unless you have a legend" — which is about the FIRST time, and a key you have to discover
+   not have. The reason it is not "behind an `i` from the start" is his own point — colours are hard
+   to read without a legend — which is about the FIRST time, and a key you have to discover
    is no key at all on the one occasion it was needed. */
 let legOpen=null;
 function legSeen(){
@@ -6976,7 +6973,7 @@ function destBearing(){
   if(a.mode==="here")return "  ·  ◉ "+name;
   const i=((Math.round(aimAngle(a)/(Math.PI/4))%8)+8)%8;
   return "  ·  "+BEARS[i]+" "+name;}
-/* ---- AND THE SAME BEARING IN THE STREET (owner, 2026-09-15: "bearing lets try 2") ----
+/* ---- AND THE SAME BEARING IN THE STREET (the owner chose bearing option 2) ----
    He chose the option the crew advised against, and the crew's objection was about CORNER MINIMAPS
    — a second screen you read instead of the place. This is one arrow on a destination YOU picked,
    it exists only while you have picked one, and it is gone the moment you arrive.
@@ -7047,7 +7044,7 @@ function destCheck(){ /* you arrived: the destination is spent, and nothing reme
   if(mapDest&&mapDest.w===world&&Math.abs(px-mapDest.x)<=1&&Math.abs(py-mapDest.y)<=1)mapDest=null;
   setWorldTag();bearingUI();}
 /* ═══════════ TOWNPLAN — the plan draws every street, not one (el-mapa §3, run-8 §2.5) ═══════════
-   Reported from play, 2026-09-16: *"im shown the other street map on calle 2."* He was standing on
+   Reported from play, 2026-09-16: on Calle Dos he was shown the other street's map. He was standing on
    Calle Dos and the plan drew Calle Principal, with a pin in the corner saying CALLE DOS — the
    caption knew where he was while the picture showed somewhere else.
 
@@ -7069,8 +7066,8 @@ function destCheck(){ /* you arrived: the destination is spent, and nothing reme
    carries `x,y,w` (where the thing IS, unchanged) and `gx,gy` (where it is DRAWN), and nothing is
    allowed to use one for the other. */
 /* ═══════════ THE PLAN IS A MAP, NOT A HEAT MAP (owner, 2026-09-16) ═══════════
-   "the squares/dots for people are garbage, we really cant improve this so i can tell what things
-   are?" — and the inventory says exactly why. Of the 29 glyphs on Meridian's plan:
+   The squares and dots for people said nothing, and he asked for marks that tell what things
+   are — and the inventory says exactly why. Of the 29 glyphs on Meridian's plan:
      · 133 tiles of `F` were one solid #B0895B square each, so the crew pen and every hoarding came
        out as a brown MASS with no shape to it;
      ·   9 trees were green squares, indistinguishable from any other green square;
@@ -7234,8 +7231,8 @@ function drawTown(){
   mapLegend();
 }
 /* ---- WHAT THE PLAN SAYS UNDER ITSELF, AND IT MAY NOT SAY A FALSE THING ----
-   Owner, 2026-09-16: "i guess there just arent quests left over, but can we remove the applicable
-   legend if for example all quests are done then we dont mark." The legend already hid itself; the
+   The owner asked that once no quests are left, their legend go too, since nothing is
+   marked. The legend already hid itself; the
    CAPTION did not. With every quest done and not one mark on the paper, the line under the map
    still read "tap a mark to make it your destination" — an instruction to do something that is not
    possible, which is the same fault as a save that fails quietly and a map that draws another
@@ -7248,7 +7245,7 @@ function mapNoteSet(){
   n.textContent=here+(any&&pl.tap?"  ·  "+pl.tap:(pl.none?"  ·  "+pl.none:""));
 }
 /* ---- AND SOMEWHERE TO GO WHEN NOBODY WANTS ANYTHING ----
-   "we should also be able to point to a random destnation." Everything the plan could do was tied
+   He also asked to be able to pick a random destination. Everything the plan could do was tied
    to a quest, so the moment the city had nothing left to ask of you the map became a picture. This
    is the first thing on it that is not about quests at all: pick a person, anywhere in the city,
    and the arrow in the street will take you to them. Chosen from the people the pack declared —
@@ -7288,8 +7285,8 @@ function mapAnyBtn(){
 }
 $("mapbtn").addEventListener("click",openMap);
 /* tapping a mark is how a destination is chosen — the plan is the only place it can be, because
-   the plan is the only place you can see them all at once (owner, 2026-09-15: "i can choose my
-   destination"). A tap in open ground changes nothing: a miss must never clear what you picked. */
+   the plan is the only place you can see them all at once (the owner asked to choose
+   his destination). A tap in open ground changes nothing: a miss must never clear what you picked. */
 $("mapcv").addEventListener("click",e=>{
   const c=$("mapcv"),r=c.getBoundingClientRect();if(!r.width||!c.width)return;
   const sc=c.width/r.width,s=10;
@@ -7492,7 +7489,7 @@ function swEnd(e){
   swActive=null;
 }
 [cv,$("cv3")].filter(Boolean).forEach(el=>{ /* both canvases: the 3D camera swapped
-  the surface and took the swipe control with it (owner: "movement not working") */
+  the surface and took the swipe control with it (the owner found movement broken) */
   el.addEventListener("pointerdown",e=>{
     if($("world").hidden)return;
     swActive=e.pointerId;swSX=e.clientX;swSY=e.clientY;swMoved=false;
@@ -7677,8 +7674,8 @@ $("band").addEventListener("click",()=>{
   if(c.name){if(c.band)parkPrefs.band[c.name]=c.band;else delete parkPrefs.band[c.name];parkPersist();}
   toast(c.band?T().bandToast:T().bandOff,1600);
 });
-/* the two alebrije buttons (owner: "a button for random, another to vary through the ones created for
-   that animal"): they act on the animal you are beside (the same target as the treat and the bandana),
+/* the two alebrije buttons (the owner asked for one button for a random look and another to step through
+   that animal's looks): they act on the animal you are beside (the same target as the treat and the bandana),
    else on your own face paint. Random never repeats the current look; the toast says the look's name,
    which is how five names get learned without a menu (Pili). */
 function alePress(random){
@@ -7696,7 +7693,7 @@ function aleSetPick(key,i){
   if(key==="you"){const F=faceLooks();if(!F)return;alePick.hero=i;const lk=F[i];toast((T().youLb||"You")+" — "+(lk.name?(lk.name[lang]||lk.name.en):lk.id),1800);}
   else{const L=alebLooks();if(!L)return;alePick.animals[key]=i;const lk=L[i],c=CRIT.find(k=>(k.name||k.kind)===key);toast((c&&c.name||npcName(key)||key)+" — "+(lk.name?(lk.name[lang]||lk.name.en):lk.id),1800);}
   alePersist();aleRowBuild();}
-/* Settings → Alebrijes (owner, 2026-09-07: "a menu to choose the different alebrije styles"): pick who — your
+/* Settings → Alebrijes (the owner asked for a menu of alebrije styles): pick who — your
    face, or any animal with a name — then the look by its name. Built from content like the season row; hidden when
    the season hands out no looks. */
 function aleSubjects(){const out=[];if(faceLooks())out.push(["you",T().aleYou||"You"]);
@@ -7797,7 +7794,7 @@ function dogCmd(kind){
     if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);return;}
   tr[kind]=reps+1;parkPersist();
   c.task=null;c.layT=0;
-  /* holdT is what makes "stay and sit" mean he does NOT come through the door after you.
+  /* holdT is what makes a hold (stay, then sit) mean he does NOT come through the door after you.
      Follow stays ON — you are not made to re-train him — he is simply holding right now. */
   if(kind==="sit"){c.sit=true;c.next=now+4500;c.holdT=now+4500;toast("🐶 "+T().cmdOkSit,2200);}
   else if(kind==="down"){c.layT=now+5200;c.next=c.layT;c.holdT=c.layT;toast("🐶 "+T().cmdOkDown,2200);}
@@ -8020,8 +8017,8 @@ function ribbonSay(){
 }
 /* ---------- BUILDS — construction from a template, with variation ----------
    Don Güero is handed a template and builds from it, changing a few things each time
-   (owner, 2026-09-03: "assign him a house template that he can build and just add some
-   random customizations"). No network, no model: a template is content, and the engine
+   (the owner asked to give him a house template he builds from, adding a
+   few random changes). No network, no model: a template is content, and the engine
    only resolves choices and stamps tiles.
 
    Four architectural commitments, because this has to carry more than a casita later:
@@ -8092,8 +8089,8 @@ function resolveBuild(b){
 /* #265 — WHICH WAY A BUILT DOOR OPENS. The way out of a room a lot carries set you down one tile
    SOUTH of its door, always, whatever stood there: a door in a hut's north wall let you out inside
    the hut's own wall, a hatch in the bottom edge of the map let you out off the map, and the engine
-   said nothing at boot (planted at the builder junta, 2026-09-29). The owner, 2026-09-30: "an auto,
-   choose a door for now workflow when building so exits/doors exist."
+   said nothing at boot (planted at the builder junta, 2026-09-29). The owner asked for the build to
+   pick a door on its own for now, so every room has a way out.
    So the door opens onto the first side, in DOORSIDES order, that you can step out onto and walk on
    from. The step is on the map, not solid, not a door (you would be thrown straight through it), and
    not somebody who never moves; and beside it there is at least one more tile you can stand on,
@@ -8178,7 +8175,7 @@ function applyBuilds(){
   });
   roomNamesShared();
 }
-/* #269 — "and a warning that other rooms have the same name" (the owner, 2026-09-30). Two rooms MAY
+/* #269 — the owner asked for a warning when rooms share a name. Two rooms MAY
    share a name: a name is a label, and each keeps its own id and its own room. But a sign, a map or a
    trolley card that says "the gatehouse" twice cannot tell a person which is which, so it is said
    out loud, once per name and language, and nothing is refused. Only names a built room is part of:
@@ -8292,8 +8289,8 @@ if(SV&&SV.n){$("continueBtn").hidden=false;
   $("tpSkip").addEventListener("click",()=>{stripPassHash();$("tpFound").hidden=true;});
 })();
 applyAdmin();applyStakes();applyLang();applyCtl();applyTheme();camSet(camMode);
-/* the version shows on the opening page AND in Settings (owner 2026-09-02: "so i know
-   which im using") — the number a phone actually loaded, not the one a branch claims */
+/* the version shows on the opening page AND in Settings (the owner wants to know
+   which version he is using) — the number a phone actually loaded, not the one a branch claims */
 [$("verTag"),$("verIntro")].forEach(el=>{if(el)el.textContent=GN()+" · "+(typeof GAMEV!=="undefined"?GAMEV:"dev");});
 try{if(sessionStorage.getItem(SK("upd"))==="1"){sessionStorage.removeItem(SK("upd"));
   setTimeout(()=>toast("⬆️ "+(typeof GAMEV!=="undefined"?GAMEV:"")+" — "+T().updToast,3200),900);}}catch(e){}

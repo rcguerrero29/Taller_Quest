@@ -1,4 +1,4 @@
-/* The city record (#14 ❗El expediente — owner, 2026-09-07: "ok go for your recommendations"):
+/* The city record (#14 ❗El expediente — the owner approved the crew's recommendations):
    `status.json` beside the deployed game, written by the deploy, never by the game. Version and
    permits, nothing more: the version is what a clerk needs to say "you are on mq-v105" without a
    token; the permits are the open pull requests the owner authored — number, title, whether the

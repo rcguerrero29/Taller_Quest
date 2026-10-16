@@ -334,8 +334,8 @@ function findChromium() {
     });
     world = before.world; px = fx = before.px; py = fy = before.py; if (has3d) T3.yaw = before.yaw; camSet(before.cam);
     // ---- #132 / #133: a hair style has to look like its name ----
-    // Owner: "long hair looks like a beard, lets call it that, then create one that looks a bit
-    // more like long hair only not bearded" and "fro is also offf". Both are claims about pixels,
+    // The owner: the long hair looked like a beard, so call it that and make a long hair that
+    // is not bearded; and the fro was off too. Both are claims about pixels,
     // so both are measured in pixels: the person is drawn at the size they are seen on the street.
     {
       const HAIR = '#E01B24'; /* a colour nothing else in the drawing uses, so hair is countable */
@@ -491,7 +491,7 @@ function findChromium() {
         if (parseFloat(cs.borderRadius) < 4) P.push('#127: the looks dropdown is unstyled — it is the one control on the page that looks like nothing else'); }
     }
     // ---- fullscreen: the 3D buffer is the shape of the box it is shown in ----
-    // Owner, 2026-09-08: "its still blurry in full screen". `.viewport.fs` gives the canvas
+    // The owner still saw it blurry in full screen. `.viewport.fs` gives the canvas
     // `height:100% !important` and `object-fit:contain`. A drawing buffer whose aspect does not
     // match the element's box is then RESCALED by the browser before anyone sees it — at
     // 1440x900 a 2880x2304 buffer was resampled down to 1125x900, letterboxed with bars either
@@ -530,7 +530,7 @@ function findChromium() {
       document.getElementById('world').hidden = before.hid;
     }
     // ---- #131: one candy per window, and a candy smaller than the window it stands in ----
-    // Owner: "sugar skull on sills are overlapping". Two ways for that to be true, both checked
+    // The owner saw the sugar skulls on the sills overlapping. Two ways for that to be true, both checked
     // here for whatever pack this is run against.
     if (typeof propSill === 'function' && typeof fiestaProps === 'function') {
       const seasons = (typeof SEASONS === 'object' && SEASONS) ? Object.keys(SEASONS) : [];
@@ -615,7 +615,7 @@ function findChromium() {
       T3.renderer.getPixelRatio = gp; t3CheckK();
     }
     // ---- #39: the 3D-realism audit — a picture standing in the scene is not a thing with sides ----
-    // Owner, 2026-09-07: "the test should catch things like 2d image looking thing/objects." The 3D
+    // The owner asked for the test to catch things that look like flat 2D pictures. The 3D
     // builder tags every billboard it stands in a world as `flat`. FLAT_KNOWN is what is still flat
     // TODAY, and it only ever shrinks: a glyph flat and not on it fails the build (nothing new may
     // ship as a picture), and a glyph on it that is laid in this pack yet no longer flat fails too,
@@ -646,7 +646,7 @@ function findChromium() {
     /* 'A' came off on 2026-09-21, crew iteration 12 (la mueblería): the drafting table is a shape from parts —
        two feet, two columns, a stretcher, and the BOARD raked at 23° with its pencil rail, sheet and parallel
        rule (TILEART_MESH["A"] in content/meridian/art.js). It was the last piece of FURNITURE on this list, and
-       the owner's ask was furniture: "no i was just trying to make sure all furniture and this type of item".
+       the owner's ask was furniture: every piece of furniture and every item of that kind covered.
        Red first, the audit's own sentence: '"A" is no longer flat in 3D — take it off this game's row of
        FLAT_BY_GAME in test/engine.smoke.js (the key is "index.html") so the list keeps shrinking (#39)'.
        Still flat: 3 4 5 (the agility gear, which is machinery) and X (the site marker). */
@@ -936,7 +936,7 @@ function findChromium() {
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----
-     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please."
+     The owner asked for the dog agility course to be fixed too, shaped and beautified.
      Before the gear can be shaped, the line it is shaped across has to be the park's own. Until
      2026-09-29 the course was three of Meridian's tile coordinates written into the engine, so every
      park's dog ran Meridian's course: in a park with no gear, laps to three tiles of bare grass; in a
@@ -1029,9 +1029,9 @@ function findChromium() {
   fails.push(...agility);
 
   /* ---- THE PARK'S GEAR IS GEAR: A HURDLE HE GOES OVER, A TUNNEL HE GOES THROUGH, POLES HE WEAVES ----
-     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". And 2026-10-03:
-     "please place it but most importantly you had previously provided full tunnel - should also work for the pets to
-     go through but i cant fit in it".
+     The owner asked for the dog agility course to be fixed too, shaped and beautified. And 2026-10-03:
+     place it, and above all keep the full tunnel offered before: a pet goes through it and the player
+     cannot fit.
      Until mq-v232 the three pieces stood in the 3D camera as flat pictures that turned with the camera, and the dog
      ran the course along the ground: along the hurdle's bar, over a picture of an arch, straight past the poles. This
      asks what ships and supplies no number of its own (.claude/skills/guard, the first of the four ways):
@@ -1225,7 +1225,7 @@ function findChromium() {
   gear.N.forEach(l => console.log('  COUNT-ONLY: ' + l));
 
   /* ---- A TUNNEL A PET GOES THROUGH AND A PERSON CANNOT FIT IN — the seam, asked on a page where it is declared ----
-     Owner, 2026-10-03: "should also work for the pets to go through but i cant fit in it". `PETPASS` is a string of the
+     The owner, 2026-10-03: a pet goes through it and the player cannot fit. `PETPASS` is a string of the
      letters a pack says animals pass and people do not (engine/engine.js, grep `PETPASS`). It is OFF unless a pack says
      it: a pack that says nothing walks exactly as before — Meridian included, until its owner decides. So it is asked on
      a second page where it IS declared: the pack's own string when it has one, and otherwise the engine's tunnel letter,
@@ -1337,7 +1337,7 @@ function findChromium() {
 
   /* ---- THE DOG DIGS ABOUT 8% OF WHAT HE DOES, WHEREVER HE IS ----
      Canon (2026-09-01, docs/IDEAS.md:436): digging was a puppy phase, cut to about 8% of
-     his whims from about 25%. Owner, 2026-09-29: "ok make it about 8 percent yes."
+     his whims from about 25%. On 2026-09-29 the owner settled on about 8 percent.
      The same day as the canon, the course and the greeting between dogs were slotted in ABOVE
      digging with their conditions in the else-if, so every roll they declined fell through to the
      hole: away from the park he dug 22.5% of the time, nearly the 25% the canon had just cut, and
@@ -1346,7 +1346,7 @@ function findChromium() {
      dogWhim itself, for a dog made here — away from the park, in the park alone, and in the park with
      another dog beside him. The share is of the whims that DO something; a whim that passes because
      it cannot happen here is not a thing he did.
-       · 6–10%, because the canon and the owner both say "about", and one set of odds has to serve
+       · 6–10%, because the canon and the owner both give it as approximate, and one set of odds has to serve
          three places where different whims apply, so it cannot land on 8.0 in all three; two points
          either side still tells the canon from 22.5 and 3.5 at a glance.
        · a whim that cannot happen here PASSES — it does not turn into something else. Asked as a
@@ -1432,9 +1432,9 @@ function findChromium() {
   fails.push(...digging.P);
 
   /* ---- OFF THE PARK HE HAS THINGS TO DO: HIS OWN STICK, AND WATER AT A RESTAURANT DOOR ----
-     Owner, 2026-09-29: "give him other things to do to keep him busy? running after his own stick or
-     other dog things, chasing after another character. traveling to the bed on my office. awooing
-     infront of a restaurant and a worker brings them a water bowl. ya kno?"
+     The owner, 2026-09-29, asked for other things to keep him busy: chasing a stick he throws himself, and
+     other dog things, chasing another character, going to the bed in the office, howling
+     outside a restaurant until a worker brings out a water bowl.
      Away from the park two bands of his whims used to pass, because the course and the greeting
      cannot happen there. These fill them. Asked by driving the whim and then the dog, step by step,
      on a clock this check owns (never the page's), for a dog made here:
@@ -1585,10 +1585,10 @@ function findChromium() {
   fails.push(...busy);
 
   /* ---- WHAT THE DOG LEAVES ON THE GROUND IS ON THE GROUND IN EVERY CAMERA (#267) ----
-     The owner's issue, 2026-09-29: "When the dog digs a hole or leaves a mess, it only shows in the flat
-     top-down and front cameras. In 3D, which is Meridian's default camera, and in iso, there is nothing on
-     the ground. You see the dog dig and no hole appears. Done when what the dog leaves on the ground shows
-     in every camera." Asked as pixels, the way a player misses it (docs/POSTMORTEM.md §3). A dog made here
+     The owner's issue, 2026-09-29: what the dog digs or leaves showed only in the flat
+     top-down and front cameras, and nothing at all in 3D, Meridian's default camera, or in iso: the dog
+     digs and no hole appears. It is done when what he leaves on the ground shows
+     in every camera. Asked as pixels, the way a player misses it (docs/POSTMORTEM.md §3). A dog made here
      is sent by his own whim — the roll is swept until he digs, and until he leaves the other thing, so no
      band is typed out here — on an open tile with open ground all round; the person you steer stands on
      that spot, and every camera this shell has is asked three things:
@@ -1994,7 +1994,7 @@ function findChromium() {
   petals.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- AND A ROMP WITH SOMEBODY NEAR: THEY LAUGH, NOBODY RUNS ----
-     The owner, 2026-09-29: "chasing after another character". Away from the park the greeting's roll
+     The owner's ask: a dog chasing another character. Away from the park the greeting's roll
      cannot greet another dog, so it sends him to the nearest person in reach: he runs to their feet and
      goes round them a few times, and they laugh. Friendly, the whole way: he never stands on them, and
      they never move away from him — the page's own wander step is run between his hops, so a person who
@@ -2069,8 +2069,8 @@ function findChromium() {
   fails.push(...romp);
 
   /* ---- A DOG IS NEVER LEFT STANDING STILL (#268) ----
-     The owner, 2026-10-01: "no, i just think we can make it so he appears no matter what... i dont
-     understand why he gets stuck". And the day before: "i dont want him to leave me".
+     The owner, 2026-10-01: a dog must never stay stuck, whatever happens, and he could not
+     see why it happened. And the day before: the dog should not wander off from him.
      Why he got stuck: a dog wanders only a few steps around his own spot, and an activity that ended
      further away than that left every step he tried refused, so he stood there until something else
      moved him. Meridian's agility course ends seven steps from the park dog's spot. Measured on the
@@ -2491,7 +2491,7 @@ function findChromium() {
   if (!onePlace.P.length) console.log('  ONE PLACE: every dog kind, drawn standing while dogPose answered another pose, was that pose to the pixel (both clocks moved between the drawings); dogHomeSpot put him only where dogCanStand allowed');
 
   /* ---- A SAVE THAT DID NOT HAPPEN HAS TO SAY SO ----
-     Owner, 2026-09-16: "how do we fix the save failing silently?" It was nineteen copies of
+     The owner asked how to stop the save failing silently. It was nineteen copies of
      `try{localStorage.setItem(...)}catch(e){}`, so a device out of room let the game go on playing
      and simply stop remembering — no error, no warning, nothing in the log, and an afternoon gone
      when the tab closed. docs/GAUGE.md's silent zero, in the one place where the thing lost belongs
@@ -2539,7 +2539,7 @@ function findChromium() {
   fails.push(...silentsave);
 
   /* ---- A PACK MAY DESIGN ITS PAPER, AND MAY NOT REACH OUT OF IT ----
-     ARCH-LOG A15, built 2026-09-16 on the owner's "ok go for the seam". The gap it closes: a pack
+     ARCH-LOG A15, built 2026-09-16 once the owner approved the seam. The gap it closes: a pack
      shipped nine JavaScript files and no CSS, so Meridian's civic-form typography was hardcoded for
      every world that will ever run on this engine. The risk it opens, in A15's own words, is "a hole
      a pack can reach through to restyle the game's chrome, the HUD or the world" — so this asks BOTH
@@ -2668,7 +2668,7 @@ function findChromium() {
   fails.push(...paper);
 
   /* ---- THE PLAN DRAWS EVERY STREET, AND THE ARROW STILL POINTS AT THE REAL PLACE ----
-     Reported from play, 2026-09-16: "im shown the other street map on calle 2." The plan drew
+     Reported from play, 2026-09-16: on Calle Dos he was shown the other street's map. The plan drew
      `WORLDS[PL.street]` and nothing else, so a second STREET could only ever be a pin in the corner
      of the first one's paper — right for an interior, wrong for a street.
 
@@ -2809,8 +2809,8 @@ function findChromium() {
   });
   /* ---- NOTHING MAY ROOF OVER THE WORLD ----
      The owner, about the loft's stairwell, twice — and the second time because the first answer
-     was me explaining why it was fine: "i still think the stair railing screenshot i sent is wrong,
-     even if it were a seethrough wall thats not right."
+     was me explaining why it was fine: the railing in his screenshot was still wrong,
+     and would be wrong even as a see-through wall.
      What it actually was: the APRON. A plane added so the city carries on into the dark past the
      edge of the map, `w.W*3+60` by `w.H*3+60`, centred on the world, at y=-0.05. Its own comment
      said "well outside it" and its geometry was a sheet over everything — so every sunken thing in
@@ -2862,7 +2862,7 @@ function findChromium() {
   /* ---- NOBODY MAY BE WALLED OUT BY SOMEBODY STANDING (R11) ----
      Open in `docs/REGRESSION.md` since 2026-09-13 and reddening a suite about one run in
      twenty-five, which is the most expensive shape a bug has. The owner asked the question that
-     settles it: "why doesnt r11 walk around?" — and the answer is that there is nothing to walk
+     settles it — why R11 did not walk around — and the answer is that there is nothing to walk
      around. A person is stamped into the grid as `"N"`, three readers treat `"N"` as masonry, and
      when a wanderer steps into a corridor one tile wide the map really is cut in two.
      MEASURED before anything was written: of the fifteen worlds, only `ex` has chokepoints AND
@@ -2928,9 +2928,9 @@ function findChromium() {
   fails.push(...walled);
 
   /* ---- EVERY THING ON THE PLAN IS DRAWN AS A THING, AND A TAP ANSWERS ON THE MAP ----
-     Owner, 2026-09-16: "the map says tap a mark, but cannot tell if a mark is tapped. also... the
-     squares/dots for people are garbage, we really cant improve this so i can tell what things
-     are?" Both were true and the inventory said why: of 29 glyphs on Meridian's plan, EIGHT had no
+     The owner, 2026-09-16: the map said to tap a mark and did not show that one was tapped; and the
+     squares and dots for people said nothing, and he asked for marks that tell what things
+     are. Both were true and the inventory said why: of 29 glyphs on Meridian's plan, EIGHT had no
      map colour at all and fell through to the open-ground fill, so a desk, a chair and a stove were
      painted as floor — invisible, silently, for as long as the plan has existed. Nothing caught it
      because nothing ever compared a tile against the ground it was standing on.
@@ -3043,7 +3043,7 @@ function findChromium() {
   plan.filter(l => /^NOTE-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- THE BEARING POINTS AT THE PLACE, AND STAYS ON THE SCREEN ----
-     The owner picked the street arrow over the crew's advice on 2026-09-15 ("bearing lets try 2"),
+     The owner picked the street arrow over the crew's advice on 2026-09-15 (bearing option 2),
      so it has to be right: an arrow that points confidently at the wrong wall is worse than no
      arrow, and it is exactly what happens if the 3D camera's yaw is forgotten, or if the sign of
      one term is flipped, neither of which any reading of the code would catch.
@@ -3440,8 +3440,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...tallw);
 
   /* ---- #140 / #149: a thing you stand behind must not swallow you, and its empty corners are not solid ----
-     The owner walked into it twice: "there are still overlaps with other objects where i seem to walk on
-     them", and separately, people losing their quest marks near a desk. Two different faults with one
+     The owner walked into it twice: other objects still overlapped him, so he seemed to walk on
+     them; and separately, people losing their quest marks near a desk. Two different faults with one
      camera between them.
      #149 first, because it is the plain one. Every prop, tree crown and cutout in this world is a PICTURE
      on a card, and most of that card is see-through. A see-through pixel that still writes depth punches a
@@ -3509,7 +3509,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...ghost);
 
   /* ---- A TREE YOU CAN WALK UNDER HAS TO KNOW HOW TALL IT IS ----
-     Owner, 2026-09-22: "can we make it tall so we can walk underneath it all ghostly?"
+     The owner, 2026-09-22, asked for a tree tall enough to walk under, eerily.
      There are two `t3Top`s in engine3d.js and they are not the same thing, which is how this
      survived: `m.t3Top` is a PROPERTY the merged mesh carries (its tallest vertex, set where the
      parts are baked), and `t3Top(o)` is the FUNCTION the get-out-of-the-way rule asks. The
@@ -3667,9 +3667,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   ghostVals.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- #155: a place can fall off the map, and the pack says what it is ----
-     The owner: "do fix the part where a missing 'world' wouldn't register. please make it so we
-     have some basic tests. open world with 10? ok we check for the setting and 10 cities or world
-     or whatever."
+     The owner asked for the fix where a missing world went unreported, and for some basic tests
+     — an open world of ten, say: check the setting, and ten cities or worlds
+     or the like.
      Two checks, and the first one is the reason the second is trustworthy. The audit used to skip
      any world nothing reached, because at a fresh boot seven of Meridian's fifteen worlds are behind
      doors the city has not built yet. So it also skipped the case where a district simply lost its
@@ -3862,8 +3862,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...grows);
 
   /* ---- TAGS L15 / ARCH-LOG A5+A7: a pack says what a glyph looks like, and which cameras it has ----
-     The owner, 2026-09-10: "why cant we have like a pack can draw its own tree and layer for art?
-     maybe im mixing but just trying ot reuse what we can." He was not mixing them up.
+     The owner asked why a pack could not draw its own tree, with layers for its art, and wondered
+     whether he was mixing two things up while trying to reuse what we can. He was not mixing them up.
      A glyph has FOUR views and a pack could reach two. TILEART said the top, TILEART_SIDE said the
      profile, the leafy top of a tree was hardcoded in engine3d.js with a hardcoded green, and there
      was nowhere at all to describe the isometric view. And every game shipped all four cameras
@@ -4191,8 +4191,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...badframe);
 
   /* ---- the trolley is a vehicle ----
-     The owner, 2026-09-11: "i mentioned at some point having a driver and stuff as well as wheels,
-     we want to be realistic, crew!" He was describing it exactly. t3Trolley's own comment called it
+     The owner had asked for a driver and the like as well as wheels —
+     realistic, he told the crew. He was describing it exactly. t3Trolley's own comment called it
      "the tram, one box on the line", and it was: a body box, a roof box, and six window slabs on the
      two long sides only, floating 0.09 above the road on nothing.
      Measured before this test existed, in the engine's own units, which is what makes the sentence
@@ -4301,8 +4301,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   tram.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- a person is shorter than the door he walks through, and a SIGN is not a person ----
-     The owner, 2026-09-22: "you can make my character smaller as i mentioned before for the cool
-     looks." He was right about a thing nobody had measured: every one of the thirty-six stood 1.12
+     The owner, 2026-09-22: his character may be smaller, as he had said before, because it
+     looks good. He was right about a thing nobody had measured: every one of the thirty-six stood 1.12
      of a doorway, so the whole cast walked under lintels shorter than they are, in both games, since
      the actor card got its size. T3PERSON is that size now and this is the sentence it has to keep.
      ASKED IN PIXELS AND AGAINST A REAL DOOR. His height is where the paint starts on his own card,
@@ -4376,10 +4376,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   person.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- and a person behind the trolley is BEHIND it, and can still see himself ----
-     The owner, 2026-09-21: "we should fix the trolley weirdness." Ridden by the line inspector (crew
+     The owner, 2026-09-21, asked to fix the trolley acting oddly. Ridden by the line inspector (crew
      iteration 12), every position on both lines in all four cameras: the one thing a tram would never
      let you do is stand on its roof, and this one did. Then, 2026-09-22, having been shown the two
-     cures and asked to pick: "for the inspector- lets make it seethrough."
+     cures and asked to pick: for the inspector, make it see-through.
      SO THIS GUARD READS TWO HALVES AND NOT ONE, and the first draft — mine, yesterday — read one.
      It asked whether the hero changed a pixel of the tram, and answered "a person standing behind a
      tram changes nothing in front of him". That sentence is only true of an OPAQUE tram. It is the
@@ -4452,7 +4452,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   onRoof.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- and in the flat cameras the trolley is painted in its row's turn ----
-     The owner, 2026-09-21, naming the weirdness: "looks like the person is laying on the trolley."
+     The owner, 2026-09-21, naming the oddity: a person looked to be lying on the trolley.
      What he saw was the 3D camera, the check above. In the flat cameras the isometric camera painted
      the car LAST, after everybody, so a person standing in front of the car was painted under it
      (86 pixels of him, measured that day). That was moved the same day (drawIso, grep
@@ -4536,7 +4536,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          with the car on it is the one you steer: tryStep asks isSolid, the car is not solid, and a real ArrowDown from the
          platform walks you into a dwelling car, which holds, and out the other side. Half a step off the platform your feet
          are still BEHIND its row and the car must cover you: until mq-v217 the front camera painted the car before its
-         depth queue, so your legs went on its roof, the owner's "laying on the trolley" in the camera this note had called
+         depth queue, so your legs went on its roof — lying on the trolley, as the owner saw it — in the camera this note had called
          fixed; and in iso a car painted under everybody went unnoticed. So the step is swept in eighths of a tile on each
          side of the rails' row (the row itself, inside the car, is neither side), counting only where his BODY and the
          car's BODY meet: a drop shadow on either is a tint, not an order (with only his body required, 4 pixels of a
@@ -4575,9 +4575,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   flatTurn.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- a string seen end-on is not a string ----
-     The owner, 2026-09-21, a frame from the 3D camera turned a quarter on Calle Principal: "the
-     skeleton now seems to float in one perspective and with the papel picado, looks like its buggy or
-     broken." A swag is hung ALONG a row at head height. Turn the camera a quarter and you look down
+     The owner, 2026-09-21, a frame from the 3D camera turned a quarter on Calle Principal: from one angle
+     the skeleton seemed to float, and with the papel picado it looked buggy or
+     broken. A swag is hung ALONG a row at head height. Turn the camera a quarter and you look down
      that row: the flags are edge-on and vanish, and the string is a bare dark line from the horizon to
      the foreground, straight through whoever stands under it — over his head, between his legs, through
      his shadow — and a person on a line reads as HANGING from it. Measured in that frame (the line
@@ -4654,7 +4654,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   endOn.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
   /* ---- AN OFRENDA STANDS ON SOMETHING (crew iteration 14, la ofrendera) ----
-     The owner, 2026-09-22: "the altar above the table at dona tenchas is not ok, please fix." It was
+     The owner, 2026-09-22, asked to fix the altar over the table at Doña Tencha's. It was
      0.29 of a tile up in the air over her table, and the cause is a proxy of the oldest kind: the
      season-prop pass asked `wallH(g)` — 0.55 + the glyph's declared `lift` × 0.042, which is the
      height of a BOX — for a tile whose shape is a MESH. `wallH("T")` is 0.802; the table's own parts
@@ -4809,8 +4809,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...troLoud);
 
   /* ---- ...and a line that declares a TRAIN gets a train ----
-     The owner, 2026-09-22: "we want to make this custom as possibly can turn in to a train of trolleys
-     in other games and a new level unless you recommmend otherwise." `cars: n` on the line's own row
+     The owner wanted this as customisable as it can be — a train of trolleys
+     in other games, a new level — unless the crew advised otherwise. `cars: n` on the line's own row
      is the whole seam (engine.js, troCars). NEITHER GAME DECLARES IT — which is exactly why it needs
      this: a seam no shipped pack uses is a seam that rots in silence, and the next person to write
      `cars: 3` in a second game finds out on their own screen whether it was ever real. So the check
@@ -4931,7 +4931,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...troCams);
 
-  /* ---- THE DOOR IS SHUT WHEN THE WORLD CHANGES (owner, 2026-09-17: "i think i want that option A") ----
+  /* ---- THE DOOR IS SHUT WHEN THE WORLD CHANGES (the owner chose option A) ----
      A portal used to swap the world between one frame and the next and then block input for 450ms
      with nothing drawn in it — an instant cut, then standing still somewhere you did not walk to.
      The transition slot existed and was empty.
@@ -5050,7 +5050,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...doorway.filter(l => !/^COUNT-ONLY: /.test(l)));
   doorway.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
-  /* ---- A ROOM YOU HAVE BEEN IN IS STILL STANDING (owner, 2026-09-17: "3. ok go for it") ----
+  /* ---- A ROOM YOU HAVE BEEN IN IS STILL STANDING (the owner approved item 3) ----
      There was one 3D scene, and every door threw it away and built another: 1.4ms for the smallest
      room, 18.4 for Calle Principal, and a 237ms hole after the swap once the upload is counted —
      the thing that made the new door POP instead of open. They are kept now.
@@ -5102,8 +5102,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...scenes);
 
   /* ---- EVERY PLACE IS ON THE MAP, AND THE MAP AGREES WITH THE DOORS ----
-     Owner, 2026-09-17, asked whether an interior belongs on a street map at all: "yeah i mean a map
-     implies this lol". He is right, and the city was not keeping that promise — six of fifteen
+     Owner, 2026-09-17, asked whether an interior belongs on a street map at all: a map
+     implies it. He is right, and the city was not keeping that promise — six of fifteen
      worlds were on the plan in NO form, including the park, which is the third-largest world in the
      game. Seven more had a hand-typed dot, and every one of those seven agreed exactly with the
      door that leads there: seven copies of a fact the map already had.
@@ -5165,9 +5165,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...places);
 
   /* ---- a document may carry a DRAWING, not only words ----
-     The owner, 2026-09-11, on the crew mural: "can we have functionality there wehre you see
-     tiles/icons from afar but you get close and can interact to see it full screen- then thats how
-     pixels/art can be used there by agents".
+     The owner, 2026-09-11, on the crew mural: tiles and icons you see
+     from afar, and close up you interact to see one full screen — which is how
+     agents can put pixel art there.
      Both halves of that nearly existed. A thing you notice from across a room and walk up to is
      READS + the breathing mark + the Read button. A panel that opens over the world is docOpen. But
      the reader could only render WORDS — h, p, note, red, blank, kv, table, q, btn, sel, form — so
@@ -5238,9 +5238,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.push(...docArt);
 
   /* ---- A WINDOW A WALL DECLARES IS A WINDOW YOU CAN SEE, AND IT HAS A LEDGE ----
-     Owner, 2026-09-17: "the skull on a non existing or visible window sill overlaps a store front
-     that was initially a placeholder for a mural… if there were a window sill there, it should be
-     drawn". He was exactly right, and this is the FIFTH time this bug has been answered — the four
+     The owner, 2026-09-17: a skull on a sill that is not there overlaps a shopfront
+     that began as a placeholder for a mural; if there is a sill, it should be
+     drawn. He was exactly right, and this is the FIFTH time this bug has been answered — the four
      before it all argued about how big the sugar skull should be. Rendered at 8x before touching
      anything, the cause was plain: `TILES.win` is a rect the sill props, the dusk lighting and the
      candy's ledge are ALL positioned from, and nothing had ever drawn it. The plain facade painted
@@ -5334,9 +5334,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...sills);
 
-  /* ---- A FLIGHT IS WALKED, NOT TELEPORTED (owner, 2026-09-17: "ok lets do b") ----
-     What he reported: "that door right there to the top of a staircase. until you figure out how
-     to teleport in my side of the screen." The code agreed with him in its own comment — the
+  /* ---- A FLIGHT IS WALKED, NOT TELEPORTED (the owner chose option B) ----
+     What he reported: that door, to the top of a staircase, until a way is found
+     to arrive on his side of the screen. The code agreed with him in its own comment — the
      avenue door put you on the LANDING of Nolasco's stairs, at the top, with the whole climb
      behind you and none of it walked.
 
@@ -5404,8 +5404,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         tiles.push([a + r.L, y]);                      /* and the landing at the head, depth 0 */
         runs.push({ wid, tiles });
       }});
-    /* ZERO IS AN ANSWER, AND IT HAS TO BE THE RIGHT ONE (owner, 2026-09-17: "can we make the
-       guards smarter instead of just making them notes?"). He is right and the note was a cop-out:
+    /* ZERO IS AN ANSWER, AND IT HAS TO BE THE RIGHT ONE (the owner asked for smarter
+       guards rather than more notes). He is right and the note was a cop-out:
        a guard that says "I measured nothing" is still a guard that measured nothing, and next week
        nobody reads the note. A five-tile world that never digs a hole genuinely owes this nothing —
        but a shell whose maps are FULL of wells and whose detector has stopped seeing them owes it
@@ -6018,8 +6018,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      Meridian's lots casita-de-don-1 and casita-de-don-2 and Doña Tencha's house, and Doña Tencha,
      disappeared, with nothing in the log (measured 2026-09-30, in a copy of this repository). And the
      save cut the id of whatever place you stood in to twelve letters, so a place with a longer id sent
-     you home on every reload. The owner, 2026-09-30: "why dont they have different IDs? and a warning
-     that other rooms have the same name".
+     you home on every reload. The owner asked why rooms did not have different ids, and for a warning
+     when rooms share a name.
      A PROBE, SAID PLAINLY, on a page of its own: a yard whose id is longer than twelve letters, and two
      lots whose ids share their first twelve, each carrying a room of a different width and the SAME
      name. Real arrow keys walk into each; a real reload and a real press of Continue ask where you wake;
@@ -6384,7 +6384,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   }
 
   /* ---- ANOTHER PLAYER'S LOOK IS CHECKED THE WAY A SAVED LOOK IS (#32) ----
-     The owner, 2026-10-01: "ok fix the colour check". In multiplayer another player's character arrives
+     The owner approved fixing the colour check. In multiplayer another player's character arrives
      from THEIR device and is drawn for everyone who can see them, so what their device sent is data: a
      broken or hostile value must not freeze or break the drawing, and any real colour stays allowed.
      Nothing fills PEERS yet (the NET seam is empty), so this fills it the way a network would: each stranger
@@ -6554,8 +6554,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      A room a lot carries let you out one tile SOUTH of its door, always, whatever stood there. At the
      builder junta (2026-09-29) two huts were planted in a copy of the gauge: one with its door in its
      north wall, which let you out inside its own wall, and a hatch in the bottom edge of the map, which
-     let you out off the map — and the engine said nothing at boot. The owner, 2026-09-30: "an auto,
-     choose a door for now workflow when building so exits/doors exist." So a door opens onto a side you
+     let you out off the map — and the engine said nothing at boot. The owner asked for the build to
+     pick a door on its own for now, so every room has a way out. So a door opens onto a side you
      can stand on and walk on from — south first, as every door that shipped already does — and a door
      with no such side is refused out loud.
      A PROBE, SAID PLAINLY: no game on the public site has a door that does not face south, so this
@@ -6643,7 +6643,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   }
 
   /* ---- WITH TWO PEOPLE BESIDE YOU, ENTER TALKS TO THE ONE YOU FACE (#285) ----
-     The owner, 2026-10-01: "enter talks to the person you face first sounds good", answering the order
+     The owner agreed that Enter talks to the person you face first, answering the order
      put to him: the one you face, then the one with a quest for you, then the nearest. Before it, Enter
      (and the Talk button it presses) went to whoever came first in the world's list of people: in
      Meridian's own office, standing between Priya and Theo and facing Theo, Enter opened Priya's quest.
@@ -6990,7 +6990,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   await browser.close();
   /* COUNT-ONLY lines are what a check SAW, not what it found — "2 flights walked in 15 worlds",
      "21 portals declared", "3D declined". They exist so a zero is visible instead of silent
-     (owner, 2026-09-17: "can we make the guards smarter instead of just making them notes?"), and
+     (the owner asked for smarter guards rather than more notes), and
      they are printed rather than failed. One filter at the end, so a new check cannot forget one. */
   fails.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   fails = fails.filter(l => !/^COUNT-ONLY: /.test(l));

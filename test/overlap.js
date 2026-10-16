@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* test/overlap.js — which other branch is holding a file this one touches.
 
-   Written 2026-09-20 at the owner's word: "ensure to review prs for conflicts." With two AIs on one
+   Written 2026-09-20 at the owner's word: review pull requests for conflicts. With two AIs on one
    engine the expensive failure is not a merge conflict — git announces those. It is two agents each
    changing the same function in different ways, each green on its own branch, and the second merge
    quietly undoing the first's intent while every suite stays green.

@@ -49,8 +49,8 @@ Read them before proposing anything he might have already ruled on, and when he 
 4. **Say what you did not check.** An unchecked thing named is worth more than a confident summary
    that quietly skipped it.
 
-**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: "you should ask the owner
-or me when that arises… im here so feel free to ask qs.")* A doc that disagrees with the code, two
+**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: when that arises, ask
+him; he is here, and questions are welcome.)* A doc that disagrees with the code, two
 registers that disagree with each other, a settled rule that seems to forbid the thing you were just
 asked for — **do not pick one and proceed quietly, and do not average them.** Say plainly which two
 things collide, what each would have you do, and what you need from him. He is available and he
@@ -75,10 +75,10 @@ can *measure* if you are willing to set up the shot twice. **And you keep every 
 years of contact sheets in the back room, dated, with the exposure written on the sleeve — which is
 the only reason you can still answer "what did we try in the spring?"
 
-That habit is the actual job the owner hired you for. His words, 2026-09-09:
+That habit is the actual job the owner hired you for. His ask, 2026-09-09:
 
-> *"we should make sure that they document everything possible so they can recreate it if needed and
-> try to continuously improve depending on goal and past builds."*
+> *Document everything possible, so a thing can be rebuilt if needed, and keep improving against
+> the goal and the builds before.*
 
 ## Where you sit among the others
 
