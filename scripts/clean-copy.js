@@ -19,7 +19,8 @@
       "why we built it this way" note) are copied in last at the same path, and cleaned like the rest.
    4. READ-BACK: the whole copy is read again, code strings included, and every file name too. A mapped
       detail anywhere is a red, named by rule id and file:line and never by the term; in a name, so is a word of
-      the list whole, in any case and without its accents (a file whose name holds one as a reader would read it
+      the list in any case and without its accents, whole or glued onto other letters or a digit (a file whose name
+      holds one as a reader would read it
       is named by its place in git ls-files order and a fingerprint of its path, never by any part of its name, on
       every line this tool prints, the diff check's list included). A detail in a code STRING is red on purpose:
       whether to change what a player sees is a decision, not a find-and-replace.
@@ -495,15 +496,26 @@ function checksOf(rules) {
    still holds it, and so does a term of two words, or with an apostrophe, written as one), and so does anything
    else given (what the checks found in the text: a pattern's match, glued); and every check again in any case (a
    pattern too) in each folder and file name, read with - _ . as spaces and with a word broken where a capital or a
-   digit starts ("OakHollow2" reads "Oak Hollow 2") */
+   digit starts ("OakHollow2" reads "Oak Hollow 2"). found: folded, as fold() leaves them.
+   strict, where a name is a red for it (survivors): a word of the list glued onto other letters or a digit inside the
+   name's words, its own spaces and apostrophes written or left out, or written as whole words of the name in a row
+   ("oak-hollow" for "Oakhollow"); never one made by chance across a separator of the name, out of the end of one of
+   its words and the start of the next, which gluing the whole name together finds: that hides the name (a harmless
+   excess) but is no word a reader reads. Every check in any case is the same in both readings */
+const nearRe = t => new RegExp(esc(t).replace(/ /g, ' ?'));
+const wholeRun = (words, g) => words.some((w, i) => { let s = ''; for (let j = i; j < words.length && s.length < g.length; j++) { s += words[j]; if (s === g) return true; } return false; });
 function seenIn(rules, checks) {
-  const plain = rules.filter(r => r.rule === 'replace' || r.rule === 'drop').flatMap(r => Array.isArray(r.find) ? r.find : [])
-    .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(glue).filter(Boolean);
+  const terms = rules.filter(r => r.rule === 'replace' || r.rule === 'drop').flatMap(r => Array.isArray(r.find) ? r.find : [])
+    .concat(rules.flatMap(r => r.path && typeof r.path === 'object' ? Object.keys(r.path) : [])).filter(t => typeof t === 'string').map(fold).filter(Boolean);
+  const plain = terms.map(t => t.replace(/ /g, '')), near = terms.map(nearRe), nearOf = new Map();
   const anyCase = checks.map(c => new RegExp(c.re.source, c.re.flags.replace(/[gi]/g, '') + 'i'));
   const views = seg => { const sp = seg.replace(/[-_.]+/g, ' '); return [seg, sp, sp.replace(/\p{Ll}(?=\p{Lu})|\p{L}(?=\p{N})|\p{N}(?=\p{L})/gu, '$& ')]; };
-  return (name, found = []) => {
-    const flat = glue(name), segs = String(name).split('/');
-    return plain.some(t => flat.includes(t)) || found.some(t => flat.includes(t)) || anyCase.some(re => segs.some(seg => views(seg).some(v => re.test(v))));
+  return (name, found = [], strict = false) => {
+    const segs = String(name).split('/');
+    if (anyCase.some(re => segs.some(seg => views(seg).some(v => re.test(v))))) return true;
+    if (!strict) { const flat = glue(name); return plain.some(t => flat.includes(t)) || found.some(t => flat.includes(t.replace(/ /g, ''))); }
+    const folded = fold(name), words = folded.split(' '), re = t => { if (!nearOf.has(t)) nearOf.set(t, nearRe(t)); return nearOf.get(t); };
+    return near.some(x => x.test(folded)) || found.some(t => re(t).test(folded)) || plain.concat(found.map(t => t.replace(/ /g, ''))).some(g => wholeRun(words, g));
   };
 }
 
@@ -537,11 +549,11 @@ function survivors(files, rules, bare = false) {
     });
     return H;
   });
-  const sees = seenIn(rules, checks), matched = [...new Set(found.flat().map(h => glue(h.m)).filter(Boolean))];
+  const sees = seenIn(rules, checks), matched = [...new Set(found.flat().map(h => fold(h.m)).filter(Boolean))];
   /* a name holds a word of the list the way a reader reads it: in any case, without its accents, with anything but a
      letter or a digit as a space, and the word whole (a place's name in lower case in "docs/<place>-moving-day.md").
-     Whole words only: a short word of the list glued inside a longer one ("ab" in "tabs") is not a reader's word, and
-     stays only hidden */
+     Whole words only, for the rule it names: a word glued onto other letters or a digit is found below, as a name the
+     reading hides, and is a red there too */
   const readerWords = rules.filter(r => r && (r.rule === 'replace' || r.rule === 'drop')).flatMap(r => (Array.isArray(r.find) ? r.find : []).map(t => ({ r, t: fold(t) })))
     .filter(x => x.t).map(x => ({ r: x.r, re: new RegExp('(?:^| )' + esc(x.t) + '(?: |$)') }));
   const P = [];
@@ -564,6 +576,13 @@ function survivors(files, rules, bare = false) {
     const where = bare ? place + (file != null ? ' (no name is printed on a public log)' : '') : label ? place : hidden ? place + ' (its name holds a private detail, so it is not printed)' : null;
     const rule = c => 'rule #' + c.r.id + (bare ? '' : ' (' + c.r.kind + ')');
     named.forEach(c => P.push(rule(c) + ': a file name carries it: ' + where));
+    /* a name the reading above hides, where no rule's own match and no whole word named it and nothing in its text, is
+       a red by seenIn's strict reading: a word of the list glued straight onto other letters or a digit inside one of
+       the name's words ("<place>map.png", "<place>2.png"), what a check finds in it in any case, or what a check found
+       in any text. Only a word made by chance across a separator of the name, out of the end of one word and the start
+       of the next, is hidden and not a red. A short word of the list inside a longer one ("ab" in "tabs") is a red
+       too: rename the file, or make the word in the list longer */
+    if (read && hidden && !named.length && !found[i].length && sees(file, matched, true)) P.push('a file name holds a private detail: ' + where);
     found[i].forEach(({ c, line }) => P.push(rule(c) + ' survives at ' + (where ? 'line ' + line + ' of ' + where : file + ':' + line)
       + (bare || label || kindOf(file) === 'prose' ? '' : ' (' + (kindOf(file) === 'data' ? 'a data file, never rewritten' : 'in code: a string or code is never rewritten') + '; decide it)')));
   });
@@ -839,6 +858,12 @@ function selftest() {
   mark(lbare.length === 10 && bareNames.every((x, k) => /: a file name carries it: /.test(lbare[2 * k]) && lbare[2 * k].indexOf(' file ' + (k + 1) + ' in git ls-files order') > 0 && lbare[2 * k + 1].indexOf('line 1 of file ' + (k + 1) + ' in git ls-files order') > 0)
     && lbare.every(l => !/orblund|strassberg|aelmsby|lukowo|thorvik/i.test(l)),
     'a name spelt with the plain letters of ø ß æ ł þ and the rest is not printed, and is red', JSON.stringify(lbare));
+  /* a name holding a word of the list glued straight onto other letters or a digit, with nothing between, was hidden by
+     the read-back and not flagged, so the copy said OK and published the file under that name */
+  const gn = ['docs/' + lo + 'notes.md', 'art/' + T.town.toLowerCase() + 'map.png'];
+  const lglue = survivors([{ file: gn[0], text: '# Notes\n\nThe ferry leaves at noon.\n', n: 4, from: gn[0] }, { file: gn[1], text: null, n: 9, from: gn[1] }, { file: 'docs/b.md', text: 'fine' }], rules);
+  mark(lglue.length === 2 && lglue.every((l, k) => l === 'a file name holds a private detail: file ' + [4, 9][k] + ' in git ls-files order, fingerprint ' + fingerprint(gn[k]) + ' (its name holds a private detail, so it is not printed)'),
+    'the read-back fails a name holding a word of the list glued onto other letters or a digit, and does not print it; a clean name beside it still passes', JSON.stringify(lglue));
   /* a "files" limit that matches none of the copy's text files cleans nothing and is read back nowhere, so the copy
      printed OK over a detail it never looked for; the check refused the same list */
   const scopeRun = files => {

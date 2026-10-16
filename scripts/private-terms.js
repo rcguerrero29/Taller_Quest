@@ -11,8 +11,8 @@
    (PRIVATE_TERMS: the map's JSON rules, exactly as its ```json block holds them). GitHub masks a secret's
    whole value in logs, not the pieces of it, so this file prints only a rule's number and where it was found: a
    file by its place in git ls-files order and a fingerprint of its path, a commit by its hash, never a file's name or
-   a rule's kind, however either is spelt (a name holding a word of the list whole, in any case and without its
-   accents, is a red too). And it never lets an error message through: Node's own JSON and regular-expression errors
+   a rule's kind, however either is spelt (a name holding a word of the list, in any case and without its accents,
+   whole or glued onto other letters or a digit, is a red too). And it never lets an error message through: Node's own JSON and regular-expression errors
    quote their input, which here would be the owner's details on a public log.
 
    Where the secret is absent (a pull request from a fork gets no secrets), this FAILS rather than passing
@@ -417,6 +417,18 @@ function selftest() {
   let seven = []; try { seven = check(JSON.stringify(shown7), files7).hits; } catch (e) { seven = [e.message]; }
   mark(seven.length === 7 && seven.every(h => /^rule #\d+(?: survives at line \d+ of|: a file name carries it:) file \d+ in git ls-files order, fingerprint [0-9a-f]{8} \(no name is printed on a public log\)$/.test(h)),
     'the check prints no file name and no kind, only rule numbers, places and fingerprints, however a name or a kind is spelt', JSON.stringify(seven));
+  /* ROUND 4. A name holding a word of the list glued straight onto other letters or a digit, with nothing between (a
+     town's map saved as "<town>map.png", a second photo as "<town>2.png", notes as "<who>notes.md"), or one word of the
+     list written as two words of the name ("qwerty-ville"), was hidden from the report as one holding a private detail,
+     and passed: only a rule's own match or a whole word turned a name red. A word of the list made only by chance across
+     a separator, out of the end of one word of the name and the start of the next, is still not one */
+  const tl = T.town.toLowerCase(), gluedNames = ['art/' + tl + 'map.png', 'art/' + tl + '2.png', 'docs/' + lo + 'notes.md', 'docs/' + tl.slice(0, 6) + '-' + tl.slice(6) + '-ferry.md'];
+  const byChance = 'docs/' + tl.slice(0, 6) + '-' + tl.slice(6) + 'neuve.md';
+  let gluedHits = [];
+  try { gluedHits = check(map, [{ file: 'a.md', text: 'clean words' }].concat(gluedNames.map((file, k) => ({ file, text: k < 2 ? null : '# Notes\n\nThe ferry leaves at noon.\n' })), [{ file: byChance, text: 'clean words' }, { file: 'art/map.png', text: null }])).hits; }
+  catch (e) { gluedHits = [e.message]; }
+  mark(gluedHits.length === 4 && gluedHits.every((h, k) => h === 'a file name holds a private detail: file ' + (k + 2) + ' in git ls-files order, fingerprint ' + CC.fingerprint(gluedNames[k]) + ' (no name is printed on a public log)'),
+    'a file name holding a word of the list glued onto other letters or a digit, or split into two of its words, is a red, and is not printed; one made by chance across a separator, and a clean name, still pass', JSON.stringify(gluedHits));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);
