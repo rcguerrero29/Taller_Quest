@@ -15,25 +15,13 @@
 
    Run:  node test/pushguard.js --hook       (Claude Code's PreToolUse hook: reads the command on stdin)
          node test/pushguard.js --selftest */
+const path = require('path');
 const { execFileSync } = require('child_process');
-const { isPush } = require('./authors.js');
-
-/* the words of a command, with simple quotes removed; good enough for the shapes a push takes */
-const words = s => (s.match(/"[^"]*"|'[^']*'|\S+/g) || []).map(w => w.replace(/^["']|["']$/g, ''));
-
-/* every `git ... push ...` in a command line, as its words after `push` plus any -C directory */
-function pushes(cmd) {
-  const out = [];
-  String(cmd || '').split(/&&|\|\||;|\||\n/).forEach(seg => {
-    if (!isPush(seg)) return;
-    const w = words(seg), g = w.indexOf('git');
-    if (g < 0) return;
-    let i = g + 1, dir = null;
-    while (i < w.length && w[i] !== 'push') { if (w[i] === '-C') dir = w[i + 1]; i++; }
-    if (w[i] === 'push') out.push({ args: w.slice(i + 1), dir });
-  });
-  return out;
-}
+/* every `git ... push ...` in a command line, as its words after `push` and the directory it runs in. The
+   reader is test/authors.js's, shared so the two hooks cannot read one command two ways (2026-10-16: it
+   lived here until then; it now also finds git by full path or in quotes, follows `cd`, `env -C`,
+   `--git-dir` and GIT_DIR=, reads `sh -c` scripts, and marks a directory it cannot tell as unknown) */
+const { isPush, pushes } = require('./authors.js');
 
 /* why one push lands on main, or null; branchOf(dir) answers "which branch is checked out there", and
    headsOf(dir, remote) lists the remote's branches (it throws when the remote cannot be read) */
@@ -46,12 +34,13 @@ function verdict(p, branchOf, headsOf) {
     const dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^refs\/heads\//, '');
     if (dest === 'main') {
       if (r.startsWith(':') || flags.some(f => f === '--delete' || f === '-d')) return 'this deletes main';
-      let heads = null; try { heads = headsOf ? headsOf(p.dir, pos[0]) : null; } catch (e) { heads = null; }
+      let heads = null; try { heads = headsOf && !p.unknown ? headsOf(p.dir, pos[0]) : null; } catch (e) { heads = null; }
       if (Array.isArray(heads) && heads.length === 0) continue;   /* the first commit of an empty repository */
       return 'this pushes to main (' + r + ')';
     }
   }
   if (!refspecs.length) {
+    if (p.unknown) return 'a bare push from a directory its words do not tell (cd -, a $VARIABLE); name it with git -C <directory>';
     let b = null; try { b = branchOf(p.dir); } catch (e) { b = null; }
     if (b === 'main') return 'a bare push while main is checked out pushes to main';
     if (b == null) return 'a bare push from a checkout whose branch could not be read; name the branch you mean';
@@ -94,6 +83,10 @@ function selftest() {
     ['git fetch origin main && git push -u origin claude/x && git push origin main', 'claude/x', true],
     ['git push', 'main', true],
     ['git push origin', 'main', true],
+    /* 2026-10-16, the shared reader: each of these was allowed before */
+    ['/usr/bin/git push origin main', 'claude/x', true],
+    ['"git" push origin main', 'claude/x', true],
+    ['git --git-dir /repo/.git push origin main', 'claude/x', true],
   ];
   cases.forEach(([cmd, branch, want]) => {
     const got = judge(cmd, on(branch)).length > 0;
@@ -101,6 +94,10 @@ function selftest() {
   });
   const unknown = judge('git push', () => { throw new Error('no repository'); });
   mark(unknown.length === 1, 'a bare push whose branch cannot be read is refused, not waved through', JSON.stringify(unknown));
+  /* the branch is read where the push runs: after a cd, not in the hook's cwd (allowed before) */
+  const onMain = d => d === '/on-main' ? 'main' : 'claude/x';
+  mark(judge('cd /on-main && git push', onMain).length === 1, 'refused: cd /on-main && git push (main checked out there, not here)', 'got allowed');
+  mark(judge('cd $SOMEWHERE && git push', on('claude/x')).length === 1, 'refused: a bare push from a directory the words do not tell', 'got allowed');
   /* the one exception: creating main in a repository with no branches at all */
   const heads = list => () => list, unreadable = () => { throw new Error('offline'); };
   const ex = [
@@ -126,7 +123,8 @@ if (require.main === module) {
     try { const j = JSON.parse(input) || {}; cmd = (j.tool_input || {}).command; cwd = j.cwd || null; } catch (e) {}
     if (typeof cmd !== 'string' || !isPush(cmd)) process.exit(0);
     let why;
-    try { why = judge(cmd, dir => gitBranch(dir || cwd), (dir, remote) => gitHeads(dir || cwd, remote)); }
+    const at = dir => dir ? path.resolve(cwd || process.cwd(), dir) : cwd;   /* a relative cd or -C starts at the hook's cwd */
+    try { why = judge(cmd, dir => gitBranch(at(dir)), (dir, remote) => gitHeads(at(dir), remote)); }
     catch (e) { why = ['the push could not be read, so it is not waved through']; }
     if (!why.length) process.exit(0);
     process.stderr.write('PUSH REFUSED by test/pushguard.js: ' + why.join('; ') + '.\n' +
