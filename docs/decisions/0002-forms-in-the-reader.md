@@ -7,8 +7,9 @@
 
 The owner asked to be shown what #2 meant, then approved item 5.
 
-`[OWNER]`, 2026-09-06, quoted verbatim in `docs/ASKS.md` (the PR-2-of-3 row). These are the owner
-approving item 2 of eight proposals he had been offered; the proposal itself was the session's.
+`[OWNER]`, restated from the private ledger row of 2026-09-06 (the PR-2-of-3 row in the private
+`docs/ASKS.md`), not in his words. In that row the owner approves item 2 of eight proposals he had
+been offered; the proposal itself was the session's.
 
 ## Decided
 

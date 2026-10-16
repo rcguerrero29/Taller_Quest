@@ -8,10 +8,9 @@ finding is dated 2026-09-08 (`index.html:730`). Do not repeat a date this file d
 
 The owner chose the facts.
 
-`[OWNER]`, quoted in a code comment in that world's `record.js`. **The only copy of this quote
-is that code comment** — there is no row for it in `docs/ASKS.md` and no transcript here. It is
-recorded as `[CODE]`-sourced for that reason; a later session that finds the original should say so
-and upgrade the tag.
+`[OWNER]`, restated from the private ledger row of 2026-09-08, not in his words. The row, in the
+private `docs/ASKS.md`, has no date column; 2026-09-08 is the day it was written into the ledger.
+A code comment in that world's `record.js` holds his words too.
 
 The question the owner was answering came from Rosa's review of the town's front door.
 

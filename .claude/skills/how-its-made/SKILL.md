@@ -6,16 +6,15 @@ description: Draw or model a thing by the process that made it, not by how it lo
 # How it's made — the process is the shape
 
 *Opened 2026-09-16, after four attempts at a slice of [a dish]. The fourth was accurate about the
-object and still wrong, and the owner said why in one sentence:*
-
-Think about how it is made: the roll should make sense as something rolled up and then cut into
-round slices — which is why they are rarely shown as I had them, and when close they sit in a
-pile and match one another.
+object and still wrong, and the owner told me why. Restated here, not in his words: he asked me to
+think about how it is made too, so that the slices make sense as pieces of one thing that was made
+and then cut. That, he said, is why they are rarely shown the way I had them, and why, when they
+are shown close, they sit in a pile and match one another more.*
 
 **He was right, and the error was bigger than every colour and proportion I had been fixing.** I had
 drawn six slices of [a dish] as six independent objects, each with its own randomly arranged filling.
-But all six came off **one roll**. The fillings were laid in a line on a flat sheet of nori, rolled
-once, and then cut — so the cross-section is *the same all the way down the cylinder*. Six slices of
+But all six came off **one roll**. The fillings went in once, along its whole length, and only then
+was it cut — so the cross-section is *the same all the way along*. Six slices of
 one roll are **siblings**, not strangers. Mine were six different rolls with one slice each, and no
 amount of correcting the bundle was ever going to fix that.
 

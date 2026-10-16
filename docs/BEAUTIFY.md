@@ -558,11 +558,12 @@ and to have a backup.
 
 Set by the owner, `docs/ASKS.md`, 2026-09-17. **This is the settled approach, not a workaround.**
 
-He asked for it to be written down, so here it is, and it has three parts he actually said:
+He asked for it to be written down, so here it is in three parts. They restate what he asked, in a
+session's words, not his:
 
 - **Nobody is being hired.** No commission is waiting; no budget line is being held open. The art in
   this game is made here.
-- **[partner]'s time is unknown and not waited on.** [Nobody else’s time is waited on.] Work does not stop for that.
+- **Nobody else's time is waited on.** Work does not stop for it.
 - **The art we can reach is worth making anyway, for two reasons he gave** — to learn, at least,
   and to have a backup. A drawing made here teaches the project how the thing is built even if a
   better one replaces it, and until one does, it is the drawing that ships.
