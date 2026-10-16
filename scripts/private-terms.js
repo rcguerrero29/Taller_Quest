@@ -8,12 +8,14 @@
    THE TERMS ARE NEVER IN THIS REPOSITORY. CI hands them in as an encrypted repository secret
    (PRIVATE_TERMS: the map's JSON rules, exactly as its ```json block holds them). GitHub masks a secret's
    whole value in logs, not the pieces of it, so this file prints only a rule's number, its kind and a
-   file:line, and it never lets an error message through: Node's own JSON and regular-expression errors
-   quote their input, which here would be the owner's details on a public log.
+   file:line (a file whose name holds a term is named by its place in git ls-files order instead, never by
+   any part of its name), and it never lets an error message through: Node's own JSON and regular-expression
+   errors quote their input, which here would be the owner's details on a public log.
 
    Where the secret is absent (a pull request from a fork gets no secrets), this FAILS rather than passing
    on nothing: a fork's work is brought into a branch of this repository by a session that reviews it,
-   and the check runs there (docs/PRIVACY.md).
+   and the check runs there (docs/PRIVACY.md). A run that read no file, or a list with no word or pattern
+   to look for, FAILS too: a check that read nothing must not look like a pass.
 
    Run:  PRIVATE_TERMS="$(cat map.json)" node scripts/private-terms.js
          node scripts/private-terms.js --map <file outside the repository>
@@ -36,21 +38,25 @@ function rulesFrom(text) {
   } catch (e) { throw new Error('the private list could not be read (it is not valid JSON); nothing was checked'); }
   if (!Array.isArray(rules) || !rules.some(r => r && (r.rule === 'replace' || r.rule === 'drop'))) throw new Error('the private list holds no rule to check; nothing was checked');
   const cc = tool();
-  try { cc.compile(rules); }
+  let C;
+  try { C = cc.compile(rules); }
   catch (e) { throw new Error('the private list has a rule that cannot be compiled (a pattern or a note is malformed); nothing was checked'); }
+  if (!C.reps.length && !C.drops.length) throw new Error('the private list has rules, but not one word or pattern to look for; nothing was checked');
   return rules;
 }
 
 function trackedFiles(root) {
   const list = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
-  return list.map(file => {
+  return list.map((file, i) => {
     let buf; try { buf = fs.readFileSync(path.join(root, file)); } catch (e) { return null; }
-    return { file, text: buf.subarray(0, 8000).includes(0) ? null : buf.toString('utf8') };
+    /* n: its place in git ls-files order, the only way a report names a file whose name holds a term */
+    return { file, n: i + 1, text: buf.subarray(0, 8000).includes(0) ? null : buf.toString('utf8') };
   }).filter(Boolean);
 }
 
 function check(text, files) {
   const rules = rulesFrom(text);
+  if (!files.length) throw new Error('not one file was read (git listed none, or none could be opened); nothing was checked');
   let hits;
   const cc = tool();
   try { hits = cc.survivors(files, rules); }
@@ -72,11 +78,17 @@ function selftest() {
   mark(r.hits.length === 0 || r.hits.every(h => h.indexOf(T.town.toLowerCase()) < 0), 'a file name is read without printing the name', JSON.stringify(r.hits));
   r = check(map, [{ file: 'art/' + T.town + '-map.png', text: null }]);
   mark(r.hits.length === 1 && r.hits[0].indexOf(T.town) < 0, 'a term in a file name is red too', JSON.stringify(r.hits));
+  r = check(map, [{ file: 'a.md', text: 'clean words' }, { file: 'docs/' + T.town + '-notes.md', text: 'x\nwe met ' + T.who }]);
+  mark(r.hits.length === 2 && r.hits.every(h => h.indexOf(T.town) < 0 && h.indexOf(T.who) < 0 && /file 2 in git ls-files order/.test(h)), 'a file whose name and text both hold a term is named by its place in git ls-files order, never by its name', JSON.stringify(r.hits));
+  r = check(map, [{ file: T.town + '/' + T.who + '.png', text: null }]);
+  mark(r.hits.length === 2 && r.hits.every(h => h.indexOf(T.town) < 0 && h.indexOf(T.who) < 0), 'a name holding two terms prints neither, whichever rule the line is for', JSON.stringify(r.hits));
   const leak = (fn, what) => { let msg = ''; try { fn(); } catch (e) { msg = e.message; } mark(msg && msg.indexOf(T.who) < 0 && msg.indexOf(T.town) < 0 && /nothing was checked/.test(msg), what, msg || 'it did not fail'); };
   leak(() => check('[{"id":3,"rule":"replace","find":["' + T.who + '"],"to":"x"', []), 'a broken list fails without quoting any of it (Node\'s own message would)');
   leak(() => check(JSON.stringify([{ id: 9, kind: 'k', rule: 'replace', pattern: ['(' + T.who], to: 'x' }]), []), 'a malformed pattern fails without quoting it');
   leak(() => check(JSON.stringify([{ id: 1, kind: 'k', rule: 'keep', find: [T.who] }]), []), 'a list with nothing to check is a red, not a pass');
   leak(() => check('', []), 'an empty secret is a red, not a pass');
+  leak(() => check(map, []), 'a run that read no file is a red, not a pass');
+  leak(() => check(JSON.stringify([{ id: 2, kind: 'k', rule: 'replace', find: [], to: 'x' }, { id: 4, kind: 'k', rule: 'drop', pattern: [] }]), [{ file: 'a.md', text: 'clean words' }]), 'a list whose rules hold no word or pattern to look for is a red, not a pass');
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);
@@ -102,6 +114,7 @@ if (require.main === module) {
   if (r.hits.length) {
     console.log('FAIL: ' + r.hits.length + ' personal detail(s) from the private list are in this repository. Rephrase them or move them to the private repository; the list itself is never printed.');
     r.hits.slice(0, 50).forEach(h => console.log('- ' + h));
+    if (r.hits.some(h => / in git ls-files order /.test(h))) console.log('A file named by its place: git ls-files | sed -n \'<place>p\' shows its name on your own machine; never paste that name into an issue or a log.');
     process.exit(1);
   }
   console.log('OK: ' + r.files + ' files and their names read against ' + r.rules + ' private rules; nothing personal found. (The rules are never printed.)');

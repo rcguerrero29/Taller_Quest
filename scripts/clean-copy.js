@@ -18,8 +18,9 @@
    3. OVERLAY (public-overlay/): files written for the public copy (its README, its security policy, the
       "why we built it this way" note) are copied in last at the same path, and cleaned like the rest.
    4. READ-BACK: the whole copy is read again, code strings included, and every file name too. A mapped
-      detail anywhere is a red, named by rule id and file:line and never by the term. A detail in a code
-      STRING is red on purpose: whether to change what a player sees is a decision, not a find-and-replace.
+      detail anywhere is a red, named by rule id and file:line and never by the term (a file whose name
+      holds one is named by its place in git ls-files order, never by any part of its name). A detail in a
+      code STRING is red on purpose: whether to change what a player sees is a decision, not a find-and-replace.
 
    No real term is in this file; the self-test makes up its own.
 
@@ -358,13 +359,16 @@ function survivors(files, rules) {
     if (r.path) Object.keys(r.path).forEach(k => checks.push({ r, re: new RegExp('(?<![A-Za-z0-9_])' + esc(k) + '(?![A-Za-z0-9_])', r.ci ? 'i' : '') }));
   });
   const P = [];
-  files.forEach(({ file, text }) => {
+  files.forEach(({ file, text, n }, i) => {
     /* a file name: each folder and file name read with - _ . as spaces; a rule's "files" scope does not
-       apply here, because a name is published whatever the rule was written for */
-    checks.forEach(c => {
-      const hit = seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '));
-      if (file.split('/').some(hit)) P.push('rule #' + c.r.id + ' (' + c.r.kind + '): a file name carries it: ' + file.split('/').map(s => hit(s) ? '…' : s).join('/'));
-    });
+       apply here, because a name is published whatever the rule was written for. A name that holds ANY
+       rule's detail is never printed, not even in part and not on the lines about its text: every line
+       about that file names it by its place in git ls-files order instead (n, or its place in the list
+       given), which finds it (git ls-files | sed -n '<n>p') without the name reaching a log */
+    const segs = file.split('/');
+    const named = checks.filter(c => segs.some(seg => c.re.test(seg) || c.re.test(seg.replace(/[-_.]+/g, ' '))));
+    const where = named.length ? 'file ' + (n || i + 1) + ' in git ls-files order (its name holds a private detail, so it is not printed)' : null;
+    named.forEach(c => P.push('rule #' + c.r.id + ' (' + c.r.kind + '): a file name carries it: ' + where));
     if (text == null) return;
     checks.forEach(c => {
       if (c.files && !c.files.test(file)) return;
@@ -373,7 +377,8 @@ function survivors(files, rules) {
       while ((m = g.exec(text))) {
         if (m[0] === '') { g.lastIndex++; continue; }
         if (c.with) { const [x, y] = sentenceSpan(text, m.index); if (!c.with.test(text.slice(x, y))) continue; }
-        P.push('rule #' + c.r.id + ' (' + c.r.kind + ') survives at ' + file + ':' + text.slice(0, m.index).split('\n').length
+        const line = text.slice(0, m.index).split('\n').length;
+        P.push('rule #' + c.r.id + ' (' + c.r.kind + ') survives at ' + (where ? 'line ' + line + ' of ' + where : file + ':' + line)
           + (kindOf(file) === 'prose' ? '' : ' (' + (kindOf(file) === 'data' ? 'a data file, never rewritten' : 'in code: a string or code is never rewritten') + '; decide it)'));
       }
     });
@@ -417,7 +422,8 @@ function run(mapFile, outDir, manifestFile) {
   };
   list.forEach(rel => put(rel, renamePath(rel, rules)));
   overlay.forEach(rel => put(rel, rel.slice(OVERLAY.length + 1)));
-  const files = [...written].map(([file, w]) => ({ file, text: w.text }));
+  const at = new Map(tracked.map((f, i) => [f, i + 1]));   /* a masked name is reported by its original's place */
+  const files = [...written].map(([file, w]) => ({ file, text: w.text, n: at.get(w.from) }));
   return { rules, counts, tracked: tracked.length, copied: list.length, overlay: overlay.length, changed, binaries, unused,
     pairs: [...written].map(([file, w]) => ({ file, from: w.from })), left: survivors(files, rules) };
 }
@@ -536,6 +542,8 @@ function selftest() {
   mark(o === 'see docs/for-partner/A.md', 'a link to the renamed folder follows it', o);
   const lp = survivors([{ file: 'docs/rooms/' + T.ini.toLowerCase() + '-office.md', text: 'fine' }], rules);
   mark(lp.length === 1 && lp[0].indexOf(T.ini.toLowerCase() + '-') < 0, 'a mapped name inside a file name is red, and the name is not printed whole', JSON.stringify(lp));
+  const lb = survivors([{ file: 'a.md', text: 'fine' }, { file: 'docs/' + T.town + '/notes.md', text: 'about ' + T.sick, n: 7 }], rules);
+  mark(lb.length === 2 && lb.every(l => l.indexOf(T.town) < 0 && l.indexOf(T.sick) < 0 && /file 7 in git ls-files order/.test(l)), 'a file whose name and text both hold a detail is named by its place in git ls-files order on every line, never by its name', JSON.stringify(lb));
   const left2 = survivors([{ file: 'b.md', text: 'x\nabout ' + T.sick + ' y' }], rules);
   mark(left2.length === 1 && left2[0].indexOf('b.md:2') > 0 && left2[0].indexOf(T.sick) < 0, 'a surviving detail is named by rule and line, never by the term', JSON.stringify(left2));
   const left3 = survivors([{ file: 'c.md', text: 'we met in Two\nWords' }], rules);
