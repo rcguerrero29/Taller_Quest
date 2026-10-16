@@ -5,7 +5,7 @@
    GitHub's end stops a push to its `main`. This is the part we can build ourselves: every session in
    this project runs it before a push (.claude/settings.json), and it refuses one that lands on `main`:
    `main`, `HEAD:main`, `+main`, `:main`, `refs/heads/main`, `--delete main`, `--mirror`, `--all`, or a bare
-   `git push` while standing on `main`. A push to any other branch passes, a forced one included (a
+   `git push`, `git push origin HEAD` or `git push origin @` while standing on `main`. A push to any other branch passes, a forced one included (a
    session's own branch may need it). It guards sessions only: a person at a terminal, or another tool,
    is not stopped by it. The alarm that notices anything that gets past is test/mainwatch.js.
    ONE EXCEPTION (2026-09-28, the art reference's first commit, and runbook step 7 after it): a push may CREATE
@@ -37,12 +37,20 @@ function verdict(p, branchOf, headsOf) {
     return 'a push whose remote or branch only the run knows (a $VARIABLE or a command substitution) may land on main; name them: git push <remote> <branch>';
   const refspecs = pos.slice(1);
   for (const r of refspecs) {
-    const dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^refs\/heads\//, '');
+    let dest = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^\+/, '').replace(/^refs\/heads\//, ''), here = '';
+    /* HEAD or @ with no :<dst> updates the remote branch named like the one checked out where the push runs
+       (the branch's second review, 2026-10-16: standing on main, `git push origin HEAD` was allowed) */
+    if (!r.includes(':') && (dest === 'HEAD' || dest === '@')) {
+      if (p.unknown) return 'a push of ' + dest + ' from a directory its words do not tell (cd -, a $VARIABLE); name it with git -C <directory>';
+      let b = null; try { b = branchOf(p.dir); } catch (e) { b = null; }
+      if (b == null) return 'a push of ' + dest + ' from a checkout whose branch could not be read; name the branch you mean';
+      dest = b; here = ', with ' + b + ' checked out';
+    }
     if (dest === 'main') {
       if (r.startsWith(':') || flags.some(f => f === '--delete' || f === '-d')) return 'this deletes main';
       let heads = null; try { heads = headsOf && !p.unknown ? headsOf(p.dir, pos[0]) : null; } catch (e) { heads = null; }
       if (Array.isArray(heads) && heads.length === 0) continue;   /* the first commit of an empty repository */
-      return 'this pushes to main (' + r + ')';
+      return 'this pushes to main (' + r + here + ')';
     }
   }
   if (!refspecs.length) {
@@ -100,11 +108,24 @@ function selftest() {
     ['git push origin $(echo main)', 'claude/x', true],
     ['git push `echo origin main`', 'claude/x', true],
     ['git push -u origin claude/x && echo $(date)', 'claude/x', false],
+    /* the branch's second review (2026-10-16): HEAD, or @, names the branch checked out, and with no :<dst> the push
+       updates the remote branch of that same name. Standing on main, each of these was allowed before */
+    ['git push origin HEAD', 'main', true],
+    ['git push origin @', 'main', true],
+    ['git push origin +HEAD', 'main', true],
+    ['git push -u origin HEAD', 'main', true],
+    ['git push --force origin @', 'main', true],
+    ['git push origin HEAD', 'claude/x', false],
+    ['git push -u origin @', 'claude/x', false],
+    ['git push origin HEAD:claude/x', 'main', false],
   ];
   cases.forEach(([cmd, branch, want]) => {
     const got = judge(cmd, on(branch)).length > 0;
-    mark(got === want, (want ? 'refused: ' : 'allowed: ') + cmd + (cmd.endsWith('push') || cmd.endsWith('origin') ? ' (standing on ' + branch + ')' : ''), 'got ' + (got ? 'refused' : 'allowed'));
+    mark(got === want, (want ? 'refused: ' : 'allowed: ') + cmd + (/(?:push|origin|HEAD|@)$/.test(cmd) ? ' (standing on ' + branch + ')' : ''), 'got ' + (got ? 'refused' : 'allowed'));
   });
+  mark(judge('git push origin HEAD', () => { throw new Error('no repository'); }).length === 1, 'a push of HEAD from a checkout whose branch cannot be read is refused, not waved through', 'got allowed');
+  mark(judge('cd $SOMEWHERE && git push origin HEAD', on('claude/x')).length === 1, 'refused: a push of HEAD from a directory the words do not tell', 'got allowed');
+  mark(judge('cd /on-main && git push origin HEAD', d => d === '/on-main' ? 'main' : 'claude/x').length === 1, 'refused: cd /on-main && git push origin HEAD (HEAD is read where the push runs)', 'got allowed');
   const unknown = judge('git push', () => { throw new Error('no repository'); });
   mark(unknown.length === 1, 'a bare push whose branch cannot be read is refused, not waved through', JSON.stringify(unknown));
   /* the branch is read where the push runs: after a cd, not in the hook's cwd (allowed before) */
@@ -125,6 +146,9 @@ function selftest() {
     ['git push --mirror origin', heads([]), true, 'a mirror push is refused even there'],
   ];
   ex.forEach(([cmd, h, want, what]) => { const got = judge(cmd, on('claude/x'), h).length > 0; mark(got === want, what, 'got ' + (got ? 'refused' : 'allowed')); });
+  [['git push -u origin HEAD', heads([]), false, 'creating main by HEAD, standing on main, in an empty repository is allowed'],
+    ['git push origin HEAD', heads(['abc\trefs/heads/main']), true, 'HEAD standing on main, to a repository that has main, is refused']]
+    .forEach(([cmd, h, want, what]) => { const got = judge(cmd, on('main'), h).length > 0; mark(got === want, what, 'got ' + (got ? 'refused' : 'allowed')); });
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, no git, no network.');
   process.exit(0);

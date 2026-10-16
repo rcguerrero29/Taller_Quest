@@ -13,20 +13,23 @@
       merges), fork and create a repository (a new place to publish), delete a file, and push files or
       create or update a file (a commit straight onto a branch, from no checkout any hook reads).
    2. This file, the PreToolUse hook on every tool whose name starts with mcp__. CLOSED BY DEFAULT:
-      - A tool is a READ only if the last part of its name starts with get_, list_, search_, read_ or
-        download_ AND no word of it is a write word (WRITE_WORDS below: create, update, delete, send, post,
-        run, upload and the rest), or it is one of NAMED_READS below, named with its server and its reason.
-        A read passes untouched. Everything else is a WRITE, a name this file has never seen included.
+      - A tool is a READ only if the last part of its name is a read's SHAPE: one read verb (get, list,
+        search, read or download), then only words of READ_WORDS below, the things a read reads (file,
+        issues, pull requests, commits, me and the rest); or it is one of NAMED_READS below, named with its
+        server and its reason. A read passes untouched. Everything else is a WRITE: a connective (and,
+        then, or, plus), a second verb, any word READ_WORDS has not met, and a name never seen.
       - Sharing is refused on any server: a name with the word `share` in it (Drive's share_file), and a
         write that changes who can see a thing (collaborators, permissions). It is the owner's to do.
       - A write's EVERY string is read, at any depth, field names too — not a list of named fields, which
         a new tool would walk round. A string that is base64 of text is read decoded as well, and a number
-        or a yes/no as its text. The strings are also read JOINED, each with the next and all of them in
-        order, with nothing and with a space between them, so a term split between a title and a body is
-        found (it is named `across fields`). A write with no string at all (numbers, yes/no or nothing)
-        says nothing of what it does, so it is refused.
+        or a yes/no as its text. The strings are also read JOINED, every two of them each way round and all
+        of them in order, with nothing and with a space between them, so a term split between a title and a
+        body is found wherever the two sit in the call (it is named `across fields`). A write whose strings
+        are too many to join every two inside the hook's time is refused (split it). A write with no
+        string at all (numbers, yes/no or nothing) says nothing of what it does, so it is refused.
       - An address that is not a no-reply one, anywhere in a write, refuses it: test/authors.js's rule,
-        asked of test/authors.js (judgeFiles), not typed again.
+        asked of test/authors.js (judgeFiles, EMAIL, allowed), not typed again. An address split between
+        two fields, or three in order, refuses it too.
       - The private-term check reads the owner's list from the file PRIVATE_TERMS_FILE names, else
         ~/.private-terms/map.md, outside every repository (a list inside one is refused), in the shape
         `--map` reads: markdown holding one ```json block. scripts/private-terms.js (rulesFrom, check)
@@ -34,8 +37,9 @@
         repository's own. With no list, or one that cannot be read, EVERY write is refused, with how to
         load it.
         · A GitHub write whose every repository field names a repository of this checkout's own owner
-          (its `origin`) whose name is itself on the list is a write to a private repository: the term
-          check is skipped there. The address check is not.
+          (its `origin`) whose WHOLE name is a term of the list (one `find`, case as its rule reads it) is
+          a write to a private repository: the term check is skipped there. A name that only contains
+          one (`<name>-public`) is not. The address check is never skipped.
         · Every other write, GitHub or not, is refused if any string hits any rule. A file the write
           names (an object with a `path` and a `content`) is read as that file, scopes and all, exactly
           as the public repository's CI would read it there; every other string — a comment, a title, a
@@ -48,18 +52,24 @@
    FOUND IN THE BRANCH'S REVIEW, the same day: a prefix alone made a read (and query, fetch and export were
    prefixes), so export_repository, fetch_and_overwrite and query_then_post passed as reads; a term split
    between two fields, or a detail in a number field, passed; and the hook had no time limit of its own.
+   FOUND IN ITS SECOND REVIEW: a read verb and then a write verb no list of write words held
+   (search_and_replace, get_and_publish) passed as a read; a public repository whose name contained the
+   private one's skipped the term check; a term split between two fields that were not next to each other
+   (a pull request's title and body, with head and base between them) passed; and an address split
+   between two fields passed.
 
    THE TIME LIMIT. Claude Code stops a hook at the `timeout` .claude/settings.json gives it (30 s) and then
    lets the call THROUGH. So the reading runs in a child process (`--decide`) that the hook stops at
    LIMIT_MS (20 s), well under that cap, and a check stopped there refuses, in its own sentence. A read is
    told by its name alone, before any child starts.
 
-   What it does not stop, said plainly: a write whose read-like name holds no write word, or runs one into
-   another word (`get_reportandmail`); what a read sends out in its own arguments (a search query, a
-   fetched address); a term spelled another way, split between strings that are not next to each other in
-   the call, or encoded any way but base64; a session that edits .claude/settings.json, or runs with hooks
-   off; a hook that cannot start at all, or a machine so loaded that even the 20 s refusal misses the 30 s
-   cap (Claude Code then lets the call through). Claude Code from 2.1.295 takes `"onFailure": "block"` on a
+   What it does not stop, said plainly: a write that names itself a read, a read verb and then only words
+   READ_WORDS holds (a get_release that publishes one); what a read sends out in its own arguments (a
+   search query, a fetched address); a term spelled another way, split three ways or more out of order,
+   split with more than 512 characters of it on one side, or encoded any way but base64; an address
+   glued onto a no-reply one in the next field (`noreply@anthropic.com` then `.evil.test`); a session
+   that edits .claude/settings.json, or runs with hooks off; a hook that cannot start at all, or a
+   machine so loaded that even the 20 s refusal misses the 30 s cap (Claude Code then lets the call through). Claude Code from 2.1.295 takes `"onFailure": "block"` on a
    hook, which refuses even then; it is the owner's to set, because which version his laptop runs is not
    known here. The switches that hold regardless are the owner's.
 
@@ -82,13 +92,25 @@ function partsOf(name) {
   const p = String(name || '').split('__');
   return p[0] === 'mcp' && p.length >= 3 ? { server: p[1], tool: p.slice(2).join('__') } : { server: '', tool: p[p.length - 1] };
 }
-/* a READ: the tool part starts get_, list_, search_, read_ or download_, and no word of it is a write word.
-   Words split at _ - and a capital (get_fileAndDelete is get, file, and, delete); whole words only, so the
-   nouns `requests` and `shared` (list_pull_requests, list_shared_drives) are not `request` and `share` */
-const READ = /^(?:get|list|search|read|download)_/;
-const WRITE_WORDS = new Set(('create update delete write push merge post send share copy trash move overwrite add remove set put ' +
-  'patch insert append clear submit revoke fork trigger run enable disable resolve request reply upload edit archive rename').split(' '));
-const wordsOf = tool => String(tool).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+/* a READ, by its shape: the tool part is ONE read verb (get, list, search, read or download), then only words
+   on READ_WORDS, the things a read reads and the words that say which (latest, recent, my, by, for). A
+   connective (and, then, or, plus), a second verb, or any word this list has not met makes a write. Found in
+   the branch's second review (2026-10-16): until then a read was the verb with no word of a list of WRITE
+   words after it, and a denylist names only the verbs already met: search_and_replace, get_and_publish and
+   download_and_sync passed as reads, unread. A read this shape does not take costs nothing: it is read as a write.
+   Words split at _ - and a capital (get_fileAndDelete is get, file, and, delete); `pull requests` is one
+   word (pull alone is a git verb, requests alone is not a thing a read here reads), and `run` and `check`
+   are not on the list (get_check_run is a named read below) */
+const READ_VERB = new Set(['get', 'list', 'search', 'read', 'download']);
+const READ_WORDS = new Set(('account agent agents assets attachment attachments branches by code collaborators commit commits ' +
+  'content contents doc documentation drives environments fields file files folders for info issue issues items job label latest ' +
+  'logs me meeting meetings members metadata my objects overview page permissions portfolio portfolios presentation project ' +
+  'projects pull_request pull_requests recent recording release releases repos repositories repository resource session sessions ' +
+  'shared slide spreadsheet status stories tag tags task tasks team teams thumbnail transcript triggers types user users values ' +
+  'workspace').split(' '));
+const wordsOf = tool => String(tool).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+  .reduce((w, x) => (w.length && w[w.length - 1] === 'pull' && /^requests?$/.test(x) ? w.splice(-1, 1, 'pull_' + x) : w.push(x), w), []);
+const readShape = tool => { const w = wordsOf(tool); return w.length >= 2 && READ_VERB.has(w[0]) && /^[a-z]+_/.test(tool) && w.slice(1).every(x => READ_WORDS.has(x)); };
 /* the server as NAMED_READS names it: lower case, with the claude.ai connector prefix taken off, so the owner's
    laptop's mcp__claude_ai_GitHub__ is the same `github` as a cloud session's mcp__github__ */
 const serverKey = server => String(server || '').toLowerCase().replace(/^claude_ai_/, '');
@@ -107,6 +129,7 @@ const NAMED_READS = {
   'fireflies/fireflies_fetch': 'Fireflies: one meeting\'s transcript, by its id',
   'granola/query_granola_meetings': 'Granola: a question about his meetings, answered from his notes; nothing is stored',
   'zoom_for_claude/search': 'Zoom: its search, marked read-only by Zoom; results come back, nothing is stored',
+  'zoom_for_claude/search_describe_capabilities': 'Zoom: what its search can look in, described; nothing is stored',
 };
 const SHARE = /(?:^|_)share(?:_|$)|shareable/;
 const WHO_SEES = /collaborator|permission/;
@@ -114,7 +137,7 @@ function kindOf(name) {
   const { server, tool } = partsOf(name);
   if (SHARE.test(tool)) return 'share';
   if (Object.prototype.hasOwnProperty.call(NAMED_READS, serverKey(server) + '/' + tool)) return 'read';
-  if (READ.test(tool) && !wordsOf(tool).some(w => WRITE_WORDS.has(w))) return 'read';
+  if (readShape(tool)) return 'read';
   if (WHO_SEES.test(tool)) return 'share';
   return 'write';
 }
@@ -149,7 +172,7 @@ function decoded(s) {
    deeper names are safe to print (no list loaded) */
 const PLAIN = /^[A-Za-z_][A-Za-z0-9_]{0,40}$/;
 function fieldOf(item, hidden, shallow) {
-  if (item.across !== undefined) return 'across fields (' + (item.across ? fieldOf(item.across[0], hidden) + ' and ' + fieldOf(item.across[1], hidden) : 'the strings read joined, in order') + ')';
+  if (item.across !== undefined) return 'across fields (' + (item.across ? fieldOf(item.across[0], hidden, shallow) + ' and ' + fieldOf(item.across[1], hidden, shallow) : 'the strings read joined, in order') + ')';
   const at = shallow ? item.at.slice(0, 1) : item.at;
   let out = '';
   at.forEach(k => {
@@ -214,18 +237,89 @@ function reposOf(input) {
 
 /* the rules as a comment reads them: every rule, its `files` scope taken off */
 const unscoped = text => JSON.stringify(terms().rulesFrom(text).map(r => { const c = Object.assign({}, r); delete c.files; return c; }));
-const hitsText = (rulesText, s) => terms().check(rulesText, [{ file: 'repository.md', text: s }]).hits.some(h => h.indexOf(' survives at ') >= 0);
+/* a repository the list names: the WHOLE name is one `find` of a replace or drop rule, case as that rule reads
+   it (`ci`). Found in the branch's second review (2026-10-16): until then a name that only CONTAINED a listed
+   one, word-bounded (<name>-public, my-<name>, <name>.backup), was taken for it, and a write to that public
+   companion skipped the term check. Any rule's, whatever its kind: a list need not file its repositories under
+   one kind. A pattern never names a repository here */
+const listedName = (rules, name) => rules.some(r => (r.rule === 'replace' || r.rule === 'drop') && Array.isArray(r.find) &&
+  r.find.some(f => typeof f === 'string' && (r.ci ? f.toLowerCase() === name.toLowerCase() : f === name)));
 
 function privateWrite(name, input, listText, pin) {
   if (!/github/i.test(partsOf(name).server)) return false;
   const R = reposOf(input);
   if (!R.length) return false;
-  const rules = unscoped(listText);
+  const rules = terms().rulesFrom(listText);
   return R.every(r => {
     if (!r.owner || !r.name) return false;
     const mine = pin();
-    return !!mine && r.owner.toLowerCase() === mine && hitsText(rules, r.name);
+    return !!mine && r.owner.toLowerCase() === mine && listedName(rules, r.name);
   });
+}
+
+/* THE EDGES two strings meet at: the end of one (its last EDGE characters) and the start of another (its first),
+   each cut back to a whole word so a cut makes no word edge that is not there. A split term's halves sit there.
+   Several strings with the same edge are read once, under the first two different strings that have it */
+const EDGE = 512, SEP = '\u0000\n\n';                 /* SEP: no word, no space, a blank line: nothing reads across it */
+const WORD = /[\p{L}\p{N}_]/u;                      /* a word character, as scripts/clean-copy.js reads one */
+const tailOf = s => { if (s.length <= EDGE) return s; const w = s.slice(-EDGE); let i = 0; while (i < w.length && WORD.test(w[i])) i++; return w.slice(i); };
+const headOf = s => { if (s.length <= EDGE) return s; const w = s.slice(0, EDGE); let i = w.length; while (i > 0 && WORD.test(w[i - 1])) i--; return w.slice(0, i); };
+function edgesOf(values, tail, head) {
+  const tails = new Map(), heads = new Map(), put = (m, k, i) => { const l = m.get(k); if (l) l.push(i); else m.set(k, [i]); };
+  values.forEach((it, i) => { put(tails, (tail || tailOf)(it.s), i); put(heads, (head || headOf)(it.s), i); });
+  return { tails, heads };
+}
+/* two DIFFERENT strings, one with this end and one with this start: [i, j], or null when the only string with
+   both is one and the same */
+const twoOf = (It, Ih) => { let i = It[0], j = Ih.find(x => x !== i); if (j === undefined) { j = Ih[0]; i = It.find(x => x !== j); } return i === undefined ? null : [i, j]; };
+/* what reading every two strings joined costs, in characters, before any is joined; over PAIRS_CHARS the write
+   is refused (split it), not read in part */
+const PAIRS_CHARS = 16 * 1024 * 1024;
+function pairCost(values) {
+  const { tails, heads } = edgesOf(values), sum = m => [...m.keys()].reduce((n, k) => n + k.length, 0);
+  return 2 * (heads.size * sum(tails) + tails.size * sum(heads)) + tails.size * heads.size * (1 + 2 * SEP.length);
+}
+
+/* AN ADDRESS SPLIT BETWEEN FIELDS (the branch's second review, 2026-10-16): `reach me at someone@` in a title and
+   `example.test` in the body is an address in neither, and passed. So every two strings are read joined, each way
+   round, and all of them in order, by test/authors.js's own pattern and allow-list, nothing between them (an
+   address holds no space). Only the run of address characters at the end of the one and the start of the other
+   can meet in an address, and only where one of them holds the @. A join counts when its address crosses from
+   one string into the other, is not a no-reply one, and no piece of it is an address on its own: that one was
+   judged where it stands, and a join only glues a neighbour's letters onto it (`Author` beside a no-reply
+   address in the next cell is not a new address). A run is read by a loop, at most 320 characters (the longest
+   an address can be): a pattern ending `*$` takes seconds on a long word */
+const ADDR_CH = /[A-Za-z0-9._%+@-]/, RUN = 320;
+const runEnd = s => { let i = s.length; while (i > 0 && s.length - i < RUN && ADDR_CH.test(s[i - 1])) i--; return s.slice(i); };
+const runStart = s => { let i = 0; while (i < s.length && i < RUN && ADDR_CH.test(s[i])) i++; return s.slice(0, i); };
+function addressAcross(values) {
+  const { EMAIL, allowed } = authors(), whole = s => new RegExp(EMAIL.source).test(s), found = [];
+  if (!values.some(it => it.s.indexOf('@') >= 0)) return found;
+  const crosses = (J, cuts) => {                       /* cuts: where each string after the first starts in J, in order */
+    const re = new RegExp(EMAIL.source, 'g'); let m;
+    while ((m = re.exec(J))) {
+      const s = m.index, e = s + m[0].length, inside = [];
+      let a = 0, b = cuts.length;
+      while (a < b) { const c = (a + b) >> 1; if (cuts[c] <= s) a = c + 1; else b = c; }
+      for (let k = a; k < cuts.length && cuts[k] < e; k++) inside.push(cuts[k]);
+      if (!inside.length || allowed(m[0])) continue;
+      const bounds = [s].concat(inside, [e]);
+      if (!bounds.slice(1).some((x, k) => whole(J.slice(bounds[k], x)))) return true;
+    }
+    return false;
+  };
+  const { tails, heads } = edgesOf(values, runEnd, runStart);
+  const T = [...tails].filter(([t]) => t), H = [...heads].filter(([h]) => h), named = new Set();
+  const pair = ([t, It], [h, Ih]) => {
+    const ij = twoOf(It, Ih);
+    if (ij && crosses(t + h, [t.length]) && !named.has(ij.join())) { named.add(ij.join()); found.push({ across: [values[ij[0]], values[ij[1]]] }); }
+  };
+  const Ha = H.filter(([h]) => h.indexOf('@') >= 0);
+  T.forEach(x => (x[0].indexOf('@') >= 0 ? H : Ha).forEach(y => pair(x, y)));
+  if (found.length || values.length < 3) return found;
+  const cuts = [];
+  const all = values.reduce((J, it, k) => { if (k) cuts.push(J.length); return J + it.s; }, '');
+  return crosses(all, cuts) ? [{ across: null }] : [];
 }
 
 /* every hit of the list in a call: [{ id, item, line }] — never the term */
@@ -263,29 +357,33 @@ function termHits(items, input, listText) {
     alone.add(String(idOf(h)));
   });
   /* ACROSS FIELDS: a term split between two strings, a title and a body, is in neither. So the
-     strings (field names left out, numbers as text) are read again: each with the next, with nothing and
-     with a space between them, and all of them in order, the same two ways, every rule with its scope off.
-     A rule counts here only when no string holds it on its own (a file's content included, read with no
-     scope), so a file's scoped term that CI passes still passes, and a term whole in one field is named
-     there once. A hit this cannot place still counts, as across fields */
+     strings (field names left out, numbers as text) are read again: EVERY two of them, each way round, the
+     end of the one joined to the start of the other, with nothing and with a space between them; and all of
+     them in order, the same two ways, every rule with its scope off. Found in the branch's second review
+     (2026-10-16): until then only a string and the NEXT one were joined, so a pull request's title and body,
+     with head and base between them in the call, never met. Each way round, because the order of a call's
+     fields is the caller's, not the reader's. A rule counts here only when no string holds it on its own (a
+     file's content included, read with no scope), so a file's scoped term that CI passes still passes, and
+     a term whole in one field is named there once. A hit this cannot place still counts, as across fields */
   const values = items.filter(it => !it.key && !it.decoded);
   if (values.length < 2) return found;
   if (handled.size) terms().check(free, [...handled].map((it, i) => ({ file: 'f' + i + '.md', text: it.s }))).hits.forEach(h => { if (!NAME_HIT.test(h)) alone.add(String(idOf(h))); });
-  const SEP = '\u0000\n\n', pairs = [], starts = [];   /* no word, no space, a blank line: nothing reads across it */
+  const { tails, heads } = edgesOf(values), pairs = [], starts = [], whose = [];
   let line = 1;
-  for (let i = 0; i + 1 < values.length; i++) [values[i].s + values[i + 1].s, values[i].s + ' ' + values[i + 1].s].forEach(t => {
-    starts.push(line); pairs.push(t); line += t.split('\n').length + 1;
-  });
-  const pairOf = n => { let a = 0, b = starts.length - 1; while (a < b) { const c = (a + b + 1) >> 1; if (starts[c] <= n) a = c; else b = c - 1; } return a >> 1; };
+  for (const [t, It] of tails) for (const [h, Ih] of heads) {
+    const ij = twoOf(It, Ih);
+    if (ij) [t + h, t + ' ' + h].forEach(s => { starts.push(line); pairs.push(s); whose.push(ij); line += s.split('\n').length + 1; });
+  }
+  const pairOf = n => { let a = 0, b = starts.length - 1; while (a < b) { const c = (a + b + 1) >> 1; if (starts[c] <= n) a = c; else b = c - 1; } return whose[a]; };
   const all = values.map(it => it.s), byPair = new Set();
   const joined = terms().check(free, [{ file: 'pairs.md', text: pairs.join(SEP) }, { file: 'joined.md', text: all.join('') }, { file: 'spaced.md', text: all.join(' ') }]).hits
     .filter(h => !NAME_HIT.test(h) && !alone.has(String(idOf(h))));
   joined.forEach(h => {
     const m = / survives at pairs\.md:(\d+)$/.exec(h);
     if (!m) return;
-    const i = pairOf(+m[1]);
+    const [i, j] = pairOf(+m[1]);
     byPair.add(String(idOf(h)));
-    found.push({ id: idOf(h), item: { across: [values[i], values[i + 1]] }, line: null });
+    found.push({ id: idOf(h), item: { across: [values[i], values[j]] }, line: null });
   });
   joined.forEach(h => { if (!/ survives at pairs\.md:\d+$/.test(h) && !byPair.has(String(idOf(h)))) found.push({ id: idOf(h), item: { across: null }, line: null }); });
   return found;
@@ -301,12 +399,15 @@ function decide(name, input, env) {
   const items = stringsOf(input);
   if (!items.some(it => !it.key && !it.num)) return { ok: false, why: ['this write carries no text at all (numbers, yes/no or nothing), so nothing in it says what it does, and a write that cannot be read is refused'] };
   if (items.reduce((n, it) => n + it.s.length, 0) > LIMIT_CHARS) return { ok: false, why: ['this write is over 8 MB of text, too much to read inside the hook\'s time; split it'] };
+  const values = items.filter(it => !it.key);
+  if (values.length >= 2 && pairCost(values) > PAIRS_CHARS) return { ok: false, why: ['this write holds ' + values.length + ' strings, too many to read every two of them joined inside the hook\'s time; split it into smaller writes'] };
   items.filter(it => !it.key && !it.num).forEach(it => { const d = decoded(it.s); if (d != null) items.push({ at: it.at, s: d, decoded: true }); });
-  const addressed = items.filter(it => hasAddress(it.s));
+  const addressed = items.filter(it => hasAddress(it.s)).concat(addressAcross(values));
   const hidden = new Set(addressed.filter(it => it.key).map(it => it.s));
+  const said = (it, shallow) => 'an address that is not a no-reply one, ' + (it.across !== undefined ? '' : 'in ') + fieldOf(it, hidden, shallow);
   const list = env.list();
   if (!list || typeof list.text !== 'string') {
-    const why = addressed.map(it => 'an address that is not a no-reply one, in ' + fieldOf(it, hidden, true));
+    const why = [...new Set(addressed.map(it => said(it, true)))];
     why.push(((list && list.why) || 'the owner\'s private list is not loaded') + ', so no connector write can be read for it and every one is refused. ' + HOW_TO_LOAD);
     return { ok: false, why };
   }
@@ -314,9 +415,8 @@ function decide(name, input, env) {
   const mine = privateWrite(name, input, list.text, env.pin);
   if (!mine) found = termHits(items, input, list.text);
   found.forEach(f => { if (f.item && f.item.key) hidden.add(f.item.s); });
-  const why = [];
-  addressed.forEach(it => why.push('an address that is not a no-reply one, in ' + fieldOf(it, hidden)));
-  const seen = new Set();
+  const why = [], seen = new Set();
+  addressed.forEach(it => { const s = said(it); if (!seen.has(s)) { seen.add(s); why.push(s); } });
   found.forEach(f => {
     const s = ruleNo(f.id) + ' of the private list, ' + (!f.item ? 'in a field' : (f.item.across !== undefined ? '' : 'in ') + fieldOf(f.item, hidden)) + (f.line && f.item && /\n/.test(f.item.s) ? ' line ' + f.line : '');
     if (!seen.has(s)) { seen.add(s); why.push(s); }
@@ -339,7 +439,8 @@ function selftest() {
   let total = 0; const bad = [];
   const mark = (ok, what, why) => { total++; console.log((ok ? '  ok   ' : '  FAIL ') + what + (ok ? '' : '  (' + why + ')')); if (!ok) bad.push(what); };
   /* made-up terms and addresses, assembled here, so no string in this file is on any list */
-  const T = { who: 'Zo' + 'rblax', town: 'Qwerty' + 'ville', attic: 'qwerty' + '-attic', word: 'Plo' + 'ndrel', two: 'Blo' + 'rp Fennick', num: '4242' + '1717' };
+  const T = { who: 'Zo' + 'rblax', town: 'Qwerty' + 'ville', attic: 'qwerty' + '-attic', word: 'Plo' + 'ndrel', two: 'Blo' + 'rp Fennick', num: '4242' + '1717',
+    long: 'Wib' + 'bleton and the quiet heron of the marsh' };
   const at = (u, d) => u + '@' + d;
   const SECRET = 'someone.private', MAILDOM = 'zorb' + '-mail.test', personal = at(SECRET, MAILDOM), noreply = at('noreply', 'anthropic.com');
   const SAID = 'said-only-' + 'here';                 /* a payload word that must never come back in a refusal */
@@ -350,13 +451,14 @@ function selftest() {
     { id: 9, kind: 'notes-only', rule: 'replace', find: [T.word], to: '[x]', files: '^docs/' },
     { id: 11, kind: 'name', rule: 'replace', find: [T.two], to: '[a name]' },
     { id: 13, kind: 'number', rule: 'replace', find: [T.num], to: '[a number]' },
+    { id: 15, kind: 'phrase', rule: 'replace', find: [T.long], to: '[a phrase]' },
   ];
   const LIST = '# a made-up list\n\n```json\n' + JSON.stringify(RULES) + '\n```\n';
   const OWNER = 'plant-owner';
   const NO_LIST = { why: 'the owner\'s private list is not loaded (~/.private-terms/map.md is absent or unreadable)' };
   const env = list => ({ list: () => list || { text: LIST }, pin: () => OWNER });
   const call = (name, input, e) => fromHook(JSON.stringify({ tool_name: name, tool_input: input }), e || env());
-  const secrets = [T.who, T.who.toLowerCase(), T.town, T.attic, T.word, T.two, T.num, SECRET, MAILDOM, SAID];
+  const secrets = [T.who, T.who.toLowerCase(), T.town, T.attic, T.word, T.two, T.num, T.long, SECRET, MAILDOM, SAID];
   const leaked = r => (r.why || []).some(w => secrets.some(t => w.indexOf(t) >= 0));
   const expect = (what, r, ok, re) => mark(r.ok === ok && !leaked(r) && (!re || re.test((r.why || []).join(' | '))), what,
     leaked(r) ? 'it printed a term, an address or the payload' : (r.ok ? 'allowed' : 'refused: ' + (r.why || []).join(' | ')));
@@ -375,6 +477,11 @@ function selftest() {
   expect('the same comment to a repository of this owner whose name is on the list passes', call('mcp__github__add_issue_comment', { owner: OWNER, repo: T.attic, issue_number: 1, body: body(T.town) }), true);
   expect('the same, written owner/name in one field, passes', call('mcp__github__issue_write', { repo: OWNER + '/' + T.attic, title: T.who, body: body(T.town) }), true);
   expect('the same name under ANOTHER owner is not this owner\'s private repository: refused', call('mcp__github__add_issue_comment', { owner: 'someone-else', repo: T.attic, issue_number: 1, body: body(T.town) }), false, /rule #5/);
+  /* the branch's second review: a repository whose name only CONTAINS the listed name (a public companion) was
+     taken for the listed one, and its writes skipped the term check */
+  [T.attic + '-public', T.attic + '-notes', 'my-' + T.attic, T.attic + '.backup', 'Qwerty-Attic'].forEach((n, i) =>
+    expect('a repository of this owner whose name only contains the listed name is not the listed one: refused (' + ['-public', '-notes', 'my-', '.backup', 'another case, on a rule read case as written'][i] + ')',
+      call('mcp__github__add_issue_comment', { owner: OWNER, repo: n, issue_number: 1, body: body(T.town) }), false, /rule #5 of the private list, in body line 2/));
   expect('a second repository field naming a public repository: refused', call('mcp__github__create_pull_request', { owner: OWNER, repo: T.attic, title: 't', body: body(T.town), head: { repo: 'public-repo' } }), false, /rule #5/);
   expect('a private repository\'s name on another server earns nothing: refused', call('mcp__Google_Drive__create_file', { owner: OWNER, repo: T.attic, title: 't', textContent: body(T.who) }), false, /rule #3/);
   expect('with no owner readable from origin, nothing is private: refused', call('mcp__github__add_issue_comment', { owner: OWNER, repo: T.attic, issue_number: 1, body: body(T.town) }, { list: () => ({ text: LIST }), pin: () => null }), false, /rule #5/);
@@ -398,6 +505,19 @@ function selftest() {
   expect('a term split three ways is found in the strings read joined in order', call('mcp__x__write_note', { a: 'one. ', b: T.who.slice(0, 2), c: T.who.slice(2, 5), d: T.who.slice(5) + ' two' }), false, /rule #3 of the private list, across fields \(the strings read joined, in order\)/);
   expect('a term whole in one field is named by that field only, not again as across fields', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: body(T.town) }), false, /^rule #5 of the private list, in body line 2$/);
   expect('a private number in a number field is refused', call('mcp__x__write_note', { note: 'clean', code: +T.num }), false, /^rule #13 of the private list, in code$/);
+  /* the branch's second review (2026-10-16): a term split between two fields that are NOT next to each other in
+     the call (a pull request puts head and base between its title and its body), or whose fields come in the
+     other order (the order of a call's fields is the caller's, not the reader's), was missed */
+  const prSplit = { owner: 'o', repo: 'r', title: T.town.slice(0, 6), head: 'feature', base: 'develop', body: T.town.slice(6) + ' is the rest' };
+  expect('a term split between a title and a body with two fields between them is refused, as across fields', call('mcp__github__create_pull_request', prSplit), false, /rule #5 of the private list, across fields \(title and body\)/);
+  expect('the same split with the body written before the title is refused too', call('mcp__github__create_pull_request', { body: prSplit.body, owner: 'o', repo: 'r', head: 'feature', base: 'develop', title: prSplit.title }), false, /rule #5 of the private list, across fields \(title and body\)/);
+  expect('two clean fields far apart pass', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'Fix the stairs', head: 'feature', base: 'develop', body: 'ville is a word in no rule here' }), true);
+  expect('a split term at the end of a long title and the start of a long body is refused (each read at its edge)', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'x '.repeat(400) + T.town.slice(0, 6), head: 'f', base: 'd', body: T.town.slice(6) + ' y'.repeat(400) }), false, /rule #5 of the private list, across fields \(title and body\)/);
+  expect('a long phrase split in its middle, between two long fields, is refused', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'x '.repeat(400) + T.long.slice(0, 20), head: 'f', base: 'd', body: T.long.slice(20) + ' y'.repeat(400) }), false, /rule #15 of the private list, across fields \(title and body\)/);
+  expect('a term whole where a long string\'s edge is cut, after a word it is part of, makes no word edge: passes', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'b'.repeat(600) + T.town + ' ' + 'c'.repeat(511 - T.town.length), head: 'f', base: 'd', body: 'clean' }), true);
+  expect('a long word ending in half a term, then the rest, is no word edge: passes', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'b'.repeat(700) + T.town.slice(0, 6), head: 'f', base: 'd', body: T.town.slice(6) + ' is the rest' }), true);
+  expect('one string is never joined to itself (its end and its own start)', call('mcp__x__write_note', { note: T.town.slice(6) + ' then ' + T.town.slice(0, 6), other: 'x' }), true);
+  expect('a write with too many strings to join every two in time is refused, not read in part', call('mcp__Google_Sheets__update_values', { spreadsheetId: 's', values: Array.from({ length: 3000 }, (_, i) => ['cell ' + i]) }), false, /3001 strings, too many to read every two of them joined.*split it/);
   const nb = stringsOf({ a: true, b: 7 });
   mark(nb.some(it => it.s === 'true' && it.at[0] === 'a') && nb.some(it => it.s === '7' && it.at[0] === 'b'), 'a boolean and a number are read as their text', JSON.stringify(nb));
 
@@ -406,6 +526,14 @@ function selftest() {
   expect('a comment holding a no-reply address passes', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'Co-Authored-By: Claude <' + noreply + '>' }), true);
   expect('a personal address in a private repository is still refused', call('mcp__github__add_issue_comment', { owner: OWNER, repo: T.attic, issue_number: 1, body: 'write to ' + personal }), false, /address/);
   expect('a personal address with no list loaded is named too', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: personal }, env(NO_LIST)), false, /address .*in body.*not loaded/);
+  /* the branch's second review: an address split between two fields was in neither, and passed */
+  const half = personal.indexOf('@') + 1;
+  expect('a personal address split between the title and the body is refused, as across fields', call('mcp__github__issue_write', { method: 'create', owner: 'o', repo: 'r', title: 'reach me at ' + personal.slice(0, half), body: personal.slice(half) + ' for details' }), false, /an address that is not a no-reply one, across fields \(title and body\)/);
+  expect('the same split at the @ the other way, and with fields between, is refused', call('mcp__github__create_pull_request', { owner: 'o', repo: 'r', title: 'write to ' + SECRET, head: 'feature', base: 'develop', body: '@' + MAILDOM + ' today' }), false, /an address that is not a no-reply one, across fields \(title and body\)/);
+  expect('a personal address split three ways is found in the strings read joined in order', call('mcp__x__write_note', { a: 'to ' + SECRET, b: '@' + MAILDOM.slice(0, 5), c: MAILDOM.slice(5) + ' now' }), false, /an address that is not a no-reply one, across fields \(the strings read joined, in order\)/);
+  expect('a split address with no list loaded is named too', call('mcp__github__issue_write', { method: 'create', owner: 'o', repo: 'r', title: 'reach me at ' + personal.slice(0, half), body: personal.slice(half) }, env(NO_LIST)), false, /address .*across fields \(title and body\).*not loaded/);
+  expect('a no-reply address split between two fields passes', call('mcp__github__issue_write', { method: 'create', owner: 'o', repo: 'r', title: 'Co-Authored-By: Claude <' + noreply.slice(0, 8), body: noreply.slice(8) + '>' }), true);
+  expect('a no-reply address whole in one cell, a word in the next, passes (the join glues nothing onto it)', call('mcp__Google_Sheets__update_values', { spreadsheetId: 's', values: [['Author', noreply, 'Claude'], ['12345+someone@users.noreply.github.com', 'x']] }), true);
 
   /* no list: every write refused, with how to load it; a read still passes (above) */
   expect('with no list, a clean write is refused, saying how to load the list', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'plain words' }, env(NO_LIST)), false, /not loaded.*Google Drive with a read-only tool.*delete that file when the session ends/);
@@ -422,11 +550,13 @@ function selftest() {
   expect('a write with an empty input is refused', call('mcp__x__do_thing', {}), false, /no text at all/);
   expect('a write with no input is refused', call('mcp__x__do_thing', undefined), false, /no text at all/);
   expect('a write named like a read, carrying a term, is a write: refused', call('mcp__x__export_repository', { note: T.town }), false, /rule #5 of the private list, in note/);
+  expect('search_and_replace, carrying a term, is a write: refused', call('mcp__Google_Docs__search_and_replace', { documentId: 'd', text: 'a line about ' + T.town + ' here' }), false, /rule #5 of the private list, in text/);
+  expect('search_and_replace, carrying a personal address, is a write: refused', call('mcp__Google_Docs__search_and_replace', { documentId: 'd', text: 'mail me ' + personal }), false, /an address that is not a no-reply one, in text/);
   expect('a write too large to read in time is refused', call('mcp__x__do_thing', { a: 'x'.repeat(LIMIT_CHARS + 1) }), false, /8 MB/);
   mark(!fromHook('not json', env()).ok, 'a call that is not JSON is refused', 'allowed');
   mark(!fromHook(JSON.stringify({ tool_input: { body: 'x' } }), env()).ok, 'a call that names no tool is refused', 'allowed');
 
-  /* the names: read only by the prefixes and the named reads; everything else is a write */
+  /* the names: read only by a read's shape and the named reads; everything else is a write */
   const names = [['mcp__github__get_me', 'read'], ['mcp__github__list_issues', 'read'], ['mcp__github__search_issues', 'read'],
     ['mcp__github__issue_read', 'read'], ['mcp__github__pull_request_read', 'read'], ['mcp__Claude_Docs__read', 'read'],
     ['mcp__Claude_Docs__query', 'read'], ['mcp__Claude_Docs__export', 'read'], ['mcp__Google_Drive__download_file_content', 'read'],
@@ -441,7 +571,15 @@ function selftest() {
     ['mcp__x__read_and_send', 'write'], ['mcp__x__get_fileAndDelete', 'write'], ['mcp__x__export', 'write'], ['mcp__x__read', 'write'],
     ['mcp__x__search', 'write'], ['mcp__Fireflies__fireflies_fetch', 'read'], ['mcp__github__get_check_run', 'read'],
     ['mcp__claude_ai_GitHub__issue_read', 'read'], ['mcp__github__list_pull_requests', 'read'], ['mcp__Granola__query_granola_meetings', 'read'],
-    ['mcp__Zoom_for_Claude__search', 'read']];
+    ['mcp__Zoom_for_Claude__search', 'read'],
+    /* the branch's second review: a read verb, then a write verb that no denylist named, was a read. Now a read is a
+       read verb followed only by words this file knows as the things a read reads: a connective (and, then, or,
+       plus) or any word it has not met makes a write */
+    ['mcp__Google_Docs__search_and_replace', 'write'], ['mcp__x__get_and_publish', 'write'], ['mcp__x__download_and_sync', 'write'],
+    ['mcp__x__read_and_apply', 'write'], ['mcp__x__get_and_commit', 'write'], ['mcp__x__search_replace', 'write'], ['mcp__x__get_file_plus_mail', 'write'],
+    ['mcp__x__list_files_or_wipe', 'write'], ['mcp__x__get_reportandmail', 'write'], ['mcp__github__get_commit', 'read'], ['mcp__github__get_release_by_tag', 'read'],
+    ['mcp__Asana__get_items_for_portfolio', 'read'], ['mcp__Google_Slides__read_slide_page_thumbnail', 'read'], ['mcp__Zoom_for_Claude__search_describe_capabilities', 'read'],
+    ['mcp__x__get_pull', 'write'], ['mcp__x__get_requests', 'write'], ['mcp__x__get_run', 'write']];
   names.forEach(([n, want]) => mark(kindOf(n) === want, n + ' is a ' + want, 'got ' + kindOf(n)));
 
   /* the list file: absent, broken, inside a repository, good — and never echoed */
@@ -474,6 +612,8 @@ function selftest() {
     mark(h.status === 2 && /rule #5 of the private list, in note line 2/.test(h.stderr) && !secrets.some(t => String(h.stderr).indexOf(t) >= 0), 'the hook itself: a term exits 2, named by rule and field and never quoted', said(h));
     h = hook({ tool_name: 'mcp__github__get_file_contents', tool_input: { owner: 'x', repo: 'y', path: T.who } });
     mark(h.status === 0, 'the hook itself: a read exits 0', said(h));
+    h = hook({ tool_name: 'mcp__Google_Docs__search_and_replace', tool_input: { documentId: 'd', text: 'a line about ' + T.town + ' here' } });
+    mark(h.status === 2 && /rule #5 of the private list, in text/.test(h.stderr), 'the hook itself: a write named as a read verb and a write verb is not let through on its name', said(h));
     const t1 = Date.now();
     h = hook({ tool_name: 'mcp__brand_new__frobnicate', tool_input: { note: 'plain words' } }, ['--limit-ms', '1000', '--stall']);
     mark(h.status === 2 && /still running after 1 s/.test(h.stderr) && Date.now() - t1 < 10000, 'a check still running at the hook\'s own limit is stopped there and refused, in its own sentence', said(h));
@@ -563,4 +703,4 @@ if (require.main === module) {
   console.log('usage: node test/toolguard.js --hook | --decide | --selftest');
 }
 
-module.exports = { kindOf, partsOf, stringsOf, decide, fromHook, loadList, ownerFromUrl, reposOf, NAMED_READS, WRITE_WORDS, LIMIT_MS };
+module.exports = { kindOf, partsOf, stringsOf, decide, fromHook, loadList, ownerFromUrl, reposOf, NAMED_READS, READ_WORDS, LIMIT_MS };

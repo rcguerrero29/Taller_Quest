@@ -519,4 +519,5 @@ if (require.main === module) {
   process.exit(0);
 }
 
-module.exports = { judgeCommits, judgeFiles, judgeScripts, parseLog, allowed, isPush, pushes, pushDirs, shellTokens };
+/* EMAIL too, so test/toolguard.js finds an address split between two fields by this file's own pattern, not a copy */
+module.exports = { judgeCommits, judgeFiles, judgeScripts, parseLog, allowed, EMAIL, isPush, pushes, pushDirs, shellTokens };
