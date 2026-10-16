@@ -60,7 +60,30 @@ jobs:
       - name: Nothing personal from the private list is in this repository
         env:
           PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
-        run: node scripts/private-terms.js --range "$RANGE_BASE" "$RANGE_HEAD"
+          EVENT: ${{ github.event_name }}
+        run: |
+          # On a pull request this runs the BASE branch's copy of the check, never the branch's own: a
+          # branch that weakens the check, or the clean copy it loads, is read by the check it would
+          # replace. The copy sits in an untracked folder one level below the root, so it reads this
+          # checkout's files (the branch's own copy of the check among them) and is not one of them.
+          # A push to main runs main's own copy, which was itself checked this way before it merged.
+          # This guards against an honest mistake, not a hostile branch: a branch here can still edit
+          # this file, and only an approval before the secret is handed over closes that.
+          # Either copy is handed the commits this run brings (--range, worked out above); a base whose
+          # copy is older than --range ignores it and reads the files alone, until this reaches main.
+          if [ "$EVENT" = "pull_request" ]; then
+            if ! git rev-parse -q --verify 'HEAD^2' >/dev/null; then
+              echo "FAIL: this pull request was not checked out as a merge onto its base, so the base's copy of the check cannot be found; nothing was checked"
+              exit 1
+            fi
+            mkdir base-check.tmp
+            git show 'HEAD^1:scripts/private-terms.js' > base-check.tmp/private-terms.js
+            git show 'HEAD^1:scripts/clean-copy.js' > base-check.tmp/clean-copy.js
+            s=0; node base-check.tmp/private-terms.js --range "$RANGE_BASE" "$RANGE_HEAD" || s=$?
+            rm -rf base-check.tmp
+            exit "$s"
+          fi
+          node scripts/private-terms.js --range "$RANGE_BASE" "$RANGE_HEAD"
       - name: No personal address in a commit or a file — only no-reply ones
         run: node test/authors.js "$RANGE_BASE" "$RANGE_HEAD"
       - name: Every third-party file matches its fingerprint
