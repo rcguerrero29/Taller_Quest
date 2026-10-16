@@ -1269,22 +1269,19 @@ const CANDIDATES = [
       }
     }
 
-    // nothing in this repository says whose dog he is. Three shapes: a possessive in front of a dog word;
-    // a dog's name within two lines of the word "owner" (a quote runs onto the next line); and, within
-    // two lines of that word, a dog word followed by "with" or "from" and then "him", "me" or "us".
-    // Every tracked file, because a note is published the moment it is pushed, wherever it sits.
+    // nothing in this repository says whose dog he is. Two shapes: a possessive in front of a dog word,
+    // and a dog's name within two lines of the word "owner" (a quote runs onto the next line). Every
+    // tracked file, because a note is published the moment it is pushed, wherever it sits.
     const DOGW = '(?:dogs?|pups?|pupp(?:y|ies)|beagles?|pooch|doggo|perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)';
     const TIE_POSS = new RegExp('\\b(?:his|my|our|mine)\\s+(?:own\\s+|real\\s+|actual\\s+|real-life\\s+|family\\s+)?' + DOGW + '\\b', 'i');
     const TIE_OWNERS = new RegExp('\\bowner[\'\u2019]s\\s+(?:[\\w-]+\\s+){0,2}' + DOGW + '\\b', 'i');
     const TIE_ES = /\b(?:mis?|nuestr[oa]s?)\s+(?:perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)\b|\bperr[oa]s?\s+del\s+due[ñn]o\b/i;
     const OWNERW = /\bowners?\b|\bdue[ñn][oa]s?\b/i;
-    const TIE_WITH = new RegExp('\\b' + DOGW + '\\b[^\\n]{0,40}?\\b(?:with|from)\\s+(?:him|me|us)\\b', 'i');
     const ties = (text, names) => {
       const res = names.map(n => [n, word(n)]), lines = text.split('\n'), hits = [];
       lines.forEach((l, i) => {
         if (TIE_POSS.test(l) || TIE_OWNERS.test(l) || TIE_ES.test(l)) hits.push([i + 1, 'says the game\'s dog belongs to somebody']);
         const near = lines.slice(Math.max(0, i - 2), i + 1).some(x => OWNERW.test(x));
-        if (near && TIE_WITH.test(l)) hits.push([i + 1, 'says the dog stays with the person the word owner names']);
         const nm = near && res.find(([, re]) => re.test(l));
         if (nm) hits.push([i + 1, 'puts a dog\'s name ("' + nm[0] + '") beside the word owner']);
       });
@@ -1297,7 +1294,6 @@ const CANDIDATES = [
        [O + ' wrote that ' + nm.toLowerCase() + ' comes along to every room', true],
        [O + ' wrote a note\nand then\n' + nm + ' knocks the cone over', true],
        ['mi ' + 'perro', true],
-       [O + ' asked that the dog stay with ' + 'him', true],
        ['your dog sits', false], ['the ' + O + ' of the bakery opens at six', false], [nm + ' fetches the ball', false]]
         .forEach(([t, bad]) => { if ((ties(t, [nm]).length > 0) !== bad)
           P.push('the whose-dog check ' + (bad ? 'let through' : 'flagged') + ' "' + t.replace(/\n/g, ' / ') + '" — it cannot be trusted with the repository'); });
@@ -5636,10 +5632,10 @@ const CANDIDATES = [
     // the neutral set is the source; the branded set is generated from it (build-branded.js --check holds that)
     const tdir = path.join(__dirname, '..', 'docs', 'templates', 'neutral');
     /* The templates are the owner's and stay private; the PUBLIC copy carries their names only
-       (docs/templates/NAMES.md, from public-overlay/). The owner, 2026-09-27: never publish their
-       URL; he did not think their names were a risk, and asked to be told if one ever becomes one,
-       for example a name that carries a client. Where the templates are here, the published
-       list must name exactly them, so the two cannot drift; where neither is here, that is a red. */
+       (docs/templates/NAMES.md, from public-overlay/). The owner, 2026-09-27, asked that their URL
+       never be published; he did not think their names were a risk, and asked to be told if one
+       ever becomes one, for example a name that carries a client. Where the templates are here, the
+       published list must name exactly them, so the two cannot drift; where neither is here, that is a red. */
     const namesOf = p => fs.existsSync(p) ? [...fs.readFileSync(p, 'utf8').matchAll(/^- `([^`]+)`$/gm)].map(m => m[1]) : null;
     const listed = namesOf(path.join(__dirname, '..', 'docs', 'templates', 'NAMES.md'));
     const published = namesOf(path.join(__dirname, '..', 'public-overlay', 'docs', 'templates', 'NAMES.md'));

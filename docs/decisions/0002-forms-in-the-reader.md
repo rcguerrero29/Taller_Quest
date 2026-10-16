@@ -5,7 +5,7 @@
 
 ## Asked
 
-The owner asked to be shown what #2 meant, then approved item 5.
+The owner asked to be shown what #2 meant, then approved it, in an answer he numbered 5.
 
 `[OWNER]`, restated from the private ledger row of 2026-09-06 (the PR-2-of-3 row in the private
 `docs/ASKS.md`), not in his words. In that row the owner approves item 2 of eight proposals he had

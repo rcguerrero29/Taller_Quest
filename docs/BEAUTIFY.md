@@ -563,7 +563,8 @@ session's words, not his:
 
 - **Nobody is being hired.** No commission is waiting; no budget line is being held open. The art in
   this game is made here.
-- **Nobody else's time is waited on.** Work does not stop for it.
+- **The playtester's time is not waited on.** The owner did not know when that time would come, and
+  work does not stop for it.
 - **The art we can reach is worth making anyway, for two reasons he gave** — to learn, at least,
   and to have a backup. A drawing made here teaches the project how the thing is built even if a
   better one replaces it, and until one does, it is the drawing that ships.

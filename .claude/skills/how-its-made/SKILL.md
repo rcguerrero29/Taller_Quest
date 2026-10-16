@@ -7,7 +7,7 @@ description: Draw or model a thing by the process that made it, not by how it lo
 
 *Opened 2026-09-16, after four attempts at a slice of [a dish]. The fourth was accurate about the
 object and still wrong, and the owner told me why. Restated here, not in his words: he asked me to
-think about how it is made too, so that the slices make sense as pieces of one thing that was made
+consider the making as well, so that the slices make sense as pieces of one thing that was made
 and then cut. That, he said, is why they are rarely shown the way I had them, and why, when they
 are shown close, they sit in a pile and match one another more.*
 
@@ -86,7 +86,7 @@ it lies on it like a sticker. **Whenever you cut a length off something, ask how
 and draw that.**
 
 **A container ROUNDS what it holds.**
-The owner: it is more a pile pressed round inside a cylinder. The filling was built
+The owner pointed out that it is more a pile pressed round inside a cylinder. The filling was built
 as a rectangular grid of long rows, which is what a pile looks like **before** it is wrapped. Rolling
 squeezes it into a roughly circular cluster, so each row is a **chord of a circle** — narrow at the
 top and bottom, widest across the middle — and the whole pile is smaller and tighter than a grid

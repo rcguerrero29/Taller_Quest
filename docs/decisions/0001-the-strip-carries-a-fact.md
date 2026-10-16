@@ -9,7 +9,8 @@ finding is dated 2026-09-08 (`index.html:730`). Do not repeat a date this file d
 The owner chose the facts.
 
 `[OWNER]`, restated from the private ledger row of 2026-09-08, not in his words. The row, in the
-private `docs/ASKS.md`, has no date column; 2026-09-08 is the day it was written into the ledger.
+private `docs/ASKS.md`, has no date column; by the private repository's history, it was written
+into the ledger on 2026-09-08.
 A code comment in that world's `record.js` holds his words too.
 
 The question the owner was answering came from Rosa's review of the town's front door.
@@ -83,4 +84,5 @@ pack hits. Closing #154 on the strength of `HUDFACT` alone would close it on hal
 - GitHub #154 (the town's career ladder in a pack that disclaims one).
 - `docs/OPEN.md` §2 listed #154 as decided-not-built with no mention that half of it shipped; that
   row was corrected 2026-09-10 to say which half.
-- No dedicated `docs/ASKS.md` row. Recorded here as thin.
+- One row in the private `docs/ASKS.md`, shared with two other answers and undated; by the private
+  repository's history, it was written in on 2026-09-08 (see Asked).
