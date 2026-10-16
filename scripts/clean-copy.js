@@ -448,10 +448,17 @@ function checkCode(pairs, outDir, acornPath) {
     }
     return null;
   };
+  const HEREDOC = /(?<!<)<<(?!<)-?[ \t]*(?:'([^'\n]+)'|"([^"\n]+)"|\\?([\w-]+))/;   // its word: quoted, escaped or bare
   const strip = {
     css: t => t.replace(/\/\*[\s\S]*?\*\//g, ''),
     html: t => t.replace(STYLE, (x, a, b, c) => a + b.replace(/\/\*[\s\S]*?\*\//g, '') + c).replace(/<!--[\s\S]*?-->/g, ''),
-    hash: t => t.split('\n').filter(l => !/^\s*#(?!!)/.test(l)).join('\n'),
+    /* a # line inside a heredoc is the text the heredoc writes, not a comment: it is kept, so a copy that rewrites it
+       is code changed. A heredoc runs from the line that opens it (<<WORD, <<-WORD, <<'WORD', <<"WORD"; a <<< here-
+       string opens none) to the line that is its word alone after any indent; one that never closes keeps every line */
+    hash: t => { let end = null; return t.split('\n').filter(l => {
+      if (end !== null) { if (l.replace(/^\s+/, '') === end) end = null; return true; }
+      const h = !/^\s*#/.test(l) && l.match(HEREDOC); if (h) end = h[1] || h[2] || h[3];
+      return !/^\s*#(?!!)/.test(l); }).join('\n'); },
   };
   const R = { same: 0, codeOk: 0, unparsed: [], codeChanged: [], dataChanged: [], prose: [], added: 0 };
   pairs.forEach(({ file, from }) => {
@@ -613,6 +620,22 @@ function selftest() {
     const own = 'function f(x) {\n  /* a */\n  return x;\n}\n';
     o = verdict(own, own.replace('/* a */', '/* a, reworded\n     over two lines */'));
     mark(o === 'comments only', 'a comment reworded on its own line, over two lines now, is still comments only', o);
+    /* a # line inside a heredoc is the text the heredoc writes, not a comment (2026-10-16: a step summary's heading
+       was rewritten and the check said comments only); a # line outside one is still a comment */
+    const sh = (name, a, b) => {
+      fs.mkdirSync(path.join(cc, 'out'), { recursive: true });
+      fs.writeFileSync(path.join(cc, name), a); fs.writeFileSync(path.join(cc, 'out', name), b);
+      const D = checkCode([{ file: name, from: path.relative(ROOT, path.join(cc, name)) }], path.join(cc, 'out'), parser);
+      return D.codeChanged.length ? 'code changed' : D.codeOk ? 'comments only' : JSON.stringify(D);
+    };
+    const here = "cat > notes.md <<'EOF'\n# a heading the file keeps\nEOF\n# a note\n";
+    const step = 'steps:\n  - run: |\n      cat <<-"END-NOTE" > notes.md\n      # a heading the file keeps\n      END-NOTE\n      # a note\n';
+    const bare = 'cat <<\\END-X > notes.md\n# a heading the file keeps\nEND-X\n# a note\n';
+    const reword = (name, t, line) => sh(name, t, t.replace(line, line + ', reworded'));
+    o = [reword('a.sh', here, '# a heading the file keeps'), reword('a.yml', step, '# a heading the file keeps'), reword('c.sh', bare, '# a heading the file keeps')].join(', ');
+    mark(o === 'code changed, code changed, code changed', 'a # line inside a heredoc is the text it writes: rewording it is code changed (<<\'EOF\', <<-"END-NOTE" in a step, <<\\END-X)', o);
+    o = [reword('a.sh', here, '# a note'), reword('a.yml', step, '# a note'), reword('c.sh', bare, '# a note'), reword('b.sh', 'tr a-z A-Z <<< word\n# a note\n', '# a note')].join(', ');
+    mark(o === 'comments only, comments only, comments only, comments only', 'a # comment outside a heredoc, after its end or after a <<< here-string, is still comments only', o);
   } finally { fs.rmSync(cc, { recursive: true, force: true }); }
   /* the refusals that keep the map and the copy out of the repository, and an empty list from publishing nothing */
   let e1 = ''; try { run(path.join(ROOT, 'map.json'), '/tmp/x'); } catch (e) { e1 = e.message; }
