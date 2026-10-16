@@ -32,9 +32,9 @@
         two fields, or three in order, refuses it too.
       - The private-term check reads the owner's list from the file PRIVATE_TERMS_FILE names, else
         ~/.private-terms/map.md, outside every repository (a list inside one is refused), in the shape
-        `--map` reads: markdown holding one ```json block. scripts/private-terms.js (rulesFrom, check)
-        applies it, with scripts/clean-copy.js under it, so this check cannot drift from the public
-        repository's own. With no list, or one that cannot be read, EVERY write is refused, with how to
+        `--map` reads: markdown holding one ```json block. scripts/private-terms.js reads it (rulesFrom) and
+        scripts/clean-copy.js applies it (survivors), the two halves of the public repository's own check,
+        so this check cannot drift from it. With no list, or one that cannot be read, EVERY write is refused, with how to
         load it.
         · A GitHub write whose every repository field names a repository of this checkout's own owner
           (its `origin`) whose WHOLE name is a term of the list (one `find`, case as its rule reads it) is
@@ -56,7 +56,8 @@
    (search_and_replace, get_and_publish) passed as a read; a public repository whose name contained the
    private one's skipped the term check; a term split between two fields that were not next to each other
    (a pull request's title and body, with head and base between them) passed; and an address split
-   between two fields passed.
+   between two fields passed. FOUND MERGING IT WITH THE WORD CHECK'S BRANCH: its check() reads a whole tree,
+   so a one-file write outside a docs-only rule's folder was refused, and every refusal lost its field (hitsIn).
 
    THE TIME LIMIT. Claude Code stops a hook at the `timeout` .claude/settings.json gives it (30 s) and then
    lets the call THROUGH. So the reading runs in a child process (`--decide`) that the hook stops at
@@ -83,9 +84,18 @@ const { execFileSync, spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 /* what reads the rules and the addresses: loaded only for a write, so a read costs nothing but the parse */
-let PT = null, AU = null;
+let PT = null, AU = null, CC = null;
 const terms = () => PT || (PT = require(path.join(ROOT, 'scripts', 'private-terms.js')));
+const copy = () => CC || (CC = require(path.join(ROOT, 'scripts', 'clean-copy.js')));
 const authors = () => AU || (AU = require('./authors.js'));
+/* the list's hits in a call's strings, handed as { file, text }: the rules read by scripts/private-terms.js (rulesFrom,
+   with every refusal of a list written wrong) and applied by scripts/clean-copy.js (survivors), the two halves the
+   public check is made of, each rule with its own "files" limit, each hit worded `<file>:<line>`. Not that check's
+   check(): it reads a whole TREE. Found by merging this branch with the word check's (2026-10-16), whose check()
+   refuses a rule whose limit takes none of the files it is handed, as a one-file write outside docs/ is to a docs-only
+   rule, and names a file by its place in git ls-files order, which says nothing of a call's fields: every such file
+   write was refused, and every refusal said `in a field`. Read in its two halves, a call is read the same either way */
+const hitsIn = (text, files) => copy().survivors(files, terms().rulesFrom(text));
 
 /* mcp__<server>__<tool>: the tool part decides read or write; the server part, GitHub or not */
 function partsOf(name) {
@@ -340,7 +350,7 @@ function termHits(items, input, listText) {
     const content = byAt.get(JSON.stringify(at.concat('content'))), where = byAt.get(JSON.stringify(at.concat('path')));
     if (!content || !where) return;
     handled.add(content);
-    terms().check(listText, [{ file: where.s, text: content.s }]).hits.forEach(h => {
+    hitsIn(listText, [{ file: where.s, text: content.s }]).forEach(h => {
       const id = (/^rule #(\S+)/.exec(h) || [])[1];
       const m = / survives at .*:(\d+)(?: \(.*\))?$/.exec(h);
       found.push(m ? { id, item: content, line: +m[1] } : { id, item: where, line: null });
@@ -350,7 +360,7 @@ function termHits(items, input, listText) {
      NAME is not the payload's and is not counted; every other hit counts, even one this cannot place, so
      a change in how scripts/private-terms.js words a hit refuses rather than passes */
   const rest = items.filter(it => !handled.has(it));
-  terms().check(free, rest.map((it, i) => ({ file: 's' + i + '.md', text: it.s }))).hits.forEach(h => {
+  hitsIn(free, rest.map((it, i) => ({ file: 's' + i + '.md', text: it.s }))).forEach(h => {
     if (NAME_HIT.test(h)) return;
     const at = h.lastIndexOf(' survives at s'), m = at < 0 ? null : /^ survives at s(\d+)\.md:(\d+)$/.exec(h.slice(at));
     found.push({ id: idOf(h), item: m ? rest[+m[1]] : null, line: m ? +m[2] : null });
@@ -367,7 +377,7 @@ function termHits(items, input, listText) {
      a term whole in one field is named there once. A hit this cannot place still counts, as across fields */
   const values = items.filter(it => !it.key && !it.decoded);
   if (values.length < 2) return found;
-  if (handled.size) terms().check(free, [...handled].map((it, i) => ({ file: 'f' + i + '.md', text: it.s }))).hits.forEach(h => { if (!NAME_HIT.test(h)) alone.add(String(idOf(h))); });
+  if (handled.size) hitsIn(free, [...handled].map((it, i) => ({ file: 'f' + i + '.md', text: it.s }))).forEach(h => { if (!NAME_HIT.test(h)) alone.add(String(idOf(h))); });
   const { tails, heads } = edgesOf(values), pairs = [], starts = [], whose = [];
   let line = 1;
   for (const [t, It] of tails) for (const [h, Ih] of heads) {
@@ -376,7 +386,7 @@ function termHits(items, input, listText) {
   }
   const pairOf = n => { let a = 0, b = starts.length - 1; while (a < b) { const c = (a + b + 1) >> 1; if (starts[c] <= n) a = c; else b = c - 1; } return whose[a]; };
   const all = values.map(it => it.s), byPair = new Set();
-  const joined = terms().check(free, [{ file: 'pairs.md', text: pairs.join(SEP) }, { file: 'joined.md', text: all.join('') }, { file: 'spaced.md', text: all.join(' ') }]).hits
+  const joined = hitsIn(free, [{ file: 'pairs.md', text: pairs.join(SEP) }, { file: 'joined.md', text: all.join('') }, { file: 'spaced.md', text: all.join(' ') }])
     .filter(h => !NAME_HIT.test(h) && !alone.has(String(idOf(h))));
   joined.forEach(h => {
     const m = / survives at pairs\.md:(\d+)$/.exec(h);
@@ -520,6 +530,21 @@ function selftest() {
   expect('a write with too many strings to join every two in time is refused, not read in part', call('mcp__Google_Sheets__update_values', { spreadsheetId: 's', values: Array.from({ length: 3000 }, (_, i) => ['cell ' + i]) }), false, /3001 strings, too many to read every two of them joined.*split it/);
   const nb = stringsOf({ a: true, b: 7 });
   mark(nb.some(it => it.s === 'true' && it.at[0] === 'a') && nb.some(it => it.s === '7' && it.at[0] === 'b'), 'a boolean and a number are read as their text', JSON.stringify(nb));
+  /* merged with the word check's branch (2026-10-16): its check() reads a WHOLE TREE, so it refuses a rule whose "files"
+     limit takes none of the files it is handed, and names each file by its place in git ls-files order, never by its
+     name. A call is not a tree: a stand-in check() that does both may not change one decision or one field named */
+  const realPT = terms();
+  const treeCheck = (text, F) => {
+    const off = realPT.rulesFrom(text).find(r => r.rule !== 'keep' && r.files && !F.some(f => f.text != null && new RegExp(r.files).test(f.file)));
+    if (off) throw new Error('rule #' + off.id + ' is limited by "files" to paths that match none of the files read; nothing was checked');
+    return { hits: realPT.check(text, F).hits.map(h => { const t = / survives at (.*):(\d+)(?: \(.*\))?$/.exec(h), id = /^rule #([^\s:]+)/.exec(h)[1];
+      return 'rule #' + id + (t ? ' survives at line ' + t[2] + ' of' : ': a file name carries it:') + ' file ' + (t ? F.findIndex(f => f.file === t[1]) + 1 : 1) + ' in git ls-files order, fingerprint 00000000 (no name is printed on a public log)'; }) };
+  };
+  const tree = (name, input) => { PT = Object.assign({}, realPT, { check: treeCheck }); try { return call(name, input); } catch (e) { return { ok: false, why: ['it threw (' + e.name + ')'] }; } finally { PT = realPT; } };
+  expect('with a check() that reads a whole tree, a file outside a docs-only rule\'s folder still passes', tree('mcp__github__create_or_update_file', { owner: 'o', repo: 'r', branch: 'b', message: 'm', path: 'test/x.js', content: 'const a = "' + T.word + '";' }), true);
+  expect('with it, a term in files[1].content is still named by its field and line', tree('mcp__github__push_files', { owner: 'someone', repo: 'public-repo', branch: 'b', message: 'm', files }), false, /^rule #3 of the private list, in files\[1\]\.content line 2$/);
+  expect('with it, a term in a comment is still named by its field and line', tree('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: body(T.town) }), false, /^rule #5 of the private list, in body line 2$/);
+  expect('with it, a term split between a title and a body is still named by its two fields', tree('mcp__github__create_pull_request', prSplit), false, /^rule #5 of the private list, across fields \(title and body\)$/);
 
   /* addresses: the same rule as test/authors.js, list or no list, private repository or not */
   expect('a comment holding a personal address is refused, and neither the address nor its domain is printed', call('mcp__github__add_issue_comment', { owner: 'o', repo: 'r', issue_number: 1, body: 'write to ' + personal }), false, /an address that is not a no-reply one, in body/);
