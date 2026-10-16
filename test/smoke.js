@@ -1291,8 +1291,8 @@ const CANDIDATES = [
     {
       const nm = pool[0] || (star && star.name) || 'Fido', O = 'own' + 'er';
       [['the ' + O + '\'s dog, by name', true], ['the ' + O + '\u2019s recurring dog', true], ['a note about ' + 'his' + ' dog', true],
-       [O + ', 2026-09-04: "' + nm.toLowerCase() + ' should follow me anywhere"', true],
-       [O + ', 2026-09-04: "the cone"\nand then\n' + nm + ' should be able to rip it', true],
+       [O + ' wrote that ' + nm.toLowerCase() + ' comes along to every room', true],
+       [O + ' wrote a note\nand then\n' + nm + ' knocks the cone over', true],
        ['mi ' + 'perro', true],
        ['your dog sits', false], ['the ' + O + ' of the bakery opens at six', false], [nm + ' fetches the ball', false]]
         .forEach(([t, bad]) => { if ((ties(t, [nm]).length > 0) !== bad)
@@ -6186,7 +6186,7 @@ const CANDIDATES = [
       else if (o.userData.sill && o.userData.x === prop.x && o.userData.y === prop.y) pane = o; });
     if (!pane) { P.push('the window this season dresses has no lit pane in 3D at all'); }
     if (!ledge) {
-      P.push('there is no sill under the window in 3D — the candy is standing on the bottom edge of a hole in a wall, which is what "the skulls are hidden on the sills" has meant every time it was reported');
+      P.push('there is no sill under the window in 3D — the candy is standing on the bottom edge of a hole in a wall, which is what every report of hidden skulls has meant');
     } else {
       /* it must sit immediately UNDER the pane, not floating and not overlapping it */
       if (pane) { const gap = (pane.position.y) - (ledge.position.y + ledge.scale.y);
@@ -6220,7 +6220,7 @@ const CANDIDATES = [
         stone + ' of its pixels reach the screen. It is hidden: either something is in front of it, or ' +
         'it is the colour of what is behind it. (The known cause is the wall it hangs on — a billboard ' +
         'tilts into the surface behind it when the camera looks down — but this check only knows that ' +
-        'nothing arrived.) The owner has reported this as "the skulls are hidden on the sills" three times');
+        'nothing arrived.) The owner has reported the skulls as hidden three times');
     }
     seasonSet(keep.season); world = keep.w; px = fx = keep.px; py = fy = keep.py; camSet(keep.cam);
     return P;
@@ -6601,7 +6601,7 @@ const CANDIDATES = [
     /* the legend: real text, one row per kind actually drawn, in the language the game is in */
     const rows = document.querySelectorAll('#mapLeg [data-kind]');
     const drawn = [...new Set(planMarks().map(m => m.k))];
-    if (rows.length !== drawn.length) P.push('the plan draws ' + drawn.length + ' kinds of mark and the legend has ' + rows.length + ' rows: the owner said "its hard to tell unless you have a legend"');
+    if (rows.length !== drawn.length) P.push('the plan draws ' + drawn.length + ' kinds of mark and the legend has ' + rows.length + ' rows: without a legend, the colours are hard to read');
     rows.forEach(r => { if (!r.textContent.trim()) P.push('a legend row for "' + r.getAttribute('data-kind') + '" has no word beside its colour'); });
 
     /* the destination he chooses — and the ring that says he chose it */

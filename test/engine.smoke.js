@@ -1410,7 +1410,7 @@ function findChromium() {
         if (!did) { P.push(pl.name + ' none of the dog\'s whims does anything, so how often he digs could not be asked'); return; }
         seen.push({ pl, n });
         const dig = pc('dig');
-        if (dig < 6 || dig > 10) P.push(pl.name + ' the dog digs ' + dig.toFixed(1) + '% of the time; canon keeps it about 8% ("ok make it about 8 percent yes", 2026-09-29 — a puppy phase, docs/IDEAS.md:436)');
+        if (dig < 6 || dig > 10) P.push(pl.name + ' the dog digs ' + dig.toFixed(1) + '% of the time; canon keeps it about 8% (settled 2026-09-29 — a puppy phase, docs/IDEAS.md:436)');
         if (pc('nap') + pc('song') <= 50) P.push(pl.name + ' naps and songs are only ' + (pc('nap') + pc('song')).toFixed(1) + '% of what the dog does; they are meant to be most of it');
         if (pl.pal && !n.greeting) P.push(pl.name + ', the two dogs never greet each other');
         if (pl.wid === PL.park && hasCourse && !n.course) P.push(pl.name + ', the dog never runs the course his park has');
@@ -1498,7 +1498,7 @@ function findChromium() {
           dogWhim(d, T);
           Math.random = MR;
           if (!d.task || d.task.type !== 'stick') P.push('away from the park the dog never goes after his own stick: the roll that should send him ' +
-            (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "running after his own stick")');
+            (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he runs after his own stick)');
           else {
             const stick = d.task.o; let carried = 0, proud = 0;
             drive(d, 400, dd => { if (stick.phase === 'carried') { carried++; if (dd.happyT > T) proud++; } });
@@ -1546,7 +1546,7 @@ function findChromium() {
             dogWhim(d, T);
             Math.random = MR;
             if (!d.task || d.task.type !== 'door') P.push('a dog in ' + door.wid + ' never goes to sing at ' + name + '\'s door: the roll that should send him ' +
-              (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "awooing infront of a restaurant and a worker brings them a water bowl")');
+              (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he howls at a restaurant door and a worker brings water)');
             else {
               let sang = false, came = null, lookOk = false, bowl = null, drank = false;
               drive(d, 700, dd => {
@@ -2039,7 +2039,7 @@ function findChromium() {
       dogWhim(d, T);
       Math.random = MR;
       const n = d.task && d.task.type === 'romp' ? d.task.n : null;
-      if (!n) { P.push('away from the park the dog never romps with anybody near: the roll that should send him ' + (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (owner, 2026-09-29: "chasing after another character")'); return P; }
+      if (!n) { P.push('away from the park the dog never romps with anybody near: the roll that should send him ' + (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he chases another character)'); return P; }
       const name = npcName(n.npc || n.key).split(' ·')[0], home = [n.x, n.y], round = new Set();
       let reached = false, onThem = false, laughed = false, laughDrawn = null;
       for (let i = 0; i < 300 && d.task; i++) {
@@ -2215,7 +2215,7 @@ function findChromium() {
           return { none: what + ' ended at ' + at(end) + ' with no way home on foot at all — somebody stands in it' };
         const r = live(d, AFTER), fin = [d.x, d.y];
         if (r.first === null) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot ' + at(home) + ', for the whole ' + sec(AFTER) +
-          ' that followed: every step he tried was further from home than a dog may wander. The owner, 2026-10-01: "i dont understand why he gets stuck"' };
+          ' that followed: every step he tried was further from home than a dog may wander. The owner asked why he gets stuck' };
         if (r.first > c.p99) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
           sec(c.p99) + '). Something rescued him late; nothing took him home when the activity ended' };
         if (r.jumps.length) return { fail: 'after ' + what + ' the dog jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot and did not walk it' };
@@ -2302,7 +2302,7 @@ function findChromium() {
           if (d.task && d.task.type === 'run') return { fail: 'the dog who follows you never finished the course' };
           const r = live(d, AFTER), near = free(r).find(p => md(p, ph) <= c.reach);   /* another lap of the course passes his spot; that is not leaving you */
           if (near) return { fail: 'a dog who follows you ran the agility course beside you and then left you: he went to ' + at(near) + ', back by his spot ' + at(ph) + ', ' + md(near, you) +
-            ' steps from where you stood. The owner, 2026-09-30: "i dont want him to leave me"' };
+            ' steps from where you stood. The owner asked that the dog stay with him' };
           return {}; }));
 
         /* ---- 3 · told to Sit in the middle of the course ---- */
@@ -2315,7 +2315,7 @@ function findChromium() {
           if (d.task || !d.sit) return { fail: 'pressing Sit in the middle of the agility course did not stop the dog' };
           const r = live(d, AFTER), fin = [d.x, d.y];
           if (r.first === null) return { fail: 'told to Sit in the middle of the agility course, the dog sat at ' + at(was) + ', ' + md(was, ph) + ' steps from his spot ' + at(ph) +
-            ', and never moved again in ' + sec(AFTER) + ': every step he tried was too far from home. The owner, 2026-10-01: "he appears no matter what"' };
+            ', and never moved again in ' + sec(AFTER) + ': every step he tried was too far from home. A dog must never stay stuck' };
           if (r.jumps.length) return { fail: 'told to Sit in the middle of the course, the dog later jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot' };
           if (!free(r).some(p => md(p, ph) <= c.reach)) return { fail: 'told to Sit in the middle of the agility course, the dog never got back to his spot ' + at(ph) + ': ' + sec(AFTER) + ' later he is at ' + at(fin) };
           return {}; }));
@@ -2367,7 +2367,7 @@ function findChromium() {
           if (r.first === null) return { fail: 'you called the dog and he came, and then he stood beside you at ' + at(came) + ' for the whole ' + sec(AFTER) + ' without a step: ' +
             md(came, h) + ' steps from his spot ' + at(h) + ', every step he tried was too far from home' };
           if (md(gone, you) > c2.reach + 1) return { fail: 'you called the dog and he came, and then he left you: he went to ' + at(gone) + ', ' + md(gone, you) + ' steps from you, back toward his old spot ' +
-            at(h) + '. The owner, 2026-09-30: "i dont want him to leave me"' };
+            at(h) + '. The owner asked that the dog stay with him' };
           if (r.last === null || AFTER - r.last > tail(c2)) return { fail: 'you called the dog and he came, and then he stood still for good at ' + at([d.x, d.y]) };
           return {}; }));
 
@@ -2382,7 +2382,7 @@ function findChromium() {
             const pre = set ? set(d) : null; if (pre) return pre;
             const r = live(d, AFTER, dd => md([dd.x, dd.y], f) > 1), j = r.jumps[0];
             if (!j) return { fail: 'a dog walled in at ' + at(f) + ', ' + md(f, home) + ' steps from his spot ' + at(home) + ' (' + what + '), was still standing there ' + sec(AFTER) +
-              ' later. The owner, 2026-10-01: "he appears no matter what"' };
+              ' later. A dog must never stay stuck' };
             if (j.t < c2.p99) return { fail: 'a dog walled in at ' + at(f) + ' (' + what + ') was taken home after ' + sec(j.t) + ' — sooner than 99 in 100 of a dog\'s own pauses (' + sec(c2.p99) + '), so a dog only resting would be whisked away' };
             if (j.wall) return { fail: 'a dog walled in far from home ' + what + ' reappeared INSIDE something, at ' + at(j.to) };
             if (j.you) return { fail: 'a dog walled in far from home ' + what + ' reappeared on your own tile, ' + at(j.to) };
@@ -3494,7 +3494,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       T3.yaw = 0; t3Invalidate(); draw3d();
       const cut = (T3.near || []).filter(p => p.o && !(p.o.userData.wall !== undefined || p.o.userData.door || p.o.userData.winBack || p.o.userData.counter));
       if (!cut.length)
-        P.push('#140: standing right behind a ' + (CW().grid[found.sy + 1][found.sx]) + ' in ' + found.wn + ', the only things the camera will move out of your way are walls — the thing in front of you is left solid, which is the "I seem to walk on them" report');
+        P.push('#140: standing right behind a ' + (CW().grid[found.sy + 1][found.sx]) + ' in ' + found.wn + ', the only things the camera will move out of your way are walls — the thing in front of you is left solid, which is the report of seeming to walk on them');
       else {
         const bad = cut.filter(p => !(p.o.material && (Array.isArray(p.o.material) ? p.o.material[0] : p.o.material).opacity < 1));
         if (bad.length) P.push('#140: the piece between you and the camera was picked out but never turned to glass — you still cannot be seen through it');
@@ -4526,7 +4526,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + '), so that side was not measured'); return; }
         if (!meet) { P.push('COUNT-ONLY: in the ' + cam + ' camera a person standing ' + side + ' the trolley at ' + L.world + '(' + mid + ',' + row + ') never meets it — not one pixel of his body crosses the car\'s — so the order there was not measured at rest'); return; }
         if (side === 'in front of' && tramChangedHero) P.push('in the ' + cam + ' camera a person standing in front of the trolley is painted under it — ' + tramChangedHero + ' pixels of him covered by a car that is behind him');
-        if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof; "looks like the person is laying on the trolley"');
+        if (side === 'behind' && heroChangedTram) P.push('in the ' + cam + ' camera a person standing behind the trolley is painted on it — ' + heroChangedTram + ' pixels of him over its roof, so he looks to be lying on it');
       });
       /* WALKING THROUGH IT, in both flat cameras (#276, #275). Standing still, two of the cases above cannot see the
          order. In the front camera the car is drawn inside its own row and so is a person, so nobody standing beside it
@@ -4561,7 +4561,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!heroSeen) { P.push('the ' + cam + ' camera draws nobody where the hero steps ' + side + ' the trolley in ' + L.world + ', so walking through it was not measured'); return; }
         if (moved > meet * 0.05) { P.push('the ' + cam + ' camera cannot be measured walking through the trolley: two frames of the same scene differ by ' + moved + ' of the ' + (meet + moved) + ' pixels where he and the car meet'); return; }
         if (!meet) { P.push('COUNT-ONLY: stepping through the trolley from ' + side + ' it in ' + L.world + ', the ' + cam + ' camera never put his body and the car\'s in the same pixel, so the order was not measured'); return; }
-        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row; "looks like the person is laying on the trolley"');
+        if (worst && side === 'behind') P.push('in the ' + cam + ' camera a person stepping onto the rails from behind a stopped trolley is painted on it — ' + worst + ' pixels of him over its body with his feet ' + at + '/8 of a tile short of its row, so he looks to be lying on it');
         if (worst && side === 'in front of') P.push('in the ' + cam + ' camera a person stepping off the rails in front of a stopped trolley is painted under it — ' + worst + ' pixels of him covered with his feet ' + at + '/8 of a tile past its row, by a car that is behind him');
       });
     });
@@ -6099,7 +6099,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* the warning the owner asked for: both rooms are called "the gatehouse" */
       const warned = await ip.evaluate(() => (typeof logKind === 'function' ? logKind('name') : []).map(e => e.msg));
       const said = warned.find(m => m.includes('probe-gatehouse-1') && m.includes('probe-gatehouse-2'));
-      if (!said) IR.push('two rooms are both called "the gatehouse" and nothing said so — he asked for a warning that other rooms have the same name');
+      if (!said) IR.push('two rooms are both called "the gatehouse" and nothing said so — the owner asked for a warning when rooms share a name');
       else IR.push('COUNT-ONLY: room ids (#269): two rooms called "the gatehouse" are two rooms, and the engine said so: ' + said);
       /* four lots that must be refused, raised the way a pack's are */
       const bad = await ip.evaluate(Y => {
@@ -6859,7 +6859,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const k = A.dirTo[tgt.name], from = A.dirTo[other.name];
         await run('(face)', A, [A.x, A.y], from[3], k[0], 'turn', k[3], tgt,
           'in ' + A.wid + chap(A) + ' standing between ' + p.name + ' and ' + q.name + ' and turned with a real ' + k[0] + ' from ' + other.name + ' to face ' + tgt.name,
-          'Enter talks to the one you face (#285; the owner, 2026-10-01: "enter talks to the person you face first sounds good")');
+          'Enter talks to the one you face (#285, agreed by the owner)');
       }
       measured.push('turned to face each of ' + p.name + ' and ' + q.name + ' in ' + A.wid + where(A));
       /* (facing nobody) between the same two: the one with a quest for you, and between two alike the
