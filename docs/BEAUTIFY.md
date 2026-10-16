@@ -552,7 +552,7 @@ the costume of a fix.
 
 ## The art we can reach — the standing approach, as he set it — 2026-09-17
 
-The skills and lessons learned from [partner]'s mocks go into making the map a better image.
+The skills and lessons learned from a playtester's mocks go into making the map a better image.
 Nobody is being hired, so the work moves forward with the art within reach, to learn at least,
 and to have a backup.
 
@@ -563,7 +563,7 @@ session's words, not his:
 
 - **Nobody is being hired.** No commission is waiting; no budget line is being held open. The art in
   this game is made here.
-- **The playtester's time is not waited on.** The owner did not know when that time would come, and
+- **That playtester's time is not waited on.** The owner did not know when that time would come, and
   work does not stop for it.
 - **The art we can reach is worth making anyway, for two reasons he gave** — to learn, at least,
   and to have a backup. A drawing made here teaches the project how the thing is built even if a
