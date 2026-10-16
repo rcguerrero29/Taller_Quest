@@ -72,8 +72,9 @@ List them off a recent issue if unsure.
 - **A session filling an owner's issue** edits only *Questions to consider* and *Areas
   affected*, never the owner's own paragraphs, and says so in one comment.
 - **A ticket quotes nothing of the owner's** (from 2026-10-16). Its plain-words paragraph is
-  the goal he confirmed, in your words; his own words stay in the conversation, and an issue
-  he wrote is cited by its number.
+  the goal he confirmed, in your words (in the public repository, only its game-work part, and
+  nothing about a real person); his own words stay in the conversation, and an issue he wrote
+  is cited by its number.
 - Every comment or issue a session writes ends with the Claude Code attribution line.
 
 ## For a character agent suggesting an improvement

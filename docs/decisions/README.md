@@ -22,7 +22,7 @@ One file, `NNNN-a-short-name.md`, five headings, in this order:
 
 | heading | what goes in it |
 |---|---|
-| **Asked** | what the owner asked, **as logged**, with a date and where it is from: from 2026-10-16 the goal he confirmed, copied from its `docs/ASKS.md` row and never his own words; before that, his words verbatim. If the only surviving copy of an older quote is a code comment, say so — a comment is a `[CODE]` source, not a transcript |
+| **Asked** | what the owner asked, **as logged**, with a date and where it is from: from 2026-10-16 the goal he confirmed and its numbered decisions, copied from its `docs/ASKS.md` row — never his own words, nor a phrase of his the row quotes; before that, his words verbatim. If the only surviving copy of an older quote is a code comment, say so — a comment is a `[CODE]` source, not a transcript |
 | **Decided** | one paragraph a stranger can understand before they meet a file name |
 | **Because** | the reasoning — **including every option that was rejected, with the reason and any measurement.** *"We use nearest-mipmap-nearest"* is a fact; *"we tried mipmaps everywhere and measured it softer, 1.94 against 2.26"* is memory |
 | **Touched** | `file:line` for every place the decision lives in code, and the test that pins it |

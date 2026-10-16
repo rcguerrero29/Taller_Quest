@@ -20,7 +20,8 @@ Then open a bible and a ledger on day one, empty:
 - `docs/<name>/STORY.md` — who the player is, what the town wants from them, endings.
 - `docs/<name>/CITY.md` — districts, open parcels, pending ❗ decisions, decision log.
 - `docs/ASKS.md` — **every owner ask, written back to him as a goal with each decision a numbered
-  rule, confirmed by him and logged before building, naming no one and quoting nothing.** This
+  rule, confirmed by him and logged before building, with personal details as `[stand-ins]` and
+  nothing of his quoted.** This
   ledger is the single practice that stopped requirements from falling through here.
 - `docs/OWNER.md` — the owner's standing rules. Meridian's are a good default; the ones that
   travel to any story are marked *(travels)* below.

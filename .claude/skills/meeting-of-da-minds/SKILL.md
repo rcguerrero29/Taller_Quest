@@ -48,7 +48,8 @@ grows; it is not for the meeting to appoint them.
 ## The procedure
 
 **0 · The agenda is the owner's confirmed goal.** Write each item back to him in plain
-words and brief it word for word as he confirmed it. An agenda item rewritten into project
+words and brief it word for word as he confirmed it — the goal and its numbered decisions
+only, never a phrase of his. An agenda item rewritten into project
 vocabulary is an agenda item that gets answered for the wrong person. Number them; every
 later stage refers to the numbers.
 

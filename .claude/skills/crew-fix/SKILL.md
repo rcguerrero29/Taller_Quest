@@ -89,8 +89,9 @@ they all read the registers before answering. **You still check them.**
 
 An agent is only as good as what it was told. A brief that works here has five parts:
 
-1. **The symptom as the owner confirmed it**, copied from its `docs/ASKS.md` row or his issue. Not
-   a summary he never saw.
+1. **The symptom as the owner confirmed it**, copied from its `docs/ASKS.md` row (the goal and its
+   numbered decisions only, never a phrase of his the row quotes) or his issue. Not a summary he
+   never saw.
 2. **What is already known to be true**, with file:line — so they do not re-derive it or contradict it.
 3. **What has already been tried and failed**, from the registers. The sugar skulls were "fixed"
    twice by changing a size and the owner came back twice; the third fix only worked because the
