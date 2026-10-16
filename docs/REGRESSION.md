@@ -270,7 +270,7 @@ look like dead code, so the brake now has a test that fails without it.
 
 ### The gap nothing guards: everything shipped is not everything listed — 2026-09-22
 
-`test/public.js` (grep `ASSETS`) checks that every file **listed** in `sw.js`'s `ASSETS` is present
+`test/public.js` (grep `addAll is all-or-nothing`) checks that every file **listed** in `sw.js`'s `ASSETS` is present
 in the built box. **Nothing checks the other direction.** Ship a new engine file, forget the `ASSETS`
 row, and: CI is green, `test/public.js` is green, the online game is perfect, and the **second,
 offline** visit gets the old cache with the file missing. The one person who meets that is the owner,
