@@ -77,7 +77,8 @@ function rulesFrom(text) {
 
 /* git, its output as bytes; nothing it says on its error stream is printed (it can quote a name) */
 const git = (root, args, input) => execFileSync('git', args, { cwd: root, input, maxBuffer: 1024 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] });
-const split0 = b => { const out = []; let a = 0; for (let i = b.indexOf(0); i >= 0; i = b.indexOf(0, a)) { out.push(b.subarray(a, i)); a = i + 1; } if (a < b.length) out.push(b.subarray(a)); return out; };
+const splitAt = (b, c) => { const out = []; let a = 0; for (let i = b.indexOf(c); i >= 0; i = b.indexOf(c, a)) { out.push(b.subarray(a, i)); a = i + 1; } if (a < b.length) out.push(b.subarray(a)); return out; };
+const split0 = b => splitAt(b, 0);
 /* what git stores under each id (git cat-file --batch), as bytes; an id git does not have is left out */
 function readBlobs(root, ids) {
   const want = [...new Set(ids)], got = new Map();
@@ -134,9 +135,23 @@ function historyFiles(root, base, head) {
   const cc = tool(), range = base + '..' + head, short = sha => sha.slice(0, 8);
   const revs = git(root, ['rev-list', '--reverse', '--parents', '--end-of-options', range]).toString('latin1').split('\n').filter(Boolean).map(l => l.split(' '));
   const said = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%B', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), b.subarray(nl + 1).toString('utf8')]; }));
-  /* who made each commit: its author's name and address and its committer's, as git stores them, which are in no diff
-     and stay in the history with it; read whole, as UTF-8 or as Latin-1 where they are not UTF-8 */
-  const made = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%an%n%ae%n%cn%n%ce', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), nameOf(b.subarray(nl + 1))]; }));
+  /* who made each commit: its author's name and address and its committer's, which are in no diff and stay in the
+     history with it, read from the commit as git stores it (its author and committer lines, as UTF-8 or as Latin-1
+     where they are not UTF-8), never printed. Not through a format string: test/authors.js is the one script that asks
+     git for a name or an address that way, and it reads every other for one */
+  const objects = readBlobs(root, revs.map(([sha]) => sha));
+  const made = sha => {
+    const b = objects.get(sha);
+    if (!b) return '';
+    const end = b.indexOf('\n\n'), out = [];
+    splitAt(b.subarray(0, end < 0 ? b.length : end), 10).forEach(l => {
+      const kw = l.indexOf(32), key = kw < 0 ? '' : l.subarray(0, kw).toString('latin1');
+      if (key !== 'author' && key !== 'committer') return;
+      const id = nameOf(l.subarray(kw + 1)), m = id.match(/^(.*) <([^>]*)> \d+ [+-]\d{4}$/);
+      out.push(...(m ? [m[1], m[2]] : [id]));
+    });
+    return out.join('\n');
+  };
   const raw = args => {
     const parts = split0(git(root, ['diff-tree', '-r', '-z', '--raw', '--no-abbrev', '--no-renames', '--no-commit-id', ...args])), m = new Map();
     for (let k = 0; k + 1 < parts.length; k += 2) { const [om, nm, oi, ni] = parts[k].toString('latin1').replace(/^:/, '').split(' '); m.set(parts[k + 1].toString('latin1'), { om, nm, oi, ni, name: parts[k + 1] }); }
@@ -153,7 +168,7 @@ function historyFiles(root, base, head) {
   const entries = [];
   revs.forEach(([sha], i) => {
     entries.push({ file: null, text: said.get(sha) || '', label: 'the message of commit ' + short(sha) });
-    entries.push({ file: null, text: made.get(sha) || '', label: 'the author or committer of commit ' + short(sha) });
+    entries.push({ file: null, text: made(sha), label: 'the author or committer of commit ' + short(sha) });
     changed[i].forEach(c => {
       const text = textAt(c), added = c.olds.every(o => o.mode === '000000'), lines = new Set();
       if (text != null) {
@@ -452,6 +467,12 @@ function selftest() {
   catch (e) { gluedHits = [e.message]; }
   mark(gluedHits.length === 4 && gluedHits.every((h, k) => h === 'a file name holds a private detail: file ' + (k + 2) + ' in git ls-files order, fingerprint ' + CC.fingerprint(gluedNames[k]) + ' (no name is printed on a public log)'),
     'a file name holding a word of the list glued onto other letters or a digit, or split into two of its words, is a red, and is not printed; one made by chance across a separator, and a clean name, still pass', JSON.stringify(gluedHits));
+  /* who made a commit was first read through a format string asking git for names and addresses, which test/authors.js
+     forbids every script but itself: whatever such a script prints lands in a public log. It is read from the commit as
+     git stores it, and the address check's own reading of every script finds no such request here */
+  let asks = ['test/authors.js could not be read'];
+  try { asks = require(path.join(__dirname, '..', 'test', 'authors.js')).judgeScripts([{ file: 'scripts/private-terms.js', text: fs.readFileSync(__filename, 'utf8') }]); } catch (e) { /* asks stays red */ }
+  mark(asks.length === 0 && (who.run || {}).code === 1, 'the check reads who made a commit without asking git for a name or an address in a format string, which only test/authors.js may do', JSON.stringify(asks.map(a => a.split(' asks ')[0])));
   if (bad.length) { console.log('FAIL: ' + bad.length + ' of ' + total); process.exit(1); }
   console.log('OK: ' + total + ' cases, made-up terms only.');
   process.exit(0);
