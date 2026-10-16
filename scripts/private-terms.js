@@ -4,8 +4,8 @@
    about my peronal life". The clean copy was made once, by the private map (scripts/clean-copy.js). This
    is what keeps it clean afterwards: every file and every file name in the repository is read against
    the same map's terms on every push and pull request, and so is every commit the push or the pull request brings
-   (--range: its message, and every line it adds, which stay in the repository's history after a later commit takes
-   them out), and any hit fails the build.
+   (--range: its message, who made it, and every line it adds, which stay in the repository's history after a later
+   commit takes them out), and any hit fails the build.
 
    THE TERMS ARE NEVER IN THIS REPOSITORY. CI hands them in as an encrypted repository secret
    (PRIVATE_TERMS: the map's JSON rules, exactly as its ```json block holds them). GitHub masks a secret's
@@ -124,14 +124,19 @@ function trackedFiles(root) {
 }
 
 /* EVERY CHANGE a push or a pull request brings (base..head), not only the tree it ends at: a detail said only in a
-   commit's message, or added by one commit and taken out by the next, stays in the repository's history. Each commit's
-   message is read, and each file it adds or changes as that commit left it, by what git stores, for the lines it added
-   (a line none of its parents held: a merge adds only what no side had, and a line a commit kept was read where it was
-   added); a file a commit adds is read by its name too. A "files" limit reads the files it names, and no message */
+   commit's message, or in its author's or committer's name, or added by one commit and taken out by the next, stays in
+   the repository's history. Each commit's message is read, and who made it (its author's and committer's name and
+   address), and each file it adds or changes as that commit left it, by what git stores, for the lines it added (a line
+   none of its parents held: a merge adds only what no side had, and a line a commit kept was read where it was added);
+   a file a commit adds is read by its name too. A "files" limit reads the files it names, and no message or name of
+   who made a commit */
 function historyFiles(root, base, head) {
   const cc = tool(), range = base + '..' + head, short = sha => sha.slice(0, 8);
   const revs = git(root, ['rev-list', '--reverse', '--parents', '--end-of-options', range]).toString('latin1').split('\n').filter(Boolean).map(l => l.split(' '));
   const said = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%B', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), b.subarray(nl + 1).toString('utf8')]; }));
+  /* who made each commit: its author's name and address and its committer's, as git stores them, which are in no diff
+     and stay in the history with it; read whole, as UTF-8 or as Latin-1 where they are not UTF-8 */
+  const made = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%an%n%ae%n%cn%n%ce', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), nameOf(b.subarray(nl + 1))]; }));
   const raw = args => {
     const parts = split0(git(root, ['diff-tree', '-r', '-z', '--raw', '--no-abbrev', '--no-renames', '--no-commit-id', ...args])), m = new Map();
     for (let k = 0; k + 1 < parts.length; k += 2) { const [om, nm, oi, ni] = parts[k].toString('latin1').replace(/^:/, '').split(' '); m.set(parts[k + 1].toString('latin1'), { om, nm, oi, ni, name: parts[k + 1] }); }
@@ -148,6 +153,7 @@ function historyFiles(root, base, head) {
   const entries = [];
   revs.forEach(([sha], i) => {
     entries.push({ file: null, text: said.get(sha) || '', label: 'the message of commit ' + short(sha) });
+    entries.push({ file: null, text: made.get(sha) || '', label: 'the author or committer of commit ' + short(sha) });
     changed[i].forEach(c => {
       const text = textAt(c), added = c.olds.every(o => o.mode === '000000'), lines = new Set();
       if (text != null) {
@@ -312,7 +318,7 @@ function selftest() {
   const hcli = (args, ci) => { const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k) && k !== 'GITHUB_ACTIONS')); if (ci) env.GITHUB_ACTIONS = 'true';
     try { return { code: 0, out: execFileSync(process.execPath, [path.join(HR, 'scripts', 'private-terms.js'), '--map', hmap, ...args], { cwd: HR, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) }; }
     catch (e) { return { code: e.status, out: String(e.stdout || '') }; } };
-  let hist = {};
+  let hist = {}, who = {};
   try {
     fs.mkdirSync(path.join(HR, 'scripts')); fs.mkdirSync(path.join(HR, 'docs'));
     ['private-terms.js', 'clean-copy.js'].forEach(f => fs.copyFileSync(path.join(__dirname, f), path.join(HR, 'scripts', f)));
@@ -329,6 +335,16 @@ function selftest() {
     const c3 = sh(HR, ['rev-parse', 'HEAD']);
     fs.writeFileSync(meal, '# Dinner\n\nFriday.\n'); sh(HR, ['commit', '-qam', 'trim the dinner note']);
     hist = { c2: c2.slice(0, 8), c3: c3.slice(0, 8), tree: hcli([]), clean: hcli(['--range', c0, c1]), red: hcli(['--range', c1, 'HEAD']), empty: hcli(['--range', 'HEAD', 'HEAD']), ci: hcli([], true) };
+    /* ROUND 4. Who made a commit (its author's and committer's name and address) is in no diff and stays in the history
+       with it, and was never read: a clean message and clean lines by an author or a committer named with a detail passed */
+    const c4 = sh(HR, ['rev-parse', 'HEAD']);
+    fs.appendFileSync(city, '\nA ferry on Sundays.\n'); sh(HR, ['commit', '-qam', 'ferry', '--author=' + T.who + ' from ' + T.town + ' <1+lab@users.noreply.github.com>']);
+    const a1 = sh(HR, ['rev-parse', 'HEAD']);
+    fs.appendFileSync(city, '\nA market on Mondays.\n'); sh(HR, ['-c', 'user.name=' + T.town + ' builds', 'commit', '-qam', 'market', '--author=lab <lab@example.com>']);
+    const a2 = sh(HR, ['rev-parse', 'HEAD']);
+    fs.appendFileSync(city, '\nA library on Tuesdays.\n'); sh(HR, ['commit', '-qam', 'library', '--author=lab <' + lo + '.home@example.com>']);
+    const a3 = sh(HR, ['rev-parse', 'HEAD']);
+    who = { a1: a1.slice(0, 8), a2: a2.slice(0, 8), a3: a3.slice(0, 8), run: hcli(['--range', c4, 'HEAD']) };
   } catch (e) { hist.err = e.message; } finally { fs.rmSync(HR, { recursive: true, force: true }); fs.rmSync(hmap, { force: true }); }
   const meant = hist.c2 ? ['rule #3 survives at line 1 of the message of commit ' + hist.c2, 'rule #5 survives at line 1 of the message of commit ' + hist.c2,
     'rule #3 survives at line 3 of the file commit ' + hist.c3 + ' adds or changes, fingerprint ' + CC.fingerprint('docs/dinner.md') + ' (no name is printed on a public log)',
@@ -339,6 +355,13 @@ function selftest() {
     && hc('empty').code === 1 && /holds no commit/.test(hc('empty').out) && hc('ci').code === 1 && /--range/.test(hc('ci').out) && histOut.toLowerCase().indexOf(lo) < 0 && histOut.indexOf(T.town) < 0 && histOut.indexOf(sick) < 0,
     'a detail said only in a commit\'s message, or added by one commit and taken out by the next, is a red when the check is given the commits (--range); an empty range, and a run on CI without one, are reds too',
     JSON.stringify({ err: hist.err, codes: ['tree', 'clean', 'red', 'empty', 'ci'].map(k => hc(k).code), red: histOut.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'g'), '<town>').replace(new RegExp(sick, 'g'), '<sick>').split('\n').filter(l => /^(OK|FAIL|- rule)/.test(l)) }));
+  const byWho = who.a1 ? ['rule #3 survives at line 1 of the author or committer of commit ' + who.a1, 'rule #5 survives at line 1 of the author or committer of commit ' + who.a1,
+    'rule #5 survives at line 3 of the author or committer of commit ' + who.a2, 'rule #3 survives at line 2 of the author or committer of commit ' + who.a3] : [];
+  const whoRun = who.run || { code: null, out: '' };
+  mark(whoRun.code === 1 && /^FAIL: 4 /m.test(whoRun.out) && byWho.every(l => whoRun.out.split('\n').includes('- ' + l)) && /^A detail in a commit's message, in the name or address of who made it/m.test(whoRun.out)
+    && whoRun.out.toLowerCase().indexOf(lo) < 0 && whoRun.out.toLowerCase().indexOf(T.town.toLowerCase()) < 0,
+    'a detail in the name or address of a commit\'s author or committer, with a clean message and clean lines, is a red when the check is given the commits (--range), and is not printed',
+    JSON.stringify({ err: hist.err, code: whoRun.code, out: whoRun.out.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>').split('\n').filter(l => /^(OK|FAIL|- |A detail)/.test(l)).map(l => l.slice(0, 120)) }));
   /* a map whose list is not in a fence, under a ```json example (or the list indented four spaces, markdown's other
      code block): the example, the map's only fenced block, was read in the list's place, by the check and the copy */
   const ex12 = '```json\n[{"id": 0, "kind": "example", "rule": "replace", "find": ["Name Surname"], "to": "[a person]"}]\n```\n', listed = JSON.stringify(JSON.parse(map), null, 2);
@@ -465,7 +488,7 @@ if (require.main === module) {
     const shown = r.hits.slice(0, 50);
     shown.forEach(h => console.log('- ' + h));
     if (shown.some(h => /, fingerprint [0-9a-f]{8} /.test(h))) console.log(tool().FIND_HINT);
-    if (shown.some(h => / commit [0-9a-f]{8} /.test(h))) console.log('A detail in a commit\'s message, or in a line a commit added, stays in the repository\'s history after a later commit takes it out: rewrite those commits (amend them, or squash the branch) before it merges. A file a commit adds or changes is found by the same lookup with git ls-tree -r -z --name-only --full-tree <commit> in place of git ls-files -z --full-name :/');
+    if (shown.some(h => / commit [0-9a-f]{8}(?: |$)/.test(h))) console.log('A detail in a commit\'s message, in the name or address of who made it, or in a line a commit added, stays in the repository\'s history after a later commit takes it out: rewrite those commits (amend them, with --reset-author or --author for who made one, or squash the branch) before it merges. A file a commit adds or changes is found by the same lookup with git ls-tree -r -z --name-only --full-tree <commit> in place of git ls-files -z --full-name :/');
     process.exit(1);
   }
   console.log('OK: ' + r.files + ' files and their names' + (r.commits == null ? '' : ', and the messages and changes of ' + r.commits + ' commit(s),') + ' read against ' + r.rules + ' private rules, each with a word or pattern to look for; nothing personal found. (The rules are never printed.)');

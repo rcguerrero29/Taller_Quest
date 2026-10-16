@@ -53,10 +53,10 @@ jobs:
           echo "RANGE_HEAD=$HEAD_SHA" >> "$GITHUB_ENV"
       # The owner, 2026-09-28: new work here must "at least wont have info about my peronal life". Every
       # file and file name is read against the private map's terms, handed in as an encrypted secret and
-      # never printed, and so is every commit the run brings: its message, and each line it adds, which stay in
-      # the history after a later commit takes them out. No secret (a fork's pull request gets none) is a red: a
-      # session brings a fork's commits into a branch here, reviews them, and the check runs there. On CI the
-      # check is a red without --range. First, before any other check.
+      # never printed, and so is every commit the run brings: its message, who made it, and each line it adds,
+      # which stay in the history after a later commit takes them out. No secret (a fork's pull request gets none)
+      # is a red: a session brings a fork's commits into a branch here, reviews them, and the check runs there. On
+      # CI the check is a red without --range. First, before any other check.
       - name: Nothing personal from the private list is in this repository
         env:
           PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
