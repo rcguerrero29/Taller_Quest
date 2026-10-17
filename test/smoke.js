@@ -1269,19 +1269,22 @@ const CANDIDATES = [
       }
     }
 
-    // nothing in this repository says whose dog he is. Two shapes: a possessive in front of a dog word,
-    // and a dog's name within two lines of the word "owner" (a quote runs onto the next line). Every
+    // nothing in this repository says whose dog he is. Three shapes: a possessive in front of a dog word;
+    // a dog's name within two lines of the word "owner" (a quote runs onto the next line); and, within
+    // the same two lines, a dog word followed by "with" or "from" and then "him", "me" or "us". Every
     // tracked file, because a note is published the moment it is pushed, wherever it sits.
     const DOGW = '(?:dogs?|pups?|pupp(?:y|ies)|beagles?|pooch|doggo|perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)';
     const TIE_POSS = new RegExp('\\b(?:his|my|our|mine)\\s+(?:own\\s+|real\\s+|actual\\s+|real-life\\s+|family\\s+)?' + DOGW + '\\b', 'i');
     const TIE_OWNERS = new RegExp('\\bowner[\'\u2019]s\\s+(?:[\\w-]+\\s+){0,2}' + DOGW + '\\b', 'i');
     const TIE_ES = /\b(?:mis?|nuestr[oa]s?)\s+(?:perr[oa]s?|perrit[oa]s?|cachorr[oa]s?)\b|\bperr[oa]s?\s+del\s+due[ñn]o\b/i;
     const OWNERW = /\bowners?\b|\bdue[ñn][oa]s?\b/i;
+    const TIE_WITH = new RegExp('\\b' + DOGW + '\\b[^\\n]{0,40}?\\b(?:with|from)\\s+(?:him|me|us)\\b', 'i');
     const ties = (text, names) => {
       const res = names.map(n => [n, word(n)]), lines = text.split('\n'), hits = [];
       lines.forEach((l, i) => {
         if (TIE_POSS.test(l) || TIE_OWNERS.test(l) || TIE_ES.test(l)) hits.push([i + 1, 'says the game\'s dog belongs to somebody']);
         const near = lines.slice(Math.max(0, i - 2), i + 1).some(x => OWNERW.test(x));
+        if (near && TIE_WITH.test(l)) hits.push([i + 1, 'says the dog stays with the person the word owner names']);
         const nm = near && res.find(([, re]) => re.test(l));
         if (nm) hits.push([i + 1, 'puts a dog\'s name ("' + nm[0] + '") beside the word owner']);
       });
@@ -1294,6 +1297,8 @@ const CANDIDATES = [
        [O + ' wrote that ' + nm.toLowerCase() + ' comes along to every room', true],
        [O + ' wrote a note\nand then\n' + nm + ' knocks the cone over', true],
        ['mi ' + 'perro', true],
+       [O + ' noted that the pooch rides the bus with ' + 'us', true],
+       [O + ' asked that the dog stay with the player', false], ['the pup naps by the door with ' + 'us', false],
        ['your dog sits', false], ['the ' + O + ' of the bakery opens at six', false], [nm + ' fetches the ball', false]]
         .forEach(([t, bad]) => { if ((ties(t, [nm]).length > 0) !== bad)
           P.push('the whose-dog check ' + (bad ? 'let through' : 'flagged') + ' "' + t.replace(/\n/g, ' / ') + '" — it cannot be trusted with the repository'); });
@@ -4770,7 +4775,7 @@ const CANDIDATES = [
       // it does not share the space with it, it eats it. The first shaped sill reached 0.127 and sat
       // 0.007 in FRONT of the pane.
       //
-      // ❗THE DEPTH IS TAKEN OFF A PANE THE ENGINE REALLY PLACED, not off the engine's source. A
+      // ❗THE DEPTH IS TAKEN OFF A PANE THE ENGINE REALLY PLACED (the pane a sweet stands in), not off the engine's source. A
       // guard that types the constant back in is testing its own arithmetic.
       // And the rule is geometric, so nothing has to be tagged and nothing can be tagged around:
       // a thing that runs the WIDTH OF THE WALL is the wall — a cast sill, a lintel — and a thing
