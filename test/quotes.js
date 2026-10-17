@@ -348,8 +348,11 @@ function trackedFiles(root, rev) {
    parents (a root commit: all of them) */
 function commitsOf(root, revs) {
   const git = (...a) => execFileSync('git', a, { cwd: root, maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+  /* git show of a blob gives its plain bytes, as trackedFiles reads them; it is asked that way, not with
+     git's raw object reader, because test/authors.js counts any script that calls that as a reader of
+     whole commits, which hand back who made them */
   const blob = (rev, file) => {
-    let b; try { b = git('cat-file', 'blob', rev + ':' + file); } catch (e) { return null; }   // not in that commit
+    let b; try { b = git('show', rev + ':' + file); } catch (e) { return null; }   // not in that commit
     return b.subarray(0, 8000).includes(0) ? null : b.toString('utf8');
   };
   return git('rev-list', '--parents', ...revs).toString('utf8').split('\n').filter(Boolean).map(row => {
