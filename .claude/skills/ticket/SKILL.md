@@ -71,6 +71,10 @@ List them off a recent issue if unsure.
   shows the last comment as the person's third line, so it must stand alone.
 - **A session filling an owner's issue** edits only *Questions to consider* and *Areas
   affected*, never the owner's own paragraphs, and says so in one comment.
+- **A ticket quotes nothing of the owner's** (from 2026-10-16). Its plain-words paragraph is
+  the goal he confirmed, in your words (in the public repository, only its game-work part, and
+  nothing about a real person); his own words stay in the conversation, and an issue he wrote
+  is cited by its number.
 - Every comment or issue a session writes ends with the Claude Code attribution line.
 
 ## For a character agent suggesting an improvement
@@ -89,8 +93,8 @@ The same shape, with three additions, so the cast can one day file its own:
 
 ## A worked example
 
-The owner said: *"there is a bug when i talk to naye robles, i cant scroll down to exit
-once i edited."* One symptom, so one ticket. The pass found the cause in the shell: the
+The owner reported a bug: after editing with Naye Robles, he could not scroll down to
+exit. One symptom, so one ticket. The pass found the cause in the shell: the
 panel has no height limit and no scrolling of its own, and the chair opens it over the
 world where the page cannot scroll either. That became:
 

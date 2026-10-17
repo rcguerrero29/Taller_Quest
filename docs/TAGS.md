@@ -1,8 +1,8 @@
 # The vocabulary — Toño's ledger
 
-*Opened 2026-09-09 at the owner's word: "a new character persona who ensures all the tags for all
-aspects of the stories, buildings and graphics can be reuseable for custom games — i guess this to be
-more specific is an open world template."*
+*Opened 2026-09-09 at the owner's word: a new persona who makes sure every tag for the stories,
+buildings and graphics can be reused for custom games — more precisely, an open-world
+template.*
 
 **This file is the register of the words**, not of the code. A tag — a tile `kind`, a glyph, a
 chapter field, a seam name — is the joint between the shared `engine/` and a per-game content pack.
@@ -243,8 +243,8 @@ inert kinds went unnoticed for so long.
 `CAMDEF` lets a pack pick its *default* camera (`:576`), and that is all: every pack ships all four,
 and the button row offers all four whether or not the game wants them.
 
-**The owner found this, 2026-09-09:** *"why do we have to lose the art for the isometric? cant it
-switch out depending on the goal? maybe a game doesnt need 3d."* Both halves are right and they are
+**The owner found this, 2026-09-09:** why lose the art for the isometric camera, when it could
+switch with the goal — and a game may not need 3D at all. Both halves are right and they are
 one fault.
 
 A 2D-only game still ships the whole 3D renderer, still shows a ⛰ button, and still exposes ◆
@@ -492,7 +492,7 @@ Dead vocabulary found in the same block, all verified by grep:
 
 - **`troCall()` (`engine/engine.js:1167`) has zero callers in the entire repository** — its own
   definition is its only occurrence. Summoning happens inline at `:1171`. **The verb the owner asked
-  for by name** (`docs/ASKS.md:52`, *"or if i call it"*) **exists as an unreachable function.**
+  for by name** (`docs/ASKS.md:52`, a trolley that comes when called) **exists as an unreachable function.**
 - **`TRO.said` (`:1151`)** is declared and never read.
 - **`kind:"transit"`** — see L20.
 
@@ -674,5 +674,5 @@ cannot add a slot, rename one, or change a colour. *(Toño, 2026-09-14.)*
 
 **And one row for the Gaps list, filed here because that list is a table of its own date:** *a
 clickable source on a document.* `docRender` has no `<a>`; the reader can show a note saying where a
-claim came from and cannot let the player open it. Directly the owner's *"places to check about this
-facts so we know where you get the info."*
+claim came from and cannot let the player open it. Directly the owner's ask for places to check these
+facts, so it is known where the information comes from.

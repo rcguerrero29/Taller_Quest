@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* EL HORNO — one room, one tray, one verb, run against the shared suite AND actually played.
 
-   Owner, 2026-09-22: "why no for the game? because we havent built it? we will soon."
+   The owner, 2026-09-22: the game half is not built yet, and it will be soon.
 
    Same construction as test/gauge.js and for the same reason: the shell is GENERATED from the
    public index rather than copied, because ~770 of its ~800 lines must be identical (the shared
@@ -10,7 +10,7 @@
    that stops matching returns the input unchanged and would otherwise print success while
    testing the wrong thing.
 
-   PUBLISHED since 2026-09-22, at the owner's word ("lets build/ship it"): scripts/build-site.sh runs
+   PUBLISHED since 2026-09-22, at the owner's word (build it and ship it): scripts/build-site.sh runs
    this generator and copies content/horno/ into the public box, so its shell is held to the public
    page's policy word for word (test/public.js reads every shipped page; test/offline.js compares the
    two). It is linked from nothing. (This paragraph said UNPUBLISHED until 2026-09-27; Zeni caught it.)
@@ -82,8 +82,8 @@ CLASSES.forEach(([c, glyph, who]) => edit('the ' + c + ' icon (' + who + ')',
    HUD with it. The shell's `.off` (shell.css) is display:none !important, which outranks the hidden
    attribute being cleared, and the element stays there for the engine to write to. (Until #256 this
    was an inline style="display:none"; the page's policy is style-src 'self' now and refuses it, and
-   test/public.js counted it as the one style written inside the bakery's page.) The owner's "always
-   on screen" ask is Meridian's, where there are dogs; this is a second world and it has none. */
+   test/public.js counted it as the one style written inside the bakery's page.) The owner's ask that it stay
+   on screen is Meridian's, where there are dogs; this is a second world and it has none. */
 edit('the paw button', /<button class="talk treat" id="cmd" hidden><\/button>/,
   '<button class="talk treat off" id="cmd" hidden></button>');
 
@@ -319,7 +319,7 @@ async function played() {
       { bad.push('the sheet at the tray does not offer both shells — it offered: ' + JSON.stringify(btns)); return; }
 
     /* ───────── 2c½ · THE CARD WEARS THE BAKERY'S PAPER, ON SCREEN (#256) ─────────
-       The owner's done-when for #256 is "the bakery card still wears its paper", and that is a fact about the
+       The owner's done-when for #256 is that the card keeps the bakery's paper, and that is a fact about the
        screen. The engine stopped writing the pack's paper into the page as a <style> (refused under style-src
        'self') and adopts a constructed sheet instead; if that ever stops working, nothing throws — the card
        quietly opens in Meridian's municipal paper. So the open card is PHOTOGRAPHED and its pixels counted

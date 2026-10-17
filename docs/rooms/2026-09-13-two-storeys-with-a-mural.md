@@ -1,6 +1,6 @@
 # Two storeys, with a mural on them — the costed answer, 2026-09-13
 
-*The owner, 2026-09-13: **"we sure about 2 floors? could make murals way cool"**. Cuca, Don Güero and
+*The owner, 2026-09-13: **he asked whether two floors were settled, and noted they could make murals much better**. Cuca, Don Güero and
 Pili answered against the code; the raw returns are in `docs/meetings/2026-09-13-la-cuadrilla-disena.md`.
 This note is what they settle and what is his. Nothing is built.*
 
@@ -13,7 +13,7 @@ which is a different world — and **two documents cannot share a tile**: a faca
 ground-floor sign *or* an upstairs mural, not both.
 
 **And the mural already has storeys.** The wall grows *upward*, one course per visit — the owner's own
-caption: *"a stretch never gets wider — it gets taller."* What the street lacks is not a second storey;
+caption says a stretch never widens; it grows taller. What the street lacks is not a second storey;
 it is a tile that says the painting goes up.
 
 ## What each camera does to a taller building

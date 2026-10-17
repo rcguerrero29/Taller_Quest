@@ -18,7 +18,7 @@ as `[partner]` or `[city]`.
 ```mermaid
 flowchart TD
   O["The owner's request, in an AI session"] --> S["The AI session"]
-  S -->|"logged before any work, personal details as [stand-ins]"| P["Private repository: notes and decisions"]
+  S -->|"the owner's goal, confirmed, logged before any work: personal details as [stand-ins], no quotes"| P["Private repository: notes and decisions"]
   S -->|"game work only"| PR["Public repository: a pull request"]
   PR --> T{"Tests, the address check,<br/>the private-term check"}
   T -->|"all green"| M["The owner merges"]

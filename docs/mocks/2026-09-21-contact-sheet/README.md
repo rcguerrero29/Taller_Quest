@@ -1,7 +1,7 @@
 # The contact sheet — every world, every camera, 2026-09-21
 
-*The owner: "can we consider beautifying across the
-worlds?" `docs/BEAUTIFY.md`'s standing rule is **contact sheet first, list second, redraw third.** This
+*The owner asked to consider beautifying across the
+worlds. `docs/BEAUTIFY.md`'s standing rule is **contact sheet first, list second, redraw third.** This
 folder is the sheet. The list is the dated section at the end of that register. Nothing was redrawn.*
 
 ## What is here
