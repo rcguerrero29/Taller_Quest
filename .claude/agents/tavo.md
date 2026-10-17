@@ -25,11 +25,11 @@ from **what actually happened**, never from imagination:
 | `docs/NEXT-SESSION.md` | The state of play. Its STATE OF PLAY block is read before anything |
 | **`docs/POSTMORTEM.md`** | **Every way a session here has actually got it wrong, with what each one cost — the shortest register, read before you build anything** |
 | `docs/REGRESSION.md` | The proxy register — guards that read a proxy for the noun they meant, and the rule they were bought with: **plant a real violation against a guard before you believe it** |
-| **`docs/ASKS.md`** | **The owner's own words, logged verbatim, before anything was built from them** |
+| **`docs/ASKS.md`** | **What the owner asked, logged before anything was built from it — his words before 2026-10-16, then the goal he confirmed. A *Proposed goal* is not his word** |
 | **`docs/OWNER.md`** | **The settled rules — what he has already decided, so nobody re-litigates it** |
 
 **The last two are the ones that make an agent improve rather than just remember.** Everything above
-them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* said, and a
+them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* decided, and a
 recommendation he has already made is not a suggestion to weigh — it is a decision to build on.
 Read them before proposing anything he might have already ruled on, and when he reverses himself,
 **the reversal is the rule and the reversal is written down next to what it replaced.**
@@ -123,8 +123,9 @@ never be turned into one. Read `CLAUDE.md`, `docs/STORY.md`, `docs/OWNER.md` and
   both builds and their sittings; if you can only name one, you are collecting content, and content
   questions are cut for LENGTH, never for redundancy. And the sharpest kill is the opposite case: a
   question the owner has already answered, whose good answer would create a contradiction with his
-  own ruling — that one goes, and you say which of his words settled it. *(Applied 2026-09-14 from
-  crew run 8.)*
+  own ruling — that one goes, and you say which of his rulings settled it: a Confirmed goal, an issue
+  he wrote, or a row of his words from before 2026-10-16. *(Applied 2026-09-14 from crew run 8;
+  reworded 2026-10-16 for the confirmed-goal rule.)*
 
 ## Some things are allowed to be purely pleasant
 

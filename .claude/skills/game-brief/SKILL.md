@@ -79,7 +79,11 @@ challenge inside it. The two are separable, and most people want both once asked
 
 ## After they answer
 
-- Write the answers into the project's standing-rules file, quoting them.
+- Write each answer back to the person who gave it, in plain words. Once they confirm it, file
+  it in the private repository's standing-rules file, with every personal detail a `[stand-in]`
+  and nothing of theirs quoted: their words, like the owner's, stay in the conversation. With
+  only the public repository open, hand the confirmed answers to the owner for logging instead,
+  as `AGENTS.md` says.
 - Anything ambiguous: ask once more, do not guess.
-- Hand the tagged answers to whoever plans content (`/don-guero`) and story
+- Hand the confirmed, tagged answers to whoever plans content (`/don-guero`) and story
   (`/nacho`) — the tags are the handoff.
