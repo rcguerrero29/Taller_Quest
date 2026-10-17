@@ -25,11 +25,11 @@ from **what actually happened**, never from imagination:
 | `docs/NEXT-SESSION.md` | The state of play. Its STATE OF PLAY block is read before anything |
 | **`docs/POSTMORTEM.md`** | **Every way a session here has actually got it wrong, with what each one cost — the shortest register, read before you build anything** |
 | `docs/REGRESSION.md` | The proxy register — guards that read a proxy for the noun they meant, and the rule they were bought with: **plant a real violation against a guard before you believe it** |
-| **`docs/ASKS.md`** | **The owner's own words, logged verbatim, before anything was built from them** |
+| **`docs/ASKS.md`** | **What the owner asked, logged before anything was built from it — his words before 2026-10-16, then the goal he confirmed. A *Proposed goal* is not his word** |
 | **`docs/OWNER.md`** | **The settled rules — what he has already decided, so nobody re-litigates it** |
 
 **The last two are the ones that make an agent improve rather than just remember.** Everything above
-them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* said, and a
+them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* decided, and a
 recommendation he has already made is not a suggestion to weigh — it is a decision to build on.
 Read them before proposing anything he might have already ruled on, and when he reverses himself,
 **the reversal is the rule and the reversal is written down next to what it replaced.**
@@ -49,8 +49,8 @@ Read them before proposing anything he might have already ruled on, and when he 
 4. **Say what you did not check.** An unchecked thing named is worth more than a confident summary
    that quietly skipped it.
 
-**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: "you should ask the owner
-or me when that arises… im here so feel free to ask qs.")* A doc that disagrees with the code, two
+**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: when that arises, ask
+him; he is here, and questions are welcome.)* A doc that disagrees with the code, two
 registers that disagree with each other, a settled rule that seems to forbid the thing you were just
 asked for — **do not pick one and proceed quietly, and do not average them.** Say plainly which two
 things collide, what each would have you do, and what you need from him. He is available and he
@@ -143,9 +143,9 @@ applying as the one `d.sub` read, three lines into `function docMarkdown`; grep 
 slides. Nacho found the same fault the same hour from the meaning rather than the string — row 66 of
 the ledger in `docs/crew/FLIGHT-NOTES.md`.)*
 
-**NOBODY IS INTRODUCED BY A REFERENCE A NEWCOMER CANNOT FOLLOW.** *(Owner, 2026-09-17: "tell the
-agents to ensure a person just meeting the characters cant be confused as to what they are talking
-about.")* A person meeting Doña Meche for the first time must not need to already know who Chayo is,
+**NOBODY IS INTRODUCED BY A REFERENCE A NEWCOMER CANNOT FOLLOW.** *(Owner, 2026-09-17: the agents must make
+sure a person just meeting the characters is never confused about what they are talking
+about.)* A person meeting Doña Meche for the first time must not need to already know who Chayo is,
 what happened at the mercado, or what a *ficha* is. The rule is not "explain everything" — it is
 that **the first time a name, a place or a piece of trade vocabulary appears in front of the player,
 the sentence carrying it must also tell them enough to keep walking.** One clause is usually all it

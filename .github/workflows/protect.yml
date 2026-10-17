@@ -1,6 +1,6 @@
 name: Protection
-# THE LOCK ON MAIN, read live (docs/SECURITY.md §3 step 1; owner, 2026-09-24: "cybersecurity should be key
-# always"). The ruleset sat undone for three days because nothing read the live setting. This reads GitHub's
+# THE LOCK ON MAIN, read live (docs/SECURITY.md §3 step 1; owner, 2026-09-24: security comes first,
+# always). The ruleset sat undone for three days because nothing read the live setting. This reads GitHub's
 # rules for main and goes red when the lock is switched off or weakened — test/protect.js says what it
 # checks and, as plainly, what it cannot see.
 #

@@ -51,7 +51,7 @@ was already answering questions in her name, from a photograph of her own hands)
 — **a solution is a template plus somebody else's own record**, which is the sentence this city owes
 a man who intends to sell this skill onward.
 
-**The office sends you** *(owner, 2026-09-17: "ok yeah lets do the office sending me")* — not
+**The office sends you** *(owner, 2026-09-17: the office sends the player)* — not
 Nolasco. A page you wrote is on your own office wall and there is a name on it you have walked past
 forty times. It costs no canon change (*"Nolasco's door opens nothing"* stands) and it makes the
 office mean something for the first time.
@@ -61,9 +61,9 @@ says *YA MERO* instead of *SE ACABÓ*, because atole does not end, it thins. **V
 stop's cat, belongs to nobody and has decided the pot is the warmest object on Calle Dos; she is in
 all three endings and owns nothing, which is the rule the corner teaches about everything on it.
 
-- **Nobody is introduced by a reference a newcomer cannot follow.** *(Owner, 2026-09-17: "tell the
-  agents to ensure a person just meeting the characters cant be confused as to what they are talking
-  about.")* Not "explain everything" — **the first time a name, a place or a piece of trade
+- **Nobody is introduced by a reference a newcomer cannot follow.** *(Owner, 2026-09-17: the agents must make
+  sure a person just meeting the characters is never confused about what they are talking
+  about.)* Not "explain everything" — **the first time a name, a place or a piece of trade
   vocabulary appears in front of the player, the sentence carrying it must also tell them enough to
   keep walking.** One clause usually does it: not *"Chayo wants the same"* but *"Doña Chayo works
   the corner by the clinic on Quinta — forty years, atole where I do tamales — and she wants the
@@ -85,8 +85,8 @@ all three endings and owns nothing, which is the rule the corner teaches about e
   which is the cheap moment to find this, and the only one.
 
 - **A district's LAST VISIT is a goodbye at the door.** *(2026-09-02, ❗La despedida —
-  the owner deferred the call to /nacho. **Renamed from "a Saturday" on 2026-09-17**, owner:
-  *"this concept of a Saturday is silly, explain it differently"* — and he is right. "Saturday"
+  the owner deferred the call to /nacho. **Renamed from "a Saturday" on 2026-09-17**: the owner
+  found the Saturday idea silly and asked for another way to say it — and he is right. "Saturday"
   was a private metaphor about the end of a working week that told a reader nothing and had to be
   learned before any of these pages made sense. It is the LAST VISIT, because that is literally
   what it is: you walk up to that person one more time and that walk is the ending.)*
@@ -102,8 +102,8 @@ all three endings and owns nothing, which is the rule the corner teaches about e
   **Hard dependency: this needs the office. If `f2` is not furnished, districts keep
   `mode:"panel"`.**
 - **No practice is ever missed.** Every quest stays answerable forever; a quest the
-  world outgrows gets rewritten, never removed. *(owner, 2026-09-01: "i dont
-  understand why i would miss any practice, if anything got stale.")* The shipped
+  world outgrows gets rewritten, never removed. *(owner, 2026-09-01: no practice
+  should ever be missed, even if something goes stale.)* The shipped
   line `retryNote` — "this one stays open, come back and make the better call" —
   was always this law; it just applied to one quest instead of the city.
 - **Old quest, reframe line; changed world, new quest.** A late-answered quest keeps
@@ -208,8 +208,8 @@ all three endings and owns nothing, which is the rule the corner teaches about e
   than being patched: the same craft in two very different rooms is proof the skill
   transfers. Cost accepted: Meridian Labs stops being neutral home base and becomes a
   client with a *giro* — softened by the player's desk moving upstairs to `f2` anyway.
-- **El oficio y el giro** (2026-09-02, owner's steer: *"lets focus on highlighting and
-  learning the AI with how it can help diff industries"*). Five job titles become five
+- **El oficio y el giro** (2026-09-02, owner's steer: highlight and
+  learn how AI can help different industries). Five job titles become five
   trades. A role is a label; an industry is a room with a smell — and every memorable
   beat this pack has produced came out of a trade, not a title: the paper book, the photo
   estimate, the four hundred kilos of PESCADO, the notario false-friend. The role does
@@ -287,9 +287,9 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   project — the promise keeps a face without becoming a place.
   **SIGNED 2026-09-02, and it relaxes Nacho's second law:** she MAY speak about what is
   missing — but only when the player walks to her window and asks. Nothing ever pushes a
-  list at you; you went looking for it, so it is help and not homework. Owner's words:
-  *"quest log with a face could be good, she could develop some ai stuff, but we mostly
-  avoid it."* So **government is not a trade the city
+  list at you; you went looking for it, so it is help and not homework. The owner:
+  a quest log with a face could be good, and she could take on some AI work, but mostly
+  not. So **government is not a trade the city
   trains**: she stays small, is not a district, and trains no role. Her ask-only
   behaviour is **content-declared and customisable** — the owner wants it swappable for
   [partner]'s game and for fun quests. Against `docs/OWNER.md`'s "never build a quest log", she
@@ -480,20 +480,20 @@ hired you for. Three fixes, now canon:
 ## Decision log
 
 - 2026-09-03 · ❗Un solo Don Güero · **he stands upstairs only; Lupe carries quests 12 and 13
-  and introduces him in her first line** · owner: "ok give it to lupe and just let her
-  introduce/talk about him right away" · the estimate was always the estimator's paper, and
+  and introduces him in her first line** · the owner gave it to Lupe, to
+  introduce him and talk about him right away · the estimate was always the estimator's paper, and
   deleting the quest instead of moving it would have broken "nothing is ever taken away".
   A character can leave a tile without leaving the story.
 - 2026-09-03 · ❗A la orden · **REVERSED THE SAME DAY, and the session's note corrected.**
   The office was put on the Trolley Pass list so the pair were a couple of taps away. The owner
-  killed it in one line: *"i dont like that i go from a train to a floor. dont do that. i asked
-  to make the world realistic."* A trolley stops where there are rails; you reach an office
+  killed it in one line: a train must not deliver him to an upper floor; he had asked for a
+  realistic world. A trolley stops where there are rails; you reach an office
   through its front door and up its stairs. Removed, with a test that every trolley destination
   is a world that actually holds a trolley stop.
-- 2026-09-03 · ❗El maestro constructor · **what "game building assistants" actually means, in
+- 2026-09-03 · ❗El maestro constructor · **what the game's building assistants actually mean, in
   the owner's own correction.** The session had recorded the no-API decision as "it is only [partner]".
-  Wrong: *"well its not that its just [partner], its just us building but one day we want to assign him
-  a house template that he can build and just add some random customizations."* So the ambition
+  Wrong, he said: it is not only [partner] — for now the building is done together, but one day
+  Don Güero is to get a house template he can build from, adding a few random changes. So the ambition
   is **not** a chatbot in the game. It is **Don Güero given a house template he can build from,
   varying it each time** — procedural building from a declared template, which needs no network
   at all and is exactly the kind of thing this engine's content seams are for. A pack would
@@ -513,8 +513,8 @@ hired you for. Three fixes, now canon:
   that you changed the process, not the man.
 - 2026-09-01 · ❗El listón · **la inauguración plays in the world, not in a curtain**
   — five diegetic seconds, speeches become walk-up dialogue, the grade is carried by
-  the mural alone, the file hangs on the wall forever · owner: "we make the player
-  notice for 5 seconds then the game goes back to normal."
+  the mural alone, the file hangs on the wall forever · the owner: the player
+  notices for five seconds, then the game goes back to normal.
 - 2026-09-01 · ❗El día · **the morning after** — you play as long as you like and the
   day ends while you are away; next launch the street remembers (chairs stacked,
   papel picado torn, a neighbour mentions yesterday, a new sign on a lot) · the north
@@ -538,14 +538,14 @@ hired you for. Three fixes, now canon:
 
 - 2026-09-01 · ❗La puerta · **Week One's bar drops 16 → 12** · the office was the one
   room in Meridian that closed behind you; twelve opens the street with four quests
-  still answerable and puts every reframe line into default play. Owner: *"drop it to
-  12 but doesnt have to happen in the office"* — which is what `need` already meant.
+  still answerable and puts every reframe line into default play. The owner dropped it to
+  12, and it need not happen in the office — which is what `need` already meant.
 
 - 2026-09-02 · ❗La oficina · **the office opens bare and the barrio furnishes it** —
   the old lead's empty desk and a north window, then one piece per business · the mystery
   pays off in furniture instead of a cutscene, and the room visibly fills.
   *Amended 2026-09-02 by the owner: the office opens MID-MOVE — taped boxes, a cone, a
-  plant in its pot; the furnishing rule is unchanged ("for the move it should be mid").*
+  plant in its pot; the furnishing rule is unchanged (he chose mid-move).*
 - 2026-09-02 · ❗La palabra · **the word is the reward** — a term enters through whoever
   NEEDS it, in the beat after a right answer; wrong answers stay funny and earn nothing ·
   vocabulary is given, never tested. Under ❗El giro the five terms are the TRADE's
@@ -569,19 +569,19 @@ hired you for. Three fixes, now canon:
   the trolley line" was the wrong wall (Don Güero). Four owner calls in
   `docs/rooms/partner-office.md` §8.
 - 2026-09-02 · ❗La ventana · **north wall, three panes, the way to Barrio Norte** —
-  the owner deferred the call to /nacho and /don-guero together ("i dont care that much
-  about the window but maybe /nacho and /don-guero can work something cool out") · the
+  the owner deferred the call to /nacho and /don-guero together (the window mattered
+  little to him, and he left it to Nacho and Don Güero) · the
   window is cut, so Güero's line goes from promise to fact and the three answers are all
   north-true; the season repaints the sky, never the view. Nacho's closing line pins the
   sheet to the window frame: mural south = what you did, window north = what's coming.
 - 2026-09-02 · ❗Para quién · **Don Güero asks it, first line of his work order** —
-  owner: "i guess that should be a question in the creation - who is the room for" · it is
+  the owner asked for it at creation: who the room is for · it is
   a count, not a feeling, and it changes the meaning of every other line on his form. His
   closing question is sharpened to seating so the two bookend instead of repeating. Nine
   questions become ten; an existing player gets the ❗ back over Güero, which is the badge
   meaning what it always means.
-- 2026-09-02 · ❗La mudanza · **the office opens mid-move** (owner: "for the move it should
-  be mid") · your own boxes at your feet and the old lead's desk untouched is a better
+- 2026-09-02 · ❗La mudanza · **the office opens mid-move** (the owner chose
+  mid-move) · your own boxes at your feet and the old lead's desk untouched is a better
   first line than an empty floor: "Look at it before it's yours" now has something to look
   at. Nacho's talk retitled *Before you unpack* (Don Güero's words; Nacho may rename).
 - 2026-09-02 · Corrections carried, not absorbed · the mural deco sits at st(20,0), on the
@@ -596,8 +596,8 @@ hired you for. Three fixes, now canon:
   planner reads and stops at.
 
 - 2026-09-02 · ❗Las cuatro puertas · **the rest of the story written and wired the same
-  day** — owner: "i want the rest of the story... now please if
-  possible" · Nacho planned all four districts at the auto shop's depth; four writers
+  day** — the owner asked for the rest of the story, now if
+  possible · Nacho planned all four districts at the auto shop's depth; four writers
   drafted 32 quests EN+ES in the mercado's exact shape against a validator; the four open
   calls were answered with Nacho's picks (Tuerca is a she; the franchise is "the place
   with the drive-through"; paper 06/01/04 and a new 07; Calle Dos one door at a time) and
@@ -682,13 +682,13 @@ that "close". His file, his call — but the word is now load-bearing and wrong.
 
 Contradictions found 2026-09-01 that cannot be settled by rewriting a line. Each names
 what conflicts, why it is not Nacho's to decide, and the options. Owner's instruction:
-*"make a note so that during customization we clear the goals and this topic."*
+*note it, so that customisation settles the goals and this topic.*
 
 1. ~~**Where Week One's last visit belongs.**~~ **SETTLED 2026-09-01 (❗La puerta):
    `need` dropped 16 → 12.** Week One's last visit now plays with four quests still on
    the board, they stay answerable forever, and all 24 reframe lines are live in
-   default play. Owner's clarification, which was already true of the data: *"doesnt
-   have to happen in the office"* — `need` is a count over the whole district, and
+   default play. Owner's clarification, which was already true of the data: it need
+   not happen in the office — `need` is a count over the whole district, and
    the district (id `principal` since 2026-09-01, formerly `week1`) spans HQ (0-9, 14),
    La Cocina (10, 11), La Obra (12, 13) and the Studio (15).
    Any twelve, from anywhere, in any order.
@@ -765,8 +765,8 @@ what conflicts, why it is not Nacho's to decide, and the options. Owner's instru
   he was never a neighbour of.
 
 - 2026-09-13 · ❗El chofer, segunda parte · **the owner overruled the refusal above and asked for a
-  cameo. He was right, and the refusal was narrower than it was written.** Verbatim: *"welll lets fix
-  the leak... secondly, lets do a cameo to fix in game story."* Two corrections, both checked against
+  cameo. He was right, and the refusal was narrower than it was written.** He asked to fix
+  the leak first, and then for a cameo to fix the in-game story. Two corrections, both checked against
   the code first. **One: there was no leak** — the tranviario's name appears zero times in `engine/`
   and zero times in `content/meridian/`; the proposal was refused at plan time and never written to a
   file. **Two: the name was never the leak — a biography would be.** Meridian has had a Rigo since

@@ -1,8 +1,8 @@
 # What the city looks like, and what to fix first
 
-*Opened 2026-09-09 at the owner's word: "use the different agents and perspectives of the personas to
-test the game so they can catch objects we can beautify and log all the ones we can render better
-instead of cubed images."*
+*Opened 2026-09-09 at the owner's word: the personas test the game, each from its own angle, to
+catch objects that can be beautified, and log every one that can be drawn better than as a cube
+with a picture on it.*
 
 Two people made this, in parallel, deliberately not talking to each other. **Pili** audited the code
 — every glyph, what it renders as, what it should be. **Chava** played the game, walked all fifteen
@@ -69,9 +69,9 @@ leaves printed on it. **Their presence on the #39 list is the list being wrong, 
 
 *Pili, 2026-09-13; re-verified against the code 2026-09-14.*
 
-**A diagonal bar across a coloured field reads as "crossed out" in this project specifically.** The
-owner said it of the first striped alebrije and it cost that pass a re-cut (`engine/engine.js`, grep
-`owner called it "crossed out"`). A second world's claim sash is exactly that shape — a white diagonal
+**A diagonal bar across a coloured field reads as struck through in this project specifically.** The
+owner said as much of the first striped alebrije and it cost that pass a re-cut (`engine/engine.js`, grep
+`said it looked struck through`). A second world's claim sash is exactly that shape — a white diagonal
 stroked corner to corner across the shirt (its `record.js`, grep `SHIRT_PATTERNS.taken`)
 — and it survives only because the hard hat beside it changes the **outline** (grep `lk.hat="hard"`,
 drawn at `engine/engine.js`, grep `lk.hat==="hard"`). **That rescue is a claim about meaning and it has
@@ -196,13 +196,13 @@ the pale slabs are one bug wearing five hats.
 ## The surface carries the screen — 2026-09-15
 
 *Added after a day spent making a drawing better inside a page that was never designed. The owner's
-last word on it was **"it still looks like a bad attempt at UI"**, and he was right about every
+last word on it was **that it still looked like a failed try at a UI**, and he was right about every
 render before that one too.*
 
 **The lesson, in one line:** *when the page is designed, the illustration stops having to be excellent
 — and when the page is not designed, no illustration can rescue it.*
 
-What actually changed between "a bad attempt at UI" and a page worth showing, in order of how much
+What actually changed between a failed try at a UI and a page worth showing, in order of how much
 each was worth:
 
 1. **Typography, not art.** The old pages used the reader's monospace field labels — `Drawn`,
@@ -235,8 +235,8 @@ inside the frame and ask what the frame is claiming to be.**
 ## The process is the shape — 2026-09-16
 
 *Added after four attempts at a slice of [a dish], three of which corrected the object and none of
-which was the problem. The owner: "think about how it is made too right? ... thats why rarely are
-they displayed like you did or if it close it is in a pile and they have more congruence."*
+which was the problem. The owner asked to think about how it is made: that is why they are rarely
+shown the way I had them, and when they are close they sit in a pile and match one another.*
 
 **Six slices of one roll are siblings, not strangers.** The fillings were laid in a line on a flat
 sheet of nori, rolled once, and cut — so the cross-section is identical the whole length of the
@@ -259,8 +259,8 @@ Chema's four, ahead of measuring, because measuring the object cannot find this 
 
 ## When a thing can't be fixed, the material is the thing that's wrong — 2026-09-16
 
-*Added after the owner looked at the stairs through the office divider and said: "looks abstract
-artish but clearly fucked up stairs — want to spicy it up and make it a glass divider."*
+*Added after the owner looked at the stairs through the office divider, found them abstract-looking
+and plainly broken, and asked to liven it up by making it a glass divider.*
 
 The stairs were not broken. The engine's rail is **deliberately see-through** — it draws a rail and
 not a wall so a player can see the floor beyond and understand there is a way up there. What reached
@@ -282,7 +282,7 @@ it before costing the fix: *is there a material for which this behaviour is corr
 
 ## Occlusion can be right and the drawing still wrong — 2026-09-16
 
-*Same round. The owner: "i see building line overlapping with the exclamation mark animation."*
+*Same round. The owner saw a building's outline overlapping the exclamation mark.*
 
 **Measured before touching anything**, which is the only reason the fix was one line instead of a
 layering rewrite: the person spans y=4..36 of the sprite, the mark spans y=−7..8, so the mark
@@ -296,7 +296,7 @@ word.** Half the time the geometry is right and what failed is separation.
 
 ## Two coordinate systems, one field — 2026-09-16
 
-*The owner, from play: "im shown the other street map on calle 2." He was standing on Calle Dos and
+*The owner, from play: on Calle Dos he was shown the other street's map. He was standing on Calle Dos and
 the plan drew Calle Principal, with a pin in the corner captioned CALLE DOS — **the caption knew
 where he was while the picture showed somewhere else.***
 
@@ -326,8 +326,8 @@ back the coordinates the call site actually used.
 ## Nothing looks down — 2026-09-16
 
 *The owner, about the loft's stairwell, twice. The second time was a correction to me, not to the
-code: "i still think the stair railing screenshot i sent is wrong, even if it were a seethrough wall
-thats not right. i dont like when you are so dismissive."*
+code: the railing in his screenshot was still wrong, and would be wrong even as a see-through wall —
+and he did not like how dismissive I had been.*
 
 **He was right, and the first answer was me defending the engine.** I had told him the see-through
 rail was deliberate and the stairs were fine. They were not fine, and the reason took three wrong
@@ -339,7 +339,7 @@ below the ground and **well outside it**". Its geometry was `w.W*3+60` by `w.H*3
 world**, at `y = -0.05` — a sheet, not a frame. So it was five hundredths of a tile under the floor
 of the entire map, and **every sunken thing in either game had been under a dark lid since the day it
 was added.** The loft's stairwell treads sit at −0.16 to −0.64. A player looking down the stairs saw a
-black rectangle, which is exactly the phrase he used: *clearly fucked up stairs.*
+black rectangle, which is exactly what he described: stairs that were plainly broken.
 
 **Three fixes that were not the fix, and what each one cost:**
 
@@ -376,8 +376,8 @@ apron exactly as it shipped: fires on both games.
 
 ## A map is symbols, not a heat map — 2026-09-16
 
-*The owner, on the plan: "the map says tap a mark, but cannot tell if a mark is tapped. also... the
-squares/dots for people are garbage, we really cant improve this so i can tell what things are?"*
+*The owner, on the plan: it said to tap a mark and did not show that one was tapped; and the
+squares and dots for people said nothing, so he asked for marks that tell what things are.*
 
 **Both halves were true, and counting the tiles said why.** Of 29 glyphs on Meridian's plan:
 
@@ -434,7 +434,7 @@ flag, disc and dimming move 36%. The floor sits at 28 — between them, nearer t
 
 ## A person is weather, not masonry — 2026-09-16
 
-*The owner, on R11: "why doesnt r11 walk around?"*
+*The owner, on R11: why does R11 not walk around?*
 
 **The answer is that there is nothing to walk around.** A person is stamped into the grid as the
 literal character `"N"`, and every reader that matters treats `"N"` exactly as it treats a wall —
@@ -475,11 +475,10 @@ tiles of Calle Dos by somebody standing in a doorway with their back to them.
 
 ## The data was right for two years and nobody drew it — 2026-09-17
 
-**Owner, and this is the fifth time he has raised it:** *"the skull on a non existing or visible
-window sill overlaps a store front that was initially a placeholder for a mural. this isnt about
-whether your work is good or not. you understand that right? its about trying to meet the requirement
-of being realistic… if there were a window sill there, it should be drawn and then a skull can be
-included and then the store front icon or mural can go around it."*
+**Owner, and this is the fifth time he has raised it:** *a skull on a sill that is not there
+overlaps a shopfront that began as a placeholder for a mural. It is not a verdict on the work; it is
+about meeting the requirement of being realistic. If there is a sill, it should be drawn, the skull
+set on it, and the shopfront icon or mural drawn around it.*
 
 Four previous answers, `2026-09-08` through `2026-09-12`, all changed the **size of the sugar skull**:
 8px, then 5px, then 0.85 of the pane, then the pane lit behind it. Each was measured. Each was
@@ -518,8 +517,8 @@ wall nobody would think to check*. The other window is plastered over, which is 
 with a pane that is in the way, and it hands the shop's emblem a clear field: with both windows kept,
 the basket and the wrench came out as **ribbons between the panes** — rendered, looked at, rejected.
 
-**Still open, and it is the owner's own call** (*"whats square? well right now it can be the icon
-while we figure it out"*): the emblem drawn **around** the window rather than beside it, with the
+**Still open, and it is the owner's own call** (*for now the square can be the icon,
+while it is worked out*): the emblem drawn **around** the window rather than beside it, with the
 skull on the sill as part of the picture. That is six drawings, one per business. It is design, not
 plumbing, and he deferred it himself.
 
@@ -551,21 +550,23 @@ the costume of a fix.
 
 ---
 
-## The art we can reach — the standing approach, in his words — 2026-09-17
+## The art we can reach — the standing approach, as he set it — 2026-09-17
 
-> *"please write that you will use your skills and learnings to make the map a better image from what
-> you learned to do with [partner]'s mocks. we arent going to hire anyone so
-> we keep moving forward with art we can access to at least learn and have a backup."*
->
-> — the owner, `docs/ASKS.md`, 2026-09-17. **This is the settled approach, not a workaround.**
+The skills and lessons learned from a playtester's mocks go into making the map a better image.
+Nobody is being hired, so the work moves forward with the art within reach, to learn at least,
+and to have a backup.
 
-He asked for it to be written down, so here it is, and it has three parts he actually said:
+Set by the owner, `docs/ASKS.md`, 2026-09-17. **This is the settled approach, not a workaround.**
+
+He asked for it to be written down, so here it is in three parts. They restate what he asked, in a
+session's words, not his:
 
 - **Nobody is being hired.** No commission is waiting; no budget line is being held open. The art in
   this game is made here.
-- **[partner]'s time is unknown and not waited on.** [Nobody else’s time is waited on.] Work does not stop for that.
-- **The art we can reach is worth making anyway, for two reasons he gave** — *"to at least learn"*
-  and *"have a backup"*. A drawing made here teaches the project how the thing is built even if a
+- **That playtester's time is not waited on.** The owner did not know when that time would come, and
+  work does not stop for it.
+- **The art we can reach is worth making anyway, for two reasons he gave** — to learn, at least,
+  and to have a backup. A drawing made here teaches the project how the thing is built even if a
   better one replaces it, and until one does, it is the drawing that ships.
 
 ### The method, which already exists twice and is now the default
@@ -601,8 +602,8 @@ starts before the list is a redraw of whatever was already annoying somebody.
 
 ## The contact sheet — 2026-09-21
 
-*The owner: "can we consider beautifying across the
-worlds?" The rule above is contact sheet first, list second, redraw third. This is the sheet and the
+*The owner asked to consider beautifying across the
+worlds. The rule above is contact sheet first, list second, redraw third. This is the sheet and the
 list. **Nothing was redrawn.***
 
 **How it was made.** Twelve worlds × four cameras, 48 shots at 844×676 through `test/shots.js`, one
@@ -622,7 +623,7 @@ The rank is that product: how many see it, times how wrong it is.
 |---|---|---|---|---|---|---|
 | 1 | **The shelf is a Rubik's cube.** A brown box with a six-colour grid on its face — and the same grid is books in the notary, bread in the bakery, produce in the market and parts in the garage | me · pa · no · ta · li · lo | front, **3d** | `TILESIDE["S"]`; the pack overrides through `TILEART_SIDE` | **art** | one drawing; one per business if Toño gives each its own glyph |
 | 2 | **Grass is three green strokes painted on the pavement, in every camera including 3D.** Chava's "the letter Λ" (09-09), unchanged | pk · st · ex | all four | ~~a `stand:true` row plus `TILEART_SIDE.g` makes it a sprite in front, iso and 3D — the lever at the top of this file~~ **wrong, found 2026-09-21: a sprite is a new flat picture in 3D and `test/engine.smoke.js` #39 fails the build on one, on purpose.** It stays paint, because a tuft on a plaza IS paint on the floor — drawn as what it is: a rosette of blades grown from a crack, `TILEART["g"]` (done 2026-09-21). Iso still draws its own three strokes (`engine.js`, `ch==="g"`) — that is row 5 | **art** | one drawing |
-| 3 | **The flower bed is a brown square with three orange dots**, flat on the floor at 3D distance. In iso the bed is gone and the three dots lie on bare pavement | pk · st | 3d, iso | ~~a low planter box (`box:true` + a side)~~ **a box needs a SOLID tile (2026-09-21): `b` is in `SOLIDX` now — `ASSUMED:` a marigold bed is not walked through, nobody decided it — with `box:true` in `TILEMETA`, the bed from above as the lid (`TILEART["b"]`, soil edge to edge so the map colour never shows) and the curb with the heads over it as the sides (`TILEART_SIDE["b"]`). Done 2026-09-21; the smoke found nobody unreachable.** **AND THE ASSUMPTION WAS TOO WIDE, found 2026-09-22 when the owner asked for "petals ... that i can walk and interact through": this row decided about the BED, but a solid is applied to a LETTER, and `b` was also carrying the trail of loose cempasúchil laid from the bed to the ofrenda — the arrow that shows the souls the way, which the map comment beside it says in so many words must be walkable so it cannot cork the park. One row's decision about one object silently annexed a second one and made the arrow a wall. The loose petals are their own letter now, walkable, and the bed keeps its curb. One part, one name.** Iso paints its own dots under a pink block — row 5 | **art + one meta row + one solid** | one drawing |
+| 3 | **The flower bed is a brown square with three orange dots**, flat on the floor at 3D distance. In iso the bed is gone and the three dots lie on bare pavement | pk · st | 3d, iso | ~~a low planter box (`box:true` + a side)~~ **a box needs a SOLID tile (2026-09-21): `b` is in `SOLIDX` now — `ASSUMED:` a marigold bed is not walked through, nobody decided it — with `box:true` in `TILEMETA`, the bed from above as the lid (`TILEART["b"]`, soil edge to edge so the map colour never shows) and the curb with the heads over it as the sides (`TILEART_SIDE["b"]`). Done 2026-09-21; the smoke found nobody unreachable.** **AND THE ASSUMPTION WAS TOO WIDE, found 2026-09-22 when the owner asked for petals you can walk through and stir: this row decided about the BED, but a solid is applied to a LETTER, and `b` was also carrying the trail of loose cempasúchil laid from the bed to the ofrenda — the arrow that shows the souls the way, which the map comment beside it says in so many words must be walkable so it cannot cork the park. One row's decision about one object silently annexed a second one and made the arrow a wall. The loose petals are their own letter now, walkable, and the bed keeps its curb. One part, one name.** Iso paints its own dots under a pink block — row 5 | **art + one meta row + one solid** | one drawing |
 | 4 | **An interior in the default camera is a strip of room between two bands of nothing.** In the notary the room is the middle 30% of the frame, olive above, olive below. HQ, the library, the loft, the bakery, the garage: the same, less | every interior | **3d** | camera distance and pitch for a world 5–8 rows tall, `engine3d.js`; or the apron's colour under a room | **engine — measure first** (Chema) | a sitting |
 | 5 | **The isometric camera draws every prop as a coloured block.** Crates, shelves, counters, desks, tables, signs, the fridge and the stove; the potted plant is a green cube; the rug is two plain lavender diamonds with no pattern. The tree is the one prop that reads, because `J` has its own branch. Chava's "loses about 90% of the art", unchanged | all twelve | iso | `drawIso`'s block pass ends in `isoBlock`, which by its own comment "paints faces and a diamond lid and never the art". `sideArt(g)` exists and front and 3D already draw it; the block's two faces are parallelograms a clip-and-skew can carry it onto, and its lid can take `TILEDRAW[g]` | **engine**, one function, both games, GAMEV + CACHE bump | a sitting |
 | 6 | **The café counter is in the garage.** A coffee machine and a row of cups where a mechanic works; the market shelf in the bakery and the notary | ta; pa · no | all four | `maps.js` rows. Whether a glyph can dress per world is Toño's question: floors have `FLOORC[world]`, tiles have nothing like it | **content + a vocabulary decision** | an hour a room, after the decision |
@@ -668,7 +669,7 @@ against `test/`, not the working directory. Both are test changes, neither is bu
 
 ### The first sitting, done — 2026-09-21, the same day
 
-Owner: *"i see the estimate, start with the ones you mention and let me know how accurate you were."*
+The owner saw the estimate and asked to start with the ones named, and to report how accurate it was.
 Rows 1–3 drawn, content only, in `content/meridian/art.js` under the heading BEAUTIFY, FIRST SITTING;
 the bed's one solid in `content/meridian/maps.js`. `mq-v177`. The after-frames are beside the sheet in
 `docs/mocks/2026-09-21-contact-sheet/after-first-sitting/`; the cost, estimated before and measured
@@ -696,8 +697,8 @@ camera: the tuft and the bed are drawn there by the engine's own strokes and dot
 
 ### The second sitting, done — 2026-09-21, the same day: shapes, not pictures
 
-Owner, after playing the first sitting: *"i still see squares and not polygonal shapes … can we not
-try this finally?"* He was right: the bed was a box wearing a painted curb, because a box was one of
+Owner, after playing the first sitting: he still saw squares rather than polygon shapes, and asked
+to try it properly at last. He was right: the bed was a box wearing a painted curb, because a box was one of
 the two shapes the 3D camera could make. **The engine has a third now** — `docs/3D-LOG.md`,
 2026-09-21: the `mesh` view, a list of primitives per tile, merged into one mesh. The bed is a
 raised bed with a rounded lip and six pom-pom marigolds; the potted plant (row P ×20 in the
@@ -715,8 +716,8 @@ the agility gear (leggy; billboards are still right).
 
 ### The third sitting, done — 2026-09-21, later still: five more shapes, and the marigolds back
 
-Owner: *"lets try the grass and the cones, dog house, and altar. we are now missing the marigold in
-the bushes though. can we also do the tree with its decor?"* All five through the `mesh` view
+The owner asked for the grass, the cones, the dog house and the altar, noted the marigolds now
+missing from the bushes, and asked for the tree with its decor. All five through the `mesh` view
 (`docs/3D-LOG.md`, the second entry of this date), the bed's marigolds regrown as a mound. `mq-v179`.
 The known-flat list is `3 4 5 7 A W X Y` now — the agility gear (leggy, billboards on purpose), the
 car lift, the drafting table, the fridge, the site sign, the trolley stop. The "Correctly flat" list
@@ -724,9 +725,9 @@ above loses its tree and its cones: they are shapes now, by the owner's word, an
 
 ### The fourth sitting, done — 2026-09-21: the second try on the marigolds and the dress, tables, poles, the altar
 
-Owner: *"the marigolds can use another try and same with the decor. please update, tables too, poles
-with the paper picado and please try to add more detail to the altar. the cone looks better but it
-overwrites/paints tiles."* `docs/3D-LOG.md`, the third entry of this date. The marigold is a ruffled
+The owner asked for another try at the marigolds and the decor, the tables too, the poles that carry
+the papel picado, and more detail on the altar; the cone looked better but still painted over the
+tiles. `docs/3D-LOG.md`, the third entry of this date. The marigold is a ruffled
 head now, one helper for the bed, the garland and the altar; the tree's dress is strings of flags; the
 tables are round tables with chairs; a string gets a pole where nothing tall holds it; the altar has
 its three tiers and what stands on them; the cone stands on black rubber. `mq-v180`. The register's
@@ -740,10 +741,10 @@ is about the 2D drawing and stands.
 the recipe from the 2D drawing to the frame, and what the marigold taught. **Next:** the chiles and the bananas
 (silhouette above the rim, fewer and fatter units, the value break painted in, a few red chiles) — one sitting.*
 
-Owner: *"everything looks good except the marigolds. lets do a crew mode to try to fix as many things
-but lets have an expert on flora help the design on the marigolds so they are realistic … computers,
-rails, fences, coffee machines, fridge, bridge, petals, trolley, desks, fruit stands, car lifts, tires,
-car,and tool boxes. make sure even mural gets done please."* `docs/3D-LOG.md`, the fourth entry of this
+The owner found everything good except the marigolds, and asked for a crew pass to fix as much as
+it could, with a flora expert on the marigolds so they are realistic — computers, rails, fences,
+coffee machines, the fridge, the bridge, petals, the trolley, desks, fruit stands, car lifts, tires,
+the car and tool boxes — and the mural done as well. `docs/3D-LOG.md`, the fourth entry of this
 date; run `docs/runs/2026-09-21-claude-d8e4.md`; flight notes iteration 11. `mq-v182`.
 
 **Of his fourteen:** computers and desks ✓ (`D`), rails ✓ (`◺`, the frame; the pane needs alpha),

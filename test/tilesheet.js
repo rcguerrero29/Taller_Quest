@@ -1,7 +1,7 @@
 /* THE COLD-READ SHEET — "would someone new to videogames know what this is?"
  *
- * Owner's ask (2026-09-01): "the test we are missing is acting as a person new to
- * videogames going through the store fronts or building fronts". smoke.js checks
+ * Owner's ask (2026-09-01): the missing test is a person new to video games walking
+ * past the storefronts and building fronts. smoke.js checks
  * structure; shots.js shows scenes in context, where surroundings give the answer
  * away. This renders EVERY tile at 4x, labelled ONLY by its glyph, so the art has to
  * carry the meaning on its own with no context and no caption.

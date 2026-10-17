@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* THE LOCK ON MAIN — is it still on?
-   The owner, 2026-09-24: "cybersecurity should be key always."
+   The owner, 2026-09-24: security comes first, always.
 
    docs/SECURITY.md §3 step 1 — a ruleset on `main` — was written on 2026-09-21 as the first thing to do,
    and it sat undone for three days because nothing read the live setting; every document said what

@@ -1,7 +1,7 @@
 /* EL HORNO — one room, one bench, one tray. A choice, and a rhythm.
-   Owner, 2026-09-22: "theoretically can we use these polygonal art for the cooking game? we can
-   try a baking option lol" and, when a producer said no to the game half,
-   "why no for the game? because we havent built it? we will soon".
+   The owner asked, 2026-09-22, whether the polygon art could serve a cooking game — a baking one,
+   perhaps — and, when a producer said no to the game half, asked why not: it is not built yet, and
+   it will be soon.
 
    This is the smallest thing that is genuinely a baking THING YOU DO. It is its own pack — its
    own shell, its own prefix, its own storage — exactly the way content/gauge/ is, so it costs
@@ -14,8 +14,8 @@
    Kneading is the other bench and it gates NOTHING: no step of the bake waits on it, it cannot be
    failed, and it can be left in one press. An action you could skip in a tap and do not is the
    definition of something done on purpose; an action you must finish is a toll. Owner, 2026-09-22,
-   correcting this session, which had priced it as a wait needing a clock: "i know the time seems
-   strange but kneading could be therapeutic." A wait is time you spend to be allowed something.
+   correcting this session, which had priced it as a wait needing a clock: the time may look
+   odd, but kneading can be soothing. A wait is time you spend to be allowed something.
    A rhythm advances per gesture, with no clock anywhere — which is the only shape this pack could
    take, because it refuses a timer three lines below. See content/horno/docs.js, the `masa` card.
 

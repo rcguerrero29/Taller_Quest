@@ -4,9 +4,9 @@
    turns the play record R into a list of sections.
 
    Two rules the owner set (2026-09-03):
-   1. "your real answers" — a document is assembled from what you actually picked, and a
+   1. Real answers only — a document is assembled from what you actually picked, and a
       field you never answered is LEFT BLANK, which is the templates' own convention.
-   2. "make sure we also create realistic docs so we can export for ai consulting" — these
+   2. Realistic documents, exportable for AI consulting work — these
       mirror docs/templates/ 01-07 section for section, so a filled one can be copied
       straight into a client folder.
 
@@ -252,8 +252,8 @@ const DOCS = {
 
 
   /* ---------- paper a neighbour puts in your hands ----------
-     Owner, 2026-09-04: "no she says it and shows a fake doc- the important ones are the ones
-     for AI roles but lets help me see it and live it."
+     The owner, 2026-09-04: she says it and hands over a mock document; the documents that matter
+     are the AI-role ones, but the player should see this one and live it.
 
      A quest node names one of these with `doc:"<id>"` and the card holds it out. They are
      entries here, not blobs inside a node, for one reason that outranks the rest: the smoke

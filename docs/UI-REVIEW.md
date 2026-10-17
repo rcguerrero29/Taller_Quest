@@ -1,7 +1,7 @@
 # UI review — how a mock-up is reviewed before anything is built
 
-*Opened 2026-09-14 at the owner's word: "make sure we have a ui review process where we include
-engineers, our agents, UI, story, QA, and this is for mockups yes." The process is Lupe's, from crew
+*Opened 2026-09-14 at the owner's word: a UI review process for mockups, with engineers, the
+agents, UI, story and QA in it. The process is Lupe's, from crew
 run 8 (`docs/meetings/2026-09-14-la-cuadrilla-run-8.md`, her return), written here so that seven
 people who are not QA can sign it. Mock findings live HERE, never in `docs/QA-PASS.md` — that file's
 own preamble says it grows from real escapes and from nothing else.*
@@ -70,7 +70,7 @@ Four verdicts only, and they are not "approved / rejected":
 | 8 | **Ledger** | Remedios | *"Every finding above is in the ticket shape — `In plain words:` · `Notes:` · `Questions to consider:` · `Areas affected:` · `Done when:` — and each names a screen, a row and a verdict."* | a finding that lives only in the review text |
 
 **The genre line, signed by whoever holds the pen, on every screen without exception:**
-> *"There is no clock, no countdown, no day budget, no streak that can break, and nothing on this screen counts down."* (`docs/GENRE-RULES.md` R10, R11, R15; the owner: *"no timer, we chill"*.)
+> *"There is no clock, no countdown, no day budget, no streak that can break, and nothing on this screen counts down."* (`docs/GENRE-RULES.md` R10, R11, R15; the owner: no timer, keep it relaxed.)
 
 It is here rather than in a role's row because it is the one rule the owner stated twice, and a rule with no signature line is a rule nobody runs.
 
@@ -171,7 +171,7 @@ verbatim in `docs/meetings/2026-09-14-la-cuadrilla-run-9.md`.
 | 1 | Engineers | Beto | **FALSE** | one element in each column: the reader's checkboxes wear the settings panel's uniform (unpriced), and the doors are half a seam — the half that is missing is in the save. Priced: careers seam RULE; the listening canvas RULE with two unpriced things under it (touch, persistence); `pendingAt` on the map two lines; the ring a different kind of question |
 | 2 | Art | Pili | **FALSE** | the avoid-list ticks are iOS blue on a violet app; the household's drawer ladder contradicted the drawer screen's; the merge board is four colours of one object; six screens carry the engine's violet-label rule |
 | 3 | Story | Nacho | **FALSE** | the one sentence per screen is written on the page and shown on none of the pictures; the questionnaire made two opposite promises one above the other; three of four kitchens are a flag with an apostrophe |
-| 4 | Words | Paty | **FALSE** | the questionnaire has no Spanish (REFUSED under A6 — by the owner's own word, *"English is fine"*, so recorded, not built); six of the set's best sentences are `sub` lines the reader never shows; the drawer captions collided in both languages; *"[a dish], de dos"* |
+| 4 | Words | Paty | **FALSE** | the questionnaire has no Spanish (REFUSED under A6 — by the owner's own word that English is enough, so recorded, not built); six of the set's best sentences are `sub` lines the reader never shows; the drawer captions collided in both languages; *"[a dish], de dos"* |
 | 5 | UI | Rosa | **FALSE** | sideways, four documents put their primary action under the 207-px box behind a mark that reads as the end; the house card's only switch is 19 px tall; on the questionnaire at 844×390 the bar sat on the third answer, so a tap there pressed Next |
 | 7 | Play | Chava | **TRUE** | for all thirteen, with three places he was wrong written down (screens 4, 5, 8); the genre line TRUE on all fourteen pictures — everything that moves counts up |
 | 8 | Ledger | Doña Remedios | **FALSE → TRUE for ten** | as the set stood: findings section empty, no per-screen verdict, three screens unsizeable; with the table above pasted it is TRUE for ten screens and stays FALSE for the three drawings |
@@ -240,7 +240,7 @@ only the title, screen, row and verdict, ranked as each reviewer ranked them.
 | Nacho | F8 · a blank line and the end of the document are the same mark | 7, 11 | ANSWERS, WITH A NOTE | with Rosa F8, M2 |
 | Nacho | F9 · the front door in the picture is Meridian's, and the line under it is a promise | 1 | DOES NOT ANSWER | as the verdict table says |
 | Nacho | F10 · the street explains itself twice, in the same frame | 2 | ANSWERS, WITH A NOTE | Meridian's own arrival text — not this world's |
-| Paty | F1 · the questionnaire has no Spanish at all | 0 | REFUSED (A6) → recorded | the owner: *English is fine* (§12.1 #15) |
+| Paty | F1 · the questionnaire has no Spanish at all | 0 | REFUSED (A6) → recorded | the owner accepted English only (§12.1 #15) |
 | Paty | F2–F5, F7–F9 · the table | 4, 5, 6, 7, 10 | ANSWERS, WITH A NOTE → applied | mockdocs2.js |
 | Paty | F6 · six of the best sentences in the set are in no picture at all | all six | DOES NOT ANSWER | as Rosa F5 |
 | Paty | F10 · the page is English, and the three inline drawings are English on purpose | the page | ANSWERS, WITH A NOTE | the page is the owner's reading copy; the game is both |

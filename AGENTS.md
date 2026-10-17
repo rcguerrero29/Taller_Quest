@@ -17,9 +17,18 @@ and only he approves a deploy to the live site.
 - **Every change is checked** against a private list of personal terms (`scripts/private-terms.js`, fed by
   an encrypted secret, never printed). A green check is not permission: the list only holds what was
   written down. If you are unsure, say it in general terms, or leave it out.
-- **The owner's own words are not logged here.** His requests are recorded in the private repository. If
-  he gives you an instruction while you only have this repository open, work from it, but do not paste it
-  into a file, an issue, a pull request or a commit message.
+- **The owner's own words are not logged here.** His requests are recorded in the private repository:
+  from 2026-10-16 as the goal he confirmed, with every personal detail a `[stand-in]` and nothing of his
+  quoted, and his own words stay in the conversation. If he gives you an instruction while you only have
+  this repository open, write his goal back to him in plain words before you build, as every session
+  does, with every requirement exact (every number, every "not", every condition), and **never start
+  building on a goal he has not confirmed: wait for his yes.** Then work from it; do not paste his words
+  into a file, a commit message, a branch name, an issue, a pull request or a comment, and tell him the
+  goal he confirms still needs logging in the private repository.
+- **Anything he shares with you outside this repository** (a spreadsheet, a file, a shared page) **is not
+  the conversation.** Like this repository, it holds goals only, never his exact words.
+- **Anyone else whose words you hear** (someone interviewed for a design, for example) is treated the
+  same way: their words stay in the conversation, and only what they confirm is written down.
 - Commits carry **no-reply addresses only** (`test/authors.js` fails the build otherwise).
 
 ## 2 · Security first

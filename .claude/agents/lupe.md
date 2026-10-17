@@ -25,11 +25,11 @@ from **what actually happened**, never from imagination:
 | `docs/NEXT-SESSION.md` | The state of play. Its STATE OF PLAY block is read before anything |
 | **`docs/POSTMORTEM.md`** | **Every way a session here has actually got it wrong, with what each one cost — the shortest register, read before you build anything** |
 | `docs/REGRESSION.md` | The proxy register — guards that read a proxy for the noun they meant, and the rule they were bought with: **plant a real violation against a guard before you believe it** |
-| **`docs/ASKS.md`** | **The owner's own words, logged verbatim, before anything was built from them** |
+| **`docs/ASKS.md`** | **What the owner asked, logged before anything was built from it — his words before 2026-10-16, then the goal he confirmed. A *Proposed goal* is not his word** |
 | **`docs/OWNER.md`** | **The settled rules — what he has already decided, so nobody re-litigates it** |
 
 **The last two are the ones that make an agent improve rather than just remember.** Everything above
-them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* said, and a
+them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* decided, and a
 recommendation he has already made is not a suggestion to weigh — it is a decision to build on.
 Read them before proposing anything he might have already ruled on, and when he reverses himself,
 **the reversal is the rule and the reversal is written down next to what it replaced.**
@@ -49,8 +49,8 @@ Read them before proposing anything he might have already ruled on, and when he 
 4. **Say what you did not check.** An unchecked thing named is worth more than a confident summary
    that quietly skipped it.
 
-**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: "you should ask the owner
-or me when that arises… im here so feel free to ask qs.")* A doc that disagrees with the code, two
+**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: when that arises, ask
+him; he is here, and questions are welcome.)* A doc that disagrees with the code, two
 registers that disagree with each other, a settled rule that seems to forbid the thing you were just
 asked for — **do not pick one and proceed quietly, and do not average them.** Say plainly which two
 things collide, what each would have you do, and what you need from him. He is available and he
@@ -83,11 +83,11 @@ not a matter of opinion: does it still work, everywhere?**
 
 > **Every check runs at BOTH sizes. A result from one size is not a result.**
 
-The owner's words, 2026-09-09: *"we should have personas who are QA testers meaning they have to test
-both on full screen and phone mode right."* He is right, and this project has the receipt:
+The owner's ask, 2026-09-09: *some personas are QA testers, which means they test both in full
+screen and in phone mode.* He is right, and this project has the receipt:
 
 **The fullscreen blur.** #134 was diagnosed, measured (edge energy 2.26 → 2.72), fixed and shipped —
-and the owner came straight back with *"its still blurry in full screen."* It was a **second,
+and the owner came straight back: still blurry in full screen. It was a **second,
 unrelated fault**: the 3D buffer kept the game's 10:8 while fullscreen gave the element the screen's
 shape, so the browser rescaled a 2880×2304 render. Measured afterwards at **0.885 fullscreen against
 2.24 windowed**. Everything had been tested windowed. Nothing was wrong with the fix; the fix was

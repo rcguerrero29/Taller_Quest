@@ -1,7 +1,7 @@
 # Where a finding comes from
 
-*Opened 2026-09-09 at the owner's word: "tell me how youre getting or where you get the info from and
-log it so we can check later or publish findings."*
+*Opened 2026-09-09 at the owner's word: say how and where the information comes from, and log it so
+it can be checked later or the findings published.*
 
 **Every claim in this project's registers carries one of four tags.** Not because the rules are
 strict, but because the four kinds of claim have wildly different worth, and until now they have all
@@ -12,7 +12,7 @@ been written in the same voice.
 | **`[CODE]`** | Read out of this repository, cited `file:line` **with the identifier beside the number** | **Yes — if you grep the identifier.** A bare line number is `[CODE]` the moment it is written and `[TRAINING]` an hour later: on 2026-09-13, **31 of `docs/BOUNDARY.md`'s 172 citations had slid within the hour** they were written (`docs/POSTMORTEM.md` §8-extended), and three in a persona file were **400+ lines** off with every suite green |
 | **`[WEB]`** | From a source outside this repo, cited with a URL | **Yes.** Follow the link |
 | **`[TRAINING]`** | What a model knows about games, design or craft, with no citation | **No.** It is a considered opinion and nothing more |
-| **`[OWNER]`** | The owner said it, quoted verbatim | **Yes.** It is in `docs/ASKS.md` |
+| **`[OWNER]`** | The owner decided it: a goal he confirmed (before 2026-10-16, his words quoted verbatim) | **Yes.** It is a dated row in `docs/ASKS.md` |
 
 **Nothing in `.claude/agents/` is a source.** A persona is one agent's instructions, and the line
 numbers inside one are guarded by nothing: `test/leaves.js` calls `fs.existsSync` on the **path** in a

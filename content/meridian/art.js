@@ -19,8 +19,8 @@
         a picture on the wall; a sill reads as a window (cold read: test/tilesheet.js).
 
    Second glyph, 2026-09-02 — la mudanza:
-   "□"  a taped moving box. The office opens MID-MOVE (owner: "for the move it should
-        be mid"), and the only crate the engine had is El Mercado's produce crate — a
+   "□"  a taped moving box. The office opens MID-MOVE (the owner chose to show it
+        mid-move), and the only crate the engine had is El Mercado's produce crate — a
         tomato, a chile and a banana, which read as groceries. This one is cardboard:
         a taped cross over the seam and a label. One glyph, two silhouettes by tile
         parity (the engine's own idiom): even tiles a single box, odd tiles a shorter
@@ -145,8 +145,8 @@ Object.assign(TILEART,TILE_PROPS,{
 });
 /* ---- the office wall: blank paper, and the paper that earned its place ----
    Both are WALL tiles like the window, so the 3D camera paints them on the wall face.
-   `▭` hangs from day one and says nothing (owner's call, 2026-09-03: "blank paper,
-   unlabelled"); a district's ribbon swaps it for `▤` when its document exists. */
+   `▭` hangs from day one and says nothing (owner's call, 2026-09-03: blank paper,
+   with no label); a district's ribbon swaps it for `▤` when its document exists. */
 TILEART["▭"]=rc=>{const{sx,sy}=rc;
   ctx.fillStyle=C.wall;ctx.fillRect(sx,sy,32,32);
   ctx.fillStyle="rgba(0,0,0,.22)";ctx.fillRect(sx+9,sy+8,15,19);
@@ -294,12 +294,12 @@ TILEART["I"]=rc=>{const{sx,sy,x,y}=rc;
 };
 
 /* ---- THE STAIRWELL DIVIDER IS GLASS (owner, 2026-09-16) ----
-   "the stairs appear on the other side of this wall... looks abstract artish but clearly
-   fucked up stairs - want to spicy it up and make it a glass divider."
+   The owner saw the stairs showing through on the other side of this wall, looking abstract and
+   plainly broken, and asked to liven it up by making it a glass divider.
 
    THE INTERESTING PART IS THAT SEEING THE STAIRS THROUGH IT IS NOT A BUG. The engine's own rail
    is knee-high and see-through on purpose, so a flight below stays visible — that is correct, and
-   it is why the stairs read "on the other side". What was wrong is that a timber rail with four
+   it is why the stairs read as being on the other side. What was wrong is that a timber rail with four
    balusters gives the eye a picket fence and then a stepped grey mass behind it, and at this size
    those two readings fight: the stairs come out as abstract slabs because nothing frames them.
 
@@ -342,7 +342,7 @@ TILEART_SIDE_GLASS=rc=>{const{sx,sy}=rc; /* in elevation: a pane you see the fli
 const TILEART_SIDE=Object.assign({},TILE_PROPS);
 TILEART_SIDE["Y"]=rc=>{const{sx,sy}=rc; /* THE TROLLEY STOP, STANDING. It was walkable with no TILES
       row and no profile, so the front camera and the 3D ground bake painted its top-down art flat
-      onto the pavement — owner, 2026-09-04: "the bus stop is also just a painting on the floor."
+      onto the pavement — the owner saw the bus stop as a painting on the floor too.
       Same bug class as the stairs, same fix: a `stand` tile with a side view. What makes a stop
       read as TRANSIT and not as a lamp post is the sign held out ACROSS the pole, at head height,
       with a bench under it. */
@@ -523,9 +523,8 @@ TILEART_SIDE["b"]=rc=>{const{sx,sy,x,y}=rc;
   ctx.fillStyle="rgba(15,12,20,.3)";if(Wt)ctx.fillRect(sx,sy+21,1.2,9);if(E)ctx.fillRect(sx+TS-1.2,sy+21,1.2,9); /* the ends of the run */
 };
 
-/* LOOSE PETALS ON THE GROUND — THE TRAIL, WHICH IS NOT THE BED (owner, 2026-09-22: "ok can you
-   try to lookinto making petals? that i can walk and interact through as if they were mounds of
-   items piled up").
+/* LOOSE PETALS ON THE GROUND — THE TRAIL, WHICH IS NOT THE BED (the owner asked for
+   petals you can walk through and stir, like mounds of things piled up).
    `b` above is the raised bed: a box with a curb, and you do not walk through it. `✿` is what
    FALLS OUT of it — loose heads and torn petals, swept into low mounds and laid from the bed to
    the ofrenda, which is how the souls are shown the way. Two objects; they shared one letter for a
@@ -603,7 +602,7 @@ TILEART_SIDE["✿"]=rc=>{const{sx,sy,x,y}=rc;
 };
 
 /* ---- BEAUTIFY, SECOND SITTING — 2026-09-21, the same day. SHAPES, NOT PICTURES. ----
-   Owner: "i still see squares and not polygonal shapes … can we not try this finally?" The `mesh`
+   The owner still saw squares rather than polygon shapes, and asked to try it properly at last. The `mesh`
    view: a list of primitives per tile, in tile units (a tile is 1.0 wide, a person about 1.0 tall),
    y up from the floor, the tile's centre at (0,0). The engine merges them into one mesh with vertex
    colours. Drawn as .claude/skills/how-its-made says: by what the thing is made of. A marigold head is a
@@ -639,8 +638,8 @@ const SHAPETAKE="345X";
    the light. The first seven parameters are what the bed, the tree's garland and the altar's arch
    already pass.
 
-   DEFINITION, THE FOURTH REPORT — 2026-09-22, la jardinera (owner: "the marigold decor is also not
-   very well defined"). The head was not the fault; it reads at a 4× crop. TWO things were, and both
+   DEFINITION, THE FOURTH REPORT — 2026-09-22, la jardinera (the owner found the marigold decor
+   poorly defined too). The head was not the fault; it reads at a 4× crop. TWO things were, and both
    are about what is NEXT TO the orange, not about the orange:
 
    (1) THE DARK. The light here has a 1.5:1 range and nothing more (DAY_AMB 0.66, DAY_SUN 0.42), so
@@ -818,8 +817,8 @@ TILEART_MESH["S"]=({x,y})=>{
   const cr=Math.cos(ry),sr=Math.sin(ry);                                                  /* turn the whole carcass to face the room */
   return parts.map(p=>({...p,x:p.x*cr+p.z*sr,z:-p.x*sr+p.z*cr,ry:(p.ry||0)+ry}));};
 
-/* ---- LA ESPIGA'S GOODS — crew iteration 12, la panadera (#227). Owner: "can we also add more sweeet
-   bread and baked goods please?" ----
+/* ---- LA ESPIGA'S GOODS — crew iteration 12, la panadera (#227). The owner asked for more sweet
+   bread and baked goods. ----
    The four `S` tiles along the bakery's north wall are "bread racks" (maps.js, the `pa:` comment) and
    were drawing the notary's books — docs/BEAUTIFY.md row 1: one drawing, six businesses. In a Mexican
    panadería the customer takes a charola and pinzas and walks to the racks; the racks ARE the display.
@@ -835,8 +834,8 @@ TILEART_MESH["S"]=({x,y})=>{
    rack were one picture. Pan de muerto takes the top pan of every second rack in season, never out of it.
    The names are the story's: bolillos ("forty bolillos at five", docs.js; the cat in the flour bin),
    the concha ("concha, ten weeks"), and the bag of pan de ayer at the door.
-   SECOND PASS, crew iteration 13, 2026-09-22. The owner looked at the racks and said "i can only see
-   conchas and maybe some ojos de buey". He was right twice over: the concha read, and the OTHER thing he
+   SECOND PASS, crew iteration 13, 2026-09-22. The owner looked at the racks and could make out only
+   conchas and perhaps some ojos de buey. He was right twice over: the concha read, and the OTHER thing he
    could see was the polvorón — a coloured round sat in a white paper cup, which from the camera is a pale
    ring round a contrasting centre, and that is an ojo de buey. Nothing else read, and the fault was COUNT
    before it was shape: six, eight and twelve to a pan made pieces three to five pixels across, and at that
@@ -985,8 +984,8 @@ const shelfTopEngine=rc=>{const{sx,sy}=rc;
  TILEART_MESH["S"]=p=>paHere()?paRackMesh(p):SHELF_MESH(p);
  TILEART["S"]=rc=>paHere()?paRackTop(rc):shelfTopEngine(rc);}
 
-/* ---- BEAUTIFY, THIRD SITTING — 2026-09-21, later still. Owner: "lets try the grass and the cones,
-   dog house, and altar … can we also do the tree with its decor?" Five more shapes through the same
+/* ---- BEAUTIFY, THIRD SITTING — 2026-09-21, later still. The owner asked for the grass and the cones,
+   the dog house and the altar, and the tree with its decor. Five more shapes through the same
    seam, drawn by what each thing is made of. */
 
 /* GRASS, STANDING. A tuft is blades from one root — cones, leaning outward, the ones toward the
@@ -1007,7 +1006,7 @@ TILEART_MESH["g"]=({x,y})=>{const h=(((x*7+y*13)%8)+8)%8,n=8+(h%3);
    a slightly wider slice of cone, white, where the band is wrapped. A cone is the same from every
    side, which is why it was the one flat thing that never looked flat; it is a cone now anyway. */
 TILEART_MESH["C"]=()=>[
-  {s:"box",x:0,y:0.015,z:0,w:0.3,h:0.03,d:0.3,c:"#2A2D33"},                                 /* the base: black rubber, a thing on the tile, not paint on it (owner: "it overwrites/paints tiles") */
+  {s:"box",x:0,y:0.015,z:0,w:0.3,h:0.03,d:0.3,c:"#2A2D33"},                                 /* the base: black rubber, a thing on the tile, not paint on it (the owner saw it paint over the tiles) */
   {s:"box",x:0,y:0.04,z:0,w:0.2,h:0.02,d:0.2,c:"#3A3F46"},                                  /* the step the cone is moulded onto */
   {s:"cone",x:0,y:0.04+0.24,z:0,r:0.15,h:0.48,c:"#E0662B"},                                 /* the cone */
   {s:"cyl",x:0,y:0.24,z:0,rt:0.089,rb:0.108,h:0.06,c:"#F4F1EA"}];                           /* the band, wrapped where the cone is that wide */
@@ -1033,9 +1032,9 @@ TILEART_MESH["9"]=({x,y})=>{
    papel picado above it, three streamers hanging below and one sugar-skull lantern on a thread.
    One; three is a Christmas tree. Nothing without a season.
 
-   A TREE YOU WALK UNDER — 2026-09-22, la jardinera. The owner asked first for "bigger", and when
+   A TREE YOU WALK UNDER — 2026-09-22, la jardinera. The owner asked first for a bigger one, and when
    he was shown a tree of about two and three quarter tiles he said what he had actually wanted:
-   "can we make it tall so we can walk underneath it all ghostly?" So it does not come down. The
+   a tree tall enough to walk under, eerily. So it does not come down. The
    canopy goes OVERHEAD and wide enough that the tile you stand on is under it, and the engine
    turns the whole tile see-through while you are there (engine/engine3d.js, t3Top and
    T3CROWNGLASS — the crown has its own ghost, because the town shares T3GHOST and asked for
@@ -1076,7 +1075,7 @@ TILEART_MESH["9"]=({x,y})=>{
    second tall thing in row 8 to tie one to, and the engine plants a pole wherever an end is not
    tall (kind wall/facade/tree, or lift 9 or more — the park's fence is lift 5). So a swag there
    would put a new pole on the park's east fence, and the owner has written in twice about poles
-   (2026-09-10, one at the bridge mouth he walked into; 2026-09-21, "poles with the paper picado").
+   (2026-09-10, one at the bridge mouth he walked into; 2026-09-21, the poles that carry the papel picado).
    He asked for a bigger tree, not for more bunting. Measured: 41 poles in the game before this
    change and the same 41 after, on the same tiles.
 
@@ -1151,7 +1150,7 @@ TILEART_MESH["J"]=({x,y})=>{const h=(((x*7+y*13)%6)+6)%6,a0=h*1.05;
    empty frame at the top, pan de muerto, a calaverita, two cups of water, and cut paper along the
    front. Nothing without a season. */
 TILEART_MESH["prop:ofrenda"]=()=>{const P=petalPal(),pal=art("papel",["#E8478F","#2FA5A0","#F2B705"]);
-  /* SECOND TRY (owner: "add more detail to the altar"). Three tiers, as an ofrenda is built — earth, the
+  /* SECOND TRY (the owner asked for more detail on the altar). Three tiers, as an ofrenda is built — earth, the
      middle, heaven — a cloth over each, an arch of ruffled marigolds, seven candles in glass, sugar
      skulls, two pan de muerto, oranges, a glass of water and a dish of salt, copal in its burner, the
      empty frame at the top, cut paper across the front of every tier and across the arch, and a path
@@ -1180,7 +1179,7 @@ TILEART_MESH["prop:ofrenda"]=()=>{const P=petalPal(),pal=art("papel",["#E8478F",
   for(let i=0;i<14;i++){const t=i/14;parts.push({s:"sph",x:-0.3+Math.sin(i*2.1)*0.14,y:0.012,z:0.32+t*0.16,r:0.02,sy:0.4,c:P[2+(i%4)]});}   /* the petal path, on the ground in front */
   return parts;};
 
-/* THE TABLE (owner: "tables too"). What the 2D drawing says it is: a round table with a gingham cloth,
+/* THE TABLE (the owner asked for tables as well). What the 2D drawing says it is: a round table with a gingham cloth,
    two plates, a chair either side. Built as it is made: a pedestal on a foot, the top, the cloth as a
    check of red squares laid on cream inside the circle, two plates, and two chairs — a seat on four
    legs with a back — facing each other across it. */
@@ -1196,8 +1195,8 @@ TILEART_MESH["T"]=({x,y})=>{const sd=(((x*7+y*13)%4)+4)%4,WOOD="#5E3B20",CLOTH="
     [[-0.09,-0.09],[0.09,-0.09],[-0.09,0.09],[0.09,0.09]].forEach(([lx,lz])=>{const l=at(lx,lz);parts.push({s:"cyl",x:l.x,y:0.13,z:l.z,r:0.014,h:0.26,c:WOOD});});});
   return parts;};
 
-/* ---- LA MESA DE ALTAR (owner, 2026-09-22: "dona tenchas table is too small. take it out when its
-   dia de los muertos or alebrijes mode and replae it with a bigger table for the altar. please") ----
+/* ---- LA MESA DE ALTAR (the owner found Doña Tencha's table too small:
+   in the Día de los Muertos or alebrijes season it gives way to a bigger table for the altar) ----
 
    MEASURED, NOT FELT. Out of the built geometry: the ofrenda is 0.834 wide by 0.639 deep once the
    engine has scaled it to 0.8, and the round table's cloth is a disc of radius 0.34 — 0.68 across.
@@ -1213,10 +1212,10 @@ TILEART_MESH["T"]=({x,y})=>{const sd=(((x*7+y*13)%4)+4)%4,WOOD="#5E3B20",CLOTH="
    THE THREE THINGS THAT WERE THIS LANE'S TO ASK AND ARE NOT OPEN ANY MORE. They were put to the
    owner as questions and he answered all three the same day (docs/ASKS.md, 2026-09-22, third
    window), so they are settled and nobody re-opens them from this file:
-     · the cloth is CREAM WITH THE MARIGOLD BORDER, not purple and not white with a runner — "ok on
-       the altar";
-     · the round table's TWO CHAIRS DO GO AWAY while the altar is up — "ok thats cool";
-     · the table is the SAME HEIGHT and wider only — "yeah same height of the altar table". That one
+     · the cloth is CREAM WITH THE MARIGOLD BORDER, not purple and not white with a runner — he
+       approved it;
+     · the round table's TWO CHAIRS DO GO AWAY while the altar is up — he agreed;
+     · the table is the SAME HEIGHT and wider only — he confirmed the height. That one
        is also why `TOP` below is 0.550 to the thousandth and not a round number: it is the height
        the altar already stood at, so `TILES.T.lift` of 6 stays honest for the cameras that never ask
        a shape how tall it is.
@@ -1227,7 +1226,7 @@ TILEART_MESH["T"]=({x,y})=>{const sd=(((x*7+y*13)%4)+4)%4,WOOD="#5E3B20",CLOTH="
    was sized against the altar's own standing height and its width against the altar's measured
    footprint — but the RATIO moved underneath it all the same: 0.550 was 0.49 of a person and is now
    0.60 of one, so against the new cast this table reads nearer the chest than the hip. He was asked
-   the height question directly and said "yeah same height of the altar table", so it stays at 0.550.
+   the height question directly and kept the same height, so it stays at 0.550.
    If he ever says it looks high, the number to change is `TOP` here and nothing else — but it is HIS
    to say, and a lane that lowered it on a ratio would be overruling him with arithmetic.
 
@@ -1323,7 +1322,7 @@ TILEART_MESH["T"]=p=>altarOnTile(p.x,p.y)?meshMesaAltar():TABLE_ROUND(p);
        (engine/engine.js:862) and paints `T` as one flat colour, `#C9A96A`. Before this change and
        after it, iso shows a coloured block under the ofrenda. Giving it the drawing is an engine
        change and belongs to whoever owns that camera. THE OWNER HAS SINCE TABLED THE ISO CAMERA —
-       "can we table it iso?" (docs/ASKS.md, 2026-09-22), filed as issue #233 — so the flat block
+       set the iso camera aside (docs/ASKS.md, 2026-09-22), filed as issue #233 — so the flat block
        under this table in that one camera is a known, filed gap and not an oversight of this lane.
 
    So FRONT and TOP were already drawing this table and neither had been told it changed. Two drawings
@@ -1403,7 +1402,7 @@ wrapTableArt(TILEART,()=>TILEDRAW.T,drawMesaTop);
 wrapTableArt(TILEART_SIDE,()=>TILESIDE.T,drawMesaSide);
 
 /* ---- BEAUTIFY, CREW ITERATION 11 — el taller ---- 2026-09-21. The interiors and the garage. Owner:
-   "computers, … desks, … coffee machines, fridge, … car lifts, tires, car, and tool boxes." Seven shapes
+   computers, desks, coffee machines, the fridge, car lifts, tires, the car and tool boxes. Seven shapes
    through the same seam, each built from what its own 2D drawing says it is made of (TILEDRAW / TILESIDE
    in the engine, TILE_PROPS above), in the order a person made it. VALUES ARE PAINTED, NOT LEFT TO THE
    LIGHT: with the day's ambient and sun a Lambert face gets 1.00 on top, 0.88 east, 0.78 south and 0.66
@@ -1418,7 +1417,7 @@ const meshFacing=(x,y)=>{const w=CW(),solid=(gx,gy)=>{const r=w&&w.grid&&w.grid[
   return !solid(x,y+1)?0:!solid(x+1,y)?Math.PI/2:!solid(x-1,y)?-Math.PI/2:Math.PI;};
 const meshTurned=(parts,ry)=>{const cr=Math.cos(ry),sr=Math.sin(ry);return parts.map(p=>({...p,x:p.x*cr+p.z*sr,z:-p.x*sr+p.z*cr,ry:(p.ry||0)+ry}));};
 
-/* THE DESK (owner: "computers", "desks"). What TILEDRAW["D"] and TILESIDE["D"] say it is: a slab on a
+/* THE DESK (on the owner's list: computers, desks). What TILEDRAW["D"] and TILESIDE["D"] say it is: a slab on a
    left leg and a drawer unit on the right, an apron under it, three drawers with pulls, a monitor on a
    stand, a sheet of paper. Made in that order: the leg panel and the pedestal, the slab over them with
    AIR under it and the floor showing between, its underside painted dark (the shade under any top), a
@@ -1444,7 +1443,7 @@ TILEART_MESH["D"]=({x,y})=>{
     {s:"box",x:-0.27,y:0.478,z:0.06,w:0.16,h:0.005,d:0.2,c:PAPER,ry:0.18});               /* the sheet of paper, not quite square to the edge */
   return meshTurned(parts,meshFacing(x,y));};
 
-/* THE CAFÉ COUNTER (owner: "coffee machines"). What TILESIDE["K"] says it is: a counter body under a
+/* THE CAFÉ COUNTER (on the owner's list: coffee machines). What TILESIDE["K"] says it is: a counter body under a
    steel top with two dark panels on the front, and on it "a coffee machine on every third tile … the
    rest carry a cup and a napkin stand". K is laid in RUNS, so the carcass is the full tile wide and a
    run reads as one counter with no seam and one height; an end panel stands only where the run ends.
@@ -1485,7 +1484,7 @@ TILEART_MESH["K"]=({x,y})=>{
     parts.push({s:"box",x:0.2,y:0.62,z:0.04,w:0.18,h:0.12,d:0.07,c:NAP},{s:"box",x:0.2,y:0.7,z:0.04,w:0.13,h:0.08,d:0.03,c:CUP});}
   return meshTurned(parts,ry);};
 
-/* THE FRIDGE (owner: "fridge"). What TILEDRAW["W"] says it is: a light-grey box the height of the tile,
+/* THE FRIDGE (on the owner's list). What TILEDRAW["W"] says it is: a light-grey box the height of the tile,
    a horizontal seam a bit above the middle, two dark vertical handles on the right of each door. Made:
    a dark plinth at the floor, the carcass on it — the tallest furniture in the room, and the floor
    showing round it — the two door faces a hair proud and a step lighter than the carcass, the seam
@@ -1503,7 +1502,7 @@ TILEART_MESH["W"]=({x,y})=>{
     {s:"box",x:-0.12,y:0.86,z:0.288,w:0.05,h:0.035,d:0.006,c:MAG}];                        /* a magnet: one warm note */
   return meshTurned(parts,meshFacing(x,y));};
 
-/* THE RED ROLLING TOOL CHEST (owner: "tool boxes"). What TILE_PROPS["8"] says it is: a red body on
+/* THE RED ROLLING TOOL CHEST (on the owner's list: tool boxes). What TILE_PROPS["8"] says it is: a red body on
    black casters, four drawer seams with a chrome pull on each, a chrome bar up at the top. Made: four
    casters, the carcass floated over them with the floor showing round it, a genuinely dark seam under
    each drawer face and its pull, the steel top plate, and the push handle — two uprights and a
@@ -1524,7 +1523,7 @@ TILEART_MESH["8"]=({x,y})=>{
     {s:"cyl",x:-0.3,y:0.87,z:0,r:0.013,h:0.3,c:PULL,rx:Math.PI/2});                       /* and its crossbar */
   return meshTurned(parts,meshFacing(x,y));};
 
-/* THE TIRE STACK (owner: "tires"). What TILE_PROPS["0"] says it is: THREE tires, one above the other,
+/* THE TIRE STACK (on the owner's list). What TILE_PROPS["0"] says it is: THREE tires, one above the other,
    each with its hub hole — "a zero IS a tire". One mould made all three, so they are the same tire
    (.claude/skills/how-its-made: variation enters at the step it entered, and nowhere earlier); they were thrown
    on the pile one at a time, so the top one landed a little off, and the ones underneath carry the
@@ -1537,7 +1536,7 @@ TILEART_MESH["0"]=({x,y})=>{const h=(((x*7+y*13)%5)+5)%5,TYRE="#26262B",TOPT="#3
   parts.push({s:"cyl",x:Math.cos(a)*0.03,y:0.27,z:Math.sin(a)*0.03,r:0.14,h:0.012,c:RIM}); /* the rim, seen through the top hole */
   return parts;};
 
-/* TACHO'S CAPRICE (owner: "car"). What TILE_PROPS["6"] says it is: "a long burgundy sedan" — a body
+/* TACHO'S CAPRICE (on the owner's list: the car). What TILE_PROPS["6"] says it is: "a long burgundy sedan" — a body
    the length of the tile and more, a darker cabin set back on it, glass, a chrome strip low along the
    body, wheels with grey hubs. Made: four wheels on their hubs, touching the ground and proud of the
    body; the under-body, dark; the long low body over it; the cabin set back with its front edge at
@@ -1546,7 +1545,7 @@ TILEART_MESH["0"]=({x,y})=>{const h=(((x*7+y*13)%5)+5)%5,TYRE="#26262B",TOPT="#3
    body; the chrome strip along each side. No lamps, no grille, no handles: at 35 px a tile they are
    noise. A tile and a half long — parts are not clipped and nothing of its kind is laid beside it —
    parked along x, parallel to the taller's front. */
-/* THE PAINT, 2026-09-22 (the owner: "the cars are not following pilis edit/note, can we edit?"). Her rule,
+/* THE PAINT, 2026-09-22 (the owner saw the cars ignoring Pili's note and asked for an edit). Her rule,
    now in her own file: this renderer's light gives 1.5:1 and nothing else, so every value difference you
    want has to be PAINTED into the part's own colour and asked for about a fifth wider than you want it,
    because tc() mixes 16% of the theme into every hex by day and 22% at night. Both cars were built with
@@ -1573,7 +1572,7 @@ TILEART_MESH["6"]=()=>{
   [-0.316,0.316].forEach(pz=>parts.push({s:"box",x:0,y:0.17,z:pz,w:1.5,h:0.02,d:0.012,c:CHROME}));                                 /* the chrome strip, low along each side */
   return parts;};
 
-/* THE TWO-POST LIFT WITH A CAR UP (owner: "car lifts"). What TILE_PROPS["7"] says it is: two grey posts
+/* THE TWO-POST LIFT WITH A CAR UP (on the owner's list: car lifts). What TILE_PROPS["7"] says it is: two grey posts
    with a beam across the top, the arms, and a BLUE car — a customer's, not the Caprice — up on them
    with its wheels hanging. Made as one is installed: two dark bases bolted to the slab, a post on each
    with its warning stripe, the overhead beam tying them (that is what makes it a lift), the arms
@@ -1610,8 +1609,8 @@ TILEART_MESH["7"]=()=>{
   return parts;};
 
 /* ---- BEAUTIFY, CREW ITERATION 11 — la calle ----
-   Owner: "lets do a crew mode to try to fix as many things … rails, fences, … bridge, petals, trolley,
-   … fruit stands". The street and the park, built the way each thing was built (.claude/skills/how-its-made):
+   The owner asked for a crew pass to fix as many things as it could — rails, fences, the bridge, petals,
+   the trolley, fruit stands. The street and the park, built the way each thing was built (.claude/skills/how-its-made):
    a picket fence is posts set in the ground, two rails and pickets nailed on; a balustrade is a shoe,
    panes, posts and a cap; a crate is a slatted box and what a hand set in it; a counter is one carcase
    the length of its run. Same seam as the sittings above, colours a step paler than the pictures they
@@ -1669,8 +1668,8 @@ TILEART_MESH["F"]=({x,y})=>{
   post(px,pz);                                                                                  /* the bay post, one a tile */
   return parts;};
 
-/* THE RAIL ROUND THE WELL. In this pack it is a glass divider (owner, 2026-09-16: "make it a glass
-   divider"; TILEART_SIDE_GLASS above) — but a vertex-coloured Lambert mesh has no alpha, and a pane drawn
+/* THE RAIL ROUND THE WELL. In this pack it is a glass divider (the owner asked for a glass
+   divider; TILEART_SIDE_GLASS above) — but a vertex-coloured Lambert mesh has no alpha, and a pane drawn
    as a pale sheet was rendered and looked at: a bathtub wall that hid the flight, which is the one thing
    the divider exists to show. So the 3D camera builds what a glazier fits round an opening MINUS the
    glass: the shoe channel bolted along the lip, the posts, and the cap rail — one bar the length of the
@@ -1722,7 +1721,7 @@ TILEART_MESH["H"]=({x,y})=>{const alt=(((x*3+y*5)%7)+7)%7,kind=alt<3?"tomato":al
     [[-0.1,-0.1],[0.1,-0.1],[-0.1,0.1],[0.1,0.1]].forEach(([tx,tz])=>one(tx,FILL+r+0.15,tz));                                        /* the hollows */
     one(0,FILL+r+0.29,0);}                                                                                                          /* the peak */
   else if(kind==="chile"){const GRN="#5FB24A",GRND="#2F6B27",RED="#C8342A",REDD="#7A1E18",CAP="#3E6E2E";
-    /* CREW 12 (el ebanista, #226; owner: "how do we fix the bananas and chiles?"): nine fat chiles heaped ABOVE the
+    /* CREW 12 (el ebanista, #226; the owner asked how to fix the bananas and chiles): nine fat chiles heaped ABOVE the
        rim, the front ones with their tips out over the edge and drooping — fourteen thin ones lay flat in the crate's
        shadow and read as green stuff; two turned red the way a chile crate does; every one a lit cone over a dark
        cone a hair lower, the value break the light will not give; a cap and a stem at the fat end. */
@@ -1825,10 +1824,10 @@ TILEART_MESH["prop:tram"]=({len,h,fl,cab})=>{const L=len||2,H=h||1.02,FL=fl||0.2
       parts.push({s:"cyl",x:ed*(L/2-0.06),y:(FL+0.10+0.75)/2,z:sd*0.36,r:0.012,h:0.75-(FL+0.10),c:IRON});});});                /* its stanchion, floor to rail */
   return parts;};
 
-/* ---- CREW ITERATION 12, el ebanista (#226), 2026-09-21. Owner: "a couple more to beautify and shape …
-   cabinet in my office could be, this nolasco desk, the chair outside dona tenchas, im guessing what
-   the oven is supposed to be in the espiga … there are limpeza things i dont know what they are and
-   lets fix the mqt station now with beautify as well." Six shapes through the same seam, each built the
+/* ---- CREW ITERATION 12, el ebanista (#226), 2026-09-21. The owner asked for a few more to
+   shape and beautify: the cabinet in his office, Nolasco's desk, the chair outside Doña Tencha's, what
+   is probably the oven at La Espiga, the cleaning things he could not identify, and the MQT station.
+   Six shapes through the same seam, each built the
    way the thing is built (.claude/skills/how-its-made); the 2D drawing is the bill of materials. The
    "desk" in his frame of the notary was the pair of guest chairs `⊔` beside the rug — boxes wearing the
    chair's front elevation on their lids — and `D` was already a mesh. Every mesh below is judged by the
@@ -1923,7 +1922,7 @@ TILEART_MESH["▣"]=({x,y})=>{
 
 /* EL PIZARRÓN DE TURNOS — Limpieza Velázquez's `U`. The engine's `U` is its blueprint wall (a plan pinned
    with four gold pins, engine.js TILEDRAW["U"]) — right in La Obra's studio and unreadable on a cleaning
-   company's wall; it is the "limpieza thing" the owner could not name. In `li` the wall stays a wall — the
+   company's wall; it is the cleaning item the owner could not name. In `li` the wall stays a wall — the
    mesh carries the wall body in C.wall and its top band in C.wallTop, the two colours the `#` beside it
    bakes — and wears on its open face the crew's schedule board: a dark frame, the white board, a teal
    header band, rows ruled across and the day-columns ruled THROUGH the run (two `U` side by side are one
@@ -2020,8 +2019,8 @@ TILEART_MESH["Y"]=({x,y})=>{
   return meshTurned(parts,ry);};
 
 /* ---- CREW ITERATION 12, la mueblería ---- 2026-09-21. The owner, asked whether he wanted a filing
-   cabinet added to his own office: "no i was just trying to make sure all furniture and this type of
-   item". So the ask is COVERAGE, and these five are what was left when the other lanes had done the
+   cabinet added to his own office, said no: he only wanted every piece of furniture and every item of
+   that kind covered. So the ask is COVERAGE, and these five are what was left when the other lanes had done the
    ones he named by sight: the drafting table `A`, the stove `V`, the barricade `G`, the dog bed `○`
    and the moving carton `□`. Each is built the way the thing is built (.claude/skills/how-its-made),
    from what its own 2D drawing says it is made of, and judged in a frame at 35 px a tile: silhouette
@@ -2083,8 +2082,8 @@ TILEART_MESH["A"]=({x,y})=>{
    paperwork the drawing sits on, which .claude/skills/how-its-made says to read first — says "Six
    burners of consommé diplomacy" (content/meridian/strings.js, grep "Six burners"). Three across by
    two deep is six, which is the only count that agrees with the elevation AND the words, and it is
-   what a restaurant range is. **The owner settled it on 2026-09-22 and it is four**: "i dont care about
-   the amount of burners now- do four if its easiest to be the most detailed with 4" — six across this
+   what a restaurant range is. **The owner settled it on 2026-09-22 and it is four**: the count did not
+   matter to him, so four, if four carries the most detail — six across this
    deck gave each burner three pixels on a phone, and three pixels hold no detail at all. Four in a square,
    each with its drip bowl, its four-arm grate, its cap, and a ring of flame on the two that are lit.
    Made as one is welded: four feet
@@ -2109,8 +2108,8 @@ TILEART_MESH["V"]=({x,y})=>{
   [-0.21,-0.07,0.07,0.21].forEach(kx=>parts.push({s:"cyl",x:kx,y:0.485,z:0.298,r:0.022,h:0.020,c:KNOB,rx:Math.PI/2})); /* four knobs, as the elevation has them */
   parts.push({s:"box",x:0,y:0.528,z:0,w:0.68,h:0.036,d:0.60,c:DECK},                             /* the cast deck, overhanging the body all round */
     {s:"box",x:0,y:0.545,z:0.298,w:0.68,h:0.008,d:0.012,c:NOSE});                                /* its front edge, catching the light */
-  /* FOUR BURNERS, not six (the owner, 2026-09-22: "i dont care about the amount of burners now- do four
-     if its easiest to be the most detailed with 4"). Six across a 0.68 deck left each burner 0.085 of a
+  /* FOUR BURNERS, not six (the owner, 2026-09-22: four, if that is the count
+     that carries the most detail). Six across a 0.68 deck left each burner 0.085 of a
      tile — three pixels on a phone — and three pixels cannot hold a grate, a cap and a ring of flame.
      Four in a square give each one half as much again, and the detail goes in: the drip bowl under it,
      the cast grate as four arms rather than a ring (a ring at this size is a doughnut), the burner cap
@@ -2229,7 +2228,7 @@ TILEART_MESH["□"]=({x,y})=>{
 
 /* EL BOTE DE DOÑA MECHE — the tamale cart at the stop. NOT in the brief for this lane: it came out of
    sweeping every glyph Meridian lays against its kind and asking which still had no shape, which is
-   what "all furniture and this type of item" actually asks for. It is kind `appliance`, it is one tile
+   what covering every piece of furniture and every such item actually asks for. It is kind `appliance`, it is one tile
    on the empty lot, and it stood as a BOX — so a two-wheeled handcart with a steel bote on it was a
    cupboard wearing its own lid-drawing on its lid. Its own comment says "A box in 3D with a side view,
    never a cutout", which was the best answer the day it was written and is not the best answer now.
@@ -2380,11 +2379,11 @@ const DECOART={
     ctx.save();ctx.translate(sx+16,sy+7.5);ctx.scale(0.88,1);
     ctx.fillText("MERIDIAN",0,0);ctx.restore();ctx.textAlign="start";},
   /* one panel per business: plaster until you begin, then colour that brightens with the grade.
-     THE WALL KEEPS ITS WINDOWS (owner, 2026-09-17: "the store front icon or mural can go around
-     it"). This painted plaster over the whole 32x32 and then the sill props were drawn on top of
+     THE WALL KEEPS ITS WINDOWS (the owner asked for the shopfront icon or mural
+     to go around it). This painted plaster over the whole 32x32 and then the sill props were drawn on top of
      it, so at st(22,0) a lit pane, a sugar skull and a stone ledge sat in the middle of a blank
      wall with no window anywhere near them — which is exactly what he was looking at when he wrote
-     "the skull on a non existing or visible window sill". A mural is painted ON a building; the
+     about a skull on a sill that was not there. A mural is painted ON a building; the
      windows are holes and holes do not take paint. So: plaster, the shop's emblem, and then the
      wall's own windows back through the paint, from the glyph's own TILES.win — never a copy of
      those numbers here, or the mural and the sill drift apart the first time one of them moves. */
@@ -2398,7 +2397,7 @@ const DECOART={
        lighting paint out the same window this does. That also hands the emblem
        a clear field, which is the whole reason the two-window version was unreadable — rendered at
        8x on 2026-09-17, the basket and the wrench came out as ribbons between the panes.
-       OPEN, and the owner's own call ("while we figure it out"): the emblem drawn AROUND the window
+       OPEN, and the owner's own call, for the meantime: the emblem drawn AROUND the window
        instead of beside it — the skull on the sill as part of the picture. That is six drawings,
        one per business, and it is design, not plumbing. */
     const wins=winsKept(d.world,d.x,d.y),keep=wins[wins.length-1];  /* what this panel's DECOR row leaves (maps.js: wins:[1]) — the same list propSill and the dusk lighting read */
@@ -2479,7 +2478,7 @@ function casaBase(sx,sy,wall){
   ctx.fillStyle=CASA_TRIM;ctx.fillRect(sx,sy+29,32,3);              /* the wet line at the bottom */
 }
 TILEART["▦"]=rc=>{const{sx,sy}=rc;                                   /* the REJA — a closed gate (#9, 2026-09-07) */
-  /* It drew a door with a handle and a step, and the tile is a wall: "i cant enter the houses".
+  /* It drew a door with a handle and a step, and the tile is a wall: the houses could not be entered.
      The paperwork was right (kind: facade), the paint lied. Now it is honestly closed: the dark
      recess stays, iron bars over it, a chain and a padlock, the step kept so it is the same house.
      The template part is still called `door`; that names which tile carries the front. */
@@ -2589,11 +2588,10 @@ Object.assign(TILEMETA,{
 });
 
 /* ---------- THE CASITA IN THREE DIMENSIONS — a house, not a box wearing a drawing ----------
-   (el albañil, crew iteration 14. The owner, 2026-09-22: "should we shape and beautify buildings?
-   lets not over do it since we are limited in tokens but if you decide to start the buildings -
-   start with the small houses that we can create with don gueros help eventually even within game
-   right? i think dona tenchas was one of those. dont do all buildings, just do one or two and show
-   me." Two faces: ▩ the window and ▨ the lamp wall. ▦ the reja is the third and is deliberately
+   (el albañil, crew iteration 14. The owner, 2026-09-22, asked whether to shape and beautify
+   buildings, without overdoing it on a limited token budget: if so, start with the small houses Don
+   Güero may one day build in the game, Doña Tencha's likely among them — one or two, not all, and
+   show him. Two faces: ▩ the window and ▨ the lamp wall. ▦ the reja is the third and is deliberately
    NOT shaped — see the note at the foot of this block.)
 
    HOW A CALLE DOS HOUSE IS ACTUALLY BUILT, which is the order these parts go on
@@ -2794,7 +2792,7 @@ TILEART_MESH["▨"]=({x,y})=>{const ry=casaFront(x,y),P=casaShell("▨",x,y,ry),
     P.push({s:"box",x:0.31,y:0.300,z:F+0.014,w:0.022,h:0.44,d:0.022,c:"#8A8F98"});}      /* the conduit down */
   return meshTurned(P,ry);};
 /* ❗▦ — LA REJA IS DELIBERATELY NOT SHAPED, and this is the note so nobody is surprised later.
-   The owner said "just do one or two and show me", and the reja stands on NO street today: it is
+   The owner asked for one or two and a look first, and the reja stands on NO street today: it is
    used only by BUILDTPL.casita, and no row of BUILDS uses that template (the comment over BUILDS:
    "NO LOTS ARE BUILT"). Shaping it would have been an hour spent on a tile nobody can walk to.
    It shares the 2D roofline above, so the front camera already reads it as the same house. THE DAY
@@ -2833,7 +2831,7 @@ const BUILDTPL={
   },
 };
 
-/* ---------- `casa` — a home you can ENTER (#10, the owner: "lets take this on don guero!") ----------
+/* ---------- `casa` — a home you can ENTER (#10, the owner handed this to Don Güero) ----------
    The same three-tile front as the casita, but the middle tile is a real front door ⌂ that the
    template LINKS to a room it carries: a small living room with a table, a rug, a shelf, a plant,
    a north window, and a neighbour with three lines. The engine stamps the room as a world of its
@@ -2872,7 +2870,7 @@ BUILDTPL.casa={
 };
 
 /* ---------- `barberia` — Barbería y Estética El Espejo, Naye's chair (owner, 2026-09-07) ----------
-   "open the ability to change our character outfit and haircut after start. maybe have a small barber."
+   The owner asked to change outfit and haircut after the start, perhaps at a small barber.
    Nacho: Naye Robles, 29, Doña Chelo's niece, Xochi's apprentice — the other half of Xochi's line, a head
    for every outfit. Two mirrors on the north wall, a chair under each, the waiting chair, the counter.
    The chair is a service, not a district: no quests (❗La silla in CITY.md says whether that changes). */
@@ -2898,9 +2896,9 @@ BUILDTPL.barberia={
 };
 
 /* ---------- `caseta` — the site hut, where El Portero keeps the gate (#8) ----------
-   Owner: "he can be in a room so that way he does have activity where he brings up oh 4 stopped
-   attempts - lets talk to review root cause... i need him to highlight the amount of issues and
-   if any critical ones - that can be highlighted in red." A hut at the water's edge on Calle Dos,
+   The owner asked for him to have a room, so he has something to do: he raises how many attempts
+   were stopped and asks to review the root cause, highlights how many issues there are, and shows
+   any critical ones in red. A hut at the water's edge on Calle Dos,
    two lamp walls and a door; inside, a desk with the gate sheet on it and the tin man himself. */
 const CASETA_ROOM={
   rows:["###|####",
@@ -2923,8 +2921,8 @@ BUILDTPL.caseta={
 };
 
 /* the lots Don Güero has been given. Same template, different seeds, different houses. */
-/* NO LOTS ARE BUILT. The ability is the thing that was asked for — "it is just an ability"
-   (owner, 2026-09-03) — and two casitas went up on Calle Dos that nobody asked for and that
+/* NO LOTS ARE BUILT. The ability is the thing that was asked for — an ability only, as the
+   owner put it on 2026-09-03 — and two casitas went up on Calle Dos that nobody asked for and that
    you cannot walk into. A house with a door you cannot open is the same unrealistic shortcut
    as a trolley that stops on a second floor. The template, the glyphs and the engine seam all
    stay, tested; when a parcel is genuinely developed, the house gets an interior and a portal

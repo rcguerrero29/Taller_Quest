@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* THE KEY SCAN — nothing that looks like a password or an access key is ever committed.
-   The owner, 2026-09-28: "also key scan?" GitHub looks for keys by itself only in PUBLIC repositories on the
+   The owner, 2026-09-28, asked for a key scan too. GitHub looks for keys by itself only in PUBLIC repositories on the
    free plan, so after the split the private repository has no scan unless it runs one (docs/SPLIT.md step 4b).
    This reads every tracked text file, and every file name, against KEYS below. A match fails the build,
    named by file:line and the kind of key, NEVER by the value: a key printed in a log is a key leaked twice.

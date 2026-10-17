@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* OFFLINE PLAY, proven in a real browser — #254, 2026-09-27.
-   The owner: "make sure that we dont go out with "open" doors". The public page used to run one script
+   The owner asked that nothing ship with doors left open. The public page used to run one script
    written inside it (the service-worker registration), and that was the only reason its security policy
    let ANY script written inside the page run. The script is now its own file (sw-register.js) and the
    policy is script-src 'self'. Nothing tested the service worker before today — every other suite runs
