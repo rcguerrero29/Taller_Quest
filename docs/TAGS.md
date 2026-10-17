@@ -614,7 +614,7 @@ is not merely unvalidated: **it is dropped on the next load, silently.** Two of 
 else.** Everything a pack persists goes through `SK()` (`:13`) into its own key, as a second world does
 (`SK("filter")`), and therefore **never crosses the
 Trolley Pass, never appears in the export, and is never sanitised on arrival.** `SK("room")` — the
-INTERVIEW answers, which `docs/OWNER.md` calls the design conversation with [partner] — is in that category
+INTERVIEW answers, which `docs/OWNER.md` calls the design conversation with a playtester — is in that category
 today.
 
 **What a second game hits.** A pantry, a week's meal plan and a cookbook *are* an eating game's

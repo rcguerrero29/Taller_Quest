@@ -134,8 +134,8 @@ only reachable where the pack reads them (grep `f.run(read())`). **The sheet is 
 the screen.** Whenever your words end in somebody typing, grep the path their typing takes before
 you hand the words over.
 
-The moment, 2026-09-14: eleven questions for [partner] were written and good, and the button built to send
-them home would have returned an empty form with her eleven questions on it. *Applied 2026-09-14
+The moment, 2026-09-14: eleven questions for a playtester were written and good, and the button built to send
+them home would have returned an empty form with the eleven questions on it. *Applied 2026-09-14
 from crew run 8.*
 
 **And before you write the sentence that says what a screen means, grep whether the screen can say

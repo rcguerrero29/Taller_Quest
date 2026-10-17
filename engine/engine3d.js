@@ -1341,7 +1341,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
    the screen and the hero (drawn through walls) read as standing ON it, while the dog, drawn in the
    scene, was hidden behind it. Now that wall is simply not there while it is in the way. Walls,
    facades, lintels, doors and the window pieces cut; treads, rails, props and decor do not. */
-/* #65, the owner's word after [partner] walked it: keep the minimized wall, but only the one nearest the
+/* #65, the owner's word after a playtester walked it: keep the minimized wall, but only the one nearest the
    person; the automatic view change confused, so turning stays manual. The camera
    never turns by itself; ↻ is the only turn. A wall HIDES you only when it is close and tall:
    the camera looks down from T3CAMH high and T3CAMD back, so a wall d tiles in front of you
@@ -1619,7 +1619,7 @@ function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
    NO swipe the player can make corresponds to a straight move on screen, which is
    exactly why the owner reported that some directions broke once he rotated. */
 /* THE TURN, EASED (Rosa's 3D note; the owner left it to the crew, open to change, perhaps in
-   settings). The camera used to jump a quarter turn in one frame. [partner] called the old AUTOMATIC
+   settings). The camera used to jump a quarter turn in one frame. A playtester called the old AUTOMATIC
    turn confusing (#65) and the cure then was to make it manual — but the confusion was never
    that it turned, it was that the turn had no motion to follow, so the eye had to re-find the
    whole street from scratch. A move you can watch is a move you can follow.

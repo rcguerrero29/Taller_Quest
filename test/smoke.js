@@ -3065,7 +3065,7 @@ const CANDIDATES = [
     if (typeof ribbons !== 'function') return ['the engine has no ribbons() list'];
     const merc = ribbons().find(r => r.district === 1);
     if (!merc || !merc.doorstep || merc.doorstep.x !== 6 || merc.doorstep.y !== 12) problems.push('the pack does not declare the mercado\'s doorstep (the engine used to hardcode it)');
-    // the old singular declaration still counts as a list of one ([partner]'s pack, older saves)
+    // the old singular declaration still counts as a list of one (another pack, older saves)
     delete g.ribbons; g.ribbon = merc;
     if (ribbons().length !== 1 || ribbons()[0] !== merc) problems.push('the old singular ribbon is not read as a list of one');
     // two storefronts: each rises when its own district opens
@@ -3099,10 +3099,10 @@ const CANDIDATES = [
   });
   fails.push(...ribs);
 
-  // ---- the room upstairs: two neighbours ask, nothing is graded, the sheet is hers ----
-  // The owner's ask: [partner] talks to the game through its characters where
+  // ---- the room upstairs: two neighbours ask, nothing is graded, the sheet is the player's ----
+  // The owner's ask: a playtester talks to the game through its characters where
   // possible, with no API to set up. So: the characters ask IN the game,
-  // her answers are kept on the phone, and the game writes a plain sheet with a Copy
+  // the playtester's answers are kept on the phone, and the game writes a plain sheet with a Copy
   // button that the owner hands to Claude. Everything with a name lives in
   // content/meridian/room.js (INTERVIEW); the engine reads only shapes, and a pack
   // that declares nothing gets nothing (the off-switch law). Three skeptics shaped this test:
@@ -3261,7 +3261,7 @@ const CANDIDATES = [
     st = rec();
     if (!st.a[h0.id + ':' + h0.steps[2].id] || !st.a[h0.id + ':' + h0.steps[2].id].out) problems.push('an empty OK on a fresh question was not recorded as "tell you out loud"');
     if ($('q').textContent !== h0.steps[3].q[lang]) problems.push('"tell you out loud" did not advance');
-    // "that's enough for now" leaves with everything kept; coming back resumes where she was
+    // "that's enough for now" leaves with everything kept; coming back resumes where the player was
     $('rmLater').click();
     if (!$('card').hidden || $('world').hidden) problems.push('"that\'s enough for now" did not return to the room');
     if (Object.keys(rec().a).length !== 3) problems.push('leaving early lost answers');
@@ -3273,8 +3273,8 @@ const CANDIDATES = [
     if ($('rmSheet').hidden || $('rmSheet').offsetParent === null) problems.push('the sheet is not shown on the card after the closing line');
     const sheet = $('rmSheet').textContent;
     if (!sheet.includes(s0.opts[1][lang])) problems.push('the sheet does not print the tapped answer verbatim');
-    if (!sheet.includes("<3 warm like abuela's kitchen")) problems.push('the sheet does not print her typed words verbatim');
-    if (!sheet.includes(U.saidOut)) problems.push('the sheet does not say which answer she wants to give out loud');
+    if (!sheet.includes("<3 warm like abuela's kitchen")) problems.push('the sheet does not print the player\'s typed words verbatim');
+    if (!sheet.includes(U.saidOut)) problems.push('the sheet does not say which answer the player wants to give out loud');
     if (!sheet.includes(heroName)) problems.push('the sheet does not carry the player\'s name');
     if (/(^|\n)#|\*\*/.test(sheet)) problems.push('the sheet shows Markdown marks to the player');
     if ($('rmBar').hidden || $('rmCopy').hidden || $('rmBack').hidden || $('rmAgain').hidden) problems.push('the sheet card is missing Copy / Ask me again / Back');
@@ -3288,19 +3288,19 @@ const CANDIDATES = [
     }
     // nothing was graded, paid, or logged
     if (xp !== before.xp || JSON.stringify(marks) !== before.marks || dlog.length !== before.dl || done.size !== before.done) problems.push('the interview touched XP, marks, the play log or done — it must grade nothing');
-    // "ask me again" starts over with her earlier tap marked; a new tap keeps the old one as history
+    // "ask me again" starts over with the player's earlier tap marked; a new tap keeps the old one as history
     $('rmAgain').click();
     if ($('q').textContent !== s0.q[lang]) problems.push('"ask me again" did not start from the first question');
     btns = [...$('choices').children];
-    if (!btns[1] || !btns[1].classList.contains('was')) problems.push('her earlier answer is not marked when re-asked');
+    if (!btns[1] || !btns[1].classList.contains('was')) problems.push('the player\'s earlier answer is not marked when re-asked');
     btns[0].click(); await wait(450);
     const a0 = rec().a[h0.id + ':' + s0.id];
     if (!a0 || a0.pick !== 0 || !a0.hist || !a0.hist.length) problems.push('re-answering overwrote the earlier tap without keeping it');
     $('rmLater').click();
-    // the other language re-labels the sheet; her words stay
+    // the other language re-labels the sheet; the player's words stay
     const lang0 = lang; lang = lang0 === 'en' ? 'es' : 'en'; applyLang();
     const sheet2 = roomSheet();
-    if (!sheet2.includes(s0.q[lang]) || !sheet2.includes("<3 warm like abuela's kitchen")) problems.push('the sheet in the other language lost a label or her words');
+    if (!sheet2.includes(s0.q[lang]) || !sheet2.includes("<3 warm like abuela's kitchen")) problems.push('the sheet in the other language lost a label or the player\'s words');
     lang = lang0; applyLang();
     // Export gains a "The room" tab, labelled, showing the same sheet
     $('openExp').click();
@@ -3311,7 +3311,7 @@ const CANDIDATES = [
     // restart never wipes it (nothing you make gets taken away)
     const keep = localStorage.getItem('mqroom');
     const b = $('replay'); b.click(); b.click();
-    if (localStorage.getItem('mqroom') !== keep) problems.push('restart touched her answers');
+    if (localStorage.getItem('mqroom') !== keep) problems.push('restart touched the player\'s answers');
     // put things back
     world = before.world; px = fx = before.px; py = fy = before.py; held = null; moving = false; hearts = 3;
     $('card').hidden = true; $('world').hidden = false; $('settings').hidden = true; setWorldTag(); checkTalk();
@@ -3386,9 +3386,9 @@ const CANDIDATES = [
   fails.push(...cam);
 
   // ---- portability: the shared engine must not know one pack's content ----
-  // The engine is never forked — [partner]'s game is a different content pack on the same
+  // The engine is never forked — a second game is a different content pack on the same
   // engine (docs/OWNER.md). So a Meridian name or a Meridian quest index living in
-  // engine/ is a bug for her pack, not a style nit. This is the guard that keeps the
+  // engine/ is a bug for that pack, not a style nit. This is the guard that keeps the
   // GROWTH/TILEART/DOORS seams from quietly leaking back.
   {
     const NAMES = ['mercado', 'chelo', 'nando', 'perla', 'chava', 'frijol', 'obra',

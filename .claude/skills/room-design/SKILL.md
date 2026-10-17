@@ -1,13 +1,13 @@
 ---
 name: room-design
-description: Interview someone about ONE room or building they want — an office, a shop, a studio — and turn their answers into a build-ready spec. Use when the user says /room-design, when [partner] or anyone non-technical wants to design a space in the game, when planning Floor 2 / the player's office, or when someone asks "what should this room have in it".
+description: Interview someone about ONE room or building they want — an office, a shop, a studio — and turn their answers into a build-ready spec. Use when the user says /room-design, when a playtester or anyone non-technical wants to design a space in the game, when planning Floor 2 / the player's office, or when someone asks "what should this room have in it".
 ---
 
 # Room design — *diseña el cuarto*
 
-**Draft opened 2026-09-02**, owner's ask: [partner] designs an office with the session's help, so the skill of designing a room or
+**Draft opened 2026-09-02**, owner's ask: a playtester designs an office with the session's help, so the skill of designing a room or
 building gets written down; the owner may use the template for a virtual office for the crew as well
-as for [partner].
+as for the playtester.
 
 ## Why this exists when two neighbouring skills already do
 
@@ -113,11 +113,11 @@ rest of their words; the spec still holds only what they confirm when you read i
 
 ## First job — done (v1, 2026-09-02)
 
-**Floor 2 (`f2`), the player's office** — spec and cold read in `docs/rooms/partner-office.md`.
+**Floor 2 (`f2`), the player's office** — spec and cold read in a room spec kept in the private repository.
 Shipped bare as signed (one desk, the stairs), with the two hosts and the nine-question
 interview. The window is a promise until a window tile passes the cold read; the
 furniture arrives per business once the engine can hold more than one delivery (S1).
 Four owner calls are listed in that file's §8.
 
-**Owner's second use, noted not specced:** a virtual office for the team and for [partner],
+**Owner's second use, noted not specced:** a virtual office for the team and for a playtester,
 built from the same template.

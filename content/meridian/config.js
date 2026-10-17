@@ -1,10 +1,10 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v237";
+const GAMEV="mq-v238";
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
 /* default camera for this pack. TRUE 3D as of 2026-09-01 (the owner asked for 3D
-   as the default); front-profile 2.5D was the previous default (owner + [partner], 2026-08-31)
+   as the default); front-profile 2.5D was the previous default (owner + a playtester, 2026-08-31)
    and is still one tap away. A device's own Settings choice always wins, and the
    renderer falls back to front-profile by itself if 3D cannot run on the device. */
 const CAMDEF="3d";
@@ -55,7 +55,7 @@ const STAKES={mode:"none",hearts:3};
    fitting room, that the estimator is NPC "e" who ends up at 7,7, and that district 1
    is El Mercado. A different pack with different quests at those indices would have
    built Meridian's construction site (docs/OWNER.md — entities as data; if a feature
-   cannot be turned off for [partner], it is built wrong). A pack with no GROWTH never grows.
+   cannot be turned off for another pack, it is built wrong). A pack with no GROWTH never grows.
    Declared after maps.js so it can point straight at OBRA and MERCADO. */
 const GROWTH={
   /* a staged build: the Nth of `quests` answered raises stage N of `tiles` */

@@ -366,7 +366,7 @@ function syncChill(want){
    A pack may declare INTERVIEW (content/<pack>/room.js): people who stand in a room and
    ask questions with no right answer, whose answers become a plain sheet the player
    can copy. The engine reads only SHAPES — hosts, steps, opts, ui — never a name. A
-   pack that declares nothing gets nothing: no people, no tab, no storage key (the off-switch law). The owner's ask: [partner] talks to the game through its characters, with no
+   pack that declares nothing gets nothing: no people, no tab, no storage key (the off-switch law). The owner's ask: a playtester talks to the game through its characters, with no
    API to set up — the sheet IS the back-and-forth. */
 const RM=()=>(typeof INTERVIEW!=="undefined"&&INTERVIEW&&Array.isArray(INTERVIEW.hosts)&&INTERVIEW.ui)?INTERVIEW:null;
 const RMU=()=>{const r=RM();return r?(r.ui[lang]||r.ui.en||{}):{};};
@@ -375,7 +375,7 @@ let roomAns={};      /* "host:step" → {pick|text|out, hist[]} — per device, 
 try{if(RM()){const r0=JSON.parse(localStorage.getItem(SK("room"))||"{}");
   if(r0&&typeof r0==="object"&&r0.a&&typeof r0.a==="object")roomAns=r0.a;}}catch(e){}
 function roomPersist(){if(!RM())return;
-  mqStore(SK("room"),JSON.stringify({v:1,a:roomAns}),true);}   /* CRITICAL: her own answers */
+  mqStore(SK("room"),JSON.stringify({v:1,a:roomAns}),true);}   /* CRITICAL: the player's own answers */
 (RM()?RM().hosts:[]).forEach(h=>{const k=addChill(h);if(k)roomHosts[k]=h;
   else console.warn("ROOM host "+h.id+" cannot stand at "+h.world+" ("+h.x+","+h.y+") — solid or taken");});
 const roomPending=n=>{const h=roomHosts[n.npc];return !!h&&h.steps.some(s=>!roomAns[h.id+":"+s.id]);};
@@ -2701,13 +2701,13 @@ function drawFront(){
       const m=TILES[gch]||TILES[ch]||{lift:7,kind:"prop"},L=m.lift|0,kd=m.kind;
       if(kd==="wall"||kd==="facade"||kd==="fence"){
         /* structure: a roof strip only where the run starts, so interior rows of a
-           building connect cleanly instead of banding ([partner] found the walls heavy) */
+           building connect cleanly instead of banding (a playtester found the walls heavy) */
         if(L>0&&(y===0||!SOLID.has(w.grid[y-1][x]))){
           ctx.fillStyle=tc(roofCol(gch));ctx.fillRect(sx,sy-L,TS,L);
           ctx.fillStyle="rgba(255,255,255,.14)";ctx.fillRect(sx,sy-L,TS,1.5);
           ctx.fillStyle="rgba(15,12,20,.22)";ctx.fillRect(sx,sy-1.2,TS,1.2);}
       }else if(kd!=="water"){ /* an object stands ON the floor: contact shadow, never
-                a slab ([partner]: tables and potted plants seemed to float). Water is flat. */
+                a slab (a playtester: tables and potted plants seemed to float). Water is flat. */
         ctx.fillStyle="rgba(15,12,20,.16)";
         ctx.beginPath();ctx.ellipse(sx+16,sy+27.5,11,3.2,0,0,7);ctx.fill();
       }
@@ -4869,7 +4869,7 @@ function loop(ts){
    marker). Within three steps of a door that LEADS somewhere, a bouncing arrow floats over
    it in every camera. Doors that are only decoration (no portal) get nothing. */
 /* Everything a document may read, handed over as plain data so a pack never reaches into
-   engine internals — and so [partner]'s pack can build entirely different paper from the same play. */
+   engine internals — and so another pack can build entirely different paper from the same play. */
 function docCtx(){
   const L=CHS(),d=new Date(),p2=n=>String(n).padStart(2,"0");
   return {
@@ -6036,7 +6036,7 @@ $("optPad").addEventListener("click",()=>{ctl="pad";applyCtl();});
   joy.addEventListener("pointermove",e=>{if(e.pointerId===active)setFrom(e);});
   joy.addEventListener("pointerup",end);joy.addEventListener("pointercancel",end);
 })();
-/* ---------- comfort themes ([partner]'s feedback): curated palettes, each with light+dark
+/* ---------- comfort themes (a playtester's feedback): curated palettes, each with light+dark
    variants, applied over the CSS variables. Adding a theme = data only — and CI runs
    a WCAG contrast audit over every variant, so a palette that hurts eyes can't ship. */
 const THEMES={

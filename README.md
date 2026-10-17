@@ -67,8 +67,8 @@ bash scripts/build-site.sh /tmp/_site && node test/public.js /tmp/_site   # what
 This repository is the public half of a project whose working notes are private: the day-to-day log,
 the backlog, and anything about the real people who shaped the game. A few documents here mention a
 file or an issue number that lives on the private side. `docs/WHY.md` keeps the reasoning those notes
-recorded, so the design still makes sense without them. A word in square brackets — `[partner]`,
-`[city]`, `[a time]` — stands in for a real detail that stays private.
+recorded, so the design still makes sense without them. A word in square brackets — `[city]`,
+`[a time]` — stands in for a real detail that stays private, and a real person is written as a playtester.
 
 ## Licence
 

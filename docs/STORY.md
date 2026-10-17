@@ -292,7 +292,7 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   not. So **government is not a trade the city
   trains**: she stays small, is not a district, and trains no role. Her ask-only
   behaviour is **content-declared and customisable** — the owner wants it swappable for
-  [partner]'s game and for fun quests. Against `docs/OWNER.md`'s "never build a quest log", she
+  another game and for fun quests. Against `docs/OWNER.md`'s "never build a quest log", she
   is the named exception, and the distinction is the whole reason it holds: the rule bans
   a list that FINDS you, not a clerk you CHOOSE to visit.
   **Deferral dated 2026-09-03 (la junta):** SIGNED means the design is agreed, not that
@@ -308,7 +308,7 @@ otherwise. The same day the casa's neighbour got her own name back: Doña Tencha
   kid from the tire place, Yesenia's nephew reading job postings.
 - **Barrio Norte** — PROMOTED to the city's through-line. The northbound track
   advances a visible segment per finished business and the sound gets closer.
-  Never a place you visit — it stays a promise (kept free for multiplayer/[partner]).
+  Never a place you visit — it stays a promise (kept free for multiplayer/another pack).
   Nacho's defence: the moment you can ride north, Meridian stops being one street
   where you know everybody, which is the whole reason it is comfortable. If the
   owner ever wants a fifth-and-beyond expansion, this is the sanctioned place —
@@ -491,8 +491,8 @@ hired you for. Three fixes, now canon:
   through its front door and up its stairs. Removed, with a test that every trolley destination
   is a world that actually holds a trolley stop.
 - 2026-09-03 · ❗El maestro constructor · **what the game's building assistants actually mean, in
-  the owner's own correction.** The session had recorded the no-API decision as "it is only [partner]".
-  Wrong, he said: it is not only [partner] — for now the building is done together, but one day
+  the owner's own correction.** The session had recorded the no-API decision as "it is only a playtester".
+  The owner corrected it: the decision is not for one playtester only; for now the building is done together, but one day
   Don Güero is to get a house template he can build from, adding a few random changes. So the ambition
   is **not** a chatbot in the game. It is **Don Güero given a house template he can build from,
   varying it each time** — procedural building from a declared template, which needs no network
@@ -554,7 +554,7 @@ hired you for. Three fixes, now canon:
   artifact consultants hand over, so it earns a place in a work folder.
 - 2026-09-02 · ❗La despedida · **the goodbye at the door**, declared per district
   (`doorstep`/`panel`/`quiet`) · the inauguración's grammar on a smaller instrument, so
-  the finale keeps its size. `panel` is KEPT, not deleted — nothing regresses, and [partner] can
+  the finale keeps its size. `panel` is KEPT, not deleted — nothing regresses, and a second pack can
   pick another shape.
 - 2026-09-02 · ❗El giro · **industry leads, role follows** · `industry:` is ADDED beside
   `role:`, never in place of it — the signed role summary in the report stays, and the
@@ -563,11 +563,11 @@ hired you for. Three fixes, now canon:
 - 2026-09-02 · ❗El cuarto de arriba · **the office opens bare and two neighbours ask what
   it should be** — Nacho (feel) and Don Güero (build), ten questions, no wrong answers,
   no XP, nothing in the report; the answers become a sheet the player copies · the owner
-  wanted [partner] to design the office through the characters with no API, and a sheet she can
+  wanted a playtester to design the office through the characters with no API, and a sheet the playtester can
   hand over IS the back-and-forth. Nacho leaves the street to stand upstairs. The window is
   promised, not built — no window tile exists, and the trolley runs south of HQ, so "onto
   the trolley line" was the wrong wall (Don Güero). Four owner calls in
-  `docs/rooms/partner-office.md` §8.
+  the private room spec's §8.
 - 2026-09-02 · ❗La ventana · **north wall, three panes, the way to Barrio Norte** —
   the owner deferred the call to /nacho and /don-guero together (the window mattered
   little to him, and he left it to Nacho and Don Güero) · the
@@ -714,7 +714,7 @@ what conflicts, why it is not Nacho's to decide, and the options. Owner's instru
    the pack no longer inherits a calendar from the structure.)* Still open: Weeks One
    and Two remain canon in Meridian's **fiction** and appear in `epi2` and both
    quest-file headers. Options for the words: keep them as Meridian-only flavour that
-   [partner]'s pack simply does not copy; retire them from the text too; or keep them and
+   another pack simply does not copy; retire them from the text too; or keep them and
    document explicitly that the calendar is content, never structure. Lowest-stakes of
    the four — the structural half, which was the one that could mislead, is done.
 

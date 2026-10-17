@@ -136,7 +136,7 @@ on top of a business that already exists.)*
   fixed; nine strings rewritten (the three "Roll credits" and the intro card that
   threatened a reset that cannot happen). **`GROWTH` moved Meridian's names OUT of the
   engine** — quests 12/13 raising La Obra, quest 15 opening the wardrobe and "district 1
-  is El Mercado" were all hardcoded, so [partner]'s pack would have inherited them; a smoke
+  is El Mercado" were all hardcoded, so a second pack would have inherited them; a smoke
   guard now fails the build if any content name reappears in `engine/`. 3D is the
   default camera; movement follows the camera when you rotate (it never consulted it
   before); the mercado's produce is identifiable; the ticker keeps two messages.
@@ -196,7 +196,7 @@ phase, Phases 2-5" cannot run as written until three things generalize:
   each ribbon declares its `doorstep`; the engine walks you nowhere of its own choosing.
 - ~~**`GROWTH.ribbon` is singular.**~~ **Lifted 2026-09-02:** `ribbons[]`, one per storefront,
   each rising on its own district, with the `g.ribbons||(g.ribbon?[g.ribbon]:[])` shim so
-  [partner]'s pack and older declarations keep working. The record's 200-entry cap went the same day.
+  another pack and older declarations keep working. The record's 200-entry cap went the same day.
 - **STILL OPEN, new (Don Güero, 2026-09-02):** the town plan's `flags` carry ONE boolean for
   all storefronts, so a second lot cannot have its own label until each storefront carries
   an `id`. A sixteenth of a sitting. Anchor by the function, not the line — they drift.
@@ -428,7 +428,7 @@ would have none left unless looks key by npc instead.
   business. Built the same day (S2 v1), with the interview. ⚠️ **AMENDED 2026-09-02 by
   the owner: the office opens MID-MOVE, not bare** (he chose to show it
   mid-move). The furnishing rule is untouched; only the day-one state changed. Retires owner
-  call #2 in `docs/rooms/partner-office.md` §8.
+  call #2 in the private room spec's §8.
 - ✅ **La vía que se acerca** — approved in principle 2026-09-02 (the owner liked the
   idea of seeing a neighbourhood on its way). Content-only on top of the built window, a
   third of a sitting; still **waits on S1**, because it cannot be tested until districts
@@ -478,7 +478,7 @@ would have none left unless looks key by npc instead.
   per phase — one at a time.
 - ✅ **Week Two** — signed 2026-08-31: El Mercado *is* chapter one. The arc now
   has a Monday; later phases extend it rather than inventing it.
-- Fandom eggs round 2 + mechanics (IDEAS §9) — waiting on [partner]'s picks.
+- Fandom eggs round 2 + mechanics (IDEAS §9) — waiting on a playtester's picks.
 - ✅ **What zero hearts costs in an open city** — signed 2026-08-31, lands with the
   open-city refactor in Phase 2. See the decision log.
 - **Full tile registry** — DOORS/SOLIDX/MAPCOL are the seam Phase 1 needed; the
@@ -551,7 +551,7 @@ stays live until the Phase 2 refactor lands.
   signed** — one desk, the stairs, and Nacho and Don Güero placed by content, not by a
   map letter · Don Güero's moving-in debris was declined for now because the only crate
   tile is El Mercado's produce crate (it reads as groceries), and the window because no
-  window tile exists; both are owner calls in `docs/rooms/partner-office.md` §8. His geography
+  window tile exists; both are owner calls in the private room spec's §8. His geography
   correction stands: the trolley runs south of HQ, so a north window cannot look "onto
   the trolley line".
 - 2026-09-02 · ❗La ventana: how much window on the north wall · **three panes, season
@@ -563,7 +563,7 @@ stays live until the Phase 2 refactor lands.
 - 2026-09-02 · ❗Quién sube: whose room is it · **Don Güero asks it, first line of his
   form** (the owner asked for it at creation: who the room is for) · the
   answer changes the furniture math, not the mood, so it belongs to the builder — and it
-  RETIRES owner call #4 in docs/rooms/partner-office.md §8, because the sheet now states whose
+  RETIRES owner call #4 in the private room spec's §8, because the sheet now states whose
   room it is instead of the build session guessing.
 - 2026-09-02 · ❗La mudanza: bare or mid-move · **MID-MOVE, and Don Güero prices the
   furniture** (the owner chose mid-move, with Don Güero
@@ -575,7 +575,7 @@ stays live until the Phase 2 refactor lands.
 - 2026-09-02 · ❗Quién sube (asked again): whose office is it · **the owner's own room —
   and still a template** (the owner: his own room this time, but still a
   template for the skill) · `f2` is the owner's office in Meridian's pack;
-  `content/<pack>/room.js` stays the copyable interview so [partner]'s pack asks its own person.
+  `content/<pack>/room.js` stays the copyable interview so another pack asks its own person.
 - 2026-09-02 · ❗La vía que se acerca: the window's view advancing · **approved in
   principle** (the owner liked the idea of seeing a neighbourhood on its way) · four
   drawings, four cold reads, content-only; held until districts close so it can be tested.
@@ -687,8 +687,8 @@ extraction are in this session's Don Güero plan — reproduce via /don-guero if
 - Balance built-out vs player-built; mix per business; expand via quests.
 - **Standing law — entities as data**: every character/critter/tile/building is
   declared as data (type, look, placement, behavior) so graphics can be re-rendered
-  wholesale (2D today → richer/3D someday) without changing what things are. [partner]'s
-  upgrade waves depend on this.
+  wholesale (2D today → richer/3D someday) without changing what things are. Another
+  pack's upgrade waves depend on this.
 
 **As signed 2026-08-31 — these override the 2026-08-30 draft above:**
 - **Role: AI product manager**, not ops analyst. The mercado's quests become PM
