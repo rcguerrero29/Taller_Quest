@@ -178,7 +178,7 @@ defensible number.
 ## What Meridian's trolley is today, so you do not start cold
 
 Read `docs/BEAUTIFY.md` (the trolley stop's row), `docs/ASKS.md` (the owner asked on 2026-09-08 for
-a trolley that comes by now and then with no building, person or house in its way, and
+an occasional trolley whose path nothing blocks, building, person or house, and which
 stops for people crossing or when called), and the ride report in `docs/crew/` if one is there.
 
 Known, measured, and not yet fixed as of 2026-09-11:

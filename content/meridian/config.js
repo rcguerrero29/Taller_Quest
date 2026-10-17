@@ -12,8 +12,8 @@ const MAXXP=880;   /* +50 for la esquina: 10 a quest x4, and 10 for the one choi
 /* Which of this world's rooms play which ROLE for the engine (#25, the PLACES seam). The engine
    never assumes a room name; it asks this table. Meridian's answer is the engine's default table,
    key for key (the smoke fails the build if they drift), written out here so the metadata lives
-   with the content — the owner asked to update it here, in Meridian and in the template, so there is a
-   good amount of metadata that includes these. A role you leave out falls back to the default.
+   with the content — the owner asked for it to be updated both here and in the template, so that both
+   carry plenty of metadata about the roles. A role you leave out falls back to the default.
    A second world keeps its own copy; the template is docs/NEW-WORLD.md §3. */
 const PLACES={
   home:"hq",                 /* the room a new game and a broken save land in */

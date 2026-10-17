@@ -1,7 +1,7 @@
 # Starting a new world — the template
 
-*Opened 2026-09-05. The owner wants a template for any other custom game, in
-case a new world, town or city is started. Everything below was read off the tree at
+*Opened 2026-09-05. The owner wants a template that any later custom game can start
+from: a new world, a new town, a new city. Everything below was read off the tree at
 `mq-v64`, not from memory; where the engine is not yet ready for a second world, it says so.*
 
 A world is **a folder**. The engine never changes. Meridian is the worked example sitting next
@@ -428,7 +428,7 @@ the day two worlds need to live in one deploy.
   own `config.js`. The smoke fails the build if a world id is ever spelled in `engine/`
   again, and `test/engine.smoke.js` checks that every role a pack declares points at a real,
   walkable place. **The full table, every role the engine reads** (the owner, 2026-09-07, asked for it
-  here, in Meridian and in the template, so there is a good amount of metadata that includes these;
+  both in Meridian and in the template, so that both carry plenty of metadata about the roles;
   both packs carry it with a note per line, and Meridian's must equal the defaults key for key):
 
   | role | type | the engine uses it for | default (Meridian) |

@@ -5569,8 +5569,8 @@ const CANDIDATES = [
     const r1 = await page.evaluate(() => {
       const problems = [];
       if (typeof ANIMALS !== 'undefined') problems.push('Meridian declares ANIMALS — its animals are the engine defaults by design');
-      // #25 (the owner asked for it in Meridian and in the template, so there is a good amount of
-      // metadata that includes these): Meridian DECLARES its rooms, one line per role with a note,
+      // #25 (the owner asked for it both in Meridian and in the template, so that both carry plenty
+      // of metadata about the roles): Meridian DECLARES its rooms, one line per role with a note,
       // and the declaration must match the engine's default table key for key — it is documentation
       // of the seam, never a divergence from it. A role the engine knows and Meridian does not name
       // is metadata missing; a role Meridian names and the engine does not read is a lie.

@@ -238,8 +238,8 @@ would have none left unless looks key by npc instead.
   - ⏳ **❗La fachada** — the shop wears the casa's facade today. A barbershop glyph of its own (a pole,
     the mirror wall from the sidewalk) needs one cold read; or keep the facade and hang a sign.
 - ✅ **❗El camino — ANSWERED A, WITH A REAL TROLLEY (`mq-v114`/`ch-v56`, 2026-09-08).** The owner chose the street
-  with a trolley at its end: a trolley that comes by now and then with no building, person or house in its
-  way, and stops for people crossing or when called. Calle Dos becomes one lane (`ex` row 1)
+  with a trolley at its end: an occasional trolley whose path nothing blocks (building, person or
+  house), stopping for people crossing or when called. Calle Dos becomes one lane (`ex` row 1)
   with the sidewalk its two houses stand on below it (row 2, was bed — Doña Tencha's casa and El Portero's
   caseta were literally stamped in the road), and a crossing at each of their doors. Calle Principal keeps both
   lanes and its crossing. **El trolley** (`TROLLEYAT` in the pack, `TRO`/`troUpdate` in the engine): **⚠️ this paragraph described a
@@ -331,7 +331,7 @@ would have none left unless looks key by npc instead.
   scissors. Next: Nacho writes the three quests EN+ES, Don Güero places the district, and the chapter block goes
   in `content/meridian/config.js` after `nolasco`. The original options are kept below for the record.
 - ⏳ **❗El espejo — does the chair get a story, and when** *(Nacho, 2026-09-07; the owner liked the barber
-  and asked Nacho whether it could be reused for MQ, then for the story)* — **In plain words:** Naye cuts hair on Calle Dos
+  and asked Nacho whether Meridian could reuse her, and then the story)* — **In plain words:** Naye cuts hair on Calle Dos
   and nobody in Meridian has said a word about her yet. She is the only person in the city holding a
   tool that cannot be undone. The beat she carries is the one the taller only half-taught: the brief is
   not the request, and somebody confirms before the irreversible step. A customer brings a photo of a
@@ -354,7 +354,7 @@ would have none left unless looks key by npc instead.
   fails a cast key declared twice. "Wardrobe / Vestidor" still names the animals' fitting room; the
   chair never uses that word.
   **❗La silla, the second half — DECIDED 2026-09-07 (the owner left la silla to the crew, noting
-  all of these may need architecture to grow):** a *service* today, and yes, the architecture to grow it is already
+  that each of these may need the architecture to grow):** a *service* today, and yes, the architecture to grow it is already
   there and named: a template room's `people` carry `q:[...]` like any station, so Naye takes quests the
   day a `CHAPTERS` entry names an `espejo` district — nothing in the engine changes for that. Nacho's
   plan for what those quests are is ❗El espejo below.

@@ -340,8 +340,8 @@ const MAPDOT={pk:[22,10]};
    second floor of a building — the office came off this list on 2026-09-03 (the owner did not
    want a ride to end on an upper floor; he had asked for a realistic world). You reach
    the office the way you would reach an office: through the front door and up the stairs. */
-/* ❗El camino, the owner's pick (2026-09-08): the street with a trolley at its end, a trolley that
-   comes by now and then with no building, person or house in its way, and stops for people crossing or
+/* ❗El camino, the owner's pick (2026-09-08): the street with a trolley at its end, an occasional
+   trolley whose path nothing blocks (building, person or house), stopping for people crossing or
    when called. The line the tram runs, per world: the row, and the ends it enters and leaves by. Calle
    Principal keeps both lanes and its crossing at x13–14; Calle Dos is one lane (row 1) with the sidewalk its
    two houses stand on below it (row 2) and a crossing at each door. The smoke fails if anything stands on a
