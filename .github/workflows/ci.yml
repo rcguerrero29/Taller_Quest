@@ -91,7 +91,7 @@ jobs:
       - name: Nothing that looks like a password or an access key is committed (the same list the site scan reads)
         run: node test/keys.js
       - name: The guards' own red cases
-        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
+        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
       # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
       # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
