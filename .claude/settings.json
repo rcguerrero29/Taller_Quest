@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "deny": [
+      "mcp__github__merge_pull_request",
+      "mcp__github__fork_repository",
+      "mcp__github__create_repository",
+      "mcp__github__delete_file",
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -15,6 +25,17 @@
             "command": "node \"${CLAUDE_PROJECT_DIR:-.}/test/pushguard.js\" --hook",
             "timeout": 30,
             "statusMessage": "Checking this push does not go to main"
+          }
+        ]
+      },
+      {
+        "matcher": "^mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/test/toolguard.js\" --hook",
+            "timeout": 30,
+            "statusMessage": "Checking this connector call carries no private term and no personal address"
           }
         ]
       }
