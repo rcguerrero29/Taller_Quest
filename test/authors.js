@@ -81,12 +81,23 @@ function judgeFiles(files) {
 const IDENTITY = /%[ac][nNeElL](?![A-Za-z])|%\((?:author|committer|tagger)(?:name|email)/;
 const FORMATS = /--(?:format|pretty)\b|\b(?:format|pretty)=|for-each-ref/;
 const READER = 'test/authors.js';
+/* Reading a whole commit object (git cat-file -p, or --batch, or cat-file commit) hands back its author and
+   committer lines, the same name and address a format string asks for, so it is the same question asked another
+   way. Only the readers named here may ask it, each for the reason beside it; `cat-file -e` and `-t` only ask
+   whether an object exists and what it is, and stay green. */
+const OBJECTS = /\bcat-file\b(?![^\n]*['"\s]-[et]\b)/;
+const OBJECT_READERS = {
+  'test/authors.js': 'the one reader of addresses',
+  'scripts/private-terms.js': 'reads who made each commit only to look for words of the private list in it, and prints rule numbers, line numbers and hashes, never a name or an address',
+};
 function judgeScripts(files) {
   const P = [];
   files.filter(({ file }) => /^(?:test|\.github|scripts)\//.test(file) && file !== READER).forEach(({ file, text }) => {
     String(text).split('\n').forEach((line, i) => {
       if (FORMATS.test(line) && IDENTITY.test(line))
         P.push(file + ':' + (i + 1) + ' asks git for a name or an address — whatever it prints lands in a public CI log; ask for the hash and the message, and let test/authors.js be the one reader');
+      else if (OBJECTS.test(line) && !OBJECT_READERS[file])
+        P.push(file + ':' + (i + 1) + ' reads whole git objects, which hands back who made each commit, name and address — ask for the hash and the message instead, or name this file in OBJECT_READERS with its reason');
     });
   });
   return P;
@@ -178,6 +189,11 @@ function selftest() {
     ['a URL-encoded byte with no format is green', [{ file: 'test/x.js', text: "const u = 'a%aeb';" }], 0],
     ['the same line in a doc is not a script', [{ file: 'docs/x.md', text: '--format=%an' }], 0],
     ['the one reader may ask', [{ file: 'test/authors.js', text: "'--format=%H%x00%ae'" }], 0],
+    ['another script reading a commit object whole is red', [{ file: 'test/x.js', text: "git(['cat-file', '-p', sha])" }], 1],
+    ['a batch read of objects in a workflow is red', [{ file: '.github/workflows/x.yml', text: 'run: git cat-file --batch < ids' }], 1],
+    ['asking only whether an object exists is green', [{ file: 'test/prims.js', text: "git(['cat-file', '-e', sha + '^{commit}'])" }], 0],
+    ['asking only an object\'s type is green', [{ file: 'scripts/x.sh', text: 'git cat-file -t "$sha"' }], 0],
+    ['the private-word check is a named reader of objects', [{ file: 'scripts/private-terms.js', text: "git(root, ['cat-file', '--batch'], ids)" }], 0],
   ];
   scriptCases.forEach(([what, files, want]) => {
     const got = judgeScripts(files).length ? 1 : 0;
