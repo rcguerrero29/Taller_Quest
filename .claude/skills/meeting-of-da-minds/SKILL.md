@@ -5,11 +5,10 @@ description: Convene Meridian's expert agents — Nacho (story), Don Güero (cit
 
 # Meeting of da minds — *la junta*
 
-**Opened 2026-09-03**, owner's ask: *"i want another review from /don-guero and /nacho to
-check with another agent who is an expert in 3d game design so we can setup for success
-with this type of character … use it as a learning experience, not just for this exercise.
-write it as a skill of meeting-of-da-minds … call it a meeting once you are all excited to
-show me cool things."*
+**Opened 2026-09-03**, owner's ask: another review from Don Güero and Nacho, with an agent
+expert in 3D game design, to set this kind of character up for success; a learning
+experience, not only this exercise; written as the meeting-of-da-minds skill; and called a
+meeting once everyone is excited to show him something good.
 
 A meeting is what you call when the questions on the table are **entangled** — a story
 beat that needs a building, a building that needs art, art that needs an engine seam — and
@@ -47,9 +46,11 @@ grows; it is not for the meeting to appoint them.
 
 ## The procedure
 
-**0 · The agenda is the owner's own words.** Quote each item verbatim in the brief. An
-agenda item rewritten into project vocabulary is an agenda item that gets answered for the
-wrong person. Number them; every later stage refers to the numbers.
+**0 · The agenda is the owner's confirmed goal.** Write each item back to him in plain
+words and brief it word for word as he confirmed it — the goal and its numbered decisions
+only, never a phrase of his. An agenda item rewritten into project
+vocabulary is an agenda item that gets answered for the wrong person. Number them; every
+later stage refers to the numbers.
 
 **1 · Ground truth, before anybody has an opinion.** One pass over the actual code and
 docs that answers, per agenda item: what exists today, in which file, and what does not
@@ -74,7 +75,7 @@ with what each item unlocks.
 
 **5 · The readout, and only then the excitement.** Take it to the owner when there is
 something to be excited about: concrete, visual, and describable in one sentence each.
-*"Call it a meeting once you are all excited to show me cool things."* A readout that is a
+*It is a meeting once everyone is excited to show him something good.* A readout that is a
 list of concerns is not a meeting, it is a status update.
 
 ## The rules that make it worth the tokens
@@ -91,21 +92,21 @@ list of concerns is not a meeting, it is a status update.
    for someone who is not in the code today.
 5. **Nothing is built during a meeting.** The panel plans; the session builds afterwards,
    in the agreed order, with the owner's go.
-6. **Stay on the requirements at hand.** *"while you are allowed to learn parallel skills to
-   make them/you better for this project, please be consious of the requirements at hand."*
+6. **Stay on the requirements at hand.** Learning side skills that make the crew better for this
+   project is allowed, but the requirements at hand come first.
    A meeting may pick up a technique it needs; it may not turn into a research project. If
    the panel wants a tangent, it goes in the readout as a recommendation, not into the work.
 
 ## What a meeting leaves behind
 
-- **Minutes:** `docs/meetings/YYYY-MM-DD-<topic>.md` — the agenda in the owner's words, each
+- **Minutes:** `docs/meetings/YYYY-MM-DD-<topic>.md` — the agenda as the owner confirmed it, each
   expert's position, the disagreements, the calls, the build order.
 - **Decisions** appended to the ledger that owns them: story calls to `docs/STORY.md`,
   city and cost calls to `docs/CITY.md`, work items to `docs/BACKLOG.md`, art and render
   findings to `docs/IDEAS.md` §15.
 - **The learning.** Every meeting writes down at least one thing the project now knows that
   outlives the topic — a principle, a rule of thumb, a trap with a name. That is the part
-  the owner asked for: *"use it as a learning experience, not just for this exercise."*
+  the owner asked for: a learning experience, not only this exercise.
   If a meeting produced no durable lesson, say that too; it is a finding about the meeting.
 - **New experts,** recommended with a one-line case, never appointed.
 

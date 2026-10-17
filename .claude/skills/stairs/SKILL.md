@@ -5,8 +5,8 @@ description: The pre-flight for a door, a staircase, a floor or a world boundary
 
 # Stairs — does this place make sense to walk through?
 
-*Opened 2026-09-17 on the owner's instruction: **"lets just plan a fix skill for stairs and world so
-it makes 'sense' thus the map also can help us map our world through portals to keep track of this."**
+*Opened 2026-09-17 on the owner's instruction: **plan a fix skill for stairs and worlds so they make
+sense, so that the map can also help chart the world through its portals and keep track of them.**
 It exists because the same class of mistake was made four times in two days, and each time the lesson
 was written into a register that the next person to touch the code did not read. **A skill is listed
 to every session; a document is not.***
@@ -18,8 +18,8 @@ to every session; a document is not.***
 **1 · Where does this door come out, and what is under your feet when you arrive?**
 A portal's arrival is a tile, and a tile has a height. **Off flat ground you may not arrive at the
 head of a flight** — that is a climb that happened off-screen, and it is the thing the owner refused:
-*"that door right there to the top of a staircase. until you figure out how to teleport in my side of
-the screen."*
+*that door, to the top of a staircase, until a way is found to arrive on his side of
+the screen.*
 
 **2 · Which end of the flight is the door at?**
 A street door is at the **foot**. A landing door is at the **head**. The fiction says which; the data

@@ -29,15 +29,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22
-      # The owner, 2026-09-28: new work here must "at least wont have info about my peronal life". Every
-      # file and file name is read against the private map's terms, handed in as an encrypted secret and
-      # never printed. No secret (a fork's pull request gets none) is a red: a session brings a fork's
-      # commits into a branch here, reviews them, and the check runs there. First, before anything else.
-      - name: Nothing personal from the private list is in this repository
-        env:
-          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
-        run: node scripts/private-terms.js
-      - name: No personal address in a commit or a file — only no-reply ones
+      # The commits this run brings, worked out once for the two checks that read every one of them (the private list
+      # and the addresses): on a pull request, its base branch to its head; on a push to main, what the push brings.
+      # Nothing is checked here.
+      - name: The commits this run brings
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
@@ -46,20 +41,57 @@ jobs:
         run: |
           if [ "$EVENT" = "pull_request" ]; then
             git fetch --no-tags origin "$BASE_REF"
-            node test/authors.js "origin/$BASE_REF" "$PR_HEAD"
+            BASE="origin/$BASE_REF"; HEAD_SHA="$PR_HEAD"
           else
             BASE="$BEFORE"
             if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
               BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"   # the first push: everything from the first commit
             fi
-            node test/authors.js "$BASE" HEAD
+            HEAD_SHA="$(git rev-parse HEAD)"
           fi
+          echo "RANGE_BASE=$BASE" >> "$GITHUB_ENV"
+          echo "RANGE_HEAD=$HEAD_SHA" >> "$GITHUB_ENV"
+      # The owner, 2026-09-28: new work here must carry nothing about his personal life. Every
+      # file and file name is read against the private map's terms, handed in as an encrypted secret and
+      # never printed, and so is every commit the run brings: its message, who made it, and each line it adds,
+      # which stay in the history after a later commit takes them out. No secret (a fork's pull request gets none)
+      # is a red: a session brings a fork's commits into a branch here, reviews them, and the check runs there. On
+      # CI the check is a red without --range. First, before any other check.
+      - name: Nothing personal from the private list is in this repository
+        env:
+          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # On a pull request this runs the BASE branch's copy of the check, never the branch's own: a
+          # branch that weakens the check, or the clean copy it loads, is read by the check it would
+          # replace. The copy sits in an untracked folder one level below the root, so it reads this
+          # checkout's files (the branch's own copy of the check among them) and is not one of them.
+          # A push to main runs main's own copy, which was itself checked this way before it merged.
+          # This guards against an honest mistake, not a hostile branch: a branch here can still edit
+          # this file, and only an approval before the secret is handed over closes that.
+          # Either copy is handed the commits this run brings (--range, worked out above); a base whose
+          # copy is older than --range ignores it and reads the files alone, until this reaches main.
+          if [ "$EVENT" = "pull_request" ]; then
+            if ! git rev-parse -q --verify 'HEAD^2' >/dev/null; then
+              echo "FAIL: this pull request was not checked out as a merge onto its base, so the base's copy of the check cannot be found; nothing was checked"
+              exit 1
+            fi
+            mkdir base-check.tmp
+            git show 'HEAD^1:scripts/private-terms.js' > base-check.tmp/private-terms.js
+            git show 'HEAD^1:scripts/clean-copy.js' > base-check.tmp/clean-copy.js
+            s=0; node base-check.tmp/private-terms.js --range "$RANGE_BASE" "$RANGE_HEAD" || s=$?
+            rm -rf base-check.tmp
+            exit "$s"
+          fi
+          node scripts/private-terms.js --range "$RANGE_BASE" "$RANGE_HEAD"
+      - name: No personal address in a commit or a file — only no-reply ones
+        run: node test/authors.js "$RANGE_BASE" "$RANGE_HEAD"
       - name: Every third-party file matches its fingerprint
         run: node test/vendored.js
       - name: Nothing that looks like a password or an access key is committed (the same list the site scan reads)
         run: node test/keys.js
       - name: The guards' own red cases
-        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest
+        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
       # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
       # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,

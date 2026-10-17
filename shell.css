@@ -52,7 +52,7 @@
   .viewport{position:relative; border-radius:10px; overflow:hidden; background:#241F2E; touch-action:none;}
   #veil{position:absolute; inset:0; background:#0B0A12; opacity:0; transition:opacity .42s ease; pointer-events:none; z-index:5;}
   #veil.on{opacity:1;}
-  /* THE DOORWAY (owner, 2026-09-17: "i think i want that option A"). A portal changed the world
+  /* THE DOORWAY (the owner chose option A). A portal changed the world
      between one frame and the next and then FROZE INPUT FOR 450ms with nothing drawn in that
      window — an instant cut followed by standing still somewhere you did not walk to. The slot
      was always there; it was empty. This fills it, in every camera at once, because it is a DIV
@@ -374,8 +374,8 @@
      over a panel. */
   .settings{position:fixed; inset:0; background:rgba(15,12,22,.78); display:flex; align-items:center; justify-content:center; z-index:55;}
   .settings .box{background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:18px; width:82%; max-width:320px; max-height:88svh; overflow-y:auto; box-sizing:border-box;}
-  /* THE PLAN IS NOT A SETTINGS DIALOG (owner, 2026-09-16: "check out how tiny the map is, it
-     should at least be half the screen on the left if it wont let us move while using it").
+  /* THE PLAN IS NOT A SETTINGS DIALOG (the owner found the map tiny: it
+     should take at least the left half of the screen if you cannot move while it is open).
      It was borrowing `.settings .box`, which is capped at 320px because that is a sensible width
      for a column of toggles — so on a 1440px screen the whole city was drawn inside a postage
      stamp. His conditional is the argument and it is right: the map STOPS THE GAME, and a thing

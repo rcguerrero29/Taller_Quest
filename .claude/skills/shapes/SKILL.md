@@ -5,9 +5,9 @@ description: Give a thing a SHAPE in the 3D camera — the `mesh` view recipe, f
 
 # Shapes — the polygonal recipe, and what the marigold taught
 
-*Opened 2026-09-21, when the owner asked "i still see squares and not polygonal shapes … can we
-not try this finally?" and then, five sittings later, "did you log how we can recreate this new
-polygonal update for all these and what we or you learned from marigolds?" This is that log. The
+*Opened 2026-09-21, when the owner still saw squares rather than polygon shapes and asked to try it
+properly at last, and then, five sittings later, asked whether the way to rebuild this polygon
+update for all of these, and what the marigolds taught, had been logged. This is that log. The
 sittings themselves are in `docs/3D-LOG.md` (the four entries of 2026-09-21) and the register is
 `docs/BEAUTIFY.md`; this file is the method, so the next thing takes one sitting and not five.*
 

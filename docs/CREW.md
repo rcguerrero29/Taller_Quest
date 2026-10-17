@@ -2,7 +2,7 @@
 
 *Nineteen agents in `.claude/agents/`, each recallable by name with `/name`. This file says which
 one to call, what each may touch, and how they hand off to each other. Written 2026-09-08 when the
-owner asked for personas "so that if we ever proceed we have agents know what their role is to do."*
+owner asked for personas, so that if the work goes ahead every agent knows what its role is.*
 
 ## The discovery that shaped the names
 
@@ -79,8 +79,8 @@ beautifully and feels like cardboard.
 **Chema is also the crew's first archivist of attempts.** `docs/3D-LOG.md` is his contact sheet: the
 standing goal, every 3D attempt with the number it measured, and — the part that earns its keep —
 every approach that was **rejected, with the reason**. He reads it before he proposes anything and
-appends to it before he moves on, at the owner's instruction: *"document everything possible so they
-can recreate it if needed and try to continuously improve depending on goal and past builds."* It is
+appends to it before he moves on, at the owner's instruction: document everything possible, so a thing can be
+rebuilt if needed, and keep improving against the goal and the builds before. It is
 the shape any other role should copy the first time one of them needs a memory of its own.
 
 ## The two jobs the owner named

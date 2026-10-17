@@ -1,10 +1,10 @@
 # Las cuatro puertas — the rest of the story (Nacho, 2026-09-02)
 
-*Nacho's plan for the four remaining businesses, written at the auto shop's depth so four writers could draft the quests from it. Owner: "i want the rest of the story... now please if possible." Kept verbatim; the decision log records what was picked from its open questions.*
+*Nacho's plan for the four remaining businesses, written at the auto shop's depth so four writers could draft the quests from it. The owner asked for the rest of the story, now if possible. The plan is kept verbatim; the decision log records what was picked from its open questions.*
 
 ## Decisions taken on this plan (main session, 2026-09-02)
 
-The owner's word was *"now please if possible — any outstanding questions?"*, so the four
+The owner asked for it now if possible, and asked for any outstanding questions, so the four
 questions below were answered with Nacho's own picks and the packs were written the same
 day. Each is one line to flip if the owner disagrees.
 
@@ -22,7 +22,7 @@ Also taken: the three new cats carry Nacho's names (Bolillo, Pelusa, Timbre) ins
 Don Güero's placeholders (Concha, Cloro, Expediente) — the names carry story, and the
 maps were laid the same morning. `❗El giro` is now built: `industry:` sits beside
 `role:` in every chapter and the report prints *industry · role*. The mercado-played gate
-(contradiction L) was waived by the owner's *"now please"*; the packs are written and
+(contradiction L) was waived when the owner asked for it now; the packs are written and
 wired, and the first human play of the mercado is still the next thing that should happen.
 
 ---
@@ -456,7 +456,7 @@ Old lead's page: the fifth page in the folder (q52) — the reveal the other thr
 
 **K. Two different "sixes."** The main session's brief lists *"Six trades: Meridian Labs, Tovar's, La Cocina, La Obra, El Mercado, Taller Herrera"*; STORY.md says *"the report reads as six engagements"* meaning Labs plus five businesses. `principal` is one district with one role; Tovar's, La Cocina and La Obra cannot appear as separate industries on the report without the Week One split already listed as STORY.md open item 1. Nothing in these four packs can fix that.
 
-**L. The schedule gate.** BACKLOG: *"S4 does not begin until the mercado has been human-played."* The owner today: *"now please if possible."* Writing the story breaks no gate — writing is not building — but Calle Dos will not be playable until someone plays the mercado, and the owner should hear that today rather than discover it.
+**L. The schedule gate.** BACKLOG: *"S4 does not begin until the mercado has been human-played."* The owner today: now, if possible. Writing the story breaks no gate — writing is not building — but Calle Dos will not be playable until someone plays the mercado, and the owner should hear that today rather than discover it.
 
 ---
 

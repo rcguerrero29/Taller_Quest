@@ -104,7 +104,7 @@ function t3BakeGlyph(g,opaque,base,raw,side,frame,x,y){
        asks here and leaves it out, instead of painting it twice at two different heights. */
     const tf=side?sideArt(g):TILEDRAW[g];if(tf)tf({sx:0,sy:0,x:x|0,y:y|0,t:380*Math.PI/2,bake:true,canopy:()=>{}});
     /* a light frame baked around a door face, so it reads against a dark wall from across
-       the room (owner, 2026-09-02: "hard to see some doors") */
+       the room (the owner found some doors hard to see) */
     if(frame){ctx.fillStyle=frame;ctx.fillRect(0,0,32,3);ctx.fillRect(0,29,32,3);ctx.fillRect(0,0,3,32);ctx.fillRect(29,0,3,32);}
   }finally{ctx=old;}
   return c;
@@ -143,7 +143,7 @@ const T3FOV=50;  /* the camera's vertical angle at the game's own 10:8; it only 
 function t3Resize(){ /* The 2D canvases render tiny on purpose (pixel art, CSS-stretched with
    image-rendering:pixelated). 3D must NOT — it renders at the element's real on-screen size,
    full device resolution.
-   FULLSCREEN (owner, 2026-09-08: "its still blurry in full screen"). This used to take the
+   FULLSCREEN (the owner still saw it blurry in full screen). This used to take the
    element's WIDTH and derive its height as the game's 10:8, which is right in a window — the
    shell sizes the 3D canvas to match the 2D one — and wrong the moment `.viewport.fs` says
    `height:100% !important`. The buffer then had the game's aspect while the element had the
@@ -198,7 +198,7 @@ function t3Dispose(obj){
     ms.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
   });
 }
-/* ---------- THE SCENES ARE KEPT (owner, 2026-09-17: "3. ok go for it") ----------
+/* ---------- THE SCENES ARE KEPT (the owner approved item 3) ----------
    There was exactly ONE built scene. Walking through a door threw it away and made another, and
    the first frame after that had to upload the new geometry as well as draw it — traced on
    2026-09-17 while building the doorway, a 237ms hole right after the swap, in which the door did
@@ -228,8 +228,8 @@ function t3Reuse(key){
   if(!e.grp.parent)T3.scene.add(e.grp);
   T3.builtKey=key;T3CACHE.delete(key);T3CACHE.set(key,e);   /* re-inserting is the LRU touch: a Map keeps insertion order */
   return true;}
-/* ---- A MESH FROM PARTS: the `mesh` view (2026-09-21, owner: "i still see squares and not
-   polygonal shapes … can we not try this finally?"). A pack answers "what shape is this tile"
+/* ---- A MESH FROM PARTS: the `mesh` view (2026-09-21: the owner still saw squares rather than
+   polygon shapes, and asked to try it properly at last). A pack answers "what shape is this tile"
    with a LIST OF PRIMITIVES — box, sphere, cylinder, cone and TORUS (`s:"torus"`, with `t` for the
    tube and `arc` for a part-ring: an arch, a ring of a stove, the bones on a pan de muerto; the
    fifth has been implemented four lines below since the day this shipped and this sentence said
@@ -401,8 +401,8 @@ function t3Build(key){
      carrying the city off into the dark it laid a dark lid across THE WHOLE MAP, five hundredths
      of a tile under the floor. Every sunken thing in either game was underneath it: the loft's
      stairwell treads sit at -0.16 to -0.64 and had been invisible since the apron was added, so a
-     player looking into the well saw the apron and nothing else. That is the "clearly fucked up
-     stairs" — a black rectangle where the stairs are, and no amount of lighting or geometry below
+     player looking into the well saw the apron and nothing else. That is the stairs the owner saw as
+     plainly broken — a black rectangle where the stairs are, and no amount of lighting or geometry below
      it could ever have shown, which is what two rounds of re-colouring proved by changing the
      render by zero bytes.
      The comment above always said "well outside it" and the geometry never was. Four strips now,
@@ -545,12 +545,12 @@ function t3Build(key){
          stair stands and you rise with it (t3Actors lifts anyone on a tread). The loft's well is
          the same flight seen from the top: a hole in the floor (the ground is cleared there) with
          the steps SUNK in it, each a step deeper toward the ▼, so you look down into it and sink
-         as you go (owner: "downstairs, not so much. still blocky, squares"). */
+         as you go (the owner found the way down still blocky and square). */
       const sr=stairRun(w,x,y),dep=wellDepth(w,x,y),g=w.rows[y][x];
       if((sr&&sr.up)||dep>0){const hh=dep>0?1.2:STAIRH*(sr.i+1); /* a sunken step is a tall box whose lid is below the floor; its sides are the risers you see */
         const tk=g+"|"+x+"|"+y,lid=wallMat[tk]||(wallMat[tk]=new THREE.MeshLambertMaterial({map:t3Tex(t3BakeGlyph(g,true,baseOf(g),false,false,null,x,y))}));
-        /* THE WELL HAS TO READ AS STEPS GOING DOWN, NOT AS A BLACK TRENCH (owner, 2026-09-16:
-           "i still think the stair railing screenshot i sent is wrong"). The geometry was already
+        /* THE WELL HAS TO READ AS STEPS GOING DOWN, NOT AS A BLACK TRENCH (the owner, 2026-09-16:
+           the railing in his screenshot was still wrong). The geometry was already
            right — the treads really are sunk, -0.16 to -0.48 — and the LIGHT was the whole fault.
            A riser at #5E5852, in a hole, under a lambert light that is above it, returns almost no
            luma; against a cream floor at ~#E8DFC6 the entire opening came back as one black
@@ -683,7 +683,7 @@ function t3Build(key){
         if(Array.isArray(parts)&&parts.length){try{const bmm=t3MeshOf(parts,{bridgeMesh:true,mesh:true,x,y});
           bmm.position.set(cx,BRIDGEH+cam,cz);if(ew)bmm.rotation.z=Math.atan2(slp,1);else{bmm.rotation.y=Math.PI/2;bmm.rotation.z=Math.atan2(slp,1);}
           grp.add(bmm);}catch(e){t3Note("mesh prop:bridge",e);}}}
-      /* papel picado (owner, 2026-09-07: "and papel picado"): when the season hands a palette
+      /* papel picado (the owner asked for it too): when the season hands a palette
          through art("papel"), a string is hung ACROSS the crossing on each deck tile, high over
          the head, between two thin poles at the rails — five little cut-paper flags a string,
          both faces coloured, so it reads from every camera stop. Nothing without a season. */
@@ -724,7 +724,7 @@ function t3Build(key){
       flatTex[gch]=flatTex[gch]||t3Tex(t3BakeGlyph(gch,false,null,false,true));
       /* a fence panel stands ALONG its run: a north-south run turns across X, a corner gets
          two panels. Every panel used to face south, so a north-south run showed as a row
-         of edge-on slats "laying around" (owner, 2026-09-02). */
+         of edge-on slats lying about, as the owner saw them. */
       const fk=(ax,ay)=>ay>=0&&ay<w.H&&ax>=0&&ax<w.W&&(TILES[w.rows[ay][ax]]||{}).kind==="fence";
       const nsRun=fk(x,y-1)||fk(x,y+1),ewRun=fk(x-1,y)||fk(x+1,y);
       const fm=new THREE.MeshLambertMaterial({map:flatTex[gch],side:THREE.DoubleSide,transparent:true,alphaTest:0.3});
@@ -829,8 +829,8 @@ function t3Build(key){
         [x0,x1].forEach(ex=>{const g=w.grid[y]&&w.grid[y][ex],m=g!==undefined&&TILES[g];
           /* tied to what stands there — IF it stands that high. A wall, a facade or a tree can hold a string
              at head height; a knee-high fence or a crate cannot, and the first version skipped the pole for
-             any SOLID end, so the park's strings hung in the air above its fence (owner, 2026-09-21: "poles
-             with the paper picado"). Tall means kind wall/facade/tree or a declared lift of 9 or more. */
+             any SOLID end, so the park's strings hung in the air above its fence (the owner, 2026-09-21:
+             the poles that carry the papel picado). Tall means kind wall/facade/tree or a declared lift of 9 or more. */
           const tall=!!m&&(m.kind==="wall"||m.kind==="facade"||m.kind==="tree"||(m.lift|0)>=9);
           if(g!==undefined&&SOLID.has(g)&&tall)return;
           const pl=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.045,PH+0.12,8),pole);pl.position.set(ex+0.5,(PH+0.12)/2,y+0.5);pl.userData={swag:true,pole:true,y};grp.add(pl); /* `y`: its row, for t3Fiesta's end-on rule */
@@ -856,8 +856,8 @@ function t3Build(key){
         /* on a sill the candy is cut to the window it stands in (#131) — 7 tile-pixels of sweet in a
            7-pixel pane was the overlap. Off a sill it keeps its full 8. */
         const z=win?win.size:8;
-        if(win){ /* THE WHOLE WINDOW is the sprite now, not just the sweet (#131, owner 2026-09-10:
-            "skulls are still hidden"). Twice this was answered by resizing the candy and twice he
+        if(win){ /* THE WHOLE WINDOW is the sprite now, not just the sweet (#131: the owner
+            still found the skulls hidden). Twice this was answered by resizing the candy and twice he
             came back. The arithmetic says why he was right: the sprite was z/32 world units, so an
             eight-pixel sweet is 0.25 of a unit on a wall about 1.1 high, seen from T3CAMD = 7.4
             units back. Three or four screen pixels of cream in a dark recess. No ratio fixes that.
@@ -883,8 +883,8 @@ function t3Build(key){
              pane here is one fixed height, so it is one number, and the ledge keeps its 0.05 in front of it. */
           sp.position.set(p.x+win.cx/32,paneBottom,p.y+1.03+SILL_PROUD);
           /* ---- AND THE SILL ITSELF, hung under it as a SECOND sprite (mq-v154) ----
-             The owner, four times now, most recently 2026-09-12: "another attempt at showing the
-             window sills." Read literally, which the three previous attempts did not: there was never
+             The owner, four times now, most recently 2026-09-12: one more try, at showing the
+             window sills themselves. Read literally, which the three previous attempts did not: there was never
              a sill. `propSill` has always computed a y called `sill` and nothing ever DREW one — the
              candy stood on the bottom edge of a hole in a wall.
              The three answers before this were all the same answer wearing different numbers: 8px of
@@ -931,8 +931,8 @@ function t3Build(key){
   t3Trim();
 }
 function t3Trolley(){ /* the tram on the line; it is never a wall — you may stand where it will pass, and it waits.
-  The owner, 2026-09-11: "i mentioned at some point having a driver and stuff as well as wheels, we
-  want to be realistic, crew!" He was describing it exactly. This was a body box, a roof box and six
+  The owner had asked for a driver and the like as well as wheels — realistic, he told the crew.
+  He was describing it exactly. This was a body box, a roof box and six
   window slabs on the two LONG SIDES ONLY, floating 0.09 above the road on nothing — and the numbers
   say how bad that was in the engine's own units: the roof stood at 0.555, where a DOOR is 1.0 and an
   ordinary prop with no declared lift stands 0.844. A traffic cone was taller than the whole tram,
@@ -1033,7 +1033,7 @@ function t3Trolley(){ /* the tram on the line; it is never a wall — you may st
   }
   /* ---- AND IT GOES TO GLASS WHEN IT IS BETWEEN YOU AND THE CAMERA ----
      The owner, 2026-09-22, choosing between two cures for a person who disappears at his own stop:
-     "for the inspector- lets make it seethrough". Yesterday the cure was DEPTH — the car hid your
+     for the inspector, make it see-through. Yesterday the cure was DEPTH — the car hid your
      legs, honestly, the way a tram does — and honest is not the same as usable: at the stop, in the
      camera both games boot into, the car covered him to the shoulders and at the corner stop it
      covered all of him. So the car takes the treatment #140 already gives a tree: it stays exactly
@@ -1064,8 +1064,8 @@ function t3TramNear(){
 function t3Fiesta(){ /* the piñata sways; it is never hit and gives nothing (Nacho's guardrail) */
   (T3.pinatas||[]).forEach(sp=>{if(!sp.parent)return;sp.material.rotation=Math.sin(Date.now()/700+sp.userData.x)*0.08;});
   /* A STRING SEEN END-ON IS NOT A STRING (the owner, 2026-09-21, a frame from a quarter turn on Calle
-     Principal: "the skeleton now seems to float in one perspective and with the papel picado, looks like
-     its buggy or broken"). A swag hangs ALONG its row at 1.9. Turn the camera a quarter and you look down
+     Principal: from one angle the skeleton seemed to float, and with the papel picado it looked buggy or
+     broken). A swag hangs ALONG its row at 1.9. Turn the camera a quarter and you look down
      that row: the flags are edge-on and vanish, and the string is a bare dark line from the horizon to the
      foreground, through whoever stands on the row — over his head, between his legs, through his shadow —
      so a person on it reads as hanging from it. Measured at st (5,1): 42 pixels of string inside the
@@ -1085,7 +1085,7 @@ function t3Fiesta(){ /* the piñata sways; it is never hit and gives nothing (Na
       if(!u.pole){o.visible=!onLine;return;}
       o.visible=!(onLine&&(runsX?(o.position.x-hx)*sx:(o.position.z-hz)*cz)>=-0.01);});}}
 /* the petal trail in 3D: a pool of little flat planes, three per drop, lying on the ground where
-   somebody walked in season, fading over a minute and a half (owner: "a trail forms behind characters") */
+   somebody walked in season, fading over a minute and a half (the owner asked for a trail behind people) */
 function t3PapelTex(pal,n,seed){ /* a string of n cut-paper flags baked once (Pili): flat colour, a scalloped hem, five punched
   holes you see the sky through — the difference between bunting and papel picado */
   const c=document.createElement("canvas");c.width=n*8;c.height=14;const g=c.getContext("2d");
@@ -1240,18 +1240,18 @@ function t3Actors(){
     f:g=>drawDoorMark(g,2,30,0,d.mark)})); /* mark:"door" so a guard can find the arrow and read where it ACTUALLY ended up, instead of doing this line's arithmetic a second time and agreeing with itself */
   /* a poster on a WALL hangs on the wall's open face, mid-height, and is not pulled toward the
      camera (that would push it inside the wall). It used to float 1.15 up wherever it stood, which
-     put the board beside a window clerk above city hall's roof (#45: "poster next to teller is off,
-     a bit too high"). A readable thing that is not a wall (the desk) keeps the float. */
+     put the board beside a window clerk above city hall's roof (#45: the poster beside the teller sat
+     a little too high). A readable thing that is not a wall (the desk) keeps the float. */
   if(typeof readMarks==="function")readMarks().forEach(d=>{
     const face=t3ReadFace(w,d.x,d.y);
     if(face)list.push({x:d.x,y:d.y,h:face.h,ox:face.ox,oz:face.oz,fixed:true,mark:"read",sign:true,f:g=>drawReadMark(g,2,30,-7)}); /* up:-7 centres the card on its anchor */
     else list.push({x:d.x,y:d.y,h:1.15,mark:"read",sign:true,f:g=>drawReadMark(g,2,30,0)});});
   /* A TRAM BETWEEN YOU AND THE CAMERA used to take your depth back: the car hid your legs, the way a
      tram does, because the person waiting at the platform had been painted ON it, feet on the roof,
-     for the whole dwell (the owner, 2026-09-21: "the trolley weirdness"; ridden by the line
+     for the whole dwell (the owner reported the trolley acting oddly; ridden by the line
      inspector, crew iteration 12). That reading was right and the picture was still wrong — at the
      stop the car covered him to the shoulders — and the owner chose the other cure on 2026-09-22:
-     "lets make it seethrough". So the CAR goes to glass (t3Trolley) and the hero keeps drawing
+     make it see-through. So the CAR goes to glass (t3Trolley) and the hero keeps drawing
      through walls (#22), which is the treatment #140 gives every tall object that is not a wall.
      Nothing here has to know about the tram any more, and the depth flag below is back to the two
      things it was always about: the hero, and being down a hole (#92). */
@@ -1266,7 +1266,7 @@ function t3Actors(){
     ctx=old;
     p.tex.needsUpdate=true;
     /* pull each billboard a step toward the camera so heads stop sinking into the
-       wall behind them (owner: "head disappearance near walls") */
+       wall behind them (the owner saw heads vanish near walls) */
     const ax=a.x+0.5,az=a.y+0.5;
     const ddx=T3.cam.position.x-ax,ddz=T3.cam.position.z-az,dl=Math.hypot(ddx,ddz)||1;
     const lift=stairLift(CW(),Math.round(a.x),Math.round(a.y)); /* on a climbing tread you stand that much higher (#62) */
@@ -1279,10 +1279,10 @@ function t3Actors(){
     p.spr.material.color.copy(T3.tint);
     /* billboards draw in order of distance from the camera, farthest first, all of them after the
        scene's transparent pieces: whoever stands nearer the camera than you draws over you. The hero
-       used to draw LAST, over everyone, so behind a person you stood on their head (owner,
-       2026-09-07: "when we walk behind people it seems like im walking on them"). The hero still
+       used to draw LAST, over everyone, so behind a person you stood on their head (the owner
+       saw himself walking on people when he passed behind them). The hero still
        ignores depth, so a wall never hides them (#22) — a person can. */
-    /* #92 (owner: "when im going downstairs, im walking on the wall again"): drawn through everything,
+    /* #92 (the owner saw himself on the wall again, going downstairs): drawn through everything,
        a hero sunk in a well read as standing ON the rail and the floor's lip in front of them. Below the
        floor the hero respects depth — the lip and the knee-high rail hide their legs, which is what going
        down into a hole looks like — and the tall wall on the camera side is the one the near-wall rule
@@ -1341,8 +1341,8 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
    the screen and the hero (drawn through walls) read as standing ON it, while the dog, drawn in the
    scene, was hidden behind it. Now that wall is simply not there while it is in the way. Walls,
    facades, lintels, doors and the window pieces cut; treads, rails, props and decor do not. */
-/* #65, the owner's word after [partner] walked it: "[partner] prefers the minimized wall but limit it to one
-   near the person... the view change was too confusing - lets keep that manual." The camera
+/* #65, the owner's word after [partner] walked it: keep the minimized wall, but only the one nearest the
+   person; the automatic view change confused, so turning stays manual. The camera
    never turns by itself; ↻ is the only turn. A wall HIDES you only when it is close and tall:
    the camera looks down from T3CAMH high and T3CAMD back, so a wall d tiles in front of you
    covers your feet up to ~0.84·d — t3Hides counts it once it reaches above your shins
@@ -1378,8 +1378,8 @@ const T3CAMD=7.4,T3CAMH=6.2,T3STUB=0.28,T3GHOST=0.68;
    above. The frames agree with the arithmetic: the second world, rendered before and after this
    change, is identical pixel for pixel in both seasons.
 
-   THE LADDER, because 0.68 was never measured either. Owner: "can we make it tall so we can walk
-   underneath it all ghostly?" The hero was stood on the tile Meridian's jacaranda overhangs and
+   THE LADDER, because 0.68 was never measured either. The owner asked for a tree tall enough to
+   walk under, eerily. The hero was stood on the tile Meridian's jacaranda overhangs and
    the ghost swept; each rung was rendered twice, once with his billboard visible and once hidden,
    so every differing pixel is one he put on the screen.
 
@@ -1418,7 +1418,7 @@ const T3CAMD=7.4,T3CAMH=6.2,T3STUB=0.28,T3GHOST=0.68;
 let T3CROWNGLASS=0.34;
 const T3OVERHEAD=0.65*3+0.3;   /* = 2.25: exactly the height t3Hides starts ghosting at three tiles */
 /* ---- HOW BIG A PERSON IS, and why it is two numbers and not one ----
-   The owner, 2026-09-22: "you can make my character smaller as i mentioned before for the cool looks."
+   The owner, 2026-09-22: his character may be smaller, as he had said before, because it looks good.
    Every actor rides a 36x48 card and this is what that card is worth in tiles: the sprite's anchor is
    a FRACTION of the card (`center.set(0.5,4/48)`, his feet), so changing this scales him about his own
    shoes and nothing floats. A person's drawn height is about 32 of the 48 rows, so his height in tiles
@@ -1438,7 +1438,7 @@ const T3OVERHEAD=0.65*3+0.3;   /* = 2.25: exactly the height t3Hides starts ghos
      0.84  the arithmetic's own answer, and the floor bites: he is level with a DESK PLANT in HQ, and
            a person the same height as the thing on the desk is a ruler that has stopped ruling.
    So the honest ratio is 0.84 and the shipped number is 0.92, and the reason is legibility, not taste.
-   EVERY BODY, not only the hero (the owner said "my character"): thirty-six people walk under the
+   EVERY BODY, not only the hero (the owner spoke only of his own character): thirty-six people walk under the
    same lintels, and shrinking one of them makes him a child standing next to the tamalera rather than
    making the street bigger. The size of a person is the size of the world.
    A `let`, not a `const`, for one reason: the ladder is rendered by sweeping THIS value, and the guard
@@ -1474,8 +1474,8 @@ function t3Hides(h,d){return h>0.65*d+0.3;}
    read `geometry.parameters.height`, which a sprite does not have — so a tree crown, a lamp or a
    piñata could never be considered tall no matter how much of you it covered. A box stands on its
    own half-height; a billboard hangs from its centre point. */
-/* A MERGED MESH KNOWS ITS OWN HEIGHT AND WAS NEVER ASKED (owner, 2026-09-22: "can we make it tall
-   so we can walk underneath it all ghostly?"). There are two `t3Top`s and they are not the same
+/* A MERGED MESH KNOWS ITS OWN HEIGHT AND WAS NEVER ASKED (the owner, 2026-09-22: a tree tall
+   enough to walk under). There are two `t3Top`s and they are not the same
    thing, which is how this lasted: `m.t3Top` is a PROPERTY the merged mesh carries — its tallest
    vertex, measured where the parts are baked — and `t3Top(o)` is this FUNCTION. A box answers from
    `geometry.parameters.height` and a sprite is caught on the line above, but a merged
@@ -1496,8 +1496,8 @@ function t3Hides(h,d){return h>0.65*d+0.3;}
    THE FLOOR IS DELIBERATE AND IS THE WHOLE COMPATIBILITY STORY. `1` was the old answer for every
    mesh tile, and honest heights ALONE would quietly stop 349 + 128 short things — a bed of
    marigolds, a traffic cone, the second world's stalls — from getting out of the way at one tile, which is
-   the cure the owner asked for in #140 ("there are still overlaps with other objects where i seem
-   to walk on them") and nobody asked to have taken back. Those two figures are the guard's own,
+   the cure the owner asked for in #140 (other objects still overlapped him, so he seemed
+   to walk on them) and nobody asked to have taken back. Those two figures are the guard's own,
    quoted off the run that planted the fault: drop the `Math.max` and it prints "349 short props in
    this shell" for Meridian and "128" for the second world. So a mesh tile is at least as tall as the box
    it replaced, and its real height when it is taller than that. Short things behave exactly as
@@ -1512,8 +1512,8 @@ function t3Wallish(u){return u&&(u.wall!==undefined||u.door||u.winBack||u.counte
 function t3Near(x,y,yaw,fake){ /* the pieces nearest (x,y) that hide you at this camera stop; `fake`=[[x,y,h]] for a test */
   const hx=x+0.5,hz=y+0.5,ux=Math.sin(yaw),uz=Math.cos(yaw);
   /* #140: it used to be a list of KINDS — walls, facades, lintels, doors, window pieces — so a tree,
-     a lamp or a piñata was never considered no matter how much of you it covered (owner: "there are
-     still overlaps with other objects where i seem to walk on them"). A kind list cannot answer the
+     a lamp or a piñata was never considered no matter how much of you it covered (the owner still
+     saw other objects overlap him, so he seemed to walk on them). A kind list cannot answer the
      question being asked. The question is only ever "is this thing tall enough, and is it standing
      between me and the camera", so that is what is asked now, of everything that has a footprint. */
   const pieces=fake?fake.map(([ax,ay,h])=>({x:ax+0.5,z:ay+0.5,h,o:null}))
@@ -1617,10 +1617,10 @@ function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
    as originally planned. It shipped as eight 45° stops, and a 4-way
    movement grid cannot be driven from a 45°-rotated camera — at those four odd stops
    NO swipe the player can make corresponds to a straight move on screen, which is
-   exactly why the owner reported "some directions are broken when i rotate". */
-/* THE TURN, EASED (Rosa's 3D note; the owner picked "your choice, ready to change, maybe in
-   settings"). The camera used to jump a quarter turn in one frame. [partner] called the old AUTOMATIC
-   turn "too confusing" (#65) and the cure then was to make it manual — but the confusion was never
+   exactly why the owner reported that some directions broke once he rotated. */
+/* THE TURN, EASED (Rosa's 3D note; the owner left it to the crew, open to change, perhaps in
+   settings). The camera used to jump a quarter turn in one frame. [partner] called the old AUTOMATIC
+   turn confusing (#65) and the cure then was to make it manual — but the confusion was never
    that it turned, it was that the turn had no motion to follow, so the eye had to re-find the
    whole street from scratch. A move you can watch is a move you can follow.
    300ms with an ease-in-out is the middle of the range interface work lands on for a change of
@@ -1650,5 +1650,5 @@ function t3Turn(by){                      /* one quarter, from wherever the last
 }
 (function(){
   const b=document.getElementById("rot3d");
-  if(b)b.addEventListener("click",()=>t3Turn(Math.PI/2)); /* the only turn there is (#65: "lets keep that manual") */
+  if(b)b.addEventListener("click",()=>t3Turn(Math.PI/2)); /* the only turn there is (#65: turning stays manual) */
 })();
