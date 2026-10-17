@@ -19,8 +19,12 @@ every expensive reversal in Meridian's history was a thing nobody had asked for.
 Then open a bible and a ledger on day one, empty:
 - `docs/<name>/STORY.md` — who the player is, what the town wants from them, endings.
 - `docs/<name>/CITY.md` — districts, open parcels, pending ❗ decisions, decision log.
-- `docs/ASKS.md` — **every owner ask, quoted verbatim, logged before building.** This is the
-  single practice that stopped requirements from falling through here.
+- `docs/ASKS.md` — **every owner ask, written back to him as a goal with each decision a numbered
+  rule and every requirement exact (every number, every "not", every condition), confirmed by him and
+  logged before building, with personal details as `[stand-ins]` and nothing of his quoted.** Anyone
+  else interviewed for the world is treated the same way: their words stay in the conversation, and
+  only what they confirm is written down. This
+  ledger is the single practice that stopped requirements from falling through here.
 - `docs/OWNER.md` — the owner's standing rules. Meridian's are a good default; the ones that
   travel to any story are marked *(travels)* below.
 
@@ -617,7 +621,9 @@ looks in CSS; the engine adds one class to the sheet. A new world picks either i
 - **Four cameras or it doesn't exist.** Top, front, iso, 3D. A test counts which drawing each
   camera calls.
 - **Build the ability, not the thing — unless the thing was asked for.**
-- **Every ask is quoted verbatim before building.** Paraphrase is how requirements die.
+- **Every ask is written back to the owner as a goal, every requirement exact, and nothing is built
+  until he confirms it.** Paraphrase is how requirements die, and a goal the owner has not confirmed
+  is one. Anyone else interviewed is treated the same way: only what they confirm is written down.
 - **Contradictions are reported, never absorbed.**
 - **Every new test assertion is proven to fail against broken code before it is kept.**
 

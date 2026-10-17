@@ -9,7 +9,8 @@ A decision that lives only in a table row survives as an **answer**. What a read
 later is the **reasoning**, and above all **what was rejected and why** — because the rejected option
 is the one the next person is about to propose again.
 
-`docs/ASKS.md` is the ledger of asks: *what was requested, verbatim, and where it landed.* It is
+`docs/ASKS.md` is the ledger of asks: *what was requested, and where it landed* — from 2026-10-16
+the owner's confirmed goal, before that his words verbatim. It is
 excellent at that and it is not a decision store — its rows are one dense cell each, and the reason
 behind an answer is usually a clause. **Until this folder is populated, `ASKS.md` is still where most
 decisions actually live.** Saying otherwise would be the third kind of stale document this project
@@ -21,7 +22,7 @@ One file, `NNNN-a-short-name.md`, five headings, in this order:
 
 | heading | what goes in it |
 |---|---|
-| **Asked** | the owner's words, **verbatim**, with a date and where the quote is from. If the only surviving copy of the quote is a code comment, say so — a comment is a `[CODE]` source, not a transcript |
+| **Asked** | what the owner asked, **as logged**, with a date and where it is from: from 2026-10-16 the goal he confirmed and its numbered decisions, copied from its `docs/ASKS.md` row — never his own words, nor a phrase of his the row quotes; before that, his words verbatim. If the only surviving copy of an older quote is a code comment, say so — a comment is a `[CODE]` source, not a transcript |
 | **Decided** | one paragraph a stranger can understand before they meet a file name |
 | **Because** | the reasoning — **including every option that was rejected, with the reason and any measurement.** *"We use nearest-mipmap-nearest"* is a fact; *"we tried mipmaps everywhere and measured it softer, 1.94 against 2.26"* is memory |
 | **Touched** | `file:line` for every place the decision lives in code, and the test that pins it |
