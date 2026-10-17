@@ -22,6 +22,12 @@
           },
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/test/quotes.js\" --hook",
+            "timeout": 60,
+            "statusMessage": "Checking this push publishes no quote credited to the owner"
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR:-.}/test/pushguard.js\" --hook",
             "timeout": 30,
             "statusMessage": "Checking this push does not go to main"
