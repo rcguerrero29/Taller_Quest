@@ -4775,7 +4775,7 @@ const CANDIDATES = [
       // it does not share the space with it, it eats it. The first shaped sill reached 0.127 and sat
       // 0.007 in FRONT of the pane.
       //
-      // ❗THE DEPTH IS TAKEN OFF A PANE THE ENGINE REALLY PLACED, not off the engine's source. A
+      // ❗THE DEPTH IS TAKEN OFF A PANE THE ENGINE REALLY PLACED (the pane a sweet stands in), not off the engine's source. A
       // guard that types the constant back in is testing its own arithmetic.
       // And the rule is geometric, so nothing has to be tagged and nothing can be tagged around:
       // a thing that runs the WIDTH OF THE WALL is the wall — a cast sill, a lintel — and a thing

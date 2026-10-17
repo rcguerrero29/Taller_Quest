@@ -90,6 +90,38 @@ jobs:
         run: node test/vendored.js
       - name: Nothing that looks like a password or an access key is committed (the same list the site scan reads)
         run: node test/keys.js
+      # On every run that is not a push to main it also reads every commit the pull request brings, not
+      # only its tip: a quote added in one commit and taken out in the next is red. It asks whether the run
+      # is a push to main, not whether the event is named pull_request, so a trigger changed in on: is a
+      # red rather than a run that reads none of the pull request: pull_request_target, whose default
+      # checkout is the base's tip, and a push to any other branch, whose green run on a pull request's
+      # head would stand for its check. The checkout is the merge, so its first parent is the base and its
+      # second the branch.
+      # The second parent must be the pull request's own head: a checkout of the head, when the head is
+      # itself a merge (a branch updated from its base), also has a second parent, and the range would
+      # read the base's commits instead. Any other second parent, or none, is a red, not a pass. A red
+      # plain run ends the step with a sentence that says what to do.
+      - name: No quote credited to the owner is committed (the check's own red cases first; on a pull request, every commit it brings)
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node test/quotes.js --selftest
+          if ! node test/quotes.js; then
+            echo "FAIL: the plain run above is red, so the commits a pull request brings were not read. For each line it names, say in plain words what was asked, keeping its date, in a commit on this branch; a line a person reads and finds is not his words goes on REVIEWED in test/quotes.js with its fingerprint (node test/quotes.js --list) and a reason. For each stale entry it names, take that entry off REVIEWED."
+            exit 1
+          fi
+          if [ "$EVENT" != "push" ] || [ "$REF" != "refs/heads/main" ]; then
+            SECOND="$(git rev-parse -q --verify 'HEAD^2' || true)"
+            if [ -z "$PR_HEAD" ] || [ "$SECOND" != "$PR_HEAD" ]; then
+              echo "FAIL: this pull request was not checked out as the merge of its head (${PR_HEAD:-not given}) onto its base: the checkout's second parent is ${SECOND:-missing}, so HEAD^1..HEAD^2 would read the wrong commits or none. Check out the merge (actions/checkout with no ref) and run again; nothing was checked, and that is a red, not a pass"
+              exit 1
+            fi
+            node test/quotes.js --range 'HEAD^1..HEAD^2'
+          fi
+      - name: Every pointer that says grep these words in that file still finds its line (and the check's own red cases first)
+        run: node test/pointers.js --selftest && node test/pointers.js
       - name: The guards' own red cases
         run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
