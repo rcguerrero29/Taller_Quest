@@ -5,7 +5,7 @@
    room should be. There is no right answer, no score, no XP; nothing here lands
    in the career report. What the player says becomes a plain sheet with a Copy
    button — that sheet is the whole back-and-forth (the owner's ask:
-   [partner] talks to the game through its characters where possible, with no
+   a playtester talks to the game through its characters where possible, with no
    API to set up). The owner hands the sheet to whoever builds the room.
 
    Everything with a name lives HERE. The engine reads only shapes — hosts, steps,
@@ -16,7 +16,7 @@
    phone by three reviewers: a host speaks two sentences, an answer fits one line,
    the office has stairs and no door, nobody is addressed as "jefe". The window
    is real since 2026-09-02 (art.js) — Güero's line states a fact, and the three
-   views are all north-true. Lines a [partner] pack should rewrite:
+   views are all north-true. Lines another pack should rewrite:
    Xochi and Rosa are Meridian people; "somebody's mom" is deliberately nobody's.
    ============================================================================ */
 const INTERVIEW={

@@ -12,7 +12,7 @@ and only he approves a deploy to the live site.
 ## 1 · Nothing about a real person enters this repository, in any words
 
 - The project's rule: **nothing about a real person reaches this repository as said.** Where a design
-  needs its reason, keep the reason and use a stand-in: `[partner]`, `[city]`, `[a time]`
+  needs its reason, keep the reason and use a stand-in: a playtester, `[city]`, `[a time]`
   (`docs/WHY.md` explains the ones already here).
 - **Every change is checked** against a private list of personal terms (`scripts/private-terms.js`, fed by
   an encrypted secret, never printed). A green check is not permission: the list only holds what was

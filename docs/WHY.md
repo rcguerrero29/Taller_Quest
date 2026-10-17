@@ -4,8 +4,9 @@ This repository is the public half of a project. The day-to-day log, the backlog
 and everything about the real people who shaped the game stay private. Many design choices here were
 made in those notes, so this page keeps the *reasons*, in a line each, without the diary around them.
 
-**Square brackets are stand-ins.** Where a document says `[partner]`, `[city]`, `[state]`, `[brand]`,
+**Square brackets are stand-ins.** Where a document says `[city]`, `[state]`, `[brand]`,
 `[another project]` or `[a time]`, a real detail about a real person was replaced before publishing.
+A real person is written as a playtester.
 A sentence in brackets, like *[An example about food was taken out of the public copy…]*, marks a
 passage that was taken out, and says what it was for. Links and issue numbers (`#123`) that lead
 nowhere point at the private side; the reasoning they carried is summarised below.

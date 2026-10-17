@@ -26,7 +26,7 @@ A mock-up is the cheapest thing on this project to be **accurate about and wrong
 | **A3** | **The fold line drawn on the picture**, if the thing is taller than its box, plus the two numbers: document height and visible height | Without it a reviewer signs off a screen having seen 100% of a thing a person sees 54% of |
 | **A4** | **What is real and what is drawn.** Per element: shipped / faked / not-yet-a-thing. A fake that looks shipped is the most expensive line in a review | Beto and Yaz cannot answer "is it buildable" about a picture that will not say which half already is |
 | **A5** | **The before**, when the screen replaces one. Same row, same language, same shell, same word on A2 | `docs/POSTMORTEM.md` §5: when you diff two pictures, change one thing |
-| **A6** | **EN and ES, and the shell it lives in** (cream or night). If the owner asked for night — he did, for [partner]'s questionnaire — a cream picture is not the screen | The current page: **1 of 8 pictures in Spanish, 1 of 8 in night**, and the night one is the recipe, not the thing he asked for in night |
+| **A6** | **EN and ES, and the shell it lives in** (cream or night). If the owner asked for night — he did, for a playtester's questionnaire — a cream picture is not the screen | The current page: **1 of 8 pictures in Spanish, 1 of 8 in night**, and the night one is the recipe, not the thing he asked for in night |
 
 **And one rule about the file name, because it is the field a reviewer trusts without checking:**
 `<id>-<screen>-<WxH row>-<lang>-<shell>-<unmodified|unrolled>.png`. A name that disagrees with the picture is a lie a register will repeat for a week.
@@ -213,7 +213,7 @@ only the title, screen, row and verdict, ranked as each reviewer ranked them.
 | Rosa | F7 · the checked state is Chromium's blue in a violet night app | 10 | ANSWERS, WITH A NOTE | one `accent-color` line in both shells (with Pili F1, Beto 1) |
 | Rosa | F8 · the Collection's blank lines look like something you type into | 7 | ANSWERS, WITH A NOTE | Pili F7: outlines for the unmade, not underlines |
 | Pili | F1 · the house card asks the player to tick foods to avoid, in iOS blue | 10 | ANSWERS, WITH A NOTE | as Rosa F7 |
-| Pili | F2 · the merge board is four colours of the same object | 8 · drawing | DOES NOT ANSWER | drawn again when [partner] answers |
+| Pili | F2 · the merge board is four colours of the same object | 8 · drawing | DOES NOT ANSWER | drawn again when a playtester answers |
 | Pili | F3 · the shift you took is marked with a 22-px corner you have to be told about | 5 | ANSWERS, WITH A NOTE | the taken state gets a second cue at 64 px |
 | Pili | F4 · the drawer you are in is painted, not opened | 4 | fixed | mockdocs2.js |
 | Pili | F5 · the household's drawer ladder contradicts the drawer screen's | 3 · drawing | fixed | the journey page |
@@ -231,8 +231,8 @@ only the title, screen, row and verdict, ranked as each reviewer ranked them.
 | Beto | 6 · a pack's own state survives a reload and dies on the Trolley Pass, and only one screen says so | 5, 10 | ANSWERS, WITH A NOTE | G1 in the build order |
 | Beto | 7 · print | 6 | ANSWERS, WITH A NOTE | #196 |
 | Nacho | F1 · the sentence that says what a screen means is written, and never shown | all | ANSWERS, WITH A NOTE | the page's `line` becomes the document's first line, or is dropped |
-| Nacho | F2 · the questionnaire makes [partner] two opposite promises | 0 | fixed | questionnaire v4 |
-| Nacho | F3 · the drawer is the artifact our own research says will lie to her by week three | 4 | DOES NOT ANSWER | R17; the plan's answer is that leftovers feed it — say so on the screen |
+| Nacho | F2 · the questionnaire makes a playtester two opposite promises | 0 | fixed | questionnaire v4 |
+| Nacho | F3 · the drawer is the artifact our own research says will lie to its player by week three | 4 | DOES NOT ANSWER | R17; the plan's answer is that leftovers feed it — say so on the screen |
 | Nacho | F4 · three of the four kitchens are a flag with an apostrophe | 5 | ANSWERS, WITH A NOTE | names are placeholders; the owner's decision 6 |
 | Nacho | F5 · "Sal" is in the English recipe | 6 | overruled | Paty F2 |
 | Nacho | F6 · the recipe appears to have no method | 6 · 390×844 | ANSWERS, WITH A NOTE | the method is below the fold; with the fold |

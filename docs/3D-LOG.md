@@ -110,7 +110,7 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 ### 2026-09-08 · the camera turn
 - **Shipped:** 300ms ease-in-out, offered as a setting (`instant / quick / easy / slow` =
   0 / 150 / 300 / 520ms). `instant` is exactly the old behaviour.
-- **Reasoning worth keeping:** [partner] found the old *automatic* turn confusing (#65) and the cure
+- **Reasoning worth keeping:** a playtester found the old *automatic* turn confusing (#65) and the cure
   then was to make it manual. But the confusion was never that it turned — it was that the turn had
   no motion to follow, so the eye had to re-find the whole street from scratch. **A move you can
   watch is a move you can follow.**

@@ -148,7 +148,7 @@ screen that does not exist yet is an opinion until somebody has tapped it. Write
 HTML, drive it at 360×780 and 1440×900, and report its numbers as what they are: a prototype
 measured, not the game measured. Say which of those you did, in the report, in one line.
 
-*The moment: 2026-09-14, the questionnaire for [partner]. I was asked whether one question per screen or
+*The moment: 2026-09-14, the questionnaire for a playtester. I was asked whether one question per screen or
 one long scroll was right, and I could have argued it from taste. Building it took twenty minutes
 and answered it with a number instead — at 360×780, ONE question with six options and the note
 closed already needs 643 px in a 627 px pane, so even one-at-a-time scrolls and a single sheet of

@@ -13,7 +13,7 @@ to you — copy any file out of `content/meridian/` and edit it.
 
 Run `/game-brief` for the person whose world it is. It produces `docs/for-<name>/` — a README
 written *to* them, `QUESTIONS.md`, and `AFFECTED.md` (which answer moves which file, and how
-big the ask is). `docs/for-partner/` is the reference. **Do not skip this to "just start building":**
+big the ask is). A questionnaire folder in the private repository is the reference. **Do not skip this to "just start building":**
 every expensive reversal in Meridian's history was a thing nobody had asked for.
 
 Then open a bible and a ledger on day one, empty:
@@ -462,7 +462,7 @@ the day two worlds need to live in one deploy.
   `test/engine.smoke.js` is the first task of a second world**, so the second pack gets a
   suite it didn't have to write.
 - `room.js` (the office intake) and `docs.js` (deliverables, templates) are Meridian's
-  career layer. Fully removable; drop them and nothing else breaks (`docs/for-partner/AFFECTED.md`).
+  career layer. Fully removable; drop them and nothing else breaks (the reference questionnaire's `AFFECTED.md`, in the private repository).
 
 ### 3¾ · A staircase — the template (#4, 2026-09-07)
 
@@ -888,7 +888,7 @@ Two rules follow from it, and they are what a session should check itself agains
 2. **Every decision this file explains in prose is a question somebody could be asked instead.** When a
    section is written or repaired, the useful question is not only "is this still true" but "what would
    we have to ASK to stop needing this paragraph." The questionnaire template
-   (`docs/templates/questionnaire/`) is where those questions accumulate; the two rounds [partner] answered
+   (`docs/templates/questionnaire/`) is where those questions accumulate; the two rounds a playtester answered
    are its first evidence, and the comment box under every choice earned its keep in both rounds.
 
 **A world will stay special-cased for a long time, and that is fine** — mini-games may go their own

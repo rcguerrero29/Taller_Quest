@@ -8,7 +8,7 @@ description: Build a tailored questionnaire for someone who wants a custom game 
 Someone wants a game. Before anyone writes a map file, find out what they actually
 want — in their words, in a form they can answer on a phone in five minutes.
 
-The reference implementation is `docs/for-partner/` in `meridian-quest`. Read it before
+The reference implementation is a questionnaire folder in `meridian-quest`. Read it before
 writing a new one; it is the shape that worked.
 
 ## What you produce

@@ -12,8 +12,8 @@ and the AI crew's working methods. **A private repository** keeps the owner's ow
 the original history, private tools, and anything that describes a real person.
 
 **The rule: nothing about a real person reaches the public repository as said.** Where a design
-decision needs its reason, the reason is kept and the person is replaced by a bracketed stand-in such
-as `[partner]` or `[city]`.
+decision needs its reason, the reason is kept and the person is replaced by a playtester or a bracketed
+stand-in such as `[city]`.
 
 ```mermaid
 flowchart TD

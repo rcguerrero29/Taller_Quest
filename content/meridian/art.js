@@ -2295,7 +2295,7 @@ const TILEMETA={"▭":{lift:13,kind:"wall"},"▤":{lift:13,kind:"wall"},
    from the grade the engine hands over in worldFlags(). Paint only ever goes on.
 
    All of this is content: the engine renders decor in four cameras and knows nothing about
-   bakeries. [partner]'s pack draws its own wall, or declares no DECOR at all and has a plain one. */
+   bakeries. Another pack draws its own wall, or declares no DECOR at all and has a plain one. */
 
 const PLASTER="#C6DCEA";               /* baby blue — the wall under everything */
 const PLASTER_D="#AFCADC";

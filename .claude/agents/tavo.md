@@ -117,7 +117,7 @@ never be turned into one. Read `CLAUDE.md`, `docs/STORY.md`, `docs/OWNER.md` and
   does not log at all. **The tell:** any feature whose value depends on the player having told the
   truth about something the game cannot check.
 - **A question that FILLS a blank is not a question that DECIDES a build, and only one of them can
-  be cut for redundancy.** *Added 2026-09-14 from [partner]'s questionnaire.* [The example that taught this was taken out of the public copy.] **Sort every question into DECIDES (a fork you can
+  be cut for redundancy.** *Added 2026-09-14 from a playtester's questionnaire.* [The example that taught this was taken out of the public copy.] **Sort every question into DECIDES (a fork you can
   write both branches of and price) or FILLS (one build, empty without the answer), and apply the
   redundancy test only to the first pile.** The tell for a DECIDES question is that you can name
   both builds and their sittings; if you can only name one, you are collecting content, and content

@@ -139,8 +139,8 @@ in a corner facing each other.** A run along a wall is one-front for free; a cor
 one tile hands over exactly one document (`.find`), so every sheet in a run carries a `docs:[…]`
 row back to its siblings — the way out, made of paper.
 
-**The moment:** laying the household pantry, I put the fridge north and the chest freezer south of
-the same square of floor, the way a real cold corner goes, and had to re-lay the whole east wall.
+**The moment:** laying a pantry room, I put two appliances facing each other across one square of
+floor, and had to re-lay the whole east wall.
 
 **And the two sizes that decide a room before its furniture does:** the flat cameras show **10 × 8
 tiles** (`engine/engine.js`, grep `const VW=`), and the camera clamps at the world's edge (grep
