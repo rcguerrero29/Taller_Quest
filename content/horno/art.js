@@ -298,8 +298,8 @@ const hBinSide=rc=>{const{sx,sy}=rc;
 /* ---- LA MASA ON THE BENCH. One glyph, and it does not try to show development at all. ----
    A tile is ~35 screen pixels and the whole content of a knead is SURFACE — shaggy, smooth, silk.
    There is no version of that which reads at tile size, and the owner has already said so about
-   this exact object: "you can barely see what they are since they are so small even at my full
-   screen" (docs/ASKS.md, grep `barely see what they are`). So the tile says ONE true thing you can
+   this exact object: they are too small to make out, even on his full
+   screen (docs/ASKS.md, 2026-09-22). So the tile says ONE true thing you can
    read from across the room — there is dough on that bench and it is yours to work — and everything
    the knead actually changes happens in the card, where the same surface is drawn twenty to fifty
    times the area. The lump does slump and stand up with hDev(), because a lump that never changed

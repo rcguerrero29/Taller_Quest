@@ -19,7 +19,7 @@ cp index.html shell.css sw.js sw-register.js frame-guard.js qr.js manifest.webma
 cp -r engine vendor "$OUT/"
 cp -r content/meridian "$OUT/content/"
 
-# EL HORNO goes out too, at the owner's word on 2026-09-22 ("lets build/ship it"). It is its own
+# EL HORNO goes out too, at the owner's word on 2026-09-22 (build it and ship it). It is its own
 # world -- one room, one tray, one verb -- and it shares the engine and nothing else: it has no
 # service worker, no manifest, and it never touches content/meridian.
 #

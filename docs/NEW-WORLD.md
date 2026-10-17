@@ -1,7 +1,7 @@
 # Starting a new world — the template
 
-*Opened 2026-09-05. Owner: "i want to make sure we have a template for any other custom game in
-case we want to start a new 'world'/town/city." Everything below was read off the tree at
+*Opened 2026-09-05. The owner wants a template that any later custom game can start
+from: a new world, a new town, a new city. Everything below was read off the tree at
 `mq-v64`, not from memory; where the engine is not yet ready for a second world, it says so.*
 
 A world is **a folder**. The engine never changes. Meridian is the worked example sitting next
@@ -431,8 +431,8 @@ the day two worlds need to live in one deploy.
   table byte for byte; a pack with its own names declares its own, in its
   own `config.js`. The smoke fails the build if a world id is ever spelled in `engine/`
   again, and `test/engine.smoke.js` checks that every role a pack declares points at a real,
-  walkable place. **The full table, every role the engine reads** (owner, 2026-09-07: *"update
-  here and meridian and template so we have a good amount of metadata that includes these"*;
+  walkable place. **The full table, every role the engine reads** (the owner, 2026-09-07, asked for it
+  both in Meridian and in the template, so that both carry plenty of metadata about the roles;
   both packs carry it with a note per line, and Meridian's must equal the defaults key for key):
 
   | role | type | the engine uses it for | default (Meridian) |
@@ -489,7 +489,7 @@ upstairs #.........◺◺◺◺.....#    the rail, north side
 and the street's door lands on `(10,R)`. Meridian's HQ/f2 and the town's stall/loft carry exactly
 this; `test/engine.smoke.js` checks the portals land on walkable tiles in any pack.
 
-### 3⅞ · Seasons — the template (2026-09-08, owner: "we should have in both and template")
+### 3⅞ · Seasons — the template (2026-09-08: the owner wants it in both packs and in the template)
 
 A season is ONE block in `SEASONS` in the pack's config. The engine reads its keys and does less without any of
 them; nothing else in the engine knows a holiday's name. Two packs carry the same two seasons today (Día de
@@ -800,9 +800,9 @@ promises "copy this document" has to know its form will not be in the copy.
 
 A tile is about 35 screen pixels and `T3CAMD`/`T3CAMH`/`T3FOV` are engine constants no pack can set,
 so **there is no camera a world can pull in with.** The reader's canvas is the answer: 240–560 CSS px
-against that 35, which is seven to sixteen times the linear size for free, and the owner's own words
-for it are printed in the engine beside the code — *"you see tiles/icons from afar but you get close
-and can interact to see it full screen."* A thing whose content is TEXTURE or a GESTURE — dough
+against that 35, which is seven to sixteen times the linear size for free, and the owner's own picture
+of it is described in the engine beside the code — tiles and icons seen from afar, and close up you
+interact to see one full screen. A thing whose content is TEXTURE or a GESTURE — dough
 coming together, a seam, a photograph, a wiring diagram — belongs there and cannot work on a tile.
 
 Four things a second world needs to know before it builds one, all of them paid for once already:
@@ -873,8 +873,8 @@ Named rather than smoothed over, per the rule at the top of `docs/OPEN.md`:
 
 ## The north star for this document — the owner, 2026-09-15
 
-> *"we will learn from these for templates but we want templates to one day be made off of one prompt
-> or from one questionaire."*
+These teach the templates, but one day a template should come from one prompt
+or one questionnaire.
 
 **Where this document is going.** Today a new world is built by a person reading this file and making
 a few hundred decisions in the right order. The destination is that a world is built from **one
@@ -891,8 +891,8 @@ Two rules follow from it, and they are what a session should check itself agains
    (`docs/templates/questionnaire/`) is where those questions accumulate; the two rounds [partner] answered
    are its first evidence, and the comment box under every choice earned its keep in both rounds.
 
-**A world will stay special-cased for a long time, and that is fine** — *"we may veer off with mini
-games and this is going to be a special case"*. The template is not a cage; it is what is left after a
+**A world will stay special-cased for a long time, and that is fine** — mini-games may go their own
+way, and this one is a special case. The template is not a cage; it is what is left after a
 special case is built and somebody asks which half of it was general.
 
 ---
@@ -942,7 +942,7 @@ and never port back and you have a picture nobody can open.
 
 ## How a thing gets drawn here
 
-*Added 2026-09-17 on the owner's instruction — "why dont we have beautify everywhere?" Everything
+*Added 2026-09-17 on the owner's instruction — beautify should be everywhere. Everything
 this project has learned about drawing lived in `docs/BEAUTIFY.md`, which is **Meridian's own**
 register, full of Meridian's file names. A person building a second world reads THIS file and never
 that one. These five are the ones that are true of any world, in the plainest words they fit into.*
@@ -980,6 +980,6 @@ its size; one render at 8× said there was no window. If you are on the second a
 and somebody still says "off", **stop adjusting and take a picture of it.**
 
 **And the one about people rather than pixels:** on the second attempt, say you cannot see the gap
-and ask for a reference. *(Owner, 2026-09-16: "it still doesnt look right. how can you make something
-you dont know what it looks like?" Three versions went out called "better". Eight photographs fixed
+and ask for a reference. *(Owner, 2026-09-16: it still did not look right, and he asked how something can be
+made by someone who does not know what it looks like. Three versions went out called "better". Eight photographs fixed
 in one pass what three passes of reasoning had not.)*

@@ -1,7 +1,7 @@
 /* VISUAL SMOKE — the eyeball pass the automated suite cannot do.
  *
- * The owner's ask (2026-09-01): "can you run basic 'manual' smoke tests like oh this
- * looks like a door or store or restaurant or construction site". node smoke.js proves
+ * The owner's ask (2026-09-01): basic by-eye smoke tests that say this looks like a
+ * door, a store, a restaurant or a construction site. node smoke.js proves
  * the maps are STRUCTURALLY sound; it cannot tell you a door is lying on the floor.
  * This drops the hero at a list of spots, screenshots the viewport in the named camera,
  * and writes shots/*.png for a human (or a model) to look at.

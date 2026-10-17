@@ -1,6 +1,6 @@
 # The gauge — a world built to be measured, not played
 
-*Built 2026-09-10 at the owner's word: "ok try the proof pack sure."*
+*Built 2026-09-10 at the owner's word: he agreed to try the proof pack.*
 
 `content/gauge/` is **El Faro**: five tiles, two people, one room, one quest, no doors. It is not a
 game and is never linked from one. Its only job is to **fail in the places a new game would fail**,
@@ -87,7 +87,7 @@ engine never loaded"*.
 
 ## COUNT-ONLY — what replaced the note
 
-Owner, 2026-09-17: *"can we make the guards smarter instead of just making them notes?"* He is right,
+Owner, 2026-09-17: make the guards smarter rather than turning them into notes. He is right,
 and a `NOTE-ONLY` was a shrug: **a guard that says "I measured nothing" is still a guard that measured
 nothing**, and next week nobody reads the note.
 

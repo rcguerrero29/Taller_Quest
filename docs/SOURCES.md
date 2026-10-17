@@ -1,7 +1,7 @@
 # Where a finding comes from
 
-*Opened 2026-09-09 at the owner's word: "tell me how youre getting or where you get the info from and
-log it so we can check later or publish findings."*
+*Opened 2026-09-09 at the owner's word: say how and where the information comes from, and log it so
+it can be checked later or the findings published.*
 
 **Every claim in this project's registers carries one of four tags.** Not because the rules are
 strict, but because the four kinds of claim have wildly different worth, and until now they have all

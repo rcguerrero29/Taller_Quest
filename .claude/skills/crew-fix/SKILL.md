@@ -5,9 +5,9 @@ description: Put the city's crew to work on real bugs — agents diagnose, write
 
 # Crew fix — the city fixes its own bugs, and nothing lands unreviewed
 
-*Opened 2026-09-10 at the owner's word: "why dont you have agents use the city to also fix the bugs
-and you review these and have agents write tests and you review all that too? is this in the game?
-add it as a skill."*
+*Opened 2026-09-10 at the owner's word: have the city's agents fix the bugs too, with the session
+reviewing that work, the agents writing tests and the session reviewing those as well — and add it
+as a skill.*
 
 ## The idea, in one line
 
@@ -19,8 +19,8 @@ that called them **reviews every line before it lands.**
 ## Before anything: two files, and the second one is new
 
 **Every agent on a crew run reads `docs/POSTMORTEM.md` first.** Opened 2026-09-12 at the owner's
-word — *"make sure we are documenting and informing all agents of your findings, be them silly or
-not, so they can make sure not to make your mistake"*. It is every way the sessions have actually got
+word — document every finding and tell every agent, silly or
+not, so nobody repeats the mistake. It is every way the sessions have actually got
 it wrong, with what each one cost, including the stupid ones. It is short, it is specific, and three
 of the mistakes in it were made *by the session that was writing up the previous one*.
 
@@ -136,8 +136,8 @@ insubordination. Two rules follow, and they are cheap:
 
 ## Step 2½ — the MOCK: show what DONE looks like before you fix anything
 
-*Owner, 2026-09-11: "mocks as goals to fix (this is newly mentioned but sounds like something we
-should do if we dont already for all agents)."*
+*Owner, 2026-09-11: mocks as goals to fix — newly raised, and worth doing for every agent if it is
+not done already.*
 
 **We have done this once, ad hoc, and it was the best-run change on this board.** Asked to make a tall
 thing turn to glass, the crew did not argue about a number — three panels were **rendered in the real
@@ -208,10 +208,9 @@ guarantee scan that could not see the thing it guarded (E5). Ask every time:
 
 ## The flight notes — every agent, before and after, every time
 
-*Added 2026-09-11 at the owner's word: "lets try to get agents to be forced to document how they can
-improve before they start the task and after too to try to keep improving themselves and their
-persona based on their experience in the first iteration, they have to ensure their persona was
-fitting or they modify it to plan or execute better."*
+*Added 2026-09-11 at the owner's word: every agent must write down how it can improve, before the
+task and after it, so it keeps improving itself and its persona from experience; after the first
+iteration it checks that its persona fitted, or changes it to plan or execute better.*
 
 **Two short notes bracket every job.** They go in `docs/crew/FLIGHT-NOTES.md`, newest first, and the
 next iteration READS THEM FIRST. That reading is the whole mechanism: without it, iteration two is
@@ -286,7 +285,7 @@ empty room`; `docs/QA-PASS.md` step 0 and E10).
 
 ## Persona edits: proposed by the agent, decided by the session
 
-*Settled 2026-09-21, the owner: "yeah update the older ones so you can make the decison to update personas."*
+*Settled 2026-09-21: the owner approved updating the older ones, so the decision to update personas can be made.*
 An agent proposes an edit to its own file in its post-flight; the run writes that proposal to
 `docs/personas/proposed/<persona>/<RUN-ID>.md` — always, because it is the record — and **the calling
 session then applies it to `.claude/agents/` or refuses it, in writing**, in the run file and in the
@@ -295,17 +294,16 @@ The owner overrules any of it at any time.
 
 ## The mural — one panel per agent, in your own hand
 
-*Owner, 2026-09-11: "i want the mural please" → then "can be more creative and if its that way one
-per agent but they can collaborate with one too" → then "remind them to be creative and that it
-doesnt have to be a report, just to reflect what is the persona - good representation so they have to
-keep adding to the mural in the same amount of effort, if possible."*
+*Owner, 2026-09-11: he wanted the mural → then more creativity, one panel per agent, though agents may
+share one → then a reminder to be creative: a panel is not a report but a reflection of the persona,
+a good likeness, so they keep adding to the mural with the same effort as the work, where possible.*
 
 **Every agent on a run proposes one mural panel.** It goes on the crew's wall, which
 lives in a private pack — you propose it, the calling session paints it, exactly like a
 persona edit. It is not optional and it is not a summary of your report.
 
-> **2026-09-14, the owner, after the cooking-game run painted nothing:** *"ensure any crew mode
-> creates a mural entry"* and *"agents need to be more creative please."* That run's brief was
+> **2026-09-14, the owner, after the cooking-game run painted nothing:** every crew run makes a
+> mural entry, and the agents need to be more creative. That run's brief was
 > written by hand for a workflow and dropped this section, so seven designers returned and the wall
 > got nothing. **Two rules from it.** (1) **A brief is never written by hand.** Copy this section into
 > the brief verbatim, for every agent, every run; `test/town.smoke.js` fails the build when an
@@ -336,9 +334,9 @@ a spec sheet, a sample card, a proof — draw on that paper.
 **And it does not have to be a report.** A joke lands. A single object lands. The thing you refused
 lands hardest of all. The owner asked for the harsh ones by name.
 
-### The effort bar, in his words
+### The effort bar, as he set it
 
-> *"good representation so they have to keep adding to the mural in the same amount of effort, if possible"*
+A good likeness, kept up on the mural with the same effort as the work, where possible.
 
 **The same effort as the work.** A panel dashed off in four lines while the report ran to four
 thousand words is the wall telling the truth about what you thought mattered, and it is the wrong
@@ -402,14 +400,14 @@ more agreeable version of itself. So:
 
 ## ✋ When two things contradict, ask him
 
-*His instruction, 2026-09-11: "you should ask the owner or me when that arises… im here so feel free
-to ask qs."*
+*His instruction, 2026-09-11: when that arises, ask him; he is here, and questions are
+welcome.*
 
 **This is not a step in the loop. It interrupts whatever step you are on.** Iteration 1 is the
 argument for it: the designer said the trolley line is worthless because both streets already touch
 by a door; the tranviario said the menu should be killed outright and cited a settled rule to do it;
-and the owner's actual answer was **neither** — *"if i can step into it its not about whether it
-takes me to a new place i couldnt get to, but the convenience."* Two careful agents, both reasoning
+and the owner's actual answer was **neither** — if he can step into it, the point is not whether it
+takes him somewhere new, but the convenience. Two careful agents, both reasoning
 from real evidence, and one sentence from him settled it. **Nobody could have derived that. They
 could have asked.**
 

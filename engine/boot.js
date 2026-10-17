@@ -1,5 +1,5 @@
 /* ---------- BOOT — which of the engine's own files this world actually needs ----------
-   Owner, 2026-09-17: "4. fine make sure that it is customizeable."
+   The owner approved item 4, on condition that it stays customisable.
 
    `vendor/three.min.js` is 594KB raw and 149KB gzipped — TWENTY-FOUR PER CENT of the whole
    download — and it was fetched, parsed and executed on every boot of every world, including a

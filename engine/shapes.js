@@ -475,7 +475,7 @@ const SHAPES=(function(){
     return turned(parts,facing(x,y));};
 
   /* ---------- THE AGILITY COURSE (3 4 5) — three pieces of gear, each turned to the line the dog runs ----------
-     Owner, 2026-09-29: "please also fix the dog agility course too - shape and beautify please". They were pictures
+     The owner asked for the dog agility course to be fixed too, shaped and beautified. They were pictures
      that turned with the camera ("billboard on purpose" was a crew call; the owner reversed it that day). The plan,
      a winged hurdle with a striped bar in cups, a ribbed tunnel with dark mouths and sandbags, weave poles on a base
      rail — and each piece TURNED TO THE LINE THE DOG RUNS, which is the engine's own answer (`gearLine` in
@@ -515,8 +515,8 @@ const SHAPES=(function(){
     for(let i=0;i<5;i++)parts.push({s:"cyl",x:0,y:BARH,z:-L/2+(i+0.5)*L/5,r:0.03,h:L/5+0.001,c:i%2?TAPE:FRAME,rx:Math.PI/2});
     return turned(parts,runTurn(x,y));};
 
-  /* TUNNEL (4) — a FULL tube, shut overhead, that a dog runs through and a person cannot fit in (owner, 2026-10-03:
-     "you had previously provided full tunnel - should also work for the pets to go through but i cant fit in it").
+  /* TUNNEL (4) — a FULL tube, shut overhead, that a dog runs through and a person cannot fit in (the owner asked
+     for the full tunnel offered before: a pet goes through it, the player cannot fit).
      Made the way one is: a vinyl sleeve over a spiral of wire, laid on the ground, held down with bags of sand. The
      sleeve is ten staves round an OPEN bore — a cylinder here would be capped, and a capped tube is a drum — with a
      near-black lining, so a mouth seen end-on is dark and the bore really is empty (the guard casts a ray down it).

@@ -24,7 +24,7 @@ const WORLD_DEFS={
     by content/meridian/room.js, not by a letter here. The north window (three "|"
     panes over the desk, declared in art.js) looks north: the road out of the barrio
     and the line being laid — Nacho + Don Güero, 2026-09-02. */
- /* MID-MOVE since 2026-09-02 (owner: "for the move it should be mid"): four taped boxes
+ /* MID-MOVE since 2026-09-02 (the owner chose mid-move): four taped boxes
     (□, art.js), one of Don Güero's cones and a plant still in its pot. The arrival tile
     (14,14) and the sight line from the top of the flight to the window stay clear — Nacho's
     "nothing in the way" is an answer a player can pick, so it has to be true. */
@@ -157,9 +157,9 @@ const WORLD_DEFS={
     unseen and appear at the top, in the stair room east of the office (#7, the owner's plan,
     2026-09-07): a door at (15,2) between the rooms, the engine's railed well at (16–20,4) with
     ▼ at (17,4) the way down. The office itself did not move. */
- /* THE FLIGHT IS WALKED NOW (owner, 2026-09-17: "then that door right there to the top of a
-    staircase… until you figure out how to teleport in my side of the screen"; ARCH-LOG A16, option
-    B, signed "ok lets do b"). It was ▼ at 16 with three treads and the landing at 21-22, and the
+ /* THE FLIGHT IS WALKED NOW (the owner, 2026-09-17: that door, to the top of a
+    staircase, until a way is found to arrive on his side of the screen; ARCH-LOG A16, option
+    B, which he approved). It was ▼ at 16 with three treads and the landing at 21-22, and the
     avenue door put you on the LANDING — at the top, with the whole climb behind you, having walked
     none of it. Two things changed and neither is an engine change:
       · the run is FIVE treads against a wall 1.1 tiles high, so the well is now 0.96 deep
@@ -198,8 +198,8 @@ const WORLD_DEFS={
      and docs/BEAUTIFY.md row 3) — which turned the trail solid too, so the arrow that shows the
      souls the way was a wall you walked around, while this comment went on saying "Walkable". A
      raised bed and a scatter of loose petals are not the same thing and may not share a name.
-     la florista, 2026-09-22 — the owner's words: "can you try to lookinto making petals? that i
-     can walk and interact through as if they were mounds of items piled up". */,
+     la florista, 2026-09-22 — the owner's ask: petals you
+     can walk through and stir, like mounds of things piled up. */,
      "FFF~~FFFFFFFFFFFFFFFFFFF"]
 };
 /* la caja de escalera (#4, Don Güero's candidate B, walked in the town first, 2026-09-06): HQ grew
@@ -218,8 +218,8 @@ const PORTALS={hq:{"▲":{to:"f2",x:14,y:14,dir:"left",mark:"up"},"E":{to:"st",x
                ta:{"%":{to:"st",x:23,y:12,dir:"up"}},
                pa:{"@":{to:"ex",x:7,y:2,dir:"up"}},
                li:{"*":{to:"ex",x:12,y:2,dir:"up"}},
-               /* #7 (owner, 2026-09-07: "expand the building for meridian in the right side and add the
-                  staircase through a door from that room"): the office grew EAST; a door at (15,2) opens into
+               /* #7 (the owner asked to extend Meridian's building on the right and add the
+                  stairs behind a door from that room): the office grew EAST; a door at (15,2) opens into
                   a stair room whose railed well goes down to the avenue — the last old `1` left the city */
                no:{"▼":{to:"st",x:25,y:1,dir:"down"}}};
 PORTALS.st["%"]={to:"ta",x:10,y:10,dir:"up"};
@@ -310,8 +310,8 @@ const TOWNLBL=[
    because those are the two that happen here; no neighbour in this city hands you a document, so
    "read" is not declared and a person who only had one would carry no mark at all. */
 const MAPMARK=["work","host"];
-/* THE PLAN DRAWS TWO STREETS (engine TOWNPLAN, 2026-09-16). The owner, from play: "im shown the
-   other street map on calle 2" — he was standing on Calle Dos and the plan drew Calle Principal
+/* THE PLAN DRAWS TWO STREETS (engine TOWNPLAN, 2026-09-16). The owner, from play: he was shown
+   the wrong street's map — he was standing on Calle Dos and the plan drew Calle Principal
    with a pin in the corner. Calle Principal is 30x16 and Calle Dos is 24x11, so Dos sits at oy 17
    and the row of paper between them reads as the block between two streets. */
 const TOWNPLAN=[{world:"st",ox:0,oy:0},{world:"ex",ox:0,oy:17}];
@@ -337,16 +337,16 @@ const TOWNPLAN=[{world:"st",ox:0,oy:0},{world:"ex",ox:0,oy:17}];
 const MAPDOT={pk:[22,10]};
 /* ---------- trolley fast travel: the streets never dead-end, they connect ---------- */
 /* Where the Trolley Pass can put you: STREET STOPS ONLY. A trolley does not stop on the
-   second floor of a building — the office came off this list on 2026-09-03 ("i dont like that
-   i go from a train to a floor. dont do that. i asked to make the world realistic"). You reach
+   second floor of a building — the office came off this list on 2026-09-03 (the owner did not
+   want a ride to end on an upper floor; he had asked for a realistic world). You reach
    the office the way you would reach an office: through the front door and up the stairs. */
-/* ❗El camino, the owner's pick (2026-09-08): "do the street with a troley at the end or build the trolley that
-   comes in periodically and ther is no building, person or house in the way, or it stops for people crossing or
-   if i call it." The line the tram runs, per world: the row, and the ends it enters and leaves by. Calle
+/* ❗El camino, the owner's pick (2026-09-08): the street with a trolley at its end, an occasional
+   trolley whose path nothing blocks (building, person or house), stopping for people crossing or
+   when called. The line the tram runs, per world: the row, and the ends it enters and leaves by. Calle
    Principal keeps both lanes and its crossing at x13–14; Calle Dos is one lane (row 1) with the sidewalk its
    two houses stand on below it (row 2) and a crossing at each door. The smoke fails if anything stands on a
    line: a wall, a person, a lot or a door. */
-/* The stop moved from x:0 to x:1 on 2026-09-22 — the owner, in three words: "ok move one tile east."
+/* The stop moved from x:0 to x:1 on 2026-09-22 — the owner asked for it one tile east.
    A car standing at a platform on the line's very FIRST tile can only stand at x=0 (troClampX keeps
    it on the street), so its body ran 0..2 and the platform sat at its west END: it presented its tail
    door to the person waiting, and at a quarter turn the car was between him and everything. One tile

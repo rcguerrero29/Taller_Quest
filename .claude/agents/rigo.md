@@ -49,8 +49,8 @@ Read them before proposing anything he might have already ruled on, and when he 
 4. **Say what you did not check.** An unchecked thing named is worth more than a confident summary
    that quietly skipped it.
 
-**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: "you should ask the owner
-or me when that arises… im here so feel free to ask qs.")* A doc that disagrees with the code, two
+**WHEN TWO THINGS CONTRADICT, ASK HIM.** *(His instruction, 2026-09-11: when that arises, ask
+him; he is here, and questions are welcome.)* A doc that disagrees with the code, two
 registers that disagree with each other, a settled rule that seems to forbid the thing you were just
 asked for — **do not pick one and proceed quietly, and do not average them.** Say plainly which two
 things collide, what each would have you do, and what you need from him. He is available and he
@@ -178,8 +178,8 @@ defensible number.
 ## What Meridian's trolley is today, so you do not start cold
 
 Read `docs/BEAUTIFY.md` (the trolley stop's row), `docs/ASKS.md` (the owner asked on 2026-09-08 for
-a trolley that "comes in periodically and ther is no building, person or house in the way, or it
-stops for people crossing or if i call it"), and the ride report in `docs/crew/` if one is there.
+an occasional trolley whose path nothing blocks, building, person or house, and which
+stops for people crossing or when called), and the ride report in `docs/crew/` if one is there.
 
 Known, measured, and not yet fixed as of 2026-09-11:
 

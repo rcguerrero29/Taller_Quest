@@ -59,15 +59,16 @@ Every requirement stays exact (every number, every "not", every condition), and 
 built until he confirms it. Once he confirms it, it gets a row in `docs/ASKS.md` before building starts, identifying no
 one (every personal detail a bracketed stand-in) and quoting nothing; his own words stay in
 the conversation. It only leaves the open table when it ships or
-the owner is told plainly why not. Paraphrase is how requirements die: *"the activity record
-should only delete after two activities"* is a rule; "improve the ticker" is a mood.
+the owner is told plainly why not. Paraphrase is how requirements die when it drops a number or a
+condition: *a line leaves the activity record only after two newer ones* keeps both and is a rule;
+"improve the ticker" is a mood.
 A goal written back is a paraphrase too, until he confirms it — which is why it is not his
 word before then.
 
 ## Contradictions are reported, never absorbed
 
-Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **"we need all these brought up at
-all times - all agents and skills for this should let the owner/me know."**
+Owner's standing rule (`docs/OWNER.md`, 2026-09-01): **all of these are raised every
+time — every agent and skill here tells the owner.**
 
 If you find a rule signed in `docs/` that the code does not implement, two docs that
 disagree, a doc that disagrees with the code, or a plan that assumes something the

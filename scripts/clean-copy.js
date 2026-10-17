@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* THE CLEAN COPY — the public repository, made from the originals by an allowed list and a private map.
-   The owner, 2026-09-24: "create another internal document that maps the verbatim, thus we basically
-   just duplicate it, and programatically replace ... and for other personal details dont mention them
-   if not needed and summarize". And 2026-09-25, after the first copy leaked and broke things: keep the
-   diaries private, and "Yes, go" to a split made from an allowed list.
+   The owner, 2026-09-24: a second, internal document maps what is said word for word, so the copy is
+   a duplicate with the mapped terms replaced by program; other personal details are left out where
+   they are not needed, or summarised. And 2026-09-25, after the first copy leaked and broke things: keep the
+   diaries private, and he approved a split made from an allowed list.
 
    In order:
    1. ALLOWED LIST (scripts/public-manifest.txt, or the one --manifest names): a tracked file is copied only

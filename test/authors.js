@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* NO PERSONAL ADDRESS LEAVES TOWN — not in a commit, not in a file.
-   The owner, 2026-09-24: "whattt you forget about targetted phishing attacks ... i thought we had a
-   cybersecurity expert in our engine... someones failing."
+   The owner, 2026-09-24: targeted phishing had been forgotten, though the engine was meant to have a
+   security expert, and somebody had failed.
 
    What happened. Every commit carries an author name and address, and a committer, to a public server
    on every push — and none of it is in a diff, so no review, no persona and no guard ever looked. [Personal addresses once reached commit metadata; this guard is why that cannot happen again.] An address

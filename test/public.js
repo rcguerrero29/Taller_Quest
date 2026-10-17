@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* R10 — WHAT WE ARE ABOUT TO PUBLISH. The security gate, run on the built artifact.
    (docs/REGRESSION.md §3. Registered 2026-09-10 after a private pack was found on the public
-   internet. Owner: "this is a major risk and it could keep ya healthy too.")
+   internet. The owner called it a major risk, and the check a healthy habit.)
 
    WHY THIS EXISTS AND WHY IT IS NOT R8. R8 was built on 2026-09-06 to close exactly this class —
    its stated gap was "a second public pack would go unscanned" — and the mechanism it chose was
@@ -155,7 +155,7 @@ let receiptsRead = 0;
    Until 2026-09-27 this read index.html ALONE — the bakery's shell (content/horno/index.html) shipped
    too and nobody read its policy — and it held Google Fonts on a list of "declared" hosts, so the one
    request every player's device made to another company was a permission, not a finding. #254 and the
-   owner's "make sure that we dont go out with open doors" closed both: the fonts are served from this
+   owner's ask that nothing ship with doors left open closed both: the fonts are served from this
    site, and EVERY .html page in the box is read here. For each, the policy must be exactly this site
    and nothing else, no script may be written inside the page, no link may carry code, and nothing
    may leave for another host. Reading no page at all is a red, not a pass. */

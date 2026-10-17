@@ -1,9 +1,8 @@
 # Genre rules — what other games already proved, written as a rule you can build against
 
-*Opened 2026-09-11 at the owner's word: "dont worry about the cooking game too much but have agents
-learn about it so we can ensure we prepare to build one in the near future - have this documented as
-well as the research for other game genres, best practices, etc. **all agents much learn -
-countinuous improvement and learning is important**"*
+*Opened 2026-09-11 at the owner's word: the cooking game is not the priority, but the agents learn
+about it so one can be built soon; document it, with the research on other game genres, best
+practices and the like. **Every agent must learn — continuous improvement and learning matter.***
 
 **This file is two pages on purpose.** It holds the *rule* and the *trap*. It does not hold the
 history — the history is in `docs/research/`, linked at the bottom, and it is worth reading if you
@@ -144,7 +143,7 @@ year cautionary tale and the named failure is not the wait — it is that **ther
 fast-forward**. `[WEB]` — full working with URLs in `docs/meetings/2026-09-11-la-parada.md` §1.
 
 **R14 · Y-sort by the FEET, not by the sprite's top-left.** The named beginner error in every 2D
-painter's-algorithm game, and it is the sentence *"I'm standing on things I'm standing behind"*
+painter's-algorithm game, and it is standing on the things you stand behind,
 written in code. For a 3D camera, Baldur's Gate 3's answer is a **local** cutout around the player —
 not a global transparency — run on a delay, ground separated from walls, faded gradually.
 `[WEB]` — full working in `docs/meetings/2026-09-11-la-parada.md` §2. **Not re-verified against
