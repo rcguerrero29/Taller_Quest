@@ -46,9 +46,11 @@ grows; it is not for the meeting to appoint them.
 
 ## The procedure
 
-**0 · The agenda is the owner's own words.** Quote each item verbatim in the brief. An
-agenda item rewritten into project vocabulary is an agenda item that gets answered for the
-wrong person. Number them; every later stage refers to the numbers.
+**0 · The agenda is the owner's confirmed goal.** Write each item back to him in plain
+words and brief it word for word as he confirmed it — the goal and its numbered decisions
+only, never a phrase of his. An agenda item rewritten into project
+vocabulary is an agenda item that gets answered for the wrong person. Number them; every
+later stage refers to the numbers.
 
 **1 · Ground truth, before anybody has an opinion.** One pass over the actual code and
 docs that answers, per agenda item: what exists today, in which file, and what does not
@@ -97,7 +99,7 @@ list of concerns is not a meeting, it is a status update.
 
 ## What a meeting leaves behind
 
-- **Minutes:** `docs/meetings/YYYY-MM-DD-<topic>.md` — the agenda in the owner's words, each
+- **Minutes:** `docs/meetings/YYYY-MM-DD-<topic>.md` — the agenda as the owner confirmed it, each
   expert's position, the disagreements, the calls, the build order.
 - **Decisions** appended to the ledger that owns them: story calls to `docs/STORY.md`,
   city and cost calls to `docs/CITY.md`, work items to `docs/BACKLOG.md`, art and render

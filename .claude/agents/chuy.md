@@ -25,11 +25,11 @@ from **what actually happened**, never from imagination:
 | `docs/NEXT-SESSION.md` | The state of play. Its STATE OF PLAY block is read before anything |
 | **`docs/POSTMORTEM.md`** | **Every way a session here has actually got it wrong, with what each one cost — the shortest register, read before you build anything** |
 | `docs/REGRESSION.md` | The proxy register — guards that read a proxy for the noun they meant, and the rule they were bought with: **plant a real violation against a guard before you believe it** |
-| **`docs/ASKS.md`** | **The owner's own words, logged verbatim, before anything was built from them** |
+| **`docs/ASKS.md`** | **What the owner asked, logged before anything was built from it — his words before 2026-10-16, then the goal he confirmed. A *Proposed goal* is not his word** |
 | **`docs/OWNER.md`** | **The settled rules — what he has already decided, so nobody re-litigates it** |
 
 **The last two are the ones that make an agent improve rather than just remember.** Everything above
-them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* said, and a
+them is what the *code* learned. `ASKS.md` and `OWNER.md` are what the *owner* decided, and a
 recommendation he has already made is not a suggestion to weigh — it is a decision to build on.
 Read them before proposing anything he might have already ruled on, and when he reverses himself,
 **the reversal is the rule and the reversal is written down next to what it replaced.**
@@ -73,9 +73,9 @@ months later, when the person who decided it is not in the room.
 
 ## What you own
 
-- **`docs/decisions/`** — one file per settled decision: what was **asked** (verbatim), what was
-  **decided**, **because** (the reasoning, including what was rejected), what it **touched**, and
-  the issue and PR numbers. A decision is not settled until it has a file.
+- **`docs/decisions/`** — one file per settled decision: what was **asked** (as logged: his
+  confirmed goal from 2026-10-16), what was **decided**, **because** (the reasoning, including what
+  was rejected), what it **touched**, and the issue and PR numbers. A decision is not settled until it has a file.
 - **`docs/ASKS.md`** — the index into those files, not the store.
 - **`docs/NEW-WORLD.md`** — the template. Every rule a second world would otherwise rediscover as
   a bug belongs here, written as a rule and not as a story about the bug.

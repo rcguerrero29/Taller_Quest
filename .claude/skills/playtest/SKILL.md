@@ -53,11 +53,17 @@ generalised guard — for every world, from every way in, everything readable mu
 the place must name itself in both languages, and a door with somebody waiting behind it
 must say so. **Add to that audit whenever a new kind of affordance appears.**
 
-**2 · Quote the ask, then log it.** Every request in the owner's message gets a verbatim row
-in `docs/ASKS.md` before building starts, and only leaves the open table when it ships or
+**2 · Write the ask back, then log it.** Every request in the owner's message is written
+back to him first: the goal in a sentence or two, then each decision as a numbered rule.
+Every requirement stays exact (every number, every "not", every condition), and nothing is
+built until he confirms it. Once he confirms it, it gets a row in `docs/ASKS.md` before building starts, identifying no
+one (every personal detail a bracketed stand-in) and quoting nothing; his own words stay in
+the conversation. It only leaves the open table when it ships or
 the owner is told plainly why not. Paraphrase is how requirements die when it drops a number or a
 condition: *a line leaves the activity record only after two newer ones* keeps both and is a rule;
 "improve the ticker" is a mood.
+A goal written back is a paraphrase too, until he confirms it — which is why it is not his
+word before then.
 
 ## Contradictions are reported, never absorbed
 
