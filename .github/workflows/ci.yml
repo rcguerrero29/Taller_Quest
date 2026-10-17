@@ -109,7 +109,7 @@ jobs:
         run: |
           node test/quotes.js --selftest
           if ! node test/quotes.js; then
-            echo "FAIL: the plain run above is red, so the commits a pull request brings were not read. For each line it names, say in plain words what was asked, keeping its date and issue number, in a commit on this branch; a line a person reads and finds is not his words goes on REVIEWED in test/quotes.js with its fingerprint (node test/quotes.js --list) and a reason. For each stale entry it names, take that entry off REVIEWED."
+            echo "FAIL: the plain run above is red, so the commits a pull request brings were not read. For each line it names, say in plain words what was asked, keeping its date, in a commit on this branch; a line a person reads and finds is not his words goes on REVIEWED in test/quotes.js with its fingerprint (node test/quotes.js --list) and a reason. For each stale entry it names, take that entry off REVIEWED."
             exit 1
           fi
           if [ "$EVENT" != "push" ] || [ "$REF" != "refs/heads/main" ]; then

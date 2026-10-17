@@ -262,7 +262,7 @@ const decode = s => s.indexOf('&') < 0 ? s : s.replace(ENTITY, (e, name, hex, de
    that adds one says so in its pull request. Game text needs no entry: a shop owner or a column
    label in a code string closes its string, so it is not an opening quote (the self-test holds it). */
 const REVIEWED = [
-  ['content/meridian/strings.js', '65cf250c85', 'game text players read (the petal lines, English); the last cleanup left it for the owner to decide, and it stays until he does. Not a hit: kept here so the decision stays visible, and editing the line takes it off'],
+  ['content/meridian/strings.js', '65cf250c85', 'game text players read (the petal lines, English); the owner decided on 2026-10-17 that it stays. Not a hit: kept here so the decision stays visible, and editing the line takes it off'],
   ['content/meridian/strings.js', '770bdb0196', 'the same game text in Spanish; it moves with the English line'],
   ['scripts/clean-copy.js', '6a22bec318', 'a self-test fixture: a made-up credit, date and word, built at run time'],
   ['scripts/clean-copy.js', 'c817b616bb', 'the same fixture, its expected result'],
@@ -688,7 +688,7 @@ function main(files, reviewed, quiet) {
   const { hits, fresh, stale } = judge(files, reviewed);
   if (fresh.length || stale.length) {
     if (fresh.length) {
-      out('FAIL: ' + fresh.length + ' line(s) have the shape of a quote credited to the owner. His words are not published here: say in plain words what was asked, keeping its date and issue number, and drop the quote. If a line is not his words, a person reviews it and adds its file, fingerprint and reason to REVIEWED in test/quotes.js.');
+      out('FAIL: ' + fresh.length + ' line(s) have the shape of a quote credited to the owner. His words are not published here: say in plain words what was asked, keeping its date, and drop the quote. If a line is not his words, a person reviews it and adds its file, fingerprint and reason to REVIEWED in test/quotes.js.');
       fresh.slice(0, 50).forEach(h => out('- ' + say(h)));
       if (fresh.length > 50) out('- … and ' + (fresh.length - 50) + ' more (node test/quotes.js --list)');
     }
@@ -744,7 +744,7 @@ if (require.main === module) {
       console.log('FAIL: ' + P.length + ' line(s) a push would publish have the shape of a quote credited to the owner.');
       P.slice(0, 50).forEach(p => console.log('- ' + p));
       if (P.length > 50) console.log('- … and ' + (P.length - 50) + ' more');
-      console.log('Say in plain words what was asked, keeping its date and issue number. A quote in a commit stays in the public history once it is pushed, so it comes out of that commit before the push: a new branch from the last pushed commit, with the work brought over without it.');
+      console.log('Say in plain words what was asked, keeping its date. A quote in a commit stays in the public history once it is pushed, so it comes out of that commit before the push: a new branch from the last pushed commit, with the work brought over without it.');
       process.exit(1);
     }
     console.log('OK: ' + tree.filter(f => f.text != null).length + ' text files in the working tree and ' + commits.length + ' commit(s) no remote holds yet: nothing a push would publish has the shape of a quote credited to the owner.');
@@ -773,7 +773,7 @@ if (require.main === module) {
       console.log('FAIL: ' + P.length + ' line(s) the commits of ' + spec + ' bring have the shape of a quote credited to the owner.');
       P.slice(0, 50).forEach(p => console.log('- ' + p));
       if (P.length > 50) console.log('- … and ' + (P.length - 50) + ' more');
-      console.log('Say in plain words what was asked, keeping its date and issue number. A quote in a middle commit stays in the history a pull request publishes, even when a later commit takes it out, so it comes out of that commit: a new branch from the base, with the work brought over without it.');
+      console.log('Say in plain words what was asked, keeping its date. A quote in a middle commit stays in the history a pull request publishes, even when a later commit takes it out, so it comes out of that commit: a new branch from the base, with the work brought over without it.');
       process.exit(1);
     }
     console.log('OK: ' + R.commits.length + ' commit(s) in ' + spec + ' and the ' + R.tip.filter(f => f.text != null).length + ' text files at its tip: nothing they bring has the shape of a quote credited to the owner.');
