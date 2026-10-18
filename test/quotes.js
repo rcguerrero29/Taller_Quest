@@ -476,6 +476,11 @@ function hookCases(mark) {
     r = hook('git push origin HEAD');
     mark(r.status === 2 && r.stderr.indexOf('PUSH REFUSED by test/quotes.js') === 0 && r.stderr.indexOf('commit ' + two + ': docs/notes.md:3 ') >= 0 && quiet(r),
       'the hook: a committed plant, pushed, is refused (exit 2), named by commit and file:line and never by its words', why(r));
+    /* the same push by a git alias (the fix round, 2026-10-18: the hook's alias wiring had no red case of its own) */
+    git('config', 'alias.ship', 'push');
+    r = hook('git ship origin HEAD');
+    mark(r.status === 2 && r.stderr.indexOf('PUSH REFUSED by test/quotes.js') === 0 && r.stderr.indexOf('commit ' + two + ': docs/notes.md:3 ') >= 0 && quiet(r),
+      'the hook: the same push by a git alias (alias.ship = push) is read as the push it stands for, and refused (exit 2)', why(r));
     fs.unlinkSync(path.join(lab, 'docs', 'notes.md'));
     git('add', '-A'); git('commit', '-q', '-m', 'three');
     r = run([]);

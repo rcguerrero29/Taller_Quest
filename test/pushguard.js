@@ -37,9 +37,14 @@
      cannot find. The refusal says what to do instead: seed the new repository from a clean copy.
    WHAT STILL PASSES, said plainly: origin itself repointed (`git remote set-url origin <elsewhere>`), since own is
    what origin says; a fresh commit of this repository's files (`git checkout --orphan`, `git commit-tree`), which
-   carries no history and leaves its contents to the other checks; a branch made only of commits older than a
-   shallow checkout holds, pushed from a deeper clone; and a push made by another program (test/authors.js).
-   The empty-repository question above is still asked of origin's fetch URL, not the URL a push goes to.
+   carries no history and leaves its contents to the other checks; this history REWRITTEN (`git subtree split`,
+   `git filter-repo`, a rebase onto a new root), which carries the same messages, authors and old versions of the
+   files under new hashes, where this check counts hashes; the history of ANOTHER repository (a checkout of another
+   repository pushed from here to a third, or commits of this one fetched into another checkout and pushed to that
+   checkout's own origin), since this check knows only the history of the checkout it is in; a branch made only of
+   commits older than a shallow checkout holds, pushed from a deeper clone; and a push made by another program,
+   `gh repo create --source . --push` among them (test/authors.js). The empty-repository question above is still
+   asked of the remote the push names, at its fetch URL (`git ls-remote`), not of the URL the push goes to.
 
    Run:  node test/pushguard.js --hook       (Claude Code's PreToolUse hook: reads the command on stdin)
          node test/pushguard.js --selftest   (stubs, then throwaway repositories in the system's temporary folder; no network) */
@@ -504,6 +509,28 @@ function selftest() {
     const said = J2(C + 'push https://someone:t0ken-made-up@example.com/someone/simmer.git claude/x');
     mark(said.length === 1 && /to https:\/\/example\.com\/someone\/simmer\.git, which is not this checkout's own repository, and that carries 3 commits of this repository's own history$/.test(said[0].why) && said[0].why.indexOf('t0ken') < 0,
       'the refusal names where the push goes and counts what it carries (the 3 commits of main), without the token in the URL', JSON.stringify(said.map(r => r.why.split(T).join('<tmp>'))));
+    /* THE ADDRESS HOOK READS AN ALIAS TOO, end to end (the fix round, 2026-10-18: its wiring had no red case of its
+       own, so a hook that stopped handing the reader liveAlias would have stayed green). test/authors.js --hook, on
+       stdin as Claude Code sends it, in a made-up project whose branch holds one commit by a made-up personal address
+       (built here at run time, so this file holds none): a plain push of it is refused first, so there is something
+       to find, then the same push by `git ship` (alias.ship = push) must be refused the same way */
+    init(P('addr')); commit(P('addr'), 'a.md', 'one\n');
+    execFileSync('git', ['clone', '-q', '--bare', P('addr'), P('addr.git')]);
+    g(P('addr'), ['remote', 'add', 'origin', P('addr.git')]); g(P('addr'), ['fetch', '-q', 'origin']); g(P('addr'), ['checkout', '-q', '-b', 'claude/z']);
+    const made = 'alguien' + '@' + 'buzon-inventado.mx';
+    fs.writeFileSync(path.join(P('addr'), 'b.md'), 'two\n'); g(P('addr'), ['add', 'b.md']); g(P('addr'), ['commit', '-q', '-m', 'made up: b.md', '--author=Lab <' + made + '>']);
+    g(P('addr'), ['config', 'alias.ship', 'push']); g(P('addr'), ['config', 'alias.lg', 'log --oneline']);
+    const addrHook = cmd => require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'authors.js'), '--hook'],
+      { cwd: T, input: JSON.stringify({ tool_input: { command: cmd }, cwd: T }), encoding: 'utf8', timeout: 60000 });
+    const A = 'git -C ' + P('addr') + ' ', named = r => r.status === 2 && String(r.stderr).indexOf('its author address is at buzon-inventado.mx') >= 0 && String(r.stdout + r.stderr).indexOf('alguien') < 0;
+    const hw = r => 'exit ' + r.status + (r.error ? ' (' + r.error.code + ')' : '') + ': ' + String(r.stderr || r.stdout).split(T).join('<tmp>').split('\n').slice(0, 3).join(' / ');
+    let hr = addrHook(A + 'push origin claude/z');
+    mark(named(hr), 'the address hook refuses a plain push of a branch holding a made-up personal author, naming its domain only (so there is something to find)', hw(hr));
+    hr = addrHook(A + 'ship origin claude/z');
+    mark(named(hr), 'the address hook reads git ship (alias.ship = push) as the push it stands for, and refuses it the same way', hw(hr));
+    hr = addrHook(A + 'lg');
+    mark(hr.status === 0, 'the address hook lets a git alias that is no push (alias.lg = log --oneline) through untouched', hw(hr));
+    mark(g(P('addr.git'), ['branch', '--list', 'claude/z']) === '', 'the address hook pushed nothing: the made-up branch is not in its origin', 'it is there');
     mark(g(P('proj'), ['status', '--porcelain']) === '' && g(P('empty.git'), ['for-each-ref']) === '', 'nothing was pushed: the empty repository is still empty and the project unchanged', 'something moved');
   } catch (e) {
     mark(false, 'the throwaway repositories could be made and read', String(e.message).split('\n')[0]);
