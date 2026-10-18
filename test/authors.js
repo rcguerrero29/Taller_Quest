@@ -182,9 +182,9 @@ function readFiles(root) {
    commands, because a commit message written as `-m "$(cat <<EOF … EOF)"` would then be), and every `gh`
    write (`gh pr merge`, `gh issue comment`, `gh api`). None of those is `git push` in the words; only CI
    reads what they published, after. Still read as before: the range
-   is origin/main..HEAD of the repository the push leaves from, so a repository with no origin/main is
-   refused (its commits cannot be ranged), and a push of a branch that is not checked out is read by
-   HEAD's commits. The connector tools (GitHub's, Drive's) are test/toolguard.js's. */
+   is origin/main..HEAD of the repository the push leaves from, and every commit HEAD holds where there is
+   no origin/main (a fresh copy before its first push: until 2026-10-18 that was refused, as commits that
+   could not be ranged); a push of a branch that is not checked out is read by HEAD's commits. The connector tools (GitHub's, Drive's) are test/toolguard.js's. */
 const PUSH = /(?:^|[\s;&|(])git(?:\s+(?:-C\s+\S+|-c\s+\S+|--[\w-]+(?:=\S+)?))*\s+push\b/;
 /* the wide net, on the raw text: the word git (by any path, in any quotes) and, anywhere after it, the
    word push. It over-reads (`git log --grep push` counts); an over-read only runs the check */
