@@ -24,10 +24,11 @@
 
    What it cannot do: take back what is already public. The range never reaches the commits above.
 
-   Run:  node test/authors.js                   commits not yet on origin/main, and the working tree
+   Run:  node test/authors.js                   commits not yet on origin/main (every commit HEAD holds where
+                                                there is no origin/main, as in a fresh copy), and the working tree
          node test/authors.js <base> [head]     commits in base..head, and the working tree
          node test/authors.js --dir <d> [...]   the same, in the repository that holds <d> (the hook's way)
-         node test/authors.js --selftest        fixtures, no git, no network */
+         node test/authors.js --selftest        fixtures, and throwaway repositories in the temp folder; no network */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -113,10 +114,26 @@ function parseLog(out) {
   });
 }
 
+/* base..head, and the commits in it. A BASE WITH NO PARENT is the first commit of a history: the public build hands it
+   in on a repository's first push, when there is no earlier commit (.github/workflows/ci.yml). base..head leaves its
+   base out, and a new repository's first commit is the whole game, so then every commit the head holds is read, the
+   base among them (planted 2026-10-18). A base with a parent is read as before: what came before it was read when
+   it arrived. Whether the base has a parent is asked of the commit itself, with replace refs off, not of git's walk:
+   a shallow clone's cut point has parents the clone does not hold, the walk calls it parentless, and origin/main at a
+   cut was read again as a first commit (planted 2026-10-18). A null base is no base at all (the main block says when):
+   every commit the head holds. Returns { commits, first, all } */
+function noParent(base, cwd) {
+  const raw = execFileSync('git', ['--no-replace-objects', 'cat-file', 'commit', '--end-of-options', base + '^{commit}'],
+    { cwd, encoding: 'latin1', stdio: ['ignore', 'pipe', 'pipe'] });
+  const end = raw.indexOf('\n\n');
+  return !/^parent /m.test(end < 0 ? raw : raw.slice(0, end));
+}
 function readCommits(base, head, root) {
-  const out = execFileSync('git', ['log', '--format=%H%x00%ae%x00%ce%x00%B%x1e', base + '..' + head],
-    { cwd: root || ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  return parseLog(out);
+  const cwd = root || ROOT, all = base == null;
+  const first = all || noParent(base, cwd);
+  const out = execFileSync('git', ['log', '--format=%H%x00%ae%x00%ce%x00%B%x1e', '--end-of-options', first ? head : base + '..' + head],
+    { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  return { commits: parseLog(out), first, all };
 }
 
 /* what git could ship: every tracked file, and every untracked one that is not ignored — an
@@ -175,9 +192,9 @@ function readFiles(root) {
    and every `gh`
    write (`gh pr merge`, `gh issue comment`, `gh api`). None of those is `git push` in the words; only CI
    reads what they published, after. Still read as before: the range
-   is origin/main..HEAD of the repository the push leaves from, so a repository with no origin/main is
-   refused (its commits cannot be ranged), and a push of a branch that is not checked out is read by
-   HEAD's commits. The connector tools (GitHub's, Drive's) are test/toolguard.js's. */
+   is origin/main..HEAD of the repository the push leaves from, and every commit HEAD holds where there is
+   no origin/main (a fresh copy before its first push: until 2026-10-18 that was refused, as commits that
+   could not be ranged); a push of a branch that is not checked out is read by HEAD's commits. The connector tools (GitHub's, Drive's) are test/toolguard.js's. */
 const PUSH = /(?:^|[\s;&|(])git(?:\s+(?:-C\s+\S+|-c\s+\S+|--[\w-]+(?:=\S+)?))*\s+push\b/;
 /* the wide net, on the raw text: the word git (by any path, in any quotes) and, anywhere after it, the
    word push. It over-reads (`git log --grep push` counts); an over-read only runs the check */
@@ -532,11 +549,82 @@ function selftest() {
   /* what test/pushguard.js reads as the push's arguments: a redirection is not a refspec */
   const args = pushes('git push origin claude/x 2>&1 | tail -2');
   mark(args.length === 1 && JSON.stringify(args[0].args) === '["origin","claude/x"]', 'a redirection is not an argument of the push', JSON.stringify(args));
-  const total = cases.length + fileCases.length + 2 + pushCases.length + scriptCases.length + dirCases.length + unknownCases.length + 1;
+  /* 2026-10-18: a first push. The public build hands in the first commit as the base when there is no earlier commit, and
+     base..head leaves its base out, so a new repository's first commit was never read: a personal author on it passed,
+     and a one-commit first push read no commit at all. Planted in one throwaway repository in the system's temp folder */
+  const sh = (dir, args) => execFileSync('git', ['-c', 'user.name=lab', '-c', 'user.email=' + claude, '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args],
+    { cwd: dir, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k))), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const FR = fs.mkdtempSync(path.join(os.tmpdir(), 'authors-first-push-')), fp = {};
+  try {
+    const note = path.join(FR, 'GAME.md');
+    fs.writeFileSync(note, '# A new game\n'); sh(FR, ['init', '-q']); sh(FR, ['add', '-A']); sh(FR, ['commit', '-qm', 'the first commit', '--author=lab <' + personal + '>']);
+    const r = sh(FR, ['rev-parse', 'HEAD']);
+    fp.root = r.slice(0, 7); fp.one = readCommits(r, r, FR);
+    fs.appendFileSync(note, '\nA board.\n'); sh(FR, ['commit', '-qam', 'a board']);
+    fp.two = readCommits(r, 'HEAD', FR);
+    const b = sh(FR, ['rev-parse', 'HEAD']);
+    fs.appendFileSync(note, '\nA kitchen.\n'); sh(FR, ['commit', '-qam', 'a kitchen']);
+    fp.later = readCommits(b, 'HEAD', FR);
+  } catch (e) { fp.err = String(e.message).split('\n')[0].split(SECRET).join('<local>'); } finally { fs.rmSync(FR, { recursive: true, force: true }); }
+  const read = x => (x && Array.isArray(x.commits) ? x.commits : Array.isArray(x) ? x : []);   /* a reader handing back the list alone, as before 2026-10-18, is read the same way */
+  const said = x => judgeCommits(read(x)), why = k => JSON.stringify({ err: fp.err, commits: read(fp[k]).length, first: !!(fp[k] && fp[k].first), red: said(fp[k]).length });
+  const rootRed = x => { const P = said(x); return P.length === 1 && P[0].indexOf('commit ' + fp.root + ': its author address is at gmail.com,') === 0 && !leaks(P); };
+  mark(read(fp.one).length === 1 && rootRed(fp.one), 'a one-commit first push (its base and head both the first commit) reads that commit, and a personal author on it is red', why('one'));
+  mark(read(fp.two).length === 2 && rootRed(fp.two), 'a two-commit first push reads its first commit too, and a personal author on it is red', why('two'));
+  mark(read(fp.later).length === 1 && !(fp.later && fp.later.first) && said(fp.later).length === 0, 'a base with a parent reads only the commits after it: the first commit, read when it arrived, is not read again', why('later'));
+  /* 2026-10-18, the clean road. A fresh copy made for a new repository has no origin/main, and with no base given the
+     check read origin/main..HEAD, which does not resolve: the session's push of a clean copy to its new, empty
+     repository was refused as "could not read", under a headline saying it would publish a personal address. And a
+     shallow clone's cut point has parents it does not hold, so origin/main at the cut was taken for a first commit and
+     read again. Run as the hook runs it (--dir, and --hook with the command Claude Code sends), in throwaway
+     repositories in the system's temp folder, with a made-up address only */
+  const env0 = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k)));
+  const run = (args, input) => { const r = require('child_process').spawnSync(process.execPath, [__filename, ...args], { cwd: ROOT, env: env0, input: input || '', encoding: 'utf8', timeout: 60000 });
+    return { code: r.status, out: (r.stdout || '') + (r.stderr || '') }; };
+  const made = at('alguien', 'buzon-inventado.mx');
+  const NR = fs.mkdtempSync(path.join(os.tmpdir(), 'authors-no-origin-')), nr = {};
+  try {
+    const fresh = (name, who) => { const d = path.join(NR, name); fs.mkdirSync(d); fs.writeFileSync(path.join(d, 'GAME.md'), '# A new game\n');
+      sh(d, ['init', '-q', '-b', 'main']); sh(d, ['add', '-A']); sh(d, ['commit', '-qm', 'the first commit', '--author=lab <' + who + '>']); return d; };
+    const hook = dir => run(['--hook'], JSON.stringify({ tool_input: { command: 'git -C ' + dir + ' push -u origin main' }, cwd: NR }));
+    sh(NR, ['init', '-q', '--bare', 'empty.git']);
+    const clean = fresh('clean', claude), dirty = fresh('dirty', made);
+    [clean, dirty].forEach(d => sh(d, ['remote', 'add', 'origin', path.join(NR, 'empty.git')]));
+    nr.root = sh(dirty, ['rev-parse', 'HEAD']).slice(0, 7);
+    nr.clean = run(['--dir', clean]); nr.dirty = run(['--dir', dirty]); nr.named = run(['--dir', clean, 'origin/main', 'HEAD']);
+    nr.hookClean = hook(clean); nr.hookDirty = hook(dirty);
+    const unborn = path.join(NR, 'unborn'); fs.mkdirSync(unborn); fs.writeFileSync(path.join(unborn, 'GAME.md'), '# Nothing committed yet\n'); sh(unborn, ['init', '-q', '-b', 'main']);
+    nr.hookUnread = hook(unborn);
+    /* shallow: origin/main is the cut point of a one-commit-deep clone, and carries the made-up address; it was read
+       when it arrived, so only the commit after it is read */
+    const src = fresh('src', claude); fs.appendFileSync(path.join(src, 'GAME.md'), '\nA board.\n'); sh(src, ['commit', '-qam', 'a board', '--author=lab <' + made + '>']);
+    const cut = path.join(NR, 'shallow'); sh(NR, ['clone', '-q', '--depth', '1', 'file://' + src, cut]);
+    fs.appendFileSync(path.join(cut, 'GAME.md'), '\nA kitchen.\n'); sh(cut, ['commit', '-qam', 'a kitchen']);
+    nr.isShallow = sh(cut, ['rev-parse', '--is-shallow-repository']) === 'true' && /^parent /m.test(sh(cut, ['cat-file', 'commit', 'origin/main']));
+    nr.shallow = readCommits('origin/main', 'HEAD', cut);
+  } catch (e) { nr.err = String(e.message).split('\n')[0]; } finally { fs.rmSync(NR, { recursive: true, force: true }); }
+  const nk = k => nr[k] || { code: null, out: '' };
+  const nwhy = (...k) => JSON.stringify({ err: nr.err, ...Object.fromEntries(k.map(x => [x, { code: nk(x).code, out: nk(x).out.split('\n').filter(l => /^(OK|FAIL|- |PUSH)/.test(l)).map(l => l.slice(0, 160)) }])) });
+  const noLocal = (...k) => k.every(x => nk(x).out.indexOf('alguien') < 0);
+  mark(nk('clean').code === 0 && /^OK — 1 commit\(s\) that HEAD holds/m.test(nk('clean').out), 'with no base given and no origin/main (a fresh copy for a new repository), every commit the head holds is read, and a clean copy passes', nwhy('clean'));
+  mark(nk('dirty').code === 1 && nk('dirty').out.split('\n').some(l => l.indexOf('- commit ' + nr.root + ': its author address is at buzon-inventado.mx,') === 0) && noLocal('dirty'),
+    'with no base given and no origin/main, a personal author on the first commit is red, by its commit, and its address is not printed', nwhy('dirty'));
+  mark(nk('named').code === 1 && /could not read the commits in origin\/main\.\.HEAD/.test(nk('named').out), 'a base the caller names that does not resolve stays a red', nwhy('named'));
+  mark(nk('hookClean').code === 0 && nk('hookDirty').code === 2 && /would publish an address that is not a no-reply one/.test(nk('hookDirty').out) && noLocal('hookDirty'),
+    'the session\'s push of a clean copy to its new, empty repository passes the hook, and the same push with a personal author on it is refused', nwhy('hookClean', 'hookDirty'));
+  mark(nk('hookUnread').code === 2 && /could not read what this push would publish/.test(nk('hookUnread').out) && !/would publish an address that is not a no-reply one/.test(nk('hookUnread').out),
+    'a push the check could not read is refused under a headline that says so, not one saying it found a personal address', nwhy('hookUnread'));
+  mark(nr.isShallow === true && read(nr.shallow).length === 1 && !(nr.shallow && nr.shallow.first) && said(nr.shallow).length === 0,
+    'a shallow clone\'s cut point is not a first commit: origin/main at the cut reads only the commit after it',
+    JSON.stringify({ err: nr.err, isShallow: nr.isShallow, commits: read(nr.shallow).length, first: !!(nr.shallow && nr.shallow.first), red: said(nr.shallow).length }));
+  const total = cases.length + fileCases.length + 2 + pushCases.length + scriptCases.length + dirCases.length + unknownCases.length + 1 + 3 + 6;
   if (bad.length) { console.log('FAIL — ' + bad.length + ' of ' + total); process.exit(1); }
-  console.log('OK — ' + total + ' cases, on fixtures, no git, no network.');
+  console.log('OK — ' + total + ' cases, on fixtures and throwaway repositories, no network.');
   process.exit(0);
 }
+
+/* the line every red that found something ends with; the hook reads it to tell that red from one that could not read */
+const FIX_LINE = 'Fix a commit with `git commit --amend --reset-author` (or a rebase) BEFORE it is pushed, after\n`git config user.email` is set to a no-reply address. Once pushed, it is public: see docs/BOUNDARY.md row 13½.';
 
 if (require.main === module) {
   if (process.argv.includes('--selftest')) return void selftest();
@@ -576,11 +664,15 @@ if (require.main === module) {
           'Run `node test/authors.js` by hand to see where it sticks.\n');
         process.exit(2);
       }
-      if (r.status !== 0) red.push('from ' + dir + ':\n' + (r.stdout || '') + (r.stderr || ''));
+      if (r.status !== 0) red.push({ found: (r.stdout || '').indexOf(FIX_LINE) >= 0, text: 'from ' + dir + ':\n' + (r.stdout || '') + (r.stderr || '') });
     }
     if (!red.length) process.exit(0);
-    process.stderr.write('PUSH REFUSED by test/authors.js — this push would publish an address that is not a no-reply one.\n' + red.join('') +
-      'If the commit it names is already on main, run `git fetch origin main` and try again.\n');
+    /* two kinds of red, each under its own headline: one that found an address, and one that could not read what the
+       push would publish, which judged nothing (2026-10-18: the clean road was refused under the first) */
+    const found = red.some(x => x.found), unread = red.some(x => !x.found);
+    process.stderr.write('PUSH REFUSED by test/authors.js — ' + [found ? 'this push would publish an address that is not a no-reply one' : '',
+      unread ? 'this check could not read what this push would publish, so it cannot say that every address in it is a no-reply one' : ''].filter(Boolean).join('; and ') + '.\n' +
+      red.map(x => x.text).join('') + (found ? 'If the commit it names is already on main, run `git fetch origin main` and try again.\n' : ''));
     process.exit(2);
   }
   /* --dir <d>: the repository that holds <d>, as the hook asks; without it, this checkout */
@@ -591,11 +683,19 @@ if (require.main === module) {
     try { root = execFileSync('git', ['-C', argv[di + 1] || '', 'rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
     catch (e) { console.log('FAIL\n- ' + (argv[di + 1] || 'no directory') + ' is not inside a git working tree, so this check cannot say what a push from there would publish — that is a red, not a pass'); process.exit(1); }
   }
-  const base = pos[0] || 'origin/main', head = pos[1] || 'HEAD';
-  let commits;
-  try { commits = readCommits(base, head, root); }
+  /* NO BASE, AND NO origin/main (2026-10-18). A fresh copy made for a new repository has no origin/main before its first
+     push, and origin/main..HEAD did not resolve, so the session's push of a clean copy was refused. With no base given
+     and no origin/main, none of the commits counts as published, so every commit the head holds is read, and the OK
+     line says so: more, never less (a checkout with history and no origin/main reads all of it). A base the caller
+     names that does not resolve stays a red */
+  const head = pos[1] || 'HEAD';
+  let all = false;
+  if (!pos[0]) try { execFileSync('git', ['rev-parse', '--verify', '--quiet', 'origin/main^{commit}'], { cwd: root, stdio: 'ignore' }); } catch (e) { all = true; }
+  const base = pos[0] || 'origin/main';
+  let commits, first;
+  try { ({ commits, first } = readCommits(all ? null : base, head, root)); }
   catch (e) {
-    console.log('FAIL\n- could not read the commits in ' + base + '..' + head + ' (' + String(e.message).split('\n')[0] + '), so this check cannot say which addresses are about to be published — that is a red, not a pass');
+    console.log('FAIL\n- could not read the commits ' + (all ? 'that ' + head + ' holds' : 'in ' + base + '..' + head) + ' (' + String(e.message).split('\n')[0] + '), so this check cannot say which addresses are about to be published — that is a red, not a pass');
     process.exit(1);
   }
   let files;
@@ -606,10 +706,10 @@ if (require.main === module) {
   if (P.length) {
     console.log('FAIL');
     P.forEach(p => console.log('- ' + p));
-    console.log('Fix a commit with `git commit --amend --reset-author` (or a rebase) BEFORE it is pushed, after\n`git config user.email` is set to a no-reply address. Once pushed, it is public: see docs/BOUNDARY.md row 13½.');
+    console.log(FIX_LINE);
     process.exit(1);
   }
-  console.log('OK — ' + commits.length + ' commit(s) in ' + base + '..' + head + ' and ' + files.length + ' text files' + (root === ROOT ? '' : ' in ' + root) + ': every address is a no-reply one.');
+  console.log('OK — ' + commits.length + ' commit(s) ' + (all ? 'that ' + head + ' holds, every one (no base was given and there is no origin/main here, so none of them counts as published),' : first ? 'that ' + head + ' holds, the first one included (' + base + ' has no parent),' : 'in ' + base + '..' + head) + ' and ' + files.length + ' text files' + (root === ROOT ? '' : ' in ' + root) + ': every address is a no-reply one.');
   process.exit(0);
 }
 

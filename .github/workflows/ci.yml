@@ -31,6 +31,11 @@ jobs:
           node-version: 22
       # The commits this run brings, worked out once for the two checks that read every one of them (the private list
       # and the addresses): on a pull request, its base branch to its head; on a push to main, what the push brings.
+      # What each check reads: base..head, which leaves the base itself out, so a base with a parent has been read
+      # already. A base with NO parent is read too: then each check reads every commit the head holds, the base among
+      # them. That is the first push, when there is no earlier commit: the base is set to a first commit, so a new
+      # repository's first commit, which is the whole game, is read with everything after it, and a one-commit first
+      # push (base and head both that commit) is read, not refused as holding none (planted 2026-10-18).
       # Nothing is checked here.
       - name: The commits this run brings
         env:
@@ -45,7 +50,7 @@ jobs:
           else
             BASE="$BEFORE"
             if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-              BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"   # the first push: everything from the first commit
+              BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"   # the first push: a first commit, so each check reads every commit HEAD holds, this one included
             fi
             HEAD_SHA="$(git rev-parse HEAD)"
           fi
