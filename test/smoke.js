@@ -1820,6 +1820,10 @@ const CANDIDATES = [
         if (im.width === w.W * 32 * K && im.height === w.H * 32 * K) { ground++; return; }
         if (im.width === 40 * K && im.height === 40 * K) { canopy++; return; }
         if (im.width === 32 * K && im.height === 32 * K) { tiles++; return; }
+        /* a papel picado strip is its own fixed size, n flags of 8 by 14, at every bake (engine3d.js t3PapelTex): it hangs
+           only in its season, so until 2026-10-18 this loop never met one, and on the season's first day it read each strip
+           as a mis-baked prop */
+        if (u.flag) { if (im.width !== u.flags * 8 || im.height !== 14) problems.push(`a papel picado strip is ${im.width}x${im.height} — not ${u.flags * 8}x14, its own fixed size`); return; }
         problems.push(`a ${u.door ? 'door' : u.wall ? 'wall' : 'prop'} texture is ${im.width}x${im.height} — not ${32 * K}x${32 * K} (K=${K})`);
       });
     });
