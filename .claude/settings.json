@@ -30,7 +30,7 @@
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR:-.}/test/pushguard.js\" --hook",
             "timeout": 30,
-            "statusMessage": "Checking this push does not go to main"
+            "statusMessage": "Checking this push does not go to main, nor take this repository's history to another one"
           }
         ]
       },
