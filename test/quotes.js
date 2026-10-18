@@ -718,9 +718,10 @@ if (require.main === module) {
   if (argv.includes('--hook')) {
     let input = ''; try { input = fs.readFileSync(0, 'utf8'); } catch (e) {}
     /* input it cannot read, or a push reader it cannot load, is not waved through: it runs the check */
-    let cmd = null; try { cmd = ((JSON.parse(input) || {}).tool_input || {}).command; } catch (e) {}
-    let isPush = null; try { ({ isPush } = require('./authors.js')); } catch (e) {}
-    if (typeof cmd === 'string' && typeof isPush === 'function' && !isPush(cmd)) process.exit(0);
+    let cmd = null, cwd = null; try { const j = JSON.parse(input) || {}; cmd = (j.tool_input || {}).command; if (typeof j.cwd === 'string' && j.cwd) cwd = j.cwd; } catch (e) {}
+    /* a git alias is read as what it stands for (2026-10-18): `git ship` with alias.ship = push is a push */
+    let isPush = null, alias = null; try { ({ isPush, liveAlias: alias } = require('./authors.js')); } catch (e) {}
+    if (typeof cmd === 'string' && typeof isPush === 'function' && !isPush(cmd, typeof alias === 'function' ? { alias: alias(cwd || ROOT) } : undefined)) process.exit(0);
     const t0 = Date.now(), { spawnSync } = require('child_process');
     const r = spawnSync(process.execPath, [__filename, '--unpushed'], { cwd: ROOT, encoding: 'utf8', timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
     if (r.error && r.error.code === 'ETIMEDOUT') {

@@ -159,10 +159,20 @@ function readFiles(root) {
      directory and let the push through). The command inside an unquoted one is read as a command line of
      its own. And git, or its command, built at run time — `$(which git) push`, `$GIT push`,
      `git $(echo push)` — is a push this reader cannot read, so it is refused.
-   One reader, shared: test/pushguard.js asks it the same question. WHAT STILL PASSES, said plainly: a push
-   made by another program — a node or python one-liner, a script file, a git alias, a `sh -c` script built
+   One reader, shared: test/pushguard.js asks it the same question.
+   - A GIT ALIAS (2026-10-18: `git ship origin x` with `alias.ship = push` was no push to any hook, and neither
+     was `alias.x = !git push …`). A hook that hands the reader `liveAlias` gets git's own answer for each git
+     command git does not run itself: an alias is read as what it stands for (a shell alias as the command
+     line it runs), several deep, and one it cannot read (from a directory the words do not tell, or under
+     settings given another way) is a push it cannot read, so it is refused. The `-c` settings before a
+     push's command stay with it (`cfg`); settings given in a way this cannot read (`--config-env`,
+     `--exec-path`, GIT_CONFIG…=, HOME=, XDG_CONFIG_HOME=, GIT_EXEC_PATH= or GIT_COMMON_DIR= before git, or
+     `env -i` / `-u`) mark it `cfgUnread`. test/pushguard.js asks git where the push goes with the same `-c`.
+   WHAT STILL PASSES, said plainly: a push
+   made by another program — a node or python one-liner, a script file, a `sh -c` script built
    at run time — a push inside a QUOTED command substitution (`"$(git push …)"`: its inside is not read as
-   commands, because a commit message written as `-m "$(cat <<EOF … EOF)"` would then be), and every `gh`
+   commands, because a commit message written as `-m "$(cat <<EOF … EOF)"` would then be), `git subtree push`,
+   and every `gh`
    write (`gh pr merge`, `gh issue comment`, `gh api`). None of those is `git push` in the words; only CI
    reads what they published, after. Still read as before: the range
    is origin/main..HEAD of the repository the push leaves from, so a repository with no origin/main is
@@ -172,7 +182,7 @@ const PUSH = /(?:^|[\s;&|(])git(?:\s+(?:-C\s+\S+|-c\s+\S+|--[\w-]+(?:=\S+)?))*\s
 /* the wide net, on the raw text: the word git (by any path, in any quotes) and, anywhere after it, the
    word push. It over-reads (`git log --grep push` counts); an over-read only runs the check */
 const WIDE = /(?:^|[^A-Za-z0-9_.-])git(?:\.exe)?(?![A-Za-z0-9_-])[\s\S]*?(?<![A-Za-z0-9_])push(?![A-Za-z0-9_])|(?:^|[^A-Za-z0-9_.-])git-push(?![A-Za-z0-9_-])/;
-const isPush = cmd => { const s = String(cmd || ''); return PUSH.test(s) || WIDE.test(s) || pushes(s).length > 0; };
+const isPush = (cmd, o) => { const s = String(cmd || ''); return PUSH.test(s) || WIDE.test(s) || pushes(s, o).length > 0; };
 
 /* a command substitution that starts at s[i], `$( … )` or a backtick pair: { inner: the command line inside
    it, end: the index just past it }. An unclosed one runs to the end of the line */
@@ -250,13 +260,28 @@ const step = (at, word) => !word || word.dyn ? { dir: at.dir, unknown: true }
   : path.isAbsolute(word.w) ? { dir: path.normalize(word.w), unknown: false }
   : { dir: at.dir == null ? word.w : path.join(at.dir, word.w), unknown: at.unknown };
 
-/* one simple command: the pushes it runs go to `out`; the state it leaves (cd, an exported GIT_DIR) is returned */
-function readSimple(W, s, out) {
+/* settings that reach git another way than `-c`, so its remotes, its URL rewrites and its aliases may not be what the
+   repository's own files and the command's `-c` say: an assignment of one of these before git (2026-10-18) */
+const CONFIG_ENV = /^(?:GIT_CONFIG(?:_[A-Za-z0-9_]+)?|HOME|XDG_CONFIG_HOME|GIT_EXEC_PATH|GIT_COMMON_DIR)$/;
+const configEnv = e => Object.keys(e).some(n => CONFIG_ENV.test(n));
+/* where a git command runs, once --git-dir or --work-tree is read */
+const place = (at, gitDir, workTree) => {
+  if (workTree) return step(at, workTree);
+  if (!gitDir) return at;
+  const g = step(at, gitDir);
+  return { dir: g.dir != null && nameOf(g.dir) === '.git' ? path.dirname(g.dir) : g.dir, unknown: g.unknown };
+};
+/* a word handed on to a shell alias: quoted as written, unless only the run knows it (then it stays a word it cannot read) */
+const handOn = x => x.dyn ? x.w : "'" + x.w.replace(/'/g, "'\\''") + "'";
+
+/* one simple command: the pushes it runs go to `out`; the state it leaves (cd, an exported GIT_DIR) is returned.
+   `o.alias`, when a hook gives it, answers whether a git command is an alias and what for (liveAlias below) */
+function readSimple(W, s, out, o) {
   let k = 0;
   while (k < W.length && KEYWORDS.has(W[k].w)) k++;
   const env = {};
   while (k < W.length && ASSIGN.test(W[k].w)) { const [n, v] = assigned(W[k]); env[n] = v; k++; }
-  const keep = e => Object.assign({}, s, e.GIT_DIR ? { gitDir: e.GIT_DIR } : {}, e.GIT_WORK_TREE ? { workTree: e.GIT_WORK_TREE } : {});
+  const keep = e => Object.assign({}, s, e.GIT_DIR ? { gitDir: e.GIT_DIR } : {}, e.GIT_WORK_TREE ? { workTree: e.GIT_WORK_TREE } : {}, configEnv(e) ? { cfgEnv: true } : {});
   if (k >= W.length) return keep(env);                       /* assignments alone stay for what follows */
   const head = W[k].w;
   if (head === 'export' || head === 'declare' || head === 'typeset') {
@@ -273,18 +298,22 @@ function readSimple(W, s, out) {
     const name = nameOf(W[i].w);
     if (SHELLS.has(name)) {                                   /* sh -c '…': its own shell, so what it changes stays there */
       const c = W.slice(i + 1).findIndex(x => /^-[A-Za-z]*c[A-Za-z]*$/.test(x.w));
-      if (c >= 0 && W[i + 2 + c]) readLine(W[i + 2 + c].w, keep(env), out);
+      if (c >= 0 && W[i + 2 + c]) readLine(W[i + 2 + c].w, keep(env), out, o);
       return s;
     }
-    if (W[i].w === 'eval') { readLine(W.slice(i + 1).map(x => x.w).join(' '), keep(env), out); return s; }
+    if (W[i].w === 'eval') { readLine(W.slice(i + 1).map(x => x.w).join(' '), keep(env), out, o); return s; }
     if (name !== 'git' && name !== 'git.exe' && name !== 'git-push') continue;
     let at = { dir: s.dir, unknown: s.unknown }, gitDir = env.GIT_DIR || s.gitDir || null, workTree = env.GIT_WORK_TREE || s.workTree || null;
+    const cfg = (s.cfgFrom || []).slice();   /* git hands its -c on to the git commands a shell alias runs */
+    let cfgUnread = !!s.cfgEnv || configEnv(env);
     for (let j = k; j < i; j++) {                             /* what stands before git: env GIT_DIR=…, env -C <dir> */
-      const x = W[j].w;
+      const x = W[j].w, runner = W.slice(k, j).some(y => nameOf(y.w) === 'env');
       if (/^GIT_DIR=/.test(x)) gitDir = assigned(W[j])[1];
       else if (/^GIT_WORK_TREE=/.test(x)) workTree = assigned(W[j])[1];
-      else if (x === '--chdir' || (x === '-C' && W.slice(k, j).some(y => nameOf(y.w) === 'env'))) { at = step(at, W[j + 1]); j++; }
+      else if (ASSIGN.test(x) && CONFIG_ENV.test(x.slice(0, x.indexOf('=')))) cfgUnread = true;
+      else if (x === '--chdir' || (x === '-C' && runner)) { at = step(at, W[j + 1]); j++; }
       else if (x.startsWith('--chdir=')) at = step(at, { w: x.slice(8), dyn: W[j].dyn });
+      else if (nameOf(x) === 'sudo' || (runner && /^(?:-[A-Za-z]*[iu][A-Za-z]*|-|--unset(?:=.*)?|--ignore-environment)$/.test(x))) cfgUnread = true;
     }
     let j = i + 1, sub = name === 'git-push' ? 'push' : null, subDyn = false;
     while (!sub && j < W.length) {                            /* git's own options, up to its command */
@@ -294,54 +323,99 @@ function readSimple(W, s, out) {
       else if (x === '--work-tree') { workTree = W[j + 1] || { w: '', dyn: true }; j += 2; }
       else if (x.startsWith('--git-dir=')) { gitDir = { w: x.slice(10), dyn: W[j].dyn }; j++; }
       else if (x.startsWith('--work-tree=')) { workTree = { w: x.slice(12), dyn: W[j].dyn }; j++; }
-      else if (x === '-c' || x === '--namespace' || x === '--config-env' || x === '--super-prefix') j += 2;
+      else if (x === '-c') { const v = W[j + 1]; if (!v || v.dyn) cfgUnread = true; else cfg.push(v.w); j += 2; }
+      else if (x === '--config-env') { cfgUnread = true; j += 2; }
+      else if (x.startsWith('--config-env=') || x.startsWith('--exec-path=')) { cfgUnread = true; j++; }
+      else if (x === '--namespace' || x === '--super-prefix') j += 2;
       else if (x.startsWith('-')) j++;
       else { sub = x; subDyn = W[j].dyn; j++; }
     }
-    if (sub !== 'push' && subDyn) { out.push({ args: W.slice(j).map(x => x.w), dyn: W.slice(j).map(x => x.dyn), dir: at.dir, unknown: true, unread: true }); return s; }
-    if (sub !== 'push') { i = j - 1; continue; }
-    if (workTree) at = step(at, workTree);
-    else if (gitDir) { const g = step(at, gitDir); at = { dir: g.dir != null && nameOf(g.dir) === '.git' ? path.dirname(g.dir) : g.dir, unknown: g.unknown }; }
-    out.push({ args: W.slice(j).map(x => x.w), dyn: W.slice(j).map(x => x.dyn), dir: at.dir, unknown: at.unknown });
+    const where = () => place(at, gitDir, workTree);
+    const record = (extra) => Object.assign({ args: W.slice(j).map(x => x.w), dyn: W.slice(j).map(x => x.dyn), dir: where().dir, unknown: where().unknown, cfg: cfg.slice(), cfgUnread }, extra || {});
+    /* `push` in any case: on a filesystem that ignores case, git may find its own git-push program for `git Push` */
+    const isPushWord = sub != null && String(sub).toLowerCase() === 'push';
+    if (!isPushWord && subDyn) { out.push(record({ unknown: true, unread: true })); return s; }
+    if (!isPushWord) {
+      /* a git alias (2026-10-18): what it stands for, read in its place; one this cannot read is a push it cannot read */
+      const exp = o && o.alias && sub ? o.alias({ dir: where().dir, unknown: where().unknown, cfg: cfg.slice(), cfgUnread, name: sub }) : null;
+      const depth = (o && o.depth) || 0;
+      if (exp === false || (typeof exp === 'string' && depth >= 8)) { out.push(record({ unknown: true, unread: true, alias: sub })); return s; }
+      if (typeof exp === 'string') {
+        const deeper = Object.assign({}, o, { depth: depth + 1 }), e = exp.trim();
+        if (e.startsWith('!')) {                              /* a shell alias: git runs it with sh, at the top of the repository, the words after it appended */
+          const rest = W.slice(j).map(handOn).join(' ');
+          readLine(e.slice(1) + (rest ? ' ' + rest : ''), Object.assign({}, keep(env), { dir: where().dir, unknown: where().unknown, gitDir: null, workTree: null, cfgEnv: cfgUnread, cfgFrom: cfg.slice() }), out, deeper);
+          return s;
+        }
+        const t = shellTokens(e);
+        if (!t.length || t.some(x => x.w == null)) { out.push(record({ unknown: true, unread: true, alias: sub })); return s; }
+        return readSimple(W.slice(0, j - 1).concat(t, W.slice(j)), s, out, deeper);
+      }
+      i = j - 1; continue;
+    }
+    out.push(record());
     return s;
   }
   /* git, or its command, built at run time (`$(which git) push`, `$GIT push`): a word only the run knows,
      before a plain word `push`. A push this reader cannot read */
   const p = W.findIndex((x, n) => n > k && x.w === 'push' && !x.dyn);
-  if (p > k && W.slice(k, p).some(x => x.dyn)) out.push({ args: W.slice(p + 1).map(x => x.w), dyn: W.slice(p + 1).map(x => x.dyn), dir: s.dir, unknown: true, unread: true });
+  if (p > k && W.slice(k, p).some(x => x.dyn)) out.push({ args: W.slice(p + 1).map(x => x.w), dyn: W.slice(p + 1).map(x => x.dyn), dir: s.dir, unknown: true, unread: true, cfg: [], cfgUnread: true });
   return s;
 }
 
 /* a whole command line: `&&` `||` `;` carry a cd forward; `( )` keeps it inside; a pipeline's parts and a
    `&` run in their own shells, so what they change is dropped */
-function readLine(cmd, s0, out) {
+function readLine(cmd, s0, out, o) {
   const stack = [];
   let s = s0, before = s0, piped = false, cur = [];
-  const done = o => {
-    if (cur.length) s = readSimple(cur, s, out);
+  const done = op => {
+    if (cur.length) s = readSimple(cur, s, out, o);
     cur = [];
-    if (o === '|' || o === '&' || piped) s = before;
-    piped = o === '|';
-    if (o === '(') stack.push(s);
-    else if (o === ')' && stack.length) s = stack.pop();
+    if (op === '|' || op === '&' || piped) s = before;
+    piped = op === '|';
+    if (op === '(') stack.push(s);
+    else if (op === ')' && stack.length) s = stack.pop();
     if (!piped) before = s;
   };
   /* the command inside an unquoted substitution runs in a shell of its own, from where this one stands */
-  shellTokens(cmd).forEach(t => { if (t.op) done(t.op); else if (t.sub != null) readLine(t.sub, s, out); else cur.push(t); });
+  shellTokens(cmd).forEach(t => { if (t.op) done(t.op); else if (t.sub != null) readLine(t.sub, s, out, o); else cur.push(t); });
   done(null);
   return out;
 }
 
 /* every `git push` in a command line: { args: the words after push, dyn: which of them only the run knows,
    dir: where it runs (null: the hook's cwd; relative: from there), unknown: true when the words cannot tell
-   the directory, unread: true when they cannot tell git or its command either } */
-const pushes = cmd => readLine(cmd, { dir: null, unknown: false, gitDir: null, workTree: null }, []);
+   the directory, unread: true when they cannot tell git or its command either, cfg: the `-c` settings before
+   its command, cfgUnread: true when settings reach it another way this cannot read, alias: the alias it came
+   from, when it is one this cannot read }. `o.alias` (optional): see readSimple */
+const pushes = (cmd, o) => readLine(cmd, { dir: null, unknown: false, gitDir: null, workTree: null }, [], o);
 
 /* the repositories a command line's pushes leave from, absolute against the hook's cwd. No push found
    (an over-read of the wide net): the cwd itself, so the over-read still runs the check */
-function pushDirs(cmd, cwd) {
-  const P = pushes(cmd), at = d => path.resolve(cwd, d == null ? '.' : d);
-  return { pushes: P.length, unknown: P.some(p => p.unknown), unread: P.some(p => p.unread), dirs: [...new Set((P.length ? P.map(p => p.dir) : [null]).map(at))] };
+function pushDirs(cmd, cwd, o) {
+  const P = pushes(cmd, o), at = d => path.resolve(cwd, d == null ? '.' : d);
+  return { pushes: P.length, unknown: P.some(p => p.unknown), unread: P.some(p => p.unread), alias: P.some(p => p.alias), dirs: [...new Set((P.length ? P.map(p => p.dir) : [null]).map(at))] };
+}
+
+/* git's own answer to "is <name> an alias, and for what", for a hook whose cwd is `cwd` (2026-10-18). As in git, a
+   name git runs itself (a builtin, or a git-<name> program it finds) is never an alias, and `-c alias.<name>=…` on the
+   command line comes before the repository's settings. Returns the alias's text, null when <name> is not one, or false
+   when this cannot tell (a directory the words do not tell, settings given another way, git not answering) */
+function liveAlias(cwd) {
+  let own;
+  return ({ dir, unknown, cfg, cfgUnread, name }) => {
+    if (own === undefined) {
+      try { own = new Set(execFileSync('git', ['--list-cmds=builtins,main,others'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).split('\n').filter(Boolean)); }
+      catch (e) { own = null; }
+    }
+    if (own && own.has(name)) return null;
+    if (unknown || cfgUnread) return false;
+    const key = 'alias.' + String(name).toLowerCase();
+    const given = (cfg || []).filter(c => (c.includes('=') ? c.slice(0, c.indexOf('=')) : c).toLowerCase() === key).pop();
+    if (given !== undefined) return given.includes('=') ? given.slice(given.indexOf('=') + 1) : false;
+    try { return execFileSync('git', ['-C', path.resolve(cwd || process.cwd(), dir == null ? '.' : dir), 'config', '--get', key], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).replace(/\n$/, ''); }
+    catch (e) { return e.status === 1 ? null : false; }
+  };
 }
 
 function selftest() {
@@ -472,11 +546,15 @@ if (require.main === module) {
        second when there is nothing to find (Zeni, 2026-09-24) */
     let cmd = null, cwd = null;
     try { const j = JSON.parse(input) || {}; cmd = (j.tool_input || {}).command; if (typeof j.cwd === 'string' && j.cwd) cwd = j.cwd; } catch (e) {}
-    if (typeof cmd === 'string' && !isPush(cmd)) process.exit(0);
+    /* a git alias is read as what it stands for (2026-10-18): `git ship` with alias.ship = push is a push */
+    const live = { alias: liveAlias(cwd || ROOT) };
+    if (typeof cmd === 'string' && !isPush(cmd, live)) process.exit(0);
     /* the repository the push leaves from, not this checkout (2026-10-16): -C, cd, a worktree, the hook's cwd */
-    const from = pushDirs(typeof cmd === 'string' ? cmd : '', cwd || ROOT);
+    const from = pushDirs(typeof cmd === 'string' ? cmd : '', cwd || ROOT, live);
     if (from.unknown) {
-      process.stderr.write('PUSH REFUSED by test/authors.js — ' + (from.unread
+      process.stderr.write('PUSH REFUSED by test/authors.js — ' + (from.alias
+        ? 'this command runs a git alias this check cannot read (from a directory its words do not tell, or with git settings given another way), so it cannot say whether it pushes, nor which repository it would publish.\n'
+        : from.unread
         ? 'this command builds git, or its command, at run time (a $VARIABLE or a command substitution), so this check cannot read the push, nor which repository it would publish.\n'
         : 'this command pushes from a directory its words do not tell (`cd -`, `popd`, a $VARIABLE or a command substitution), so this check cannot say which repository it would publish.\n') +
         'Write it out: `git -C <directory> push …`.\n');
@@ -536,4 +614,4 @@ if (require.main === module) {
 }
 
 /* EMAIL too, so test/toolguard.js finds an address split between two fields by this file's own pattern, not a copy */
-module.exports = { judgeCommits, judgeFiles, judgeScripts, parseLog, allowed, EMAIL, isPush, pushes, pushDirs, shellTokens };
+module.exports = { judgeCommits, judgeFiles, judgeScripts, parseLog, allowed, EMAIL, isPush, pushes, pushDirs, shellTokens, liveAlias };
