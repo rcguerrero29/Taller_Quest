@@ -135,10 +135,14 @@ function trackedFiles(root) {
    there is no earlier commit (.github/workflows/ci.yml). base..head leaves its base out, and a new repository's first
    commit is the whole game, so then every commit the head holds is read, the base among them; a one-commit first push
    (base and head both that commit) is read, not refused as holding none (planted 2026-10-18). A base with a
-   parent is read as before, base..head: what came before it was read when it arrived */
+   parent is read as before, base..head: what came before it was read when it arrived. Whether the base has a parent is
+   asked of the commit itself, with replace refs off, not of git's walk: a shallow clone's cut point has parents the
+   clone does not hold, the walk calls it parentless, and a base at a cut was read again as a first commit (planted
+   2026-10-18) */
 function historyFiles(root, base, head) {
   const cc = tool(), short = sha => sha.slice(0, 8);
-  const first = git(root, ['rev-list', '-n1', '--parents', '--end-of-options', base]).toString('latin1').trim().split(' ').length === 1;
+  const obj = git(root, ['--no-replace-objects', 'cat-file', 'commit', '--end-of-options', base + '^{commit}']).toString('latin1'), end = obj.indexOf('\n\n');
+  const first = !/^parent /m.test(end < 0 ? obj : obj.slice(0, end));
   const range = first ? head : base + '..' + head;
   const revs = git(root, ['rev-list', '--reverse', '--parents', '--end-of-options', range]).toString('latin1').split('\n').filter(Boolean).map(l => l.split(' '));
   const said = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%B', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), b.subarray(nl + 1).toString('utf8')]; }));
@@ -408,6 +412,15 @@ function selftest() {
     fpush = { r2: r2.slice(0, 8), r3: r3.slice(0, 8), one: fcli(one, ['--range', r1, r1]), dirty: fcli(dirty, ['--range', r2, r2]), two: fcli(two, ['--range', r3, 'HEAD']) };
     fs.appendFileSync(path.join(two, 'docs', 'GAME.md'), '\nA second board.\n'); sh(two, ['commit', '-qam', 'a second board']);
     fpush.later = fcli(two, ['--range', b, 'HEAD']);
+    /* shallow (2026-10-18): the base is the cut point of a one-commit-deep clone, whose message holds the word; it has a
+       parent the clone does not hold, so it is not a first commit, and only the commit after it is read */
+    const [src] = fresh('src', game, 'the first commit');
+    fs.appendFileSync(path.join(src, 'docs', 'GAME.md'), '\nA third board.\n'); sh(src, ['commit', '-qam', 'a board for ' + T.who]);
+    const cut = path.join(FR, 'shallow'), tip = 'origin/' + sh(src, ['symbolic-ref', '--short', 'HEAD']);
+    sh(FR, ['clone', '-q', '--depth', '1', 'file://' + src, cut]);
+    fs.appendFileSync(path.join(cut, 'docs', 'GAME.md'), '\nA fourth board.\n'); sh(cut, ['commit', '-qam', 'a fourth board']);
+    fpush.isShallow = sh(cut, ['rev-parse', '--is-shallow-repository']) === 'true' && /^parent /m.test(sh(cut, ['cat-file', 'commit', tip]));
+    fpush.shallow = fcli(cut, ['--range', tip, 'HEAD']);
   } catch (e) { fpush.err = e.message; } finally { fs.rmSync(FR, { recursive: true, force: true }); }
   const fc = k => fpush[k] || { code: null, out: '' }, fpOut = ['one', 'dirty', 'two', 'later'].map(k => fc(k).out).join('\n');
   const fpWhy = () => JSON.stringify({ err: fpush.err, codes: ['one', 'dirty', 'two', 'later'].map(k => fc(k).code), out: fpOut.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>').split('\n').filter(l => /^(OK|FAIL|- rule)/.test(l)).map(l => l.slice(0, 140)) }).replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>');
@@ -420,6 +433,9 @@ function selftest() {
     'a first push is read in full when the build hands in the first commit as the base: a one-commit first push is read, not refused, and a detail in the first commit\'s message, or in a line it added that the next commit took out, is a red', fpWhy());
   mark(fc('later').code === 0 && /and the messages and changes of 1 commit\(s\),/.test(fc('later').out),
     'a base with a parent reads only the commits after it: the first commit, read when it arrived, is not read again', fpWhy());
+  mark(fpush.isShallow === true && fc('shallow').code === 0 && /and the messages and changes of 1 commit\(s\),/.test(fc('shallow').out) && fc('shallow').out.toLowerCase().indexOf(T.who.toLowerCase()) < 0,
+    'a shallow clone\'s cut point is not a first commit: a base at the cut reads only the commits after it, not the cut again',
+    JSON.stringify({ err: fpush.err, isShallow: fpush.isShallow, code: fc('shallow').code, out: fc('shallow').out.split('\n').filter(l => /^(OK|FAIL|- rule)/.test(l)).map(l => l.slice(0, 140)) }).replace(new RegExp(T.who, 'gi'), '<who>'));
   /* a map whose list is not in a fence, under a ```json example (or the list indented four spaces, markdown's other
      code block): the example, the map's only fenced block, was read in the list's place, by the check and the copy */
   const ex12 = '```json\n[{"id": 0, "kind": "example", "rule": "replace", "find": ["Name Surname"], "to": "[a person]"}]\n```\n', listed = JSON.stringify(JSON.parse(map), null, 2);
