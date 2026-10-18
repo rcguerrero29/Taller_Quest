@@ -130,9 +130,16 @@ function trackedFiles(root) {
    address), and each file it adds or changes as that commit left it, by what git stores, for the lines it added (a line
    none of its parents held: a merge adds only what no side had, and a line a commit kept was read where it was added);
    a file a commit adds is read by its name too. A "files" limit reads the files it names, and no message or name of
-   who made a commit */
+   who made a commit.
+   A BASE WITH NO PARENT is the first commit of a history: the build hands it in on a repository's first push, when
+   there is no earlier commit (.github/workflows/ci.yml). base..head leaves its base out, and a new repository's first
+   commit is the whole game, so then every commit the head holds is read, the base among them; a one-commit first push
+   (base and head both that commit) is read, not refused as holding none (planted 2026-10-18). A base with a
+   parent is read as before, base..head: what came before it was read when it arrived */
 function historyFiles(root, base, head) {
-  const cc = tool(), range = base + '..' + head, short = sha => sha.slice(0, 8);
+  const cc = tool(), short = sha => sha.slice(0, 8);
+  const first = git(root, ['rev-list', '-n1', '--parents', '--end-of-options', base]).toString('latin1').trim().split(' ').length === 1;
+  const range = first ? head : base + '..' + head;
   const revs = git(root, ['rev-list', '--reverse', '--parents', '--end-of-options', range]).toString('latin1').split('\n').filter(Boolean).map(l => l.split(' '));
   const said = new Map(split0(git(root, ['log', '-z', '--no-show-signature', '--format=%H%n%B', '--end-of-options', range])).map(b => { const nl = b.indexOf(10); return [b.subarray(0, nl).toString('latin1'), b.subarray(nl + 1).toString('utf8')]; }));
   /* who made each commit: its author's name and address and its committer's, which are in no diff and stay in the
@@ -181,7 +188,7 @@ function historyFiles(root, base, head) {
       entries.push({ file: nameOf(c.name), from, text: lines.size ? text : null, lines, nameRead: added, label: 'the file commit ' + short(sha) + ' adds or changes, fingerprint ' + cc.fingerprint(from) });
     });
   });
-  return { entries, commits: revs.length };
+  return { entries, commits: revs.length, first };
 }
 
 /* history: what historyFiles read, or null where no range was given (a run on a person's own clone) */
@@ -200,7 +207,7 @@ function check(text, files, history = null) {
   catch (e) { throw new Error('the private list could not be applied (a rule is malformed); nothing was checked'); }
   /* rules: only the ones that look for something; a keep rule records a decision and checks nothing. files: the
      entries git lists, each once (a copy on disk read beside one is not another) */
-  return { rules: rules.filter(r => r.rule !== 'keep').length, files: files.filter(f => !f.again).length, commits: history ? history.commits : null, hits };
+  return { rules: rules.filter(r => r.rule !== 'keep').length, files: files.filter(f => !f.again).length, commits: history ? history.commits : null, first: !!(history && history.first), hits };
 }
 
 function selftest() {
@@ -349,6 +356,7 @@ function selftest() {
     fs.writeFileSync(meal, '# Dinner\n\nDinner with ' + T.who + ' on Friday; she has ' + sick + ', so no shellfish.\n'); sh(HR, ['add', '-A']); sh(HR, ['commit', '-qm', 'dinner']);
     const c3 = sh(HR, ['rev-parse', 'HEAD']);
     fs.writeFileSync(meal, '# Dinner\n\nFriday.\n'); sh(HR, ['commit', '-qam', 'trim the dinner note']);
+    /* clean: c0 is the first commit, so it is read with c1 (2026-10-18) */
     hist = { c2: c2.slice(0, 8), c3: c3.slice(0, 8), tree: hcli([]), clean: hcli(['--range', c0, c1]), red: hcli(['--range', c1, 'HEAD']), empty: hcli(['--range', 'HEAD', 'HEAD']), ci: hcli([], true) };
     /* ROUND 4. Who made a commit (its author's and committer's name and address) is in no diff and stays in the history
        with it, and was never read: a clean message and clean lines by an author or a committer named with a detail passed */
@@ -366,7 +374,7 @@ function selftest() {
     'rule #4 survives at line 3 of the file commit ' + hist.c3 + ' adds or changes, fingerprint ' + CC.fingerprint('docs/dinner.md') + ' (no name is printed on a public log)'] : [];
   const histOut = ['tree', 'clean', 'red', 'empty', 'ci'].map(k => (hist[k] || {}).out || '').join('\n');
   const hc = k => hist[k] || { code: null, out: '' };
-  mark(hc('tree').code === 0 && hc('clean').code === 0 && /and the messages and changes of 1 commit\(s\)/.test(hc('clean').out) && hc('red').code === 1 && /^FAIL: 4 /m.test(hc('red').out) && meant.every(l => hc('red').out.split('\n').includes('- ' + l))
+  mark(hc('tree').code === 0 && hc('clean').code === 0 && /and the messages and changes of 2 commit\(s\) \(every commit the head holds, the first one included/.test(hc('clean').out) && hc('red').code === 1 && /^FAIL: 4 /m.test(hc('red').out) && meant.every(l => hc('red').out.split('\n').includes('- ' + l))
     && hc('empty').code === 1 && /holds no commit/.test(hc('empty').out) && hc('ci').code === 1 && /--range/.test(hc('ci').out) && histOut.toLowerCase().indexOf(lo) < 0 && histOut.indexOf(T.town) < 0 && histOut.indexOf(sick) < 0,
     'a detail said only in a commit\'s message, or added by one commit and taken out by the next, is a red when the check is given the commits (--range); an empty range, and a run on CI without one, are reds too',
     JSON.stringify({ err: hist.err, codes: ['tree', 'clean', 'red', 'empty', 'ci'].map(k => hc(k).code), red: histOut.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'g'), '<town>').replace(new RegExp(sick, 'g'), '<sick>').split('\n').filter(l => /^(OK|FAIL|- rule)/.test(l)) }));
@@ -377,6 +385,41 @@ function selftest() {
     && whoRun.out.toLowerCase().indexOf(lo) < 0 && whoRun.out.toLowerCase().indexOf(T.town.toLowerCase()) < 0,
     'a detail in the name or address of a commit\'s author or committer, with a clean message and clean lines, is a red when the check is given the commits (--range), and is not printed',
     JSON.stringify({ err: hist.err, code: whoRun.code, out: whoRun.out.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>').split('\n').filter(l => /^(OK|FAIL|- |A detail)/.test(l)).map(l => l.slice(0, 120)) }));
+  /* ROUND 5 (2026-10-18). A first push: the build hands in the first commit as the base when there is no earlier commit, and
+     base..head leaves its base out, so a new repository's first commit (its message, and a line it added that the next
+     commit took out) was never read, and a one-commit first push was refused as holding no commit. In throwaway
+     repositories made here, each with the check's own two files in its first commit, as a new repository's would be */
+  const FR = fs.mkdtempSync(path.join(os.tmpdir(), 'private-terms-first-push-')), fmap = path.join(FR, 'map.json');
+  const fcli = (dir, args) => { const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k) && k !== 'GITHUB_ACTIONS'));
+    try { return { code: 0, out: execFileSync(process.execPath, [path.join(dir, 'scripts', 'private-terms.js'), '--map', fmap, ...args], { cwd: dir, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) }; }
+    catch (e) { return { code: e.status, out: String(e.stdout || '') }; } };
+  let fpush = {};
+  try {
+    fs.writeFileSync(fmap, JSON.stringify([{ id: 3, kind: 'partner', rule: 'replace', find: [T.who], to: '[partner]', ci: true }, { id: 5, kind: 'place', rule: 'replace', find: [T.town], to: '[city]' }]));
+    const game = '# A new game\n\nA kitchen and a board.\n';
+    const fresh = (name, text, msg) => { const d = path.join(FR, name); fs.mkdirSync(path.join(d, 'scripts'), { recursive: true }); fs.mkdirSync(path.join(d, 'docs'));
+      ['private-terms.js', 'clean-copy.js'].forEach(f => fs.copyFileSync(path.join(__dirname, f), path.join(d, 'scripts', f)));
+      fs.writeFileSync(path.join(d, 'docs', 'GAME.md'), text); sh(d, ['init', '-q']); sh(d, ['add', '-A']); sh(d, ['commit', '-qm', msg]); return [d, sh(d, ['rev-parse', 'HEAD'])]; };
+    const [one, r1] = fresh('one', game, 'the first commit');
+    const [dirty, r2] = fresh('dirty', game, 'the first commit, made for ' + T.who);
+    const [two, r3] = fresh('two', game + 'The first tasting is in ' + T.town + '.\n', 'the first commit, made for ' + T.who);
+    fs.writeFileSync(path.join(two, 'docs', 'GAME.md'), game); sh(two, ['commit', '-qam', 'trim the note']);
+    const b = sh(two, ['rev-parse', 'HEAD']);
+    fpush = { r2: r2.slice(0, 8), r3: r3.slice(0, 8), one: fcli(one, ['--range', r1, r1]), dirty: fcli(dirty, ['--range', r2, r2]), two: fcli(two, ['--range', r3, 'HEAD']) };
+    fs.appendFileSync(path.join(two, 'docs', 'GAME.md'), '\nA second board.\n'); sh(two, ['commit', '-qam', 'a second board']);
+    fpush.later = fcli(two, ['--range', b, 'HEAD']);
+  } catch (e) { fpush.err = e.message; } finally { fs.rmSync(FR, { recursive: true, force: true }); }
+  const fc = k => fpush[k] || { code: null, out: '' }, fpOut = ['one', 'dirty', 'two', 'later'].map(k => fc(k).out).join('\n');
+  const fpWhy = () => JSON.stringify({ err: fpush.err, codes: ['one', 'dirty', 'two', 'later'].map(k => fc(k).code), out: fpOut.replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>').split('\n').filter(l => /^(OK|FAIL|- rule)/.test(l)).map(l => l.slice(0, 140)) }).replace(new RegExp(T.who, 'gi'), '<who>').replace(new RegExp(T.town, 'gi'), '<town>');
+  const rootHits = fpush.r3 ? ['rule #3 survives at line 1 of the message of commit ' + fpush.r3,
+    'rule #5 survives at line 4 of the file commit ' + fpush.r3 + ' adds or changes, fingerprint ' + CC.fingerprint('docs/GAME.md') + ' (no name is printed on a public log)'] : [];
+  mark(fc('one').code === 0 && /and the messages and changes of 1 commit\(s\) \(every commit the head holds, the first one included/.test(fc('one').out)
+    && fc('dirty').code === 1 && /^FAIL: 1 /m.test(fc('dirty').out) && fc('dirty').out.split('\n').includes('- rule #3 survives at line 1 of the message of commit ' + fpush.r2)
+    && fc('two').code === 1 && /^FAIL: 2 /m.test(fc('two').out) && rootHits.every(l => fc('two').out.split('\n').includes('- ' + l))
+    && fpOut.toLowerCase().indexOf(T.who.toLowerCase()) < 0 && fpOut.indexOf(T.town) < 0,
+    'a first push is read in full when the build hands in the first commit as the base: a one-commit first push is read, not refused, and a detail in the first commit\'s message, or in a line it added that the next commit took out, is a red', fpWhy());
+  mark(fc('later').code === 0 && /and the messages and changes of 1 commit\(s\),/.test(fc('later').out),
+    'a base with a parent reads only the commits after it: the first commit, read when it arrived, is not read again', fpWhy());
   /* a map whose list is not in a fence, under a ```json example (or the list indented four spaces, markdown's other
      code block): the example, the map's only fenced block, was read in the list's place, by the check and the copy */
   const ex12 = '```json\n[{"id": 0, "kind": "example", "rule": "replace", "find": ["Name Surname"], "to": "[a person]"}]\n```\n', listed = JSON.stringify(JSON.parse(map), null, 2);
@@ -512,7 +555,7 @@ if (require.main === module) {
     if (shown.some(h => / commit [0-9a-f]{8}(?: |$)/.test(h))) console.log('A detail in a commit\'s message, in the name or address of who made it, or in a line a commit added, stays in the repository\'s history after a later commit takes it out: rewrite those commits (amend them, with --reset-author or --author for who made one, or squash the branch) before it merges. A file a commit adds or changes is found by the same lookup with git ls-tree -r -z --name-only --full-tree <commit> in place of git ls-files -z --full-name :/');
     process.exit(1);
   }
-  console.log('OK: ' + r.files + ' files and their names' + (r.commits == null ? '' : ', and the messages and changes of ' + r.commits + ' commit(s),') + ' read against ' + r.rules + ' private rules, each with a word or pattern to look for; nothing personal found. (The rules are never printed.)');
+  console.log('OK: ' + r.files + ' files and their names' + (r.commits == null ? '' : ', and the messages and changes of ' + r.commits + ' commit(s)' + (r.first ? ' (every commit the head holds, the first one included: the base has no parent)' : '') + ',') + ' read against ' + r.rules + ' private rules, each with a word or pattern to look for; nothing personal found. (The rules are never printed.)');
 }
 
 module.exports = { rulesFrom, check, trackedFiles, historyFiles };

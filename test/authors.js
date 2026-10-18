@@ -27,7 +27,7 @@
    Run:  node test/authors.js                   commits not yet on origin/main, and the working tree
          node test/authors.js <base> [head]     commits in base..head, and the working tree
          node test/authors.js --dir <d> [...]   the same, in the repository that holds <d> (the hook's way)
-         node test/authors.js --selftest        fixtures, no git, no network */
+         node test/authors.js --selftest        fixtures, and one throwaway repository in the temp folder; no network */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -113,10 +113,18 @@ function parseLog(out) {
   });
 }
 
+/* base..head, and the commits in it. A BASE WITH NO PARENT is the first commit of a history: the public build hands it
+   in on a repository's first push, when there is no earlier commit (.github/workflows/ci.yml). base..head leaves its
+   base out, and a new repository's first commit is the whole game, so then every commit the head holds is read, the
+   base among them (planted 2026-10-18). A base with a parent is read as before: what came before it was read when
+   it arrived. Returns { commits, first } */
 function readCommits(base, head, root) {
-  const out = execFileSync('git', ['log', '--format=%H%x00%ae%x00%ce%x00%B%x1e', base + '..' + head],
-    { cwd: root || ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  return parseLog(out);
+  const cwd = root || ROOT;
+  const first = execFileSync('git', ['rev-list', '-n1', '--parents', '--end-of-options', base],
+    { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim().split(' ').length === 1;
+  const out = execFileSync('git', ['log', '--format=%H%x00%ae%x00%ce%x00%B%x1e', '--end-of-options', first ? head : base + '..' + head],
+    { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  return { commits: parseLog(out), first };
 }
 
 /* what git could ship: every tracked file, and every untracked one that is not ignored — an
@@ -458,9 +466,32 @@ function selftest() {
   /* what test/pushguard.js reads as the push's arguments: a redirection is not a refspec */
   const args = pushes('git push origin claude/x 2>&1 | tail -2');
   mark(args.length === 1 && JSON.stringify(args[0].args) === '["origin","claude/x"]', 'a redirection is not an argument of the push', JSON.stringify(args));
-  const total = cases.length + fileCases.length + 2 + pushCases.length + scriptCases.length + dirCases.length + unknownCases.length + 1;
+  /* 2026-10-18: a first push. The public build hands in the first commit as the base when there is no earlier commit, and
+     base..head leaves its base out, so a new repository's first commit was never read: a personal author on it passed,
+     and a one-commit first push read no commit at all. Planted in one throwaway repository in the system's temp folder */
+  const sh = (dir, args) => execFileSync('git', ['-c', 'user.name=lab', '-c', 'user.email=' + claude, '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args],
+    { cwd: dir, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/.test(k))), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const FR = fs.mkdtempSync(path.join(os.tmpdir(), 'authors-first-push-')), fp = {};
+  try {
+    const note = path.join(FR, 'GAME.md');
+    fs.writeFileSync(note, '# A new game\n'); sh(FR, ['init', '-q']); sh(FR, ['add', '-A']); sh(FR, ['commit', '-qm', 'the first commit', '--author=lab <' + personal + '>']);
+    const r = sh(FR, ['rev-parse', 'HEAD']);
+    fp.root = r.slice(0, 7); fp.one = readCommits(r, r, FR);
+    fs.appendFileSync(note, '\nA board.\n'); sh(FR, ['commit', '-qam', 'a board']);
+    fp.two = readCommits(r, 'HEAD', FR);
+    const b = sh(FR, ['rev-parse', 'HEAD']);
+    fs.appendFileSync(note, '\nA kitchen.\n'); sh(FR, ['commit', '-qam', 'a kitchen']);
+    fp.later = readCommits(b, 'HEAD', FR);
+  } catch (e) { fp.err = String(e.message).split('\n')[0].split(SECRET).join('<local>'); } finally { fs.rmSync(FR, { recursive: true, force: true }); }
+  const read = x => (x && Array.isArray(x.commits) ? x.commits : Array.isArray(x) ? x : []);   /* a reader handing back the list alone, as before 2026-10-18, is read the same way */
+  const said = x => judgeCommits(read(x)), why = k => JSON.stringify({ err: fp.err, commits: read(fp[k]).length, first: !!(fp[k] && fp[k].first), red: said(fp[k]).length });
+  const rootRed = x => { const P = said(x); return P.length === 1 && P[0].indexOf('commit ' + fp.root + ': its author address is at gmail.com,') === 0 && !leaks(P); };
+  mark(read(fp.one).length === 1 && rootRed(fp.one), 'a one-commit first push (its base and head both the first commit) reads that commit, and a personal author on it is red', why('one'));
+  mark(read(fp.two).length === 2 && rootRed(fp.two), 'a two-commit first push reads its first commit too, and a personal author on it is red', why('two'));
+  mark(read(fp.later).length === 1 && !(fp.later && fp.later.first) && said(fp.later).length === 0, 'a base with a parent reads only the commits after it: the first commit, read when it arrived, is not read again', why('later'));
+  const total = cases.length + fileCases.length + 2 + pushCases.length + scriptCases.length + dirCases.length + unknownCases.length + 1 + 3;
   if (bad.length) { console.log('FAIL — ' + bad.length + ' of ' + total); process.exit(1); }
-  console.log('OK — ' + total + ' cases, on fixtures, no git, no network.');
+  console.log('OK — ' + total + ' cases, on fixtures and one throwaway repository, no network.');
   process.exit(0);
 }
 
@@ -514,8 +545,8 @@ if (require.main === module) {
     catch (e) { console.log('FAIL\n- ' + (argv[di + 1] || 'no directory') + ' is not inside a git working tree, so this check cannot say what a push from there would publish — that is a red, not a pass'); process.exit(1); }
   }
   const base = pos[0] || 'origin/main', head = pos[1] || 'HEAD';
-  let commits;
-  try { commits = readCommits(base, head, root); }
+  let commits, first;
+  try { ({ commits, first } = readCommits(base, head, root)); }
   catch (e) {
     console.log('FAIL\n- could not read the commits in ' + base + '..' + head + ' (' + String(e.message).split('\n')[0] + '), so this check cannot say which addresses are about to be published — that is a red, not a pass');
     process.exit(1);
@@ -531,7 +562,7 @@ if (require.main === module) {
     console.log('Fix a commit with `git commit --amend --reset-author` (or a rebase) BEFORE it is pushed, after\n`git config user.email` is set to a no-reply address. Once pushed, it is public: see docs/BOUNDARY.md row 13½.');
     process.exit(1);
   }
-  console.log('OK — ' + commits.length + ' commit(s) in ' + base + '..' + head + ' and ' + files.length + ' text files' + (root === ROOT ? '' : ' in ' + root) + ': every address is a no-reply one.');
+  console.log('OK — ' + commits.length + ' commit(s) ' + (first ? 'that ' + head + ' holds, the first one included (' + base + ' has no parent),' : 'in ' + base + '..' + head) + ' and ' + files.length + ' text files' + (root === ROOT ? '' : ' in ' + root) + ': every address is a no-reply one.');
   process.exit(0);
 }
 
