@@ -58,6 +58,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Decal `kind` | `engine/engine.js:1398–1403` | 2, **closed** |
 | Decor `deco` | `DECODRAW` + pack `DECOART` | 2 + 8 |
 | Fiesta prop `kind` | `content/meridian/config.js:147–152` | 3, **closed** |
+| Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -356,6 +357,8 @@ helper, and the person who hits it will be reading their content files, not `san
 | `mark` | **four** — portal direction, calavera accent colour, per-quest attempt tally, `kind:"marker"` | `maps.js:185`, `engine.js:2345`, `:261`, `:1338` |
 | one district | **four names** — chapter id `mercado`, world id `me`, ribbon id `me`, DOCS key `mercado`, plus a 1-based `district:` number inferred from array position | `config.js:213/66/78`, `docs.js:119` |
 | walkability | **three overlapping tags** — `SOLID`, `stand`, `standsUp`, plus `kind:"door"` duplicating `DOORSET` | `engine.js:1359–1360`, `:4882` |
+| `wall` | **two scopes**: the tile `kind` (never a facade) and a swag's `mount` (the face of any upright solid, `wall` or `facade`, not a window somebody works in) | `engine/engine.js`, grep `const upright` |
+| `hold` | **three**: a tram's waiting state, a door's timing, the walls a taped string's record says hold it up | `engine/engine.js`, grep `TRO.state="hold"` · `DOORMS` · `function fiestaTaped` |
 | `box` | **three spellings of one geometry** — `m.box \|\| m.kind==="furniture" \|\| m.kind==="appliance"`, and the only one named for the geometry is the flag. `furniture` and `appliance` are Meridian's nouns for the same box and no renderer can tell them apart | `engine3d.js:241` |
 
 ---
@@ -392,6 +395,24 @@ helper, and the person who hits it will be reading their content files, not `san
   names none of it.** The tag is registered here because a second world will look for it: it is
   optional, a pack that omits it gets today's behaviour exactly, and what it may touch is
   `docs/BOUNDARY.md`, "The paper seam", not prose. `ARCH-LOG.md` A15.
+- **Registered 2026-10-19 — `mount` on a season's swag: `"poles"` · `"wall"` · `"ceiling"`.** Where a
+  string of cut paper hangs. Rule 1's sentence finishes for each without the word *papel picado*: a strip of flags
+  over open ground between two things that stand there, a pole where nothing does, two rows (`poles`); one row laid
+  flat on the face of the wall north of its row, at that wall's top, one continuous strip a stretch of wall, broken
+  where nothing stands behind it (`wall`); one row strung along its row at the height of the walls round it (`ceiling`).
+  **Saying nothing is `poles`**, so a pack that never heard of the key hangs exactly as before. One reader,
+  `fiestaTaped` in `engine/engine.js`, so the four cameras cannot disagree; one list of the words, `SWAG_MOUNTS`, which
+  the engine and `test/engine.smoke.js` both read; and in the 3D scene the taped parts carry the same word, `mount`.
+  **Reviewed by Toño, 2026-10-19: yes.** `poles` is what every swag already said by saying nothing. `wall` and
+  `ceiling` are **untested** here: no world this repository publishes declares either, and only the probe rooms in
+  `test/engine.smoke.js` hang them. `ceiling` names the room's ceiling line, today the walls' top; a ceiling or roof
+  kind, when one exists, feeds this same value, never a second word. The row count follows the mount (taped is one
+  row); a pack that ever needs to choose rows gets its own key, never a fourth value. If `mount` is ever offered to
+  other hung things, a prop's `sill:true` (grep `function propSill`) is the same part under another name and becomes
+  `mount:"sill"` in that ticket. A misspelt mount hangs on poles at runtime; it is the suite that reds it. **Not**
+  decided: a wall to the south, east or west of a row (only the north wall is a wall here, the one the home camera
+  faces); whether a `hangs` entry (the piñata) takes the same key; and a ceiling of its own — `ceiling` borrows the
+  walls' height and adds no tile kind, so the gap above, *a roof or ceiling*, stays open.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 

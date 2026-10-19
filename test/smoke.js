@@ -2071,6 +2071,65 @@ const CANDIDATES = [
         const cnt = (() => { const c = document.createElement('canvas'); c.width = 320; c.height = 64; const o = ctx; ctx = c.getContext('2d'); try { fiestaDraw2D(PL.street, (x, y) => [x * 32, (y - 1) * 32], false); } finally { ctx = o; }
           const d = c.getContext('2d').getImageData(0, 0, 320, 64).data; let n = 0; for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 250) continue; if (pal.includes('#' + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, '0')).join(''))) n++; } return n; })();
         if (cnt < 40) problems.push('the flat cameras draw no paper flags (' + cnt + ' pixels)');
+        /* A SWAG THAT SAYS NOTHING HANGS EXACTLY AS IT ALWAYS HAS. A swag may say where it hangs now, in `mount` — on
+           poles, taped to a wall or to a ceiling (engine/engine.js, grep "WHERE A STRING HANGS"). Meridian's says nothing
+           anywhere, so in every season no string of any of its worlds is taped; and in EVERY camera the street's frame,
+           its swags as written, is byte for byte the frame of an engine with taping switched off (nothing taped, every
+           swag on its poles) and the frame with every swag told mount:"poles" — so a default that moved, or taped paper
+           that reached a swag that never asked for it, is a red here, in the camera it reached. WHAT THAT CANNOT SEE: all
+           three frames draw Meridian's strings through the same painter for strings on poles, so a change to that painter
+           moves all three alike and passes (a painter drawing one row instead of two moved the street in every flat camera
+           and passed). That is the next check's: each string on poles drawn alone must hang where, and as deep as, a
+           string on poles always has. The clock and the dice are held still for every frame; two frames of the same street
+           must match first, or this measures nothing; and the swags must paint in each camera, or it compares two bare
+           streets. */
+        Object.keys(SEASONS).forEach(sid => (((SEASONS[sid] || {}).art || {}).swags || []).forEach(sw => { if (sw.mount !== undefined) problems.push(`Meridian's swag in ${sw.world} on row ${(sw.from || [])[1]} (season ${sid}) says it hangs on "${sw.mount}" — Meridian's papel picado says nothing and hangs on its poles, as it always has`); }));
+        if (typeof swagMount !== 'function' || typeof fiestaTaped !== 'function') problems.push('the engine cannot say where a swag hangs (swagMount, fiestaTaped)');
+        else {
+          Object.keys(SEASONS).forEach(sid => { seasonSet(sid); Object.keys(WORLDS).forEach(wid => { const t = fiestaTaped(wid); if (t.length) problems.push(`in season ${sid} ${t.length} string(s) of Meridian's ${wid} are cut as taped strings ("${t[0].mount}", row ${t[0].y}) — Meridian tapes nothing`); }); });
+          seasonSet(id);
+          const A = S.art, sw0 = A.swags, dn = Date.now, rnd = Math.random, T0 = dn(), yaw0 = T3.yaw, sm0 = swagMount, ft0 = fiestaTaped; let sd = 7;
+          Date.now = () => T0; Math.random = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+          try {
+            world = PL.street; px = fx = 5; py = fy = 2; moving = false; held = null; T3.yaw = 0; T3.turn = null;
+            const frame = (cam, swags, seamless) => { A.swags = swags; if (seamless) { swagMount = () => 'poles'; fiestaTaped = () => []; }
+              try { seasonSet(id); camSet(cam); sd = 7;
+                if (cam === '3d') { t3Invalidate(); draw3d(); const c3 = T3.renderer.domElement; T3.renderer.render(T3.scene, T3.cam);
+                  const c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height; if (!c.width || !c.height) return new Uint8ClampedArray(0);
+                  const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; }
+                draw(); const cv = document.getElementById('cv'); return ctx.getImageData(0, 0, cv.width, cv.height).data;
+              } finally { swagMount = sm0; fiestaTaped = ft0; } };
+            const diff = (a, b) => { if (a.length !== b.length) return Math.max(a.length, b.length) || 1; let n = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) n++; return n; };
+            CAMS.forEach(cam => { const said = frame(cam, sw0), again = frame(cam, sw0), seamless = frame(cam, sw0, true), poles = frame(cam, sw0.map(s => ({ ...s, mount: 'poles' }))), bare = frame(cam, []);
+              if (!said.length) { problems.push(`the ${cam} camera drew a frame of no size — the street's swags could not be measured`); return; }
+              if (diff(said, again)) { problems.push(`the ${cam} camera draws the street two ways with nothing changed (${diff(said, again)} bytes) — the street's swags could not be measured`); return; }
+              if (!diff(said, bare)) { problems.push(`the street's swags paint nothing in the ${cam} camera — there was nothing to compare`); return; }
+              const d0 = diff(said, seamless); if (d0) problems.push(`in the ${cam} camera the street with its swags as written differs by ${d0} bytes from the same street with taping switched off — taped paper reached Meridian's papel picado, which never asked for it`);
+              const d = diff(said, poles); if (d) problems.push(`in the ${cam} camera the street's swags as written and the same swags told mount:"poles" differ by ${d} bytes — a swag that says nothing is no longer read as hanging on poles`); });
+            /* WHERE MERIDIAN'S STRINGS ON POLES HANG, in each flat camera, measured against the place, not against the engine:
+               each string of the street drawn ALONE (the frame with it minus the frame with none) puts its paper where a string
+               on poles has always hung — inside its span, from the top of its row down: 2 to 14 px into the row in front, 4 to
+               16 in top, and in iso level from the top of its first tile — and TWO rows of flags deep: the band under the first
+               row carries about as much paper as the first. A string that loses its second row, or moves, is a red here. */
+            const street = sw0.filter(sw => sw.world === PL.street && sw.from && sw.to && sw.from[1] === sw.to[1] && swagMount(sw) === 'poles');
+            ['top', 'front', 'iso'].filter(c => CAMS.includes(c)).forEach(cam => { let seen = 0;
+              street.forEach(sw => { const y = sw.from[1], x0 = Math.min(sw.from[0], sw.to[0]), x1 = Math.max(sw.from[0], sw.to[0]);
+                px = fx = Math.round((x0 + x1) / 2); py = fy = y + 2;
+                const one = frame(cam, [sw]), none = frame(cam, []), cv = document.getElementById('cv'), k = cv.width / VW;
+                const at = cam === 'iso' ? (x, yy) => [(x - yy) * ISW / 2 + isoOg[0], (x + yy) * ISH / 2 + isoOg[1]] : (x, yy) => [x * TS - camXg, yy * TS - camYg];
+                const [sx0, sy0] = at(x0, y), sx1 = at(x1 + 1, y)[0], ly = sy0 + (cam === 'front' ? 3 : 5);
+                let all = 0, inside = 0, first = 0, second = 0;
+                for (let i = 0, p = 0; i < one.length; i += 4, p++) {
+                  if (Math.abs(one[i] - none[i]) + Math.abs(one[i + 1] - none[i + 1]) + Math.abs(one[i + 2] - none[i + 2]) <= 30) continue;
+                  const X = (p % cv.width) / k, Y = Math.floor(p / cv.width) / k; all++;
+                  if (X < sx0 - 0.5 || X > sx1 + 0.5 || Y < ly - 1.5 || Y > ly + 11.5) continue;
+                  inside++; if (Y < ly + 5.25) first++; else second++; }
+                if (all < 30) return; seen++;
+                if (inside < all * 0.97) problems.push(`in the ${cam} camera ${all - inside} of the ${all} pixels of the street's string on poles over row ${y} (x ${x0}–${x1}) land off where a string on poles has always hung — inside its span, from the top of its row`);
+                if (second < first * 0.5) problems.push(`in the ${cam} camera the street's string on poles over row ${y} (x ${x0}–${x1}) is one row of flags deep (${first} pixels in its first row, ${second} under it) — a string on poles is two rows`); });
+              if (!seen) problems.push(`no string on poles of the street painted in the ${cam} camera drawn alone — where Meridian's strings hang was not measured`); });
+          } finally { A.swags = sw0; Date.now = dn; Math.random = rnd; T3.yaw = yaw0; swagMount = sm0; fiestaTaped = ft0; seasonSet(id); }
+        }
         // the season speaks: arrival lines may be functions and say something different tonight; planters bloom
         const arr = UI.en.arrive[ex ? ex.world : PL.street]; const said = typeof arr === 'function' ? arr() : arr;
         seasonSet('off'); const plain = typeof arr === 'function' ? arr() : arr;
