@@ -1410,10 +1410,32 @@ function fiestaHangs(wid){return (art("hangs",[])||[]).filter(h=>h.world===wid);
 const SWAG_MOUNTS=["poles","wall","ceiling"]; /* the words a mount may say, the default first — the ONE list: swagMount reads
    it, and so does test/engine.smoke.js, so a word cannot be known to one and not the other */
 function swagMount(sw){const m=sw&&sw.mount;return SWAG_MOUNTS.indexOf(m)>0?m:SWAG_MOUNTS[0];}
-/* The strings the taped swags of a world become, [{x0,x1,y,mount,wy,hold:[[x,y],…]}] — ONE reader, so the four cameras
-   cannot disagree about where a string is. `hold` names the walls that hold it up, and its height is theirs.
+/* HOW FAR A WALL STRING HANGS DOWN ITS WALL — a wall swag's `reach`, a number: how far below the wall's top edge its
+   flags' hems reach, in 32nds of the wall's face as each camera draws it (32 tile pixels in the front and top cameras,
+   the wall's height in 3D, its block's south face in iso — the grid a pack paints a wall's art and its decor in).
+     unset    — the string hangs exactly where a wall string always has, in every camera, byte for byte.
+     0        — the hems on the wall's top edge: the flags stand wholly ABOVE the wall's face, and so over none of
+                whatever is painted on it. The face is what the engine calls the painted face, top edge down, because it
+                cannot know which of a face's 32 rows a pack's paint leaves bare: a wall's own art and a decor painted on
+                it may cover any of them (the engine's own wall paints its top six as a lighter band; a decor starts at
+                the face's first row in the flat cameras and stands within 0.03 of the wall's top in 3D), so the top edge
+                is the one line nothing painted on a wall rises above. A pack whose paint starts lower, under a coping,
+                writes that depth and its flags hang just clear of its paint.
+     up to 32 — further down, the hems at that depth; 32 is the wall's foot.
+   The string sits one flag's depth above the hems, as it always does, so at a small reach it runs above the wall's top
+   edge: in 3D against whatever stands behind the wall, and in the front camera above the frame when the wall is the
+   map's first row (that camera stops there). Read for "wall" strings only: a string on poles or on a ceiling hangs as
+   it always has, whatever it says. Anything but a number inside SWAG_REACH hangs where a wall string always has, and
+   test/engine.smoke.js reds the pack that wrote it. */
+const SWAG_REACH=[0,32]; /* the least and the most a reach may say — the ONE range: swagReach reads it, and so does
+   test/engine.smoke.js, so a value cannot be good to one and wrong to the other */
+function swagReach(sw){const r=sw&&sw.reach;return typeof r==="number"&&isFinite(r)&&r>=SWAG_REACH[0]&&r<=SWAG_REACH[1]?r:undefined;}
+/* The strings the taped swags of a world become, [{x0,x1,y,mount,wy,hold:[[x,y],…],reach}] — ONE reader, so the four
+   cameras cannot disagree about where a string is. `hold` names the walls that hold it up, and its height is theirs;
+   `reach` is there only on a wall string whose swag said a good one.
    Two taped swags of one mount that touch or overlap on one row are ONE string first, so a stretch of wall carries one
-   continuous string however its spans were cut. A wall or a facade standing ON its own row (a side wall, a partition)
+   continuous string however its spans were cut — when they say the same reach; a wall string that changes its reach
+   part of the way along is two. A wall or a facade standing ON its own row (a side wall, a partition)
    ends a string there, because it would swallow it; and its ends are pulled in off any solid tile on its own row.
    A WALL string then runs across the whole of what is left and is broken only where nothing stands behind it to tape it
    to (a door, an opening, a window somebody works in): each stretch of wall is its own string. With no wall at all
@@ -1427,20 +1449,25 @@ function fiestaTaped(wid){const w=WORLDS[wid];if(!w)return [];
   const wallAt=(x,y)=>upright(x,y)&&!winAt(w,x,y);
   const spans=[],out=[];
   fiestaSwags(wid).forEach(sw=>{const mt=swagMount(sw);if(mt==="poles")return;const y=sw.from[1];if(!w.grid[y])return;
-    const a=Math.max(0,Math.min(sw.from[0],sw.to[0])),b=Math.min(w.W-1,Math.max(sw.from[0],sw.to[0]));if(b>=a)spans.push({a,b,y,mt});});
-  spans.sort((p,q)=>(p.mt<q.mt?-1:p.mt>q.mt?1:0)||p.y-q.y||p.a-q.a);
-  const merged=[];spans.forEach(s=>{const l=merged[merged.length-1];if(l&&l.mt===s.mt&&l.y===s.y&&s.a<=l.b+1)l.b=Math.max(l.b,s.b);else merged.push({...s});});
-  const piece=(a,b,y,mt)=>{while(a<=b&&SOLID.has(at(a,y)))a++;while(b>=a&&SOLID.has(at(b,y)))b--;if(b<a)return;
+    const a=Math.max(0,Math.min(sw.from[0],sw.to[0])),b=Math.min(w.W-1,Math.max(sw.from[0],sw.to[0])),rc=mt==="wall"?swagReach(sw):undefined;
+    if(b>=a)spans.push({a,b,y,mt,rc});});
+  const rk=s=>s.rc===undefined?"":String(s.rc);   /* unset sorts first, and every unset span sorts as it always did */
+  spans.sort((p,q)=>(p.mt<q.mt?-1:p.mt>q.mt?1:0)||p.y-q.y||(rk(p)<rk(q)?-1:rk(p)>rk(q)?1:0)||p.a-q.a);
+  const merged=[];spans.forEach(s=>{const l=merged[merged.length-1];if(l&&l.mt===s.mt&&l.y===s.y&&l.rc===s.rc&&s.a<=l.b+1)l.b=Math.max(l.b,s.b);else merged.push({...s});});
+  const piece=(a,b,y,mt,rc)=>{while(a<=b&&SOLID.has(at(a,y)))a++;while(b>=a&&SOLID.has(at(b,y)))b--;if(b<a)return;
     if(mt==="wall"){const wy=y-1;let s=-1;
       for(let x=a;x<=b+1;x++){const ok=x<=b&&wallAt(x,wy);if(ok&&s<0)s=x;
-        if(!ok&&s>=0){const hold=[];for(let k=s;k<x;k++)hold.push([k,wy]);out.push({x0:s,x1:x-1,y,wy,mount:mt,hold});s=-1;}}
+        if(!ok&&s>=0){const hold=[];for(let k=s;k<x;k++)hold.push([k,wy]);const r={x0:s,x1:x-1,y,wy,mount:mt,hold};if(rc!==undefined)r.reach=rc;out.push(r);s=-1;}}
       return;}
     const hold=[];let e=a-1;while(e>=0&&!SOLID.has(at(e,y)))e--;if(wallAt(e,y))hold.push([e,y]);
     e=b+1;while(e<w.W&&!SOLID.has(at(e,y)))e++;if(wallAt(e,y))hold.push([e,y]);
     if(!hold.length)for(let x=a;x<=b;x++)if(wallAt(x,y-1))hold.push([x,y-1]);
     if(hold.length)out.push({x0:a,x1:b,y,mount:mt,hold});};
-  merged.forEach(({a,b,y,mt})=>{let s=a;for(let x=a;x<=b+1;x++)if(x>b||upright(x,y)){piece(s,x-1,y,mt);s=x+1;}});
+  merged.forEach(({a,b,y,mt,rc})=>{let s=a;for(let x=a;x<=b+1;x++)if(x>b||upright(x,y)){piece(s,x-1,y,mt,rc);s=x+1;}});
   return out;}
+/* Where a taped string's hems sit on its wall: a fraction of the wall's face, down from its top edge — or null, and the
+   camera hangs it where a wall string always has. ONE reader of a string's reach, for all four cameras. */
+function tapedHem(r){return r&&r.mount==="wall"&&typeof r.reach==="number"?r.reach/32:null;}
 /* A taped string in the three flat cameras — one row of flags each, put where it is taped. `put(d,fn)` is the camera's
    depth queue (front, iso) or paints at once (top). Paper taped to a wall is the last thing on that wall: over its own
    face and over anything painted on it (a mural, a sign), in every camera.
@@ -1454,24 +1481,28 @@ function fiestaTaped(wid){const w=WORLDS[wid];if(!w)return [];
    onto the block — along the wall's south face at its top for a wall, along its row's middle at the walls' height for
    a ceiling — one slice a tile, each in that tile's own turn of the painter's queue (a wall's slice after the block and
    the decor standing on it, a ceiling's before the people on its row), so whoever stands in front of the paper still
-   covers it, and one baked strip serves every slice. */
-const PAPELTAPE=new Map();
+   covers it, and one baked strip serves every slice.
+   A WALL STRING WITH A REACH (swagReach, above) is moved down its wall's face, and nothing else about it changes: its
+   hems at that fraction of the face (tapedHem) — of the face's 32 px in front and top, of its block's face height in
+   iso — and its string one flag's depth (PAPEL_HEM) above them. Without one, exactly where it always was. */
+const PAPELTAPE=new Map(),TAPE_LY=1.5; /* TAPE_LY: where the iso strip's string runs in its own bake, in tile pixels */
 function papelTapeBake(pal,seed,n){const k=pal.join()+"|"+seed+"|"+n;let c=PAPELTAPE.get(k);if(c)return c;
   if(PAPELTAPE.size>64)PAPELTAPE.clear();
   c=document.createElement("canvas");c.width=n*TS*2;c.height=16;const g=c.getContext("2d");g.scale(2,2);
-  drawPapelRow(g,0,n*TS,1.5,pal,seed,1);PAPELTAPE.set(k,c);return c;}
+  drawPapelRow(g,0,n*TS,TAPE_LY,pal,seed,1);PAPELTAPE.set(k,c);return c;}
 function fiestaTaped2D(cam,wid,toScreen,put){
   const pal=art("papel",null);if(!pal)return;const w=WORLDS[wid];
-  fiestaTaped(wid).forEach(r=>{const seed=r.x0+r.y,wall=r.mount==="wall",n=r.x1-r.x0+1;
+  fiestaTaped(wid).forEach(r=>{const seed=r.x0+r.y,wall=r.mount==="wall",n=r.x1-r.x0+1,hem=tapedHem(r);
     if(cam==="iso"){const h=Math.min(...r.hold.map(([hx,hy])=>isoH(w,hx,hy))),q=ISW/2/TS,[pcx,pcy]=toScreen(r.x0,wall?r.wy:r.y);
-      const ox=wall?pcx-ISW/2:pcx-ISW/4,oy=(wall?pcy:pcy-ISH/4)-h,img=papelTapeBake(pal,seed,n);
+      const ox=wall?pcx-ISW/2:pcx-ISW/4,oy=(wall?pcy:pcy-ISH/4)-h+(hem===null?0:hem*h-q*(TAPE_LY+PAPEL_HEM)),img=papelTapeBake(pal,seed,n);
       for(let i=0;i<n;i++)put(r.x0+i+(wall?r.wy+0.52:r.y+0.5),()=>{ctx.save();ctx.transform(q,q/2,0,q,ox,oy);
         ctx.drawImage(img,i*TS*2,0,TS*2,img.height,i*TS,0,TS,img.height/2);ctx.restore();});
       return;}
     const[sx0,sy0]=toScreen(r.x0,r.y),[sx1]=toScreen(r.x1+1,r.y);
-    if(cam==="front"){if(wall){const syw=toScreen(r.x0,r.wy)[1];put(r.wy+0.06,()=>drawPapelRow(ctx,sx0,sx1,syw+2,pal,seed,1));}
+    const onWall=()=>{const syw=toScreen(r.x0,r.wy)[1];return hem===null?syw+2:syw+hem*TS-PAPEL_HEM;}; /* the string's line on the wall's face */
+    if(cam==="front"){if(wall){const ly=onWall();put(r.wy+0.06,()=>drawPapelRow(ctx,sx0,sx1,ly,pal,seed,1));}
       else put(r.y+0.5,()=>drawPapelRow(ctx,sx0,sx1,sy0+3,pal,seed,1));return;}
-    put(0,()=>drawPapelRow(ctx,sx0,sx1,wall?toScreen(r.x0,r.wy)[1]+2:sy0+TS/2-2.4,pal,seed,1));});}
+    put(0,()=>drawPapelRow(ctx,sx0,sx1,wall?onWall():sy0+TS/2-2.4,pal,seed,1));});}
 function drawPinata(g,sx,sy,sway){ /* a seven-point star on a rope: a gold body, seven cones in the paper palette, tissue tabs at the tips */
   const pal=art("papel",null)||["#E8478F","#2FA5A0","#F2B705","#7B4BA8","#F07C24","#F6F2E8"],cx=sx+16,cy=sy+18;
   g.save();g.translate(cx,sy+2);g.rotate(sway||0);g.translate(-cx,-(sy+2));
@@ -1646,14 +1677,16 @@ function drawOfrenda(g,x,y){ /* la ofrenda (Nacho, 2026-09-07; the owner agreed)
   g.fillStyle="#F6F2E8";g.beginPath();g.arc(x+4,y+24,1.4,0,7);g.arc(x+28,y+24,1.4,0,7);g.fill();          /* two cups of water */
   drawPapelRow(g,x+2,x+30,y+25,art("papel",["#E8478F","#2FA5A0","#F2B705"]),3);}
 function fiestaProps(wid){return (art("props",[])||[]).filter(p=>p.world===wid);} /* small things set down by place: {world,x,y,kind,ox,oy,h,foil} */
+const PAPEL_HEM=4.8; /* how far a flag of drawPapelRow hangs below its string, to its scallops' tips, in tile pixels */
 function drawPapelRow(g,x0,x1,ly,pal,seed,rows){ /* a string of cut paper (Pili, 2026-09-07): little squares with a scalloped hem and a punched
   hole — paper, not bunting — in TWO rows, the second half a flag over; two rows is what makes a street look dressed.
-  `rows` 1 is a taped string (swagMount): the first string and its row alone; anything else is the two rows, as ever */
+  `rows` 1 is a taped string (swagMount): the first string and its row alone; anything else is the two rows, as ever.
+  A row's flags hang PAPEL_HEM from its string to the tips of their scallops: 3.6 of paper and 1.2 of scallop */
   const one=rows===1;
   g.strokeStyle="#3A2E26";g.lineWidth=1;g.beginPath();g.moveTo(x0+2,ly);g.lineTo(x1-2,ly);if(!one){g.moveTo(x0+4,ly+5.5);g.lineTo(x1-4,ly+5.5);}g.stroke();
   (one?[0]:[0,1]).forEach(row=>{let k=row*3;for(let px=x0+3+row*2.3;px<x1-3;px+=4.6,k++){const col=pal[(k+seed)%pal.length],fy=ly+row*5.5;
     g.fillStyle=col;g.fillRect(px-1.8,fy,3.6,3.6);
-    g.beginPath();g.moveTo(px-1.8,fy+3.6);g.lineTo(px-0.9,fy+4.8);g.lineTo(px,fy+3.6);g.lineTo(px+0.9,fy+4.8);g.lineTo(px+1.8,fy+3.6);g.closePath();g.fill();
+    g.beginPath();g.moveTo(px-1.8,fy+3.6);g.lineTo(px-0.9,fy+PAPEL_HEM);g.lineTo(px,fy+3.6);g.lineTo(px+0.9,fy+PAPEL_HEM);g.lineTo(px+1.8,fy+3.6);g.closePath();g.fill();
     g.fillStyle="rgba(40,30,20,.55)";g.fillRect(px-0.4,fy+1.2,0.8,0.8);}});}
 /* A LIT WINDOW behind a sill candy (#131 again: the owner still found the skulls hidden).
    Twice now this was answered by changing the sweet's SIZE — 8px to 5px, then back up to 0.85 of

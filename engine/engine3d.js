@@ -847,13 +847,17 @@ function t3Build(key){
          ("wall" or "ceiling"; a string on poles carries none, as a swag that says nothing says none), and the tiles they
          run over, x0..x1. t3Fiesta leaves a wall string alone at the quarter turns (it lies on the wall's face, never across
          the row you stand on) and treats a ceiling string like any string along a row; t3Reveal takes a wall string down
-         while the cutaway has its wall down. The strip is t3PapelStrip's: seven flags a tile, however long the stretch. */
+         while the cutaway has its wall down. The strip is t3PapelStrip's: seven flags a tile, however long the stretch.
+         A wall string with a `reach` (engine/engine.js, grep "HOW FAR A WALL STRING HANGS DOWN ITS WALL") has its strip's
+         bottom edge, its hems, at that fraction of the wall's height down from its top (tapedHem), and its string along the
+         strip's top, as ever; without one it stands exactly where it always has. The scene says the reach it was built at. */
       (typeof fiestaTaped==="function"?fiestaTaped(world):[]).forEach(r=>{
         const L=r.x1-r.x0+1,cx=r.x0+L/2,wallS=r.mount==="wall",H=Math.min(...r.hold.map(([hx,hy])=>tileTop(hx,hy,w.grid[hy][hx])));
         if(!(H>0))return;
-        const TOP=H-0.02,zs=wallS?r.y+0.014:r.y+0.5,zf=wallS?r.y+0.008:r.y+0.5,tag={swag:true,mount:r.mount,y:r.y,x0:r.x0,x1:r.x1};if(wallS)tag.wy=r.wy;
+        const hem=typeof tapedHem==="function"?tapedHem(r):null;
+        const TOP=hem===null?H-0.02:H-hem*H+T3PAPELH,zs=wallS?r.y+0.014:r.y+0.5,zf=wallS?r.y+0.008:r.y+0.5,tag={swag:true,mount:r.mount,y:r.y,x0:r.x0,x1:r.x1};if(wallS)tag.wy=r.wy;if(hem!==null)tag.reach=r.reach;
         const st=new THREE.Mesh(new THREE.BoxGeometry(L-0.1,0.02,wallS?0.006:0.02),strg);st.position.set(cx,TOP,zs);st.userData={...tag,string:true};grp.add(st);
-        const fl=t3PapelStrip(pal,L,r.x0+r.y,0);fl.position.set(cx,TOP-0.11,zf);Object.assign(fl.userData,tag);grp.add(fl);});
+        const fl=t3PapelStrip(pal,L,r.x0+r.y,0);fl.position.set(cx,TOP-T3PAPELH/2,zf);Object.assign(fl.userData,tag);grp.add(fl);});
       (typeof fiestaProps==="function"?fiestaProps(world):[]).forEach(p=>{
         const g=w.grid[p.y]&&w.grid[p.y][p.x],up=g!==undefined&&(SOLID.has(g)||((TILES[g]||{}).lift|0)>=5);
         if(p.kind==="ofrenda"){ /* the ofrenda: a tile-wide picture standing where it was set, on a table's top if the tile is one */
@@ -1109,7 +1113,7 @@ function t3Fiesta(){ /* the piñata sways; it is never hit and gives nothing (Na
    most T3PAPELROW flags a row, 2048 px, the widest every WebGL 2 GPU must take, and a longer strip's flags wrap onto more
    rows of the same texture (16 px a row: 14 of flag, 2 of nothing between, so no row bleeds into the next). A string of
    36 tiles or fewer is one row and bakes exactly as it always has. */
-const T3PAPELROW=256;
+const T3PAPELROW=256,T3PAPELH=0.22; /* T3PAPELH: how tall a strip of flags stands, its string's line to below its scallops */
 function t3PapelTex(pal,n,seed){ /* a string of n cut-paper flags baked once (Pili): flat colour, a scalloped hem, five punched
   holes you see the sky through — the difference between bunting and papel picado */
   const per=Math.min(n,T3PAPELROW),rows=Math.ceil(n/per);
@@ -1122,11 +1126,11 @@ function t3PapelTex(pal,n,seed){ /* a string of n cut-paper flags baked once (Pi
 function t3PapelStrip(pal,L,seed,row){ /* one plane a string, seven flags a tile, the texture carries the cut; two draw calls a swag, not two hundred */
   const n=Math.max(1,Math.round(L*7)),tex=t3PapelTex(pal,n,seed+(row?3:0)),per=Math.min(n,T3PAPELROW),k=Math.ceil(n/per);
   let geo;
-  if(k===1)geo=new THREE.PlaneGeometry(L-0.1,0.22);
+  if(k===1)geo=new THREE.PlaneGeometry(L-0.1,T3PAPELH);
   else{ /* still ONE plane, one draw call: k lengths laid end to end, each reading its own row of the texture */
     const W=L-0.1,fw=W/n,Ht=tex.image.height,pos=[],uv=[],nrm=[],idx=[];
     for(let j=0;j<k;j++){const f0=j*per,f1=Math.min(n,f0+per),xa=-W/2+f0*fw,xb=-W/2+f1*fw,ub=(f1-f0)/per,vt=1-j*16/Ht,vb=1-(j*16+14)/Ht,b=j*4;
-      pos.push(xa,0.11,0,xb,0.11,0,xa,-0.11,0,xb,-0.11,0);uv.push(0,vt,ub,vt,0,vb,ub,vb);nrm.push(0,0,1,0,0,1,0,0,1,0,0,1);idx.push(b,b+2,b+1,b+2,b+3,b+1);}
+      pos.push(xa,T3PAPELH/2,0,xb,T3PAPELH/2,0,xa,-T3PAPELH/2,0,xb,-T3PAPELH/2,0);uv.push(0,vt,ub,vt,0,vb,ub,vb);nrm.push(0,0,1,0,0,1,0,0,1,0,0,1);idx.push(b,b+2,b+1,b+2,b+3,b+1);}
     geo=new THREE.BufferGeometry();geo.setIndex(idx);geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
     geo.setAttribute("normal",new THREE.Float32BufferAttribute(nrm,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));}
   const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.3,side:THREE.DoubleSide}));
