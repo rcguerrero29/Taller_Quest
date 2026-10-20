@@ -748,3 +748,87 @@ polygon update for all of these, and what the marigolds taught, had been logged)
   against 5.85 and 4.50; ×4 26.0 and 26.2 against 30.9 and 28.1 — the wings' own sheets, two more `drawImage`s a
   winged animal, are inside this machine's noise at ×1 and may be a tenth at ×4. Not settled by four runs.
 - **Open.** The per-pixel pass is the cost to take away, and a body of parts takes it away with the card. A phone.
+
+### 2026-10-19 · papel picado taped to a wall or a ceiling, as well as hung between poles
+
+- **What it does.** A string of papel picado can be taped to a wall or to a ceiling as well as hung between poles.
+  Taped, it is one row of flags and one continuous string along each stretch of wall. A swag that says nothing hangs
+  exactly as it does today.
+- **A throwaway mock came first** (never committed). The evidence for what is built here is the probe rooms in
+  `test/engine.smoke.js` (grep `PAPER TAPED TO A WALL OR A CEILING`).
+- **The seam.** One key on a swag, `mount`: `"poles"` (the default — every swag that says nothing), `"wall"` or
+  `"ceiling"`; the words are one list, `SWAG_MOUNTS` in `engine/engine.js`, which `swagMount` and the check both read;
+  any other word hangs on poles and is a red in `test/engine.smoke.js`. One reader,
+  `fiestaTaped` (`engine/engine.js`, grep "WHERE A STRING HANGS"), cuts a world's taped swags into strings, so the four
+  cameras cannot disagree: touching spans of one mount on one row are one string first; a wall or facade standing on
+  its own row (a side wall, a partition) ends a string; its ends are pulled in off any solid tile on its own row. A
+  **wall** string is then broken wherever nothing stands behind it to tape it to — a door, an opening, a window
+  somebody works in — and each stretch of wall is its own string; with no wall at all north of it, nothing is hung. A
+  pack writes it as ONE span along the whole wall, doors and all; a string that stops where the wall behind it goes on
+  is a red. **Which wall:** the one NORTH of its row, because that is the wall every camera shows face-on — the 3D
+  camera's home stop stands south of you looking north, the front camera draws each row's south face, iso shows every
+  block's south (left) face. A **ceiling** string takes its height from the walls at its two ends, failing those from
+  the walls north of it, failing those it is not hung. In the 3D scene the taped parts carry the same word, `mount`.
+- **What each camera does, measured against what it drew for a swag before** (Meridian's street in season, the frame
+  with the swags minus the frame without them):
+  - **3D.** Before: two rows at 1.9 over the swag's row, a pole where an end is open ground. Taped to a wall: no pole,
+    one strip of flags laid flat on the wall's south face, 0.008 proud of it — in front of the plane a decor is
+    painted on (0.005), because paper taped to a wall is over its paint — with its top at the top of the lowest wall in
+    the stretch; it is left alone at the quarter turns (it is on the wall, never across your row), and it comes down
+    with its wall while the cutaway has any tile of that wall down to its stub — the whole string, the length over the
+    standing part of that wall with it, for as long as the cut lasts — so it is never left in the air in front of
+    whoever stands behind the wall. Ceiling: one strip along the middle of its row at the walls' height, hidden at a
+    quarter turn on your own row like any string along a row. Two draw calls and 14 triangles a stretch, where a pole
+    swag is up to eight draw calls. A strip's texture is 8 px a flag, so one string a stretch makes a long wall a wide
+    texture, and a GPU shrinks one wider than it takes (three.js says so only in the console, and every flag loses rows
+    and its holes; past 73 tiles a 4096 GPU does it). So a texture holds at most 256 flags a row, 2048 px, and a longer
+    strip wraps its flags onto more rows of the same texture, still one plane and one draw call; a string of 36 tiles or
+    fewer bakes exactly as before.
+  - **Top.** Before: two rows across the top of the swag's row (4 to 15 px into it). Taped to a wall: one row along the
+    wall's top edge, where the front camera tapes it, painted after the decor. This camera draws a wall as its standing
+    face, with what is painted on it below that edge, so the first version — along the wall's foot — read as paper lying
+    on the floor under the paint. Ceiling: one row down the middle of its row.
+  - **Front.** Before: two rows hanging from the top of the swag's row (2 to 13 px into it), painted in the ground pass,
+    so anything in the depth pass on that row or nearer covers it. Taped to a wall: one row ON the wall's face at its
+    top edge, queued after that row's facade and after anything painted on it — painted in the ground pass, the wall it
+    is taped to would cover it (the sill candies' lesson, 2026-09-14). Ceiling: one row from the top of its row, after
+    the row's facades, before its people. When the wall is the map's first row, the frame starts at that wall's top, so
+    the paper runs along the frame's top edge and can read as the frame's own trim, with the round buttons over its
+    right end on a laptop: the front camera stops at the map's first row, which is older than this change, and moving
+    it would move Meridian's frames.
+  - **Iso.** Before: a LEVEL two-row strip from the centre of the swag's first tile, painted after the whole depth pass,
+    over blocks and people — on the street a row that drops 88 px across the screen got a strip that stays level. Taped
+    to a wall: one row sheared onto the block's south face along its top edge, one slice a tile, each in that tile's
+    turn of the painter's queue (after the block and the decor standing on it), so whoever stands in front still covers
+    it. Ceiling: sheared along the row's middle, lifted by the walls' iso height, one slice a tile, before the people on
+    that tile. One baked strip a string serves every slice. Iso draws a wall's decor taller than the wall's face, so the
+    paper along the face's top crosses a tall painting on that wall through its middle; that is older than this change.
+    At phone size a flag here is a pixel or two, the weakest read of the four.
+- **Meridian.** Says nothing anywhere and is unchanged: its street, in season, in all four cameras at 1280×800 and at
+  390×844 (3×), is pixel for pixel the frame origin/main draws, under a frozen clock with the animals set aside.
+- **Guards.** `test/smoke.js`, grep `A SWAG THAT SAYS NOTHING HANGS EXACTLY AS IT ALWAYS HAS`: no Meridian swag names a
+  mount, no Meridian string is cut as taped in any season, and in every camera the street as written is byte for byte the
+  street with taping switched off and the street with every swag told `"poles"` — which proves taping never reaches
+  Meridian, and cannot see a change to the strings on poles themselves, since all three frames go through their one
+  painter; so, grep `WHERE MERIDIAN'S STRINGS ON POLES HANG`: each string of the street drawn alone hangs where a string
+  on poles always has, inside its span from the top of its row, and two rows deep, in top, front and iso.
+  `test/engine.smoke.js`, grep `PAPER TAPED TO A WALL OR A CEILING`: the pack's mounts are words of `SWAG_MOUNTS`, each
+  taped swag hangs somewhere, and no wall string stops short of its stretch; then a probe room laid at run time (a door
+  and a partition, paint on the wall, a wall string handed over as two touching spans, a wall string with only floor
+  behind it, a ceiling string and a string that says nothing), a wall 158 tiles long, and a room with a wall inside it,
+  read out of the built scene and the drawn frames. Planted outside the repository, each red in its own sentence: two
+  rows, poles, no break at the door, none at the partition, no merge, a string short of its stretch, off the face, inside
+  the wall, under the paint (3D, top, front and iso each), at 1.9, the ceiling at 1.9, the ceiling's flags at pole
+  height, a post that stands with the taped paper, through the hero at a quarter turn, gone from the wall at a quarter
+  turn, left in the air when the cutaway drops its wall, two rows in the flat cameras, the front string in the ground
+  pass, the top string along the wall's foot, iso unsheared, iso not drawn at all, top drawn like a pole string, a taped
+  swag also hung on poles (3D) or also drawn as a pole string (flat), a long strip shrunk by the GPU or capped below
+  seven flags a tile, strings that stay out of season, the default moved, a misspelt mount, a taped swag that hangs
+  nowhere, a wall string written in pieces with gaps, taped strings cut from pole swags; and the probe on origin/main's
+  engine. The end-on check (grep `a string seen end-on is not a string`) looks at a string on poles, never a taped one.
+- **Not done.** Only the wall north of a row can carry paper; a south, east or west wall cannot be named. `ceiling`
+  borrows the walls' height and adds no ceiling of its own, so in every camera it is a level line at the walls' top, at
+  about head height in 3D. The iso camera's pole swags still lie level from their first tile and over everything — found
+  while measuring, and left, because this change keeps Meridian's frames as they are. In 3D a decor on a wall the
+  cutaway drops stays up — older than this change, found while measuring the paper's own case, and left. No phone
+  measured for cost.

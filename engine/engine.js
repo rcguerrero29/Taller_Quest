@@ -1109,6 +1109,7 @@ function drawIso(){
   {const L=troLine(world);if(L&&TRO.state!=="away"){const n=troCars(L);
     for(let i=0;i<n;i++){const cx=TRO.x+i*(TRO_LEN+TRO_GAP);
       R.push({d:cx+TRO_LEN/2+L.row+0.5,f:(function(k){return function(){troDraw2D(world,P,false,k);};})(i)});}}}
+  fiestaTaped2D("iso",world,P,(d,f)=>R.push({d,f})); /* a taped string is ON a block, so it takes the block's turn, a tile at a time */
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
   fiestaDraw2D(world,P,false);
   /* shared time-of-day wash (door spills are top-down-only for now) */
@@ -1384,12 +1385,93 @@ const BRIDGE_BANDS=["#D95B5B","#E0A430","#E7C25A","#7A9A4E","#5E93BC","#8B6FC8"]
 /* ---------- LA FIESTA (the owner asked for papel picado everywhere, a piñata
    and tamales; Nacho's plan the same day: swags, not wallpaper — five flags a tile, a swag
    of five to nine tiles tied to something you can see it tied to; dress by what a place is FOR) ----------
-   The season hands art("swags") — [{world,from:[x,y],to:[x,y]}] horizontal spans — and art("hangs")
+   The season hands art("swags") — [{world,from:[x,y],to:[x,y],mount}] horizontal spans — and art("hangs")
    — [{world,x,y,kind:"pinata"}]. Never a map row: a string hangs above the ground and changes no
-   tile. In 3D the builder strings them (poles where the end is open ground); the two flat cameras
-   draw them here. Season off → art() falls back to nothing and nothing is left behind. */
+   tile. A swag's `mount` says how it hangs (grep "WHERE A STRING HANGS", below), and saying nothing is "poles": in 3D
+   the builder strings those (poles where the end is open ground), and the three flat cameras draw them in
+   fiestaDraw2D, two rows of flags; the five-to-nine-tiles rule is theirs. A string TAPED to a wall or a ceiling takes a
+   path of its own — fiestaTaped cuts it, fiestaTaped2D draws it flat, the 3D builder lays it, one row of flags — and is
+   written as ONE span along the whole wall, doors and all, which the engine breaks at each door and pulls in off the
+   side walls. Season off → art() falls back to nothing and nothing is left behind. */
 function fiestaSwags(wid){return (art("swags",[])||[]).filter(sw=>sw.world===wid&&sw.from&&sw.to&&sw.from[1]===sw.to[1]);}
 function fiestaHangs(wid){return (art("hangs",[])||[]).filter(h=>h.world===wid);}
+/* WHERE A STRING HANGS — a swag's `mount`. Papel picado is hung between poles, or taped to a wall or a ceiling, and a
+   swag may say which in this one key:
+     "poles"   — strung over the ground between what stands at its ends, a pole where an end is open ground, two rows
+                 of flags. Every swag before this key existed, and EVERY SWAG THAT SAYS NOTHING, hangs exactly so.
+     "wall"    — taped flat to the face of the wall on the row NORTH of its own row, at that wall's top edge: no poles,
+                 one row of flags. North because that is the wall every camera shows face-on — the 3D camera's home stop
+                 stands south of you looking north, the front camera draws each row's south face, and iso shows the south
+                 face of every block (its left face). A wall to the south is seen from behind at the home stop, and an
+                 east or west wall runs across a swag, which is a row. With no wall north of it, nothing is hung.
+     "ceiling" — strung at the height of the room's walls along its own row: no poles, one row of flags.
+   Anything else hangs on poles too, and test/engine.smoke.js reds a pack whose swag names a mount the engine does not
+   know, so a misspelling is a red in CI and not a string quietly back on its poles. */
+const SWAG_MOUNTS=["poles","wall","ceiling"]; /* the words a mount may say, the default first — the ONE list: swagMount reads
+   it, and so does test/engine.smoke.js, so a word cannot be known to one and not the other */
+function swagMount(sw){const m=sw&&sw.mount;return SWAG_MOUNTS.indexOf(m)>0?m:SWAG_MOUNTS[0];}
+/* The strings the taped swags of a world become, [{x0,x1,y,mount,wy,hold:[[x,y],…]}] — ONE reader, so the four cameras
+   cannot disagree about where a string is. `hold` names the walls that hold it up, and its height is theirs.
+   Two taped swags of one mount that touch or overlap on one row are ONE string first, so a stretch of wall carries one
+   continuous string however its spans were cut. A wall or a facade standing ON its own row (a side wall, a partition)
+   ends a string there, because it would swallow it; and its ends are pulled in off any solid tile on its own row.
+   A WALL string then runs across the whole of what is left and is broken only where nothing stands behind it to tape it
+   to (a door, an opening, a window somebody works in): each stretch of wall is its own string. With no wall at all
+   north of it there is nothing to tape it to, and it is not hung, in any camera.
+   A CEILING string takes its height from the room's walls: the first solid tile along its own row each way, when that
+   is a wall; failing both, the walls north of it. With none of those there is no ceiling to say how high, and it is not
+   hung. */
+function fiestaTaped(wid){const w=WORLDS[wid];if(!w)return [];
+  const at=(x,y)=>y>=0&&y<w.H&&x>=0&&x<w.W?w.grid[y][x]:undefined;
+  const upright=(x,y)=>{const g=at(x,y),m=g!==undefined&&TILES[g];return !!m&&SOLID.has(g)&&(m.kind==="wall"||m.kind==="facade");};
+  const wallAt=(x,y)=>upright(x,y)&&!winAt(w,x,y);
+  const spans=[],out=[];
+  fiestaSwags(wid).forEach(sw=>{const mt=swagMount(sw);if(mt==="poles")return;const y=sw.from[1];if(!w.grid[y])return;
+    const a=Math.max(0,Math.min(sw.from[0],sw.to[0])),b=Math.min(w.W-1,Math.max(sw.from[0],sw.to[0]));if(b>=a)spans.push({a,b,y,mt});});
+  spans.sort((p,q)=>(p.mt<q.mt?-1:p.mt>q.mt?1:0)||p.y-q.y||p.a-q.a);
+  const merged=[];spans.forEach(s=>{const l=merged[merged.length-1];if(l&&l.mt===s.mt&&l.y===s.y&&s.a<=l.b+1)l.b=Math.max(l.b,s.b);else merged.push({...s});});
+  const piece=(a,b,y,mt)=>{while(a<=b&&SOLID.has(at(a,y)))a++;while(b>=a&&SOLID.has(at(b,y)))b--;if(b<a)return;
+    if(mt==="wall"){const wy=y-1;let s=-1;
+      for(let x=a;x<=b+1;x++){const ok=x<=b&&wallAt(x,wy);if(ok&&s<0)s=x;
+        if(!ok&&s>=0){const hold=[];for(let k=s;k<x;k++)hold.push([k,wy]);out.push({x0:s,x1:x-1,y,wy,mount:mt,hold});s=-1;}}
+      return;}
+    const hold=[];let e=a-1;while(e>=0&&!SOLID.has(at(e,y)))e--;if(wallAt(e,y))hold.push([e,y]);
+    e=b+1;while(e<w.W&&!SOLID.has(at(e,y)))e++;if(wallAt(e,y))hold.push([e,y]);
+    if(!hold.length)for(let x=a;x<=b;x++)if(wallAt(x,y-1))hold.push([x,y-1]);
+    if(hold.length)out.push({x0:a,x1:b,y,mount:mt,hold});};
+  merged.forEach(({a,b,y,mt})=>{let s=a;for(let x=a;x<=b+1;x++)if(x>b||upright(x,y)){piece(s,x-1,y,mt);s=x+1;}});
+  return out;}
+/* A taped string in the three flat cameras — one row of flags each, put where it is taped. `put(d,fn)` is the camera's
+   depth queue (front, iso) or paints at once (top). Paper taped to a wall is the last thing on that wall: over its own
+   face and over anything painted on it (a mural, a sign), in every camera.
+   TOP: a wall string is taped where the front camera tapes it, along the wall's top edge — this camera draws a wall as
+   its standing face too, and what is painted on it stands below that edge, so a string along the wall's foot read as
+   paper lying on the floor under the paint — painted after the decor, so the paint cannot cover it; a ceiling string
+   runs down the middle of its row, where it hangs over. FRONT: a wall string is painted ON the wall's face, at its top
+   edge, in the queue after that row's facade and after the decor on it (painted in the ground pass, the facade would
+   cover it — the sill candies' lesson, docs/3D-LOG.md 2026-09-14); a ceiling string hangs from the top of its row,
+   where the pole-hung ones are drawn, after its row's facades and before its people. ISO: the string is drawn sheared
+   onto the block — along the wall's south face at its top for a wall, along its row's middle at the walls' height for
+   a ceiling — one slice a tile, each in that tile's own turn of the painter's queue (a wall's slice after the block and
+   the decor standing on it, a ceiling's before the people on its row), so whoever stands in front of the paper still
+   covers it, and one baked strip serves every slice. */
+const PAPELTAPE=new Map();
+function papelTapeBake(pal,seed,n){const k=pal.join()+"|"+seed+"|"+n;let c=PAPELTAPE.get(k);if(c)return c;
+  if(PAPELTAPE.size>64)PAPELTAPE.clear();
+  c=document.createElement("canvas");c.width=n*TS*2;c.height=16;const g=c.getContext("2d");g.scale(2,2);
+  drawPapelRow(g,0,n*TS,1.5,pal,seed,1);PAPELTAPE.set(k,c);return c;}
+function fiestaTaped2D(cam,wid,toScreen,put){
+  const pal=art("papel",null);if(!pal)return;const w=WORLDS[wid];
+  fiestaTaped(wid).forEach(r=>{const seed=r.x0+r.y,wall=r.mount==="wall",n=r.x1-r.x0+1;
+    if(cam==="iso"){const h=Math.min(...r.hold.map(([hx,hy])=>isoH(w,hx,hy))),q=ISW/2/TS,[pcx,pcy]=toScreen(r.x0,wall?r.wy:r.y);
+      const ox=wall?pcx-ISW/2:pcx-ISW/4,oy=(wall?pcy:pcy-ISH/4)-h,img=papelTapeBake(pal,seed,n);
+      for(let i=0;i<n;i++)put(r.x0+i+(wall?r.wy+0.52:r.y+0.5),()=>{ctx.save();ctx.transform(q,q/2,0,q,ox,oy);
+        ctx.drawImage(img,i*TS*2,0,TS*2,img.height,i*TS,0,TS,img.height/2);ctx.restore();});
+      return;}
+    const[sx0,sy0]=toScreen(r.x0,r.y),[sx1]=toScreen(r.x1+1,r.y);
+    if(cam==="front"){if(wall){const syw=toScreen(r.x0,r.wy)[1];put(r.wy+0.06,()=>drawPapelRow(ctx,sx0,sx1,syw+2,pal,seed,1));}
+      else put(r.y+0.5,()=>drawPapelRow(ctx,sx0,sx1,sy0+3,pal,seed,1));return;}
+    put(0,()=>drawPapelRow(ctx,sx0,sx1,wall?toScreen(r.x0,r.wy)[1]+2:sy0+TS/2-2.4,pal,seed,1));});}
 function drawPinata(g,sx,sy,sway){ /* a seven-point star on a rope: a gold body, seven cones in the paper palette, tissue tabs at the tips */
   const pal=art("papel",null)||["#E8478F","#2FA5A0","#F2B705","#7B4BA8","#F07C24","#F6F2E8"],cx=sx+16,cy=sy+18;
   g.save();g.translate(cx,sy+2);g.rotate(sway||0);g.translate(-cx,-(sy+2));
@@ -1408,7 +1490,8 @@ function fiestaDraw2D(wid,toScreen,front,defer){ /* toScreen(x,y) → the tile's
    never had this because it hangs over open rows. A prop on the floor still paints here, exactly as before. */
   let cur=null;const put=(solid,fn)=>{if(front&&defer&&solid){fn.y=cur;defer(fn);}else fn();};
   const pal=art("papel",null);if(!pal)return;
-  fiestaSwags(wid).forEach(sw=>{const y=sw.from[1],x0=Math.min(sw.from[0],sw.to[0]),x1=Math.max(sw.from[0],sw.to[0]);
+  fiestaSwags(wid).forEach(sw=>{if(swagMount(sw)!=="poles")return; /* a taped string is fiestaTaped2D's */
+    const y=sw.from[1],x0=Math.min(sw.from[0],sw.to[0]),x1=Math.max(sw.from[0],sw.to[0]);
     const[sx0,sy0]=toScreen(x0,y),[sx1]=toScreen(x1+1,y),ly=sy0+(front?3:5);
     drawPapelRow(ctx,sx0,sx1,ly,pal,x0+y);});
   fiestaHangs(wid).forEach(h=>{const[sx,sy]=toScreen(h.x,h.y);if(h.kind==="pinata")drawPinata(ctx,sx,sy,Math.sin(Date.now()/700+h.x)*0.06);});
@@ -1563,10 +1646,12 @@ function drawOfrenda(g,x,y){ /* la ofrenda (Nacho, 2026-09-07; the owner agreed)
   g.fillStyle="#F6F2E8";g.beginPath();g.arc(x+4,y+24,1.4,0,7);g.arc(x+28,y+24,1.4,0,7);g.fill();          /* two cups of water */
   drawPapelRow(g,x+2,x+30,y+25,art("papel",["#E8478F","#2FA5A0","#F2B705"]),3);}
 function fiestaProps(wid){return (art("props",[])||[]).filter(p=>p.world===wid);} /* small things set down by place: {world,x,y,kind,ox,oy,h,foil} */
-function drawPapelRow(g,x0,x1,ly,pal,seed){ /* a string of cut paper (Pili, 2026-09-07): little squares with a scalloped hem and a punched
-  hole — paper, not bunting — in TWO rows, the second half a flag over; two rows is what makes a street look dressed */
-  g.strokeStyle="#3A2E26";g.lineWidth=1;g.beginPath();g.moveTo(x0+2,ly);g.lineTo(x1-2,ly);g.moveTo(x0+4,ly+5.5);g.lineTo(x1-4,ly+5.5);g.stroke();
-  [0,1].forEach(row=>{let k=row*3;for(let px=x0+3+row*2.3;px<x1-3;px+=4.6,k++){const col=pal[(k+seed)%pal.length],fy=ly+row*5.5;
+function drawPapelRow(g,x0,x1,ly,pal,seed,rows){ /* a string of cut paper (Pili, 2026-09-07): little squares with a scalloped hem and a punched
+  hole — paper, not bunting — in TWO rows, the second half a flag over; two rows is what makes a street look dressed.
+  `rows` 1 is a taped string (swagMount): the first string and its row alone; anything else is the two rows, as ever */
+  const one=rows===1;
+  g.strokeStyle="#3A2E26";g.lineWidth=1;g.beginPath();g.moveTo(x0+2,ly);g.lineTo(x1-2,ly);if(!one){g.moveTo(x0+4,ly+5.5);g.lineTo(x1-4,ly+5.5);}g.stroke();
+  (one?[0]:[0,1]).forEach(row=>{let k=row*3;for(let px=x0+3+row*2.3;px<x1-3;px+=4.6,k++){const col=pal[(k+seed)%pal.length],fy=ly+row*5.5;
     g.fillStyle=col;g.fillRect(px-1.8,fy,3.6,3.6);
     g.beginPath();g.moveTo(px-1.8,fy+3.6);g.lineTo(px-0.9,fy+4.8);g.lineTo(px,fy+3.6);g.lineTo(px+0.9,fy+4.8);g.lineTo(px+1.8,fy+3.6);g.closePath();g.fill();
     g.fillStyle="rgba(40,30,20,.55)";g.fillRect(px-0.4,fy+1.2,0.8,0.8);}});}
@@ -2685,6 +2770,7 @@ function drawFront(){
      row, so one slot holds the whole train. */
   {const L=troLine(world);if(L)R.push({d:L.row+0.5,f:()=>troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true)});}
   fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],true,fn=>R.push({d:fn.y+0.05,f:fn})); /* after its row's facade, before actors — the same slot decor uses */
+  fiestaTaped2D("front",world,(x,y)=>[x*TS-camX,y*TS-camY],(d,f)=>R.push({d,f})); /* taped to a wall: on its face, after it */
   drawDecals(camX,camY);
   DECOS.forEach(d=>{if(d.world!==world)return;const f=DECODRAW[d.deco];if(!f)return;
     const sx=d.x*TS-camX,sy=d.y*TS-camY;
@@ -2805,6 +2891,7 @@ function draw(){
   }
   petalTrail(world,(x,y)=>[x*TS-camX,y*TS-camY]);troDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],false);fiestaDraw2D(world,(x,y)=>[x*TS-camX,y*TS-camY],false);
   drawDecals(camX,camY);drawDecor(camX,camY);
+  fiestaTaped2D("top",world,(x,y)=>[x*TS-camX,y*TS-camY],(d,f)=>f()); /* after the decor: paper taped to a wall is over its paint */
   trees.forEach(([sx,sy])=>{ /* canopy pass: overhangs neighboring tiles, sways gently */
     const sw=Math.sin(Date.now()/900+sx)*1.2,cxT=sx+16+sw,cyT=sy+6;
     ctx.fillStyle=tc("#4E8A58");

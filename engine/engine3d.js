@@ -824,7 +824,8 @@ function t3Build(key){
   if(typeof fiestaSwags==="function"){const pal=art("papel",null);
     if(pal&&pal.length){const PH=1.9,pole=wallMat["^pole"]||(wallMat["^pole"]=new THREE.MeshLambertMaterial({color:new THREE.Color("#5A4330")}));
       const strg=wallMat["^string"]||(wallMat["^string"]=new THREE.MeshBasicMaterial({color:new THREE.Color("#3A2E26")}));
-      fiestaSwags(world).forEach(sw=>{const y=sw.from[1],x0=Math.min(sw.from[0],sw.to[0]),x1=Math.max(sw.from[0],sw.to[0]),L=x1-x0+1;
+      fiestaSwags(world).forEach(sw=>{if(typeof swagMount==="function"&&swagMount(sw)!=="poles")return; /* taped: below */
+        const y=sw.from[1],x0=Math.min(sw.from[0],sw.to[0]),x1=Math.max(sw.from[0],sw.to[0]),L=x1-x0+1;
         const st=new THREE.Mesh(new THREE.BoxGeometry(L-0.1,0.02,0.02),strg);st.position.set(x0+L/2,PH,y+0.5);st.userData={swag:true,string:true,y};grp.add(st);
         [x0,x1].forEach(ex=>{const g=w.grid[y]&&w.grid[y][ex],m=g!==undefined&&TILES[g];
           /* tied to what stands there — IF it stands that high. A wall, a facade or a tree can hold a string
@@ -837,6 +838,22 @@ function t3Build(key){
           const cap=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,6),pole);cap.position.set(ex+0.5,PH+0.12,y+0.5);cap.userData={swag:true,pole:true,cap:true,y};grp.add(cap);});
         [0,1].forEach(row=>{const fl=t3PapelStrip(pal,L,x0+y,row);fl.position.set(x0+L/2+(row?0.07:0),PH-0.11-row*0.22,y+0.5);fl.userData.swag=true;fl.userData.y=y;grp.add(fl);});
         const st2=new THREE.Mesh(new THREE.BoxGeometry(L-0.1,0.02,0.02),strg);st2.position.set(x0+L/2,PH-0.22,y+0.5);st2.userData={swag:true,string:true,y};grp.add(st2);});
+      /* TAPED (a swag's `mount`, engine/engine.js, grep "WHERE A STRING HANGS"): no poles, ONE row of flags, one string a stretch
+         as fiestaTaped cut it. A wall string lies flat on the wall's south face — the wall box on row wy spans z wy..wy+1,
+         so its face is z = y — at the top edge of the lowest wall in the stretch, so no length of it floats over a lower
+         one. The flags stand 0.008 proud of the face and the string over them, both in front of the decor plane a mural
+         is painted on (0.005 proud, the decor pass above): paper taped to a wall is over its paint. A ceiling string is
+         strung along the middle of its row at the height of the walls that hold it. Both carry the swag's own word, `mount`
+         ("wall" or "ceiling"; a string on poles carries none, as a swag that says nothing says none), and the tiles they
+         run over, x0..x1. t3Fiesta leaves a wall string alone at the quarter turns (it lies on the wall's face, never across
+         the row you stand on) and treats a ceiling string like any string along a row; t3Reveal takes a wall string down
+         while the cutaway has its wall down. The strip is t3PapelStrip's: seven flags a tile, however long the stretch. */
+      (typeof fiestaTaped==="function"?fiestaTaped(world):[]).forEach(r=>{
+        const L=r.x1-r.x0+1,cx=r.x0+L/2,wallS=r.mount==="wall",H=Math.min(...r.hold.map(([hx,hy])=>tileTop(hx,hy,w.grid[hy][hx])));
+        if(!(H>0))return;
+        const TOP=H-0.02,zs=wallS?r.y+0.014:r.y+0.5,zf=wallS?r.y+0.008:r.y+0.5,tag={swag:true,mount:r.mount,y:r.y,x0:r.x0,x1:r.x1};if(wallS)tag.wy=r.wy;
+        const st=new THREE.Mesh(new THREE.BoxGeometry(L-0.1,0.02,wallS?0.006:0.02),strg);st.position.set(cx,TOP,zs);st.userData={...tag,string:true};grp.add(st);
+        const fl=t3PapelStrip(pal,L,r.x0+r.y,0);fl.position.set(cx,TOP-0.11,zf);Object.assign(fl.userData,tag);grp.add(fl);});
       (typeof fiestaProps==="function"?fiestaProps(world):[]).forEach(p=>{
         const g=w.grid[p.y]&&w.grid[p.y][p.x],up=g!==undefined&&(SOLID.has(g)||((TILES[g]||{}).lift|0)>=5);
         if(p.kind==="ofrenda"){ /* the ofrenda: a tile-wide picture standing where it was set, on a table's top if the tile is one */
@@ -1079,23 +1096,40 @@ function t3Fiesta(){ /* the piñata sways; it is never hit and gives nothing (Na
      your head, which is what a pole behind a person looks like. (The line inspector, crew iteration 12.) */
   if(T3.group){const q=((Math.round(T3.yaw/(Math.PI/2))%4)+4)%4,alongX=(q===1||q===3),row=Math.round(fy),col=Math.round(fx);
     const sx=Math.sin(T3.yaw),cz=Math.cos(T3.yaw),hx=fx+0.5,hz=fy+0.5;
-    T3.group.children.forEach(o=>{const u=o.userData;if(!u||!(u.swag||u.papel))return;
+    T3.group.children.forEach(o=>{const u=o.userData;if(!u||!(u.swag||u.papel)||u.mount==="wall")return; /* on a wall's face: never across your row */
       const runsX=u.swag?true:!!u.ew; /* a swag runs along its row; the bridge's string runs the way you cross */
       const onLine=runsX?(alongX&&u.y===row):(!alongX&&u.x===col);
       if(!u.pole){o.visible=!onLine;return;}
       o.visible=!(onLine&&(runsX?(o.position.x-hx)*sx:(o.position.z-hz)*cz)>=-0.01);});}}
 /* the petal trail in 3D: a pool of little flat planes, three per drop, lying on the ground where
    somebody walked in season, fading over a minute and a half (the owner asked for a trail behind people) */
+/* A strip's texture is 8 px a flag, and a GPU shrinks a texture wider than it takes — three.js only says so in the console
+   ("Texture has been resized"), and every flag loses rows and its punched holes. One stretch of taped wall is ONE strip, so
+   its width grows with the wall (56 px a tile: past 73 tiles a 4096 GPU shrinks it). So a texture holds at
+   most T3PAPELROW flags a row, 2048 px, the widest every WebGL 2 GPU must take, and a longer strip's flags wrap onto more
+   rows of the same texture (16 px a row: 14 of flag, 2 of nothing between, so no row bleeds into the next). A string of
+   36 tiles or fewer is one row and bakes exactly as it always has. */
+const T3PAPELROW=256;
 function t3PapelTex(pal,n,seed){ /* a string of n cut-paper flags baked once (Pili): flat colour, a scalloped hem, five punched
   holes you see the sky through — the difference between bunting and papel picado */
-  const c=document.createElement("canvas");c.width=n*8;c.height=14;const g=c.getContext("2d");
-  g.fillStyle="#3A2E26";g.fillRect(0,0,c.width,1);
-  for(let i=0;i<n;i++){const col=pal[(i+seed)%pal.length],x=i*8+1;g.fillStyle=col;g.fillRect(x,1,6,10);
-    g.beginPath();g.moveTo(x,11);g.lineTo(x+1.5,13);g.lineTo(x+3,11);g.lineTo(x+4.5,13);g.lineTo(x+6,11);g.closePath();g.fill();
-    [[2.5,3],[4,3],[1,6],[4,6],[2.5,9]].forEach(h=>g.clearRect(x+h[0],h[1],1,1));}
+  const per=Math.min(n,T3PAPELROW),rows=Math.ceil(n/per);
+  const c=document.createElement("canvas");c.width=per*8;c.height=rows===1?14:rows*16;const g=c.getContext("2d");
+  g.fillStyle="#3A2E26";for(let r=0;r<rows;r++)g.fillRect(0,r*16,r===rows-1?(n-r*per)*8:c.width,1);
+  for(let i=0;i<n;i++){const col=pal[(i+seed)%pal.length],x=(i%per)*8+1,y=Math.floor(i/per)*16;g.fillStyle=col;g.fillRect(x,y+1,6,10);
+    g.beginPath();g.moveTo(x,y+11);g.lineTo(x+1.5,y+13);g.lineTo(x+3,y+11);g.lineTo(x+4.5,y+13);g.lineTo(x+6,y+11);g.closePath();g.fill();
+    [[2.5,3],[4,3],[1,6],[4,6],[2.5,9]].forEach(h=>g.clearRect(x+h[0],y+h[1],1,1));}
   const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;return t;}
 function t3PapelStrip(pal,L,seed,row){ /* one plane a string, seven flags a tile, the texture carries the cut; two draw calls a swag, not two hundred */
-  const n=Math.max(1,Math.round(L*7)),m=new THREE.Mesh(new THREE.PlaneGeometry(L-0.1,0.22),new THREE.MeshBasicMaterial({map:t3PapelTex(pal,n,seed+(row?3:0)),transparent:true,alphaTest:0.3,side:THREE.DoubleSide}));
+  const n=Math.max(1,Math.round(L*7)),tex=t3PapelTex(pal,n,seed+(row?3:0)),per=Math.min(n,T3PAPELROW),k=Math.ceil(n/per);
+  let geo;
+  if(k===1)geo=new THREE.PlaneGeometry(L-0.1,0.22);
+  else{ /* still ONE plane, one draw call: k lengths laid end to end, each reading its own row of the texture */
+    const W=L-0.1,fw=W/n,Ht=tex.image.height,pos=[],uv=[],nrm=[],idx=[];
+    for(let j=0;j<k;j++){const f0=j*per,f1=Math.min(n,f0+per),xa=-W/2+f0*fw,xb=-W/2+f1*fw,ub=(f1-f0)/per,vt=1-j*16/Ht,vb=1-(j*16+14)/Ht,b=j*4;
+      pos.push(xa,0.11,0,xb,0.11,0,xa,-0.11,0,xb,-0.11,0);uv.push(0,vt,ub,vt,0,vb,ub,vb);nrm.push(0,0,1,0,0,1,0,0,1,0,0,1);idx.push(b,b+2,b+1,b+2,b+3,b+1);}
+    geo=new THREE.BufferGeometry();geo.setIndex(idx);geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+    geo.setAttribute("normal",new THREE.Float32BufferAttribute(nrm,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));}
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.3,side:THREE.DoubleSide}));
   m.userData={flag:true,flags:n,pal:pal.slice(),row:row|0};return m;}
 function t3PetalSide(){ /* the deck's side, baked once a season: 64×14, the field and the heap's edge */
   const P=petalPal(),c=document.createElement("canvas");c.width=64;c.height=14;const g=c.getContext("2d");
@@ -1562,7 +1596,13 @@ function t3Reveal(){
       u.glass3=Array.isArray(o.material)?o.material.map(mk):mk(o.material);}
     o.material=cut?u.glass3:u.solid3;
     o.renderOrder=cut?1500:0;                /* after the people, so it tints them instead of hiding them */
-  });}
+  });
+  /* Paper taped to a wall goes with its wall. While the cutaway has any tile of that wall down to its stub, the string
+     taped to it comes down too, or it is left standing in the air in front of whoever is behind the wall (Beto's room: an
+     inside wall, a string taped to its face, the hero on its far side). The tiles it runs over are its own x0..x1 on wy. */
+  const down=new Set();cut3.forEach(o=>{const u=o.userData;if(u&&t3Wallish(u)&&u.x!==undefined)down.add(u.x+","+u.y);});
+  T3.group.children.forEach(o=>{const u=o.userData;if(!u||u.mount!=="wall"||u.wy===undefined)return;
+    let hit=false;for(let x=u.x0;x<=u.x1&&!hit;x++)hit=down.has(x+","+u.wy);o.visible=!hit;});}
 /* ---- THE BUILDER'S DRONE IN 3D (#271) ----
    Its billboard rides the actor pool like every person (t3Actors); what is here is the ground under
    it — the lamp's four lit corners on its tile and its small shadow — two flat pieces kept in the

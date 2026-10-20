@@ -4577,7 +4577,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   /* ---- a string seen end-on is not a string ----
      The owner, 2026-09-21, a frame from the 3D camera turned a quarter on Calle Principal: from one angle
      the skeleton seemed to float, and with the papel picado it looked buggy or
-     broken. A swag is hung ALONG a row at head height. Turn the camera a quarter and you look down
+     broken. A string on poles is hung ALONG a row at head height. Turn the camera a quarter and you look down
      that row: the flags are edge-on and vanish, and the string is a bare dark line from the horizon to
      the foreground, straight through whoever stands under it — over his head, between his legs, through
      his shadow — and a person on a line reads as HANGING from it. Measured in that frame (the line
@@ -4588,20 +4588,23 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      frame without them, inside that footprint — at both quarter turns. And at the two stops that look
      ACROSS the row the strings must still paint, or the cure was taking the paper down. The control
      (two frames, nothing changed) is zero first or the probe measures nothing (§13r). A pack that
-     hangs no string over walkable ground has nothing to look at, which is said out loud, not passed. */
+     hangs no string over walkable ground has nothing to look at, which is said out loud, not passed.
+     It looks at a string ON POLES (swagMount, engine/engine.js): a string taped to a wall lies on the wall's face and is
+     never hidden by design, so a pack whose first string is taped must not stand in for its strings on poles here. */
   const endOn = await page.evaluate(() => {
     const P = [];
     if (typeof T3 === 'undefined' || !window.THREE) { P.push('COUNT-ONLY: this shell declined 3D, so no string was looked at end-on'); return P; }
     if (typeof fiestaSwags !== 'function' || typeof seasonSet !== 'function') { P.push('COUNT-ONLY: this engine hangs no swags'); return P; }
     const S = (typeof SEASONS !== 'undefined' && SEASONS) ? SEASONS : {};
-    const sid = Object.keys(S).find(k => S[k] && S[k].art && Array.isArray(S[k].art.swags) && S[k].art.swags.length);
-    if (!sid) { P.push('COUNT-ONLY: no season in this pack hangs a swag, so no string can be seen end-on'); return P; }
+    const onPoles = sw => typeof swagMount !== 'function' || swagMount(sw) === 'poles';
+    const sid = Object.keys(S).find(k => S[k] && S[k].art && Array.isArray(S[k].art.swags) && S[k].art.swags.some(onPoles));
+    if (!sid) { P.push('COUNT-ONLY: no season in this pack hangs a string on poles, so no string can be seen end-on'); return P; }
     const pick0 = seasonPick, keep = { w: world, px, py, cam: camMode, yaw: T3.yaw, mv: moving, st: TRO.state };
     seasonSet(sid);
     /* the first swag in any world with open ground under it: that is where a person can stand under a string */
     let spot = null;
     Object.keys(WORLDS).some(wid => { const w = WORLDS[wid];
-      return fiestaSwags(wid).some(sw => { const y = sw.from[1];
+      return fiestaSwags(wid).filter(onPoles).some(sw => { const y = sw.from[1];
         for (let x = Math.min(sw.from[0], sw.to[0]); x <= Math.max(sw.from[0], sw.to[0]); x++) {
           const g = w.rows[y] && w.rows[y][x]; if (g !== undefined && !SOLID.has(g) && w.grid[y][x] !== 'N') { spot = { wid, x, y }; return true; } }
         return false; }); });
@@ -4652,6 +4655,276 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   });
   fails.push(...endOn.filter(l => !/^COUNT-ONLY: /.test(l)));
   endOn.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+
+  /* ---- PAPER TAPED TO A WALL OR A CEILING HANGS WHERE IT IS TAPED, AND A STRING THAT SAYS NOTHING STAYS ON ITS POLES ----
+     A swag may say where it hangs, in `mount` (engine/engine.js, grep "WHERE A STRING HANGS"): on poles, as every swag
+     always has and every swag that says nothing still does; taped flat to the face of the wall north of its row, at that
+     wall's top, one row of flags, one string a stretch of wall; or strung at the walls' height along its row.
+     THE PACK, first: every swag names a mount the engine knows — the engine's own list, SWAG_MOUNTS, which swagMount reads
+     too (a misspelt one would hang quietly on its poles); every taped swag hangs somewhere (one with no wall behind it, or
+     no walls round it, is cut to nothing in every camera, and nothing would say so); and no wall string stops short of its
+     stretch of wall (a string written in five-to-nine-tile pieces with gaps, the way a string on poles is, hangs as
+     pieces with holes between them, and nothing would say so either).
+     THEN A PROBE ROOM, on a page of its own, laid here in the pack's own letters: a north wall with a door in it, a
+     partition standing on the row under it, side walls, a south wall. The north wall's string is handed over as two spans
+     that touch; a wall string with only floor north of it; a ceiling string; and a string that says nothing. Beside it a
+     wall 158 tiles long with one string along it, and a room with a wall inside it whose face carries a string. Read out of
+     the BUILT scene and the DRAWN frames, never the engine's arithmetic: a wall's face and top are the wall's own box in
+     the scene; in the flat cameras the paper is the frame with it minus the frame without it, located by where each camera
+     says it drew a tile (camXg/camYg, isoOg). Paper over paint is asked the same way: a patch of paint (a decor) on the
+     north wall must not hide any of the paper over it. The clock and the dice are held still, and two frames of the same
+     room must match first, or nothing is measured (.claude/skills/guard/SKILL.md). */
+  {
+    const tapedRoom = () => {
+      const P = [], N = [];
+      if (typeof SEASONS === 'undefined' || !SEASONS) window.SEASONS = {};   /* a pack with no seasons: the probe's own are the only ones */
+      const S = SEASONS;
+      if (typeof fiestaTaped !== 'function' || typeof swagMount !== 'function' || typeof fiestaTaped2D !== 'function') { P.push('the engine cannot tape papel picado to a wall or a ceiling (swagMount / fiestaTaped / fiestaTaped2D): every swag hangs on poles'); return { P, N }; }
+      const KNOWN = (typeof SWAG_MOUNTS !== 'undefined' && Array.isArray(SWAG_MOUNTS)) ? SWAG_MOUNTS.slice() : null;
+      if (!KNOWN) { P.push('the engine keeps no list of the words a mount may say (SWAG_MOUNTS), so this check and swagMount each keep their own, and a word one of them drops passes the other'); return { P, N }; }
+      if (KNOWN[0] !== 'poles' || swagMount({}) !== 'poles' || swagMount({ mount: 'probe-unknown' }) !== 'poles' || KNOWN.some(m => swagMount({ mount: m }) !== m))
+        P.push('swagMount does not read SWAG_MOUNTS (' + KNOWN.join(', ') + '): ' + KNOWN.concat([undefined, 'probe-unknown']).map(m => String(m) + ' → ' + swagMount({ mount: m })).join(', ') + ' — each known word is itself, and "poles", first in the list, is what a swag that says nothing or anything else gets');
+      /* a wall string that stops where the wall behind it does not: the floor goes on along its own row and the wall goes on
+         behind it, so the string could have run on and did not. The paper is one continuous string a stretch of wall; a
+         pack that writes it in pieces gets pieces with holes. Read off the map's letters: the wall goes on where an upright
+         solid stands that is not a window somebody works in, the same thing the string is taped to. */
+      const shortOf = (id, wid) => { const w = WORLDS[wid], out = []; if (!w) return out;
+        const at = (x, y) => (w.grid[y] || [])[x], stands = (x, y) => { const g = at(x, y), m = g !== undefined && TILES[g]; return !!m && SOLID.has(g) && (m.kind === 'wall' || m.kind === 'facade') && !(typeof winAt === 'function' ? winAt(w, x, y) : g === 'N'); };
+        fiestaTaped(wid).filter(r => r.mount === 'wall').forEach(r => [[r.x0 - 1, 'west'], [r.x1 + 1, 'east']].forEach(([x, side]) => {
+          if (at(x, r.y) !== undefined && !SOLID.has(at(x, r.y)) && stands(x, r.wy))
+            out.push('season "' + id + '" tapes a string to the wall in ' + wid + ' on row ' + r.y + ' that stops at x ' + r.x0 + '–' + r.x1 + ' while the wall behind it runs on to the ' + side + ' at x ' + x + ' — taped paper is ONE continuous string along each stretch of wall: write the swag as one span along the whole wall, doors and all, and the engine breaks it at each door and pulls it in off the side walls'); })); return out; };
+      /* 1 · the pack's own swags */
+      const pick0 = seasonPick; let taped = 0;
+      Object.keys(S).forEach(id => { const list = (S[id] && S[id].art && Array.isArray(S[id].art.swags)) ? S[id].art.swags : [];
+        list.forEach(sw => { if (sw && sw.mount !== undefined && !KNOWN.includes(sw.mount)) P.push('season "' + id + '" hangs a swag in ' + sw.world + ' on row ' + (sw.from || [])[1] + ' on "' + sw.mount + '" — the engine knows ' + KNOWN.join(', ') + ', and hangs anything else on poles'); });
+        const mine = list.filter(sw => sw && sw.from && sw.to && swagMount(sw) !== 'poles');
+        if (!mine.length) return;
+        taped += mine.length; seasonSet(id);
+        mine.forEach(sw => { const y = sw.from[1], a = Math.min(sw.from[0], sw.to[0]), b = Math.max(sw.from[0], sw.to[0]);
+          if (!fiestaTaped(sw.world).some(r => r.mount === sw.mount && r.y === y && r.x0 <= b && r.x1 >= a))
+            P.push('season "' + id + '" tapes a string to a ' + sw.mount + ' in ' + sw.world + ' on row ' + y + ' (x ' + a + '–' + b + ') and it hangs nowhere: ' + (sw.mount === 'wall' ? 'no wall stands north of it to tape it to' : 'no wall stands at its ends or north of it to say how high')); });
+        [...new Set(mine.map(sw => sw.world))].forEach(wid => P.push(...shortOf(id, wid))); });
+      seasonSet(pick0);
+      N.push('COUNT-ONLY: taped papel picado — ' + (taped ? 'this pack tapes ' + taped + ' string(s) to a wall or a ceiling, and each hangs somewhere' : 'no season in this pack tapes a string to a wall or a ceiling, so only the probe room was looked at'));
+      /* 2 · the probe room */
+      const door = [...DOORSET].find(g => !SOLID.has(g));
+      if (SOLID.has('.') || !SOLID.has('#') || (TILES['#'] || {}).kind !== 'wall' || !door) { P.push('this pack has no "#" wall, "." floor or door to lay the probe room in its letters, so no taped string was looked at'); return { P, N }; }
+      wanderUpdate = function () {};   /* nobody walks in; the page is thrown away */
+      const Y = 'probe-taped-room', W = 14, D = 5, Q = 8;   /* the door in the north wall at x5; the partition on row 1 at x8 */
+      const rows = ['#'.repeat(D) + door + '#'.repeat(W - D - 1), '#' + '.'.repeat(Q - 1) + '#' + '.'.repeat(W - Q - 2) + '#']
+        .concat(Array.from({ length: 4 }, () => '#' + '.'.repeat(W - 2) + '#'), ['#'.repeat(W)]);
+      const room = (id, rs) => { WORLDS[id] = { rows: rs.slice(), rows0: rs.slice(), grid: rs.map(r => r.split('')), npcs: [], W: rs[0].length, H: rs.length };
+        Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[id] = 'the probe room'; t.arrive[id] = ''; }); };
+      /* the long wall: one stretch of 158 tiles, so one strip of 1106 flags, past what any GPU takes in one row of texture */
+      const YL = 'probe-taped-long', WL = 160, YC = 'probe-taped-cut', inner = '#' + '.'.repeat(W - 2) + '#';
+      room(Y, rows); room(YL, ['#'.repeat(WL), '#' + '.'.repeat(WL - 2) + '#', '#' + '.'.repeat(WL - 2) + '#', '#'.repeat(WL)]);
+      /* the cutaway room: a wall INSIDE it on row 3, a string taped to that wall's face from row 4 */
+      room(YC, ['#'.repeat(W), inner, inner, '#'.repeat(W), inner, inner, '#'.repeat(W)]);
+      const PAL = ['#E8478F', '#2FA5A0', '#F2B705', '#7B4BA8', '#F07C24', '#3D5AFE'];
+      const WALLS = [{ world: Y, from: [0, 1], to: [2, 1], mount: 'wall' }, { world: Y, from: [3, 1], to: [W - 1, 1], mount: 'wall' }, { world: Y, from: [3, 3], to: [9, 3], mount: 'wall' }];
+      const CEIL = [{ world: Y, from: [0, 4], to: [W - 1, 4], mount: 'ceiling' }], PLAIN = [{ world: Y, from: [3, 5], to: [9, 5] }];
+      /* written the way a string on poles is — a piece, a gap, a piece — along the north wall's first stretch (x1–4) */
+      const GAPPED = [{ world: Y, from: [1, 1], to: [2, 1], mount: 'wall' }, { world: Y, from: [4, 1], to: [4, 1], mount: 'wall' }];
+      const season = sw => ({ label: { en: 'probe', es: 'probe' }, art: { papel: PAL, swags: sw } });
+      const SIDS = ['probe-taped', 'probe-taped-wall', 'probe-taped-ceil', 'probe-taped-none', 'probe-taped-gap', 'probe-taped-far'];
+      S['probe-taped'] = season(WALLS.concat(CEIL, PLAIN)); S['probe-taped-wall'] = season(WALLS); S['probe-taped-ceil'] = season(CEIL); S['probe-taped-none'] = season([]);
+      S['probe-taped-gap'] = season(GAPPED);
+      S['probe-taped-far'] = season([{ world: YL, from: [0, 1], to: [WL - 1, 1], mount: 'wall' }, { world: YC, from: [0, 4], to: [W - 1, 4], mount: 'wall' }]);
+      const PAINT = { world: Y, x: 2, y: 0, deco: 'probe-paint' };   /* paint on the north wall, under the first stretch's string */
+      const keep = { w: world, px, py, cam: camMode, mv: moving, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
+      const dn = Date.now, rnd = Math.random, T0 = dn();
+      Date.now = () => T0; let sd = 7; const seed = () => { sd = 7; }; Math.random = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+      let has3d = typeof T3 !== 'undefined' && !!window.THREE && CAMS.includes('3d'), c3 = null; const seen3 = [];
+      try {
+        document.getElementById('world').hidden = false;
+        world = Y; px = fx = D; py = fy = 3; moving = false; held = null; dir = 'down';
+        /* 3 · the strings, as the engine cuts them */
+        seasonSet('probe-taped');
+        const say = r => r.mount + ' ' + r.x0 + '–' + r.x1 + ' on row ' + r.y;
+        const want = [{ mount: 'wall', x0: 1, x1: D - 1, y: 1 }, { mount: 'wall', x0: D + 1, x1: Q - 1, y: 1 }, { mount: 'wall', x0: Q + 1, x1: W - 2, y: 1 }, { mount: 'ceiling', x0: 1, x1: W - 2, y: 4 }];
+        const got = fiestaTaped(Y).map(say).sort().join(' · '), exp = want.map(say).sort().join(' · ');
+        P.push(...shortOf('probe-taped', Y));
+        seasonSet('probe-taped-gap'); if (!shortOf('probe-taped-gap', Y).length) P.push('a wall string written in two pieces with a gap at x3 (' + (fiestaTaped(Y).map(say).join(' · ') || 'nothing') + ') passes the check for a string that stops short of its stretch of wall — that check cannot see the hole it is there for');
+        seasonSet('probe-taped');
+        if (got !== exp) P.push('the probe room\'s taped swags are cut into ' + (got || 'nothing') + ' — they should be ' + exp + ': a wall string runs its whole span as ONE string, off the side walls, broken only at the door and at the partition standing on its row; a wall string with only floor north of it is not hung; the ceiling string runs wall to wall');
+        if (swagMount(PLAIN[0]) !== 'poles') P.push('a swag that says nothing hangs on "' + swagMount(PLAIN[0]) + '" — it hangs on poles, exactly as every swag did before it could say');
+        /* 4 · in 3D, out of the built scene */
+        const grab3 = () => { T3.renderer.render(T3.scene, T3.cam); const c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
+        const ne = (A, B, i) => Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 30;
+        const count = (A, B, inside) => { let n = 0; for (let i = 0, p = 0; i < A.length; i += 4, p++) if ((!inside || inside[p]) && ne(A, B, i)) n++; return n; };
+        if (!has3d) N.push('COUNT-ONLY: this shell declined 3D, so the taped strings were looked at in the flat cameras only');
+        else { camSet('3d'); sizeCanvas(); T3.yaw = 0; T3.turn = null; t3Invalidate(); if (!draw3d() || T3.fail || !T3.renderer) { has3d = false; P.push('this shell has a 3D camera and it did not render the probe room, so nothing was measured in 3D'); } else c3 = T3.renderer.domElement; }
+        if (has3d) {
+          const U = o => o.userData || {}, kids = () => T3.group.children, bx = new THREE.Box3();
+          const extent = (x, y) => { const at = kids().filter(o => o.isMesh && U(o).x === x && U(o).y === y && !U(o).swag && U(o).deco === undefined); if (!at.length) return null; const e = new THREE.Box3(); at.forEach(o => e.expandByObject(o)); return e; };
+          const nw = extent(3, 0), sw = extent(0, 4);
+          if (!c3.width || !c3.height) P.push('the 3D canvas is ' + c3.width + 'x' + c3.height + ', so nothing was measured in 3D');
+          else if (!nw || !sw) P.push('the probe room\'s walls did not stand in 3D, so no string could be measured against them');
+          else {
+            const WH = nw.max.y, FACE = nw.max.z, CH = sw.max.y;
+            const tp = kids().filter(o => U(o).mount), wl = tp.filter(o => U(o).mount === 'wall'), cl = tp.filter(o => U(o).mount === 'ceiling');
+            /* one part, one name: the paper says where it hangs in the pack's own word, `mount`, and nothing else */
+            const twoNames = kids().filter(o => U(o).taped !== undefined);
+            if (twoNames.length) P.push(twoNames.length + ' part(s) of the paper in 3D say where they hang as `taped` ("' + [...new Set(twoNames.map(o => U(o).taped))].join('", "') + '") — the word a pack writes is `mount`, and the scene says it in the same word; a string on poles says none');
+            kids().filter(o => U(o).pole && U(o).y !== 5).forEach(o => P.push('a taped string in the probe room stands on a pole on row ' + U(o).y + ' — taped paper has no poles'));
+            /* what the taped paper is made of: its string and its strip of flags, and nothing else — a post or a cap that stands
+               with it is a pole whatever it is called */
+            const extra = tp.filter(o => !U(o).string && !U(o).flag);
+            if (extra.length) P.push(extra.length + ' part(s) of the taped paper in 3D are neither its string nor its flags (row ' + [...new Set(extra.map(o => U(o).y))].join(', ') + ', ' + extra.map(o => (o.geometry && o.geometry.type) || 'a part').join(', ') + ') — taped paper is a string and a strip of flags, with nothing standing in front of the wall or under the ceiling to hold it');
+            const wFl = wl.filter(o => U(o).flag), wSt = wl.filter(o => U(o).string);
+            if (wFl.length !== 3 || wSt.length !== 3) P.push('the north wall carries ' + wFl.length + ' strip(s) of flags on ' + wSt.length + ' string(s) — it should be three of each, one a stretch of wall, the door and the partition between them');
+            wl.forEach(o => { bx.setFromObject(o);
+              if (bx.min.z < FACE - 0.001 || bx.max.z > FACE + 0.03) P.push('a wall string stands from z ' + bx.min.z.toFixed(3) + ' to ' + bx.max.z.toFixed(3) + ' — not on the face of the wall it is taped to, which is at z ' + FACE.toFixed(3));
+              if (bx.max.y > WH + 0.001 || bx.max.y < WH - 0.06) P.push('a wall string\'s top is at ' + bx.max.y.toFixed(3) + ' on a wall ' + WH.toFixed(3) + ' tall — it is taped at the wall\'s top edge');
+              [[D, 'the door'], [Q, 'the partition']].forEach(([x, what]) => { if (bx.min.x < x + 1 && bx.max.x > x) P.push('a wall string crosses ' + what + ' at x=' + x + ' (it runs ' + bx.min.x.toFixed(2) + '–' + bx.max.x.toFixed(2) + ')'); }); });
+            wFl.forEach(o => { if (U(o).row !== 0) P.push('a wall string carries a second row of flags'); });
+            const spans = wFl.map(o => { bx.setFromObject(o); return [bx.min.x, bx.max.x]; }).sort((a, b) => a[0] - b[0]), whole = [[1, D], [D + 1, Q], [Q + 1, W - 1]];
+            if (spans.length === 3 && spans.some((s, i) => s[0] > whole[i][0] + 0.1 || s[1] < whole[i][1] - 0.1)) P.push('the wall strings run ' + spans.map(s => s.map(v => v.toFixed(2)).join('–')).join(', ') + ' — each should run its whole stretch: ' + whole.map(s => s.join('–')).join(', '));
+            if (tp.some(o => U(o).y === 3)) P.push('a wall string with only floor north of it was hung anyway');
+            if (cl.filter(o => U(o).flag).length !== 1 || cl.filter(o => U(o).string).length !== 1) P.push('the ceiling string is ' + cl.filter(o => U(o).flag).length + ' strip(s) of flags on ' + cl.filter(o => U(o).string).length + ' string(s) — it should be one of each');
+            cl.forEach(o => { if (U(o).flag && U(o).row !== 0) P.push('the ceiling string carries a second row of flags'); });
+            /* every part of it, its flags as well as its string: the flags hang from the string, at the walls' height */
+            cl.forEach(o => { bx.setFromObject(o); const what = U(o).flag ? 'flags' : 'string';
+              if (bx.max.y > CH + 0.001 || bx.max.y < CH - 0.06) P.push('the ceiling string\'s ' + what + ' top out at ' + bx.max.y.toFixed(3) + ' in a room whose walls are ' + CH.toFixed(3) + ' tall — the ceiling\'s paper hangs from the walls\' height');
+              if (Math.abs((bx.min.z + bx.max.z) / 2 - 4.5) > 0.02) P.push('the ceiling string\'s ' + what + ' are not strung along the middle of its row'); });
+            cl.filter(o => U(o).string).forEach(o => { bx.setFromObject(o); const mid = (bx.min.y + bx.max.y) / 2;
+              if (Math.abs(mid - CH) > 0.03) P.push('the ceiling string hangs at ' + mid.toFixed(3) + ' in a room whose walls are ' + CH.toFixed(3) + ' tall — it is strung at the walls\' height');
+              if (bx.min.x < 1 - 0.001 || bx.max.x > W - 1 + 0.001 || bx.max.x - bx.min.x < W - 2 - 0.2) P.push('the ceiling string runs ' + bx.min.x.toFixed(2) + '–' + bx.max.x.toFixed(2) + ' — it should run wall to wall, 1–' + (W - 1)); });
+            const plain = kids().filter(o => U(o).swag && !U(o).mount && U(o).y === 5);
+            if (!plain.some(o => U(o).flag && U(o).row === 1) || plain.filter(o => U(o).pole && !U(o).cap).length !== 2) P.push('the string that says nothing does not hang as every string always has — two rows of flags, and a pole at each end on open ground');
+            /* every strip keeps seven flags a tile, 8 by 14 px each, in a texture no wider than 2048 px — the widest every
+               WebGL 2 GPU must take; a wider one is shrunk to fit, and every flag loses rows and its punched holes. A string
+               of 36 tiles or fewer is one row of n flags, exactly as ever; a longer one wraps onto more rows of the texture */
+            const sized = o => { const im = o.material.map && o.material.map.image, n = U(o).flags; bx.setFromObject(o); const L = bx.max.x - bx.min.x + 0.1;
+              const per = im ? Math.floor(im.width / 8) : 0, rows = per ? Math.ceil(n / per) : 0;
+              const ok = !!im && im.width <= 2048 && im.width % 8 === 0 && (n * 8 <= 2048 ? im.width === n * 8 && im.height === 14 : rows > 1 && im.height >= rows * 14) && Math.abs(n - L * 7) <= 1.5;
+              return ok ? '' : 'a papel picado strip ' + (U(o).mount ? 'taped to a ' + U(o).mount : 'on poles') + ' is ' + (im ? im.width + 'x' + im.height : 'unbaked') + ' for ' + n + ' flags on ' + L.toFixed(2) + ' tiles — seven flags a tile, 8 by 14 px each, in rows no wider than 2048 px'; };
+            kids().filter(o => U(o).flag).forEach(o => { const m = sized(o); if (m) P.push(m); });
+            /* the pixels arrive: paper hidden inside or behind what it is taped to paints nothing */
+            ['wall', 'ceiling'].forEach(m => { const A = grab3(), A2 = grab3(), mine = tp.filter(o => U(o).mount === m); mine.forEach(o => { o.visible = false; }); const B = grab3(); mine.forEach(o => { o.visible = true; });
+              const c = count(A, A2), d = count(A, B);
+              if (c) P.push('the 3D probe cannot measure: two frames of the same room differ by ' + c + ' pixels');
+              else if (d < 200) P.push('the ' + m + ' string paints ' + d + ' pixels in 3D at the first stop — it is hidden, inside or behind what it is taped to');
+              seen3.push('3d ' + m + ' ' + d); });
+            /* a quarter turn, standing under the north wall's string: it lies on the wall's face, so it never runs through you */
+            px = fx = 3; py = fy = 1;
+            [[Math.PI / 2, 'a quarter turn east'], [-Math.PI / 2, 'a quarter turn west']].forEach(([yaw, name]) => {
+              T3.yaw = yaw; t3Invalidate(); draw3d();
+              const hero = T3.pool.find(p => p.live && p.spr.userData.hero), mine = kids().filter(o => U(o).mount === 'wall');
+              if (!hero) { P.push('no billboard says it is the hero, so nobody can ask what runs through him'); return; }
+              const shown = mine.map(o => o.visible), A = grab3(); mine.forEach(o => { o.visible = false; }); const B = grab3(); hero.spr.visible = false; const Dd = grab3();
+              mine.forEach((o, i) => { o.visible = shown[i]; }); hero.spr.visible = true;
+              const Wd = c3.width, Hd = c3.height; let x0 = Wd, x1 = -1, y0 = Hd, y1 = -1, foot = 0;
+              for (let i = 0, p = 0; i < A.length; i += 4, p++) if (ne(B, Dd, i)) { foot++; const x = p % Wd, y = (p - x) / Wd; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+              if (!count(A, B)) P.push('at ' + name + ' the wall strings vanish — paper taped to a wall stays on it when the camera turns');
+              if (foot < 100) { P.push('the hero paints ' + foot + ' pixels at ' + name + ' under the wall string — nothing to measure, which is not a pass'); return; }
+              const pad = Math.round((y1 - y0) / 4); let over = 0;
+              for (let y = Math.max(0, y0 - pad); y <= Math.min(Hd - 1, y1 + pad); y++) for (let x = x0; x <= x1; x++) if (ne(A, B, (y * Wd + x) * 4)) over++;
+              if (over) P.push('at ' + name + ' the wall string runs through the hero standing under it — ' + over + ' pixels in and around his outline'); });
+            T3.yaw = 0;
+            /* the long wall, a build of its own: one stretch of 158 tiles is one string of 1106 flags, more than one row of
+               texture can hold — it keeps seven flags a tile and its size, and it paints */
+            seasonSet('probe-taped-far'); world = YL; px = fx = 80; py = fy = 2; dir = 'up'; t3Invalidate(); draw3d();
+            const lf = kids().filter(o => U(o).flag && U(o).mount === 'wall');
+            if (lf.length !== 1) P.push('the wall 158 tiles long carries ' + lf.length + ' strip(s) of flags — one stretch of wall is one string');
+            lf.forEach(o => { const m = sized(o); if (m) P.push('on the wall 158 tiles long, ' + m); });
+            { const A = grab3(), A2 = grab3(); lf.forEach(o => { o.visible = false; }); const B = grab3(); lf.forEach(o => { o.visible = true; }); const c = count(A, A2), d = count(A, B);
+              if (c) P.push('the 3D probe cannot measure the long wall: two frames of it differ by ' + c + ' pixels');
+              else if (d < 200) P.push('the flags along the wall 158 tiles long paint ' + d + ' pixels in 3D — a strip that long is drawn blank');
+              seen3.push('3d long wall ' + lf.map(o => U(o).flags + ' flags in ' + o.material.map.image.width + 'x' + o.material.map.image.height).join(', ') + ' ' + d); }
+            /* the cutaway: standing north of a wall inside the room, at the home stop, the wall between you and the camera
+               drops to its stub — and the paper taped to that wall's face comes down with it, never left in the air */
+            world = YC; px = fx = 6; py = fy = 2; dir = 'up'; t3Invalidate(); draw3d();
+            const downX = [...new Set(kids().filter(o => U(o).wall !== undefined && U(o).y === 3 && !o.visible).map(o => U(o).x))].sort((a, b) => a - b);
+            const cp = kids().filter(o => U(o).mount === 'wall');
+            if (!cp.length) P.push('the cutaway room\'s inside wall carries no taped string in 3D, so nothing was measured');
+            else if (!downX.length) P.push('standing north of the wall inside the cutaway room, none of that wall was cut away — nothing to measure, which is not a pass');
+            else cp.filter(o => o.visible).forEach(o => { bx.setFromObject(o); const over = downX.filter(x => bx.min.x < x + 1 && bx.max.x > x);
+              if (over.length) P.push('the cutaway drops the wall inside the room to its stub at x ' + over.join(', ') + ' (row 3), and the ' + (U(o).flag ? 'flags taped to its face stay' : 'string taped to its face stays') + ' up, in the air in front of the hero standing behind it — paper taped to a wall goes with its wall'); });
+            py = fy = 5; draw3d();   /* from the south, where nothing of that wall is cut: the paper is up */
+            if (cp.length && cp.some(o => !o.visible)) P.push('from the south of the wall inside the cutaway room, with nothing of it cut, ' + cp.filter(o => !o.visible).length + ' part(s) of its paper are hidden — paper comes down only with its wall');
+            seen3.push('3d cutaway ' + (downX.length ? 'wall down at x ' + downX.join(',') : 'nothing cut'));
+            seasonSet('probe-taped'); world = Y; px = fx = D; py = fy = 3; dir = 'down'; t3Invalidate(); draw3d();
+          }
+        }
+        /* 5 · the flat cameras, as pixels: the frame with the strings minus the frame without them, and where they land */
+        const cv = document.getElementById('cv'), k = cv.width / VW, seen = [];
+        const frame = (cam, sid) => { seasonSet(sid); camSet(cam); seed(); if (cam === '3d') { t3Invalidate(); draw3d(); return grab3(); } draw(); return ctx.getImageData(0, 0, cv.width, cv.height).data; };
+        const isoP = (x, y) => [(x - y) * ISW / 2 + isoOg[0], (x + y) * ISH / 2 + isoOg[1]], flatP = (x, y) => [x * TS - camXg, y * TS - camYg];
+        ['top', 'front', 'iso'].forEach(cam => {
+          if (!CAMS.includes(cam)) { N.push('COUNT-ONLY: this pack has no ' + cam + ' camera, so no taped string was looked at in it'); return; }
+          const none = frame(cam, 'probe-taped-none'), none2 = frame(cam, 'probe-taped-none'), ctl = count(none, none2);
+          if (ctl) { P.push('the ' + cam + ' probe cannot measure: two frames of the same room differ by ' + ctl + ' pixels'); return; }
+          ['wall', 'ceil'].forEach(m => {
+            const A = frame(cam, 'probe-taped-' + m), pts = [];
+            for (let i = 0, p = 0; i < A.length; i += 4, p++) if (ne(A, none, i)) { const x = p % cv.width; pts.push([x / k, (p - x) / cv.width / k]); }
+            const what = m === 'wall' ? 'wall' : 'ceiling';
+            if (pts.length < 40) { P.push('the ' + what + ' string paints ' + pts.length + ' pixels in the ' + cam + ' camera — it is not seen'); return; }
+            let inside = 0, over = 0;
+            pts.forEach(([X, Yp]) => {
+              if (cam === 'iso') {
+                const row = m === 'wall' ? 0 : 4, h = isoH(WORLDS[Y], m === 'wall' ? 3 : 0, row);
+                for (let x = 1; x <= W - 2; x++) { const [cx, cy] = isoP(x, row), lx = m === 'wall' ? cx - ISW / 2 : cx - ISW / 4, ly = m === 'wall' ? cy : cy - ISH / 4;
+                  const s = (X - lx) / (ISW / 2); if (s < -0.05 || s > 1.05) continue; const top = ly + s * ISH / 2 - h;
+                  if (Yp >= top - 1.5 && Yp <= top + 6) { if (m === 'wall' && x === D && s > 0.1 && s < 0.9) over++; else inside++; break; } }
+              } else {
+                const row = m === 'wall' ? 0 : 4, sy = flatP(0, row)[1];
+                const band = m === 'wall' ? [sy + 1, sy + 10] : (cam === 'front' ? [sy + 2, sy + 11] : [sy + TS / 2 - 4, sy + TS / 2 + 5]);
+                if (Yp >= band[0] - 0.5 && Yp <= band[1] + 0.5) { if (m === 'wall' && [D, Q].some(x => { const dx = flatP(x, row)[0]; return X >= dx + 1 && X < dx + TS - 1; })) over++; else inside++; }
+              } });
+            const where = m === 'wall' ? 'on its wall\'s face at the top' : (cam === 'top' ? 'down the middle of its row' : cam === 'front' ? 'from the top of its row' : 'along its row at the walls\' height');
+            if (inside + over < pts.length * 0.97) P.push('in the ' + cam + ' camera ' + (pts.length - inside - over) + ' of the ' + what + ' string\'s ' + pts.length + ' pixels land somewhere else than ' + where);
+            seen.push(cam + ' ' + what + ' ' + pts.length);
+            if (over) P.push('in the ' + cam + ' camera the wall string paints ' + over + ' pixels over ' + (cam === 'iso' ? 'the door' : 'the door or the partition') + ' — it is broken there');
+          });
+        });
+        /* 6 · paper over paint: the paint on the north wall hides none of the paper over it, in every camera — the top
+           camera as well, which draws a wall as its standing face and tapes the paper along its top, where front does */
+        DECODRAW['probe-paint'] = (sx, sy) => { ctx.fillStyle = '#123456'; ctx.fillRect(sx, sy, TS, TS); };
+        ['top', 'front', 'iso', '3d'].filter(c => CAMS.includes(c) && (c !== '3d' || has3d)).forEach(cam => {
+          const pairs = on => { if (on) DECOS.push(PAINT); try { return [frame(cam, 'probe-taped-wall'), frame(cam, 'probe-taped-none')]; } finally { const i = DECOS.indexOf(PAINT); if (i >= 0) DECOS.splice(i, 1); } };
+          const [Ap, Bp] = pairs(true), [Ab, Bb] = pairs(false);
+          const foot = new Uint8Array(Ap.length / 4); let paint = 0; for (let i = 0, p = 0; i < Bp.length; i += 4, p++) if (ne(Bp, Bb, i)) { foot[p] = 1; paint++; }
+          const bare = count(Ab, Bb, foot), over = count(Ap, Bp, foot);
+          if (paint < 40) P.push('the paint on the north wall paints ' + paint + ' pixels in the ' + cam + ' camera — nothing to lay the paper over');
+          else if (bare < 20) P.push('in the ' + cam + ' camera the wall string paints ' + bare + ' pixels where the paint would be — the two never meet, so nothing was measured');
+          else if (over < bare * 0.9) P.push('in the ' + cam + ' camera the paint on the north wall hides ' + (bare - over) + ' of the ' + bare + ' pixels of paper over it — paper taped to a wall goes over what is painted on it');
+          seen.push(cam + ' paper over paint ' + over + '/' + bare);
+        });
+        N.push('COUNT-ONLY: taped papel picado — the probe room\'s paper, in pixels: ' + seen3.concat(seen).join(', '));
+        delete DECODRAW['probe-paint'];
+        /* 7 · out of season nothing hangs: no string is cut, no paper stands in 3D, and every flat frame is a bare room's */
+        seasonSet('off');
+        if (fiestaTaped(Y).length) P.push('out of season the probe room still cuts ' + fiestaTaped(Y).length + ' taped string(s)');
+        if (has3d) { camSet('3d'); t3Invalidate(); draw3d(); if (T3.group.children.some(o => (o.userData || {}).mount)) P.push('out of season a taped string is still up in 3D'); }
+        ['top', 'front', 'iso'].filter(c => CAMS.includes(c)).forEach(cam => { const off = frame(cam, 'off'), none = frame(cam, 'probe-taped-none'), d = count(off, none);
+          if (d) P.push('out of season the ' + cam + ' camera paints ' + d + ' pixels in the probe room that a season hanging nothing does not'); });
+      } finally {
+        Date.now = dn; Math.random = rnd;
+        { const i = DECOS.indexOf(PAINT); if (i >= 0) DECOS.splice(i, 1); } delete DECODRAW['probe-paint'];
+        SIDS.forEach(id => { delete S[id]; });
+        seasonSet(pick0); world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; if (typeof T3 !== 'undefined' && T3) T3.yaw = keep.yaw;
+        camSet(keep.cam); sizeCanvas(); delete WORLDS[Y]; delete WORLDS[YL]; delete WORLDS[YC];
+      }
+      return { P, N };
+    };
+    const tq = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    const tErr = [], TP = [], tWarn = [];
+    tq.on('pageerror', e => tErr.push(e.message));
+    tq.on('console', m => { if (/Texture has been resized/i.test(m.text())) tWarn.push(m.text()); });   /* three.js says it shrank a texture here, and only here */
+    await tq.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    await tq.goto('file://' + file); await tq.waitForTimeout(1500);
+    try {
+      await tq.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        ['reader', 'card'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; }); });
+      const got = await tq.evaluate(tapedRoom);
+      TP.push(...got.P); fails.push(...got.N);
+    } catch (e) { TP.push('the probe could not run to the end, so it measured nothing: ' + String(e && e.message || e).split('\n')[0]); }
+    if (tErr.length) TP.push('the page threw while the probe room was dressed: ' + [...new Set(tErr)].slice(0, 3).join(' | '));
+    if (tWarn.length) TP.push('three.js shrank ' + tWarn.length + ' texture(s) to fit the GPU while the probe rooms were dressed ("' + tWarn[0] + '") — a strip of papel picado shrunk to fit loses rows of every flag and its punched holes, and that line in the console is the only sign');
+    await tq.close();
+    fails.push(...TP.map(m => 'taped papel picado: ' + m));
+  }
 
   /* ---- AN OFRENDA STANDS ON SOMETHING (crew iteration 14, la ofrendera) ----
      The owner, 2026-09-22, asked to fix the altar over the table at Doña Tencha's. It was
