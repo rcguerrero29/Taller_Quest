@@ -2082,8 +2082,10 @@ const CANDIDATES = [
            and passed). That is the next check's: each string on poles drawn alone must hang where, and as deep as, a
            string on poles always has. The clock and the dice are held still for every frame; two frames of the same street
            must match first, or this measures nothing; and the swags must paint in each camera, or it compares two bare
-           streets. */
-        Object.keys(SEASONS).forEach(sid => (((SEASONS[sid] || {}).art || {}).swags || []).forEach(sw => { if (sw.mount !== undefined) problems.push(`Meridian's swag in ${sw.world} on row ${(sw.from || [])[1]} (season ${sid}) says it hangs on "${sw.mount}" — Meridian's papel picado says nothing and hangs on its poles, as it always has`); }));
+           streets. Nor does a Meridian swag say how far down a wall it hangs (`reach`, read on a wall string only): it says
+           nothing there either. */
+        Object.keys(SEASONS).forEach(sid => (((SEASONS[sid] || {}).art || {}).swags || []).forEach(sw => { if (sw.mount !== undefined) problems.push(`Meridian's swag in ${sw.world} on row ${(sw.from || [])[1]} (season ${sid}) says it hangs on "${sw.mount}" — Meridian's papel picado says nothing and hangs on its poles, as it always has`);
+          if (sw.reach !== undefined) problems.push(`Meridian's swag in ${sw.world} on row ${(sw.from || [])[1]} (season ${sid}) says reach ${JSON.stringify(sw.reach)} — Meridian's papel picado says nothing about how far down a wall it hangs, and hangs on its poles, as it always has`); }));
         if (typeof swagMount !== 'function' || typeof fiestaTaped !== 'function') problems.push('the engine cannot say where a swag hangs (swagMount, fiestaTaped)');
         else {
           Object.keys(SEASONS).forEach(sid => { seasonSet(sid); Object.keys(WORLDS).forEach(wid => { const t = fiestaTaped(wid); if (t.length) problems.push(`in season ${sid} ${t.length} string(s) of Meridian's ${wid} are cut as taped strings ("${t[0].mount}", row ${t[0].y}) — Meridian tapes nothing`); }); });

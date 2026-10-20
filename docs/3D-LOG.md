@@ -832,3 +832,37 @@ polygon update for all of these, and what the marigolds taught, had been logged)
   while measuring, and left, because this change keeps Meridian's frames as they are. In 3D a decor on a wall the
   cutaway drops stays up — older than this change, found while measuring the paper's own case, and left. No phone
   measured for cost.
+
+### 2026-10-20 · how far a taped string hangs down its wall: `reach`
+
+- **What it does.** A `"wall"` swag may say `reach`, a number from 0 to 32: how far below the wall's top edge its flags'
+  hems hang, in 32nds of the wall's face (32 tile pixels in front and top, the wall's height in 3D, its block's face in
+  iso). Its string stays one flag's depth above the hems. Left out, the string hangs exactly where it did before. `0`
+  keeps the flags wholly above the wall's face, so over nothing painted on it — the face, top edge down, is what the
+  engine treats as painted, because a wall's own art and a decor on it may use any of its 32 rows; a pack whose paint
+  starts lower writes that depth. `32` puts the hems at the wall's foot. Ignored on poles and on a ceiling. The range is
+  `SWAG_REACH`, read by `swagReach` and by the engine test; one reader, `tapedHem`, places it for all four cameras; the 3D
+  paper says its reach in the scene. Touching wall spans that say different reaches are two strings.
+- **Measured in the probe room** (`test/engine.smoke.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL`), hems in
+  32nds of the face: 3D 0.00 / 16.00 / 32.00 at reach 0 / 16 / 32, unset 7.01; top and front 0.00 / 16.00 / 32.00, no
+  paper pixel on the face at 0; iso 0.40 / 16.40 / 32.40 (one pixel of antialiasing on a 20 px face), none on the face
+  at 0. Unset builds today's numbers in 3D (string 0.02 under the top, flags 0.22 under it) and draws, in every flat
+  camera, the frame of the same string told to put its hems at today's depth, pixel for pixel.
+- **Meridian.** Names no reach and is unchanged: by hand, with a paused clock and one seeded `Math.random`, every season
+  with swags in every world that has them, in all four cameras at 1280×800 and 390×844 (3×), 192 frames, byte for byte
+  the frames of the engine before taping existed and of the engine before this change; a room with an unset wall
+  string, a ceiling string and a string on poles, likewise against the engine before this change. The same comparison
+  sees a planted default of 6.8 (3D and iso differ; front and top do not, since 6.8 is where they always drew the hems).
+- **Guards.** The probe room's new section: the range (both ends and the middle taken, nothing outside, and narrowed when
+  `SWAG_REACH` is), seven wrong values each named and each hung as if unset, unset at today's placement, each end and
+  the middle where it says in 3D, top, front and iso, a reach on poles or on a ceiling moving no pixel in any camera,
+  and two reaches making two strings; `test/smoke.js` reds a Meridian swag that says a reach. Red first on the engine
+  before this change (it has no range to read). Planted outside the repository, each red in its own sentence: a default
+  of 6.8 when unset, every camera ignoring the reach, 3D alone, front alone, top alone, iso alone, the reach read up from
+  the foot, a flag 0.2 deeper, `swagReach` with a range of its own, `swagReach` taking any number, a ceiling string
+  reading it, touching spans merged whatever their reach, the 3D string off its flags, the 3D scene not saying the
+  reach, the string kept on the wall at a small reach, a pack swag saying 40 and "low" (in both suites), and the
+  wrong-value check naming nothing.
+- **Not done.** At a small reach the string runs above the wall's top edge: in 3D it stands against whatever is behind
+  the wall, and in the front camera, when the wall is the map's first row, it is above the frame, which starts at that
+  row. A wall standing on raised ground is measured floor to top. No reach for a string on poles or a ceiling.

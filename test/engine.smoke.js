@@ -4693,10 +4693,18 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         fiestaTaped(wid).filter(r => r.mount === 'wall').forEach(r => [[r.x0 - 1, 'west'], [r.x1 + 1, 'east']].forEach(([x, side]) => {
           if (at(x, r.y) !== undefined && !SOLID.has(at(x, r.y)) && stands(x, r.wy))
             out.push('season "' + id + '" tapes a string to the wall in ' + wid + ' on row ' + r.y + ' that stops at x ' + r.x0 + '–' + r.x1 + ' while the wall behind it runs on to the ' + side + ' at x ' + x + ' — taped paper is ONE continuous string along each stretch of wall: write the swag as one span along the whole wall, doors and all, and the engine breaks it at each door and pulls it in off the side walls'); })); return out; };
+      /* a swag's reach (engine/engine.js, grep "HOW FAR A WALL STRING HANGS DOWN ITS WALL"), when it says one: a number inside
+         the engine's own range, SWAG_REACH, which swagReach reads too — anything else hangs where a wall string always has,
+         quietly, and only this says so. The same sentence reads the pack's swags (1, below) and the planted ones (8) */
+      const RANGE = (typeof SWAG_REACH !== 'undefined' && Array.isArray(SWAG_REACH) && SWAG_REACH.length === 2) ? SWAG_REACH : null;
+      const reachSays = (id, sw) => { if (!sw || sw.reach === undefined) return '';
+        const v = sw.reach; if (RANGE && typeof v === 'number' && isFinite(v) && v >= RANGE[0] && v <= RANGE[1]) return '';
+        return 'season "' + id + '" hangs a swag in ' + sw.world + ' on row ' + (sw.from || [])[1] + ' that says reach ' + (typeof v === 'string' ? '"' + v + '"' : String(v)) + ' — a reach is a number from ' + (RANGE ? RANGE[0] + ' to ' + RANGE[1] : 'a range the engine does not keep (SWAG_REACH)') + ', how far down its wall a wall string\'s flags hang, in 32nds of the wall\'s face; anything else hangs where a wall string always has'; };
       /* 1 · the pack's own swags */
       const pick0 = seasonPick; let taped = 0;
       Object.keys(S).forEach(id => { const list = (S[id] && S[id].art && Array.isArray(S[id].art.swags)) ? S[id].art.swags : [];
-        list.forEach(sw => { if (sw && sw.mount !== undefined && !KNOWN.includes(sw.mount)) P.push('season "' + id + '" hangs a swag in ' + sw.world + ' on row ' + (sw.from || [])[1] + ' on "' + sw.mount + '" — the engine knows ' + KNOWN.join(', ') + ', and hangs anything else on poles'); });
+        list.forEach(sw => { if (sw && sw.mount !== undefined && !KNOWN.includes(sw.mount)) P.push('season "' + id + '" hangs a swag in ' + sw.world + ' on row ' + (sw.from || [])[1] + ' on "' + sw.mount + '" — the engine knows ' + KNOWN.join(', ') + ', and hangs anything else on poles');
+          const r = reachSays(id, sw); if (r) P.push(r); });
         const mine = list.filter(sw => sw && sw.from && sw.to && swagMount(sw) !== 'poles');
         if (!mine.length) return;
         taped += mine.length; seasonSet(id);
@@ -4899,12 +4907,124 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (has3d) { camSet('3d'); t3Invalidate(); draw3d(); if (T3.group.children.some(o => (o.userData || {}).mount)) P.push('out of season a taped string is still up in 3D'); }
         ['top', 'front', 'iso'].filter(c => CAMS.includes(c)).forEach(cam => { const off = frame(cam, 'off'), none = frame(cam, 'probe-taped-none'), d = count(off, none);
           if (d) P.push('out of season the ' + cam + ' camera paints ' + d + ' pixels in the probe room that a season hanging nothing does not'); });
+        /* 8 · HOW FAR A WALL STRING HANGS DOWN ITS WALL — a wall swag's `reach` (engine/engine.js, grep "HOW FAR A WALL STRING
+           HANGS DOWN ITS WALL"): a number inside SWAG_REACH, how far below the wall's top edge its flags' hems reach, in 32nds
+           of the wall's face as each camera draws it. UNSET IS WHERE A WALL STRING ALWAYS HUNG, and these are its numbers
+           (mq-v239): in 3D its string's centre 0.02 under the wall's top and its flags 0.22 tall under that; in the front and
+           top cameras its string 2 px under the face's top and its hems 4.8 under the string, 6.8 of the face's 32; in iso its
+           bake's string at 1.5 and its hems 4.8 under it, at the camera's scale, on its block's face. So unset must BUILD
+           those numbers in 3D, and in each flat camera DRAW, pixel for pixel, the frame of the same string told to put its
+           hems at that depth — a default that moved, a flag that changed its depth, or an unset path that moved, each moves
+           one of the two and not the other. THEN EACH END OF THE RANGE AND ITS MIDDLE, in a room of its own whose north wall
+           has a room behind it, so paper above that wall is in frame: the least puts the hems on the wall's top edge and no
+           paper on its face (the flags wholly above it); the most, at its foot; in every camera — read out of the built scene
+           in 3D (the wall's own box says where its top and foot are) and out of the drawn pixels in the flat ones (the frame
+           with the string minus the frame without it, placed by where each camera says it drew a tile). A WRONG VALUE IS
+           NAMED: the sentence that reads the pack's swags (1) is handed planted ones, and must name each. A reach on a string
+           on poles or on a ceiling is NOT READ: those frames are the frames without it. Spans that say different reaches
+           are different strings. */
+        {
+          const YR = 'probe-taped-reach', RW = W, RWY = 2, RY = 3, MX = 7;
+          room(YR, ['#'.repeat(RW), inner, '#'.repeat(RW), inner, inner, inner, '#'.repeat(RW)]);
+          const wallSw = v => { const s = { world: YR, from: [0, RY], to: [RW - 1, RY], mount: 'wall' }; if (v !== undefined) s.reach = v; return s; };
+          const rs = v => { const id = 'probe-reach-' + String(v); if (!S[id]) { S[id] = season([wallSw(v)]); SIDS.push(id); } return id; };
+          S['probe-reach-none'] = season([]); S['probe-reach-unset'] = season([wallSw()]);
+          S['probe-reach-ign0'] = season(CEIL.concat(PLAIN)); S['probe-reach-ign1'] = season(CEIL.concat(PLAIN).map(s => ({ ...s, reach: 0 })));
+          S['probe-reach-two'] = season([{ ...wallSw(4), to: [6, RY] }, { ...wallSw(12), from: [7, RY] }]);
+          S['probe-reach-one'] = season([{ ...wallSw(4), to: [6, RY] }, { ...wallSw(4), from: [7, RY] }]);
+          SIDS.push('probe-reach-none', 'probe-reach-unset', 'probe-reach-ign0', 'probe-reach-ign1', 'probe-reach-two', 'probe-reach-one');
+          if (!RANGE || typeof swagReach !== 'function' || typeof tapedHem !== 'function') P.push('the engine cannot say how far a wall string hangs down its wall (SWAG_REACH, swagReach, tapedHem): every wall string hangs where it always has, whatever its swag says');
+          else {
+            const [LO, HI] = RANGE, MID = (LO + HI) / 2, said = [];
+            /* the one range: swagReach takes both of its ends and its middle, nothing just outside, nothing unset — and it
+               narrows when SWAG_REACH does, so no second copy of the range lives in the engine */
+            const takes = v => swagReach({ mount: 'wall', reach: v });
+            if (takes(LO) !== LO || takes(HI) !== HI || takes(MID) !== MID || takes(LO - 0.01) !== undefined || takes(HI + 0.01) !== undefined || swagReach({ mount: 'wall' }) !== undefined)
+              P.push('swagReach does not read SWAG_REACH (' + LO + ' to ' + HI + '): ' + [LO, MID, HI, LO - 0.01, HI + 0.01, undefined].map(v => String(v) + ' → ' + String(takes(v))).join(', ') + ' — a number inside the range is itself, and anything else is unset');
+            { const hi0 = RANGE[1]; let still; try { RANGE[1] = MID; still = takes((MID + hi0) / 2); } finally { RANGE[1] = hi0; }
+              if (still !== undefined) P.push('swagReach keeps a range of its own: with SWAG_REACH narrowed to ' + LO + '–' + MID + ' it still took ' + (MID + hi0) / 2); }
+            /* a wrong value is named, and hangs where a wall string always has */
+            ['4', -1, HI + 0.5, NaN, Infinity, null, true].forEach(v => { const sw = wallSw(v);
+              if (!reachSays('probe-reach-wrong', sw)) P.push('a wall swag that says reach ' + (typeof v === 'string' ? '"' + v + '"' : String(v)) + ' is not named — the check that reads the pack\'s swags would let it through');
+              if (swagReach(sw) !== undefined) P.push('a wall swag that says reach ' + String(v) + ' is read as ' + swagReach(sw) + ' — anything but a number inside SWAG_REACH hangs where a wall string always has'); });
+            if (reachSays('probe-reach-good', wallSw(LO)) || reachSays('probe-reach-good', wallSw(HI)) || reachSays('probe-reach-good', wallSw()))
+              P.push('the check that reads the pack\'s reaches names a good one (' + LO + ', ' + HI + ' or none) as wrong');
+            /* spans that say different reaches are two strings; the same reach, one */
+            const cut = sid => { seasonSet(sid); return fiestaTaped(YR).map(r => r.x0 + '–' + r.x1 + (r.reach === undefined ? '' : ' at ' + r.reach)).sort().join(' · ') || 'nothing'; };
+            const two = cut('probe-reach-two'), one = cut('probe-reach-one');
+            if (two !== '1–6 at 4 · 7–12 at 12') P.push('two touching wall spans at reach 4 and 12 are cut into ' + two + ' — a string that changes its reach is two strings, 1–6 at 4 and 7–12 at 12');
+            if (one !== '1–12 at 4') P.push('two touching wall spans at the same reach are cut into ' + one + ' — they are one string, 1–12 at 4');
+            if (cut('probe-reach-unset') !== '1–12') P.push('the reach room\'s wall string is cut into ' + cut('probe-reach-unset') + ' — it should be one string, 1–12, saying no reach');
+            world = YR; px = fx = MX; py = fy = 5; dir = 'up'; moving = false;
+            /* 3D, out of the built scene */
+            if (has3d) {
+              const U = o => o.userData || {}, kids = () => T3.group.children, bx = new THREE.Box3();
+              const build = sid => { seasonSet(sid); camSet('3d'); T3.yaw = 0; T3.turn = null; t3Invalidate(); draw3d(); };
+              build('probe-reach-unset');
+              const wb = kids().filter(o => o.isMesh && U(o).x === MX && U(o).y === RWY && !U(o).swag && U(o).deco === undefined);
+              if (!wb.length) P.push('the reach room\'s north wall did not stand in 3D, so no reach was measured there');
+              else {
+                const e = new THREE.Box3(); wb.forEach(o => e.expandByObject(o)); const TOPW = e.max.y, FOOT = e.min.y;
+                const at = (sid, v) => { build(sid); const mine = kids().filter(o => U(o).mount === 'wall'), st = mine.filter(o => U(o).string), fl = mine.filter(o => U(o).flag);
+                  if (st.length !== 1 || fl.length !== 1) { P.push('in 3D the reach room\'s wall carries ' + fl.length + ' strip(s) of flags on ' + st.length + ' string(s) at reach ' + v + ' — one of each'); return null; }
+                  bx.setFromObject(fl[0]); const r = { lo: bx.min.y, hi: bx.max.y, sy: st[0].position.y, tag: U(fl[0]).reach };
+                  const A = grab3(), A2 = grab3(); mine.forEach(o => { o.visible = false; }); const B = grab3(); mine.forEach(o => { o.visible = true; });
+                  const c = count(A, A2), d = count(A, B);
+                  if (c) P.push('the 3D reach room cannot be measured: two frames of it differ by ' + c + ' pixels');
+                  else if (d < 200) P.push('in 3D the wall string at reach ' + v + ' paints ' + d + ' pixels — it is not seen');
+                  said.push('3d ' + v + ': hems ' + ((TOPW - r.lo) / (TOPW - FOOT) * 32).toFixed(2) + '/32 down, ' + d + ' px'); return r; };
+                const u = at('probe-reach-unset', 'unset');
+                if (u && (Math.abs(u.sy - (TOPW - 0.02)) > 1e-6 || Math.abs(u.hi - (TOPW - 0.02)) > 1e-6 || Math.abs(u.lo - (TOPW - 0.24)) > 1e-6 || u.tag !== undefined))
+                  P.push('in 3D a wall string that says no reach is built with its string at ' + u.sy.toFixed(4) + ' and its flags from ' + u.lo.toFixed(4) + ' to ' + u.hi.toFixed(4) + (u.tag !== undefined ? ', saying reach ' + u.tag : '') + ' on a wall ' + TOPW.toFixed(3) + ' tall — where a wall string always hung is its string 0.02 under the wall\'s top, at ' + (TOPW - 0.02).toFixed(4) + ', and its flags 0.22 tall under that, to ' + (TOPW - 0.24).toFixed(4));
+                [LO, MID, HI].forEach(v => { const r = at(rs(v), v); if (!r) return;
+                  const want = TOPW - v / 32 * (TOPW - FOOT);
+                  if (Math.abs(r.lo - want) > 1e-6) P.push('in 3D a wall string at reach ' + v + ' has its hems at ' + r.lo.toFixed(4) + ' on a wall from ' + FOOT.toFixed(3) + ' to ' + TOPW.toFixed(3) + ' — reach ' + v + ' puts them ' + v + '/32 of the wall\'s face down from its top edge, at ' + want.toFixed(4) + (v === LO ? ': on the top edge, the flags wholly above the face' : v === HI ? ': at the wall\'s foot' : ''));
+                  if (v === LO && r.lo < TOPW - 1e-6) P.push('in 3D at reach ' + v + ' the flags come down onto the wall\'s face, to ' + r.lo.toFixed(4) + ' under its top at ' + TOPW.toFixed(4) + ' — the least reach keeps them wholly above it');
+                  if (Math.abs(r.sy - r.hi) > 1e-6) P.push('in 3D a wall string at reach ' + v + ' runs at ' + r.sy.toFixed(4) + ', not along the top of its flags at ' + r.hi.toFixed(4) + ' — the flags hang from their string');
+                  if (r.tag !== v) P.push('the 3D scene says a wall string built at reach ' + v + ' is at ' + r.tag + ' — the scene says the reach it was built at'); });
+              }
+            }
+            /* the flat cameras, out of the drawn pixels: where each pixel of paper is, in 32nds of the face below its top edge */
+            const hI = isoH(WORLDS[YR], MX, RWY), q = ISW / 2 / TS;
+            ['top', 'front', 'iso'].filter(c => CAMS.includes(c)).forEach(cam => {
+              const none = frame(cam, 'probe-reach-none'), none2 = frame(cam, 'probe-reach-none');
+              if (count(none, none2)) { P.push('the ' + cam + ' reach room cannot be measured: two frames of it differ by ' + count(none, none2) + ' pixels'); return; }
+              const faceH = cam === 'iso' ? hI : TS, px32 = 32 / faceH;   /* one screen pixel, in 32nds of this camera's face */
+              const today = cam === 'iso' ? 6.3 * q * 32 / hI : 6.8, U0 = frame(cam, 'probe-reach-unset'), T0f = frame(cam, rs(today)), du = count(U0, T0f), un = count(U0, none);
+              if (un < 40) P.push('in the ' + cam + ' camera the reach room\'s string that says no reach paints ' + un + ' pixels — nothing to compare');
+              else if (du) P.push('in the ' + cam + ' camera a wall string that says no reach differs by ' + du + ' pixels from the same string told to put its hems ' + today.toFixed(3) + '/32 of the face down, where a wall string always hung them (' + (cam === 'iso' ? 'its bake\'s string at 1.5, its hems 4.8 under that' : 'its string 2 px under the face\'s top, its hems 4.8 under that') + ') — unset is today\'s placement, byte for byte');
+              const offOf = (X, Yc) => { if (cam !== 'iso') return (Yc - flatP(0, RWY)[1]) * px32;
+                for (let x = 1; x <= RW - 2; x++) { const [cx, cy] = isoP(x, RWY), s = (X - (cx - ISW / 2)) / (ISW / 2); if (s < -0.02 || s > 1.02) continue; return (Yc - (cy + s * ISH / 2 - hI)) * px32; }
+                return null; };
+              [LO, MID, HI].forEach(v => { const A = frame(cam, rs(v)); let n = 0, onFace = 0, lost = 0, hem = -Infinity;
+                for (let i = 0, p = 0; i < A.length; i += 4, p++) if (ne(A, none, i)) { const xd = p % cv.width, yd = (p - xd) / cv.width, X = (xd + 0.5) / k;
+                  const oc = offOf(X, (yd + 0.5) / k), ob = offOf(X, (yd + 1) / k); if (oc === null) { lost++; continue; }
+                  n++; hem = Math.max(hem, ob); if (oc > 0.75 * px32) onFace++; }
+                if (n < 40) { P.push('in the ' + cam + ' camera the wall string at reach ' + v + ' paints ' + n + ' pixels over its wall — it is not seen, so where it hangs was not measured'); return; }
+                if (lost > n * 0.03) P.push('in the ' + cam + ' camera ' + lost + ' of the wall string\'s ' + (n + lost) + ' pixels at reach ' + v + ' land off its wall');
+                if (Math.abs(hem - v) > 1.5 * px32) P.push('in the ' + cam + ' camera the wall string at reach ' + v + ' has its hems ' + hem.toFixed(2) + '/32 of the face down — reach ' + v + ' puts them ' + v + '/32 down' + (v === LO ? ', on the wall\'s top edge' : v === HI ? ', at the wall\'s foot' : ''));
+                if (v === LO && onFace) P.push('in the ' + cam + ' camera at reach ' + v + ' ' + onFace + ' pixels of the flags lie on the wall\'s face — the least reach keeps them wholly above it');
+                said.push(cam + ' ' + v + ': hems ' + hem.toFixed(2) + '/32 down, ' + n + ' px' + (v === LO ? ', ' + onFace + ' on the face' : '')); });
+            });
+            /* a reach on a string on poles or on a ceiling is not read: in every camera, the main probe room's ceiling string and
+               its string that says nothing draw the same frame with a reach as without */
+            world = Y; px = fx = D; py = fy = 3; dir = 'down';
+            seasonSet('probe-reach-ign1'); if (fiestaTaped(Y).some(r => r.reach !== undefined)) P.push('a ceiling string that says a reach is cut with one (' + fiestaTaped(Y).map(r => r.mount + ' ' + r.reach).join(', ') + ') — only a wall string reads it');
+            ['top', 'front', 'iso', '3d'].filter(c => CAMS.includes(c) && (c !== '3d' || has3d)).forEach(cam => {
+              const a = frame(cam, 'probe-reach-ign0'), b = frame(cam, 'probe-reach-ign1'), z = frame(cam, 'probe-taped-none'), d = count(a, b), seen = count(a, z);
+              if (seen < 40) P.push('in the ' + cam + ' camera the ceiling string and the string on poles paint ' + seen + ' pixels — nothing to compare a reach against');
+              else if (d) P.push('in the ' + cam + ' camera a reach on the ceiling string and on the string on poles moves ' + d + ' pixels — a reach is read on a wall string only');
+              said.push(cam + ' reach on poles and ceiling: ' + d + ' px moved of ' + seen); });
+            N.push('COUNT-ONLY: taped papel picado, reach — ' + said.join('; '));
+          }
+          delete WORLDS[YR];
+        }
       } finally {
         Date.now = dn; Math.random = rnd;
         { const i = DECOS.indexOf(PAINT); if (i >= 0) DECOS.splice(i, 1); } delete DECODRAW['probe-paint'];
         SIDS.forEach(id => { delete S[id]; });
         seasonSet(pick0); world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; if (typeof T3 !== 'undefined' && T3) T3.yaw = keep.yaw;
-        camSet(keep.cam); sizeCanvas(); delete WORLDS[Y]; delete WORLDS[YL]; delete WORLDS[YC];
+        camSet(keep.cam); sizeCanvas(); delete WORLDS[Y]; delete WORLDS[YL]; delete WORLDS[YC]; delete WORLDS['probe-taped-reach'];
       }
       return { P, N };
     };

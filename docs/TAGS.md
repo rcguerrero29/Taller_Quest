@@ -59,6 +59,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Decor `deco` | `DECODRAW` + pack `DECOART` | 2 + 8 |
 | Fiesta prop `kind` | `content/meridian/config.js:147–152` | 3, **closed** |
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
+| Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -413,6 +414,24 @@ helper, and the person who hits it will be reading their content files, not `san
   decided: a wall to the south, east or west of a row (only the north wall is a wall here, the one the home camera
   faces); whether a `hangs` entry (the piñata) takes the same key; and a ceiling of its own — `ceiling` borrows the
   walls' height and adds no tile kind, so the gap above, *a roof or ceiling*, stays open.
+- **Registered 2026-10-20 — `reach` on a season's swag: a number from `0` to `32`.** How far down its wall a `wall`
+  string's flags hang. Rule 1's sentence finishes without the word *papel picado*: the strip's bottom edge, its hems,
+  stands this many 32nds of the wall's face below the wall's top edge — 32 tile pixels in the front and top cameras, the
+  wall's height in 3D, its block's south face in iso — and its string one flag's depth above that. **`0` keeps the flags
+  wholly above the wall's face**: the face, top edge down, is what the engine calls *the painted face*, because a wall's
+  own art and a decor painted on it may use any of its 32 rows and the engine cannot know which a pack leaves bare, so
+  the top edge is the one line nothing painted on a wall rises above; a pack that paints below a coping writes the
+  coping's depth to keep the flags just clear of its paint. `32` puts the hems at the wall's foot. **Saying nothing is
+  where a wall string always hung**, byte for byte in every camera (in 3D its string 0.02 under the wall's top and its
+  flags 0.22 tall under that; in front and top its hems 6.8 of the face's 32 down), so a pack that never heard of the key
+  hangs exactly as before. One range, `SWAG_REACH`, which `swagReach` and `test/engine.smoke.js` both read; one reader
+  for the four cameras, `tapedHem`; and the 3D scene's paper says the reach it was built at in the same word. Ignored on
+  a string on `poles` or on a `ceiling` — it says how far down *a wall*. Two touching wall spans that say different
+  reaches are two strings. A value outside the range, or not a number, hangs as if unset at runtime; it is the suite
+  that reds it, by season, world and row. The unit is the grid a pack already paints its walls in, so a pack's own
+  number for where its paint starts is the value it writes. **Not** decided: a reach for a string on poles (how low it
+  sags) or on a ceiling (how far it hangs from it) — those would be this same key read by those mounts, never a second
+  word; and a wall whose foot is not the floor (the face is taken as floor to top).
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 
