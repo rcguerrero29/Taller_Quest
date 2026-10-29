@@ -866,3 +866,62 @@ polygon update for all of these, and what the marigolds taught, had been logged)
 - **Not done.** At a small reach the string runs above the wall's top edge: in 3D it stands against whatever is behind
   the wall, and in the front camera, when the wall is the map's first row, it is above the frame, which starts at that
   row. A wall standing on raised ground is measured floor to top. No reach for a string on poles or a ceiling.
+
+### 2026-10-29 · the kitchen wall: a freezer, cupboards, drawers, a wall shelf and a worktop, each shut and open
+
+- **The ask, in general words.** A later sprint walks into a kitchen in 3D and opens the fridge, a drawer or a cupboard
+  to see what is kept there. This one gives the engine the pieces of a kitchen wall, each drawn shut and open, and moves
+  the list of the kinds of place a kitchen has, the rows they stand in and where a kitchen starts out of one game's page
+  into the engine as one copy (`engine/kitchen.js`, `KITCHEN`). Nothing changes on any screen of any game.
+- **What was made** (`engine/shapes.js`, grep `THE KITCHEN WALL`). Six new shapes, each built in the order a joiner
+  builds it: the carcass (sides, a bottom and a top, a plain back in shade, a kick set back under a lower piece, one shelf
+  inside), then the doors hung or the drawers fitted, then the handles. A door is a frame and a panel (two stiles, two
+  rails, a panel sunk 0.006 and a shade darker): the first render, a flat slab, read as a box with two handles. Bars, not
+  knobs, because a knob is under a pixel at 35 px a tile. The cabinets are the theme's furniture wood (`C.desk`,
+  `C.deskTop`); the insides are dark, so an open one reads as open and its shelf as a pale line.
+  - `▉` **freezer** — the fridge's sibling, the same plinth, footprint and place in its tile: a shell lined white, the
+    seal's line set back in each gap, three drawers of a white basket with a floor in shade, a bar across each front.
+    **29 parts, 348 triangles**, shut and open.
+  - `⬒` **upper cupboards** — hung on the wall from 0.70 to 1.00, 0.34 deep, two doors, the bars low.
+    **18 parts, 216 triangles.**
+  - `⬓` **lower cupboards** — on the floor to 0.54, 0.60 deep, a kick set back 0.05 (any further and a camera 40° up
+    never sees it), two doors, the bars high. **19 parts, 228 triangles.**
+  - `☷` **drawers** — the lower cupboard's carcass and kick, three drawers, the top one the shallowest, boxes of pale
+    wood with a floor in shade. **24 parts, 288 triangles.**
+  - `⊤` **wall shelf** — hung where the upper cupboards hang, 0.26 deep: two cheeks, a top, a dark back and three
+    planks at one pitch. Nothing to open. **7 parts, 84 triangles.**
+  - `━` **worktop** — a slab the full tile wide on the counter's line (0.54 to 0.57), a pale edge, a splash of tiles
+    laid in a bond behind it to 0.69, its joints on the world's grid. Nothing to open. **15 parts, 180 triangles.**
+  - `W` **the fridge** gains `open`: left out or 0 it is exactly its eight parts (96 triangles), as before; open it is
+    a shell lined white with a shelf where its seam was and three shelves, both doors lined with their bins, swung on
+    the hinges away from the handles, the handles and the magnet with them. **Open: 23 parts, 276 triangles.**
+  - **The starter template's four columns**, each stacked in one square: 120 parts and 1,440 triangles shut, 135 and
+    1,620 open. Draw calls do not move: one mesh a tile.
+- **`open`** is a number from 0 (shut, and left out) to 1 (`openOf`): every door turns 100° on its outer edge at 1,
+  every drawer slides out 0.7 of its depth. Anything not a number is shut; past 1 is 1. Each new letter has a top and a
+  side drawing in `engine/engine.js`, a `TILES` row and a place in the engine's `SOLID`; each shape says it was built
+  from its drawing (`.drawing`). No world's `SHAPETAKE` names any of them, so every world draws exactly as before.
+- **Measured** (`test/engine.smoke.js`). Each letter against its drawing in a kitchen laid for the purpose
+  (`test/engine.smoke.js`, grep `THE KITCHEN WALL (2026-10-29)`): a tall piece the wall's height, a hung piece over the counter's line and under the
+  wall's top, a lower piece on the floor and under the slab, the kick set back, two doors of about half the front with
+  their handles by the inner edge and at the hand's height, three drawer fronts with a bar across each, three planks over
+  a dark back, a slab at the waist and no paler than 165; and the open state watched: a door turning on its outer edge
+  toward the room with its handle, a drawer sliding straight out with a box behind its front, half open half way, nothing
+  else moving, shut whatever `open` is handed. The shut fridge is pinned as the eight parts it was. `KITCHEN` is read
+  alone in a context holding only `Object` (`test/engine.smoke.js`, grep `THE KITCHEN'S ONE COPY`): frozen all the way down, every row a row, the
+  order offering each kind once, the template a kitchen a page can read and the one the game's page started from, every
+  piece a shape the library has, the bands of one column apart in rank order and the tall band over all of them, and in a
+  3D shell every piece inside its band shut and open and each column of the template stacked without two pieces touching.
+  Each check was shown red on a fault planted in a copy of the tree outside the repository, in its own sentence; the
+  worktop's first slab was caught by its own check in the tree (luma 168) and darkened to 162.
+- **Meridian.** Names none of it, and is unchanged: every shape the engine had, built by the engine before this change
+  and after it at 120 places each with walls round it on every side (every facing each can take), plain and cleared, with
+  `open` left out and at 0: 9,120 builds, every one deep-equal (0 and −0 told apart); the same proof with one thousandth
+  moved on the fridge's magnet is red in 480 of them. `test/prims.js` builds every literal part the same on both engines.
+  GAMEV and CACHE move together to mq-v241. `engine/kitchen.js` ships in the site and is not precached: no page of
+  Meridian's loads it.
+- **Not done.** No world lays any of the six letters, and nothing opens in play: building a room from a layout and the
+  tap that opens a piece are later sprints. No iso height (`IZH`) or iso colour for the six letters, so a world laying
+  one in the iso camera gets the engine's defaults. The fridge's and the freezer's doors and drawers all open together;
+  one door or one drawer of several is not chosen. The cabinets' finish is the theme's wood and not a choice a game makes.
+  Nothing is on a shelf or in a drawer: what is kept is a game's. No phone measured for cost.

@@ -114,7 +114,8 @@ const TS=32;
 /* "C" (the traffic cone) left this set on 2026-09-04: the owner asked that a cone not force a
    walk around it, but be kicked aside. A cone is not a wall — it is a thing one
    person moves with a foot. It is a `stand` tile now: walkable, still drawn standing. */
-const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J","⊓","◺"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4) */
+const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J","⊓","◺",
+  "▉","⬒","⬓","☷","⊤","━"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4); the last six, the kitchen wall's pieces (2026-10-29), which no world lays today */
 /* the content seam: a pack adds its own solid glyphs and declares which are doors */
 (typeof SOLIDX!=="undefined"?SOLIDX:"").split("").forEach(c=>SOLID.add(c));
 /* PETS THROUGH, PEOPLE NOT — the second content seam on walking (the owner's ask: a gap a
@@ -1299,6 +1300,35 @@ TILEDRAW["T"]=rc=>{const{sx,sy,x,y}=rc; /* a restaurant table: gingham cloth, tw
 TILEDRAW["W"]=rc=>{const{sx,sy,x,y}=rc;ctx.fillStyle="#AEB6BE";ctx.fillRect(sx+4,sy+2,TS-8,TS-4);
       ctx.fillStyle="#8E969E";ctx.fillRect(sx+4,sy+14,TS-8,2);
       ctx.fillStyle="#5F676F";ctx.fillRect(sx+21,sy+5,3,7);ctx.fillRect(sx+21,sy+18,3,7);};
+/* THE KITCHEN WALL'S PIECES (2026-10-29), each drawn as the fridge is drawn: its front, where it stands in its square.
+   Their shapes are in engine/shapes.js (grep "THE KITCHEN WALL"), built from these drawings and their side views below,
+   and test/engine.smoke.js measures each shape against what is drawn here. No world lays any of them today. */
+const kitDoors=(sx,sy,top,h,pullY)=>{                       /* two frame-and-panel doors side by side, their bars on the inner stiles */
+      [1.5,16.5].forEach(dx=>{ctx.fillStyle=tc(C.deskTop);ctx.fillRect(sx+dx,sy+top,14,h);
+        ctx.fillStyle=shadeHex(tc(C.deskTop),-0.15);ctx.fillRect(sx+dx+2,sy+top+2,10,h-4);});
+      ctx.fillStyle="#D9D4E0";ctx.fillRect(sx+13.6,sy+pullY,1.2,4);ctx.fillRect(sx+17.2,sy+pullY,1.2,4);};
+TILEDRAW["▉"]=rc=>{const{sx,sy}=rc; /* the freezer: a white good, three drawers, a bar across the top of each */
+      ctx.fillStyle="#A9B6C3";ctx.fillRect(sx+4,sy+2,TS-8,TS-4);
+      ctx.fillStyle="#C6D0DB";[3,12,21].forEach(yy=>ctx.fillRect(sx+5,sy+yy,TS-10,8));
+      ctx.fillStyle="#5A6068";[4.4,13.4,22.4].forEach(yy=>ctx.fillRect(sx+10,sy+yy,12,1.8));};
+TILEDRAW["⬒"]=rc=>{const{sx,sy}=rc; /* upper cupboards: hung high, two doors, the bars low */
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx+1,sy+2,TS-2,13);kitDoors(sx,sy,2.5,12,9.5);};
+TILEDRAW["⬓"]=rc=>{const{sx,sy}=rc; /* lower cupboards: on the floor, two doors over a kick, the bars high */
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+2,sy+28,TS-4,3);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx+1,sy+14,TS-2,14);kitDoors(sx,sy,14.5,13,16);};
+TILEDRAW["☷"]=rc=>{const{sx,sy}=rc; /* drawers: three over a kick, a bar across the top of each */
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+2,sy+28,TS-4,3);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx+1,sy+14,TS-2,14);
+      ctx.fillStyle=tc(C.deskTop);[[14.5,3.5],[18.5,4.3],[23.3,4.5]].forEach(([yy,hh])=>ctx.fillRect(sx+1.5,sy+yy,TS-3,hh));
+      ctx.fillStyle="#D9D4E0";[15.2,19.3,24.1].forEach(yy=>ctx.fillRect(sx+12,sy+yy,8,1.2));};
+TILEDRAW["⊤"]=rc=>{const{sx,sy}=rc; /* a wall shelf: hung high, a dark back, three planks */
+      ctx.fillStyle="#2E2A33";ctx.fillRect(sx+1,sy+2,TS-2,12);
+      ctx.fillStyle=tc(C.deskTop);ctx.fillRect(sx+1,sy+2,TS-2,1.5);ctx.fillRect(sx+1,sy+2,1.5,12);ctx.fillRect(sx+TS-2.5,sy+2,1.5,12);
+      [6,9.5,13].forEach(yy=>ctx.fillRect(sx+1,sy+yy,TS-2,1.4));};
+TILEDRAW["━"]=rc=>{const{sx,sy}=rc; /* a worktop: a tiled splash behind it, the slab across, its pale edge */
+      ctx.fillStyle="#D8D3C6";ctx.fillRect(sx,sy+8,TS,6);
+      ctx.fillStyle="#8F8A80";ctx.fillRect(sx,sy+10,TS,0.6);ctx.fillRect(sx,sy+12,TS,0.6);[8,16,24].forEach(xx=>ctx.fillRect(sx+xx,sy+8,0.6,2));
+      ctx.fillStyle="#A39FAE";ctx.fillRect(sx,sy+14,TS,4);ctx.fillStyle="#CFCBD8";ctx.fillRect(sx,sy+18,TS,1.2);};
 TILEDRAW["V"]=rc=>{const{sx,sy,x,y}=rc;ctx.fillStyle="#3A3F46";ctx.fillRect(sx+3,sy+4,TS-6,TS-8);
       ctx.fillStyle="#23272C";[[10,12],[22,12],[10,22],[22,22]].forEach(p=>{
         ctx.beginPath();ctx.arc(sx+p[0],sy+p[1],3.4,0,7);ctx.fill();});
@@ -2483,6 +2513,33 @@ TILESIDE["V"]=rc=>{const{sx,sy}=rc; /* a stove from the front: burners over the 
       ctx.fillStyle="#E0662B";ctx.fillRect(sx+14,sy+6,4,1.2);
       ctx.fillStyle="#AEB6BE";[8,13,19,24].forEach(px=>{ctx.beginPath();ctx.arc(sx+px,sy+12,1.6,0,7);ctx.fill();});
       ctx.fillStyle="#1B1E22";ctx.fillRect(sx+7,sy+16,18,10);ctx.fillStyle="#AEB6BE";ctx.fillRect(sx+7,sy+15,18,1.2);};
+/* THE KITCHEN WALL'S PIECES FROM THE FRONT (2026-10-29), each at the height its shape stands at in its square: a pixel
+   row is 1/30.5 of a tile, the floor is the bottom row. A tall piece from the floor to 0.95; a lower one to 0.54 over its
+   kick; the worktop's slab at 0.54 to 0.57 with its splash to 0.69 behind it; an upper one hung from 0.70 to 1.00. */
+TILESIDE["▉"]=rc=>{const{sx,sy}=rc; /* the freezer: plinth, body, three drawer fronts with a bar across each */
+      ctx.fillStyle="#2F343A";ctx.fillRect(sx+6.4,sy+30.5,19.2,1.5);
+      ctx.fillStyle="#A9B6C3";ctx.fillRect(sx+6.1,sy+3,19.8,27.5);
+      ctx.fillStyle="#C6D0DB";[[3.5,8.66],[12.34,8.66],[21.18,8.69]].forEach(([yy,hh])=>ctx.fillRect(sx+6.4,sy+yy,19.2,hh));
+      ctx.fillStyle="#5A6068";[4.9,13.7,22.6].forEach(yy=>ctx.fillRect(sx+10.8,sy+yy,10.4,1));};
+TILESIDE["⬒"]=rc=>{const{sx,sy}=rc; /* upper cupboards: hung from 0.70 to 1.00, two doors, the bars low */
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx,sy+1.5,TS,9.2);kitDoors(sx,sy,1.7,8.8,6.3);};
+TILESIDE["⬓"]=rc=>{const{sx,sy}=rc; /* lower cupboards: a kick set back, the carcass to 0.54, two doors, the bars high */
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+0.6,sy+30.2,TS-1.2,1.8);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx,sy+15.5,TS,14.7);kitDoors(sx,sy,15.7,14.3,16.3);};
+TILESIDE["☷"]=rc=>{const{sx,sy}=rc; /* drawers: a kick, the carcass to 0.54, three fronts, the top one the shallowest */
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+0.6,sy+30.2,TS-1.2,1.8);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx,sy+15.5,TS,14.7);
+      ctx.fillStyle=tc(C.deskTop);[[15.7,3.95],[19.84,4.88],[24.9,5.1]].forEach(([yy,hh])=>ctx.fillRect(sx+0.2,sy+yy,TS-0.4,hh));
+      ctx.fillStyle="#D9D4E0";[17.1,21.2,26.3].forEach(yy=>ctx.fillRect(sx+12.35,sy+yy,7.3,0.9));};
+TILESIDE["⊤"]=rc=>{const{sx,sy}=rc; /* a wall shelf: hung from 0.70 to 1.00, a dark back, two cheeks, a top, three planks */
+      ctx.fillStyle="#2E2A33";ctx.fillRect(sx+0.9,sy+2.3,TS-1.8,8.4);
+      ctx.fillStyle=tc(C.deskTop);ctx.fillRect(sx,sy+1.5,0.9,9.2);ctx.fillRect(sx+TS-0.9,sy+1.5,0.9,9.2);ctx.fillRect(sx,sy+1.5,TS,0.8);
+      [10,7.3,4.55].forEach(yy=>ctx.fillRect(sx+0.9,sy+yy,TS-1.8,0.7));};
+TILESIDE["━"]=rc=>{const{sx,sy}=rc; /* a worktop: its splash, tiles in a bond, and the slab with its pale edge */
+      ctx.fillStyle="#D8D3C6";ctx.fillRect(sx,sy+11,TS,3.6);
+      ctx.fillStyle="#8F8A80";ctx.fillRect(sx,sy+12.2,TS,0.4);ctx.fillRect(sx,sy+13.4,TS,0.4);
+      [8,16,24].forEach(xx=>{ctx.fillRect(sx+xx,sy+11,0.4,1.2);ctx.fillRect(sx+xx,sy+13.4,0.4,1.2);});[4,12,20,28].forEach(xx=>ctx.fillRect(sx+xx,sy+12.2,0.4,1.2));
+      ctx.fillStyle="#A39FAE";ctx.fillRect(sx,sy+14.6,TS,0.9);ctx.fillStyle="#CFCBD8";ctx.fillRect(sx,sy+15.2,TS,0.5);};
 if(typeof TILEART_SIDE!=="undefined")Object.assign(TILESIDE,TILEART_SIDE);
 /* ---------- ONE ENTRY PER GLYPH, WITH SLOTS — the view registry ----------
    A pack describes what a glyph looks like. It used to do that in two tables with two holes:
@@ -2529,6 +2586,8 @@ Object.assign(TILES,{
   D:{lift:6,kind:"furniture"},K:{lift:6,kind:"furniture"},T:{lift:6,kind:"furniture"},
   A:{lift:6,kind:"furniture"},S:{lift:9,kind:"furniture"},H:{lift:5,kind:"furniture"},
   I:{lift:6,kind:"furniture"},W:{lift:8,kind:"appliance"},V:{lift:8,kind:"appliance"},
+  "▉":{lift:8,kind:"appliance"},"⬒":{lift:9,kind:"furniture"},"⬓":{lift:6,kind:"furniture"},   /* the kitchen wall's pieces (2026-10-29): */
+  "☷":{lift:6,kind:"furniture"},"⊤":{lift:9,kind:"furniture"},"━":{lift:6,kind:"furniture"},   /* engine/shapes.js, grep "THE KITCHEN WALL" */
   F:{lift:5,kind:"fence"},G:{lift:5,kind:"fence"},
   C:{lift:6,kind:"marker",stand:true,light:true},X:{lift:6,kind:"site"},   /* light: you kick it, you do not walk around it */
   P:{lift:6,kind:"nature"},J:{lift:0,kind:"tree"},

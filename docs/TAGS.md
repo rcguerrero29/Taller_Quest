@@ -48,7 +48,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 
 | Category | Defined in | Size |
 |---|---|---|
-| Solid glyphs | `engine/engine.js:48` `SOLID`, extended by pack `SOLIDX` | 17 + 24 Meridian + 5 town |
+| Solid glyphs | `engine/engine.js:48` `SOLID`, extended by pack `SOLIDX` | 17 + 24 Meridian + 5 town; the engine's own grew to 23 on 2026-10-29 (the kitchen wall's six, registered below) |
 | Door glyphs | `engine/engine.js:51` `DOORSET` (default `"+ELO"`), pack `DOORS` | 4 / 9 / 8 |
 | Tile `kind` | `engine/engine.js:1327–1355`, merged with pack `TILEMETA` at `:1356` | 16 |
 | Tile flags | same block | `lift` `stand` `light` `win` `awn` `vary` `box` |
@@ -60,6 +60,8 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Fiesta prop `kind` | `content/meridian/config.js:147–152` | 3, **closed** |
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
+| Shape `open` | `engine/shapes.js`, grep `HOW FAR A THING IS OPEN` (`openOf`) | a number, `0`–`1`; unset, `0` and anything not a number are shut, past `1` is `1`; read by the fridge and the kitchen wall's pieces with a door or a drawer — registered below |
+| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall` — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -354,7 +356,8 @@ helper, and the person who hits it will be reading their content files, not `san
 
 | Word | How many meanings | Where |
 |---|---|---|
-| `kind` | **six** — tile class, critter species, decal type, fiesta prop, dog command, sign subtype | `engine.js:1329`, `:1839`, `:1398`, `config.js:148`, `:4599`, a second world's `maps.js` |
+| `kind` | **seven** — tile class, critter species, decal type, fiesta prop, dog command, sign subtype, and (2026-10-29) a kitchen's kind of place | `engine.js:1329`, `:1839`, `:1398`, `config.js:148`, `:4599`, a second world's `maps.js`, `engine/kitchen.js` `KITCHEN.kinds` |
+| `counter` | **two** — the engine's `K`, a café counter with an espresso machine on every third tile (`SHAPES.counter`), and a kitchen's kind and row `counter`, whose piece is a worktop (`SHAPES.worktop`, `━`), not `K` | `engine/shapes.js`, `engine/kitchen.js` |
 | `mark` | **four** — portal direction, calavera accent colour, per-quest attempt tally, `kind:"marker"` | `maps.js:185`, `engine.js:2345`, `:261`, `:1338` |
 | one district | **four names** — chapter id `mercado`, world id `me`, ribbon id `me`, DOCS key `mercado`, plus a 1-based `district:` number inferred from array position | `config.js:213/66/78`, `docs.js:119` |
 | walkability | **three overlapping tags** — `SOLID`, `stand`, `standsUp`, plus `kind:"door"` duplicating `DOORSET` | `engine.js:1359–1360`, `:4882` |
@@ -432,6 +435,39 @@ helper, and the person who hits it will be reading their content files, not `san
   number for where its paint starts is the value it writes. **Not** decided: a reach for a string on poles (how low it
   sags) or on a ceiling (how far it hangs from it) — those would be this same key read by those mounts, never a second
   word; and a wall whose foot is not the floor (the face is taken as floor to top).
+- **Registered 2026-10-29 — the kitchen wall's six letters: `▉` `⬒` `⬓` `☷` `⊤` `━`.** The pieces a kitchen wall is made of
+  that the engine had no letter for: the freezer, upper cupboards, lower cupboards, drawers, a wall shelf and a worktop
+  (the fridge is `W`; `S` is a bookcase on the floor and `K` a café counter, and neither changes). Rule 1's sentence
+  finishes for each without the noun: a **mesh**, solid, standing in its square from the floor to 0.95 (`▉`), from 0.70 to
+  1.00 against the wall behind it (`⬒`, `⊤`), from the floor to 0.54 with its back on the wall (`⬓`, `☷`), or 0.54 to 0.69
+  across the square with its back on the wall (`━`); flat, a box wearing its front on **four faces** and its top on the lid
+  (`TILESIDE`, `TILEDRAW`). Each is in the engine's `SOLID`, has a `TILES` row (`appliance` for `▉`, `furniture` for the
+  rest), a top and a side drawing, and is bound in `SHAPEBIND` to a shape that says it was built from that drawing
+  (`.drawing`), which `test/engine.smoke.js` measures. **Chosen because no pack, shell, test or document in either
+  repository writes any of them** (searched 2026-10-29, every world's maps on this engine included), and each draws what it is in
+  its square, so a map row can be read; **no world's `SHAPETAKE` names them**, so nothing anywhere draws differently today.
+  L1 grows by six: a new game now inherits the kitchen's letters too, and this is the place that says so.
+- **Registered 2026-10-29 — `open` in a shape's argument: a number from `0` to `1`.** How far whatever opens on a piece is
+  open: every door turned on its hinge, up to 100° at `1`, every drawer slid out on its runners, 0.7 of its own depth at
+  `1`. Rule 1 passes without a noun: it moves the parts that hang on a hinge or a runner and nothing else. **Saying
+  nothing is shut**, and so is `0`, a number below `0` and anything that is not a number; a number past `1` is `1`. One
+  reader, `openOf` in `engine/shapes.js`. Read by the fridge (`W`, whose shut parts are exactly what they were before it
+  could open, pinned in `test/engine.smoke.js`) and by `▉` `⬒` `⬓` `☷`; `⊤` and `━` have nothing to open and do not read
+  it. The parts that move say so, with the markers the table's `cloth` and `plate` already used: `door`, `drawer`,
+  `front`, `handle`, `inside`, and on the others `carcass`, `shelf`, `kick`, `plank`, `slab`, `splash` — read by the suite,
+  never by the bake. **Not** decided: which door of a pair a world may open alone, a door hung on the other side, and how
+  far `1` is for a piece made another way; each of those is this same key read by that piece, never a second word.
+- **Registered 2026-10-29 — `KITCHEN`, in `engine/kitchen.js`: `kinds`, `order`, `rows`, `rank`, `template`, `pieces`,
+  `bands`.** The kinds of place a kitchen wall has (`fridge` `freezer` `upper-cupboards` `lower-cupboards` `drawers`
+  `shelves` `counter`), each with its row; the rows (`upper` `counter` `lower`, and `tall`, which stands the whole height
+  on its own) and their rank top to bottom; the order a list of kinds is offered in; where a kitchen starts (seven places
+  in four columns); the shape each kind is built with; and each kind's height band. Moved, unchanged, out of Simmer's My
+  kitchen page, which now reads this as its one copy. Rule 2 passes: every word is a kitchen's, in a game about anything
+  that has one. **The kinds are closed and only ever added to**: a kind taken away makes every kitchen saved with one in
+  it unreadable to a page that checks a save against the list, so `test/engine.smoke.js` pins all seven, the rows, the
+  rank and the seven starting places, and holds every band clear of the others in its column. `counter` and `kind` each
+  collide with a word already here (above). **Not** decided: a kind a world adds of its own, a finish (the cabinets are
+  the theme's furniture wood), and a layout of more than one wall — the layout is sprint 3's word.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 

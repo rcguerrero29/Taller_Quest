@@ -915,6 +915,149 @@ function findChromium() {
             const off = r => { const q = ((r % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return Math.min(q, Math.PI / 2 - q); };   /* from the nearest quarter turn */
             if (ps.some(p => off(p.ry || 0) > 0.18)) say('X', 'it is turned more than ten degrees from where it was dropped');
             if (ps.some(p => { const r = Math.abs(p.rz || 0) % (Math.PI / 2); return r > 0.05 && Math.abs(r - Math.PI / 4) > 0.01; })) say('X', 'something on it is laid on a slant — diagonal stripes read as "crossed out" here'); } }
+
+        /* THE KITCHEN WALL (2026-10-29): ▉ ⬒ ⬓ ☷ ⊤ ━, and the fridge's open state. Each piece in a kitchen laid for the
+           purpose, along a north wall, measured against what its drawing says (engine/engine.js, TILEDRAW and TILESIDE),
+           and whatever opens watched as it opens: a door turns on its outer edge toward the room with its handle, a drawer
+           slides straight out carrying its box, nothing else moves, and shut is shut whatever `open` is handed. The numbers
+           are the drawing's, the person's (a counter at the waist, 0.50 to 0.60), the wall's (its top, `wallH` of `#`) and
+           the camera's, never a shape's own. The parts say what they are (`door`, `drawer`, `front`, `handle`, `plank`,
+           `slab`, `splash`, `inside`), as the table's cloth does; where a part should be and is not, that is said. */
+        {
+          const KP = ['########', '#▉⬒⬓☷⊤━#', '#......#', '########'], KID = '__kitchen_probe', keepK = world;
+          WORLDS[KID] = { rows: KP.slice(), rows0: KP.slice(), grid: KP.map(r => r.split('')), npcs: [], W: KP[0].length, H: KP.length };
+          world = KID;
+          try {
+            const WALLTOP = 0.55 + ((TILES['#'] || {}).lift | 0) * 0.042, SIDE = ['left', 'right'];
+            const AT = { '▉': 1, '⬒': 2, '⬓': 3, '☷': 4, '⊤': 5, '━': 6 }, kb = (g, o) => build(g, AT[g], 1, o), js = ps => JSON.stringify(ps);
+            const opens = (g, s) => R.push('the library\'s "' + g + '" (SHAPES.' + SHAPEBIND[g] + ') does not open as it is made: ' + s);
+            /* shut is `open` left out, and so is 0, below 0, anything that is not a number; past 1 is 1 */
+            const shutIsShut = (g, moves) => { const s = kb(g), o = kb(g, { open: 1 }); if (!s || !o) return;
+              [[{ open: 0 }, 'open 0'], [{ open: -1 }, 'open -1'], [{ open: NaN }, 'open NaN'], [{ open: '1' }, 'open "1", a word']].forEach(([a, w]) => { const p = kb(g, a);
+                if (p && js(p) !== js(s)) opens(g, w + ' does not build it shut — anything that is not a number from 0 to 1 is read as the nearest end, and not a number is shut'); });
+              { const p = kb(g, { open: 5 }); if (p && js(p) !== js(o)) opens(g, 'open 5 does not build it as open 1 does — past 1 is 1'); }
+              if (!moves && js(o) !== js(s)) opens(g, 'it moves when it is opened, and its drawing gives it nothing to open');
+              if (moves && js(o) === js(s)) opens(g, 'open 1 builds it exactly as shut: nothing on it opens'); };
+            const still = (g, s, o, w) => { const k = ps => js(ps.filter(p => !p.door && !p.drawer)); if (k(o) !== k(s)) opens(g, 'opened, something that is not ' + w + ' moved'); };
+            /* TWO DOORS, hung on their outer edges: each about half the front, its handle by the inner edge, low over the head
+               and high under the waist; open, each still reaches its hinge, stands out from the front nearly its own width,
+               neither rises nor falls, and takes its handle with it; half open is between */
+            const swingsOpen = (g, low) => { const s = kb(g), o = kb(g, { open: 1 }), h = kb(g, { open: 0.5 }); if (!s || !o || !h) return;
+              const doorsOf = ps => ['l', 'r'].map(k => ({ leaf: ps.filter(p => p.door === k && !p.handle), pull: ps.filter(p => p.door === k && p.handle) }));
+              const S = doorsOf(s), O = doorsOf(o), H = doorsOf(h);
+              if (S.some(d => !d.leaf.length)) { say(g, 'it has ' + S.filter(d => d.leaf.length).length + ' door(s), and the drawing has two'); return; }
+              if (O.concat(H).some(d => !d.leaf.length)) { opens(g, 'opened, a door is gone'); return; }
+              const se = S.map(d => ext(d.leaf));
+              if (se[0].x1 > se[1].x0 + 0.001) say(g, 'its two doors overlap');
+              se.forEach((e, i) => { if (e.x1 - e.x0 < 0.4 || e.x1 - e.x0 > 0.52) say(g, 'its ' + SIDE[i] + ' door is ' + f3(e.x1 - e.x0) + ' wide — two doors side by side are each about half the front (0.40 to 0.52)'); });
+              S.forEach((d, i) => { if (!d.pull.length) { say(g, 'its ' + SIDE[i] + ' door has no handle'); return; }
+                const pe = ext(d.pull), inner = i ? se[1].x0 : se[0].x1, py = (pe.lo + pe.hi) / 2, mid = (se[i].lo + se[i].hi) / 2;
+                if (Math.abs((pe.x0 + pe.x1) / 2 - inner) > 0.08) say(g, 'the handle on its ' + SIDE[i] + ' door is not by the inner edge, where the two doors meet');
+                if (low ? py >= mid : py <= mid) say(g, 'its handles are ' + (low ? 'high' : 'low') + ' on its doors — the drawing puts them ' + (low ? 'low on a cupboard over the head' : 'high on a cupboard under the waist') + ', where the hand reaches'); });
+              O.forEach((d, i) => { const e = ext(d.leaf), e0 = se[i], hinge = i ? e0.x1 : e0.x0;
+                if (hinge < e.x0 - 0.03 || hinge > e.x1 + 0.03) opens(g, 'opened, its ' + SIDE[i] + ' door has left its hinge, the outer edge it hangs on');
+                if (e.x1 - e.x0 > (e0.x1 - e0.x0) / 2) opens(g, 'opened, its ' + SIDE[i] + ' door is still across the front (' + f3(e.x1 - e.x0) + ' of its ' + f3(e0.x1 - e0.x0) + ')');
+                if (e.z1 - e0.z1 < 0.3) opens(g, 'opened, its ' + SIDE[i] + ' door comes only ' + f3(e.z1 - e0.z1) + ' toward the room — a door opened all the way stands out from the front by nearly its own width (0.30 at least)');
+                if (Math.abs(e.lo - e0.lo) > 0.001 || Math.abs(e.hi - e0.hi) > 0.001) opens(g, 'opened, its ' + SIDE[i] + ' door rises or falls — a door turns on an upright hinge');
+                if (S[i].pull.length && (!d.pull.length || ext(d.pull).z1 - ext(S[i].pull).z1 < 0.2)) opens(g, 'opened, its ' + SIDE[i] + ' door leaves its handle behind');
+                const hz = ext(H[i].leaf).z1 - e0.z1; if (!(hz > 0.05 && hz < e.z1 - e0.z1 - 0.02)) opens(g, 'half open, its ' + SIDE[i] + ' door is not between shut and open (it came ' + f3(hz) + ')'); });
+              still(g, s, o, 'a door'); };
+            /* DRAWERS fitted one over another: n fronts, none overlapping, each with a bar across its top half; open, each
+               comes straight out (0.2 at least) carrying a box with a floor in shade, and half open is half way */
+            const slidesOut = (g, n) => { const s = kb(g), o = kb(g, { open: 1 }), h = kb(g, { open: 0.5 }); if (!s || !o || !h) return;
+              const fr = (ps, k) => ps.filter(p => p.front === k), ks = [...new Set(s.filter(p => p.front).map(p => p.front))];
+              if (ks.length !== n) { say(g, 'it has ' + ks.length + ' drawer front(s), and the drawing has ' + n); return; }
+              const fe = ks.map(k => ext(fr(s, k))).sort((a, b) => b.hi - a.hi);
+              for (let i = 1; i < fe.length; i++) if (fe[i].hi > fe[i - 1].lo + 0.001) say(g, 'two of its drawer fronts overlap — drawers stand one over another');
+              if (ks.some(k => !fr(o, k).length || !fr(h, k).length)) { opens(g, 'opened, a drawer front is gone'); return; }
+              ks.forEach(k => { const a = ext(fr(s, k)), b = ext(fr(o, k)), c = ext(fr(h, k)), dz = b.z1 - a.z1;
+                if (!s.some(p => p.handle === k && ext([p]).lo > (a.lo + a.hi) / 2)) say(g, 'a drawer front has no bar across its top half — the drawing puts a handle across the top of each');
+                if (dz < 0.2) opens(g, 'opened, a drawer comes out ' + f3(dz) + ' — a drawer opened slides out on its runners (0.20 at least)');
+                if (Math.abs(b.lo - a.lo) > 0.001 || Math.abs(b.x0 - a.x0) > 0.001) opens(g, 'opened, a drawer tips or slides sideways — a drawer comes straight out');
+                if (Math.abs((c.z1 - a.z1) - dz / 2) > 0.01) opens(g, 'half open, a drawer is not half way out');
+                const box = o.filter(p => p.drawer === k && !p.front && !p.handle), floor = box.filter(p => p.inside);
+                if (!floor.length) opens(g, 'opened, a drawer is a front with nothing behind it to keep anything in');
+                else { const be = ext(box); if (be.z1 - be.z0 < 0.3) opens(g, 'opened, a drawer\'s box is ' + f3(be.z1 - be.z0) + ' deep (0.30 at least)');
+                  if (lum(floor[0].c) > 150) opens(g, 'opened, the floor of a drawer is luma ' + Math.round(lum(floor[0].c)) + ' — the inside of a box is in shade, so a drawer pulled out reads as open (150 at most)'); } });
+              still(g, s, o, 'a drawer'); };
+            const onWall = (g, ps) => { const z0 = ext(ps).z0; if (z0 > -0.47) say(g, 'with the wall behind it, it stops ' + f3(0.5 + z0) + ' short of the wall — it stands with its back on it'); };
+            const hung = (g, ps) => { const e = ext(ps);
+              if (e.lo < 0.6) say(g, 'it comes down to ' + f3(e.lo) + ' — a piece hung on the wall is over a counter at a person\'s waist (0.60 at the lowest)');
+              if (e.hi > WALLTOP + 0.001) say(g, 'it reaches ' + f3(e.hi) + ', over the top of the wall it hangs on (' + f3(WALLTOP) + ')'); };
+            const underTop = (g, ps) => { const e = ext(ps);
+              if (e.lo > 0.005) say(g, 'it does not stand on the floor (it starts at ' + f3(e.lo) + ')');
+              if (e.hi < 0.45 || e.hi > 0.555) say(g, 'its top is at ' + f3(e.hi) + ' — a piece under a worktop stops under the counter\'s line, so the slab laid on it is at a person\'s waist (0.45 to 0.555)'); };
+            const kicked = (g, ps) => { const fronts = ps.filter(p => (p.door && !p.handle) || p.front);
+              const kick = ps.filter(p => { const q = ext([p]); return q.lo < 0.005 && q.hi <= 0.08 && lum(p.c) <= 70; });
+              if (!kick.length) { say(g, 'nothing dark stands at its foot — the drawing draws a kick in shade at the floor'); return; }
+              if (fronts.length && Math.max(...kick.map(p => ext([p]).z1)) > ext(fronts).z1 - 0.02) say(g, 'its kick is not set back under its fronts (0.02 at least), so there is no shade at the floor'); };
+
+            CHECKED['▉'] = 1;
+            { const ps = kb('▉'); if (!ps) say('▉', 'there is no shape for it at all'); else { const e = ext(ps); tri['▉'] = e.tris;
+              if (e.lo > 0.005 || e.hi < 0.9) say('▉', 'it stands from ' + f3(e.lo) + ' to ' + f3(e.hi) + ' — a tall piece stands on the floor the wall\'s whole height (0.90 at least)');
+              const fr = ps.filter(p => p.front);
+              if (fr.length && Math.min(...fr.map(p => lum(p.c))) < 170) say('▉', 'its drawer fronts are luma ' + Math.round(Math.min(...fr.map(p => lum(p.c)))) + ' — the drawing\'s freezer is a white good (170 at least)');
+              if (fr.length && Math.min(...fr.map(p => { const q = ext([p]); return q.x1 - q.x0; })) < 0.5) say('▉', 'a drawer front is narrower than the drawing\'s, which spans the body (0.50 at least)');
+              kicked('▉', ps); slidesOut('▉', 3); shutIsShut('▉', true); } }
+            CHECKED['⬒'] = 1;
+            { const ps = kb('⬒'); if (!ps) say('⬒', 'there is no shape for it at all'); else { tri['⬒'] = ext(ps).tris;
+              hung('⬒', ps); onWall('⬒', ps); swingsOpen('⬒', true); shutIsShut('⬒', true); } }
+            CHECKED['⬓'] = 1;
+            { const ps = kb('⬓'); if (!ps) say('⬓', 'there is no shape for it at all'); else { tri['⬓'] = ext(ps).tris;
+              underTop('⬓', ps); onWall('⬓', ps); kicked('⬓', ps); swingsOpen('⬓', false); shutIsShut('⬓', true); } }
+            CHECKED['☷'] = 1;
+            { const ps = kb('☷'); if (!ps) say('☷', 'there is no shape for it at all'); else { tri['☷'] = ext(ps).tris;
+              underTop('☷', ps); onWall('☷', ps); kicked('☷', ps); slidesOut('☷', 3); shutIsShut('☷', true);
+              const hs = [...new Set(ps.filter(p => p.front).map(p => p.front))].map(k => ext(ps.filter(p => p.front === k))).sort((a, b) => b.hi - a.hi).map(q => q.hi - q.lo);
+              if (hs.length === 3 && !(hs[0] < hs[1] && hs[0] < hs[2])) say('☷', 'its top drawer is not the shallowest — the drawing\'s top front is the shortest of the three'); } }
+            CHECKED['⊤'] = 1;
+            { const ps = kb('⊤'); if (!ps) say('⊤', 'there is no shape for it at all'); else { tri['⊤'] = ext(ps).tris;
+              hung('⊤', ps); onWall('⊤', ps); shutIsShut('⊤', false);
+              const pl = [1, 2, 3].map(k => ps.filter(p => p.plank === k));
+              if (pl.some(x => x.length !== 1) || ps.some(p => p.plank > 3)) say('⊤', 'it has ' + ps.filter(p => p.plank).length + ' plank(s), and the drawing has three');
+              else { const pe = pl.map(x => ext(x)).sort((a, b) => a.lo - b.lo);
+                if (pe.some(q => q.x1 - q.x0 < 0.8 || q.hi - q.lo > 0.04)) say('⊤', 'a plank is not a plank across the shelf (0.80 wide at least, 0.04 thick at most)');
+                for (let i = 1; i < 3; i++) if (pe[i].lo - pe[i - 1].hi < 0.05) say('⊤', 'two of its planks are ' + f3(pe[i].lo - pe[i - 1].hi) + ' apart — the gap over a plank is what says shelf (0.05 at least)'); }
+              const back = ps.filter(p => { const q = ext([p]); return q.x1 - q.x0 >= 0.8 && q.hi - q.lo >= 0.2 && q.z1 - q.z0 <= 0.03; });
+              if (!back.length || Math.max(...back.map(p => lum(p.c))) > 60) say('⊤', 'it has no dark back for the gap over each plank to show (luma 60 at most)'); } }
+            CHECKED['━'] = 1;
+            { const ps = kb('━'); if (!ps) say('━', 'there is no shape for it at all'); else { tri['━'] = ext(ps).tris;
+              onWall('━', ps); shutIsShut('━', false);
+              const slab = ps.filter(p => p.slab), splash = ps.filter(p => p.splash);
+              if (!slab.length) say('━', 'there is no slab');
+              else { const se = ext(slab), main = slab.reduce((a, p) => vol(p) > vol(a) ? p : a);
+                if (se.hi < 0.5 || se.hi > 0.6) say('━', 'its top is at ' + f3(se.hi) + ' — a worktop is at a person\'s waist, 0.50 to 0.60');
+                if (se.x0 > -0.49 || se.x1 < 0.49) say('━', 'its slab stops short of its square\'s edges, so a run of them is not one top');
+                if (se.z1 - se.z0 < 0.4) say('━', 'its slab is ' + f3(se.z1 - se.z0) + ' deep (0.40 at least)');
+                if (lum(main.c) > 165) say('━', 'its slab is luma ' + Math.round(lum(main.c)) + ', within reach of the floor\'s own value, so its back edge disappears (165 at most)');
+                if (ext(ps).lo < se.lo - 0.001) say('━', 'something hangs under its slab — a worktop lies on whatever stands under it');
+                if (!splash.length) say('━', 'there is no splash behind it — the drawing draws a band of tiles behind the slab');
+                else { const sp = ext(splash); if (sp.hi - se.hi < 0.05) say('━', 'its splash rises only ' + f3(sp.hi - se.hi) + ' over the slab (0.05 at least)');
+                  if (sp.z0 > -0.47) say('━', 'its splash is not against the wall'); } } } }
+
+            /* W — THE FRIDGE OPENS, AND SHUT IT IS WHAT IT WAS. Shut is exactly the eight parts it was built with before it
+               could open, as engine/shapes.js wrote them at its resting turn on 2026-10-29 (pasted here, so this is never
+               the shape compared with itself; a change meant to the shut fridge changes this list in the same commit and
+               says why). Open, its doors turn on the hinges on the side away from its handles, the handles and the magnet
+               with them, and inside it is lined white. */
+            { const FRIDGE_SHUT = [{ s: 'box', x: 0, y: 0.025, z: 0, w: 0.6, h: 0.05, d: 0.53, c: '#2F343A', ry: 0 }, { s: 'box', x: 0, y: 0.5, z: 0, w: 0.62, h: 0.9, d: 0.55, c: '#AEB6BE', ry: 0 },
+                { s: 'box', x: 0, y: 0.785, z: 0.28, w: 0.6, h: 0.31, d: 0.01, c: '#BCC4CC', ry: 0 }, { s: 'box', x: 0, y: 0.345, z: 0.28, w: 0.6, h: 0.55, d: 0.01, c: '#BCC4CC', ry: 0 },
+                { s: 'box', x: 0, y: 0.625, z: 0.276, w: 0.6, h: 0.01, d: 0.006, c: '#5A6068', ry: 0 }, { s: 'box', x: 0.24, y: 0.78, z: 0.295, w: 0.03, h: 0.22, d: 0.02, c: '#5A6068', ry: 0 },
+                { s: 'box', x: 0.24, y: 0.4, z: 0.295, w: 0.03, h: 0.22, d: 0.02, c: '#5A6068', ry: 0 }, { s: 'box', x: -0.12, y: 0.86, z: 0.288, w: 0.05, h: 0.035, d: 0.006, c: '#E0B45C', ry: 0 }];
+              const fw = o => { try { return typeof SHAPES.fridge === 'function' ? SHAPES.fridge(Object.assign({ x: 1, y: 1 }, o || {})) : null; } catch (e) { R.push('the library\'s fridge throws when it is built' + (o ? ' open' : '') + ': ' + e.message); return null; } };
+              const s = fw(), z = fw({ open: 0 }), o = fw({ open: 1 });
+              if (s && js(s) !== js(FRIDGE_SHUT)) R.push('the library\'s fridge, shut, is not the eight parts it was before it could open — a fridge nobody opens has changed under every world that takes "W"');
+              if (s && z && js(z) !== js(s)) R.push('the library\'s fridge at open 0 is not the fridge shut');
+              if (s && o) { const ds = [1, 2].map(k => { const l = o.filter(p => p.door === k && !p.handle); return { s: l.length ? ext(l) : null, h: o.filter(p => p.door === k && p.handle) }; });
+                const hingeX = s.some(p => p.x > 0 && p.h >= 0.2 && p.w <= 0.04) ? -0.3 : 0.3;     /* the handles are on one side, so the hinges are on the other */
+                ds.forEach((d, i) => { const w = ['top', 'lower'][i];
+                  if (!d.s) { R.push('the library\'s fridge, open, has no ' + w + ' door'); return; }
+                  if (hingeX < d.s.x0 - 0.03 || hingeX > d.s.x1 + 0.03) R.push('the library\'s fridge, open: its ' + w + ' door does not turn on the side away from its handles');
+                  if (d.s.z1 < 0.28 + 0.3) R.push('the library\'s fridge, open: its ' + w + ' door comes only ' + f3(d.s.z1 - 0.28) + ' toward the room (0.30 at least)');
+                  if (!d.h.length || ext(d.h).z1 < 0.295 + 0.2) R.push('the library\'s fridge, open: its ' + w + ' door leaves its handle behind'); });
+                if (!o.some(p => p.inside && lum(p.c) >= 200)) R.push('the library\'s fridge, open, is not lined white inside — open, a fridge is the light inside it'); } }
+          } finally { world = keepK; delete WORLDS[KID]; }
+        }
       } finally { world = keepW; delete WORLDS[PID]; if (addS) SOLID.delete('S'); }
       Object.keys(SHAPES).forEach(k => { const fn = SHAPES[k]; if (typeof fn === 'function' && fn.drawing && !CHECKED[fn.drawing])
         R.push('SHAPES.' + k + ' tells the gate it was built from the engine\'s own drawing of "' + fn.drawing + '", and nothing here measures that claim — the gate lets a world take it on the strength of a sentence (add its check above)'); });
@@ -934,6 +1077,105 @@ function findChromium() {
   const r = r0.P; r.stillFlat = r0.stillFlat;
   fails.push(...r.filter(l => !/^COUNT-ONLY: /.test(l)));
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+
+  /* ---- THE KITCHEN'S ONE COPY (2026-10-29) ----
+     engine/kitchen.js holds the kinds of place a kitchen wall has, the rows they stand in, where a kitchen starts, the
+     shape each kind is built with and how high each stands. A game's page reads it as its only copy, so a fault in it is
+     a fault in every kitchen anybody has saved: a kind gone makes every save holding one unreadable, a template changed
+     moves where every new kitchen starts, a band overlapping stands two pieces in each other. Read as a page reads it —
+     the file alone, in a context with nothing in it but `Object`, so any other name it reads from outside is heard —
+     then, in a shell with the 3D camera, every kind's piece built through the engine's own bake, shut and open, inside its
+     band, and the template's columns stacked in one square with no two pieces touching. The same in every shell this
+     file is pointed at: the file is the engine's, not the world's. Red first, each fault planted in a copy of the tree
+     outside the repository (docs/3D-LOG.md, 2026-10-29). */
+  {
+    const K = [], vm = require('vm'), isObj = v => v !== null && typeof v === 'object';
+    /* WHAT SIMMER'S MY KITCHEN PAGE READ, on 2026-10-29, copied here by hand from that page as it stood before
+       engine/kitchen.js held it (its seven starting places, as kind, row and column), so this is never the file checked
+       against itself. A kind is added to the file and here together; one is never taken away. */
+    const WANT = {
+      kinds: { fridge: 'tall', freezer: 'tall', 'upper-cupboards': 'upper', 'lower-cupboards': 'lower', drawers: 'lower', shelves: 'upper', counter: 'counter' },
+      order: ['fridge', 'freezer', 'upper-cupboards', 'lower-cupboards', 'drawers', 'shelves', 'counter'],
+      rows: ['upper', 'counter', 'lower'], rank: { tall: 0, upper: 1, counter: 2, lower: 3 },
+      template: [['fridge', 'tall', 0], ['upper-cupboards', 'upper', 1], ['counter', 'counter', 1], ['drawers', 'lower', 1], ['shelves', 'upper', 2], ['lower-cupboards', 'lower', 2], ['freezer', 'tall', 3]] };
+    const canon = v => JSON.stringify(v, (k, x) => isObj(x) && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, q) => (o[q] = x[q], o), {}) : x);
+    let KIT = null; const heard = new Set();
+    try {
+      const box = new Proxy({ Object }, { get(t, k) { if (typeof k === 'string') heard.add(k); return Reflect.get(t, k); } });
+      KIT = vm.runInContext(fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;KITCHEN', vm.createContext(box), { filename: 'engine/kitchen.js' });
+    } catch (e) { K.push('engine/kitchen.js does not run on its own (' + String(e.message || e).slice(0, 120) + ') — a page loads it with nothing else of the engine'); }
+    [...heard].filter(n => n !== 'Object').forEach(n => K.push('engine/kitchen.js reads "' + n + '" from outside itself — it is data, and a page that loads it alone has no "' + n + '"'));
+    if (KIT !== null && !isObj(KIT)) { K.push('KITCHEN is not an object (' + typeof KIT + ')'); KIT = null; }
+    if (KIT) {
+      /* 1 · frozen all the way down, so no page can change it under another */
+      const loose = [], walk = (o, at) => { if (!Object.isFrozen(o)) loose.push(at); Object.getOwnPropertyNames(o).forEach(k => { const v = o[k]; if (isObj(v)) walk(v, at + (Array.isArray(o) ? '[' + k + ']' : '.' + k)); }); };
+      walk(KIT, 'KITCHEN');
+      loose.slice(0, 3).forEach(at => K.push(at + ' is not frozen — a page could change the kitchen under every other page that reads it'));
+      /* 2 · every kind's row is a row, every row has a place in a column, and the order offers each kind once */
+      const kinds = isObj(KIT.kinds) ? KIT.kinds : {}, rows = Array.isArray(KIT.rows) ? KIT.rows : [], rank = isObj(KIT.rank) ? KIT.rank : {}, names = Object.keys(kinds);
+      if (!names.length) K.push('KITCHEN.kinds is empty — every kitchen saved with a place in it would read as unreadable');
+      names.forEach(k => { if (kinds[k] !== 'tall' && !rows.includes(kinds[k])) K.push('the kind "' + k + '" stands in the row ' + JSON.stringify(kinds[k]) + ', and there is no such row (KITCHEN.rows, or tall)'); });
+      ['tall'].concat(rows).forEach(w => { if (typeof rank[w] !== 'number') K.push('the row "' + w + '" has no rank, so where it stands in a column is not known'); });
+      const order = Array.isArray(KIT.order) ? KIT.order : [];
+      if (order.length !== names.length || new Set(order).size !== order.length || order.some(k => !Object.prototype.hasOwnProperty.call(kinds, k))) K.push('KITCHEN.order does not offer each kind once (' + JSON.stringify(order) + ')');
+      /* 3 · the template is a kitchen a page can read: a known kind in its own kind of row, a column, one piece a place,
+         and a tall piece alone in its column */
+      const T = Array.isArray(KIT.template) ? KIT.template : [], seen = new Set(), cols = {};
+      if (!T.length) K.push('KITCHEN.template is empty — a new kitchen would start with nothing in it');
+      T.forEach((p, i) => { const at = 'the template\'s place ' + (i + 1);
+        if (!isObj(p) || !Object.prototype.hasOwnProperty.call(kinds, p.kind)) { K.push(at + ' is of a kind there is none of (' + JSON.stringify(isObj(p) ? p.kind : p) + ')'); return; }
+        if (kinds[p.kind] === 'tall' ? p.row !== 'tall' : !rows.includes(p.row)) K.push(at + ', the ' + p.kind + ', stands in the row ' + JSON.stringify(p.row) + ', where ' + (kinds[p.kind] === 'tall' ? 'a tall piece stands in the tall row' : 'a piece stands in one of KITCHEN.rows'));
+        if (!Number.isInteger(p.col) || p.col < 0) K.push(at + ', the ' + p.kind + ', has no column (' + JSON.stringify(p.col) + ')');
+        const cell = p.col + '|' + p.row; if (seen.has(cell)) K.push(at + ', the ' + p.kind + ', is a second piece in one place (column ' + p.col + ', ' + p.row + ')'); seen.add(cell);
+        (cols[p.col] = cols[p.col] || []).push(p); });
+      Object.keys(cols).forEach(c => { if (cols[c].length > 1 && cols[c].some(p => p.row === 'tall')) K.push('the template\'s column ' + c + ' holds a tall piece and something else — a tall piece stands the whole height on its own'); });
+      /* 4 · it is the kitchen My kitchen read: its seven starting places, its kinds, its rows */
+      const got = T.map(p => isObj(p) ? [p.kind, p.row, p.col] : p);
+      if (JSON.stringify(got) !== JSON.stringify(WANT.template)) K.push('the template is not the one Simmer\'s My kitchen started every kitchen from — it reads ' + JSON.stringify(got) + ', so every new kitchen would start elsewhere');
+      ['kinds', 'order', 'rows', 'rank'].forEach(f => { if (canon(KIT[f]) !== canon(WANT[f])) K.push('KITCHEN.' + f + ' is not what My kitchen read (' + JSON.stringify(KIT[f]) + ') — a kind taken away makes every kitchen saved with one unreadable'); });
+      /* 5 · every kind is built with a shape the library has, and stands in a band of its own */
+      let SH = {}; try { SH = vm.runInNewContext(fs.readFileSync(path.join(root, 'engine', 'shapes.js'), 'utf8') + '\n;SHAPES', {}, { filename: 'engine/shapes.js' }) || {}; }
+      catch (e) { K.push('engine/shapes.js could not be read to ask which shapes it has (' + String(e.message || e).slice(0, 120) + ')'); }
+      const pieces = isObj(KIT.pieces) ? KIT.pieces : {}, bands = isObj(KIT.bands) ? KIT.bands : {};
+      const band = k => isObj(bands[k]) && typeof bands[k].lo === 'number' && typeof bands[k].hi === 'number' && bands[k].lo < bands[k].hi ? bands[k] : null;
+      names.forEach(k => { if (typeof SH[pieces[k]] !== 'function') K.push('the kind "' + k + '" is built with ' + JSON.stringify(pieces[k]) + ', and engine/shapes.js has no such shape');
+        if (!band(k)) K.push('the kind "' + k + '" has no height band (KITCHEN.bands, a number lo under a number hi)'); });
+      /* 6 · in one column the bands stand one over another in rank order and never overlap; a tall band covers them all */
+      names.forEach(a => names.forEach(b => { const A = band(a), B = band(b), ra = kinds[a], rb = kinds[b];
+        if (a >= b || !A || !B || ra === 'tall' || rb === 'tall' || ra === rb) return;     /* a tall piece stands alone; one row holds one piece */
+        const [up, down] = rank[ra] < rank[rb] ? [A, B] : [B, A];
+        if (up.lo < down.hi - 0.001) K.push('the bands of "' + a + '" (' + A.lo + ' to ' + A.hi + ') and "' + b + '" (' + B.lo + ' to ' + B.hi + ') overlap or stand out of their rows\' order — built in one column, the two would stand in each other'); }));
+      const lows = names.filter(k => kinds[k] !== 'tall' && band(k));
+      names.filter(k => kinds[k] === 'tall' && band(k)).forEach(k => { const t = band(k);
+        if (lows.length && (t.lo > Math.min(...lows.map(n => band(n).lo)) + 0.001 || t.hi < Math.max(...lows.map(n => band(n).hi)) - 0.001)) K.push('the tall kind "' + k + '" stands ' + t.lo + ' to ' + t.hi + ', not the whole height the rows stand in'); });
+      /* 7 · BUILT, where this shell has the 3D camera: every kind's piece, shut and open, inside its band, through the
+         engine's own bake; and each column of the template, its pieces in one square, no two touching */
+      const KD = JSON.parse(JSON.stringify({ kinds, pieces, bands, template: T }));
+      const built = await page.evaluate(KD => {
+        if (typeof SHAPES !== 'object' || !SHAPES || typeof t3BakeParts !== 'function') return null;
+        const out = [], ext = ps => { const b = t3BakeParts(ps, h => h); let lo = Infinity; for (let i = 1; i < b.pos.length; i += 3) if (b.pos[i] < lo) lo = b.pos[i]; return { lo, hi: b.top }; };
+        const PR = ['###', '#.#', '#.#', '###'], ID = '__kitchen_bands', keep = world;     /* one square, a wall to its north */
+        WORLDS[ID] = { rows: PR.slice(), rows0: PR.slice(), grid: PR.map(r => r.split('')), npcs: [], W: 3, H: 4 }; world = ID;
+        let n = 0;
+        try {
+          const piece = (k, o) => { const fn = SHAPES[KD.pieces[k]]; if (typeof fn !== 'function') return null; try { return fn({ x: 1, y: 1, open: o }); } catch (e) { out.push('the "' + k + '" piece throws when it is built: ' + e.message); return null; } };
+          Object.keys(KD.kinds).forEach(k => { const b = KD.bands[k]; if (!b) return;
+            [[undefined, 'shut'], [1, 'open']].forEach(([o, w]) => { const ps = piece(k, o); if (!ps || !ps.length) return; const e = ext(ps); n++;
+              if (e.lo < b.lo - 0.001 || e.hi > b.hi + 0.001) out.push('the "' + k + '" piece (SHAPES.' + KD.pieces[k] + '), ' + w + ', stands from ' + e.lo.toFixed(3) + ' to ' + e.hi.toFixed(3) + ', outside its band (' + b.lo + ' to ' + b.hi + '): in one column with the pieces of the other rows it would stand in them'); }); });
+          const byCol = {}; KD.template.forEach(p => { (byCol[p.col] = byCol[p.col] || []).push(p.kind); });
+          Object.keys(byCol).forEach(c => [[undefined, 'shut'], [1, 'open']].forEach(([o, w]) => {
+            const es = byCol[c].map(k => { const ps = piece(k, o); return ps && ps.length ? [k, ext(ps)] : null; }).filter(Boolean);
+            for (let i = 0; i < es.length; i++) for (let j = i + 1; j < es.length; j++) { const [ka, A] = es[i], [kb2, B] = es[j];
+              if (A.lo < B.hi - 0.001 && B.lo < A.hi - 0.001) out.push('in the template\'s column ' + c + ', ' + w + ', the ' + ka + ' (' + A.lo.toFixed(3) + ' to ' + A.hi.toFixed(3) + ') and the ' + kb2 + ' (' + B.lo.toFixed(3) + ' to ' + B.hi.toFixed(3) + ') stand in each other'); } }));
+        } finally { world = keep; delete WORLDS[ID]; }
+        return { out, n };
+      }, KD);
+      if (built === null) K.push('COUNT-ONLY: the kitchen\'s pieces were not built in this shell, which has no 3D camera; their bands were read and not measured here');
+      else { K.push(...built.out); K.push('COUNT-ONLY: the kitchen: ' + names.length + ' kinds in ' + rows.length + ' rows and tall, a template of ' + T.length + ' places in ' + Object.keys(cols).length + ' columns, ' + built.n + ' pieces built through the engine\'s bake inside their bands, shut and open'); }
+    }
+    fails.push(...K.filter(l => !/^COUNT-ONLY: /.test(l)));
+    K.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+  }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----
      The owner asked for the dog agility course to be fixed too, shaped and beautified.
