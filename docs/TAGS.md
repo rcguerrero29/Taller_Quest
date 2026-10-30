@@ -491,7 +491,9 @@ helper, and the person who hits it will be reading their content files, not `san
   and an optional `page`, `(place, lang) => sections`, the reader's blocks for that place. **Closed**: a key a layout or a
   place does not have refuses it, and so does anything off a list, two places in one spot, a tall piece with anything else
   in its column, two pieces whose bands overlap, an empty column. **A layout is taken whole or refused whole**: a refusal is
-  a critical line in the log, kind `kitchen`, and leaves that room no kitchen at all. Parts of a column's shape carry
+  a critical line in the log, kind `kitchen`, and leaves that room no kitchen at all. A card a world places on a column's
+  square (its `READS`) is shown at the end of every page that column opens; with `row` on its entry, one of the column's
+  rows, at the end of that place's page alone (registered 2026-10-30, read only on a kitchen column's square). Parts of a column's shape carry
   `place`, the place's index, read by the suite and never by the bake. **Not** decided: a kitchen of more than one wall in
   a room (one layout a room), a column whose places are taken from one side only, and a fullness a game counts for itself.
 - **Registered 2026-10-30 — `KITCHEN.fulls`: `room` `almost` `full`.** How full a place may be said to be, the words My

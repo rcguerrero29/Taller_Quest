@@ -964,8 +964,9 @@ polygon update for all of these, and what the marigolds taught, had been logged)
   never two buttons on a square, every opening sampled frame by frame to exactly 1 and every putting down to exactly 0,
   a card on a column at the end of its page, less motion with no frame between, taps by real pointer events on the upper
   cupboards, the drawers and the freezer, the doors swinging in the scene and the mesh back to the shut build after, the
-  zoom by its buttons, the wheel and a pinch, held at its limit and back, and the closet keeping the name. Each check was
-  shown red on a fault planted in a copy of the tree outside the repository, 21 of them, each in its own sentence.
+  zoom by its buttons, the wheel and a pinch, held at its limit and back, and the closet keeping the name; and a card that
+  names its place's row on that place's page alone. Each check was shown red on a fault planted in a copy of the tree
+  outside the repository, 25 of them, each in its own sentence.
 - **Meridian.** Lays neither letter, declares no layout and no zoom, and is unchanged: every shape the engine had, built
   by the engine before this change and after it at 120 places each, plain and cleared, with `open` left out, 0, 0.5 and
   1: 24,000 builds, every one deep-equal; one hundredth moved on a drawer's runners is red in 960 of them. Its camera is

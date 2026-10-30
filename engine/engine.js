@@ -5511,7 +5511,8 @@ function readMarks(){const out=[];
    of a kitchen column it says Open and the place's name, and a column with more than one place says each name and offers
    each on a short page of its own. Anywhere else the slot is the closet's beside one (grep "THE CLOSET"), and otherwise
    Read, exactly as before. A card a world placed on a column's own square, which nobody can stand beside but its front,
-   is shown at the end of every page that column opens, so Open never hides one. A world that declares no layout and lays
+   is shown at the end of every page that column opens, so Open never hides one; a card whose READS entry names a `row`
+   is about the place in that row, and ends that place's page only. A world that declares no layout and lays
    no closet gets Read, and only Read, from the very same code. */
 const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420;
 const KITUNSAFE=/[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/;   /* what may not be shown in a name: My kitchen's UNSAFE, the same characters */
@@ -5597,12 +5598,13 @@ function kitFront(x,y){const K=KITWALL[world];if(!K)return null;
   const cs=K.cols.map((c,i)=>i).filter(i=>K.cols[i].fx===x&&K.cols[i].fy===y&&kitColAt(K.cols[i].x,K.cols[i].y)===i);
   if(!cs.length)return null;
   return K.places.filter(p=>cs.includes(p.col)).sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);}
-/* the page a place opens: the world's blocks for it, then every card placed on its column's square */
+/* the page a place opens: the world's blocks for it, then every card placed on its column's square — a card that names the
+   row of the place it is about (`row` on its READS entry, one of the column's rows) at the end of that place's page alone */
 function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
   const title={};Object.keys(UI).forEach(lg=>{title[lg]=kitName(p,lg);});
   return {title,kit:{id,i:p.i},build:()=>{let secs=[];
     if(K.page){try{const r=K.page(p,lang);if(Array.isArray(r))secs=r.slice();}catch(e){mqwarn("kitchen","the page of place "+p.i+" in "+id+" failed: "+String(e&&e.message||e),false);}}
-    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
+    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row)).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
     return secs;}};}
 /* SWINGING IT: `open` from where it is to `to` over KITSWING ms, eased so it starts and ends at rest, and set to exactly `to`
    at the end; at once for a person who asked for less motion. Each step rebuilds that one column in the 3D picture. */

@@ -1496,6 +1496,13 @@ function findChromium() {
           if (at < 0) say('a card placed on the freezer\'s square is not on the page the freezer opens — Open took its place, and it is lost');
           else if (mine < 0 || fz.body.indexOf(card.title) < mine) say('a card placed on the freezer\'s square is not at the end of its page, after what the world hands it');
           await putDown(fz.i); }
+        await kp.evaluate(ID => { bldReads.splice(bldReads.findIndex(r => r.world === ID), 1); }, T.ID);
+        /* a card that names its place's row ends that place's page, and no other page of its column */
+        await kp.evaluate(([ID, k]) => { bldReads.push({ world: ID, x: 3, y: 1, doc: k, row: 'counter' }); }, [T.ID, card.k]);
+        const onCounter = await press([3, 2], 'counter'); if (!onCounter.err) await putDown(onCounter.i);
+        const onDrawers = await press([3, 2], 'drawers'); if (!onDrawers.err) await putDown(onDrawers.i);
+        if (!onCounter.err && !onCounter.heads.includes(card.title)) say('a card on column 1 that names the counter\'s row is not on the counter\'s page');
+        if (!onDrawers.err && onDrawers.heads.includes(card.title)) say('a card on column 1 that names the counter\'s row is on the drawers\' page too — it is about the counter alone');
         await kp.evaluate(ID => { bldReads.splice(bldReads.findIndex(r => r.world === ID), 1); }, T.ID); }
       /* less motion asked for: it opens at once, with no frame between */
       await kp.emulateMedia({ reducedMotion: 'reduce' });
