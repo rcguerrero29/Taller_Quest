@@ -1358,7 +1358,8 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     if(T3.builtKey!==key)t3Build(key);
     t3TurnTick();
     const[qx,qy]=focusXY(),hx=qx+0.5,hz=qy+0.5;   /* what you steer: the hero, or the drone (#271) */
-    T3.cam.position.set(hx+Math.sin(T3.yaw)*T3CAMD,T3CAMH,hz+Math.cos(T3.yaw)*T3CAMD);
+    const zf=camZoomF();   /* how near the world's zoom has it (engine.js, grep "THE CAMERA'S ZOOM"): exactly 1 for a world without */
+    T3.cam.position.set(hx+Math.sin(T3.yaw)*T3CAMD*zf,T3CAMH*zf,hz+Math.cos(T3.yaw)*T3CAMD*zf);
     T3.cam.lookAt(hx,0.4,hz);
     t3Light();
     t3Glow();
@@ -1374,6 +1375,31 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     return true;
   }catch(e){T3.fail=true;t3Note("render",e);t3Fell();return false;}
 }
+/* ---------- A PLACE REBUILT WHERE IT STANDS, AND THE FIRST TAP INTO THE PICTURE (2026-10-30) ----------
+   t3Reshape: one tile's shape built again in the scene already standing — a kitchen place swinging open, a step at a time
+   (engine.js, grep "THE KITCHEN LAYOUT") — its old mesh taken out and disposed, the new one where it stood, its material
+   in the time of day's wash as every other. Nothing else in the scene is touched, so a room is never rebuilt for a door.
+   t3Pick: what is under a point of the screen, by the 3D library's own ray test (THREE.Raycaster) from this frame's
+   camera, against the room's solid pieces only — the people, the glass and the paper are pictures and are not asked. The
+   nearest hit, or null. Read by the kitchen's tap, and by nothing in a world without one. */
+function t3Reshape(x,y){if(!T3.group||!T3.scene)return false;
+  const old=T3.group.children.find(o=>o.userData&&o.userData.mesh&&o.userData.x===x&&o.userData.y===y);if(!old)return false;
+  const mv=typeof tileView==="function"&&tileView(old.userData.g,"mesh");if(!mv)return false;
+  let parts;try{parts=typeof mv==="function"?mv({x,y}):mv;}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
+  if(!Array.isArray(parts)||!parts.length)return false;
+  let m;try{m=t3MeshOf(parts,old.userData);}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
+  m.position.copy(old.position);m.t3Top=old.t3Top;
+  const gone=[];old.traverse(o=>{if(o.material)gone.push(o.material);});
+  T3.group.remove(old);t3Dispose(old);
+  gone.forEach(mt=>{const i=T3.tintables.indexOf(mt);if(i>=0)T3.tintables.splice(i,1);});
+  T3.group.add(m);return true;}
+function t3Pick(clientX,clientY){if(!T3.renderer||!T3.cam||!T3.group||typeof THREE==="undefined")return null;
+  const r=T3.renderer.domElement.getBoundingClientRect();if(!(r.width>0&&r.height>0))return null;
+  const v=new THREE.Vector2((clientX-r.left)/r.width*2-1,-((clientY-r.top)/r.height)*2+1);
+  T3.cam.updateMatrixWorld();
+  const rc=new THREE.Raycaster();rc.setFromCamera(v,T3.cam);
+  const hits=rc.intersectObjects(T3.group.children.filter(o=>o.isMesh&&o.visible&&!(o.userData&&(o.userData.glow||o.userData.glass))),false);
+  return hits[0]||null;}
 /* #61: a wall between the camera and the hero vanishes for that frame — the cutaway every third-
    person camera does. Standing in the lobby with the south wall behind you, the wall used to fill
    the screen and the hero (drawn through walls) read as standing ON it, while the dog, drawn in the

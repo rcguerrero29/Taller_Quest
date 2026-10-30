@@ -115,7 +115,11 @@ const TS=32;
    walk around it, but be kicked aside. A cone is not a wall — it is a thing one
    person moves with a foot. It is a `stand` tile now: walkable, still drawn standing. */
 const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J","⊓","◺",
-  "▉","⬒","⬓","☷","⊤","━"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4); the last six, the kitchen wall's pieces (2026-10-29), which no world lays today */
+  "▉","⬒","⬓","☷","⊤","━","◧","⎕"]); /* ⊓ the stair mass, ◺ the rail — the engine's own flight (#4); then the kitchen wall's six pieces (2026-10-29), a kitchen column and the closet (2026-10-30), none of which a world laid before */
+/* THE KITCHEN COLUMN'S AND THE CLOSET'S LETTERS (2026-10-30), named once here because the cameras ask about them long
+   before the seam that lays them (grep "THE KITCHEN LAYOUT", "THE CLOSET"); and the walls laid, by room, empty until a
+   world declares one. A world that lays neither letter and declares no layout never reaches anything that reads them. */
+const KITCOL="◧",CLOSET="⎕",KITWALL={};
 /* the content seam: a pack adds its own solid glyphs and declares which are doors */
 (typeof SOLIDX!=="undefined"?SOLIDX:"").split("").forEach(c=>SOLID.add(c));
 /* PETS THROUGH, PEOPLE NOT — the second content seam on walking (the owner's ask: a gap a
@@ -934,14 +938,19 @@ let ISOCOL=null;
 /* No "1" here on purpose: drawIso's block pass runs only for SOLID glyphs, and the stairs are
    walkable, so IZH["1"]=10 sat here being read by nothing at all. Deleted 2026-09-04 rather
    than corrected — a number that disagrees with the drawing will be trusted by somebody. */
-const IZH={"#":20,B:20,Q:17,Z:17,U:20,W:12,V:10,D:9,K:9,T:8,S:13,H:8,I:9,A:9,P:11,F:7,G:9,X:8,"~":2,"9":11};   /* C dropped 2026-09-04: it stopped being solid, and this pass runs for solids only */
+const IZH={"#":20,B:20,Q:17,Z:17,U:20,W:12,V:10,D:9,K:9,T:8,S:13,H:8,I:9,A:9,P:11,F:7,G:9,X:8,"~":2,"9":11,   /* C dropped 2026-09-04: it stopped being solid, and this pass runs for solids only */
+  /* THE KITCHEN WALL'S PIECES AND THE CLOSET (2026-10-30), measured against the engine's own: a tall white good is the
+     fridge's 12; a piece hung high is drawn from the floor to its top, as the bookcase's 13; a piece under the worktop is a
+     step under the counter's 9; the worktop is the counter's; the closet stands over a person, a wardrobe's 15. A kitchen
+     column (◧) is as tall as the tallest place in it, asked of the layout (isoH, below), and 9 when nothing is laid. */
+  "▉":12,"⬒":13,"⊤":13,"⬓":8,"☷":8,"━":9,"◧":9,"⎕":15};
 /* a pack-declared tile takes its iso height from its declared lift (lift 13 ≈ 20px, the
    wall) — this table used to be the only source, so a content window stood 6px short */
 const izh=g=>IZH[g]||((TILES[g]&&TILES[g].lift)?Math.round(TILES[g].lift*1.5):14);
 /* how tall the iso block on a tile stands — ONE answer, read by the block pass below and by the drone's
    marks (#271), so the lamp's corners sit on the roof this camera actually drew and cannot drift from it */
 const isoH=(w,x,y)=>{const gch=w.grid[y][x],wg=winAt(w,x,y);if(wg)return Math.round(izh(wg)*0.45);
-  if(gch==="J")return 12;return IZH[gch]||izh(w.rows[y][x]);};
+  if(gch==="J")return 12;if(gch===KITCOL){const k=kitIso(w,x,y);if(k)return k.h;}return IZH[gch]||izh(w.rows[y][x]);};
 const shadeHex=(h,amt)=>amt>=0?mixHex(h,"#FFFFFF",amt):mixHex(h,"#000000",-amt);
 function isoDiamond(cx,cy,col){ctx.fillStyle=col;ctx.beginPath();
   ctx.moveTo(cx,cy-ISH/2);ctx.lineTo(cx+ISW/2,cy);ctx.lineTo(cx,cy+ISH/2);ctx.lineTo(cx-ISW/2,cy);
@@ -959,6 +968,7 @@ function isoBlock(cx,cy,base,h){
 function drawIso(){
   const w=CW();
   ISOCOL=ISOCOL||{"#":C.wall,D:C.desk,K:C.counter,T:"#C9A96A",W:"#AEB6BE",V:"#3A3F46",A:"#B08B5A",U:C.wall,
+    "▉":"#A9B6C3","⬒":C.desk,"⬓":C.desk,"☷":C.desk,"⊤":C.deskTop,"━":"#A39FAE","◧":C.desk,"⎕":C.desk,   /* the kitchen's and the closet's, their shapes' own colours (2026-10-30) */
     ...BASECOL,...(typeof MAPCOL!=="undefined"?MAPCOL:{})};
   const[qx,qy]=focusXY(),hx=(qx-qy)*ISW/2,hy=(qx+qy)*ISH/2;   /* the camera looks at what you steer: the hero, or the drone (#271) */
   const ox=VW/2-hx,oy=VH/2-hy;isoOg=[ox,oy];
@@ -1022,6 +1032,7 @@ function drawIso(){
       [[-9,-1,9],[9,-1,9],[0,-7,10]].forEach(q=>{ctx.beginPath();ctx.arc(cx+q[0]+t2,cy-16+q[1],q[2],0,7);ctx.fill();});
       ctx.fillStyle=art("bloom","#B08FE0");[[-8,-4],[4,-9],[8,0],[-2,-2]].forEach(q=>{
         ctx.beginPath();ctx.arc(cx+q[0]+t2,cy-16+q[1],1.6,0,7);ctx.fill();});canopyDress(ctx,cx+t2,cy-16);}});
+    else if(gch===KITCOL&&kitIso(w,x,y))R.push({d:x+y,f:()=>isoBlock(cx,cy,kitIso(w,x,y).c,isoH(w,x,y))});   /* a kitchen column, in its tallest place's colour */
     else R.push({d:x+y,f:()=>isoBlock(cx,cy,ISOCOL[gch]||ISOCOL[w.rows[y][x]]||C.wall,isoH(w,x,y))});
   }
   /* THE WELL, LOOKED INTO (the owner chose option B). This camera drew the hole as ordinary
@@ -1134,8 +1145,50 @@ function camSet(m){
   if(c3)c3.hidden=!is3;
   cv.hidden=is3;
   sizeCanvas();  /* the world's height depends on which camera is running now */
-  if($("rot3d"))$("rot3d").hidden=!is3;}
+  if($("rot3d"))$("rot3d").hidden=!is3;
+  if(typeof camZoomShow==="function"&&typeof CAMZ!=="undefined")camZoomShow();}   /* the zoom's two buttons go where the turn goes (grep "THE CAMERA'S ZOOM") */
 document.querySelectorAll("#camRow button").forEach(b=>b.addEventListener("click",()=>camSet(b.dataset.cam)));
+/* ═══════════ THE CAMERA'S ZOOM (2026-10-30) — the 3D camera in and out, for a world that asks ═══════════
+   `CAMZOOM = true` in a world's content, or `{min, max}`: how near and how far the camera may come, as a share of where
+   it stands today (1), held inside 0.4 to 2. The camera keeps its angle and moves along its own line toward the person,
+   so the walls that cut away for you are the same walls. Moved by the wheel over the 3D picture, by two fingers pinched
+   or spread on it, and by two buttons beside the turn (↻), named in the world's words (`zoomIn`, `zoomOut`). Kept for
+   the visit, never stored. A world that says nothing has no buttons, no wheel, no pinch, and the camera exactly where it
+   always stood: camZoomF() is 1 for it, and nothing else here runs. */
+const CAMZ=(()=>{const Z=typeof CAMZOOM!=="undefined"?CAMZOOM:undefined;
+  if(Z!==true&&!(Z&&typeof Z==="object"))return {on:false};
+  const n=(v,d)=>typeof v==="number"&&isFinite(v)?Math.max(0.4,Math.min(2,v)):d;
+  let lo=n(Z.min,0.5),hi=n(Z.max,1.6);if(lo>hi)[lo,hi]=[hi,lo];
+  return {on:true,lo,hi};})();
+let camZoom=CAMZ.on?Math.max(CAMZ.lo,Math.min(CAMZ.hi,1)):1;
+const camZoomF=()=>CAMZ.on?camZoom:1;
+function camZoomBy(k){if(!CAMZ.on||!(k>0))return;camZoom=Math.max(CAMZ.lo,Math.min(CAMZ.hi,camZoom*k));camZoomShow();}
+/* TWO FINGERS ARE A PINCH, never a walk and never a tap: every finger that was part of one is remembered until it lifts,
+   and a moment after, so the tap and the swipe below, which hear the same lift, both know (camPinched). */
+const CAMPINCH=new Map(),CAMPINCHED=new Set();let camPinch0=null;
+const camPinching=()=>CAMZ.on&&CAMPINCHED.size>0;
+const camPinched=id=>CAMZ.on&&CAMPINCHED.has(id);
+function camZoomShow(){if(!CAMZ.on)return;const vp=$("vp");if(!vp)return;const t=T()||{};
+  [["zoomIn3d","+",t.zoomIn||"Zoom in",106,1/1.2,camZoom<=CAMZ.lo+1e-9],["zoomOut3d","−",t.zoomOut||"Zoom out",154,1.2,camZoom>=CAMZ.hi-1e-9]].forEach(([id,txt,name,top,k,end])=>{
+    let b=$(id);
+    if(!b){b=document.createElement("button");b.id=id;b.type="button";b.textContent=txt;
+      Object.assign(b.style,{position:"absolute",right:"12px",top:top+"px",width:"40px",height:"40px",border:"none",borderRadius:"50%",
+        background:"rgba(20,16,30,.55)",color:"#EDE9F5",fontSize:"1.3rem",lineHeight:"1",cursor:"pointer",zIndex:"3"});
+      b.addEventListener("click",e=>{e.preventDefault();camZoomBy(k);});vp.appendChild(b);}
+    b.setAttribute("aria-label",name);b.title=name;b.hidden=camMode!=="3d";b.disabled=end;b.style.opacity=end?"0.45":"1";});}
+if(CAMZ.on){const c3=$("cv3");
+  if(c3){c3.addEventListener("wheel",e=>{if(camMode!=="3d"||$("world").hidden)return;e.preventDefault();
+      camZoomBy(Math.exp(Math.max(-60,Math.min(60,e.deltaY))*0.004));},{passive:false});
+    c3.addEventListener("pointerdown",e=>{CAMPINCH.set(e.pointerId,[e.clientX,e.clientY]);
+      if(CAMPINCH.size===2){const[a,b]=[...CAMPINCH.values()];camPinch0={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:camZoom};
+        CAMPINCH.forEach((v,k)=>CAMPINCHED.add(k));held=null;}});
+    c3.addEventListener("pointermove",e=>{if(!CAMPINCH.has(e.pointerId))return;CAMPINCH.set(e.pointerId,[e.clientX,e.clientY]);
+      if(camPinch0&&CAMPINCH.size===2){const[a,b]=[...CAMPINCH.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1])||1;
+        camZoom=Math.max(CAMZ.lo,Math.min(CAMZ.hi,camPinch0.z*camPinch0.d/d));camZoomShow();}});
+    const up=e=>{CAMPINCH.delete(e.pointerId);if(CAMPINCH.size<2)camPinch0=null;
+      if(CAMPINCHED.has(e.pointerId))setTimeout(()=>CAMPINCHED.delete(e.pointerId),0);};
+    c3.addEventListener("pointerup",up);c3.addEventListener("pointercancel",up);}}
+
 /* and the row shows what the game HAS. A button for a camera this pack never declared is a promise
    the game cannot keep, so it is not on screen at all. */
 document.querySelectorAll("#camRow button").forEach(b=>{if(!CAMS.includes(b.dataset.cam))b.hidden=true;});
@@ -1329,6 +1382,16 @@ TILEDRAW["━"]=rc=>{const{sx,sy}=rc; /* a worktop: a tiled splash behind it, th
       ctx.fillStyle="#D8D3C6";ctx.fillRect(sx,sy+8,TS,6);
       ctx.fillStyle="#8F8A80";ctx.fillRect(sx,sy+10,TS,0.6);ctx.fillRect(sx,sy+12,TS,0.6);[8,16,24].forEach(xx=>ctx.fillRect(sx+xx,sy+8,0.6,2));
       ctx.fillStyle="#A39FAE";ctx.fillRect(sx,sy+14,TS,4);ctx.fillStyle="#CFCBD8";ctx.fillRect(sx,sy+18,TS,1.2);};
+/* THE CLOSET (2026-10-30): a wardrobe, the square's whole height over its kick, two doors, the bars at a hand's height */
+TILEDRAW["⎕"]=rc=>{const{sx,sy}=rc;
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+2,sy+29,TS-4,2);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx+1,sy+1,TS-2,28);kitDoors(sx,sy,1.5,27,13.5);};
+/* A KITCHEN COLUMN (2026-10-30): the places a layout stands in this square, each drawn as its own letter draws it, the
+   lowest first and the one hung highest last, so they stand one over another as the 3D column does (grep "THE KITCHEN
+   LAYOUT"). A square no layout has laid is a plain carcass, so a solid thing is never drawn as nothing. */
+TILEDRAW["◧"]=rc=>{const gs=kitLetters(rc.x,rc.y);
+      if(!gs.length){ctx.fillStyle=tc(C.desk);ctx.fillRect(rc.sx+1,rc.sy+2,TS-2,TS-4);return;}
+      gs.forEach(g=>{const f=TILEDRAW[g];if(f)f(rc);});};
 TILEDRAW["V"]=rc=>{const{sx,sy,x,y}=rc;ctx.fillStyle="#3A3F46";ctx.fillRect(sx+3,sy+4,TS-6,TS-8);
       ctx.fillStyle="#23272C";[[10,12],[22,12],[10,22],[22,22]].forEach(p=>{
         ctx.beginPath();ctx.arc(sx+p[0],sy+p[1],3.4,0,7);ctx.fill();});
@@ -2540,6 +2603,14 @@ TILESIDE["━"]=rc=>{const{sx,sy}=rc; /* a worktop: its splash, tiles in a bond,
       ctx.fillStyle="#8F8A80";ctx.fillRect(sx,sy+12.2,TS,0.4);ctx.fillRect(sx,sy+13.4,TS,0.4);
       [8,16,24].forEach(xx=>{ctx.fillRect(sx+xx,sy+11,0.4,1.2);ctx.fillRect(sx+xx,sy+13.4,0.4,1.2);});[4,12,20,28].forEach(xx=>ctx.fillRect(sx+xx,sy+12.2,0.4,1.2));
       ctx.fillStyle="#A39FAE";ctx.fillRect(sx,sy+14.6,TS,0.9);ctx.fillStyle="#CFCBD8";ctx.fillRect(sx,sy+15.2,TS,0.5);};
+/* the closet from the front: a kick set back, the carcass from 0.06 to 0.98, two doors, the bars at 0.50 */
+TILESIDE["⎕"]=rc=>{const{sx,sy}=rc;
+      ctx.fillStyle="#2A2520";ctx.fillRect(sx+0.6,sy+30.2,TS-1.2,1.8);
+      ctx.fillStyle=tc(C.desk);ctx.fillRect(sx,sy+2.1,TS,28.1);kitDoors(sx,sy,2.3,27.7,14.7);};
+/* a kitchen column from the front: its places' own front drawings, the lowest first (see TILEDRAW["◧"]) */
+TILESIDE["◧"]=rc=>{const gs=kitLetters(rc.x,rc.y);
+      if(!gs.length){ctx.fillStyle=tc(C.desk);ctx.fillRect(rc.sx,rc.sy+2,TS,TS-2);return;}
+      gs.forEach(g=>{const f=TILESIDE[g]||TILEDRAW[g];if(f)f(rc);});};
 if(typeof TILEART_SIDE!=="undefined")Object.assign(TILESIDE,TILEART_SIDE);
 /* ---------- ONE ENTRY PER GLYPH, WITH SLOTS — the view registry ----------
    A pack describes what a glyph looks like. It used to do that in two tables with two holes:
@@ -2588,6 +2659,7 @@ Object.assign(TILES,{
   I:{lift:6,kind:"furniture"},W:{lift:8,kind:"appliance"},V:{lift:8,kind:"appliance"},
   "▉":{lift:8,kind:"appliance"},"⬒":{lift:9,kind:"furniture"},"⬓":{lift:6,kind:"furniture"},   /* the kitchen wall's pieces (2026-10-29): */
   "☷":{lift:6,kind:"furniture"},"⊤":{lift:9,kind:"furniture"},"━":{lift:6,kind:"furniture"},   /* engine/shapes.js, grep "THE KITCHEN WALL" */
+  "◧":{lift:9,kind:"furniture"},"⎕":{lift:10,kind:"furniture"},   /* a kitchen column (grep "THE KITCHEN LAYOUT") and the closet (grep "THE CLOSET"), 2026-10-30 */
   F:{lift:5,kind:"fence"},G:{lift:5,kind:"fence"},
   C:{lift:6,kind:"marker",stand:true,light:true},X:{lift:6,kind:"site"},   /* light: you kick it, you do not walk around it */
   P:{lift:6,kind:"nature"},J:{lift:0,kind:"tree"},
@@ -5363,6 +5435,7 @@ function paperSkin(){
 }
 const PAPER_APPLIED=paperSkin();
 function docOpen(id,from){
+  if(kitNow&&docDef(id)!==kitNow.doc)kitShut();   /* another page over a kitchen place's shuts it first */
   const secs=docSections(id);if(!secs)return;
   const d=docDef(id)||{},body=$("docBody");
   docCur=id;docBack=from==="card"?"card":null;body.innerHTML="";
@@ -5408,6 +5481,174 @@ const readAt=(x,y)=>RD().find(r=>r.world===world&&r.x===x&&r.y===y&&DC()[r.doc])
 function readMarks(){const out=[];
   RD().forEach(r=>{if(r.world===world&&DC()[r.doc])out.push(r);});
   return out;}
+/* ═══════════ THE KITCHEN LAYOUT (2026-10-30) — a room's kitchen wall, built from what a world says stands in it ═══════════
+   A world says where its kitchen wall stands and what places it has, and the engine builds it: every column of the wall is
+   one square of the map, and that square is one shape stacking its places' pieces in their bands, as engine/kitchen.js
+   says (`KITCHEN`). Standing in front of a column offers Open where Read is offered; a tap on a place in the 3D picture
+   opens it too. Opening swings its doors or slides its drawers out by themselves, and then the reader shows what the world
+   hands it for that place. The engine never learns what is kept in a kitchen: the world's `page` draws it.
+
+   HOW A WORLD SAYS IT. `KITCHENWALLS = { <room id>: layout }` in its content, or `kitchenLay(<room id>, layout)` at any
+   time (a game that turns its own save into a room each time the room opens). A layout:
+     wall    the columns' squares, in order, `[[x,y], …]`: column 0 is the first. At most 40. Each square holds `◧` in the
+             map (one letter for "a kitchen column", whatever is in it), and no square in the room holds `◧` that is not one
+             of them. A column's Open is offered on the first side of it a person can stand at, south, east, west,
+             north, as a piece turns to face the room, read off the map as the room stands when it is laid; a column
+             with no such side (something set down in front of it) is built and tapped, and offers no Open.
+     places  `[{kind, row, col, name, full}]`: a kind and a row from `KITCHEN` (a tall kind in the tall row, every other in
+             one of `KITCHEN.rows`, as My kitchen saves them), its column, and optionally a name (text, at most 30
+             characters, nothing that cannot be shown) and how full it is (one of `KITCHEN.fulls`). At most 120.
+     page    optional: `(place, lang) => sections`, the reader's own blocks for that place. `place` is a frozen copy of
+             what was checked, with `i`, its index in `places`.
+   EVERY LAYOUT IS CHECKED AT THE EDGE, BEFORE ANYTHING IS BUILT, AND ONE THAT FAILS IS REFUSED WHOLE: a sentence in the log
+   (kind `kitchen`, always critical) and no kitchen at all in that room, never part of one. Refused: anything not a plain
+   object or list where one is meant, a key a layout does not have, a kind or a row off the closed lists, a column off the
+   wall, two places in one spot, a tall piece with anything else in its column, two pieces whose bands overlap in one
+   column, a column with nothing in it, a name that is not text or is too long, a fullness off the list, a wall square that
+   is not `◧` or is off the map, a `◧` not on the wall, a page that is not a function. A name is only ever shown as text.
+
+   WHERE OPEN STANDS, AND HOW IT SHARES READ'S PLACE: one slot, one button. The Read button is the slot; standing in front
+   of a kitchen column it says Open and the place's name, and a column with more than one place says each name and offers
+   each on a short page of its own. Anywhere else the slot is the closet's beside one (grep "THE CLOSET"), and otherwise
+   Read, exactly as before. A card a world placed on a column's own square, which nobody can stand beside but its front,
+   is shown at the end of every page that column opens, so Open never hides one; a card whose READS entry names a `row`
+   is about the place in that row, and ends that place's page only. A world that declares no layout and lays
+   no closet gets Read, and only Read, from the very same code. */
+const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420;
+const KITUNSAFE=/[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/;   /* what may not be shown in a name: My kitchen's UNSAFE, the same characters */
+/* the engine's own letter for each kind's piece, so a flat camera draws a column as its places' own drawings; held equal
+   to SHAPEBIND and KITCHEN.pieces by test/engine.smoke.js */
+const KITLETTER={fridge:"W",freezer:"▉","upper-cupboards":"⬒","lower-cupboards":"⬓",drawers:"☷",shelves:"⊤",counter:"━"};
+const KITOPEN={};let kitNow=null,kitBusy=false;
+function kitchenCheck(id,L){
+  const K=typeof KITCHEN==="object"&&KITCHEN,w=WORLDS[id],own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  const plain=o=>!!o&&typeof o==="object"&&!Array.isArray(o)&&[Object.prototype,null].includes(Object.getPrototypeOf(o));
+  const why=t=>({why:t});
+  if(!K||!plain(K.kinds)||!Array.isArray(K.rows)||!plain(K.bands)||!Array.isArray(K.fulls))return why("this page has no KITCHEN to check it against (engine/kitchen.js is loaded before the engine, or not at all)");
+  if(!w)return why("there is no room called "+JSON.stringify(String(id).slice(0,40)));
+  if(!plain(L))return why("a layout is an object with a wall and places");
+  const extra=Object.keys(L).find(k=>!["wall","places","page"].includes(k));
+  if(extra!==undefined)return why("a layout has a wall, places and a page, and this one says "+JSON.stringify(extra.slice(0,30)));
+  if(own(L,"page")&&typeof L.page!=="function")return why("its page is not a function");
+  const W=L.wall;
+  if(!Array.isArray(W)||!W.length)return why("its wall names no column");
+  if(W.length>KITCOLS)return why("its wall has "+W.length+" columns, and a wall has at most "+KITCOLS);
+  const cols=[],at={};
+  for(let c=0;c<W.length;c++){const q=W[c];
+    if(!Array.isArray(q)||q.length!==2||!Number.isInteger(q[0])||!Number.isInteger(q[1]))return why("column "+c+" of its wall is not a square [x,y]");
+    const[x,y]=q;
+    if(x<0||y<0||x>=w.W||y>=w.H)return why("column "+c+" of its wall, ("+x+","+y+"), is off the map");
+    if(w.rows[y][x]!==KITCOL)return why("column "+c+" of its wall, ("+x+","+y+"), is not a kitchen column ("+KITCOL+") in the map");
+    if(at[x+","+y]!==undefined)return why("columns "+at[x+","+y]+" and "+c+" of its wall are one square, ("+x+","+y+")");
+    at[x+","+y]=c;
+    const fr=[[0,1],[1,0],[-1,0],[0,-1]].find(([dx,dy])=>{const fx=x+dx,fy=y+dy;
+      return fx>=0&&fy>=0&&fx<w.W&&fy<w.H&&!shutToPeople(w.rows[fy][fx])&&!DOORSET.has(w.rows[fy][fx]);});
+    cols.push(fr?{x,y,fx:x+fr[0],fy:y+fr[1]}:{x,y,fx:-1,fy:-1});}   /* nowhere to stand (a thing set down in front of it): no Open, and a tap still opens it */
+  for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if(w.rows[y][x]===KITCOL&&at[x+","+y]===undefined)
+    return why("the map has a kitchen column at ("+x+","+y+") that its wall does not name");
+  const P=L.places;
+  if(!Array.isArray(P)||!P.length)return why("it has no places");
+  if(P.length>KITPLACES)return why("it has "+P.length+" places, and a kitchen has at most "+KITPLACES);
+  const places=[],spot={},byCol=cols.map(()=>[]);
+  for(let i=0;i<P.length;i++){const p=P[i],it="place "+i;
+    if(!plain(p))return why(it+" is not a place");
+    const ex=Object.keys(p).find(k=>!["kind","row","col","name","full"].includes(k));
+    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a place has a kind, a row, a column, a name and a fullness");
+    if(typeof p.kind!=="string"||!own(K.kinds,p.kind))return why(it+" is of a kind there is none of ("+JSON.stringify(String(p.kind).slice(0,30))+")");
+    if(K.kinds[p.kind]==="tall"?p.row!=="tall":!K.rows.includes(p.row))return why(it+", the "+p.kind+", stands in the row "+JSON.stringify(String(p.row).slice(0,20))+", where "+(K.kinds[p.kind]==="tall"?"a tall piece stands in the tall row":"it stands in one of "+K.rows.join(", ")));
+    if(!Number.isInteger(p.col)||p.col<0||p.col>=cols.length)return why(it+", the "+p.kind+", is in column "+JSON.stringify(p.col)+", and the wall has columns 0 to "+(cols.length-1));
+    if(own(p,"name")&&!(typeof p.name==="string"&&!KITUNSAFE.test(p.name)&&p.name===p.name.trim()&&p.name!==""&&Array.from(p.name).length<=KITNAME))
+      return why(it+"'s name is not a name: text, trimmed, 1 to "+KITNAME+" characters, nothing that cannot be shown");
+    if(own(p,"full")&&!K.fulls.includes(p.full))return why(it+" is "+JSON.stringify(String(p.full).slice(0,20))+" full, and a place is "+K.fulls.join(", ")+" or not said");
+    const k=p.col+"|"+p.row;if(spot[k]!==undefined)return why("places "+spot[k]+" and "+i+" are in one spot, column "+p.col+", "+p.row);spot[k]=i;
+    const q={kind:p.kind,row:p.row,col:p.col,i};if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;
+    places.push(Object.freeze(q));byCol[p.col].push(q);}
+  for(let c=0;c<cols.length;c++){const ps=byCol[c];
+    if(!ps.length)return why("column "+c+" has nothing in it");
+    if(ps.length>1&&ps.some(p=>p.row==="tall"))return why("column "+c+" holds a tall piece and something else; a tall piece stands alone");
+    for(let a=0;a<ps.length;a++)for(let b=a+1;b<ps.length;b++){const A=K.bands[ps[a].kind],B=K.bands[ps[b].kind];
+      if(!A||!B||(A.lo<B.hi-0.001&&B.lo<A.hi-0.001))return why("in column "+c+" the "+ps[a].kind+" and the "+ps[b].kind+" would stand in each other");}}
+  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null})};
+}
+/* lay it, or refuse it whole and say why; the answer is the sentence, or null when it stands */
+function kitchenLay(id,L){const r=kitchenCheck(id,L);
+  if(r.why){const had=!!KITWALL[id];delete KITWALL[id];
+    mqwarn("kitchen",JSON.stringify(String(id).slice(0,40))+" is refused whole: "+r.why,true);
+    if(had)kitDirty();return r.why;}
+  KITWALL[id]=r.wall;
+  if(!TILEMESH[KITCOL])TILEMESH[KITCOL]=o=>kitColumnParts(o);   /* the column's shape, unless the pack gave the letter its own */
+  kitDirty();return null;}
+function kitDirty(){if(typeof t3Invalidate==="function")t3Invalidate();if(typeof checkTalk==="function"&&$("world")&&!$("world").hidden)checkTalk();}
+/* the column at a square of the room you stand in, while the map still has its letter there */
+function kitColAt(x,y){const K=KITWALL[world],w=CW();if(!K||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return -1;
+  return K.cols.findIndex(c=>c.x===x&&c.y===y);}
+const kitOpenOf=(id,i)=>{const v=KITOPEN[id+"|"+i];return typeof v==="number"?v:0;};
+function kitColumnParts({x,y}){const c=kitColAt(x,y);if(c<0||typeof SHAPES!=="object"||!SHAPES||typeof SHAPES.kitchenColumn!=="function")return [];
+  const ps=KITWALL[world].places.filter(p=>p.col===c);
+  return SHAPES.kitchenColumn({x,y,places:ps.map(p=>({kind:p.kind,open:kitOpenOf(world,p.i)}))}).map(q=>({...q,place:ps[q.place].i}));}
+/* the letters a flat camera draws a column with, lowest first; and the iso camera's height and colour for it */
+function kitLetters(x,y){const c=kitColAt(x,y);if(c<0||typeof KITCHEN!=="object")return [];
+  return KITWALL[world].places.filter(p=>p.col===c).sort((a,b)=>KITCHEN.rank[b.row]-KITCHEN.rank[a.row]).map(p=>KITLETTER[p.kind]).filter(Boolean);}
+function kitIso(w,x,y){if(w!==CW())return null;const gs=kitLetters(x,y);if(!gs.length)return null;
+  const top=gs.reduce((a,g)=>(IZH[g]||0)>=(IZH[a]||0)?g:a,gs[0]);return {h:Math.max(...gs.map(g=>IZH[g]||9)),c:ISOCOL&&ISOCOL[top]||C.desk};}
+/* a place's name in a language: its own, else the world's word for its kind, else the kind */
+function kitName(p,lg){return p.name||(((UI[lg]||UI.en||{}).kitKinds)||{})[p.kind]||p.kind;}
+/* the places a person standing at (x,y) is in front of, every column whose front this is */
+function kitFront(x,y){const K=KITWALL[world];if(!K)return null;
+  const cs=K.cols.map((c,i)=>i).filter(i=>K.cols[i].fx===x&&K.cols[i].fy===y&&kitColAt(K.cols[i].x,K.cols[i].y)===i);
+  if(!cs.length)return null;
+  return K.places.filter(p=>cs.includes(p.col)).sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);}
+/* the page a place opens: the world's blocks for it, then every card placed on its column's square — a card that names the
+   row of the place it is about (`row` on its READS entry, one of the column's rows) at the end of that place's page alone */
+function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
+  const title={};Object.keys(UI).forEach(lg=>{title[lg]=kitName(p,lg);});
+  return {title,kit:{id,i:p.i},build:()=>{let secs=[];
+    if(K.page){try{const r=K.page(p,lang);if(Array.isArray(r))secs=r.slice();}catch(e){mqwarn("kitchen","the page of place "+p.i+" in "+id+" failed: "+String(e&&e.message||e),false);}}
+    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row)).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
+    return secs;}};}
+/* SWINGING IT: `open` from where it is to `to` over KITSWING ms, eased so it starts and ends at rest, and set to exactly `to`
+   at the end; at once for a person who asked for less motion. Each step rebuilds that one column in the 3D picture. */
+function kitSwing(id,i,to,done){const key=id+"|"+i,from=kitOpenOf(id,i),K=KITWALL[id],c=K&&K.places[i]&&K.cols[K.places[i].col];
+  const shape=()=>{if(c&&id===world&&typeof t3Reshape==="function"&&typeof T3==="object"&&String(T3.builtKey||"").indexOf(world+"|")===0)t3Reshape(c.x,c.y);};
+  let still=false;try{still=!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);}catch(e){}
+  if(still||from===to){KITOPEN[key]=to;shape();if(done)done();return;}
+  const t0=performance.now();
+  const step=()=>{const u=Math.min(1,(performance.now()-t0)/KITSWING),e=u*u*(3-2*u);
+    KITOPEN[key]=u>=1?to:from+(to-from)*e;shape();
+    if(u<1)requestAnimationFrame(step);else if(done)done();};
+  requestAnimationFrame(step);}
+/* OPEN ONE PLACE: its doors swing, then its page; one at a time */
+function kitOpen(id,i){const K=KITWALL[id],p=K&&K.places[i];if(!p||kitBusy)return false;
+  if(kitNow)kitShut();
+  kitBusy=true;held=null;
+  kitSwing(id,i,1,()=>{kitBusy=false;const d=kitDoc(id,p);kitNow={id,i,doc:d};docOpen(d);});
+  return true;}
+/* the page is put down: the place shuts again */
+function kitShut(){const n=kitNow;if(!n)return;kitNow=null;kitSwing(n.id,n.i,0);}
+/* the slot's press, standing in front: one place opens; several are offered, each on its own button */
+function kitPress(){const ps=kitFront(px,py);if(!ps||!ps.length)return;
+  if(ps.length===1){kitOpen(world,ps[0].i);return;}
+  const id=world,title={};Object.keys(UI).forEach(lg=>{title[lg]=((UI[lg]||{}).kitWhich)||((UI[lg]||{}).kitOpen)||"Open";});
+  docOpen({title,build:()=>ps.map(p=>({btn:kitName(p,lang),run:()=>{$("docClose").click();kitOpen(id,p.i);}}))});}
+/* A TAP ON A PLACE IN THE 3D PICTURE: the engine's first ray test, the 3D library's own (t3Pick, engine/engine3d.js). The
+   nearest thing under the finger has to be a kitchen column; which of its places was touched is told by the height of the
+   point, each piece standing in a band of its own. False when nothing opened, so a world with no kitchen keeps its tap. */
+function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||worldCovered()||typeof t3Pick!=="function")return false;
+  const h=t3Pick(cx,cy);if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return false;
+  const c=kitColAt(h.object.userData.x,h.object.userData.y);if(c<0)return false;
+  const ps=KITWALL[world].places.filter(p=>p.col===c);if(!ps.length)return false;
+  const y=h.point.y,band=p=>KITCHEN.bands[p.kind];
+  const p=ps.find(q=>y>=band(q).lo-0.01&&y<=band(q).hi+0.01)||ps.reduce((a,q)=>Math.abs(y-(band(q).lo+band(q).hi)/2)<Math.abs(y-(band(a).lo+band(a).hi)/2)?q:a);
+  return kitOpen(world,p.i);}
+/* ═══════════ THE CLOSET (2026-10-30) — a wardrobe, and the character creator behind its doors ═══════════
+   A world that lays `⎕` has a closet there: a piece of its own (engine/shapes.js, `SHAPES.wardrobe`, which a world takes in
+   SHAPETAKE like any shape), and standing beside it the slot offers the creator over the world with the name kept, by the
+   barber's own path (`openChair`), so whatever the creator offers the closet changes. Its words are the world's: `closet`
+   on the button, `closetTitle` over the creator, `closetDone` on its way out, `closetAfter` said once it is closed. A world
+   that lays none gets nothing here. */
+function closetBy(x,y){const w=CW();if(!w)return false;
+  return [[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>w.grid[y+dy]&&w.grid[y+dy][x+dx]===CLOSET);}
+function closetOpen(){const t=T();openChair(null,{title:t.closetTitle,done:t.closetDone,after:t.closetAfter});}
 /* ---- THE QUEST MARKER. ONE PAINTER, THREE CAMERAS. ----
    It was `ctx.fillText("❗",x+16,y+2+bob)` written out three times (the iso bill pass, the front
    pass and the top pass), and docs/BEAUTIFY.md's audit called what it drew "a solid red bar through
@@ -5635,6 +5876,12 @@ function checkRead(){
   const b=$("read");if(!b)return;
   if(DRONE.on){b.hidden=true;return;}
   let hit=null;
+  delete b.dataset.kit;delete b.dataset.closet;
+  /* THE SLOT (2026-10-30, grep "THE KITCHEN LAYOUT"): in front of a kitchen column it is Open, beside a closet it is the
+     closet, and otherwise it is Read as it always was. Both answer nothing in a world that lays neither. */
+  if(!$("world").hidden&&!moving){const ks=kitFront(px,py);
+    if(ks&&ks.length){b.hidden=false;b.dataset.kit="1";b.textContent=(T().kitOpen||"Open")+" — "+ks.map(p=>kitName(p,lang)).join(" · ");return;}
+    if(closetBy(px,py)){b.hidden=false;b.dataset.closet="1";b.textContent=T().closet||"👕";return;}}
   if(!$("world").hidden&&!moving)
     [[0,0],[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{const r=readAt(px+dx,py+dy);if(r)hit=r;return !!r;});
   b.hidden=!hit;
@@ -5703,9 +5950,13 @@ function panelWayOut(p){if(!p)return null;
 document.addEventListener("click",e=>{const p=topPanel();
   if(!p||e.target!==p)return;const w=panelWayOut(p);if(w)w.click();});
 window.addEventListener("keyup",e=>{if(keyDir(e)&&held===keyDir(e))held=null;});
-$("read").addEventListener("click",()=>{const id=$("read").dataset.doc;if(id)docOpen(id);});
+$("read").addEventListener("click",()=>{const rb=$("read");
+  if(rb.dataset.kit){kitPress();return;}            /* the slot is Open (grep "THE KITCHEN LAYOUT") */
+  if(rb.dataset.closet){closetOpen();return;}       /* or the closet's */
+  const id=rb.dataset.doc;if(id)docOpen(id);});
 $("npcDoc").addEventListener("click",()=>{if(npcHeld)docOpen(npcHeld,"card");});
 $("docClose").addEventListener("click",()=>{$("reader").hidden=true;
+  kitShut();   /* a kitchen place's page put down shuts the place (grep "THE KITCHEN LAYOUT"); nothing, for any other page */
   /* handed over by a person mid-quest: close returns to them, not to the street. checkTalk()
      here would light the talk button and nudge lines behind a card the player is still in. */
   if(docBack==="card"){docBack=null;window.scrollTo({top:0});return;}
@@ -6063,11 +6314,14 @@ function buildPaintRow(){const row=$("rowPaint"),lb=$("lbPaint");if(!row)return;
   if(!on)return;const cur=((alePick.hero%F.length)+F.length)%F.length;
   F.forEach((lk,i)=>{const b=document.createElement("button");b.className="opt";b.textContent=lk.name?(lk.name[lang]||lk.name.en):lk.id;b.setAttribute("aria-pressed",cur===i?"true":"false");
     b.addEventListener("click",()=>{alePick.hero=i;alePersist();[...row.children].forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");pvDraw();if(typeof aleRowBuild==="function")aleRowBuild();});row.appendChild(b);});}
-function openChair(who){const t=T();chairOpen=true;
-  $("crTitle").textContent=t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
-  const note=$("crNote");if(note){const L=(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
+/* `how`, from the closet (grep "THE CLOSET"): its own title, its own way out and what is said after, and no person's line.
+   Left out, the chair is exactly the barber's. */
+let chairHow=null;
+function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;
+  $("crTitle").textContent=(how&&how.title)||t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
+  const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
   buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();pvDraw();
-  $("begin").textContent=t.chairDone||t.begin;$("world").hidden=true;$("creator").hidden=false;held=null;
+  $("begin").textContent=(how&&how.done)||t.chairDone||t.begin;$("world").hidden=true;$("creator").hidden=false;held=null;
   /* #126: the chair opens over the world, and the page was left scrolled wherever the world had it — so the panel
      could open entirely below the fold with its way out unreachable. Put it in view and start it at its own top. */
   const cp=$("creator");cp.scrollTop=0;
@@ -6075,7 +6329,10 @@ function openChair(who){const t=T();chairOpen=true;
   try{cp.scrollIntoView({block:"start"});}catch(e){}}
 function closeChair(){const t=T();chairOpen=false;$("creator").hidden=true;$("lbName").hidden=false;$("heroname").hidden=false;$("begin").textContent=t.begin;
   const note=$("crNote");if(note)note.hidden=true;
-  save();showWorld();applyCtl();hud();checkTalk();if(t.chairAfter)toast(sayAs(GRW().barberNpc,t.chairAfter),2800);}
+  const how=chairHow;chairHow=null;
+  save();showWorld();applyCtl();hud();checkTalk();
+  if(how){if(how.after)toast(how.after,2800);}
+  else if(t.chairAfter)toast(sayAs(GRW().barberNpc,t.chairAfter),2800);}
 $("begin").addEventListener("click",()=>{
   if(chairOpen){closeChair();return;}
   heroName=($("heroname").value.trim()||"Rookie").slice(0,14);
@@ -6577,6 +6834,7 @@ function applyLang(){
   try{const pr=$("paperSheet");if(pr&&typeof READERLOOK==="string"&&/^[a-z]{1,16}$/.test(READERLOOK))pr.classList.add(READERLOOK);}catch(e){}
   {const u=DCU();$("docClose").textContent=u.close||"✕";$("docCopy").textContent=u.copy||"📋";
    $("docDl").textContent=u.dl||"⬇️";if(!$("read").hidden&&!$("world").hidden)checkRead();}
+  camZoomShow();   /* the zoom buttons' names, in this language; nothing for a world without a zoom */
   $("exCopy").textContent=t.expCopy;$("exClose").textContent=t.tlClose;
   $("exTabJson").textContent=t.exTabJson;$("exTabCare").textContent=t.exTabCare;$("exIcs").textContent=t.exIcs;
   $("exTabRep").textContent=t.exTabRep;$("exDl").textContent=t.exDl;
@@ -7663,7 +7921,10 @@ function paintAt(clientX,clientY){
 let swActive=null,swSX=0,swSY=0,swMoved=false;
 function swEnd(e){
   if(e.pointerId!==swActive)return;
-  if(admin&&!swMoved&&!DRONE.on)paintAt(e.clientX,e.clientY);   /* the drone's first slice is read-only: a tap while flying paints nothing (#271) */
+  /* a tap, not a drag, on a kitchen place in the 3D picture opens it (grep "THE KITCHEN LAYOUT"); false in a world with none */
+  const pinched=camPinched(e.pointerId);   /* a finger lifted from a pinch is neither (grep "THE CAMERA'S ZOOM"); false without one */
+  const kit=!swMoved&&!pinched&&!DRONE.on&&e.type==="pointerup"&&kitTap(e.clientX,e.clientY);
+  if(admin&&!swMoved&&!pinched&&!DRONE.on&&!kit)paintAt(e.clientX,e.clientY);   /* the drone's first slice is read-only: a tap while flying paints nothing (#271) */
   if(ctl==="swipe")held=null;
   swActive=null;
 }
@@ -7677,6 +7938,7 @@ function swEnd(e){
   });
   el.addEventListener("pointermove",e=>{
     if(e.pointerId!==swActive)return;
+    if(camPinching()){held=null;return;}   /* two fingers are zooming, not walking (grep "THE CAMERA'S ZOOM"); never, without one */
     const dx=e.clientX-swSX,dy=e.clientY-swSY;
     if(Math.hypot(dx,dy)>10)swMoved=true;
     if(ctl==="swipe"){
@@ -7690,6 +7952,9 @@ try{(JSON.parse(localStorage.getItem(SK("edits"))||"[]")).forEach(e2=>{
   const w=WORLDS[e2&&(e2.m||PL.home)];if(!w)return;
   if(e2&&w.grid[e2.y]&&w.grid[e2.y][e2.x]!=="N"&&!(e2.x<=0||e2.y<=0||e2.x>=w.W-1||e2.y>=w.H-1)){
     w.rows[e2.y]=w.rows[e2.y].slice(0,e2.x)+e2.ch+w.rows[e2.y].slice(e2.x+1);w.grid[e2.y][e2.x]=e2.ch;}});}catch(e){}
+/* THE KITCHEN WALLS A WORLD DECLARES, laid once its rooms stand as this device last left them (the edits above), so a
+   layout is checked against the map the person will walk in (grep "THE KITCHEN LAYOUT"). Nothing, for a world without. */
+if(typeof KITCHENWALLS==="object"&&KITCHENWALLS)Object.keys(KITCHENWALLS).forEach(id=>kitchenLay(id,KITCHENWALLS[id]));
 /* ---------- owner-created characters (admin ➕ brush) — per-device, like map edits.
    Records: {n:name, w:world, x, y, lk:{shirt,skin,hair,style}}. Names are data:
    length-clamped, rendered only via textContent/canvas. A name matching a dog egg

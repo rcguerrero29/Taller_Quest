@@ -48,7 +48,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 
 | Category | Defined in | Size |
 |---|---|---|
-| Solid glyphs | `engine/engine.js:48` `SOLID`, extended by pack `SOLIDX` | 17 + 24 Meridian + 5 town; the engine's own grew to 23 on 2026-10-29 (the kitchen wall's six, registered below) |
+| Solid glyphs | `engine/engine.js:48` `SOLID`, extended by pack `SOLIDX` | 17 + 24 Meridian + 5 town; the engine's own grew to 23 on 2026-10-29 (the kitchen wall's six) and to 25 on 2026-10-30 (a kitchen column `◧` and the closet `⎕`), registered below |
 | Door glyphs | `engine/engine.js:51` `DOORSET` (default `"+ELO"`), pack `DOORS` | 4 / 9 / 8 |
 | Tile `kind` | `engine/engine.js:1327–1355`, merged with pack `TILEMETA` at `:1356` | 16 |
 | Tile flags | same block | `lift` `stand` `light` `win` `awn` `vary` `box` |
@@ -61,7 +61,9 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
 | Shape `open` | `engine/shapes.js`, grep `HOW FAR A THING IS OPEN` (`openOf`) | a number, `0`–`1`; unset, `0` and anything not a number are shut, past `1` is `1`; read by the fridge and the kitchen wall's pieces with a door or a drawer — registered below |
-| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall` — registered below |
+| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30) — registered below |
+| Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `places` `page`; a place's `kind` `row` `col` `name` `full`; **closed**: any other key refuses the layout whole — registered below |
+| Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -468,6 +470,48 @@ helper, and the person who hits it will be reading their content files, not `san
   rank and the seven starting places, and holds every band clear of the others in its column. `counter` and `kind` each
   collide with a word already here (above). **Not** decided: a kind a world adds of its own, a finish (the cabinets are
   the theme's furniture wood), and a layout of more than one wall — the layout is sprint 3's word.
+- **Registered 2026-10-30 — two letters: `◧` a kitchen column and `⎕` the closet.** Both in the engine's `SOLID`, each with
+  a `TILES` row (`furniture`), a top and a side drawing, an iso height and an iso colour. Rule 1 for `◧`: a **mesh**, solid,
+  standing in its square as the places a layout puts in it stand, each in its own band, from the floor to at most 1.00;
+  flat, its places' own letters drawn one over another, the lowest first; the iso block as tall as its tallest place. It
+  means "a column of a kitchen wall", whatever is in it, so one letter serves every column of every layout, and a square
+  no layout names is a plain carcass. It is **not** offered in `SHAPEBIND`: a world asks for it by declaring a layout,
+  and the engine binds it then, unless the world gave the letter a mesh of its own. Rule 1 for `⎕`: a **mesh**, solid, a
+  wardrobe from the floor to 0.98 with its back on the wall; flat, the same front on four faces; offered in `SHAPEBIND`
+  as `wardrobe`, which a world takes in `SHAPETAKE` like any shape and which says it was built from its drawing
+  (`.drawing`, measured in `test/engine.smoke.js`). Beside one, the slot offers the character creator (below). **Chosen
+  because no pack, shell, test or document in either repository wrote either** (searched 2026-10-30). L1 grows by two.
+- **Registered 2026-10-30 — the kitchen layout: `KITCHENWALLS` and `kitchenLay`.** `KITCHENWALLS = { <room>: layout }` in a
+  pack, laid at boot once the device's own map edits are on, or `kitchenLay(<room>, layout)` at any time, which answers
+  the refusal's sentence or `null`. A layout is `wall` (the columns' squares in order, `[[x,y], …]`, 1 to 40, each `◧` in
+  the map, every `◧` in the room on it; its Open is offered on the first side of it a person can stand at, south, east,
+  west, north, and a column with none stands and is tapped but offers no Open), `places` (1 to 120, each `{kind, row, col, name, full}`: a kind of `KITCHEN.kinds`,
+  a tall kind in `tall` and any other in one of `KITCHEN.rows`, as My kitchen saves them; a column of the wall; a name of
+  1 to 30 characters, trimmed, with nothing that cannot be shown, as My kitchen's names; a fullness of `KITCHEN.fulls`)
+  and an optional `page`, `(place, lang) => sections`, the reader's blocks for that place. **Closed**: a key a layout or a
+  place does not have refuses it, and so does anything off a list, two places in one spot, a tall piece with anything else
+  in its column, two pieces whose bands overlap, an empty column. **A layout is taken whole or refused whole**: a refusal is
+  a critical line in the log, kind `kitchen`, and leaves that room no kitchen at all. A card a world places on a column's
+  square (its `READS`) is shown at the end of every page that column opens; with `row` on its entry, one of the column's
+  rows, at the end of that place's page alone (registered 2026-10-30, read only on a kitchen column's square). Parts of a column's shape carry
+  `place`, the place's index, read by the suite and never by the bake. **Not** decided: a kitchen of more than one wall in
+  a room (one layout a room), a column whose places are taken from one side only, and a fullness a game counts for itself.
+- **Registered 2026-10-30 — `KITCHEN.fulls`: `room` `almost` `full`.** How full a place may be said to be, the words My
+  kitchen already saved, in the order a choice offers them; unset means nobody said. Added to and never taken away, like
+  `kinds`; pinned in `test/engine.smoke.js`.
+- **Registered 2026-10-30 — `CAMZOOM`.** `true`, or `{min, max}`: how near and how far the 3D camera may come, as a share
+  of where it stands today, each held to `0.4`–`2` (unset `0.5` and `1.6`). The camera keeps its angle and moves along its
+  own line. Moved by the wheel over the 3D picture, two fingers, and two buttons beside the turn; kept for the visit, never
+  stored. **Saying nothing is no zoom**: no buttons, no wheel, no pinch, the camera exactly where it stood.
+- **Registered 2026-10-30 — a world's words for the kitchen, the closet and the zoom**, in its `UI` strings per language:
+  `kitOpen` (the slot's word for Open), `kitKinds` (a kind's name, `{fridge: …}`, for a place with no name of its own),
+  `kitWhich` (the title of the page that offers each place of a column), `closet` (the slot beside a closet), `closetTitle`
+  `closetDone` `closetAfter` (the creator's title, its way out, and what is said once it is closed), `zoomIn` `zoomOut`
+  (the buttons' names). Each falls back to a plain English word or the chair's own words, so a world that says none still
+  works; none is read by a world that lays no kitchen, no closet and asks for no zoom.
+- **Registered 2026-10-30 — the closet's parts: `rail`, `hanger`, `garment`**, beside `carcass`, `inside`, `shelf`, `door`,
+  `handle` and `kick`, as the table's `cloth` and `plate` say what they are (`garment` and not `cloth`, which is the
+  table's: one name, one part); read by the suite, never by the bake.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 

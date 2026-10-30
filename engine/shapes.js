@@ -802,6 +802,52 @@ const SHAPES=(function(){
     if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});
     return turned(parts,at.ry);};
 
+  /* ---------- WARDROBE (⎕) — the closet: a tall carcass, two doors, a rail, and what hangs on it (2026-10-30) ----------
+     Built in the order a joiner builds one and a person fills one. 1 · THE CARCASS, the kitchen's own (`carcass`): two
+     tall sides, a bottom in shade, a top, a plain back, on a kick set back so there is shade at the floor, the whole of
+     it from the floor to 0.98, under the top of the wall (1.10) and over a person's head (0.92); one shelf near the top
+     on pins, for hats and folded things, and a cornice laid on its top, standing proud of the front and a step paler, which
+     is the line that tells a wardrobe from a cupboard at the size it is seen. 2 · THE RAIL, a round bar across the carcass under that shelf, on a bracket at
+     each end. 3 · THE DOORS, the cupboards' two frame-and-panel doors (`doors`) the carcass's height, each hung on its
+     outer edge, so the pair opens from the middle; 4 · their bar handles on the inner stiles at a standing hand's height.
+     5 · WHAT A HAND HUNG IN IT: hangers off one set, all one shape at one pitch along the rail, each with its hook over the
+     bar, and on each a garment hanging edge-on to the doors (a rail runs side to side, so a hanger hangs front to back, and
+     from the doors you see the row of their edges, as you see a closet's), its length and its colour what was hung there:
+     those two are the only things that vary, by the tile's own number on both axes. The colours are cloth, a step darker
+     than the wood round them, so the row reads as a row of things and not as the back. Back on the wall wherever there is
+     one, facing the room. Shut it is 38 parts, 484 triangles. `open` turns the doors as the cupboards' turn; the world opens nothing on it today, and the
+     character creator is what a person opens it for. The parts say what they are: `carcass`, `inside`, `shelf`, `rail`,
+     `hanger`, `garment`, `door`, `handle`, `kick`. */
+  const CLOTH=["#3D5A80","#8C2F39","#4F6D3A","#C9A227","#5B4B8A","#2F3E46","#B5654A"];
+  const wardrobe=({x,y,open})=>{const D=0.58,lo=0.06,hi=0.98,at=backToWall(x,y),RY=0.8;
+    const parts=[{s:"box",x:0,y:0.03,z:-0.015,w:0.98,h:0.06,d:D-0.03,c:KICK,kick:1}]                /* 1 · the kick, set back */
+      .concat(carcass(lo,hi,D,C.desk,[0.86]));                                                    /*   the carcass, its hat shelf */
+    parts.push({s:"box",x:0,y:hi+0.011,z:0.02,w:1.0,h:0.022,d:D+0.04,c:C.deskTop,carcass:1,cornice:1});   /*   the cornice, proud of the doors */
+    parts.push({s:"cyl",x:0,y:RY,z:-0.02,r:0.012,h:0.94,c:PULLS,rz:Math.PI/2,rail:1});             /* 2 · the rail, side to side */
+    [-1,1].forEach(sd=>parts.push({s:"box",x:sd*0.465,y:RY,z:-0.02,w:0.03,h:0.05,d:0.05,c:PULLS,rail:1}));   /*   its two brackets */
+    const n=5,pitch=0.17;                                                                         /* 5 · hangers off one set */
+    for(let i=0;i<n;i++){const hx=-pitch*(n-1)/2+i*pitch,len=0.36+rnd(x,y,i,1)*0.22,c=CLOTH[Math.floor(rnd(x,y,i,2)*CLOTH.length)];
+      parts.push({s:"box",x:hx,y:RY+0.03,z:-0.02,w:0.008,h:0.035,d:0.008,c:PULLS,hanger:i+1,inside:1},           /* the hook over the bar */
+        {s:"box",x:hx,y:RY-0.03,z:-0.02,w:0.012,h:0.014,d:0.36,c:"#C8B994",hanger:i+1,inside:1},                  /* its shoulders, front to back */
+        {s:"box",x:hx,y:RY-0.037-len/2,z:-0.02,w:0.07,h:len,d:0.34,c,garment:i+1,inside:1});}                        /* what hangs on it, edge-on */
+    doors(lo+0.005,hi-0.005,D,0.5,openOf(open)).forEach(p=>parts.push(p));                       /* 3 · the doors, 4 · their handles */
+    if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});                                                /* its back on the wall */
+    return turned(parts,at.ry);};
+
+  /* ---------- A KITCHEN COLUMN (◧, 2026-10-30) — the places in one square of a kitchen wall, one over another ----------
+     Not a piece of its own: one square of a wall a world lays out (engine/engine.js, grep "THE KITCHEN LAYOUT"), built as
+     the places in it are built, each kind with the piece `KITCHEN.pieces` names, each piece standing in its own band
+     (`KITCHEN.bands`), so a lower piece on the floor, the worktop on it and an upper piece hung over that come out one
+     over another without touching, and a tall piece stands alone. `places` is what the engine hands it, checked before it
+     is: [{kind, open}], open from 0 to 1 as every piece reads it. Each part says which place it belongs to (`place`, its
+     index in `places`), as a door says it is a door, so the suite can tell the pieces apart in one square. A kind the
+     library has no piece for, or a page with no `KITCHEN`, builds nothing for that place. */
+  const kitchenColumn=({x,y,places})=>{const K=typeof KITCHEN==="object"&&KITCHEN,out=[];
+    if(!K||!Array.isArray(places))return out;
+    places.forEach((pl,i)=>{const fn=pl&&K.pieces&&SH[K.pieces[pl.kind]];if(typeof fn!=="function")return;
+      fn({x,y,open:pl.open}).forEach(p=>out.push({...p,place:i}));});
+    return out;};
+
   /* WHAT EACH SHAPE CLAIMS, where the gate and the suite can read it. `drawing` is the letter whose engine drawing
      the shape was built from, part for part — the gate lets a world take a letter that already stands as a drawing
      only when its shape says this, and test/engine.smoke.js measures every such claim against that drawing (a claim
@@ -810,10 +856,12 @@ const SHAPES=(function(){
   desk.drawing="D";table.drawing="T";shelving.drawing="S";stove.drawing="V";counter.drawing="K";
   planter.drawing="b";grass.drawing="g";siteSign.drawing="X";
   freezer.drawing="▉";upperCupboard.drawing="⬒";lowerCupboard.drawing="⬓";drawers.drawing="☷";wallShelf.drawing="⊤";worktop.drawing="━";
+  wardrobe.drawing="⎕";
   planter.walk=true;grass.walk=true;
 
-  return {plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles,planter,grass,siteSign,
-          freezer,upperCupboard,lowerCupboard,drawers,wallShelf,worktop};
+  const SH={plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles,planter,grass,siteSign,
+          freezer,upperCupboard,lowerCupboard,drawers,wallShelf,worktop,wardrobe,kitchenColumn};
+  return SH;
 })();
 
 /* ---------- SHAPEBIND — the engine binding its own letters, in the open ----------
@@ -860,7 +908,8 @@ const SHAPEBIND={P:"plant",J:"tree",D:"desk",T:"table",H:"crate",S:"shelving",
                  F:"picketFence","◺":"wellRail","9":"doghouse",
                  "3":"hurdle","4":"tunnel","5":"weavePoles",   /* the agility gear, mq-v232: walkable, `stand`, so the gate's solidity clause lets them through */
                  b:"planter",g:"grass",X:"siteSign",            /* 2026-10-04: the planters, the grass and the site sign, so a world need not draw its own */
-                 "▉":"freezer","⬒":"upperCupboard","⬓":"lowerCupboard","☷":"drawers","⊤":"wallShelf","━":"worktop"};
+                 "▉":"freezer","⬒":"upperCupboard","⬓":"lowerCupboard","☷":"drawers","⊤":"wallShelf","━":"worktop",
+                 "⎕":"wardrobe"};                                  /* 2026-10-30: the closet, a letter no world laid before it */
 /* THE KITCHEN WALL'S SIX (2026-10-29) are letters no world lays today, chosen for that: no pack, shell or test in this
    repository writes any of them, so binding them changes nothing anywhere until a world names one in its SHAPETAKE. Each
    draws what it is in its square, seen from the front, so a map row can be read: ▉ a block the square's whole height
