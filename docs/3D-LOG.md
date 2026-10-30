@@ -973,3 +973,70 @@ polygon update for all of these, and what the marigolds taught, had been logged)
   exactly where it stood (`camZoomF()` is 1 and nothing else in the zoom runs). GAMEV and CACHE move together to mq-v242.
 - **Not done.** One wall a room; a place's doors all open together; nothing is drawn on a shelf or in a drawer in 3D
   (what is kept is shown on the page); the closet opens for nothing but the creator; no phone measured for cost.
+
+### 2026-10-30 · builder mode on a kitchen wall: add, move, paint and remove a piece; the finishes
+
+- **The ask, in general words.** In a world that has a builder, in builder mode, a person changes a kitchen wall in 3D:
+  adds a piece, moves one along the wall or up and down, paints one in a finish from a short list, removes one, and
+  undoes; by the same rules a game's own 2D kitchen wall already uses, moved into the engine so there is one copy. The
+  engine never keeps a kitchen: it hands every change to the world to keep. A world that does not ask gets none of it.
+- **What was made.**
+  - **The rules** (`engine/kitchen.js`, `KITCHEN.rules`): `add`, `move`, `canMove`, `remove`, `paint`, `paintAll`, `compact`, pure, on
+    a copy of what they are handed. Moved from Simmer's My kitchen page (its `move`, `canMove`, `compact`, `colsOf`,
+    `cellOf`, `tallIn`, `sig` and its add's choice of column), which now calls them. The cap, 40, is `KITCHEN.most`.
+  - **The finishes** (`KITCHEN.finishes`), in the order a choice offers them. Built the way a painted kitchen is made: the
+    carcass and the doors come off one line and are painted where they show, so a finish is decided once per piece and
+    goes on the carcass's sides and top (`body`) and on the doors' frames and sunk panels, the drawers' fronts and the
+    whole of an open shelf (`front`); the shelf on its pins, the back, the floor and the drawers' boxes stay the board,
+    and the handles stay one pale metal. **The fridge and the freezer** take the finish's `goods` as an enamel on their
+    shell and their doors or fronts (`body`, `front`); under wood they keep their own steel and frost, as a wooden
+    kitchen keeps its steel fridge; plinth, seals, handles, liners and baskets are never painted. **The counter** is stone
+    and tile and takes none. The colours, chosen for the engine's light (ambient 0.66, sun 0.42; a south face shows about
+    0.77 of its colour) and rendered at noon beside each other before they were kept:
+
+    | finish | body | front | goods body | goods front | flat (2D) |
+    |---|---|---|---|---|---|
+    | wood | `#8A6F4D` (`C.desk`) | `#A98B62` (`C.deskTop`) | the fridge's own `#AEB6BE`/`#BCC4CC`, the freezer's `#A9B6C3`/`#C6D0DB` | | `#846C4B` |
+    | white | `#D6D2CA` | `#EAE7E0` | `#D3D7DD` | `#E8EBEF` | `#B4AFA8` |
+    | violet | `#5F5089` | `#7565A1` | `#6A5B94` | `#8070AB` | `#5C4E7B` |
+    | grey | `#6E7179` | `#868A93` | `#5D6169` | `#71767F` | `#67696F` |
+
+    `flat`, the one colour a 2D wall paints a piece in (Simmer's My kitchen, sprint 6), is each finish's lower door as the
+    3D camera drew it at noon in a test kitchen laid for it, read off the frame (5×5 pixels at the door's middle), so the two
+    views agree. My kitchen's 2D wall paints its cabinets `#433C55` today; violet's measured front is `#5C4E7B`, the
+    nearest of the four, and which one a kitchen starts in is sprint 6's question.
+  - **Builder mode on a kitchen wall** (`engine/engine.js`, grep `THE KITCHEN BUILDER`): a bar at the foot of the picture
+    in every camera, its buttons signs with their names for a pointer and a screen reader (the row fits a 3D picture
+    534 px wide, a page's at a laptop's size, on one line); pick by a tap in 3D (the ray test), by ‹ › or by `[` `]`;
+    move by ◀ ▶ ▲ ▼ or Shift and an arrow; paint, one piece or the whole kitchen; add (a kind the kitchen has asks first); remove (asks); undo, or
+    Ctrl+Z. The piece picked is framed in gold (`#F2C230`), four bars 0.04 wide just outside the face it turns to the
+    room, measured off its own parts. Every change: the rules, then the wall's squares handed out again in order (its
+    columns, then its free squares; a new column with none left is refused in a sentence), then `kitchenCheck`, then the
+    world's `store(layout)`, and only then laid; undo is the same road back. The engine writes no storage for a kitchen
+    and its undo lasts the visit.
+  - **A free square** of a wall (`free` in a layout): `◧` with nothing on it; in 3D the fitter's marks, four strips of blue
+    tape (`#3E7CB1`) laid by hand round the square on the floor (4 parts, 48 triangles), so it is never built as the plain
+    box a mesh-less square becomes, and never taken for a piece; flat, the same tape; in iso, the floor.
+  - **A place's `id`**, the world's own name for it, carried through every change so what the world keeps in a place
+    follows it; and a picture on a page that carries its own words (`kv` beside `art`), so a list need not repeat it.
+- **Measured** (`test/engine.smoke.js`, grep `THE KITCHEN'S RULES`, `THE KITCHEN LAYOUT, OPEN` and `THE KITCHEN BUILDER AND
+  THE FINISHES`). The rules against a table of 28 rows written from My kitchen's wall, and side by side with My kitchen's
+  own functions, copied into the check by hand, over 900 seeded changes and 45,420 moves offered or not; 16 more layouts
+  the engine must refuse (free squares, a store, a finish off the list or typed in or on the counter, an id) and one with
+  all of them that stands; every kitchen piece shut and open with no finish pinned to its parts before there were
+  finishes (Taller_Quest b1e440d), the same in wood, in a name off the list and in a colour typed in, and in each other
+  finish the same parts in other colours; and the builder driven by real keys and the bar's own buttons in a made-up
+  kitchen whose store writes down what it is handed: six changes, each the rules' own and checked and handed whole to
+  the store, six undone to exactly what stood, a column refused for want of a square, a store that throws keeping the
+  change from being made, no kitchen in storage, a tap that picks and a frame round the pick; and in a world with no
+  builder, or a layout with no store, none of it. Each check was shown red on a fault planted in a copy of the tree
+  outside the repository, 30 of them, each in its own sentence.
+- **Meridian.** Declares no builder and no kitchen, and is unchanged: every shape the engine had, built by the engine
+  before this change (Taller_Quest b1e440d, with its own `engine/kitchen.js`) and after it at 120 places each, plain and
+  cleared, with `open` left out, 0, 0.5 and 1, and each of those asked again with `finish` "wood", undefined, a name off
+  the list and a number: 130,080 builds, every one deep-equal; wood's front moved one step in its blue (`#A98B63`) is red in
+  19,680 of them.
+  GAMEV and CACHE move together to mq-v243.
+- **Not done.** Undo lasts the visit (the engine keeps nothing to bring it back after a reload). The flat cameras and iso
+  draw a column in its letters' own colours, not its finish. A place's doors all open together. One wall a room. No
+  phone measured for cost.

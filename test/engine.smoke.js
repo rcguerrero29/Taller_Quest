@@ -1206,6 +1206,159 @@ function findChromium() {
     K.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   }
 
+  /* ---- THE KITCHEN'S RULES (2026-10-30) ----
+     engine/kitchen.js, `KITCHEN.rules`: where a piece goes when a kitchen is changed, one copy, made from Simmer's My kitchen
+     page (2026-10-30: the same moving rules My kitchen has). What a person would notice: a
+     piece that lands somewhere My kitchen's wall would not have put it, a move offered that changes nothing or one refused
+     that would, a new column opened at the wrong end, a piece added into a taken place, a kitchen growing past its cap, or
+     a layout handed in that comes back changed. Read as a page reads the file, in a context holding nothing but the
+     language's own built-ins, so a rule that reads anything else from outside is heard. Two answers it is held to:
+       1 · A TABLE, written by hand from My kitchen's wall as it behaved on 2026-10-30: every move direction from the
+           starting kitchen, a tall piece swapping and at the wall's end, a new column at either end, a move that changes
+           nothing, an add into the first free place and into a new column, the cap, a remove;
+       2 · MY KITCHEN'S OWN FUNCTIONS, copied here by hand from Simmer's My kitchen page as they stood before they moved
+           (move, canMove, compact, colsOf, cellOf, tallIn, sig, and addPiece's choice of column), run side by side with
+           the rules over thousands of changes from the starting kitchen, seeded so every run walks the same kitchens: after
+           every change every piece stands where My kitchen's wall would have it, and every move of every piece is offered
+           exactly when My kitchen offered it.
+     Not the file checked against itself: neither answer reads the rules to know what they should say. Red first, each
+     fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, 2026-10-30). */
+  {
+    const R = [], vm = require('vm'), B = { Object, Array, Number, Math, Set, String }, heard = new Set();
+    let KIT = null;
+    try { const box = new Proxy(B, { get(t, k) { if (typeof k === 'string') heard.add(k); return Reflect.get(t, k); } });
+      KIT = vm.runInContext(fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;KITCHEN', vm.createContext(box), { filename: 'engine/kitchen.js' }); }
+    catch (e) { R.push('engine/kitchen.js does not run on its own (' + String(e.message || e).slice(0, 120) + ')'); }
+    const RU = KIT && KIT.rules;
+    if (KIT && (!RU || ['add', 'move', 'canMove', 'remove', 'paint', 'paintAll', 'compact'].some(n => typeof RU[n] !== 'function'))) R.push('KITCHEN.rules does not have add, move, canMove, remove, paint, paintAll and compact — a page that changes a kitchen has no rules to change it by');
+    else if (KIT) {
+      if (KIT.most !== 40) R.push('KITCHEN.most is ' + JSON.stringify(KIT.most) + ', and a kitchen holds 40 pieces, as My kitchen\'s PIECES_MAX did');
+      /* MY KITCHEN'S OWN, copied by hand from Simmer's My kitchen page before 2026-10-30; only its globals made arguments
+         (K for the page's kitchen, its kinds and rows written out as My kitchen read them, the cap its PIECES_MAX) */
+      const MK = (() => {
+        const ROWS = ['upper', 'counter', 'lower'], KINDS = { fridge: 'tall', freezer: 'tall', 'upper-cupboards': 'upper', 'lower-cupboards': 'lower', drawers: 'lower', shelves: 'upper', counter: 'counter' }, PIECES_MAX = 40;
+        const colsOf = k => k.pieces.reduce((n, p) => Math.max(n, p.col + 1), 0);
+        const tallIn = (k, c) => k.pieces.find(p => p.col === c && p.row === 'tall') || null;
+        const cellOf = (k, row, c) => k.pieces.find(p => p.col === c && (p.row === 'tall' || p.row === row)) || null;
+        const clone = k => JSON.parse(JSON.stringify(k));
+        const sig = k => k.pieces.map(p => p.id + ':' + p.row + ':' + p.col).sort().join('|');
+        function compact(kk) { const used = [...new Set(kk.pieces.map(p => p.col))].sort((a, b) => a - b); kk.pieces.forEach(p => { p.col = used.indexOf(p.col); }); }
+        function move(k, id, dir) {
+          const p = k.pieces.find(x => x.id === id); if (!p) return false;
+          const n = colsOf(k), at = (row, c) => cellOf(k, row, c), tallAt = c => tallIn(k, c);
+          if (dir === 'left' || dir === 'right') {
+            const d = dir === 'left' ? -1 : 1;
+            if (p.row === 'tall') { const c1 = p.col, c2 = c1 + d; if (c2 < 0 || c2 >= n) return false; k.pieces.forEach(x => { if (x.col === c2) x.col = c1; }); p.col = c2; return true; }
+            let c2 = p.col + d;
+            while (c2 >= 0 && c2 < n && tallAt(c2)) c2 += d;
+            if (c2 < 0) { k.pieces.forEach(x => { x.col += 1; }); p.col = 0; }
+            else if (c2 >= n) p.col = n;
+            else { const o = at(p.row, c2); if (o) o.col = p.col; p.col = c2; }
+            return true;
+          }
+          if (p.row === 'tall') return false;
+          const r2 = ROWS[ROWS.indexOf(p.row) + (dir === 'up' ? -1 : 1)];
+          if (!r2) return false;
+          const o = at(r2, p.col); if (o) o.row = p.row; p.row = r2; return true;
+        }
+        function canMove(K, id, dir) { const now = clone(K), sim = clone(K); compact(now); if (!move(sim, id, dir)) return false; compact(sim); return sig(sim) !== sig(now); }
+        function newId(K) { for (let i = 1; ; i++) if (!K.pieces.some(p => p.id === 'p' + i)) return 'p' + i; }
+        function addPiece(K, kind) {
+          if (K.pieces.length >= PIECES_MAX || !Object.prototype.hasOwnProperty.call(KINDS, kind)) return false;
+          const home = KINDS[kind], n = colsOf(K), at = (row, c) => cellOf(K, row, c);
+          let col = n;
+          if (home !== 'tall') for (let c = 0; c < n; c++) { if (tallIn(K, c)) continue; if (!at(home, c)) { col = c; break; } }
+          K.pieces.push({ id: newId(K), kind, name: null, row: home, col, fullness: null }); compact(K); return true;
+        }
+        function removePiece(K, id) { K.pieces = K.pieces.filter(x => x.id !== id); compact(K); }
+        return { move, canMove, compact, addPiece, removePiece, newId };
+      })();
+      const SIDES = ['left', 'right', 'up', 'down'], KINDS = ['fridge', 'freezer', 'upper-cupboards', 'lower-cupboards', 'drawers', 'shelves', 'counter'];
+      const TPL = [['fridge', 'tall', 0], ['upper-cupboards', 'upper', 1], ['counter', 'counter', 1], ['drawers', 'lower', 1], ['shelves', 'upper', 2], ['lower-cupboards', 'lower', 2], ['freezer', 'tall', 3]];
+      const start = () => TPL.map(([kind, row, col], i) => ({ id: 'p' + (i + 1), kind, name: null, row, col, fullness: null }));
+      const shown = P => P.map(p => p.kind + ':' + p.row + ':' + p.col).join(' ');
+      const said = r => r && r.why ? 'refused (' + r.code + ')' : r && r.layout ? shown(r.layout.places) : JSON.stringify(r);
+      /* 1 · THE TABLE: [what, from (a list of [kind,row,col]), the change, what My kitchen's wall shows after] */
+      const row = s => s.split(' ').map(t => { const [k, r, c] = t.split(':'); return [k, r, Number(c)]; });
+      const S = 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3';
+      const TABLE = [
+        ['the fridge right: a tall piece swaps columns with the column beside it', S, ['move', 0, 'right'], 'fridge:tall:1 upper-cupboards:upper:0 counter:counter:0 drawers:lower:0 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the fridge left, at the wall\'s end: nothing changes, so it is not offered', S, ['move', 0, 'left'], 'refused (still)'],
+        ['the fridge up: a tall piece has no row to move to', S, ['move', 0, 'up'], 'refused (still)'],
+        ['the fridge down: a tall piece has no row to move to', S, ['move', 0, 'down'], 'refused (still)'],
+        ['the freezer left: it swaps with the shelves\' and the lower cupboards\' column', S, ['move', 6, 'left'], 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:3 lower-cupboards:lower:3 freezer:tall:2'],
+        ['the freezer right, at the wall\'s end: nothing', S, ['move', 6, 'right'], 'refused (still)'],
+        ['the upper cupboards left, past the fridge and off the wall: a new column at the left, every other column one along', S, ['move', 1, 'left'], 'fridge:tall:1 upper-cupboards:upper:0 counter:counter:2 drawers:lower:2 shelves:upper:3 lower-cupboards:lower:3 freezer:tall:4'],
+        ['the upper cupboards right: they swap with the shelves in their row', S, ['move', 1, 'right'], 'fridge:tall:0 upper-cupboards:upper:2 counter:counter:1 drawers:lower:1 shelves:upper:1 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the upper cupboards up: there is no row above', S, ['move', 1, 'up'], 'refused (still)'],
+        ['the upper cupboards down: they swap with the counter', S, ['move', 1, 'down'], 'fridge:tall:0 upper-cupboards:counter:1 counter:upper:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the drawers up: they swap with the counter', S, ['move', 3, 'up'], 'fridge:tall:0 upper-cupboards:upper:1 counter:lower:1 drawers:counter:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the drawers down: there is no row below', S, ['move', 3, 'down'], 'refused (still)'],
+        ['the counter right: into the next column\'s counter place, which is free', S, ['move', 2, 'right'], 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:2 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the shelves down: into their column\'s counter place, which is free', S, ['move', 4, 'down'], 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:counter:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the lower cupboards right, past the freezer and off the wall: a new column at the right', S, ['move', 5, 'right'], 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:4 freezer:tall:3'],
+        ['a piece alone in the last column, right: nothing changes', 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:4 freezer:tall:3', ['move', 5, 'right'], 'refused (still)'],
+        ['a piece alone in the first column, left: nothing changes', 'upper-cupboards:upper:0 fridge:tall:1', ['move', 0, 'left'], 'refused (still)'],
+        ['a piece alone in its column, right into a column with room in its row: its own column closes', 'shelves:upper:0 counter:counter:1', ['move', 0, 'right'], 'shelves:upper:0 counter:counter:0'],
+        ['a counter added: into the first column whose counter place is free', S, ['add', 'counter'], S + ' counter:counter:2'],
+        ['upper cupboards added: no column has its upper place free, so a new column at the right', S, ['add', 'upper-cupboards'], S + ' upper-cupboards:upper:4'],
+        ['a fridge added: a tall piece always stands in a new column at the right', S, ['add', 'fridge'], S + ' fridge:tall:4'],
+        ['drawers added: both lower places taken, a new column', S, ['add', 'drawers'], S + ' drawers:lower:4'],
+        ['the 40th piece: taken', Array.from({ length: 39 }, (_, c) => 'fridge:tall:' + c).join(' '), ['add', 'shelves'], Array.from({ length: 39 }, (_, c) => 'fridge:tall:' + c).join(' ') + ' shelves:upper:39'],
+        ['the 41st piece: refused, a kitchen holds at most 40', Array.from({ length: 40 }, (_, c) => 'fridge:tall:' + c).join(' '), ['add', 'shelves'], 'refused (most)'],
+        ['a kind there is none of: refused', S, ['add', 'oven'], 'refused (kind)'],
+        ['the fridge removed: the columns numbered again from the left', S, ['remove', 0], 'upper-cupboards:upper:0 counter:counter:0 drawers:lower:0 shelves:upper:1 lower-cupboards:lower:1 freezer:tall:2'],
+        ['the counter removed: its column keeps the rest', S, ['remove', 2], 'fridge:tall:0 upper-cupboards:upper:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['a kitchen read with gaps between its columns: numbered again from the left, nothing else moved', 'fridge:tall:2 counter:counter:5 shelves:upper:5 freezer:tall:9', ['compact'], 'fridge:tall:0 counter:counter:1 shelves:upper:1 freezer:tall:2'],
+      ];
+      let rows = 0;
+      TABLE.forEach(([what, from, [op, a, b], want]) => {
+        const L = { places: row(from).map(([kind, r, col]) => ({ kind, row: r, col })) }, before = JSON.stringify(L);
+        let r; try { r = RU[op](L, a, b); } catch (e) { R.push(what + ': the rule threw (' + e.message + ')'); return; }
+        rows++;
+        if (said(r) !== want) R.push(what + ': the rule gives ' + said(r) + ', where My kitchen\'s wall shows ' + want);
+        if (JSON.stringify(L) !== before) R.push(what + ': the layout handed in came back changed — a rule changes nothing it is handed');
+        if (op === 'move') { const can = RU.canMove(L, a, b); if (can !== (want !== 'refused (still)')) R.push(what + ': canMove says ' + can + ', and the move ' + (can ? 'is refused' : 'is made')); } });
+      /* 2 · SIDE BY SIDE WITH MY KITCHEN'S OWN, from the starting kitchen, every change seeded */
+      let seed = 20261030; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      let steps = 0, offers = 0, adds = 0, moves = 0, removes = 0; const diff = [];
+      try { for (let run = 0; run < 6 && diff.length < 4; run++) {
+        let K = { pieces: start() };
+        for (let s = 0; s < 150 && diff.length < 4; s++) {
+          const L = { places: K.pieces }, pick = rnd();
+          /* every move of every piece offered exactly when My kitchen offered it */
+          K.pieces.forEach((p, i) => SIDES.forEach(d => { offers++; const a = MK.canMove(K, p.id, d), e = RU.canMove(L, i, d); if (a !== e) diff.push('in ' + shown(K.pieces) + ', ' + p.kind + ' ' + d + ': My kitchen offers it ' + a + ', the rules ' + e); }));
+          let after = null, r = null;
+          if (pick < 0.62 && K.pieces.length) {   /* a move My kitchen offers, as its panel would make it */
+            const i = Math.floor(rnd() * K.pieces.length), d = SIDES[Math.floor(rnd() * 4)], p = K.pieces[i];
+            r = RU.move(L, i, d); const mk = JSON.parse(JSON.stringify(K));
+            if (MK.canMove(K, p.id, d)) { MK.move(mk, p.id, d); MK.compact(mk); after = mk; moves++; } else after = null;
+            if (!after !== !!(r && r.why)) diff.push('in ' + shown(K.pieces) + ', ' + p.kind + ' ' + d + ': My kitchen ' + (after ? 'moves it' : 'does not') + ', the rules ' + said(r));
+          } else if (pick < 0.86) {
+            const kind = KINDS[Math.floor(rnd() * KINDS.length)], mk = JSON.parse(JSON.stringify(K));
+            r = RU.add(L, kind); after = MK.addPiece(mk, kind) ? mk : null; if (after) adds++;
+            if (r && r.layout) { const np = r.layout.places[r.layout.places.length - 1]; np.id = MK.newId(K); np.name = null; np.fullness = null; }
+            if (!after !== !!(r && r.why)) diff.push('in ' + shown(K.pieces) + ', ' + kind + ' added: My kitchen ' + (after ? 'adds it' : 'does not') + ', the rules ' + said(r));
+          } else if (K.pieces.length > 1) {
+            const i = Math.floor(rnd() * K.pieces.length), mk = JSON.parse(JSON.stringify(K));
+            r = RU.remove(L, i); MK.removePiece(mk, K.pieces[i].id); after = mk; removes++;
+          }
+          steps++;
+          if (after && r && r.layout) {
+            const want = after.pieces.map(p => p.id + ':' + p.kind + ':' + p.row + ':' + p.col).sort().join(' '), got = r.layout.places.map(p => p.id + ':' + p.kind + ':' + p.row + ':' + p.col).sort().join(' ');
+            if (want !== got) diff.push('from ' + shown(K.pieces) + ': My kitchen\'s wall shows ' + want + ', the rules ' + got);
+            K = { pieces: r.layout.places };
+          }
+        }
+      } } catch (e) { diff.push('a rule threw while the kitchens were walked (' + String(e && e.message || e).slice(0, 120) + ')'); }
+      R.push(...diff.slice(0, 4));
+      [...heard].filter(n => !Object.prototype.hasOwnProperty.call(B, n)).forEach(n => R.push('the rules read "' + n + '" from outside engine/kitchen.js — they are handed a layout and read nothing else'));
+      if (!rows || !steps || !offers) R.push('the rules were asked nothing (' + rows + ' rows, ' + steps + ' changes, ' + offers + ' moves offered): nothing measured is not a pass');
+      console.log('  COUNT-ONLY: the kitchen\'s rules: ' + rows + ' rows of My kitchen\'s wall, each as it shows; and side by side with My kitchen\'s own functions, ' + steps + ' changes from the starting kitchen (' + moves + ' moves, ' + adds + ' adds, ' + removes + ' removes), every piece where its wall has it, and ' + offers + ' moves each offered exactly when it offered them');
+    }
+    fails.push(...R.map(m => 'the kitchen\'s rules (2026-10-30): ' + m));
+  }
+
   /* ---- THE KITCHEN LAYOUT, OPEN, THE TAP, THE ZOOM AND THE CLOSET (2026-10-30) ----
      engine/engine.js, grep "THE KITCHEN LAYOUT", "THE CAMERA'S ZOOM", "THE CLOSET". What a person would notice, each in its
      own sentence below: a kitchen that stands half built, or one built from a layout the engine should have refused; a
@@ -1372,6 +1525,23 @@ function findChromium() {
           ['a name that is not text', () => g(p(1, { name: { toString: () => 'x' } })), 'not a name'],
           ['a fullness off the list', () => g(p(1, { full: 'half' })), 'full'],
           ['a fullness that is a number', () => g(p(1, { full: 1 })), 'full'],
+          /* 2026-10-30, builder mode: the wall's free squares, the world's store, a place's finish and its id */
+          ['free squares that are not a list', () => g(L => { L.free = '4,1'; }), 'not a list'],
+          ['a free square that is not a square', () => ({ wall: [[2, 1], [3, 1]], free: [[4]], places: good().places, _room: RID3 }), 'not a square'],
+          ['a free square off the map', () => g(L => { L.free = [[30, 1]]; }), 'off the map'],
+          ['a free square that is not a kitchen column in the map', () => g(L => { L.free = [[1, 2]]; }), 'not a kitchen column'],
+          ['a free square that is a column of the wall', () => g(L => { L.free = [[3, 1]]; }), 'column 1 of its wall already'],
+          ['one free square named twice', () => ({ wall: [[2, 1], [3, 1]], free: [[4, 1], [4, 1]], places: good().places, _room: RID3 }), 'free square 0 already'],
+          ['a wall and free squares of 41', () => g(L => { L.free = Array.from({ length: 39 }, (_, i) => [i, 3]); }), 'at most 40'],
+          ['a store that is not a function', () => g(L => { L.store = 'localStorage'; }), 'store'],
+          ['a finish off the list', () => g(p(0, { finish: 'pink' })), 'a finish is one of'],
+          ['a colour typed in for a finish', () => g(p(0, { finish: '#FF00FF' })), 'a finish is one of'],
+          ['a finish given as an inherited name', () => g(p(0, { finish: 'toString' })), 'a finish is one of'],
+          ['a finish that is not text', () => g(p(0, { finish: { body: '#000' } })), 'a finish is one of'],
+          ['a finish on the counter, which takes none', () => g(p(1, { finish: 'white' })), 'takes no finish'],
+          ['an id that is not one', () => g(p(0, { id: 'a b' })), 'not an id'],
+          ['an id one character too long', () => g(p(0, { id: 'x'.repeat(31) })), 'not an id'],
+          ['two places with one id', () => g(L => { L.places[0].id = 'p1'; L.places[1].id = 'p1'; }), 'two places have the id'],
         ];
         const out = [];
         cases.forEach(([what, make, want]) => { const L = make(), room = L && L._room || RID; if (L && L._room) delete L._room;
@@ -1394,6 +1564,12 @@ function findChromium() {
         /* and a good one stands, so the refusals above were refusals of those faults and not of everything */
         const ok = kitchenLay(RID, good());
         if (ok !== null) out.push('the good layout the refusals start from is refused itself: ' + ok);
+        /* and so does one with a free square, a finish on each piece a finish goes on, an id on each, and a store: each kept
+           as it was handed in (2026-10-30) */
+        { const st = () => {}, L = { wall: [[2, 1], [3, 1]], free: [[4, 1]], places: [{ kind: 'fridge', row: 'tall', col: 0, finish: 'white', id: 'p1' }, { kind: 'counter', row: 'counter', col: 1, id: 'p-2' }], store: st };
+          const s2 = kitchenLay(RID3, L), K = KITWALL[RID3];
+          if (s2 !== null) out.push('a layout with a free square, a finish, ids and a store is refused: ' + s2);
+          else if (JSON.stringify(K.free) !== '[[4,1]]' || K.places[0].finish !== 'white' || K.places[0].id !== 'p1' || K.places[1].id !== 'p-2' || K.places[1].finish !== undefined || K.store !== st) out.push('a layout with a free square, a finish, ids and a store stands without them as they were handed in (' + JSON.stringify({ free: K.free, places: K.places, store: typeof K.store }) + ')'); }
         delete KITWALL[RID]; delete KITWALL[RID3]; delete KITWALL[RIDS]; delete WORLDS[RID]; delete WORLDS[RID3]; delete WORLDS[RIDS];
         return { out, n: cases.length };
       }, T.ID);
@@ -1613,6 +1789,221 @@ function findChromium() {
     kErr.forEach(m => say('the test kitchens\' page threw: ' + m.split('\n')[0]));
     await kp.close();
     fails.push(...KL.map(m => 'kitchen (2026-10-30): ' + m));
+  }
+
+  /* ---- THE KITCHEN BUILDER AND THE FINISHES (2026-10-30) ----
+     engine/engine.js, grep "THE KITCHEN BUILDER"; engine/shapes.js, grep "FINISHED"; the builder and the finishes of 2026-10-30.
+     What a person would notice, each in its own sentence below: a builder bar in a world that has no
+     builder, or in a room whose layout keeps nothing; a change that lands somewhere the kitchen's rules would not put it; a
+     change the world was never handed, or was handed without a layout, or handed a layout the engine would refuse; a
+     change made although the world could not keep it; an undo that does not bring back exactly what stood before; a new
+     column with no free square to stand on; the engine writing a kitchen into storage itself; a tap in builder mode that
+     opens a place instead of picking it; a piece painted in a finish that is not one, or wood that is not exactly the wood
+     every picture so far was built in. In the shell as it stands first, then on a page of its own with a builder declared
+     (as a world declares one; a shell with its own keeps it), a made-up kitchen with a store that writes down every
+     layout it is handed, driven by the bar's own buttons and by real keys at a laptop's size. Red first, each fault
+     planted in a copy of the tree outside the repository (docs/3D-LOG.md, 2026-10-30). */
+  {
+    const KB = [], say = s => KB.push(s);
+    /* 1 · THE SHELL AS IT STANDS, with the engine's kitchen given to it as a world gives it: no builder here means no bar,
+       no key and no pick, whatever a room declares */
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    const np0 = await browser.newPage({ viewport: { width: 1280, height: 800 } }), nErr0 = [];
+    np0.on('pageerror', e => nErr0.push(e.message));
+    await np0.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await np0.addInitScript({ content: kitSrc });
+    await np0.goto('file://' + file); await np0.waitForTimeout(1200);
+    const sh = await np0.evaluate(async () => {
+      const out = { builder: buildOK(), said: [] };
+      if (out.builder) return out;   /* a shell with a builder is asked below, on a page of its own */
+      const R = ['######', '#' + KITCOL.repeat(4) + '#', '#....#', '######'], ID = '__kb_none', keep = { world, px, py, admin, hid: $('world').hidden };
+      WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 6, H: 4 };
+      let stored = 0;
+      try { const s = kitchenLay(ID, { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places: [{ kind: 'fridge', row: 'tall', col: 0 }, { kind: 'counter', row: 'counter', col: 1 }, { kind: 'shelves', row: 'upper', col: 2 }, { kind: 'freezer', row: 'tall', col: 3 }], store: () => { stored++; } });
+        if (s !== null) { out.said.push('a layout with a store was refused in this shell: ' + s); return out; }
+        world = ID; px = fx = 2; py = fy = 2; $('world').hidden = false; admin = true; applyAdmin(); checkTalk();
+        const t = document.activeElement; if (t && t.blur) t.blur();
+        [']', '['].forEach(k => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+        const bar = document.getElementById('kitBuild');
+        if (kitBuildOn()) out.said.push('kitBuildOn() is true in a world that declares no builder');
+        if (bar && !bar.hidden) out.said.push('a world with no builder shows the kitchen builder\'s bar');
+        if (Object.keys(KITB.sel).length || stored || KITWALL[ID].places[0].col !== 0) out.said.push('in a world with no builder the builder\'s keys picked or moved a piece (' + stored + ' changes handed to the store)');
+        held = null;
+      } finally { delete KITWALL[ID]; delete WORLDS[ID]; world = keep.world; px = fx = keep.px; py = fy = keep.py; admin = keep.admin; applyAdmin(); $('world').hidden = keep.hid; }
+      return out; });
+    nErr0.forEach(m => say('the page with no builder threw: ' + m.split('\n')[0]));
+    await np0.close();
+    sh.said.forEach(m => say('in this shell, with no builder: ' + m));
+    if (!sh.builder) console.log('  COUNT-ONLY: this shell declares no builder: no bar, no keys and no pick here with builder mode on and a layout that keeps its changes');
+
+    /* 2 · ON A PAGE OF ITS OWN, WITH A BUILDER DECLARED: the finishes built, then the builder driven */
+    const bp = await browser.newPage({ viewport: { width: 1280, height: 800 } }), bErr = [];
+    bp.on('pageerror', e => bErr.push(e.message));
+    await bp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await bp.addInitScript({ content: kitSrc });
+    await bp.addInitScript(() => { window.BUILDER = {}; });
+    await bp.goto('file://' + file); await bp.waitForTimeout(1500);
+    try {
+      /* 2a · THE FINISHES, built: wood (and a finish left out, or one off the list) exactly the parts every picture so far was
+         built from, pinned below; every other finish the same parts in other colours, and only on what a finish goes on */
+      const FIN = await bp.evaluate(() => {
+        if (typeof SHAPES !== 'object' || !SHAPES || typeof KITCHEN !== 'object' || !KITCHEN.finishes) return null;
+        const PR = ['###', '#.#', '#.#', '###'], ID = '__kb_finish', keep = world, out = { pins: {}, said: [] };
+        WORLDS[ID] = { rows: PR.slice(), rows0: PR.slice(), grid: PR.map(r => r.split('')), npcs: [], W: 3, H: 4 }; world = ID;
+        const hash = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); };
+        const noC = ps => JSON.stringify(ps.map(p => { const q = Object.assign({}, p); delete q.c; return q; }));
+        try {
+          Object.keys(KITCHEN.pieces).forEach(kind => { const fn = SHAPES[KITCHEN.pieces[kind]];
+            [undefined, 1].forEach(o => { const base = fn({ x: 1, y: 1, open: o }), J = JSON.stringify(base), at = kind + (o ? ' open' : ' shut');
+              out.pins[at] = hash(J);
+              ['wood', 'pink', '#FFFFFF', 7].forEach(f => { if (JSON.stringify(fn({ x: 1, y: 1, open: o, finish: f })) !== J) out.said.push('the ' + at + ' in finish ' + JSON.stringify(f) + ' is not exactly the wood one, as a finish left out or off the list is'); });
+              Object.keys(KITCHEN.finishes).filter(f => f !== 'wood').forEach(f => { const ps = fn({ x: 1, y: 1, open: o, finish: f });
+                if (noC(ps) !== noC(base)) out.said.push('the ' + at + ' in ' + f + ' is not the wood one\'s parts, place for place, in other colours');
+                const changed = JSON.stringify(ps) !== J, takes = !KITCHEN.unfinished.includes(kind);
+                if (takes && !changed) out.said.push('the ' + at + ' in ' + f + ' is the same as in wood: the finish does not show');
+                if (!takes && changed) out.said.push('the ' + at + ' takes no finish, and in ' + f + ' it is built otherwise'); }); }); });
+        } finally { world = keep; delete WORLDS[ID]; }
+        out.wood = KITCHEN.finishes.wood && [KITCHEN.finishes.wood.body, KITCHEN.finishes.wood.front, KITCHEN.finishes.wood.goods];
+        out.C = [C.desk, C.deskTop];
+        return out; });
+      /* every kitchen piece, shut and open, as the engine built it on 2026-10-29 and 2026-10-30, before there were finishes:
+         a hash of its parts (FNV-1a of its JSON, in a square with a wall to its north), written down here from the engine of
+         Taller_Quest b1e440d, the last before there were finishes (docs/3D-LOG.md, 2026-10-30) */
+      const PIN = { 'fridge shut': 'ffb84b83', 'fridge open': '2ceebf95', 'freezer shut': 'cb8c73d9', 'freezer open': '85f3bcbe', 'upper-cupboards shut': 'b91a8d64', 'upper-cupboards open': 'fda3f521',
+        'lower-cupboards shut': '9e5118eb', 'lower-cupboards open': 'dc5a55b2', 'drawers shut': '143ad756', 'drawers open': 'cce03003', 'shelves shut': '9da273c8', 'shelves open': '9da273c8', 'counter shut': '8cd7695', 'counter open': '8cd7695' };
+      if (!FIN) console.log('  COUNT-ONLY: the finishes were not built in this shell, which has no 3D camera');
+      else {
+        FIN.said.forEach(m => say('the finishes: ' + m));
+        Object.keys(PIN).forEach(k => { if (FIN.pins[k] !== PIN[k]) say('the finishes: the ' + k + ', its finish left out, is not built exactly as every kitchen was before there were finishes (its parts hash to ' + FIN.pins[k] + ', not ' + PIN[k] + ')'); });
+        if (!Object.keys(PIN).length) say('the finishes: no piece is pinned, so wood was compared with nothing');
+        if (FIN.wood && (FIN.wood[0] !== FIN.C[0] || FIN.wood[1] !== FIN.C[1] || FIN.wood[2] !== null)) say('the finishes: wood in KITCHEN.finishes is ' + JSON.stringify(FIN.wood) + ', not the theme\'s furniture wood the cabinets are built in (' + FIN.C.join(', ') + ') with the white goods\' own colours — the list says one thing and the pieces show another');
+        console.log('  COUNT-ONLY: the finishes: ' + Object.keys(FIN.pins).length + ' kitchen pieces, shut and open, built with no finish exactly as before there were finishes (' + Object.keys(PIN).length + ' pinned), and the same in wood, in a name off the list and in a colour typed in; in each other finish the same parts in other colours, the counter in none');
+      }
+      /* 2b · THE BUILDER, in a made-up kitchen of the template's seven places, four columns and two free squares, whose
+         store writes down every layout it is handed (and throws when told to) */
+      const T0 = await bp.evaluate(() => {
+        const ID = '__kb_kitchen', R = ['##########', '#' + KITCOL.repeat(6) + '###', '#........#', '#........#', '#........#', '##########'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 10, H: 6 };
+        window.__kbKept = []; window.__kbThrow = false;
+        const store = L => { if (window.__kbThrow) throw new Error('this device keeps nothing today'); window.__kbKept.push(JSON.parse(JSON.stringify(L === undefined ? null : L))); };
+        const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        const L = { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1], [6, 1]], places, store, page: pl => [{ p: 'inside ' + (pl.id || 'a new ' + pl.kind) }] };
+        window.__kbLayout = L;
+        const s = kitchenLay(ID, L);
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 3; dir = 'up'; enterWorld(false); camSet('top');
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        return { ID, s, store: buildOK() };
+      });
+      if (T0.s !== null) throw 'the builder\'s test kitchen was refused: ' + T0.s;
+      const ID = T0.ID;
+      const st = () => bp.evaluate(ID => { const b = document.getElementById('kitBuild');
+        return { on: kitBuildOn(), bar: !!b && !b.hidden, sel: kitBuildSel(), data: kitData(KITWALL[ID]), kept: window.__kbKept.length, said: b ? document.getElementById('kbSaid').textContent : '', mode: KITB.mode }; }, ID);
+      const storage = () => bp.evaluate(() => { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!/log$/.test(k)) o[k] = localStorage.getItem(k); } return JSON.stringify(o); });
+      const blur = () => bp.evaluate(() => { const t = document.activeElement; if (t && t !== document.body && t.blur) t.blur(); });
+      /* a — builder mode off: no bar; on: the bar; a room whose layout keeps nothing: no bar */
+      await bp.evaluate(() => { admin = false; applyAdmin(); checkTalk(); });
+      if ((await st()).bar) say('with builder mode off, the kitchen builder\'s bar is shown');
+      await bp.evaluate(() => { admin = true; applyAdmin(); checkTalk(); });
+      let S = await st();
+      if (!S.on || !S.bar) say('with builder mode on in a room whose layout keeps its changes, there is no kitchen builder\'s bar');
+      const noStore = await bp.evaluate(ID => { const L = Object.assign({}, window.__kbLayout); delete L.store; kitchenLay(ID, L); checkTalk(); const b = document.getElementById('kitBuild'), r = { on: kitBuildOn(), bar: !!b && !b.hidden };
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true })); r.sel = kitBuildSel(); kitchenLay(ID, window.__kbLayout); checkTalk(); return r; }, ID);
+      if (noStore.on || noStore.bar || noStore.sel !== null) say('in a room whose layout declares no store, builder mode offers the kitchen builder anyway (' + JSON.stringify(noStore) + ')');
+      const before = await storage(), history = [];
+      /* one change, by a real key or a real click, held to the rules, the check and the store */
+      let changes = 0;
+      const canon = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, q) => (o[q] = x[q], o), {}) : x);
+      const change = async (what, act, rule) => { const a = await st(); history.push(a.data);
+        await act(); await bp.waitForTimeout(60); const b2 = await st(); changes++;
+        const want = await bp.evaluate(([d, rule]) => { const r = KITCHEN.rules[rule[0]](d, ...rule.slice(1)); return r.why ? null : r.layout.places; }, [a.data, rule]);
+        if (b2.kept !== a.kept + 1) { say(what + ': the world\'s store was handed ' + (b2.kept - a.kept) + ' layouts for one change'); return b2; }
+        const kept = await bp.evaluate(() => window.__kbKept[window.__kbKept.length - 1]);
+        if (!kept || !Array.isArray(kept.wall) || !Array.isArray(kept.places)) say(what + ': the store was handed ' + JSON.stringify(kept) + ', not a layout');
+        else { if (JSON.stringify(kept) !== JSON.stringify(b2.data)) say(what + ': the store was handed one layout and another stands (' + JSON.stringify(kept.places) + ')');
+          const chk = await bp.evaluate(([ID, k]) => kitchenCheck(ID, k).why || null, [ID, kept]); if (chk) say(what + ': the store was handed a layout the engine refuses: ' + chk);
+          if (!want) say(what + ': the change was made although the kitchen\'s rules refuse it');
+          else if (canon(kept.places) !== canon(want)) say(what + ': the change lands as ' + JSON.stringify(kept.places.map(p => p.kind + ':' + p.row + ':' + p.col)) + ', where the kitchen\'s rules put it ' + JSON.stringify(want.map(p => p.kind + ':' + p.row + ':' + p.col)));
+          if (kept.wall.length + kept.free.length !== a.data.wall.length + a.data.free.length || JSON.stringify(kept.wall.concat(kept.free)) !== JSON.stringify(a.data.wall.concat(a.data.free))) say(what + ': the wall\'s squares are not the same squares in the same order (' + JSON.stringify(kept.wall) + ' and free ' + JSON.stringify(kept.free) + ')'); }
+        return b2; };
+      /* b — picked by the keys: ] the first in the wall's order, ] again the next */
+      await blur(); await bp.keyboard.press(']'); S = await st();
+      if (S.sel !== 0) say('] picked place ' + S.sel + ', where the first in the wall\'s order is the fridge, place 0');
+      await bp.keyboard.press(']'); S = await st();
+      if (S.sel !== 1) say('] again picked place ' + S.sel + ', where the next in the wall\'s order is the upper cupboards, place 1');
+      /* c — moved by Shift and an arrow: the upper cupboards right, swapping with the shelves */
+      S = await change('the upper cupboards moved right by Shift and the right arrow', () => bp.keyboard.press('Shift+ArrowRight'), ['move', 1, 'right']);
+      if (S.sel !== 1) say('after a move the pick is place ' + S.sel + ', not the piece moved');
+      /* the arrows alone still walk, and move nothing */
+      const kept0 = S.kept; await bp.keyboard.down('ArrowLeft'); await bp.waitForTimeout(120); await bp.keyboard.up('ArrowLeft'); S = await st();
+      if (S.kept !== kept0) say('an arrow without Shift changed the kitchen: it is the walking key');
+      /* d — a kind the kitchen has asks first; its yes adds one, on the wall's first free square */
+      await bp.click('#kbRow [data-kb=add]'); await bp.click('#kbMore [data-v="upper-cupboards"]'); S = await st();
+      if (S.mode !== 'again' || S.kept !== kept0) say('upper cupboards, a kind the kitchen has, were ' + (S.kept !== kept0 ? 'added' : 'not asked about') + ' at the first press, where My kitchen asks first');
+      S = await change('upper cupboards added after its question', () => bp.click('#kbMore [data-kb=againYes]'), ['add', 'upper-cupboards']);
+      if (JSON.stringify(S.data.wall[S.data.wall.length - 1]) !== '[5,1]') say('a new column does not stand on the wall\'s first free square (5,1): the wall is ' + JSON.stringify(S.data.wall));
+      if (S.sel !== 7) say('a piece added is not the one picked (' + S.sel + ')');
+      /* e — painted white by the bar, then the whole kitchen grey; the counter takes none */
+      S = await change('the new upper cupboards painted white', async () => { await bp.click('#kbRow [data-kb=paint]'); await bp.click('#kbMore [data-v=white]'); }, ['paint', 7, 'white']);
+      if (S.data.places[7].finish !== 'white') say('painted white, the upper cupboards are finished in ' + JSON.stringify(S.data.places[7].finish));
+      S = await change('the whole kitchen painted grey', async () => { await bp.click('#kbRow [data-kb=paint]'); await bp.click('#kbMore [data-kb=all]'); await bp.click('#kbMore [data-v=grey]'); }, ['paintAll', 'grey']);
+      const counter = S.data.places.find(p => p.kind === 'counter'); if (counter && counter.finish !== undefined) say('the whole kitchen painted, the counter is finished in ' + counter.finish + ', and it takes none');
+      await bp.evaluate(() => { KITB.all = false; });
+      /* f — removed by Delete, which asks first; its yes removes it */
+      await blur(); await bp.keyboard.press('['); await bp.keyboard.press('['); S = await st(); const gone = S.sel;
+      await bp.keyboard.press('Delete'); S = await st();
+      if (S.mode !== 'remove' || S.kept !== changes + 0) say('Delete did not ask before removing (it is ' + JSON.stringify(S.mode) + ')');
+      S = await change('the piece picked removed, after its question', () => bp.click('#kbMore [data-kb=removeYes]'), ['remove', gone]);
+      /* g — the wall full: a new column with no free square is refused in a sentence, and the world is handed nothing */
+      S = await change('a fridge added, on the last free square', async () => { await bp.click('#kbRow [data-kb=add]'); await bp.click('#kbMore [data-v=fridge]'); await bp.click('#kbMore [data-kb=againYes]'); }, ['add', 'fridge']);
+      const k1 = S.kept; await bp.click('#kbRow [data-kb=add]'); await bp.click('#kbMore [data-v=freezer]'); await bp.click('#kbMore [data-kb=againYes]'); S = await st();
+      const noRoom = await bp.evaluate(() => (T() && T().kbNoRoom) || 'There is no free square on this wall for a new column.');
+      if (S.kept !== k1) say('with no free square left, a freezer was added anyway (' + (S.kept - k1) + ' layouts handed to the store)');
+      if (S.said !== noRoom) say('with no free square left, adding a freezer says "' + S.said + '", not that there is no free square ("' + noRoom + '")');
+      /* h — a world that cannot keep a change: nothing is made, and it says so */
+      await bp.evaluate(() => { window.__kbThrow = true; kitBuildPick(0); }); const was = JSON.stringify(S.data);
+      await bp.click('#kbRow [data-kb=paint]'); await bp.click('#kbMore [data-v=violet]'); S = await st();
+      await bp.evaluate(() => { window.__kbThrow = false; });
+      if (JSON.stringify(S.data) !== was) say('a change the world could not keep was made anyway');
+      const notKept = await bp.evaluate(() => (T() && T().kbNotKept) || 'That change could not be kept on this device, so it was not made.');
+      if (S.said !== notKept) say('a change the world could not keep says "' + S.said + '", not that it was not kept');
+      /* i — undo, by Ctrl+Z and by the button, each bringing back exactly what stood before, handed to the store like any change */
+      for (let k = history.length - 1; k >= 0; k--) { const a = await st();
+        if (k % 2) { await blur(); await bp.keyboard.press('Control+z'); } else await bp.click('#kbRow [data-kb=undo]');
+        const b2 = await st();
+        if (JSON.stringify(b2.data) !== JSON.stringify(history[k])) { say('undo ' + (history.length - k) + ' did not bring back the kitchen as it stood before that change'); break; }
+        if (b2.kept !== a.kept + 1) say('undo ' + (history.length - k) + ' was not handed to the world\'s store'); }
+      const left = await bp.evaluate(() => (KITB.undo[world] || []).length); if (left) say('after every change was undone there are still ' + left + ' to undo');
+      /* nothing the engine stored while the kitchen was changed holds a kitchen: the world keeps one, never the engine */
+      const was0 = JSON.parse(before), now0 = JSON.parse(await storage());
+      Object.keys(now0).filter(k => now0[k] !== was0[k] && /"places"|"kind"|upper-cupboards|"wall"/.test(now0[k])).forEach(k => say('the engine wrote a kitchen into storage, under "' + k + '" — the world keeps a kitchen, never the engine'));
+      const all = await bp.evaluate(ID => window.__kbKept.map(L => kitchenCheck(ID, L).why || null), ID);
+      if (all.some(w => w)) say('the world\'s store was handed a layout the engine refuses: ' + all.find(w => w));
+      /* j — in 3D: a tap picks and opens nothing, the pick is framed, a tap on the floor puts it down */
+      const has3 = await bp.evaluate(() => typeof THREE !== 'undefined' && CAMS.includes('3d'));
+      if (has3) {
+        await bp.evaluate(() => { camSet('3d'); });
+        await bp.waitForTimeout(900);
+        const spot = await bp.evaluate(ID => { const K = KITWALL[ID], p = K.places.find(q => q.kind === 'fridge'), c = K.cols[p.col], v = new THREE.Vector3(c.x + 0.5, 0.5, c.y + 0.5 + 0.3).project(T3.cam), r = $('cv3').getBoundingClientRect();
+          return { i: p.i, x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
+        await bp.mouse.click(spot.x, spot.y); await bp.waitForTimeout(500);
+        const tp = await bp.evaluate(ID => { const p = KITWALL[ID].places[kitBuildSel()], c = p && KITWALL[ID].cols[p.col];
+          return { sel: kitBuildSel(), reader: !$('reader').hidden, frame: c ? kitColumnParts({ x: c.x, y: c.y }).filter(q => q.picked).length : 0 }; }, ID);
+        if (tp.reader) say('in builder mode a tap on the fridge opened its page, where it picks it');
+        if (tp.sel !== spot.i) say('in builder mode a tap on the fridge picked place ' + tp.sel + ', not the fridge');
+        if (tp.frame !== 4) say('the piece picked is not framed in 3D (' + tp.frame + ' bars of its frame)');
+        const fl = await bp.evaluate(() => { const v = new THREE.Vector3(px + 0.5, 0, py + 1.5).project(T3.cam), r = $('cv3').getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; });
+        await bp.mouse.click(fl.x, fl.y); await bp.waitForTimeout(300);
+        if (await bp.evaluate(() => kitBuildSel()) !== null) say('in builder mode a tap on the floor did not put the pick down');
+        await bp.evaluate(() => { admin = false; applyAdmin(); checkTalk(); });
+        const off = await bp.evaluate(ID => KITWALL[ID].cols.some(c => kitColumnParts({ x: c.x, y: c.y }).some(q => q.picked)), ID);
+        if (off) say('with builder mode off, a piece is still framed in 3D');
+      } else console.log('  COUNT-ONLY: the builder\'s tap was not asked, a shell with no 3D camera');
+      console.log('  COUNT-ONLY: the kitchen builder: ' + changes + ' changes by keys and the bar, each the kitchen\'s rules\' own, checked, and handed whole to the world\'s store; ' + history.length + ' undone, each to what stood before; the wall\'s two free squares filled and a third column refused; a change the world could not keep not made; storage untouched' + (has3 ? '; a tap that picks and a frame round the pick in 3D' : ''));
+    } catch (e) { if (typeof e === 'string') say(e); else say('the builder could not be driven to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    bErr.forEach(m => say('the builder\'s page threw: ' + m.split('\n')[0]));
+    await bp.close();
+    fails.push(...KB.map(m => 'the kitchen builder (2026-10-30): ' + m));
   }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----

@@ -61,8 +61,8 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
 | Shape `open` | `engine/shapes.js`, grep `HOW FAR A THING IS OPEN` (`openOf`) | a number, `0`–`1`; unset, `0` and anything not a number are shut, past `1` is `1`; read by the fridge and the kitchen wall's pieces with a door or a drawer — registered below |
-| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30) — registered below |
-| Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `places` `page`; a place's `kind` `row` `col` `name` `full`; **closed**: any other key refuses the layout whole — registered below |
+| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `remove` `paint` `paintAll` `compact`) — registered below |
+| Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store`; a place's `kind` `row` `col` `name` `full` `finish` `id`; **closed**: any other key refuses the layout whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
@@ -509,6 +509,51 @@ helper, and the person who hits it will be reading their content files, not `san
   `closetDone` `closetAfter` (the creator's title, its way out, and what is said once it is closed), `zoomIn` `zoomOut`
   (the buttons' names). Each falls back to a plain English word or the chair's own words, so a world that says none still
   works; none is read by a world that lays no kitchen, no closet and asks for no zoom.
+- **Registered 2026-10-30 (sprint 4 of the 3D kitchen) — `KITCHEN.finishes`, `KITCHEN.unfinished`, `KITCHEN.most`, and the
+  finish names `wood` `white` `violet` `grey`.** What a piece is finished in, from a short list in one place (never a
+  colour typed in, the list built to grow), the first, `wood`, what a place naming
+  none is finished in. Each finish is `{body, front, goods, flat}`: `body` a cabinet's carcass (its sides and top), `front`
+  what you touch (doors' frames and sunk panels, drawer fronts, the whole of an open shelf), `goods` the white goods'
+  enamel `{body, front}` or `null` for their own steel and frost (wood's), and `flat` the one colour a 2D wall paints the
+  piece in, measured off the 3D front so the two views agree. `unfinished` names the kinds no finish goes on (the
+  counter, stone and tile). `most` is how many pieces a kitchen holds (40, My kitchen's). Rule 2 passes: every word is a
+  kitchen's, in any game that has one. **Added to and never taken away**, like `kinds`: a finish taken off the list makes
+  every kitchen kept with one unreadable to the check. `wood` is pinned in `test/engine.smoke.js` to the theme's
+  furniture wood (`C.desk`, `C.deskTop`) and the white goods' own colours, and every piece built with no finish is pinned
+  to its parts before there were finishes. A shape reads `finish` by name only (`engine/shapes.js`, `finishOf`); a name
+  off the list, or anything else, is wood. `finish` collides with nothing already here. **Not** decided: a finish a world
+  adds of its own, a finish for the counter, and a handle's metal.
+- **Registered 2026-10-30 (sprint 4) — `KITCHEN.rules`: `add` `move` `canMove` `remove` `paint` `paintAll` `compact`, and their
+  refusal codes `layout` `place` `kind` `most` `side` `still` `finish` `bare`.** Where a piece goes when a kitchen is
+  changed, one copy, made from Simmer's My kitchen page, which calls it (2026-10-30). Each
+  takes a layout (`{places}`, anything else carried over) and answers `{layout, i, did, …}` (`did`: `added` `moved`
+  `removed` `painted` `compacted`) or `{why, code}`; a move's side is one of `left` `right` `up` `down`. Pure: it reads only what it is
+  handed and changes nothing it is handed. Held against My kitchen's own functions in `test/engine.smoke.js`, grep
+  `THE KITCHEN'S RULES`.
+- **Registered 2026-10-30 (sprint 4) — the layout's `free` and `store`; a place's `finish` and `id`.** `free`: squares of
+  the wall that hold no place yet, `[[x,y], …]`, each `◧` in the map, in the order the wall grows into them, the wall and
+  they at most 40 together; in 3D the fitter's blue tape on the floor, flat the same, in iso the floor. `store`: `(layout)
+  => …`, where a world keeps a change the builder makes, handed a plain copy `{wall, free, places}`; a throw keeps the
+  change from being made; a layout with no store is never changed by the builder. `finish`: a name on `KITCHEN.finishes`,
+  never on a kind `KITCHEN.unfinished` names. `id`: the world's own name for a place, 1 to 30 of `A–Z a–z 0–9 - _`, no
+  two alike, carried through every change so what a world keeps in a place follows it; the engine never reads it. All
+  optional; a layout that names none is read exactly as before. A card whose `row` no place of its column stands in any
+  more (moved by the builder) ends every page of that column again, so Open never hides it.
+- **Registered 2026-10-30 (sprint 4) — the kitchen builder: `kitBuildOn`, `KITB`, and a world's words for it**, in its `UI`
+  strings per language: `kbTitle` `kbNone` `kbPick` `kbKeys` (the bar's title, "nothing picked", the hint, the keys);
+  `kbPrev` `kbNext` `kbLeft` `kbRight` `kbUp` `kbDown` `kbPaint` `kbAdd` `kbRemove` `kbUndo` (each button's name);
+  `kbWhole` (paint the whole kitchen); `kbFin_<finish>` (a finish's name, one per finish on the list); `kbAgain` (with
+  `{name}`), or `kbAgainKinds` and `kbAgainYesKinds` kind by kind, and `kbAgainYes` `kbNo` (a kind the kitchen has asks
+  first); `kbRemoveAsk` (with `{name}`) and `kbRemoveYes`; `kbAdded` `kbMoved` `kbRemoved` (with `{name}`), `kbPainted`
+  (`{name}`, `{finish}`), `kbPaintedAll` (`{finish}`), `kbUndone` `kbNothing`; and the refusals `kbNoRoom` (no free
+  square), `kbMost` (`{n}`), `kbBare` (the counter), `kbStill` `kbNotKept` `kbLast`. Each falls back to plain English.
+  The builder is offered only in a world with `BUILDER`, in builder mode (`admin`), in a room whose layout has a `store`;
+  in any other world none of it runs and none of these words is read. Its keys: `[` `]` pick, Shift and an arrow move,
+  Delete or Backspace ask to remove, Ctrl or ⌘ and Z undo, Escape puts a row away. A picked piece's frame parts carry
+  `picked`, read by the suite and never by the bake; the free square's tape carries `tape`.
+- **Registered 2026-10-30 (sprint 4) — a picture's own words: `kv` beside `art`** on a reader's section. Not shown again
+  under the picture (the picture shows them); what a screen reader is told it is (`role="img"` and its label) and what
+  Copy and Download write, as `kv` always was. A picture with no `kv` is exactly as before.
 - **Registered 2026-10-30 — the closet's parts: `rail`, `hanger`, `garment`**, beside `carcass`, `inside`, `shelf`, `door`,
   `handle` and `kick`, as the table's `cloth` and `plate` say what they are (`garment` and not `cloth`, which is the
   table's: one name, one part); read by the suite, never by the bake.

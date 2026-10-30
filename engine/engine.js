@@ -1033,6 +1033,7 @@ function drawIso(){
       ctx.fillStyle=art("bloom","#B08FE0");[[-8,-4],[4,-9],[8,0],[-2,-2]].forEach(q=>{
         ctx.beginPath();ctx.arc(cx+q[0]+t2,cy-16+q[1],1.6,0,7);ctx.fill();});canopyDress(ctx,cx+t2,cy-16);}});
     else if(gch===KITCOL&&kitIso(w,x,y))R.push({d:x+y,f:()=>isoBlock(cx,cy,kitIso(w,x,y).c,isoH(w,x,y))});   /* a kitchen column, in its tallest place's colour */
+    else if(gch===KITCOL&&w===CW()&&kitFreeAt(x,y)){}   /* a free square of a kitchen wall: the floor shows (grep "THE KITCHEN BUILDER") */
     else R.push({d:x+y,f:()=>isoBlock(cx,cy,ISOCOL[gch]||ISOCOL[w.rows[y][x]]||C.wall,isoH(w,x,y))});
   }
   /* THE WELL, LOOKED INTO (the owner chose option B). This camera drew the hole as ordinary
@@ -1146,7 +1147,8 @@ function camSet(m){
   cv.hidden=is3;
   sizeCanvas();  /* the world's height depends on which camera is running now */
   if($("rot3d"))$("rot3d").hidden=!is3;
-  if(typeof camZoomShow==="function"&&typeof CAMZ!=="undefined")camZoomShow();}   /* the zoom's two buttons go where the turn goes (grep "THE CAMERA'S ZOOM") */
+  if(typeof camZoomShow==="function"&&typeof CAMZ!=="undefined")camZoomShow();   /* the zoom's two buttons go where the turn goes (grep "THE CAMERA'S ZOOM") */
+  if(kitBuildReady)kitBuildShow();}
 document.querySelectorAll("#camRow button").forEach(b=>b.addEventListener("click",()=>camSet(b.dataset.cam)));
 /* ═══════════ THE CAMERA'S ZOOM (2026-10-30) — the 3D camera in and out, for a world that asks ═══════════
    `CAMZOOM = true` in a world's content, or `{min, max}`: how near and how far the camera may come, as a share of where
@@ -1386,10 +1388,15 @@ TILEDRAW["━"]=rc=>{const{sx,sy}=rc; /* a worktop: a tiled splash behind it, th
 TILEDRAW["⎕"]=rc=>{const{sx,sy}=rc;
       ctx.fillStyle="#2A2520";ctx.fillRect(sx+2,sy+29,TS-4,2);
       ctx.fillStyle=tc(C.desk);ctx.fillRect(sx+1,sy+1,TS-2,28);kitDoors(sx,sy,1.5,27,13.5);};
+/* the fitter's tape round a free square of a kitchen wall, seen from above (or, h given, its strip on the floor seen from the front) */
+function kitTapeFlat(sx,sy,h){ctx.fillStyle=tc(KITTAPE);
+  if(h){ctx.fillRect(sx+2,sy+h-2,TS-4,2);return;}
+  ctx.fillRect(sx+2,sy+2,TS-4,2);ctx.fillRect(sx+2,sy+TS-4,TS-4,2);ctx.fillRect(sx+2,sy+2,2,TS-4);ctx.fillRect(sx+TS-4,sy+2,2,TS-4);}
 /* A KITCHEN COLUMN (2026-10-30): the places a layout stands in this square, each drawn as its own letter draws it, the
    lowest first and the one hung highest last, so they stand one over another as the 3D column does (grep "THE KITCHEN
    LAYOUT"). A square no layout has laid is a plain carcass, so a solid thing is never drawn as nothing. */
 TILEDRAW["◧"]=rc=>{const gs=kitLetters(rc.x,rc.y);
+      if(!gs.length&&kitFreeAt(rc.x,rc.y)){kitTapeFlat(rc.sx,rc.sy);return;}   /* a free square of a wall: the floor shows, and the fitter's tape on it */
       if(!gs.length){ctx.fillStyle=tc(C.desk);ctx.fillRect(rc.sx+1,rc.sy+2,TS-2,TS-4);return;}
       gs.forEach(g=>{const f=TILEDRAW[g];if(f)f(rc);});};
 TILEDRAW["V"]=rc=>{const{sx,sy,x,y}=rc;ctx.fillStyle="#3A3F46";ctx.fillRect(sx+3,sy+4,TS-6,TS-8);
@@ -2609,6 +2616,7 @@ TILESIDE["⎕"]=rc=>{const{sx,sy}=rc;
       ctx.fillStyle=tc(C.desk);ctx.fillRect(sx,sy+2.1,TS,28.1);kitDoors(sx,sy,2.3,27.7,14.7);};
 /* a kitchen column from the front: its places' own front drawings, the lowest first (see TILEDRAW["◧"]) */
 TILESIDE["◧"]=rc=>{const gs=kitLetters(rc.x,rc.y);
+      if(!gs.length&&kitFreeAt(rc.x,rc.y)){kitTapeFlat(rc.sx,rc.sy+TS-6,6);return;}
       if(!gs.length){ctx.fillStyle=tc(C.desk);ctx.fillRect(rc.sx,rc.sy+2,TS,TS-2);return;}
       gs.forEach(g=>{const f=TILESIDE[g]||TILEDRAW[g];if(f)f(rc);});};
 if(typeof TILEART_SIDE!=="undefined")Object.assign(TILESIDE,TILEART_SIDE);
@@ -5221,6 +5229,13 @@ function docRender(body,secs){
       if(wide){cv.style.maxWidth="none";cv.style.margin="10px 0";}
       else{cv.style.maxWidth="100%";cv.style.height="auto";}   /* it may be smaller than asked. It may never be wider than the column */
       const g=cv.getContext("2d");g.setTransform(K,0,0,K,0,0);g.imageSmoothingEnabled=false;
+      /* ---- A PICTURE'S OWN WORDS: `kv` beside `art` (2026-10-30) ----
+         A picture of things, each drawn with its name and how many, says them once: the drawing shows them, and the same
+         words, given as `kv` on the same section, are not shown again under it. They are what a screen reader is told the
+         picture is, and what Copy and Download write (docMarkdown reads `kv` as it always has). The first use: a kitchen
+         place's page, which showed its things drawn and then again as a list (2026-10-30). A picture with no `kv` is
+         exactly as before. */
+      if(Array.isArray(s2.kv)&&s2.kv.length){cv.setAttribute("role","img");cv.setAttribute("aria-label",s2.kv.map(r=>String(r[0])+(r[1]!==undefined&&r[1]!==""?" "+String(r[1]):"")).join(", "));}
       try{s2.art(g,W,H);}catch(e){if(typeof mqwarn==="function")mqwarn("docart",String((e&&e.message)||e),false);}
       if(wide){const box=document.createElement("div");
         box.style.overflowX="auto";box.style.overflowY="hidden";box.style.maxWidth="100%";
@@ -5492,34 +5507,49 @@ function readMarks(){const out=[];
    time (a game that turns its own save into a room each time the room opens). A layout:
      wall    the columns' squares, in order, `[[x,y], …]`: column 0 is the first. At most 40. Each square holds `◧` in the
              map (one letter for "a kitchen column", whatever is in it), and no square in the room holds `◧` that is not one
-             of them. A column's Open is offered on the first side of it a person can stand at, south, east, west,
-             north, as a piece turns to face the room, read off the map as the room stands when it is laid; a column
+             of them or one of its free squares. A column's Open is offered on the first side of it a person can stand
+             at, south, east, west, north, as a piece turns to face the room, read off the map as the room stands when it is laid; a column
              with no such side (something set down in front of it) is built and tapped, and offers no Open.
-     places  `[{kind, row, col, name, full}]`: a kind and a row from `KITCHEN` (a tall kind in the tall row, every other in
-             one of `KITCHEN.rows`, as My kitchen saves them), its column, and optionally a name (text, at most 30
-             characters, nothing that cannot be shown) and how full it is (one of `KITCHEN.fulls`). At most 120.
+     free    optional (2026-10-30): squares of the wall that hold no place yet, `[[x,y], …]`, in the order the wall grows
+             into them: a column added past the wall's end stands on the first. Each holds `◧` in the map, and the wall and
+             its free squares are at most 40 together. Nobody stands on one; in 3D it shows the fitter's tape on the floor.
+     places  `[{kind, row, col, name, full, finish, id}]`: a kind and a row from `KITCHEN` (a tall kind in the tall row,
+             every other in one of `KITCHEN.rows`, as My kitchen saves them), its column, and optionally a name (text, at
+             most 30 characters, nothing that cannot be shown), how full it is (one of `KITCHEN.fulls`), what it is
+             finished in (one of `KITCHEN.finishes` by name, never a colour, and none on a kind `KITCHEN.unfinished`
+             names; left out it is wood, as every kitchen was before), and an id (the world's own name for the place, 1 to
+             30 letters, digits, - or _, no two alike: carried through every change the builder makes, so what a world
+             keeps in a place follows it when it moves; the engine never reads it). At most 120.
      page    optional: `(place, lang) => sections`, the reader's own blocks for that place. `place` is a frozen copy of
              what was checked, with `i`, its index in `places`.
+     store   optional (2026-10-30): `(layout) => …`, where the world keeps a change the builder makes, handed a plain copy
+             of the new layout, `{wall, free, places}`. A layout with a store may be changed in builder mode (grep "THE
+             KITCHEN BUILDER"); one with none never is. The engine keeps no kitchen of its own.
    EVERY LAYOUT IS CHECKED AT THE EDGE, BEFORE ANYTHING IS BUILT, AND ONE THAT FAILS IS REFUSED WHOLE: a sentence in the log
    (kind `kitchen`, always critical) and no kitchen at all in that room, never part of one. Refused: anything not a plain
    object or list where one is meant, a key a layout does not have, a kind or a row off the closed lists, a column off the
    wall, two places in one spot, a tall piece with anything else in its column, two pieces whose bands overlap in one
-   column, a column with nothing in it, a name that is not text or is too long, a fullness off the list, a wall square that
-   is not `◧` or is off the map, a `◧` not on the wall, a page that is not a function. A name is only ever shown as text.
+   column, a column with nothing in it, a name that is not text or is too long, a fullness off the list, a finish off the
+   list or on a kind that takes none, an id that is not one or is used twice, a wall or free square that is not `◧` or is
+   off the map or named twice, a `◧` neither on the wall nor free, a page or a store that is not a function. A name is
+   only ever shown as text.
 
    WHERE OPEN STANDS, AND HOW IT SHARES READ'S PLACE: one slot, one button. The Read button is the slot; standing in front
    of a kitchen column it says Open and the place's name, and a column with more than one place says each name and offers
    each on a short page of its own. Anywhere else the slot is the closet's beside one (grep "THE CLOSET"), and otherwise
    Read, exactly as before. A card a world placed on a column's own square, which nobody can stand beside but its front,
    is shown at the end of every page that column opens, so Open never hides one; a card whose READS entry names a `row`
-   is about the place in that row, and ends that place's page only. A world that declares no layout and lays
+   is about the place in that row, and ends that place's page only, while a place stands in that row there (once none
+   does, the builder having moved it, it ends every page of its column again). A world that declares no layout and lays
    no closet gets Read, and only Read, from the very same code. */
 const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420;
+const KITID=/^[A-Za-z0-9_-]{1,30}$/;   /* a place's id: the world's own name for it, carried through every change and never read by the engine */
 const KITUNSAFE=/[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/;   /* what may not be shown in a name: My kitchen's UNSAFE, the same characters */
 /* the engine's own letter for each kind's piece, so a flat camera draws a column as its places' own drawings; held equal
    to SHAPEBIND and KITCHEN.pieces by test/engine.smoke.js */
 const KITLETTER={fridge:"W",freezer:"▉","upper-cupboards":"⬒","lower-cupboards":"⬓",drawers:"☷",shelves:"⊤",counter:"━"};
 const KITOPEN={};let kitNow=null,kitBusy=false;
+var kitBuildReady=false;   /* the builder's state stands only from its own section down (grep "THE KITCHEN BUILDER") */
 function kitchenCheck(id,L){
   const K=typeof KITCHEN==="object"&&KITCHEN,w=WORLDS[id],own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
   const plain=o=>!!o&&typeof o==="object"&&!Array.isArray(o)&&[Object.prototype,null].includes(Object.getPrototypeOf(o));
@@ -5527,9 +5557,10 @@ function kitchenCheck(id,L){
   if(!K||!plain(K.kinds)||!Array.isArray(K.rows)||!plain(K.bands)||!Array.isArray(K.fulls))return why("this page has no KITCHEN to check it against (engine/kitchen.js is loaded before the engine, or not at all)");
   if(!w)return why("there is no room called "+JSON.stringify(String(id).slice(0,40)));
   if(!plain(L))return why("a layout is an object with a wall and places");
-  const extra=Object.keys(L).find(k=>!["wall","places","page"].includes(k));
-  if(extra!==undefined)return why("a layout has a wall, places and a page, and this one says "+JSON.stringify(extra.slice(0,30)));
+  const extra=Object.keys(L).find(k=>!["wall","free","places","page","store"].includes(k));
+  if(extra!==undefined)return why("a layout has a wall, free squares, places, a page and a store, and this one says "+JSON.stringify(extra.slice(0,30)));
   if(own(L,"page")&&typeof L.page!=="function")return why("its page is not a function");
+  if(own(L,"store")&&typeof L.store!=="function")return why("its store is not a function");
   const W=L.wall;
   if(!Array.isArray(W)||!W.length)return why("its wall names no column");
   if(W.length>KITCOLS)return why("its wall has "+W.length+" columns, and a wall has at most "+KITCOLS);
@@ -5544,31 +5575,48 @@ function kitchenCheck(id,L){
     const fr=[[0,1],[1,0],[-1,0],[0,-1]].find(([dx,dy])=>{const fx=x+dx,fy=y+dy;
       return fx>=0&&fy>=0&&fx<w.W&&fy<w.H&&!shutToPeople(w.rows[fy][fx])&&!DOORSET.has(w.rows[fy][fx]);});
     cols.push(fr?{x,y,fx:x+fr[0],fy:y+fr[1]}:{x,y,fx:-1,fy:-1});}   /* nowhere to stand (a thing set down in front of it): no Open, and a tap still opens it */
+  /* THE FREE SQUARES (2026-10-30, grep "THE KITCHEN BUILDER"): squares of the wall that hold no place yet, in the order
+     the wall grows into them, each a `◧` in the map; the wall and its free squares together at most KITCOLS */
+  const F=own(L,"free")?L.free:[],free=[];
+  if(!Array.isArray(F))return why("its free squares are not a list");
+  if(W.length+F.length>KITCOLS)return why("its wall and its free squares are "+(W.length+F.length)+" squares, and a wall has at most "+KITCOLS);
+  for(let f=0;f<F.length;f++){const q=F[f];
+    if(!Array.isArray(q)||q.length!==2||!Number.isInteger(q[0])||!Number.isInteger(q[1]))return why("free square "+f+" is not a square [x,y]");
+    const[x,y]=q;
+    if(x<0||y<0||x>=w.W||y>=w.H)return why("free square "+f+", ("+x+","+y+"), is off the map");
+    if(w.rows[y][x]!==KITCOL)return why("free square "+f+", ("+x+","+y+"), is not a kitchen column ("+KITCOL+") in the map");
+    if(at[x+","+y]!==undefined)return why("free square "+f+", ("+x+","+y+"), is "+(typeof at[x+","+y]==="number"?"column "+at[x+","+y]+" of its wall":"free square "+at[x+","+y].slice(1))+" already");
+    at[x+","+y]="f"+f;free.push(Object.freeze([x,y]));}
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if(w.rows[y][x]===KITCOL&&at[x+","+y]===undefined)
-    return why("the map has a kitchen column at ("+x+","+y+") that its wall does not name");
+    return why("the map has a kitchen column at ("+x+","+y+") that its wall does not name, nor its free squares");
   const P=L.places;
   if(!Array.isArray(P)||!P.length)return why("it has no places");
   if(P.length>KITPLACES)return why("it has "+P.length+" places, and a kitchen has at most "+KITPLACES);
-  const places=[],spot={},byCol=cols.map(()=>[]);
+  const places=[],spot={},byCol=cols.map(()=>[]),ids=new Set();
   for(let i=0;i<P.length;i++){const p=P[i],it="place "+i;
     if(!plain(p))return why(it+" is not a place");
-    const ex=Object.keys(p).find(k=>!["kind","row","col","name","full"].includes(k));
-    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a place has a kind, a row, a column, a name and a fullness");
+    const ex=Object.keys(p).find(k=>!["kind","row","col","name","full","finish","id"].includes(k));
+    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a place has a kind, a row, a column, a name, a fullness, a finish and an id");
+    if(own(p,"id")){if(typeof p.id!=="string"||!KITID.test(p.id))return why(it+"'s id is not an id: 1 to 30 letters, digits, - or _");
+      if(ids.has(p.id))return why("two places have the id "+JSON.stringify(p.id));ids.add(p.id);}
     if(typeof p.kind!=="string"||!own(K.kinds,p.kind))return why(it+" is of a kind there is none of ("+JSON.stringify(String(p.kind).slice(0,30))+")");
     if(K.kinds[p.kind]==="tall"?p.row!=="tall":!K.rows.includes(p.row))return why(it+", the "+p.kind+", stands in the row "+JSON.stringify(String(p.row).slice(0,20))+", where "+(K.kinds[p.kind]==="tall"?"a tall piece stands in the tall row":"it stands in one of "+K.rows.join(", ")));
     if(!Number.isInteger(p.col)||p.col<0||p.col>=cols.length)return why(it+", the "+p.kind+", is in column "+JSON.stringify(p.col)+", and the wall has columns 0 to "+(cols.length-1));
     if(own(p,"name")&&!(typeof p.name==="string"&&!KITUNSAFE.test(p.name)&&p.name===p.name.trim()&&p.name!==""&&Array.from(p.name).length<=KITNAME))
       return why(it+"'s name is not a name: text, trimmed, 1 to "+KITNAME+" characters, nothing that cannot be shown");
     if(own(p,"full")&&!K.fulls.includes(p.full))return why(it+" is "+JSON.stringify(String(p.full).slice(0,20))+" full, and a place is "+K.fulls.join(", ")+" or not said");
+    if(own(p,"finish")){const FS=plain(K.finishes)?K.finishes:{};   /* a name on the list, never a colour (engine/kitchen.js, `finishes`) */
+      if(typeof p.finish!=="string"||!own(FS,p.finish))return why(it+" is finished in "+JSON.stringify(String(p.finish).slice(0,20))+", and a finish is one of "+(Object.keys(FS).join(", ")||"none on this page"));
+      if(Array.isArray(K.unfinished)&&K.unfinished.includes(p.kind))return why(it+", the "+p.kind+", is finished in "+p.finish+", and a "+p.kind+" takes no finish");}
     const k=p.col+"|"+p.row;if(spot[k]!==undefined)return why("places "+spot[k]+" and "+i+" are in one spot, column "+p.col+", "+p.row);spot[k]=i;
-    const q={kind:p.kind,row:p.row,col:p.col,i};if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;
+    const q={kind:p.kind,row:p.row,col:p.col,i};if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;if(own(p,"finish"))q.finish=p.finish;if(own(p,"id"))q.id=p.id;
     places.push(Object.freeze(q));byCol[p.col].push(q);}
   for(let c=0;c<cols.length;c++){const ps=byCol[c];
     if(!ps.length)return why("column "+c+" has nothing in it");
     if(ps.length>1&&ps.some(p=>p.row==="tall"))return why("column "+c+" holds a tall piece and something else; a tall piece stands alone");
     for(let a=0;a<ps.length;a++)for(let b=a+1;b<ps.length;b++){const A=K.bands[ps[a].kind],B=K.bands[ps[b].kind];
       if(!A||!B||(A.lo<B.hi-0.001&&B.lo<A.hi-0.001))return why("in column "+c+" the "+ps[a].kind+" and the "+ps[b].kind+" would stand in each other");}}
-  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null})};
+  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null})};
 }
 /* lay it, or refuse it whole and say why; the answer is the sentence, or null when it stands */
 function kitchenLay(id,L){const r=kitchenCheck(id,L);
@@ -5578,14 +5626,45 @@ function kitchenLay(id,L){const r=kitchenCheck(id,L);
   KITWALL[id]=r.wall;
   if(!TILEMESH[KITCOL])TILEMESH[KITCOL]=o=>kitColumnParts(o);   /* the column's shape, unless the pack gave the letter its own */
   kitDirty();return null;}
-function kitDirty(){if(typeof t3Invalidate==="function")t3Invalidate();if(typeof checkTalk==="function"&&$("world")&&!$("world").hidden)checkTalk();}
+function kitDirty(){if(typeof t3Invalidate==="function")t3Invalidate();if(typeof checkTalk==="function"&&$("world")&&!$("world").hidden)checkTalk();
+  if(kitBuildReady)kitBuildShow();}
 /* the column at a square of the room you stand in, while the map still has its letter there */
 function kitColAt(x,y){const K=KITWALL[world],w=CW();if(!K||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return -1;
   return K.cols.findIndex(c=>c.x===x&&c.y===y);}
 const kitOpenOf=(id,i)=>{const v=KITOPEN[id+"|"+i];return typeof v==="number"?v:0;};
-function kitColumnParts({x,y}){const c=kitColAt(x,y);if(c<0||typeof SHAPES!=="object"||!SHAPES||typeof SHAPES.kitchenColumn!=="function")return [];
+/* a free square of the wall of the room you stand in (grep "THE KITCHEN BUILDER"), while the map still has its letter there */
+function kitFreeAt(x,y){const K=KITWALL[world],w=CW();if(!K||!K.free||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return false;
+  return K.free.some(q=>q[0]===x&&q[1]===y);}
+/* A FREE SQUARE IN 3D: nothing stands there yet, so what shows is what a fitter leaves where a piece will go: four strips of
+   blue tape on the floor round the square, laid by hand, so no two quite line up. Never nothing, which the camera would
+   build as a plain box (`t3MeshTile`), and nothing a person could take for a piece. */
+const KITTAPE="#3E7CB1";
+function kitTape(x,y){const out=[],L=0.86,T=0.035,H=0.004,j=k=>((((x|0)*5+(y|0)*3+k*7)%5)-2)*0.006;
+  [[0,-L/2,L,T],[0,L/2,L,T],[-L/2,0,T,L],[L/2,0,T,L]].forEach(([cx,cz,w,d],k)=>out.push({s:"box",x:cx+j(k),y:H/2,z:cz+j(k+2),w,h:H,d,c:KITTAPE,tape:1}));
+  return out;}
+function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"||!SHAPES||typeof SHAPES.kitchenColumn!=="function")return [];
+  if(c<0)return kitFreeAt(x,y)?kitTape(x,y):[];
   const ps=KITWALL[world].places.filter(p=>p.col===c);
-  return SHAPES.kitchenColumn({x,y,places:ps.map(p=>({kind:p.kind,open:kitOpenOf(world,p.i)}))}).map(q=>({...q,place:ps[q.place].i}));}
+  const out=SHAPES.kitchenColumn({x,y,places:ps.map(p=>p.finish===undefined?{kind:p.kind,open:kitOpenOf(world,p.i)}:{kind:p.kind,open:kitOpenOf(world,p.i),finish:p.finish})}).map(q=>({...q,place:ps[q.place].i}));
+  /* the place the builder has picked, framed (grep "THE KITCHEN BUILDER"); nothing, with the builder off */
+  const sel=kitBuildReady?kitBuildSel():null;
+  if(sel!==null&&ps.some(p=>p.i===sel)){const col=KITWALL[world].cols[c];out.push(...kitFrame(out.filter(q=>q.place===sel),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y));}
+  return out;}
+/* A FRAME ROUND A PICKED PIECE: four gold bars just outside the face it turns to the room, measured off its own parts as they
+   stand (each turned a quarter or not at all), so it fits a fridge and a shelf alike */
+function kitFrame(ps,dx,dy){if(!ps.length)return [];
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
+  ps.forEach(p=>{const w=p.w!==undefined?p.w:2*(p.r||p.rb||0.03),d=p.d!==undefined?p.d:2*(p.r||p.rb||0.03),h=p.h!==undefined?p.h:2*(p.r||0.03),
+    a=Math.abs(Math.cos(p.ry||0)),b=Math.abs(Math.sin(p.ry||0)),hx=a*w/2+b*d/2,hz=b*w/2+a*d/2;
+    x0=Math.min(x0,p.x-hx);x1=Math.max(x1,p.x+hx);z0=Math.min(z0,p.z-hz);z1=Math.max(z1,p.z+hz);y0=Math.min(y0,p.y-h/2);y1=Math.max(y1,p.y+h/2);});
+  const T=0.04,G="#F2C230",out=[],my=(y0+y1)/2,hy=y1-y0+2*T,lo=Math.max(T/2,y0-T/2);
+  if(dy){const z=dy>0?z1+0.012:z0-0.012,mx=(x0+x1)/2,wx=x1-x0+2*T;
+    out.push({s:"box",x:mx,y:y1+T/2,z,w:wx,h:T,d:0.012,c:G},{s:"box",x:mx,y:lo,z,w:wx,h:T,d:0.012,c:G},
+      {s:"box",x:x0-T/2,y:my,z,w:T,h:hy,d:0.012,c:G},{s:"box",x:x1+T/2,y:my,z,w:T,h:hy,d:0.012,c:G});}
+  else{const x=dx>0?x1+0.012:x0-0.012,mz=(z0+z1)/2,wz=z1-z0+2*T;
+    out.push({s:"box",x,y:y1+T/2,z:mz,w:0.012,h:T,d:wz,c:G},{s:"box",x,y:lo,z:mz,w:0.012,h:T,d:wz,c:G},
+      {s:"box",x,y:my,z:z0-T/2,w:0.012,h:hy,d:T,c:G},{s:"box",x,y:my,z:z1+T/2,w:0.012,h:hy,d:T,c:G});}
+  return out.map(q=>({...q,picked:1}));}
 /* the letters a flat camera draws a column with, lowest first; and the iso camera's height and colour for it */
 function kitLetters(x,y){const c=kitColAt(x,y);if(c<0||typeof KITCHEN!=="object")return [];
   return KITWALL[world].places.filter(p=>p.col===c).sort((a,b)=>KITCHEN.rank[b.row]-KITCHEN.rank[a.row]).map(p=>KITLETTER[p.kind]).filter(Boolean);}
@@ -5604,7 +5683,8 @@ function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
   const title={};Object.keys(UI).forEach(lg=>{title[lg]=kitName(p,lg);});
   return {title,kit:{id,i:p.i},build:()=>{let secs=[];
     if(K.page){try{const r=K.page(p,lang);if(Array.isArray(r))secs=r.slice();}catch(e){mqwarn("kitchen","the page of place "+p.i+" in "+id+" failed: "+String(e&&e.message||e),false);}}
-    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row)).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
+    const rows=K.places.filter(q=>q.col===p.col).map(q=>q.row);   /* a card whose row no place in this column stands in any more (a builder moved it) ends every page here, so Open never hides it */
+    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row||!rows.includes(r.row))).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
     return secs;}};}
 /* SWINGING IT: `open` from where it is to `to` over KITSWING ms, eased so it starts and ends at rest, and set to exactly `to`
    at the end; at once for a person who asked for less motion. Each step rebuilds that one column in the 3D picture. */
@@ -5634,12 +5714,13 @@ function kitPress(){const ps=kitFront(px,py);if(!ps||!ps.length)return;
    nearest thing under the finger has to be a kitchen column; which of its places was touched is told by the height of the
    point, each piece standing in a band of its own. False when nothing opened, so a world with no kitchen keeps its tap. */
 function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||worldCovered()||typeof t3Pick!=="function")return false;
-  const h=t3Pick(cx,cy);if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return false;
-  const c=kitColAt(h.object.userData.x,h.object.userData.y);if(c<0)return false;
+  const build=kitBuildReady&&kitBuildOn();   /* in builder mode a tap PICKS a piece, and a tap on nothing puts the pick down (grep "THE KITCHEN BUILDER") */
+  const h=t3Pick(cx,cy);if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return build?kitBuildPick(null):false;
+  const c=kitColAt(h.object.userData.x,h.object.userData.y);if(c<0)return build?kitBuildPick(null):false;
   const ps=KITWALL[world].places.filter(p=>p.col===c);if(!ps.length)return false;
   const y=h.point.y,band=p=>KITCHEN.bands[p.kind];
   const p=ps.find(q=>y>=band(q).lo-0.01&&y<=band(q).hi+0.01)||ps.reduce((a,q)=>Math.abs(y-(band(q).lo+band(q).hi)/2)<Math.abs(y-(band(a).lo+band(a).hi)/2)?q:a);
-  return kitOpen(world,p.i);}
+  return build?kitBuildPick(p.i):kitOpen(world,p.i);}
 /* ═══════════ THE CLOSET (2026-10-30) — a wardrobe, and the character creator behind its doors ═══════════
    A world that lays `⎕` has a closet there: a piece of its own (engine/shapes.js, `SHAPES.wardrobe`, which a world takes in
    SHAPETAKE like any shape), and standing beside it the slot offers the creator over the world with the name kept, by the
@@ -5838,6 +5919,7 @@ function talkPick(){
     if(!first)first=n;}
   return quest||first;}
 function checkTalk(){
+  if(kitBuildReady)kitBuildShow();   /* the kitchen builder's bar follows the room (grep "THE KITCHEN BUILDER"); nothing, in a world without one */
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
@@ -5918,6 +6000,7 @@ function keyForWorld(e){
 window.addEventListener("keydown",e=>{
   const t2=e.target; /* typing a dog's name is not walking — "shadow" has a w, an a, an s and a d */
   if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"))return;
+  if(kitBuildReady&&kitBuildKey(e))return;   /* the kitchen builder's keys, only while its bar stands (grep "THE KITCHEN BUILDER") */
   const mine=keyForWorld(e);
   if(mine&&keyDir(e)){held=keyDir(e);e.preventDefault();}
   /* Enter beside a person talks; Enter or Space beside a readable thing reads it, as its button does —
@@ -7858,6 +7941,7 @@ function applyAdmin(){
   $("admOn").setAttribute("aria-pressed",admin?"true":"false");
   $("admOff").setAttribute("aria-pressed",admin?"false":"true");
   mqStore(SK("admin"),admin?"1":"0");
+  if(kitBuildReady)kitBuildShow();   /* builder mode on a kitchen wall (grep "THE KITCHEN BUILDER") */
 }
 $("admOn").addEventListener("click",()=>{admin=true;applyAdmin();toast(T().admToast,3400);});
 /* Stakes toggle — admin tooling. Hearts are off by default in an open world, but they
@@ -7916,6 +8000,178 @@ function paintAt(clientX,clientY){
   if(brush==="npc"){npcAt(gx,gy);return;}
   setTile(gx,gy,brush);
 }
+/* ═══════════ THE KITCHEN BUILDER (2026-10-30) — builder mode on a kitchen wall: add, move, paint and remove a piece ═══════════
+   In a world that has a builder (`BUILDER`), in builder mode (the 🛠️ in Settings, `admin`), in a room whose kitchen
+   layout (grep "THE KITCHEN LAYOUT") declares a `store`, a bar stands at the foot of the picture, in every camera: pick a piece by a tap on it in 3D, by ‹ and ›, or
+   by [ and ]; move it ◀ ▶ ▲ ▼ (or Shift and an arrow); Paint it in one of the engine's finishes, or the whole kitchen at
+   once; Add a piece of a kind (a kind the kitchen has already asks first, as My kitchen does); Remove it (it asks first);
+   and Undo (or Ctrl+Z). The piece picked is framed in gold in 3D.
+   EVERY CHANGE GOES ONE WAY: the engine's rules (`KITCHEN.rules`, engine/kitchen.js) make the new layout from the one
+   that stands, the wall's squares are handed out again (its columns, then its free squares, in order: a layout as many
+   columns long as it now has stands on the first that many, and a new column needs a free square, or the change is
+   refused in a sentence), the whole of it is checked (`kitchenCheck`), and then the world's `store(layout)` is called
+   with a plain copy of it: `{wall, free, places}`. Only when that returns is it laid. A store that throws keeps the
+   change from being made. THE ENGINE NEVER KEEPS A KITCHEN: it writes no storage for one, and what it remembers to undo
+   is the layouts before each change, in memory, for the visit; an undo is a change like any other, through the check
+   and the store.
+   A world with no `BUILDER`, or a layout with no `store`, gets no bar, no keys and no pick: a tap opens a place as ever,
+   and nothing here runs. Its words are the world's (`kb…` in UI), English when it gives none. Held by
+   test/engine.smoke.js, grep "THE KITCHEN BUILDER". */
+const KITB={sel:{},undo:{},mode:null,all:false,kind:null,said:"",key:"",was:false},KITUNDO=60;
+kitBuildReady=true;   /* from here on the bar may be asked for: a caller earlier in the boot reads the `var` (THE KITCHEN LAYOUT) unset, and asks nothing */
+const kitW=(k,d)=>{const t=T()||{};return typeof t[k]==="string"&&t[k]?t[k]:d;};
+const kitFill=(s,o)=>Object.keys(o).reduce((a,k)=>a.split("{"+k+"}").join(o[k]),s);
+function kitBuildOn(){const K=KITWALL[world];return buildOK()&&admin&&!!K&&typeof K.store==="function"&&typeof KITCHEN==="object"&&!!KITCHEN&&!!KITCHEN.rules&&!!$("world")&&!$("world").hidden;}
+function kitBuildSel(){if(!kitBuildOn())return null;const i=KITB.sel[world];return Number.isInteger(i)&&KITWALL[world].places[i]?i:null;}
+/* the layout as it stands, as data: what the rules are handed, and what the world is handed to keep */
+function kitData(K){return {wall:K.cols.map(c=>[c.x,c.y]),free:(K.free||[]).map(q=>[q[0],q[1]]),
+  places:K.places.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};}
+/* the places in the wall's order: column by column from the left, and down each column */
+const kitWallOrder=K=>K.places.slice().sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);
+function kitBuildSay(s){KITB.said=String(s||"");kitBuildShow();}
+/* a picked piece is framed in 3D: its column, and the one picked before it, are built again where they stand */
+function kitBuildPick(i){const id=world,K=KITWALL[id],was=KITB.sel[id];
+  KITB.sel[id]=Number.isInteger(i)&&K.places[i]?i:null;KITB.mode=null;KITB.kind=null;KITB.said="";
+  [was,KITB.sel[id]].forEach(j=>{const p=Number.isInteger(j)&&K.places[j];if(p&&typeof t3Reshape==="function"){const c=K.cols[p.col];t3Reshape(c.x,c.y);}});
+  kitBuildShow();return true;}
+function kitBuildPickBy(d){const K=KITWALL[world],o=kitWallOrder(K),sel=kitBuildSel();if(!o.length)return;
+  const at=sel===null?(d>0?-1:o.length):o.findIndex(p=>p.i===sel);kitBuildPick(o[(at+d+o.length)%o.length].i);}
+/* what a refusal of the rules says, in the world's words where it has them */
+function kitBuildWhy(r){const c=r&&r.code;
+  if(c==="most")return kitFill(kitW("kbMost","A kitchen holds at most {n} pieces."),{n:String(KITCHEN.most)});
+  if(c==="bare")return kitW("kbBare","The counter is stone and tile, and takes no paint.");
+  if(c==="still")return kitW("kbStill","That changes nothing.");
+  return (r&&r.why)||"?";}
+/* ONE CHANGE: the rules, the squares, the check, the store, then laid; the layout before it kept to undo */
+function kitBuildChange(rule,said,selOf){const id=world,K=KITWALL[id];
+  if(!kitBuildOn()||kitBusy||kitNow||worldCovered())return false;
+  const before=kitData(K);let r;try{r=rule(before);}catch(e){r={why:String(e&&e.message||e)};}
+  if(!r||r.why){kitBuildSay(kitBuildWhy(r));return false;}
+  const slots=before.wall.concat(before.free),P=r.layout.places,n=P.reduce((m,p)=>Math.max(m,p.col+1),0);
+  if(!P.length){kitBuildSay(kitW("kbLast","A kitchen keeps one piece at least."));return false;}
+  if(n>slots.length){kitBuildSay(kitW("kbNoRoom","There is no free square on this wall for a new column."));return false;}
+  const next={wall:slots.slice(0,n),free:slots.slice(n),
+    places:P.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};
+  if(!kitBuildSet(id,next))return false;
+  const u=KITB.undo[id]=KITB.undo[id]||[];u.push(before);if(u.length>KITUNDO)u.shift();
+  KITB.sel[id]=selOf(r);KITB.mode=null;KITB.kind=null;kitBuildSay(said(r));return true;}
+/* CHECKED, KEPT BY THE WORLD, LAID — in that order, or not at all */
+function kitBuildSet(id,next){const K=KITWALL[id],L=Object.assign({},next,{store:K.store});if(K.page)L.page=K.page;
+  const r=kitchenCheck(id,L);
+  if(r.why){mqwarn("kitchen","a builder's change to "+JSON.stringify(String(id).slice(0,40))+" was refused: "+r.why,false);kitBuildSay(r.why);return false;}
+  try{K.store(JSON.parse(JSON.stringify(next)));}
+  catch(e){mqwarn("kitchen","a builder's change to "+JSON.stringify(String(id).slice(0,40))+" was not kept: "+String(e&&e.message||e),false);
+    kitBuildSay(kitW("kbNotKept","That change could not be kept on this device, so it was not made."));return false;}
+  KITWALL[id]=r.wall;Object.keys(KITOPEN).forEach(k=>{if(k.indexOf(id+"|")===0)delete KITOPEN[k];});
+  kitDirty();return true;}
+function kitBuildUndo(){const id=world,u=KITB.undo[id];
+  if(!kitBuildOn()||kitBusy||kitNow||worldCovered())return false;
+  if(!u||!u.length){kitBuildSay(kitW("kbNothing","Nothing to undo."));return false;}
+  if(!kitBuildSet(id,u[u.length-1]))return false;
+  u.pop();if(!KITWALL[id].places[KITB.sel[id]])KITB.sel[id]=null;KITB.mode=null;KITB.kind=null;kitBuildSay(kitW("kbUndone","Undone."));return true;}
+const kitNameOf=p=>kitName(p,lang);
+function kitBuildMove(side){const i=kitBuildSel();if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
+  const nm=kitNameOf(KITWALL[world].places[i]);
+  return kitBuildChange(L=>KITCHEN.rules.move(L,i,side),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);}
+function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_"+f,f).toLowerCase();   /* the finish's name inside a sentence: "painted white" */
+  if(KITB.all)return kitBuildChange(L=>KITCHEN.rules.paintAll(L,f),()=>kitFill(kitW("kbPaintedAll","The whole kitchen painted {finish}."),{finish:fn}),()=>i);
+  if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
+  const nm=kitNameOf(K.places[i]);
+  return kitBuildChange(L=>KITCHEN.rules.paint(L,i,f),()=>kitFill(kitW("kbPainted","{name} painted {finish}."),{name:nm,finish:fn}),r=>r.i);}
+function kitBuildAdd(kind,sure){const K=KITWALL[world];if(!kitBuildOn())return false;
+  if(!sure&&K.places.some(p=>p.kind===kind)&&K.places.length<KITCHEN.most){KITB.mode="again";KITB.kind=kind;kitBuildShow();return false;}   /* a kind the kitchen has asks first */
+  const nm=kitNameOf({kind});
+  return kitBuildChange(L=>KITCHEN.rules.add(L,kind),()=>kitFill(kitW("kbAdded","{name} added."),{name:nm}),r=>r.i);}
+function kitBuildRemove(){const K=KITWALL[world],i=kitBuildSel();if(i===null)return false;
+  const o=kitWallOrder(K),at=o.findIndex(p=>p.i===i),nm=kitNameOf(K.places[i]);
+  /* the pick goes to its neighbour on the wall: the piece after it in the wall's order, or before it at the end */
+  const nb=o.filter(p=>p.i!==i),to=nb.length?nb[Math.min(at,nb.length-1)].i:null;
+  return kitBuildChange(L=>KITCHEN.rules.remove(L,i),()=>kitFill(kitW("kbRemoved","{name} removed."),{name:nm}),()=>to===null?null:to>i?to-1:to);}
+function kitBuildAsk(m){if(!kitBuildOn())return;
+  if(m==="remove"&&kitBuildSel()===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return;}
+  KITB.mode=KITB.mode===m?null:m;KITB.kind=null;KITB.said="";kitBuildShow();
+  const f=$("kitBuild")&&$("kitBuild").querySelector("[data-first]");if(f)f.focus();}
+/* THE KEYS, laptop first, only while the bar stands and the world has the keys: [ and ] pick, Shift and an arrow move,
+   Delete asks to remove, Ctrl or ⌘ and Z undoes, Escape puts away a row the bar opened */
+function kitBuildKey(e){if(!kitBuildOn()||!keyForWorld(e)||e.altKey)return false;
+  const k=e.key,mod=e.ctrlKey||e.metaKey,side={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down"}[k];let did=true;
+  if(k==="]"&&!mod)kitBuildPickBy(1);
+  else if(k==="["&&!mod)kitBuildPickBy(-1);
+  else if(side&&e.shiftKey&&!mod)kitBuildMove(side);
+  else if((k==="Delete"||k==="Backspace")&&!mod)kitBuildAsk("remove");
+  else if(mod&&!e.shiftKey&&(k==="z"||k==="Z"))kitBuildUndo();
+  else if(k==="Escape"&&KITB.mode){KITB.mode=null;KITB.kind=null;kitBuildShow();}
+  else did=false;
+  if(did){e.preventDefault();held=null;}
+  return did;}
+/* THE BAR: built once, the first time a room offers it, and shown, hidden and filled from the state above */
+function kitBuildBar(){let b=$("kitBuild");if(b)return b;const vp=$("vp");if(!vp)return null;
+  const el=(t,css,txt)=>{const e=document.createElement(t);if(css)Object.assign(e.style,css);if(txt!==undefined)e.textContent=txt;return e;};
+  b=el("div",{position:"absolute",left:"12px",bottom:"12px",maxWidth:"calc(100% - 88px)",zIndex:"4",background:"rgba(20,16,30,.84)",color:"#EDE9F5",
+    borderRadius:"12px",padding:"8px 10px",display:"flex",flexDirection:"column",gap:"6px",font:"500 13px 'IBM Plex Sans', system-ui, sans-serif",boxSizing:"border-box"});
+  b.id="kitBuild";b.setAttribute("role","group");b.hidden=true;
+  const head=el("div",{display:"flex",gap:"8px",alignItems:"baseline",flexWrap:"wrap"});head.id="kbHead";
+  const row=el("div",{display:"flex",gap:"5px",flexWrap:"wrap"});row.id="kbRow";
+  const more=el("div",{display:"flex",gap:"5px",flexWrap:"wrap",alignItems:"center"});more.id="kbMore";
+  const said=el("div",{fontSize:"12px",opacity:"0.9",minHeight:"16px"});said.id="kbSaid";said.setAttribute("aria-live","polite");
+  [["prev","‹"],["next","›"],["left","◀"],["right","▶"],["up","▲"],["down","▼"],["paint","🎨"],["add","➕"],["remove","🗑"],["undo","↩"]].forEach(([a,g])=>{
+    const bt=el("button",null);bt.type="button";bt.dataset.kb=a;bt.dataset.glyph=g;row.appendChild(bt);});
+  b.append(head,row,more,said);
+  b.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||!b.contains(t))return;e.preventDefault();
+    const a=t.dataset.kb,v=t.dataset.v;
+    if(a==="prev")kitBuildPickBy(-1);else if(a==="next")kitBuildPickBy(1);
+    else if(["left","right","up","down"].includes(a))kitBuildMove(a);
+    else if(a==="paint"||a==="add"||a==="remove")kitBuildAsk(a);
+    else if(a==="undo")kitBuildUndo();
+    else if(a==="finish")kitBuildPaint(v);
+    else if(a==="all"){KITB.all=!KITB.all;kitBuildShow();}
+    else if(a==="kind")kitBuildAdd(v,false);
+    else if(a==="againYes"){const k=KITB.kind;KITB.mode=null;KITB.kind=null;if(k)kitBuildAdd(k,true);}
+    else if(a==="removeYes"){KITB.mode=null;kitBuildRemove();}
+    else if(a==="no"){KITB.mode=null;KITB.kind=null;kitBuildShow();}});
+  vp.appendChild(b);return b;}
+const KBBTN={height:"36px",minWidth:"36px",padding:"0 9px",border:"1.5px solid transparent",borderRadius:"8px",background:"rgba(237,233,245,.14)",color:"#EDE9F5",
+  font:"500 13px 'IBM Plex Sans', system-ui, sans-serif",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:"6px"};
+function kitBuildShow(){
+  const on=kitBuildOn(),b=on?kitBuildBar():$("kitBuild");
+  if(on!==KITB.was){KITB.was=on;if(typeof t3Invalidate==="function")t3Invalidate();}   /* the frame round a picked piece comes and goes with the bar */
+  if(!b)return;
+  const br=$("brushes");if(br)br.hidden=!admin||(on&&camMode==="3d");   /* in 3D the bar is the builder's tools; the brushes paint only from above */
+  if(!on){b.hidden=true;KITB.key="";return;}
+  const id=world,K=KITWALL[id],sel=kitBuildSel(),p=sel===null?null:K.places[sel],data=kitData(K),undo=(KITB.undo[id]||[]).length,dp=$("dpad");
+  const key=[id,sel,KITB.mode,KITB.all,KITB.kind,undo,KITB.said,lang,camMode,dp&&!dp.hidden,JSON.stringify(data)].join("|");
+  if(key===KITB.key&&!b.hidden)return;
+  KITB.key=key;b.hidden=false;b.style.bottom=dp&&!dp.hidden?"160px":"12px";
+  b.setAttribute("aria-label",kitW("kbTitle","Kitchen builder"));
+  const head=$("kbHead");head.textContent="";
+  const t=document.createElement("b");t.textContent="🛠️ "+kitW("kbTitle","Kitchen builder");head.appendChild(t);
+  const nm=document.createElement("span");nm.id="kbName";nm.textContent=p?kitNameOf(p)+(p.finish&&p.finish!=="wood"?" · "+kitW("kbFin_"+p.finish,p.finish):""):kitW("kbNone","nothing picked");nm.style.opacity=p?"1":"0.75";head.appendChild(nm);
+  const style=(bt,pressed)=>{Object.assign(bt.style,KBBTN);bt.style.opacity=bt.disabled?"0.4":"1";bt.style.cursor=bt.disabled?"default":"pointer";
+    if(pressed!==undefined){bt.setAttribute("aria-pressed",pressed?"true":"false");bt.style.borderColor=pressed?"#E0B45C":"transparent";bt.style.background=pressed?"rgba(224,180,92,.25)":KBBTN.background;}};
+  const words={prev:kitW("kbPrev","Previous piece"),next:kitW("kbNext","Next piece"),left:kitW("kbLeft","Move left"),right:kitW("kbRight","Move right"),up:kitW("kbUp","Move up"),down:kitW("kbDown","Move down"),
+    paint:kitW("kbPaint","Paint"),add:kitW("kbAdd","Add"),remove:kitW("kbRemove","Remove"),undo:kitW("kbUndo","Undo")};
+  [...$("kbRow").children].forEach(bt=>{const a=bt.dataset.kb;   /* each a sign with its name for the pointer and the screen reader, so the row fits the picture */
+    bt.textContent=bt.dataset.glyph;bt.setAttribute("aria-label",words[a]);bt.title=words[a];
+    bt.disabled=["left","right","up","down"].includes(a)?!(sel!==null&&KITCHEN.rules.canMove(data,sel,a)):a==="remove"?sel===null:a==="undo"?!undo:false;
+    style(bt,a==="paint"||a==="add"||a==="remove"?KITB.mode===a:undefined);});
+  const more=$("kbMore");more.textContent="";more.hidden=!KITB.mode;
+  const btn=(a,txt,v,first)=>{const bt=document.createElement("button");bt.type="button";bt.dataset.kb=a;if(v!==undefined)bt.dataset.v=v;if(first)bt.dataset.first="1";bt.textContent=txt;more.appendChild(bt);return bt;};
+  const line=txt=>{const s=document.createElement("span");s.textContent=txt;s.style.marginRight="4px";more.appendChild(s);return s;};
+  if(KITB.mode==="paint"){const bare=!KITB.all&&p&&KITCHEN.unfinished.includes(p.kind),now=p&&(p.finish||"wood");
+    Object.keys(KITCHEN.finishes).forEach((f,k)=>{const bt=btn("finish","",f,k===0),sw=document.createElement("span");
+      Object.assign(sw.style,{width:"14px",height:"14px",borderRadius:"3px",background:KITCHEN.finishes[f].flat,boxShadow:"0 0 0 1px rgba(237,233,245,.5)"});
+      bt.append(sw,document.createTextNode(kitW("kbFin_"+f,f)));bt.disabled=bare||(!KITB.all&&!p);style(bt,!KITB.all&&now===f);});
+    const all=btn("all",kitW("kbWhole","The whole kitchen"));style(all,KITB.all);
+    if(bare)line(kitW("kbBare","The counter is stone and tile, and takes no paint."));}
+  else if(KITB.mode==="add"){const full=K.places.length>=KITCHEN.most;
+    KITCHEN.order.forEach((k,n)=>{const bt=btn("kind",kitNameOf({kind:k}),k,n===0);bt.disabled=full;style(bt);});
+    if(full)line(kitFill(kitW("kbMost","A kitchen holds at most {n} pieces."),{n:String(KITCHEN.most)}));}
+  else if(KITB.mode==="again"){const t=T()||{},byKind=(o,d)=>o&&typeof o==="object"&&typeof o[KITB.kind]==="string"?o[KITB.kind]:d;   /* a world may word it kind by kind, as My kitchen does */
+    line(byKind(t.kbAgainKinds,kitFill(kitW("kbAgain","There is a {name} already. Add another?"),{name:kitNameOf({kind:KITB.kind})})));
+    style(btn("againYes",byKind(t.kbAgainYesKinds,kitW("kbAgainYes","Add another")),undefined,true));style(btn("no",kitW("kbNo","No")));}
+  else if(KITB.mode==="remove"){if(!p){KITB.mode=null;more.hidden=true;}
+    else{line(kitFill(kitW("kbRemoveAsk","Remove the {name}?"),{name:kitNameOf(p)}));style(btn("removeYes",kitW("kbRemoveYes","Remove"),undefined,true));style(btn("no",kitW("kbNo","No")));}}
+  $("kbSaid").textContent=KITB.said||(p?kitW("kbKeys","[ ] pick · Shift+arrows move · Delete remove · Ctrl+Z undo"):kitW("kbPick","Tap a piece, or press ] to pick one."));}
 /* swipe-to-move: touch anywhere on the game, drag = walk (floating direction), release = stop.
    In admin mode a TAP (no drag) paints; a drag still moves — best of both. */
 let swActive=null,swSX=0,swSY=0,swMoved=false;
