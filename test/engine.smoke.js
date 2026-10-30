@@ -1359,6 +1359,103 @@ function findChromium() {
     fails.push(...R.map(m => 'the kitchen\'s rules (2026-10-30): ' + m));
   }
 
+  /* ---- THE KITCHEN'S GAPS (sprint 5 of the 3D kitchen) ----
+     engine/kitchen.js, `KITCHEN.rules` with `gaps: true` in the layout; his confirmed goal of 2026-10-30 (a piece moved
+     anywhere on the wall). What a person would notice: a piece that stops at the first empty square, a wall that closes up
+     behind a move, a fridge or a freezer that cannot stand on an empty square, a tap on an empty square that does nothing,
+     a column past the wall's squares, or a kitchen that never asked for gaps getting them (My kitchen's packed wall, held
+     row for row above, is what a layout with no `gaps`, or `gaps` that is not exactly true, still gets). Two answers:
+       1 · A TABLE, written by hand from his goal, on the town's test kitchen's wall: four columns and three free squares;
+       2 · A WALK of seeded changes from the template on that wall, gaps on, every one held to what gaps promise: no
+           column numbered again, no place moved but the one moved and what it swapped with, a column left empty kept
+           empty, nothing past the wall's seven squares, every move offered exactly when it is made, and moveTo onto
+           every empty square taken.
+     Red first, each fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 5). */
+  {
+    const G = [], vm = require('vm');
+    let KIT = null;
+    try { KIT = vm.runInContext(fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;KITCHEN', vm.createContext({ Object, Array, Number, Math, Set, String }), { filename: 'engine/kitchen.js' }); }
+    catch (e) { G.push('engine/kitchen.js does not run on its own (' + String(e.message || e).slice(0, 120) + ')'); }
+    const RU = KIT && KIT.rules;
+    if (KIT && (!RU || typeof RU.moveTo !== 'function')) G.push('KITCHEN.rules has no moveTo: a tap on an empty square has no rule to put a piece there');
+    else if (KIT) {
+      const WALL = { wall: [[3, 1], [4, 1], [6, 1], [7, 1]], free: [[8, 1], [9, 1], [10, 1]] };
+      const row = s => s.split(' ').map(t => { const [k, r, c] = t.split(':'); return { kind: k, row: r, col: Number(c) }; });
+      const shown = P => P.map(p => p.kind + ':' + p.row + ':' + p.col).join(' ');
+      const said = r => r && r.why ? 'refused (' + r.code + ')' : r && r.layout ? shown(r.layout.places) : JSON.stringify(r);
+      const S = 'fridge:tall:0 upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3';
+      const at = (s, k, v) => { const P = row(s); P[k].col = v; return shown(P); };
+      /* [what, from, gaps, the change, what the wall shows after] */
+      const TABLE = [
+        ['the shelves right: past the freezer onto the first empty square', S, true, ['move', 4, 'right'], at(S, 4, 4)],
+        ['the shelves right again: onto the second empty square, the first left empty', at(S, 4, 4), true, ['move', 4, 'right'], at(S, 4, 5)],
+        ['the shelves right a third time: onto the third empty square, with the two before it empty', at(S, 4, 5), true, ['move', 4, 'right'], at(S, 4, 6)],
+        ['the shelves right on the wall\'s last square: there is none past it', at(S, 4, 6), true, ['move', 4, 'right'], 'refused (still)'],
+        ['the shelves left from the third empty square: back onto the second, nothing else moving', at(S, 4, 6), true, ['move', 4, 'left'], at(S, 4, 5)],
+        ['a second piece moved onto a column beside an empty one: the empty one stays, nothing shifts to close it', at(S, 4, 5), true, ['move', 5, 'right'], at(at(S, 4, 5), 5, 4)],
+        ['the freezer right: onto the empty square beside it, its own column left empty', S, true, ['move', 6, 'right'], at(S, 6, 4)],
+        ['the freezer left onto an empty column: it moves there, nothing swapped back', at(at(S, 4, 4), 6, 5), true, ['move', 6, 'left'], at(at(S, 4, 4), 6, 4).replace('shelves:upper:4', 'shelves:upper:5')],
+        ['the fridge right: a tall piece still swaps with the column beside it', S, true, ['move', 0, 'right'], 'fridge:tall:1 upper-cupboards:upper:0 counter:counter:0 drawers:lower:0 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['the fridge left, at the wall\'s first square: nothing is left of it', S, true, ['move', 0, 'left'], 'refused (still)'],
+        ['the upper cupboards left, past the fridge: nothing is left of the first square, so nothing changes', S, true, ['move', 1, 'left'], 'refused (still)'],
+        ['the fridge put on the third empty square by a tap', S, true, ['moveTo', 0, 6], at(S, 0, 6)],
+        ['the freezer put on an empty square by a tap, past another empty one', S, true, ['moveTo', 6, 5], at(S, 6, 5)],
+        ['the lower cupboards put by a tap on the column where the shelves stand alone: there is room in their row', at(S, 4, 5), true, ['moveTo', 5, 5], at(at(S, 4, 5), 5, 5)],
+        ['the upper cupboards put by a tap where the shelves stand: their row is taken', at(S, 4, 5), true, ['moveTo', 1, 5], 'refused (taken)'],
+        ['the fridge put by a tap on a column with something in it: a tall piece stands on an empty square', at(S, 4, 5), true, ['moveTo', 0, 5], 'refused (taken)'],
+        ['a tap past the wall\'s seven squares', S, true, ['moveTo', 4, 7], 'refused (square)'],
+        ['a tap on a wall with no gaps: the packed wall has no square of a piece\'s own', S, false, ['moveTo', 4, 5], 'refused (gaps)'],
+        ['the fridge removed: its column stays empty', S, true, ['remove', 0], 'upper-cupboards:upper:1 counter:counter:1 drawers:lower:1 shelves:upper:2 lower-cupboards:lower:2 freezer:tall:3'],
+        ['a fridge added: on the first empty column', at(S, 4, 5).replace('lower-cupboards:lower:2', 'lower-cupboards:lower:5'), true, ['add', 'fridge'], at(S, 4, 5).replace('lower-cupboards:lower:2', 'lower-cupboards:lower:5') + ' fridge:tall:2'],
+        ['upper cupboards added: on the first column with its row free', S, true, ['add', 'upper-cupboards'], S + ' upper-cupboards:upper:4'],
+        ['a freezer added to a wall with every square taken', S + ' fridge:tall:4 fridge:tall:5 fridge:tall:6', true, ['add', 'freezer'], 'refused (room)'],
+        ['the shelves painted: nothing moves', at(S, 4, 5), true, ['paint', 4, 'white'], at(S, 4, 5)],
+        ['a kitchen read with gaps on: compact closes nothing', at(S, 4, 6), true, ['compact'], at(S, 4, 6)],
+        ['gaps said otherwise than true are off: the shelves stop on the first empty square, as My kitchen\'s wall does', at(S, 4, 4), 'yes', ['move', 4, 'right'], 'refused (still)'],
+      ];
+      let rows = 0;
+      TABLE.forEach(([what, from, gaps, [op, a, b], want]) => {
+        const L = Object.assign({ places: row(from) }, JSON.parse(JSON.stringify(WALL)), gaps === false ? {} : { gaps }), before = JSON.stringify(L);
+        let r; try { r = RU[op](L, a, b); } catch (e) { G.push(what + ': the rule threw (' + e.message + ')'); return; }
+        rows++;
+        if (said(r) !== want) G.push(what + ': the rule gives ' + said(r) + ', where his wall with gaps shows ' + want);
+        if (JSON.stringify(L) !== before) G.push(what + ': the layout handed in came back changed');
+        if (op === 'move') { const can = RU.canMove(L, a, b); if (can !== (want !== 'refused (still)')) G.push(what + ': canMove says ' + can + ', and the move ' + (can ? 'is refused' : 'is made')); } });
+      /* 2 · THE WALK, gaps on, seeded */
+      let seed = 20261031; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const SIDES = ['left', 'right', 'up', 'down'], KINDS = ['fridge', 'freezer', 'upper-cupboards', 'lower-cupboards', 'drawers', 'shelves', 'counter'], ROOM = 7;
+      let steps = 0, offers = 0, taps = 0; const diff = [];
+      try { for (let run = 0; run < 6 && diff.length < 4; run++) {
+        let P = row(S);
+        for (let s = 0; s < 120 && diff.length < 4; s++) {
+          const L = Object.assign({ places: P, gaps: true }, JSON.parse(JSON.stringify(WALL))), pick = rnd(), was = shown(P);
+          /* every move offered exactly when it is made; every empty square takes any piece put on it by a tap */
+          P.forEach((p, i) => SIDES.forEach(d => { offers++; const can = RU.canMove(L, i, d), r = RU.move(L, i, d); if (can === !!(r && r.why)) diff.push('in ' + was + ', ' + p.kind + ' ' + d + ': canMove says ' + can + ', the move ' + said(r)); }));
+          for (let c = 0; c < ROOM; c++) if (!P.some(p => p.col === c)) P.forEach((p, i) => { taps++; const r = RU.moveTo(L, i, c); if (!r || r.why) diff.push('in ' + was + ', ' + p.kind + ' put on the empty square ' + c + ': ' + said(r)); else if (r.layout.places[i].col !== c) diff.push('in ' + was + ', ' + p.kind + ' put on the empty square ' + c + ' stands in ' + r.layout.places[i].col); });
+          let r = null, i = Math.floor(rnd() * P.length), op;
+          if (pick < 0.55) { op = 'move'; r = RU.move(L, i, SIDES[Math.floor(rnd() * 4)]); }
+          else if (pick < 0.7) { op = 'moveTo'; r = RU.moveTo(L, i, Math.floor(rnd() * ROOM)); }
+          else if (pick < 0.85 && P.length < 14) { op = 'add'; i = P.length; r = RU.add(L, KINDS[Math.floor(rnd() * KINDS.length)]); }
+          else if (P.length > 2) { op = 'remove'; r = RU.remove(L, i); }
+          steps++;
+          if (!r || r.why) continue;
+          const N = r.layout.places;
+          if (N.some(p => p.col < 0 || p.col >= ROOM)) diff.push('after ' + op + ' from ' + was + ', a piece stands past the wall\'s ' + ROOM + ' squares: ' + shown(N));
+          /* what did not take part in the change stands where it stood */
+          const by = op === 'remove' ? P.filter((p, k) => k !== i) : P, mv = op === 'remove' ? null : N[i];
+          by.forEach((p, k) => { const q = N[op === 'remove' ? k : k]; if (!q || q === mv) return;
+            if (op === 'move' || op === 'moveTo') { const touched = p.col === P[i].col || p.col === mv.col; if (!touched && (q.col !== p.col || q.row !== p.row)) diff.push('after ' + op + ' of the ' + P[i].kind + ' from ' + was + ', the ' + p.kind + ' moved too, from column ' + p.col + ' to ' + q.col); }
+            else if (q.col !== p.col || q.row !== p.row) diff.push('after ' + op + ' from ' + was + ', the ' + p.kind + ' moved from column ' + p.col + ' to ' + q.col + ' (the wall closed up)'); });
+          P = N.map(p => ({ kind: p.kind, row: p.row, col: p.col }));
+        }
+      } } catch (e) { diff.push('a rule threw while the wall was walked (' + String(e && e.message || e).slice(0, 120) + ')'); }
+      G.push(...diff.slice(0, 4));
+      if (!rows || !steps || !offers || !taps) G.push('the gaps were asked nothing (' + rows + ' rows, ' + steps + ' changes, ' + offers + ' moves offered, ' + taps + ' taps): nothing measured is not a pass');
+      console.log('  COUNT-ONLY: the kitchen\'s gaps: ' + rows + ' rows of his wall with gaps, each as it shows; and ' + steps + ' seeded changes on a wall of seven squares, gaps on, no piece moved but the one moved and what it swapped with, ' + offers + ' moves each offered exactly when made, ' + taps + ' taps on an empty square each taken');
+    }
+    fails.push(...G.map(m => 'the kitchen\'s gaps (sprint 5): ' + m));
+  }
+
   /* ---- THE KITCHEN LAYOUT, OPEN, THE TAP, THE ZOOM AND THE CLOSET (2026-10-30) ----
      engine/engine.js, grep "THE KITCHEN LAYOUT", "THE CAMERA'S ZOOM", "THE CLOSET". What a person would notice, each in its
      own sentence below: a kitchen that stands half built, or one built from a layout the engine should have refused; a
@@ -2004,6 +2101,118 @@ function findChromium() {
     bErr.forEach(m => say('the builder\'s page threw: ' + m.split('\n')[0]));
     await bp.close();
     fails.push(...KB.map(m => 'the kitchen builder (2026-10-30): ' + m));
+  }
+
+  /* ---- THE KITCHEN BUILDER ON A WALL WITH GAPS (sprint 5 of the 3D kitchen) ----
+     engine/engine.js, grep "THE KITCHEN BUILDER" and `gaps` in "THE KITCHEN LAYOUT"; his confirmed goal of 2026-10-30 (a
+     piece moved anywhere on the wall). What a person would notice: a wall with an empty column refused although its world
+     turned gaps on, or taken although it did not; the shelves stopping on the first empty square, or the wall closing up
+     behind them; an empty column drawn as anything but a free square; the right arrow offered where nothing is past; a
+     tap on an empty square that does not put the piece picked there; the world handed `gaps` to keep, so what it keeps
+     could turn them on or off; an undo that does not bring back what stood. On a page of its own with a builder declared,
+     a made-up kitchen of the template's seven places on four columns and three free squares, gaps on, a store that writes
+     down every layout it is handed. Red first, each fault planted in a copy of the tree outside the repository
+     (docs/3D-LOG.md, sprint 5). */
+  {
+    const GB = [], say = s => GB.push(s);
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    const gp = await browser.newPage({ viewport: { width: 1280, height: 800 } }), gErr = [];
+    gp.on('pageerror', e => gErr.push(e.message));
+    await gp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await gp.addInitScript({ content: kitSrc });
+    await gp.addInitScript(() => { window.BUILDER = {}; });
+    await gp.goto('file://' + file); await gp.waitForTimeout(1500);
+    try {
+      const T0 = await gp.evaluate(() => {
+        const ID = '__kb_gaps', R = ['##########', '#' + KITCOL.repeat(7) + '##', '#........#', '#........#', '#........#', '##########'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 10, H: 6 };
+        window.__gKept = [];
+        const store = L => { window.__gKept.push(JSON.parse(JSON.stringify(L === undefined ? null : L))); };
+        const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        const wall = [[1, 1], [2, 1], [3, 1], [4, 1]], free = [[5, 1], [6, 1], [7, 1]];
+        /* the check: an empty column is a wall with gaps, and nothing else */
+        const holed = places.map(p => p.kind === 'freezer' ? Object.assign({}, p, { col: 4 }) : p), w5 = wall.concat([[5, 1]]), f2 = [[6, 1], [7, 1]];
+        const chk = { off: kitchenCheck(ID, { wall: w5, free: f2, places: holed }).why || null, on: kitchenCheck(ID, { wall: w5, free: f2, places: holed, gaps: true }).why || null,
+          odd: kitchenCheck(ID, { wall: w5, free: f2, places: holed, gaps: 'yes' }).why || null };
+        const L = { wall, free, places, store, gaps: true };
+        window.__gLayout = L;
+        const s = kitchenLay(ID, L);
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 4; py = fy = 3; dir = 'up'; enterWorld(false); camSet('top');
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        admin = true; applyAdmin(); checkTalk();
+        return { ID, s, chk };
+      });
+      if (T0.s !== null) throw 'the test kitchen with gaps was refused: ' + T0.s;
+      if (!T0.chk.off) say('a wall with an empty column was taken although its layout did not turn gaps on');
+      else if (!/nothing in it/.test(T0.chk.off)) say('a wall with an empty column and no gaps was refused for another reason: ' + T0.chk.off);
+      if (T0.chk.on) say('a wall with an empty column, gaps on, was refused: ' + T0.chk.on);
+      if (!T0.chk.odd) say('a layout whose gaps are "yes" was taken: gaps are true or false');
+      const ID = T0.ID;
+      const st = () => gp.evaluate(ID => { const b = document.getElementById('kitBuild'), K = KITWALL[ID];
+        return { data: kitData(K), kept: window.__gKept.length, sel: kitBuildSel(), said: b ? document.getElementById('kbSaid').textContent : '',
+          right: (() => { const r = document.querySelector('#kbRow [data-kb=right]'); return r ? r.disabled : null; })(),
+          empties: K.cols.map((c, i) => i).filter(i => !K.places.some(p => p.col === i)).map(i => { const c = K.cols[i], ps = kitColumnParts({ x: c.x, y: c.y }); return { i, tape: ps.length > 0 && ps.every(q => q.tape) }; }) }; }, ID);
+      const blur = () => gp.evaluate(() => { const t = document.activeElement; if (t && t !== document.body && t.blur) t.blur(); });
+      const colOf = (S, k) => S.data.places[k].col;
+      /* the shelves, place 4, right by Shift and the right arrow, three times: onto the first, second and third empty square */
+      await gp.evaluate(() => kitBuildPick(4)); await blur();
+      const history = [];
+      for (let k = 1; k <= 3; k++) {
+        const a = await st(); history.push(a.data);
+        await gp.keyboard.press('Shift+ArrowRight'); await gp.waitForTimeout(60);
+        const b = await st();
+        if (colOf(b, 4) !== 3 + k) { say('the shelves moved right ' + k + ' time' + (k > 1 ? 's' : '') + ' stand in column ' + colOf(b, 4) + ', not on empty square ' + k + ' (column ' + (3 + k) + '): ' + (b.said || 'nothing said')); break; }
+        if (b.kept !== a.kept + 1) say('the shelves moved right ' + k + ' times: the world\'s store was handed ' + (b.kept - a.kept) + ' layouts');
+        const others = b.data.places.filter((p, i) => i !== 4).map(p => p.col).join(','), before = a.data.places.filter((p, i) => i !== 4).map(p => p.col).join(',');
+        if (others !== before) say('the shelves moved right ' + k + ' times: the rest of the wall moved too (' + before + ' to ' + others + '): the wall closed up');
+      }
+      let S = await st();
+      if (colOf(S, 4) === 6) {
+        const want = S.empties.map(e => e.i).join(',');
+        if (want !== '4,5') say('with the shelves on the third empty square, the empty columns are ' + JSON.stringify(want) + ', not the two before it (4,5)');
+        S.empties.filter(e => !e.tape).forEach(e => say('the empty column ' + e.i + ' is not drawn as a free square, the fitter\'s tape on the floor'));
+        if (S.right !== true) say('with the shelves on the wall\'s last square, the right arrow is still offered');
+      }
+      /* the store is never handed gaps: what a world keeps cannot turn them on or off */
+      const kept = await gp.evaluate(() => window.__gKept);
+      kept.forEach((L, k) => { const ks = Object.keys(L || {}).sort().join(','); if (ks !== 'free,places,wall') say('the world\'s store was handed ' + ks + ' (layout ' + (k + 1) + '), where it keeps a wall, free squares and places, and never gaps'); });
+      const chk = await gp.evaluate(ID => window.__gKept.map(L => kitchenCheck(ID, Object.assign({}, L, { gaps: true })).why || null), ID);
+      if (chk.some(w => w)) say('the store was handed a layout the engine refuses: ' + chk.find(w => w));
+      /* a tap on an empty square in 3D, with the freezer picked: it is put there */
+      const has3 = await gp.evaluate(() => typeof THREE !== 'undefined' && CAMS.includes('3d'));
+      if (has3) {
+        await gp.evaluate(() => { camSet('3d'); kitBuildPick(6); }); await gp.waitForTimeout(900);
+        const a = await st(); history.push(a.data);
+        const spot = await gp.evaluate(ID => { const K = KITWALL[ID], c = K.cols[5], v = new THREE.Vector3(c.x + 0.5, 0.002, c.y + 0.5).project(T3.cam), r = $('cv3').getBoundingClientRect();
+          return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
+        await gp.mouse.click(spot.x, spot.y); await gp.waitForTimeout(300);
+        const b = await st();
+        if (colOf(b, 6) !== 5) say('with the freezer picked, a tap on the empty square of column 5 left it in column ' + colOf(b, 6) + ' (' + (b.said || 'nothing said') + ')');
+        else { if (b.kept !== a.kept + 1) say('the freezer put on an empty square by a tap: the store was handed ' + (b.kept - a.kept) + ' layouts');
+          if (!b.empties.some(e => e.i === 3)) say('the freezer put on an empty square by a tap: the column it left is not empty'); }
+        /* nothing picked, a tap on an empty square changes nothing */
+        await gp.evaluate(() => kitBuildPick(null));
+        const c = await st(), sp2 = await gp.evaluate(ID => { const K = KITWALL[ID], q = K.cols[4], v = new THREE.Vector3(q.x + 0.5, 0.002, q.y + 0.5).project(T3.cam), r = $('cv3').getBoundingClientRect();
+          return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
+        await gp.mouse.click(sp2.x, sp2.y); await gp.waitForTimeout(300);
+        const d = await st();
+        if (d.kept !== c.kept || JSON.stringify(d.data) !== JSON.stringify(c.data)) say('with nothing picked, a tap on an empty square changed the kitchen');
+        await gp.evaluate(() => camSet('top'));
+      } else console.log('  COUNT-ONLY: the tap on an empty square was not asked, a shell with no 3D camera');
+      /* undo, each to what stood before, handed to the store */
+      await blur();
+      for (let k = history.length - 1; k >= 0; k--) { const a = await st(); await gp.keyboard.press('Control+z'); await gp.waitForTimeout(60); const b = await st();
+        if (JSON.stringify(b.data) !== JSON.stringify(history[k])) { say('undo ' + (history.length - k) + ' on the wall with gaps did not bring back the kitchen as it stood'); break; }
+        if (b.kept !== a.kept + 1) say('undo ' + (history.length - k) + ' on the wall with gaps was not handed to the store'); }
+      /* the same wall with no gaps: the shelves stop on the first empty square, as My kitchen's wall has them */
+      const packed = await gp.evaluate(ID => { const L = Object.assign({}, window.__gLayout); delete L.gaps; kitchenLay(ID, L); kitBuildPick(4); kitBuildMove('right'); const one = KITWALL[ID].places[4].col; kitBuildMove('right');
+        const two = KITWALL[ID].places[4].col; kitchenLay(ID, window.__gLayout); return { one, two }; }, ID);
+      if (packed.one !== 4 || packed.two !== 4) say('on the same wall with no gaps the shelves moved right twice stand in column ' + packed.two + ' (once: ' + packed.one + '), where a packed wall stops them on the first empty square, column 4');
+      console.log('  COUNT-ONLY: the builder on a wall with gaps: the shelves moved by real keys onto the third empty square with the two before it empty, drawn as free squares' + (has3 ? ', the freezer put on an empty square by a tap' : '') + ', each change kept without gaps and undone; the same wall without gaps packed');
+    } catch (e) { if (typeof e === 'string') say(e); else say('the builder with gaps could not be driven to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    gErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await gp.close();
+    fails.push(...GB.map(m => 'the kitchen builder with gaps (sprint 5): ' + m));
   }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----

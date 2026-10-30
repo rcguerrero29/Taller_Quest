@@ -5525,11 +5525,19 @@ function readMarks(){const out=[];
      store   optional (2026-10-30): `(layout) => …`, where the world keeps a change the builder makes, handed a plain copy
              of the new layout, `{wall, free, places}`. A layout with a store may be changed in builder mode (grep "THE
              KITCHEN BUILDER"); one with none never is. The engine keeps no kitchen of its own.
+     gaps    optional (sprint 5 of the 3D kitchen): `true` turns gaps on for this wall, as engine/kitchen.js's rules read
+             it: a column of the wall may stand empty, a move leaves the column it left empty, a piece steps onto empty
+             squares, and in builder mode a tap on an empty square puts the piece picked there. Set by the world, in its
+             own code; never handed to `store`, so nothing a world keeps carries it. Left out, or false, the wall is
+             packed as it always was, and a column with nothing in it is refused. An empty column is drawn as a free
+             square is: the fitter's tape on the floor.
+     things, keep   optional (sprint 5): what a place keeps, drawn in 3D inside it and taken in hand (grep "THE THINGS IN A
+             PLACE" and "THE HAND").
    EVERY LAYOUT IS CHECKED AT THE EDGE, BEFORE ANYTHING IS BUILT, AND ONE THAT FAILS IS REFUSED WHOLE: a sentence in the log
    (kind `kitchen`, always critical) and no kitchen at all in that room, never part of one. Refused: anything not a plain
    object or list where one is meant, a key a layout does not have, a kind or a row off the closed lists, a column off the
    wall, two places in one spot, a tall piece with anything else in its column, two pieces whose bands overlap in one
-   column, a column with nothing in it, a name that is not text or is too long, a fullness off the list, a finish off the
+   column, a column with nothing in it (unless gaps are on), gaps that are not true or false, a name that is not text or is too long, a fullness off the list, a finish off the
    list or on a kind that takes none, an id that is not one or is used twice, a wall or free square that is not `◧` or is
    off the map or named twice, a `◧` neither on the wall nor free, a page or a store that is not a function. A name is
    only ever shown as text.
@@ -5557,10 +5565,14 @@ function kitchenCheck(id,L){
   if(!K||!plain(K.kinds)||!Array.isArray(K.rows)||!plain(K.bands)||!Array.isArray(K.fulls))return why("this page has no KITCHEN to check it against (engine/kitchen.js is loaded before the engine, or not at all)");
   if(!w)return why("there is no room called "+JSON.stringify(String(id).slice(0,40)));
   if(!plain(L))return why("a layout is an object with a wall and places");
-  const extra=Object.keys(L).find(k=>!["wall","free","places","page","store"].includes(k));
-  if(extra!==undefined)return why("a layout has a wall, free squares, places, a page and a store, and this one says "+JSON.stringify(extra.slice(0,30)));
+  const extra=Object.keys(L).find(k=>!["wall","free","places","page","store","gaps","things","keep"].includes(k));
+  if(extra!==undefined)return why("a layout has a wall, free squares, places, a page, a store, gaps, things and a keep, and this one says "+JSON.stringify(extra.slice(0,30)));
   if(own(L,"page")&&typeof L.page!=="function")return why("its page is not a function");
   if(own(L,"store")&&typeof L.store!=="function")return why("its store is not a function");
+  if(own(L,"gaps")&&L.gaps!==true&&L.gaps!==false)return why("its gaps are "+JSON.stringify(String(L.gaps).slice(0,20))+", and gaps are on (true) or off (false)");
+  if(own(L,"things")&&typeof L.things!=="function")return why("its things are not a function");
+  if(own(L,"keep")&&typeof L.keep!=="function")return why("its keep is not a function");
+  const gaps=L.gaps===true;
   const W=L.wall;
   if(!Array.isArray(W)||!W.length)return why("its wall names no column");
   if(W.length>KITCOLS)return why("its wall has "+W.length+" columns, and a wall has at most "+KITCOLS);
@@ -5612,11 +5624,12 @@ function kitchenCheck(id,L){
     const q={kind:p.kind,row:p.row,col:p.col,i};if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;if(own(p,"finish"))q.finish=p.finish;if(own(p,"id"))q.id=p.id;
     places.push(Object.freeze(q));byCol[p.col].push(q);}
   for(let c=0;c<cols.length;c++){const ps=byCol[c];
-    if(!ps.length)return why("column "+c+" has nothing in it");
+    if(!ps.length){if(gaps)continue;return why("column "+c+" has nothing in it");}   /* an empty column, on a wall with gaps (sprint 5) */
     if(ps.length>1&&ps.some(p=>p.row==="tall"))return why("column "+c+" holds a tall piece and something else; a tall piece stands alone");
     for(let a=0;a<ps.length;a++)for(let b=a+1;b<ps.length;b++){const A=K.bands[ps[a].kind],B=K.bands[ps[b].kind];
       if(!A||!B||(A.lo<B.hi-0.001&&B.lo<A.hi-0.001))return why("in column "+c+" the "+ps[a].kind+" and the "+ps[b].kind+" would stand in each other");}}
-  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null})};
+  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null,
+    gaps,things:typeof L.things==="function"?L.things:null,keep:typeof L.keep==="function"?L.keep:null})};
 }
 /* lay it, or refuse it whole and say why; the answer is the sentence, or null when it stands */
 function kitchenLay(id,L){const r=kitchenCheck(id,L);
@@ -5632,9 +5645,12 @@ function kitDirty(){if(typeof t3Invalidate==="function")t3Invalidate();if(typeof
 function kitColAt(x,y){const K=KITWALL[world],w=CW();if(!K||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return -1;
   return K.cols.findIndex(c=>c.x===x&&c.y===y);}
 const kitOpenOf=(id,i)=>{const v=KITOPEN[id+"|"+i];return typeof v==="number"?v:0;};
-/* a free square of the wall of the room you stand in (grep "THE KITCHEN BUILDER"), while the map still has its letter there */
+/* a free square of the wall of the room you stand in (grep "THE KITCHEN BUILDER"), while the map still has its letter there;
+   and, on a wall with gaps (sprint 5), a column of it with nothing in it, which is drawn exactly as a free square is */
 function kitFreeAt(x,y){const K=KITWALL[world],w=CW();if(!K||!K.free||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return false;
-  return K.free.some(q=>q[0]===x&&q[1]===y);}
+  if(K.free.some(q=>q[0]===x&&q[1]===y))return true;
+  if(!K.gaps)return false;
+  const c=K.cols.findIndex(q=>q.x===x&&q.y===y);return c>=0&&!K.places.some(p=>p.col===c);}
 /* A FREE SQUARE IN 3D: nothing stands there yet, so what shows is what a fitter leaves where a piece will go: four strips of
    blue tape on the floor round the square, laid by hand, so no two quite line up. Never nothing, which the camera would
    build as a plain box (`t3MeshTile`), and nothing a person could take for a piece. */
@@ -5645,6 +5661,7 @@ function kitTape(x,y){const out=[],L=0.86,T=0.035,H=0.004,j=k=>((((x|0)*5+(y|0)*
 function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"||!SHAPES||typeof SHAPES.kitchenColumn!=="function")return [];
   if(c<0)return kitFreeAt(x,y)?kitTape(x,y):[];
   const ps=KITWALL[world].places.filter(p=>p.col===c);
+  if(!ps.length)return kitFreeAt(x,y)?kitTape(x,y):[];   /* an empty column of a wall with gaps: the tape, as a free square */
   const out=SHAPES.kitchenColumn({x,y,places:ps.map(p=>p.finish===undefined?{kind:p.kind,open:kitOpenOf(world,p.i)}:{kind:p.kind,open:kitOpenOf(world,p.i),finish:p.finish})}).map(q=>({...q,place:ps[q.place].i}));
   /* the place the builder has picked, framed (grep "THE KITCHEN BUILDER"); nothing, with the builder off */
   const sel=kitBuildReady?kitBuildSel():null;
@@ -5715,9 +5732,12 @@ function kitPress(){const ps=kitFront(px,py);if(!ps||!ps.length)return;
    point, each piece standing in a band of its own. False when nothing opened, so a world with no kitchen keeps its tap. */
 function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||worldCovered()||typeof t3Pick!=="function")return false;
   const build=kitBuildReady&&kitBuildOn();   /* in builder mode a tap PICKS a piece, and a tap on nothing puts the pick down (grep "THE KITCHEN BUILDER") */
-  const h=t3Pick(cx,cy);if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return build?kitBuildPick(null):false;
+  const h=t3Pick(cx,cy);
+  /* with a piece picked, on a wall with gaps, a tap on an empty square puts it there (sprint 5) */
+  if(build&&KITWALL[world].gaps&&kitBuildSel()!==null){const sq=kitSquareAt(h);if(sq>=0)return kitBuildPlace(sq);}
+  if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return build?kitBuildPick(null):false;
   const c=kitColAt(h.object.userData.x,h.object.userData.y);if(c<0)return build?kitBuildPick(null):false;
-  const ps=KITWALL[world].places.filter(p=>p.col===c);if(!ps.length)return false;
+  const ps=KITWALL[world].places.filter(p=>p.col===c);if(!ps.length)return build?kitBuildPick(null):false;
   const y=h.point.y,band=p=>KITCHEN.bands[p.kind];
   const p=ps.find(q=>y>=band(q).lo-0.01&&y<=band(q).hi+0.01)||ps.reduce((a,q)=>Math.abs(y-(band(q).lo+band(q).hi)/2)<Math.abs(y-(band(a).lo+band(a).hi)/2)?q:a);
   return build?kitBuildPick(p.i):kitOpen(world,p.i);}
@@ -8003,7 +8023,8 @@ function paintAt(clientX,clientY){
 /* ═══════════ THE KITCHEN BUILDER (2026-10-30) — builder mode on a kitchen wall: add, move, paint and remove a piece ═══════════
    In a world that has a builder (`BUILDER`), in builder mode (the 🛠️ in Settings, `admin`), in a room whose kitchen
    layout (grep "THE KITCHEN LAYOUT") declares a `store`, a bar stands at the foot of the picture, in every camera: pick a piece by a tap on it in 3D, by ‹ and ›, or
-   by [ and ]; move it ◀ ▶ ▲ ▼ (or Shift and an arrow); Paint it in one of the engine's finishes, or the whole kitchen at
+   by [ and ]; move it ◀ ▶ ▲ ▼ (or Shift and an arrow), and on a wall with gaps (the layout's `gaps`, sprint 5) onto any
+   empty square, by the arrows or by a tap on the square (`kitBuildPlace`, the rules' moveTo); Paint it in one of the engine's finishes, or the whole kitchen at
    once; Add a piece of a kind (a kind the kitchen has already asks first, as My kitchen does); Remove it (it asks first);
    and Undo (or Ctrl+Z). The piece picked is framed in gold in 3D.
    EVERY CHANGE GOES ONE WAY: the engine's rules (`KITCHEN.rules`, engine/kitchen.js) make the new layout from the one
@@ -8026,6 +8047,17 @@ function kitBuildSel(){if(!kitBuildOn())return null;const i=KITB.sel[world];retu
 /* the layout as it stands, as data: what the rules are handed, and what the world is handed to keep */
 function kitData(K){return {wall:K.cols.map(c=>[c.x,c.y]),free:(K.free||[]).map(q=>[q[0],q[1]]),
   places:K.places.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};}
+/* the layout as the rules are asked it: as it stands, with the wall's gaps when the world turned them on (sprint 5). Never
+   what the world is handed to keep: `gaps` is the world's own setting, not the kitchen's */
+function kitAsk(K){const d=kitData(K);if(K.gaps)d.gaps=true;return d;}
+/* THE SQUARE A TAP FELL ON (sprint 5): what the 3D library's ray hit, a kitchen column's own square or the floor under the
+   point, read as a square of this wall that holds nothing: an empty column, or a free square (counted on from the wall's
+   end, as the rules count it). -1 for anything else */
+function kitSquareAt(h){const K=KITWALL[world];if(!K||!h)return -1;let x,y;
+  const u=h.object&&h.object.userData;
+  if(u&&u.g===KITCOL){x=u.x;y=u.y;}else if(h.point&&isFinite(h.point.x)&&isFinite(h.point.z)){x=Math.floor(h.point.x);y=Math.floor(h.point.z);}else return -1;
+  const c=K.cols.findIndex(q=>q.x===x&&q.y===y);if(c>=0)return K.places.some(p=>p.col===c)?-1:c;
+  const f=(K.free||[]).findIndex(q=>q[0]===x&&q[1]===y);return f>=0?K.cols.length+f:-1;}
 /* the places in the wall's order: column by column from the left, and down each column */
 const kitWallOrder=K=>K.places.slice().sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);
 function kitBuildSay(s){KITB.said=String(s||"");kitBuildShow();}
@@ -8041,11 +8073,13 @@ function kitBuildWhy(r){const c=r&&r.code;
   if(c==="most")return kitFill(kitW("kbMost","A kitchen holds at most {n} pieces."),{n:String(KITCHEN.most)});
   if(c==="bare")return kitW("kbBare","The counter is stone and tile, and takes no paint.");
   if(c==="still")return kitW("kbStill","That changes nothing.");
+  if(c==="room")return kitW("kbNoRoom","There is no free square on this wall for a new column.");
+  if(c==="taken")return kitW("kbTaken","There is no room for it on that square.");
   return (r&&r.why)||"?";}
 /* ONE CHANGE: the rules, the squares, the check, the store, then laid; the layout before it kept to undo */
 function kitBuildChange(rule,said,selOf){const id=world,K=KITWALL[id];
   if(!kitBuildOn()||kitBusy||kitNow||worldCovered())return false;
-  const before=kitData(K);let r;try{r=rule(before);}catch(e){r={why:String(e&&e.message||e)};}
+  const before=kitData(K);let r;try{r=rule(kitAsk(K));}catch(e){r={why:String(e&&e.message||e)};}
   if(!r||r.why){kitBuildSay(kitBuildWhy(r));return false;}
   const slots=before.wall.concat(before.free),P=r.layout.places,n=P.reduce((m,p)=>Math.max(m,p.col+1),0);
   if(!P.length){kitBuildSay(kitW("kbLast","A kitchen keeps one piece at least."));return false;}
@@ -8057,6 +8091,7 @@ function kitBuildChange(rule,said,selOf){const id=world,K=KITWALL[id];
   KITB.sel[id]=selOf(r);KITB.mode=null;KITB.kind=null;kitBuildSay(said(r));return true;}
 /* CHECKED, KEPT BY THE WORLD, LAID — in that order, or not at all */
 function kitBuildSet(id,next){const K=KITWALL[id],L=Object.assign({},next,{store:K.store});if(K.page)L.page=K.page;
+  if(K.gaps)L.gaps=true;if(K.things)L.things=K.things;if(K.keep)L.keep=K.keep;   /* the world's own settings and seams go on with the wall, never into what it keeps */
   const r=kitchenCheck(id,L);
   if(r.why){mqwarn("kitchen","a builder's change to "+JSON.stringify(String(id).slice(0,40))+" was refused: "+r.why,false);kitBuildSay(r.why);return false;}
   try{K.store(JSON.parse(JSON.stringify(next)));}
@@ -8073,6 +8108,10 @@ const kitNameOf=p=>kitName(p,lang);
 function kitBuildMove(side){const i=kitBuildSel();if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
   const nm=kitNameOf(KITWALL[world].places[i]);
   return kitBuildChange(L=>KITCHEN.rules.move(L,i,side),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);}
+/* PUT ON AN EMPTY SQUARE, by a tap there, on a wall with gaps (sprint 5): the rules' moveTo, then the one way every change goes */
+function kitBuildPlace(c){const i=kitBuildSel();if(i===null)return false;
+  const nm=kitNameOf(KITWALL[world].places[i]);
+  kitBuildChange(L=>KITCHEN.rules.moveTo(L,i,c),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);return true;}
 function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_"+f,f).toLowerCase();   /* the finish's name inside a sentence: "painted white" */
   if(KITB.all)return kitBuildChange(L=>KITCHEN.rules.paintAll(L,f),()=>kitFill(kitW("kbPaintedAll","The whole kitchen painted {finish}."),{finish:fn}),()=>i);
   if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
@@ -8152,7 +8191,7 @@ function kitBuildShow(){
     paint:kitW("kbPaint","Paint"),add:kitW("kbAdd","Add"),remove:kitW("kbRemove","Remove"),undo:kitW("kbUndo","Undo")};
   [...$("kbRow").children].forEach(bt=>{const a=bt.dataset.kb;   /* each a sign with its name for the pointer and the screen reader, so the row fits the picture */
     bt.textContent=bt.dataset.glyph;bt.setAttribute("aria-label",words[a]);bt.title=words[a];
-    bt.disabled=["left","right","up","down"].includes(a)?!(sel!==null&&KITCHEN.rules.canMove(data,sel,a)):a==="remove"?sel===null:a==="undo"?!undo:false;
+    bt.disabled=["left","right","up","down"].includes(a)?!(sel!==null&&KITCHEN.rules.canMove(kitAsk(K),sel,a)):a==="remove"?sel===null:a==="undo"?!undo:false;
     style(bt,a==="paint"||a==="add"||a==="remove"?KITB.mode===a:undefined);});
   const more=$("kbMore");more.textContent="";more.hidden=!KITB.mode;
   const btn=(a,txt,v,first)=>{const bt=document.createElement("button");bt.type="button";bt.dataset.kb=a;if(v!==undefined)bt.dataset.v=v;if(first)bt.dataset.first="1";bt.textContent=txt;more.appendChild(bt);return bt;};

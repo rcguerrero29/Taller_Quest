@@ -58,7 +58,7 @@
                `finish`, `bare`). What it is handed is never changed. A place is named by `i`, its index in `places`, and
                keeps its index through a move or a paint; an added place comes last, and a removed one leaves the rest in
                their order. Every layout given back has its columns numbered again from the left, with no empty column
-               between, as My kitchen's wall always had them.
+               between, as My kitchen's wall always had them, unless the layout has gaps on (below).
                  add(layout, kind)        a piece of that kind in the first column from the left whose place in the
                                           kind's row is free and that no tall piece stands in; a tall kind, or no such
                                           column, in a new column at the right end. Refused at `most` pieces.
@@ -75,6 +75,21 @@
                  paintAll(layout, finish) every place a finish goes on, in that finish ("paint the whole kitchen").
                  compact(layout)          the columns numbered again from the left with no empty column between, and
                                           nothing else: what a page does to a kitchen it reads, before it shows it.
+                 moveTo(layout, i, col)   the place put on column `col`, which has room for it: an empty column for any
+                                          piece, or, for a piece that is not tall, a column with no tall piece and its
+                                          own row free there. Only on a wall with gaps (a tap on an empty square).
+               GAPS (2026-10-30, `gaps` in the layout: true, and nothing else, turns them on; a world sets it for its own
+               kitchen, and nothing kept on a device may). With gaps on, a piece may stand anywhere on the wall, with
+               empty columns before it: no rule numbers the columns again, so a column a move or a remove leaves empty
+               stays empty, and nothing along the wall shifts to close it; left and right step to the next square, a
+               piece that is not tall still skipping a tall piece's column but stopping on an empty one; a tall piece
+               moves onto an empty square, or swaps with the column beside it as before; nothing moves left of the first
+               column; an added piece takes the first column from the left with room for it (a tall one, the first
+               empty column); compact changes nothing; and no column is past the wall's squares: as many as its
+               `wall` and `free` lists hold together, when the layout has them (the engine's layout does), and 40
+               otherwise. A refusal then may also say `gaps` (moveTo on a wall without them), `square` (a column off the
+               wall), `taken` (no room there) or `room` (no square left). With gaps off, or left out, every rule is
+               exactly as it was before gaps: My kitchen's packed wall.
 
    A kind taken off `kinds` makes every kitchen saved with one in it unreadable to a page that checks a save against
    this list, so a kind is added here and never taken away; the check pins all seven. */
@@ -102,7 +117,7 @@ const KITCHEN = (function () {
      colsOf, cellOf, tallIn, sig, and addPiece's choice of column), worked on a copy of the places, never on what was
      handed in ---- */
   const own = (o, k) => o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
-  const SIDES = ['left', 'right', 'up', 'down'];
+  const SIDES = ['left', 'right', 'up', 'down'], COLS = 40;
   const no = (code, why) => ({ why, code });
   const said = v => '"' + String(v).slice(0, 30) + '"';
   /* the places a layout hands in, each copied: a list of plain objects, each of a kind on the list, in its own kind of
@@ -131,9 +146,17 @@ const KITCHEN = (function () {
     return P;
   }
   const sig = P => P.map((p, i) => i + ':' + p.row + ':' + p.col).sort().join('|');
-  /* A MOVE, on the copy P: true when it was made (whether it changes anything is canMove's) */
-  function step(P, i, side) {
-    const p = P[i], n = colsOf(P);
+  /* GAPS: on only when the layout says `gaps: true`; then how many squares the wall has, its wall's and its free squares
+     together where it lists them, 40 where it does not */
+  const gapsOf = L => !!L && typeof L === 'object' && own(L, 'gaps') && L.gaps === true;
+  const roomOf = L => (Array.isArray(L.wall) ? Math.min(COLS, L.wall.length + (Array.isArray(L.free) ? L.free.length : 0)) : COLS);
+  const wallOf = L => (gapsOf(L) ? { room: roomOf(L) } : null);
+  /* the wall made tidy after a change: packed with gaps off, left as it is with them on */
+  const after = (P, G) => (G ? P : compact(P));
+  /* A MOVE, on the copy P: true when it was made (whether it changes anything is canMove's). G is the wall with gaps on
+     (its room), or null for a packed wall */
+  function step(P, i, side, G) {
+    const p = P[i], n = G ? G.room : colsOf(P);
     if (side === 'left' || side === 'right') {
       const d = side === 'left' ? -1 : 1;
       if (p.row === 'tall') {
@@ -145,6 +168,7 @@ const KITCHEN = (function () {
       }
       let c2 = p.col + d;
       while (c2 >= 0 && c2 < n && tallIn(P, c2)) c2 += d;
+      if (G && (c2 < 0 || c2 >= n)) return false;   /* with gaps, the wall's own squares and no further */
       if (c2 < 0) { P.forEach(x => { x.col += 1; }); p.col = 0; }
       else if (c2 >= n) p.col = n;
       else { const o = cellOf(P, p.row, c2); if (o) o.col = p.col; p.col = c2; }
@@ -162,9 +186,9 @@ const KITCHEN = (function () {
   function canMove(L, i, side) {
     const P = read(L);
     if (!P || named(P, i) || SIDES.indexOf(side) < 0) return false;
-    const now = compact(copy(P)), sim = copy(P);
-    if (!step(sim, i, side)) return false;
-    compact(sim);
+    const G = wallOf(L), now = after(copy(P), G), sim = copy(P);
+    if (!step(sim, i, side, G)) return false;
+    after(sim, G);
     return sig(sim) !== sig(now);
   }
   function move(L, i, side) {
@@ -172,29 +196,49 @@ const KITCHEN = (function () {
     const bad = named(P, i); if (bad) return bad;
     if (SIDES.indexOf(side) < 0) return no('side', 'a piece moves left, right, up or down, and not ' + said(side));
     if (!canMove(L, i, side)) return no('still', 'moving the ' + P[i].kind + ' ' + side + ' would change nothing on the wall');
-    const from = { row: P[i].row, col: P[i].col };
-    step(P, i, side); compact(P);
+    const G = wallOf(L), from = { row: P[i].row, col: P[i].col };
+    step(P, i, side, G); after(P, G);
     return made(L, P, { i, did: 'moved', side, from, to: { row: P[i].row, col: P[i].col } });
+  }
+  /* PUT ON A SQUARE (a tap on an empty one): only with gaps on, onto a column on the wall that has room for it */
+  function moveTo(L, i, col) {
+    const P = read(L); if (!P) return NOT();
+    const bad = named(P, i); if (bad) return bad;
+    if (!gapsOf(L)) return no('gaps', 'a piece is put on a square of its own only on a wall with gaps');
+    const room = roomOf(L), p = P[i];
+    if (!Number.isInteger(col) || col < 0 || col >= room) return no('square', 'there is no column ' + said(col) + ' on a wall of ' + room + ' squares');
+    if (p.col === col) return no('still', 'the ' + p.kind + ' stands in column ' + col + ' already');
+    const there = P.filter(q => q !== p && q.col === col);
+    if (p.row === 'tall' ? there.length : (there.some(q => q.row === 'tall') || there.some(q => q.row === p.row)))
+      return no('taken', 'the ' + p.kind + ' has no room in column ' + col + (p.row === 'tall' ? ': a tall piece stands on an empty square' : ''));
+    const from = { row: p.row, col: p.col };
+    p.col = col;
+    return made(L, P, { i, did: 'moved', side: null, from, to: { row: p.row, col } });
   }
   function add(L, kind) {
     const P = read(L); if (!P) return NOT();
     if (typeof kind !== 'string' || !own(KINDS, kind)) return no('kind', 'there is no kind of place called ' + said(kind));
     if (P.length >= MOST) return no('most', 'a kitchen holds at most ' + MOST + ' pieces, and this one has ' + P.length);
-    const home = KINDS[kind], n = colsOf(P);
-    let col = n;
-    if (home !== 'tall') for (let c = 0; c < n; c++) {
+    const G = wallOf(L), home = KINDS[kind], n = colsOf(P);
+    let col = G ? -1 : n;
+    if (G) for (let c = 0; c < G.room; c++) {   /* with gaps: the first column with room for it, a tall one the first empty one */
+      if (home === 'tall' ? P.some(p => p.col === c) : (tallIn(P, c) || cellOf(P, home, c))) continue;
+      col = c; break;
+    }
+    else if (home !== 'tall') for (let c = 0; c < n; c++) {
       if (tallIn(P, c)) continue;
       if (!cellOf(P, home, c)) { col = c; break; }
     }
+    if (col < 0) return no('room', 'there is no square left on this wall for a ' + kind);
     P.push({ kind, row: home, col });
-    compact(P);
-    return made(L, P, { i: P.length - 1, did: 'added', column: col === n ? 'new' : 'old' });
+    after(P, G);
+    return made(L, P, { i: P.length - 1, did: 'added', column: col >= n ? 'new' : 'old' });
   }
   function remove(L, i) {
     const P = read(L); if (!P) return NOT();
     const bad = named(P, i); if (bad) return bad;
     const gone = P.splice(i, 1)[0];
-    compact(P);
+    after(P, wallOf(L));
     return made(L, P, { i, did: 'removed', place: gone });
   }
   const FIRST = Object.keys(FINISHES)[0];
@@ -206,7 +250,7 @@ const KITCHEN = (function () {
     const bad = named(P, i) || finishBad(finish); if (bad) return bad;
     if (UNFINISHED.indexOf(P[i].kind) >= 0) return no('bare', 'the ' + P[i].kind + ' takes no finish');
     if (finishOf(P[i]) === finish) return no('still', 'the ' + P[i].kind + ' is ' + finish + ' already');
-    coat(P[i], finish); compact(P);
+    coat(P[i], finish); after(P, wallOf(L));
     return made(L, P, { i, did: 'painted', finish });
   }
   function paintAll(L, finish) {
@@ -214,13 +258,13 @@ const KITCHEN = (function () {
     const bad = finishBad(finish); if (bad) return bad;
     const to = P.filter(p => UNFINISHED.indexOf(p.kind) < 0 && finishOf(p) !== finish);
     if (!to.length) return no('still', 'every piece a finish goes on is ' + finish + ' already');
-    to.forEach(p => coat(p, finish)); compact(P);
+    to.forEach(p => coat(p, finish)); after(P, wallOf(L));
     return made(L, P, { i: null, did: 'painted', finish, n: to.length });
   }
 
   function tidy(L) {
     const P = read(L); if (!P) return NOT();
-    compact(P);
+    after(P, wallOf(L));
     return made(L, P, { i: null, did: 'compacted' });
   }
 
@@ -241,7 +285,7 @@ const KITCHEN = (function () {
     finishes: FINISHES,
     unfinished: UNFINISHED,
     most: MOST,
-    rules: { add, move, canMove, remove, paint, paintAll, compact: tidy },
+    rules: { add, move, canMove, moveTo, remove, paint, paintAll, compact: tidy },
   };
   /* frozen all the way down: every object, list and function in it, not only the top (each frozen before what it holds,
      so a function's prototype, which names the function again, is not walked twice) */
