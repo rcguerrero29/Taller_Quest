@@ -8073,7 +8073,7 @@ const kitNameOf=p=>kitName(p,lang);
 function kitBuildMove(side){const i=kitBuildSel();if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
   const nm=kitNameOf(KITWALL[world].places[i]);
   return kitBuildChange(L=>KITCHEN.rules.move(L,i,side),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);}
-function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_"+f,f);
+function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_"+f,f).toLowerCase();   /* the finish's name inside a sentence: "painted white" */
   if(KITB.all)return kitBuildChange(L=>KITCHEN.rules.paintAll(L,f),()=>kitFill(kitW("kbPaintedAll","The whole kitchen painted {finish}."),{finish:fn}),()=>i);
   if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
   const nm=kitNameOf(K.places[i]);
