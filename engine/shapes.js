@@ -96,6 +96,13 @@ const SHAPES=(function(){
   /* HOW FAR A THING IS OPEN, read off its argument (`open`, 2026-10-29): a number from 0, shut, to 1, open as far as it
      goes. Left out, or anything that is not a number, it is shut; a number past either end is that end. */
   const openOf=o=>typeof o==="number"&&o===o?Math.max(0,Math.min(1,o)):0;
+  /* WHAT A PIECE IS FINISHED IN (`finish`, 2026-10-30): a name on the engine's list of finishes (`KITCHEN.finishes`,
+     engine/kitchen.js), read for its colours: `body` the carcass, `front` what you touch, `goods` the white goods' enamel.
+     Left out, a name not on the list, or a page with no KITCHEN, it is wood: the theme's furniture wood and the white
+     goods' own colours, exactly as every piece was built before there were finishes. A colour is never taken from the
+     argument, only a name. */
+  const finishOf=f=>{const K=typeof KITCHEN==="object"&&KITCHEN,F=f!=="wood"&&typeof f==="string"&&K&&K.finishes&&Object.prototype.hasOwnProperty.call(K.finishes,f)?K.finishes[f]:null;
+    return F?{body:F.body,front:F.front,goods:F.goods||null}:{body:C.desk,front:C.deskTop,goods:null};};
   /* A DOOR ON ITS HINGE: parts turned about the upright line through (hx,hz), yaw-first as `turned` turns a whole shape,
      so a part that leans keeps its lean. A DRAWER ON ITS RUNNERS: parts moved straight out toward the room. At 0 both hand
      the parts back as they were written, to the last digit, so a shut piece is its parts as written. */
@@ -288,8 +295,9 @@ const SHAPES=(function(){
      the body is a shell (two sides, a top, a floor, a back) lined white inside, a shelf between the freezer and the
      fridge where the seam was, and glass-pale shelves; both doors hang on the hinges on the side away from the handles,
      each lined inside and carrying its bins, and swing together, the handles and the magnet with them. */
-  const fridge=({x,y,open})=>{
-    const CARC="#AEB6BE",DOOR="#BCC4CC",SEAM="#5A6068",HANDLE="#5A6068",PLINTH="#2F343A",MAG="#E0B45C";
+  const fridge=({x,y,open,finish})=>{
+    const G=finishOf(finish).goods;   /* its enamel, from its finish; its own steel when the finish leaves the white goods as they are */
+    const CARC=G?G.body:"#AEB6BE",DOOR=G?G.front:"#BCC4CC",SEAM="#5A6068",HANDLE="#5A6068",PLINTH="#2F343A",MAG="#E0B45C";
     const parts=[{s:"box",x:0,y:0.025,z:0,w:0.6,h:0.05,d:0.53,c:PLINTH},
       {s:"box",x:0,y:0.5,z:0,w:0.62,h:0.9,d:0.55,c:CARC},
       {s:"box",x:0,y:0.785,z:0.28,w:0.6,h:0.31,d:0.01,c:DOOR},
@@ -680,7 +688,14 @@ const SHAPES=(function(){
      doors hung on their hinges or the drawers fitted on their runners, then the handles, where the hand reaches: low on
      a door above the head, high on one below the waist. The cabinets are the theme's furniture wood (`C.desk` for the
      carcass, `C.deskTop` for what you touch), as the desk and the bookcase are; the inside is dark, so an open one reads
-     as open and its shelf as a pale line. They come off one line, so nothing varies between two of them and no seed is
+     as open and its shelf as a pale line.
+     FINISHED (2026-10-30, `finish` in the shape's argument, a name on `KITCHEN.finishes`, `finishOf` at the top of this
+     file): a painted kitchen is painted where it shows and nowhere else, so the finish's `body` takes the carcass's sides
+     and top, its `front` the doors' frames and sunk panels, the drawers' fronts and the whole of an open shelf; the shelf
+     on its pins, the back, the floor in shade and the drawers' pale boxes are the board and stay it, and the handles stay
+     the one pale metal. The fridge and the freezer take the finish's `goods` as an enamel on their shell and their doors
+     or fronts, or keep their own steel and frost when it has none (wood). The worktop is stone and takes none. Left out,
+     every piece is wood: its parts exactly as they were before there were finishes. They come off one line, so nothing varies between two of them and no seed is
      read; each stands with its back on the wall wherever there is one, and a lower piece and the worktop are the full
      tile wide, so a run of them is one run with one top line.
      OPEN, `open` in the shape's argument, 0 (shut, and left out) to 1 (`openOf`): every door turns on its hinge, every
@@ -701,11 +716,11 @@ const SHAPES=(function(){
      two rails 0.055 wide, 0.02 thick, round a panel sunk 0.006 and a shade darker, with a reveal of 0.006 round the
      door (a flat slab here was a box with two handles, rendered 2026-10-29). A bar handle on the inner stile at `hy`: a
      bar and not a knob, because a knob is under a pixel at street size. */
-  const doors=(lo,hi,D,hy,t)=>{const G=0.006,DT=0.02,F=0.055,W=(1-3*G)/2,H=hi-lo,zf=D/2+DT/2,a=SWING*t,PANEL=dim(C.deskTop,0.85),leaves=[],pulls=[];
+  const doors=(lo,hi,D,hy,t,front)=>{const FR=front||C.deskTop,G=0.006,DT=0.02,F=0.055,W=(1-3*G)/2,H=hi-lo,zf=D/2+DT/2,a=SWING*t,PANEL=dim(FR,0.85),leaves=[],pulls=[];
     [[-1,"l"],[1,"r"]].forEach(([sd,k])=>{const hx=sd*(0.5-G),cx=hx-sd*W/2,cy=(lo+hi)/2;
       leaves.push(...swing([{s:"box",x:cx,y:cy,z:zf-0.003,w:W-2*F+0.01,h:H-2*F+0.01,d:DT-0.006,c:PANEL,door:k},   /* the panel */
-        {s:"box",x:cx-W/2+F/2,y:cy,z:zf,w:F,h:H,d:DT,c:C.deskTop,door:k},{s:"box",x:cx+W/2-F/2,y:cy,z:zf,w:F,h:H,d:DT,c:C.deskTop,door:k},   /* the stiles */
-        {s:"box",x:cx,y:hi-F/2,z:zf,w:W-2*F,h:F,d:DT,c:C.deskTop,door:k},{s:"box",x:cx,y:lo+F/2,z:zf,w:W-2*F,h:F,d:DT,c:C.deskTop,door:k}],   /* the rails */
+        {s:"box",x:cx-W/2+F/2,y:cy,z:zf,w:F,h:H,d:DT,c:FR,door:k},{s:"box",x:cx+W/2-F/2,y:cy,z:zf,w:F,h:H,d:DT,c:FR,door:k},   /* the stiles */
+        {s:"box",x:cx,y:hi-F/2,z:zf,w:W-2*F,h:F,d:DT,c:FR,door:k},{s:"box",x:cx,y:lo+F/2,z:zf,w:W-2*F,h:F,d:DT,c:FR,door:k}],   /* the rails */
         hx,zf,sd*a));
       pulls.push(...swing([{s:"box",x:hx-sd*(W-F/2),y:hy,z:zf+DT/2+0.01,w:0.026,h:0.12,d:0.02,c:PULLS,door:k,handle:k}],hx,zf,sd*a));});
     return leaves.concat(pulls);};
@@ -731,8 +746,9 @@ const SHAPES=(function(){
      inside, with a shelf between each two bays and the seal's line set back at each gap; three drawers the height of a
      third each, every one a front over a white basket with a floor in shade; a bar handle across the top of each front.
      Open, the three come out together. */
-  const freezer=({x,y,open})=>{
-    const CARC="#A9B6C3",FRONT="#C6D0DB",SEAM="#5A6068",HANDLE="#5A6068",PLINTH="#2F343A",LINER="#E4EAF0",BASKET="#CBD5DF",FLOOR="#8796A6",T=0.02;
+  const freezer=({x,y,open,finish})=>{
+    const G=finishOf(finish).goods;   /* its enamel, from its finish; its own frost-pale when the finish leaves the white goods as they are */
+    const CARC=G?G.body:"#A9B6C3",FRONT=G?G.front:"#C6D0DB",SEAM="#5A6068",HANDLE="#5A6068",PLINTH="#2F343A",LINER="#E4EAF0",BASKET="#CBD5DF",FLOOR="#8796A6",T=0.02;
     const parts=[{s:"box",x:0,y:0.025,z:0,w:0.6,h:0.05,d:0.53,c:PLINTH},                    /* 1 · the plinth, set back */
       {s:"box",x:-0.3,y:0.5,z:0,w:T,h:0.9,d:0.55,c:CARC,carcass:1},{s:"box",x:0.3,y:0.5,z:0,w:T,h:0.9,d:0.55,c:CARC,carcass:1},
       {s:"box",x:0,y:0.94,z:0,w:0.58,h:T,d:0.55,c:CARC,carcass:1},{s:"box",x:0,y:0.06,z:0,w:0.58,h:T,d:0.55,c:CARC,carcass:1},
@@ -748,8 +764,8 @@ const SHAPES=(function(){
 
   /* ---------- UPPER CUPBOARDS (⬒) — hung on the wall at head height, two doors ----------
      0.34 deep, from 0.70 to 1.00: over the worktop's splash, under the top of the wall. Handles low on the doors. */
-  const upperCupboard=({x,y,open})=>{const D=0.34,lo=0.7,hi=1.0,at=backToWall(x,y);
-    const parts=carcass(lo,hi,D,C.desk,[0.85]).concat(doors(lo+0.005,hi-0.005,D,lo+0.085,openOf(open)));
+  const upperCupboard=({x,y,open,finish})=>{const D=0.34,lo=0.7,hi=1.0,at=backToWall(x,y),F=finishOf(finish);
+    const parts=carcass(lo,hi,D,F.body,[0.85]).concat(doors(lo+0.005,hi-0.005,D,lo+0.085,openOf(open),F.front));
     if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});                                            /* hung on the wall */
     return turned(parts,at.ry);};
 
@@ -757,19 +773,19 @@ const SHAPES=(function(){
      0.60 deep, its carcass from 0.06 to 0.54 on a kick set back 0.05 behind the doors (any further and the camera, 40° up,
      never sees it), so a worktop laid on it has its top on
      the counter's line. Handles high on the doors. */
-  const lowerCupboard=({x,y,open})=>{const D=0.6,lo=0.06,hi=0.54,at=backToWall(x,y);
+  const lowerCupboard=({x,y,open,finish})=>{const D=0.6,lo=0.06,hi=0.54,at=backToWall(x,y),F=finishOf(finish);
     const parts=[{s:"box",x:0,y:0.03,z:-0.015,w:0.98,h:0.06,d:D-0.03,c:KICK,kick:1}]
-      .concat(carcass(lo,hi,D,C.desk,[0.3]),doors(lo+0.005,hi-0.005,D,hi-0.085,openOf(open)));
+      .concat(carcass(lo,hi,D,F.body,[0.3]),doors(lo+0.005,hi-0.005,D,hi-0.085,openOf(open),F.front));
     if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});                                            /* its back on the wall */
     return turned(parts,at.ry);};
 
   /* ---------- DRAWERS (☷) — on the floor, three drawers, a kick ----------
      The lower cupboard's carcass and kick, with no shelf, and three drawers fitted from the top down, the top one the
      shallowest (what is kept in a top drawer is small), the boxes pale wood with a floor in shade. */
-  const drawers=({x,y,open})=>{const D=0.6,at=backToWall(x,y);
+  const drawers=({x,y,open,finish})=>{const D=0.6,at=backToWall(x,y),F=finishOf(finish);
     const parts=[{s:"box",x:0,y:0.03,z:-0.015,w:0.98,h:0.06,d:D-0.03,c:KICK,kick:1}]
-      .concat(carcass(0.06,0.54,D,C.desk,[]),
-        drawerSet(0.535,D,0.988,[0.13,0.16,0.168],{front:C.deskTop,floor:"#6A5E4C",side:"#C8B994",pull:PULLS,pullW:0.24,pullH:0.026},openOf(open)));
+      .concat(carcass(0.06,0.54,D,F.body,[]),
+        drawerSet(0.535,D,0.988,[0.13,0.16,0.168],{front:F.front,floor:"#6A5E4C",side:"#C8B994",pull:PULLS,pullW:0.24,pullH:0.026},openOf(open)));
     if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});
     return turned(parts,at.ry);};
 
@@ -777,12 +793,12 @@ const SHAPES=(function(){
      Hung where the upper cupboards hang, 0.26 deep: two cheeks and a top, a plain dark back so the gap over each plank
      reads, and three planks cut on one jig and set at one pitch, the lowest its floor. Nothing on it: what is kept on a
      shelf is the game's. It has nothing to open. */
-  const wallShelf=({x,y})=>{const D=0.26,lo=0.7,hi=1.0,T=0.03,m=(lo+hi)/2,at=backToWall(x,y);
-    const parts=[{s:"box",x:-(0.5-T/2),y:m,z:0,w:T,h:hi-lo,d:D,c:C.deskTop,carcass:1},       /* 1 · the cheeks and the top */
-      {s:"box",x:0.5-T/2,y:m,z:0,w:T,h:hi-lo,d:D,c:C.deskTop,carcass:1},
-      {s:"box",x:0,y:hi-0.0125,z:0,w:1.0,h:0.025,d:D,c:C.deskTop,carcass:1},
+  const wallShelf=({x,y,finish})=>{const D=0.26,lo=0.7,hi=1.0,T=0.03,m=(lo+hi)/2,at=backToWall(x,y),FR=finishOf(finish).front;   /* an open shelf is painted whole: its finish's front */
+    const parts=[{s:"box",x:-(0.5-T/2),y:m,z:0,w:T,h:hi-lo,d:D,c:FR,carcass:1},       /* 1 · the cheeks and the top */
+      {s:"box",x:0.5-T/2,y:m,z:0,w:T,h:hi-lo,d:D,c:FR,carcass:1},
+      {s:"box",x:0,y:hi-0.0125,z:0,w:1.0,h:0.025,d:D,c:FR,carcass:1},
       {s:"box",x:0,y:m,z:-D/2+0.005,w:1-2*T,h:hi-lo-0.025,d:0.01,c:"#2E2A33",carcass:1,inside:1}];   /*   the back */
-    [lo+0.011,lo+0.1,lo+0.19].forEach((py,i)=>parts.push({s:"box",x:0,y:py,z:0.005,w:1-2*T,h:0.022,d:D-0.01,c:C.deskTop,plank:i+1}));  /* 2 · the planks */
+    [lo+0.011,lo+0.1,lo+0.19].forEach((py,i)=>parts.push({s:"box",x:0,y:py,z:0.005,w:1-2*T,h:0.022,d:D-0.01,c:FR,plank:i+1}));  /* 2 · the planks */
     if(at.back)parts.forEach(p=>{p.z-=0.5-D/2;});
     return turned(parts,at.ry);};
 
@@ -839,13 +855,14 @@ const SHAPES=(function(){
      the places in it are built, each kind with the piece `KITCHEN.pieces` names, each piece standing in its own band
      (`KITCHEN.bands`), so a lower piece on the floor, the worktop on it and an upper piece hung over that come out one
      over another without touching, and a tall piece stands alone. `places` is what the engine hands it, checked before it
-     is: [{kind, open}], open from 0 to 1 as every piece reads it. Each part says which place it belongs to (`place`, its
+     is: [{kind, open, finish}], open from 0 to 1 and the finish's name as every piece reads them (a place with no finish
+     is handed none, so its piece is built exactly as before there were finishes). Each part says which place it belongs to (`place`, its
      index in `places`), as a door says it is a door, so the suite can tell the pieces apart in one square. A kind the
      library has no piece for, or a page with no `KITCHEN`, builds nothing for that place. */
   const kitchenColumn=({x,y,places})=>{const K=typeof KITCHEN==="object"&&KITCHEN,out=[];
     if(!K||!Array.isArray(places))return out;
     places.forEach((pl,i)=>{const fn=pl&&K.pieces&&SH[K.pieces[pl.kind]];if(typeof fn!=="function")return;
-      fn({x,y,open:pl.open}).forEach(p=>out.push({...p,place:i}));});
+      fn(pl.finish===undefined?{x,y,open:pl.open}:{x,y,open:pl.open,finish:pl.finish}).forEach(p=>out.push({...p,place:i}));});
     return out;};
 
   /* WHAT EACH SHAPE CLAIMS, where the gate and the suite can read it. `drawing` is the letter whose engine drawing
