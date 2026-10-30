@@ -1040,3 +1040,67 @@ polygon update for all of these, and what the marigolds taught, had been logged)
 - **Not done.** Undo lasts the visit (the engine keeps nothing to bring it back after a reload). The flat cameras and iso
   draw a column in its letters' own colours, not its finish. A place's doors all open together. One wall a room. No
   phone measured for cost.
+
+### 2026-10-30 · sprint 5: a kitchen wall with gaps; what a place keeps, standing in it in 3D; and the hand
+
+- **The ask, in general words.** A piece of a kitchen wall moves onto any empty square, the tall ones too, and a column
+  it leaves stays empty, in a kitchen whose world turns that on; a game's other kitchens keep their packed wall. An
+  opened place shows what it keeps standing on its shelves, each thing built in 3D from its picture by the world. And a
+  first way to move a thing: taken in hand from a place's page, shown in hand, put in another place, the way a game's
+  own 2D kitchen wall already does it. The engine keeps no contents: the world hands them in and keeps every change.
+- **What was made.**
+  - **Gaps** (`gaps: true` on a layout; `engine/kitchen.js`'s rules, and `moveTo`): no rule numbers the columns again
+    with gaps on; left and right step onto empty squares (a piece that is not tall still skipping a tall one's column);
+    a tall piece moves onto an empty square or swaps as before; nothing past the wall's squares. The check takes an empty
+    column only with gaps on, and it is drawn as a free square, the fitter's tape (no new part). With a piece picked, a
+    tap on an empty square puts it there: the ray hits the tape or the floor, and the square under the point is read.
+  - **The things in a place** (`things` on a layout; `engine/engine.js`, grep `THE THINGS IN A PLACE`). Each thing's parts
+    are the world's, in tile units, checked at the edge: kinds from the engine's own five (box, sph, cyl, cone, torus),
+    a part's own keys and no others (no glass), numbers finite (x and z within half a tile of the thing's middle, y up to
+    a tile, sizes above 0 and at most a tile, turns within a full turn, stretches up to 4), colours `#rrggbb`; at most 24
+    parts a thing, 24 things a place, 999 of one thing, three copies standing. A thing that fails is refused whole, one
+    sentence in the log, said once a visit. Where it stands is measured off the pieces in `engine/shapes.js` (`KITINSIDE`):
+    the fridge's floor and four glass shelves, the cupboards' floors and shelves on pins, the open shelf's three planks,
+    the worktop's slab, and the top drawer of the freezer and of the drawers (all their drawers come out together, so a
+    lower one's contents would stand under the one above, out of sight; and what stands in the freezer's top drawer stands
+    in the part of it out past the carcass, where the camera sees over its front). Things are spread over the levels in
+    order, as evenly as they go, each made smaller until it fits its share of the shelf, never larger; copies side by side
+    off one shape, each with its own small turn, read off its thing's number and its own on both axes. A piece's turn and
+    its wall are read off the piece's own parts as built (its first carcass part or its slab), never worked out again.
+    Shown while a piece with doors or drawers is open, the swing included, and always on the shelf and the counter;
+    nothing shown for the thing in hand. One tile built again where it stands (`t3Reshape`), as the swing already does.
+  - **The hand** (`keep` on a layout; grep `THE HAND`). A place's page lists its things once, as a grid of buttons a
+    finger's size (a reader block, `grid`, with the world's picture, the name and the count); a press takes one in hand
+    and puts the page down; in hand it is shown over the room (`#kitHand`: picture, name, count, ✕). Opening another place
+    offers putting it there first on its page; one press moves it whole, joining the same thing's count: ONE change
+    `{<place id>: [...], <place id>: [...]}` handed to the world's `keep`, then the page drawn again from what the world
+    answers and both places built again. Escape, ✕, a second press or the page of the place it came from put it back;
+    leaving the room or reloading does. The reader carries `data-kit` while a kitchen place's page is open, so a shell may
+    stand the page beside the room.
+- **Cost.** The engine adds no part kind and no draw call: a place's things join its column's one mesh. In the suite's
+  made-up kitchen, a thing of two parts (a 10-sided cylinder and an 8×6 sphere, 120 triangles) stands two copies at most
+  once its count allows; a real world's things cost what its parts cost, and the engine caps them at 24 parts a thing and
+  three copies. No phone measured.
+- **What the part format could not do,** found building the first world's foods on it: a vessel cannot be hollow, so
+  what is poured into a bowl lies at its rim, as a disc on the bowl's lid, and the inside wall is a band round it; a box
+  has no rounded edge, so a lump cut from a block reads as a block; a torus is 168 triangles whatever its arc, so a thin
+  curved piece (a crescent, a strand) costs as much as a whole ring; a sphere under about a tenth of a tile reads as a
+  hexagon; and nothing below a colour per part, so a speck, a fleck or a highlight is a part of its own.
+- **Measured** (`test/engine.smoke.js`, grep `THE KITCHEN'S GAPS`, `THE KITCHEN BUILDER ON A WALL WITH GAPS`, `THE THINGS
+  IN A PLACE AND THE HAND`). The gaps against a table of 25 rows written from the ask, and over 720 seeded changes on a
+  wall of seven squares: no piece moved but the one moved and what it swapped with, every move offered exactly when it
+  is made, every empty square taking a piece put on it; My kitchen's packed wall still held row for row and side by side
+  (`THE KITCHEN'S RULES`). The builder with gaps by real keys and a real tap: the shelves on the third empty square, the
+  freezer on an empty square, each change kept without `gaps` and undone. The things: none drawn shut, all drawn open
+  inside the fridge's band, the counter's always; twelve kinds of thing the edge must refuse, each refused whole and said
+  once in five draws while the thing beside it is still drawn; the cap of 24. The hand, by a press and by the keys: a take
+  that hands the world nothing, a put handed once with the two places' lists, a count joined, put back by Escape, ✕ and
+  its own page, a put the world could not keep not made, the page and the 3D following the world when it changed its
+  contents behind the engine's back, nothing in storage, the hand gone on leaving the room. Each shown red first on a
+  fault planted in a copy of the tree outside the repository.
+- **Meridian.** Declares no kitchen and is unchanged: `engine/shapes.js` is not touched, and every shape the engine had,
+  built by the engine on main (Taller_Quest 38ffd76) and by this one at 120 places each with `open` and `finish` as
+  sprint 4 asked them, is deep-equal over 130,080 builds. GAMEV and CACHE move together to mq-v244.
+- **Not done.** The freezer's and the drawers' lower drawers show nothing (their contents stand in the top one). A place's
+  things stand in the order the world lists them, not where a hand would put each. A thing in hand is not drawn in the
+  hand of the person in 3D. Undo does not reach a put. One wall a room. No phone measured.
