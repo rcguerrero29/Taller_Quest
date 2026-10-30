@@ -2116,12 +2116,12 @@ function findChromium() {
   {
     const GB = [], say = s => GB.push(s);
     const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
-    const gp = await browser.newPage({ viewport: { width: 1280, height: 800 } }), gErr = [];
+    const gp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), gErr = [];
     gp.on('pageerror', e => gErr.push(e.message));
     await gp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     if (needK) await gp.addInitScript({ content: kitSrc });
     await gp.addInitScript(() => { window.BUILDER = {}; });
-    await gp.goto('file://' + file); await gp.waitForTimeout(1500);
+    await gp.goto('file://' + file); await gp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await gp.waitForTimeout(200);
     try {
       const T0 = await gp.evaluate(() => {
         const ID = '__kb_gaps', R = ['##########', '#' + KITCOL.repeat(7) + '##', '#........#', '#........#', '#........#', '##########'];
@@ -2151,7 +2151,7 @@ function findChromium() {
       const st = () => gp.evaluate(ID => { const b = document.getElementById('kitBuild'), K = KITWALL[ID];
         return { data: kitData(K), kept: window.__gKept.length, sel: kitBuildSel(), said: b ? document.getElementById('kbSaid').textContent : '',
           right: (() => { const r = document.querySelector('#kbRow [data-kb=right]'); return r ? r.disabled : null; })(),
-          empties: K.cols.map((c, i) => i).filter(i => !K.places.some(p => p.col === i)).map(i => { const c = K.cols[i], ps = kitColumnParts({ x: c.x, y: c.y }); return { i, tape: ps.length > 0 && ps.every(q => q.tape) }; }) }; }, ID);
+          empties: K.cols.map((c, i) => i).filter(i => !K.places.some(p => p.col === i)).map(i => { const c = K.cols[i], ps = kitColumnParts({ x: c.x, y: c.y }); return { i, tape: typeof SHAPES !== 'object' || (ps.length > 0 && ps.every(q => q.tape)) }; }) }; }, ID);   /* the tape is a shape: asked where the shapes stand */
       const blur = () => gp.evaluate(() => { const t = document.activeElement; if (t && t !== document.body && t.blur) t.blur(); });
       const colOf = (S, k) => S.data.places[k].col;
       /* the shelves, place 4, right by Shift and the right arrow, three times: onto the first, second and third empty square */
@@ -2181,11 +2181,11 @@ function findChromium() {
       /* a tap on an empty square in 3D, with the freezer picked: it is put there */
       const has3 = await gp.evaluate(() => typeof THREE !== 'undefined' && CAMS.includes('3d'));
       if (has3) {
-        await gp.evaluate(() => { camSet('3d'); kitBuildPick(6); }); await gp.waitForTimeout(900);
+        await gp.evaluate(() => { camSet('3d'); kitBuildPick(6); }); await gp.waitForTimeout(600);
         const a = await st(); history.push(a.data);
         const spot = await gp.evaluate(ID => { const K = KITWALL[ID], c = K.cols[5], v = new THREE.Vector3(c.x + 0.5, 0.002, c.y + 0.5).project(T3.cam), r = $('cv3').getBoundingClientRect();
           return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
-        await gp.mouse.click(spot.x, spot.y); await gp.waitForTimeout(300);
+        await gp.mouse.click(spot.x, spot.y); await gp.waitForTimeout(150);
         const b = await st();
         if (colOf(b, 6) !== 5) say('with the freezer picked, a tap on the empty square of column 5 left it in column ' + colOf(b, 6) + ' (' + (b.said || 'nothing said') + ')');
         else { if (b.kept !== a.kept + 1) say('the freezer put on an empty square by a tap: the store was handed ' + (b.kept - a.kept) + ' layouts');
@@ -2194,7 +2194,7 @@ function findChromium() {
         await gp.evaluate(() => kitBuildPick(null));
         const c = await st(), sp2 = await gp.evaluate(ID => { const K = KITWALL[ID], q = K.cols[4], v = new THREE.Vector3(q.x + 0.5, 0.002, q.y + 0.5).project(T3.cam), r = $('cv3').getBoundingClientRect();
           return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
-        await gp.mouse.click(sp2.x, sp2.y); await gp.waitForTimeout(300);
+        await gp.mouse.click(sp2.x, sp2.y); await gp.waitForTimeout(150);
         const d = await st();
         if (d.kept !== c.kept || JSON.stringify(d.data) !== JSON.stringify(c.data)) say('with nothing picked, a tap on an empty square changed the kitchen');
         await gp.evaluate(() => camSet('top'));
@@ -2229,11 +2229,11 @@ function findChromium() {
   {
     const TH = [], say = s => TH.push(s);
     const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
-    const tp = await browser.newPage({ viewport: { width: 1280, height: 800 } }), tErr = [];
+    const tp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), tErr = [];   /* less motion: a place swings open at once, so nothing here waits on it */
     tp.on('pageerror', e => tErr.push(e.message));
     await tp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     if (needK) await tp.addInitScript({ content: kitSrc });
-    await tp.goto('file://' + file); await tp.waitForTimeout(1500);
+    await tp.goto('file://' + file); await tp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await tp.waitForTimeout(200);
     try {
       const T0 = await tp.evaluate(() => {
         const ID = '__kit_things', R = ['##########', '#' + KITCOL.repeat(4) + '#####', '#........#', '#........#', '#........#', '##########'];
@@ -2257,16 +2257,18 @@ function findChromium() {
       });
       if (T0.s !== null) throw 'the kitchen with things was refused: ' + T0.s;
       if (T0.plain.n) say('a layout with no things drew ' + T0.plain.n + ' thing parts, every place open');
-      const ID = T0.ID;
+      const ID = T0.ID, has3 = await tp.evaluate(() => typeof SHAPES === 'object' && !!SHAPES && typeof SHAPES.kitchenColumn === 'function');   /* the things in 3D are asked where the shapes stand; the page and the hand everywhere */
+      if (!has3) console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so the things were not asked in 3D; their page and the hand were');
       /* 1 · SHOWN WHERE ITS INSIDE SHOWS, inside its piece */
       const shown = await tp.evaluate(ID => { const K = KITWALL[ID], at = i => { const c = K.cols[K.places[i].col]; return kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === i); };
         const shut = at(0).length, counter = at(2).length; KITOPEN[ID + '|0'] = 1; const open = at(0);
         const band = KITCHEN.bands.fridge, out = open.filter(q => q.y < band.lo - 0.001 || q.y > band.hi + 0.001 || Math.abs(q.x) > 0.5 || Math.abs(q.z) > 0.5).length;
         KITOPEN[ID + '|0'] = 0; return { shut, counter, open: open.length, out }; }, ID);
+      if (has3) {
       if (shown.shut) say('the fridge shut draws ' + shown.shut + ' parts of its things: a door hides them');
       if (shown.open !== 2 * 2 + 1 * 2) say('the fridge open draws ' + shown.open + ' parts of its things, where two eggs standing and one milk, two parts each, are 6');
       if (shown.out) say(shown.out + ' parts of the fridge\'s things stand outside the fridge\'s band or its square');
-      if (shown.counter !== 2 * 2) say('the counter, which has nothing to open, draws ' + shown.counter + ' parts of its things shut, where its milk and its lime are 4');
+      if (shown.counter !== 2 * 2) say('the counter, which has nothing to open, draws ' + shown.counter + ' parts of its things shut, where its milk and its lime are 4'); }
       /* 2 · CHECKED AT THE EDGE: each refused whole, in one sentence said once, and the thing beside it still drawn */
       const BAD = [['a part of a kind the engine does not draw', { parts: [{ s: 'ring', y: 0.04, r: 0.05, c: '#C04020' }] }],
         ['a thing over the cap of parts', { parts: Array.from({ length: 25 }, () => ({ s: 'box', y: 0.02, w: 0.02, h: 0.02, d: 0.02, c: '#C04020' })) }],
@@ -2281,14 +2283,14 @@ function findChromium() {
           const t = Object.assign({ id: 'bad', n: 1, name: 'Bad', parts: [{ s: 'box', y: 0.02, w: 0.04, h: 0.04, d: 0.04, c: '#C04020' }] }, over);
           if (over.parts) t.parts = over.parts.map(q => (q.x !== q.x ? Object.assign({}, q, { x: NaN }) : q));
           window.__bad.p3 = [t, ok]; const n0 = mqLog.length;
-          let parts = 0; for (let k = 0; k < 5; k++) parts = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2).length;
+          let parts = 0; for (let k = 0; k < 5; k++) { parts = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2).length; kitThingsOf(ID, 2); }
           const said = mqLog.slice(n0).filter(e => e.kind === 'kitchen').map(e => e.msg), grid = kitThingGrid(ID, K.places[2]);
           out.push({ what, parts, said, cells: grid.length ? grid[0].grid.map(x => x.label) : [] }); delete window.__bad.p3; });
         window.__bad.p3 = (() => { const L = []; for (let k = 0; k < 25; k++) L.push({ id: 't' + k, n: 1, name: 'T' + k }); return L; })();
         const n0 = mqLog.length, over = kitThingsOf(ID, 2).list.length, overSaid = mqLog.slice(n0).filter(e => e.kind === 'kitchen').length;
         window.__bad.p3 = 'eggs'; const n1 = mqLog.length, notList = kitThingsOf(ID, 2); const nlSaid = mqLog.slice(n1).filter(e => e.kind === 'kitchen').length;
         delete window.__bad.p3; return { out, over, overSaid, notList: notList.list.length, nlBad: notList.bad, nlSaid }; }, [ID, BAD]);
-      bad.out.forEach(r => { if (r.parts !== 1) say(r.what + ': the counter draws ' + r.parts + ' parts of its things, where the thing refused draws none and the one beside it its 1');
+      bad.out.forEach(r => { if (has3 && r.parts !== 1) say(r.what + ': the counter draws ' + r.parts + ' parts of its things, where the thing refused draws none and the one beside it its 1');
         if (r.said.length !== 1 || !/refused whole/.test(r.said[0])) say(r.what + ': ' + r.said.length + ' sentences in the log after five draws, where one says it is refused whole' + (r.said[0] ? ' (' + r.said[0] + ')' : ''));
         if (r.cells.join(',') !== 'Ok') say(r.what + ': the page lists ' + JSON.stringify(r.cells) + ', where only the thing taken is listed'); });
       if (bad.over !== 24) say('a place handed 25 things takes ' + bad.over + ', where it holds 24');
@@ -2298,8 +2300,8 @@ function findChromium() {
       const st = () => tp.evaluate(ID => ({ hand: KITHAND ? { from: KITHAND.from, id: KITHAND.thing.id, n: KITHAND.thing.n } : null, panel: !!$('kitHand') && !$('kitHand').hidden ? $('kitHand').textContent : null,
         reader: !$('reader').hidden, kit: $('reader').dataset.kit || null, keeps: window.__keeps.length, stock: JSON.stringify(window.__stock),
         cells: [...document.querySelectorAll('#docBody .dcell')].map(b => b.getAttribute('aria-label')), first: (document.querySelector('#docBody .dbtn') || {}).textContent || null }), ID);
-      const openAt = async i => { await tp.evaluate(([ID, i]) => { kitShut(); kitOpen(ID, i); }, [ID, i]); await tp.waitForTimeout(700); return st(); };
-      const close = async () => { await tp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); }); await tp.waitForTimeout(600); };
+      const openAt = async i => { await tp.evaluate(([ID, i]) => { kitShut(); kitOpen(ID, i); }, [ID, i]); await tp.waitForTimeout(80); return st(); };
+      const close = async () => { await tp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); }); await tp.waitForTimeout(60); };
       let S = await openAt(0);
       if (!S.reader) throw 'the fridge did not open its page';
       if (S.kit !== '1') say('a kitchen place\'s page does not mark the reader (data-kit), so a shell cannot leave the room in view beside it');
@@ -2307,50 +2309,50 @@ function findChromium() {
       const md = await tp.evaluate(() => docMarkdown(docCur)); if (!/- Thing egg × 12/.test(md)) say('Copy does not write the fridge\'s things: ' + JSON.stringify(md.slice(0, 120)));
       /* 4 · TAKEN by a press: the page is put down, the hand shows it, nothing kept changes, and it stands no more in its place */
       const stock0 = S.stock;
-      await tp.click('#docBody .dcell'); await tp.waitForTimeout(700); S = await st();
+      await tp.click('#docBody .dcell'); await tp.waitForTimeout(80); S = await st();
       if (!S.hand || S.hand.id !== 'egg') { say('a press on the egg did not take it in hand'); throw 'the hand could not be held, so nothing after was asked'; }
       if (S.reader) say('the egg taken, the fridge\'s page is still open');
       if (!S.panel || !/Thing egg/.test(S.panel) || !/12/.test(S.panel)) say('the egg in hand is not shown on the screen with its name and how many (' + JSON.stringify(S.panel) + ')');
       if (S.keeps || S.stock !== stock0) say('taking the egg changed what is kept (' + S.keeps + ' changes handed to the world)');
       const gone = await tp.evaluate(ID => { KITOPEN[ID + '|0'] = 1; const c = KITWALL[ID].cols[0], n = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 0).length; KITOPEN[ID + '|0'] = 0; return n; }, ID);
-      if (gone !== 2) say('with the egg in hand the fridge still draws it: ' + gone + ' parts of its things, where the milk alone is 2');
+      if (has3 && gone !== 2) say('with the egg in hand the fridge still draws it: ' + gone + ' parts of its things, where the milk alone is 2');
       /* 5 · PUT on the counter: offered first on its page, ONE change handed to the world, then laid */
       S = await openAt(2);
       if (!S.first || !/Put it here: Thing egg × 12/.test(S.first)) say('with the egg in hand, the counter\'s page does not offer putting it there first (' + JSON.stringify(S.first) + ')');
-      await tp.click('#docBody .dbtn'); await tp.waitForTimeout(400); S = await st();
+      await tp.click('#docBody .dbtn'); await tp.waitForTimeout(60); S = await st();
       const k1 = await tp.evaluate(() => window.__keeps[window.__keeps.length - 1]);
       if (S.keeps !== 1) say('putting the egg on the counter handed the world ' + S.keeps + ' changes, where it is one');
       else if (JSON.stringify(k1) !== JSON.stringify({ p1: [{ id: 'milk', n: 1 }], p3: [{ id: 'milk', n: 1 }, { id: 'lime', n: 3 }, { id: 'egg', n: 12 }] })) say('putting the egg on the counter handed the world ' + JSON.stringify(k1) + ', not the two places\' new lists');
       if (S.hand) say('the egg put on the counter is still in hand');
       if (!S.cells.some(c => /Thing egg, 12/.test(c))) say('the counter\'s page, laid again after the put, does not show the egg: ' + JSON.stringify(S.cells));
       const on = await tp.evaluate(ID => { const c = KITWALL[ID].cols[KITWALL[ID].places[2].col]; return kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2).length; }, ID);
-      if (on !== 2 + 2 + 2 * 2) say('the counter in 3D after the put draws ' + on + ' parts of its things, where the milk, the lime and two eggs are 8');
+      if (has3 && on !== 2 + 2 + 2 * 2) say('the counter in 3D after the put draws ' + on + ' parts of its things, where the milk, the lime and two eggs are 8');
       /* 6 · A COUNT JOINS: the milk from the fridge put where milk is */
-      await close(); S = await openAt(0); await tp.click('#docBody .dcell'); await tp.waitForTimeout(700);
-      S = await openAt(2); await tp.click('#docBody .dbtn'); await tp.waitForTimeout(400); S = await st();
+      await close(); S = await openAt(0); await tp.click('#docBody .dcell'); await tp.waitForTimeout(80);
+      S = await openAt(2); await tp.click('#docBody .dbtn'); await tp.waitForTimeout(60); S = await st();
       if (!/\["milk",2\]/.test(S.stock) || /"p1":\[\["milk"/.test(S.stock)) say('the milk put where milk is: the stock is ' + S.stock + ', where the counter\'s milk is 2 and the fridge has none');
       /* 7 · PUT BACK: Escape, ✕ and a second press, none of them handing the world anything */
       const keeps0 = S.keeps; await close();
-      S = await openAt(2); await tp.click('#docBody .dcell'); await tp.waitForTimeout(700);
+      S = await openAt(2); await tp.click('#docBody .dcell'); await tp.waitForTimeout(80);
       await tp.evaluate(() => { const t = document.activeElement; if (t && t !== document.body && t.blur) t.blur(); });
-      await tp.keyboard.press('Escape'); await tp.waitForTimeout(150); S = await st();
+      await tp.keyboard.press('Escape'); await tp.waitForTimeout(80); S = await st();
       if (S.hand) say('Escape did not put the thing in hand back');
-      await tp.evaluate(ID => { kitOpen(ID, 2); }, ID); await tp.waitForTimeout(700); await tp.click('#docBody .dcell'); await tp.waitForTimeout(700);
-      await tp.click('#khBack'); await tp.waitForTimeout(150); S = await st();
+      await tp.evaluate(ID => { kitOpen(ID, 2); }, ID); await tp.waitForTimeout(80); await tp.click('#docBody .dcell'); await tp.waitForTimeout(80);
+      await tp.click('#khBack'); await tp.waitForTimeout(80); S = await st();
       if (S.hand) say('✕ did not put the thing in hand back');
-      await tp.evaluate(ID => { kitOpen(ID, 2); }, ID); await tp.waitForTimeout(700); await tp.click('#docBody .dcell'); await tp.waitForTimeout(700);
+      await tp.evaluate(ID => { kitOpen(ID, 2); }, ID); await tp.waitForTimeout(80); await tp.click('#docBody .dcell'); await tp.waitForTimeout(80);
       S = await openAt(2);
       if (!S.first || !/Put it back/.test(S.first)) say('opening the place a thing came from does not offer putting it back (' + JSON.stringify(S.first) + ')');
-      await tp.click('#docBody .dbtn'); await tp.waitForTimeout(300); S = await st();
+      await tp.click('#docBody .dbtn'); await tp.waitForTimeout(60); S = await st();
       if (S.hand) say('putting it back from its own page left it in hand');
       if (S.keeps !== keeps0) say('putting a thing back handed the world ' + (S.keeps - keeps0) + ' changes, where it changes nothing kept');
       /* 8 · BY KEYS: Tab to a thing, Enter takes it; a world that cannot keep a put: nothing moves, and it says so */
       await close(); S = await openAt(2);
       const tabbed = await tp.evaluate(() => { const b = document.querySelector('#docBody .dcell'); if (b) b.focus(); return !!b && document.activeElement === b; });
-      await tp.keyboard.press('Enter'); await tp.waitForTimeout(700); S = await st();
+      await tp.keyboard.press('Enter'); await tp.waitForTimeout(80); S = await st();
       if (!tabbed || !S.hand) say('a thing on a place\'s page cannot be taken by the keys (focus ' + tabbed + ', in hand ' + JSON.stringify(S.hand) + ')');
       await tp.evaluate(() => { window.__keepThrow = true; }); const before = (await st()).stock;
-      S = await openAt(5); await tp.click('#docBody .dbtn'); await tp.waitForTimeout(300); S = await st();
+      S = await openAt(5); await tp.click('#docBody .dbtn'); await tp.waitForTimeout(60); S = await st();
       await tp.evaluate(() => { window.__keepThrow = false; });
       if (S.stock !== before) say('a put the world could not keep was made anyway');
       if (!S.hand) say('a put the world could not keep emptied the hand');
@@ -2359,13 +2361,13 @@ function findChromium() {
       await close(); await tp.evaluate(() => { kitHandBack(); window.__stock.p3 = [['lime', 3]]; });
       S = await openAt(2);
       const after = await tp.evaluate(ID => { const c = KITWALL[ID].cols[KITWALL[ID].places[2].col]; return kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2).length; }, ID);
-      if (S.cells.length !== 1 || after !== 2) say('the world took the counter\'s egg and milk away, and the engine still lists ' + JSON.stringify(S.cells) + ' and draws ' + after + ' parts: it drew what it remembered');
+      if (S.cells.length !== 1 || (has3 && after !== 2)) say('the world took the counter\'s egg and milk away, and the engine still lists ' + JSON.stringify(S.cells) + ' and draws ' + after + ' parts: it drew what it remembered');
       const writes = await tp.evaluate(() => { const o = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i), v = localStorage.getItem(k) || ''; if (/egg|milk|lime|"p3"/.test(v)) o.push(k); } return o; });
       if (writes.length) say('the engine wrote what a place keeps into storage, under ' + writes.join(', '));
       /* 10 · A PLACE HOLDING A THING THE ENGINE REFUSED gives nothing and takes nothing; leaving the room puts the hand back */
-      await close(); S = await openAt(6); await tp.click('#docBody .dcell'); await tp.waitForTimeout(700);
+      await close(); S = await openAt(6); await tp.click('#docBody .dcell'); await tp.waitForTimeout(80);
       await tp.evaluate(() => { window.__bad.p3 = [{ id: 'odd', n: 1, name: 'Odd', parts: [{ s: 'ring', c: '#000000' }] }, { id: 'lime', n: 3, name: 'Thing lime' }]; });
-      const k0 = (await st()).keeps; S = await openAt(2); if (S.first && /Put it here/.test(S.first)) { await tp.click('#docBody .dbtn'); await tp.waitForTimeout(300); }
+      const k0 = (await st()).keeps; S = await openAt(2); if (S.first && /Put it here/.test(S.first)) { await tp.click('#docBody .dbtn'); await tp.waitForTimeout(60); }
       S = await st(); await tp.evaluate(() => { delete window.__bad.p3; });
       if (S.keeps !== k0) say('a thing was put in a place holding one the engine refused: the world was handed ' + (S.keeps - k0) + ' changes, and what it could not read would be lost');
       await close(); const left = await tp.evaluate(ID => { const W = '__kit_away', R = ['#####', '#...#', '#####']; WORLDS[W] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 5, H: 3 };
