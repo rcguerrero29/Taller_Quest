@@ -21,6 +21,10 @@
                built in one square stack inside their bands and never touch: a lower piece on the floor, the worktop on it
                at a person's waist, an upper piece hung at head height over that; a tall piece covers all three. Every
                piece is held inside its band, shut and open, by test/engine.smoke.js.
+     fulls     how full a place may be said to be, in the order a choice offers them: some room, almost full, full. Unset
+               means nobody said. The words My kitchen's FULLS had on 2026-10-30, so a place saved there with one reads the
+               same here; the engine checks a layout's fullness against this list (engine/engine.js, grep "THE KITCHEN
+               LAYOUT"). Like `kinds`, a word is added here and never taken away.
 
    A kind taken off `kinds` makes every kitchen saved with one in it unreadable to a page that checks a save against
    this list, so a kind is added here and never taken away; the check pins all seven. */
@@ -47,6 +51,7 @@ const KITCHEN = (function () {
       counter: { lo: 0.54, hi: 0.69 },                                            /* the slab on the counter's line, 0.57, and its splash */
       'lower-cupboards': { lo: 0, hi: 0.54 }, drawers: { lo: 0, hi: 0.54 },      /* on the floor, under the slab */
     },
+    fulls: ['room', 'almost', 'full'],
   };
   /* frozen all the way down: every object and array in it, not only the top */
   const freeze = o => { Object.getOwnPropertyNames(o).forEach(k => { const v = o[k]; if (v && typeof v === 'object') freeze(v); }); return Object.freeze(o); };

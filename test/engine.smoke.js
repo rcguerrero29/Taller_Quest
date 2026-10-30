@@ -924,12 +924,12 @@ function findChromium() {
            the camera's, never a shape's own. The parts say what they are (`door`, `drawer`, `front`, `handle`, `plank`,
            `slab`, `splash`, `inside`), as the table's cloth does; where a part should be and is not, that is said. */
         {
-          const KP = ['########', '#▉⬒⬓☷⊤━#', '#......#', '########'], KID = '__kitchen_probe', keepK = world;
+          const KP = ['#########', '#▉⬒⬓☷⊤━⎕#', '#.......#', '#########'], KID = '__kitchen_probe', keepK = world;   /* ⎕, the closet, 2026-10-30 */
           WORLDS[KID] = { rows: KP.slice(), rows0: KP.slice(), grid: KP.map(r => r.split('')), npcs: [], W: KP[0].length, H: KP.length };
           world = KID;
           try {
             const WALLTOP = 0.55 + ((TILES['#'] || {}).lift | 0) * 0.042, SIDE = ['left', 'right'];
-            const AT = { '▉': 1, '⬒': 2, '⬓': 3, '☷': 4, '⊤': 5, '━': 6 }, kb = (g, o) => build(g, AT[g], 1, o), js = ps => JSON.stringify(ps);
+            const AT = { '▉': 1, '⬒': 2, '⬓': 3, '☷': 4, '⊤': 5, '━': 6, '⎕': 7 }, kb = (g, o) => build(g, AT[g], 1, o), js = ps => JSON.stringify(ps);
             const opens = (g, s) => R.push('the library\'s "' + g + '" (SHAPES.' + SHAPEBIND[g] + ') does not open as it is made: ' + s);
             /* shut is `open` left out, and so is 0, below 0, anything that is not a number; past 1 is 1 */
             const shutIsShut = (g, moves) => { const s = kb(g), o = kb(g, { open: 1 }); if (!s || !o) return;
@@ -953,7 +953,7 @@ function findChromium() {
               S.forEach((d, i) => { if (!d.pull.length) { say(g, 'its ' + SIDE[i] + ' door has no handle'); return; }
                 const pe = ext(d.pull), inner = i ? se[1].x0 : se[0].x1, py = (pe.lo + pe.hi) / 2, mid = (se[i].lo + se[i].hi) / 2;
                 if (Math.abs((pe.x0 + pe.x1) / 2 - inner) > 0.08) say(g, 'the handle on its ' + SIDE[i] + ' door is not by the inner edge, where the two doors meet');
-                if (low ? py >= mid : py <= mid) say(g, 'its handles are ' + (low ? 'high' : 'low') + ' on its doors — the drawing puts them ' + (low ? 'low on a cupboard over the head' : 'high on a cupboard under the waist') + ', where the hand reaches'); });
+                if (low !== null && (low ? py >= mid : py <= mid)) say(g, 'its handles are ' + (low ? 'high' : 'low') + ' on its doors — the drawing puts them ' + (low ? 'low on a cupboard over the head' : 'high on a cupboard under the waist') + ', where the hand reaches'); });
               O.forEach((d, i) => { const e = ext(d.leaf), e0 = se[i], hinge = i ? e0.x1 : e0.x0;
                 if (hinge < e.x0 - 0.03 || hinge > e.x1 + 0.03) opens(g, 'opened, its ' + SIDE[i] + ' door has left its hinge, the outer edge it hangs on');
                 if (e.x1 - e.x0 > (e0.x1 - e0.x0) / 2) opens(g, 'opened, its ' + SIDE[i] + ' door is still across the front (' + f3(e.x1 - e.x0) + ' of its ' + f3(e0.x1 - e0.x0) + ')');
@@ -1035,6 +1035,33 @@ function findChromium() {
                 else { const sp = ext(splash); if (sp.hi - se.hi < 0.05) say('━', 'its splash rises only ' + f3(sp.hi - se.hi) + ' over the slab (0.05 at least)');
                   if (sp.z0 > -0.47) say('━', 'its splash is not against the wall'); } } } }
 
+            /* ⎕ — THE CLOSET (2026-10-30): a wardrobe, as its drawing draws it — the whole height over a kick in shade, against
+               the wall, two doors hung on their outer edges with their bars at a standing hand's height (0.35 to 0.65), and
+               inside, under a shelf, a rail across it with hangers off one set (one shape each) and something hanging from each,
+               inside the carcass, clear of its floor, the garments differing from one another only in what was hung. */
+            CHECKED['⎕'] = 1;
+            { const ps = kb('⎕'); if (!ps) say('⎕', 'there is no shape for it at all'); else { const e = ext(ps); tri['⎕'] = e.tris;
+              if (e.lo > 0.005 || e.hi < 0.92) say('⎕', 'it stands from ' + f3(e.lo) + ' to ' + f3(e.hi) + ' — a closet stands on the floor over a person\'s head (0.92 at least)');
+              if (e.hi > WALLTOP + 0.001) say('⎕', 'it reaches ' + f3(e.hi) + ', over the top of the wall it stands against (' + f3(WALLTOP) + ')');
+              onWall('⎕', ps); kicked('⎕', ps); swingsOpen('⎕', null); shutIsShut('⎕', true);
+              ['l', 'r'].forEach((k, i) => { const h = ps.filter(p => p.door === k && p.handle); if (!h.length) return; const q = ext(h), m = (q.lo + q.hi) / 2;
+                if (m < 0.35 || m > 0.65) say('⎕', 'the handle on its ' + SIDE[i] + ' door is at ' + f3(m) + ' — a closet is opened standing, by a bar at a hand\'s height (0.35 to 0.65)'); });
+              const rail = ps.filter(p => p.rail), hang = ps.filter(p => p.hanger), cloth = ps.filter(p => p.garment), body = ext(ps.filter(p => p.carcass));
+              if (!rail.length || ext(rail).x1 - ext(rail).x0 < 0.8) say('⎕', 'there is no rail across it (0.80 wide at least) — the drawing is a closet, and a closet is a rail to hang things on');
+              const ks = [...new Set(hang.map(p => p.hanger))];
+              if (ks.length < 3) say('⎕', 'it has ' + ks.length + ' hanger(s) on its rail (3 at least)');
+              else { const shapeOfH = k => JSON.stringify(hang.filter(p => p.hanger === k).map(p => [p.s, p.w, p.h, p.d, p.y, p.c]));
+                if (new Set(ks.map(shapeOfH)).size !== 1) say('⎕', 'its hangers are not one shape at one height — hangers come off one set; what differs is what hangs on them'); }
+              const cs = [...new Set(cloth.map(p => p.garment))];
+              if (cs.length !== ks.length) say('⎕', 'it has ' + ks.length + ' hanger(s) and ' + cs.length + ' thing(s) hanging on them — something hangs on each');
+              else if (rail.length && body) { const ry = ext(rail).lo;
+                cs.forEach(k => { const q = ext(cloth.filter(p => p.garment === k));
+                  if (q.hi > ry + 0.001) say('⎕', 'something hangs from above its rail (its top at ' + f3(q.hi) + ', the rail at ' + f3(ry) + ')');
+                  if (q.lo < body.lo + 0.03) say('⎕', 'something hanging in it reaches its floor (' + f3(q.lo) + ') — clothes hang clear of it');
+                  if (q.x0 < body.x0 || q.x1 > body.x1 || q.z0 < body.z0 - 0.001 || q.z1 > body.z1 + 0.001) say('⎕', 'something hanging in it pokes out of the carcass'); });
+                const look = k => { const q = cloth.filter(p => p.garment === k); return q.map(p => p.c + '|' + f3(p.h)).join(','); };
+                if (new Set(cs.map(look)).size < 2) say('⎕', 'everything hanging in it is the same garment — what was hung differs, in its length or its colour'); } } }
+
             /* W — THE FRIDGE OPENS, AND SHUT IT IS WHAT IT WAS. Shut is exactly the eight parts it was built with before it
                could open, as engine/shapes.js wrote them at its resting turn on 2026-10-29 (pasted here, so this is never
                the shape compared with itself; a change meant to the shut fridge changes this list in the same commit and
@@ -1097,6 +1124,7 @@ function findChromium() {
       kinds: { fridge: 'tall', freezer: 'tall', 'upper-cupboards': 'upper', 'lower-cupboards': 'lower', drawers: 'lower', shelves: 'upper', counter: 'counter' },
       order: ['fridge', 'freezer', 'upper-cupboards', 'lower-cupboards', 'drawers', 'shelves', 'counter'],
       rows: ['upper', 'counter', 'lower'], rank: { tall: 0, upper: 1, counter: 2, lower: 3 },
+      fulls: ['room', 'almost', 'full'],     /* My kitchen's FULLS on 2026-10-30, copied here by hand from that page */
       template: [['fridge', 'tall', 0], ['upper-cupboards', 'upper', 1], ['counter', 'counter', 1], ['drawers', 'lower', 1], ['shelves', 'upper', 2], ['lower-cupboards', 'lower', 2], ['freezer', 'tall', 3]] };
     const canon = v => JSON.stringify(v, (k, x) => isObj(x) && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, q) => (o[q] = x[q], o), {}) : x);
     let KIT = null; const heard = new Set();
@@ -1133,6 +1161,7 @@ function findChromium() {
       const got = T.map(p => isObj(p) ? [p.kind, p.row, p.col] : p);
       if (JSON.stringify(got) !== JSON.stringify(WANT.template)) K.push('the template is not the one Simmer\'s My kitchen started every kitchen from — it reads ' + JSON.stringify(got) + ', so every new kitchen would start elsewhere');
       ['kinds', 'order', 'rows', 'rank'].forEach(f => { if (canon(KIT[f]) !== canon(WANT[f])) K.push('KITCHEN.' + f + ' is not what My kitchen read (' + JSON.stringify(KIT[f]) + ') — a kind taken away makes every kitchen saved with one unreadable'); });
+      if (canon(KIT.fulls) !== canon(WANT.fulls)) K.push('KITCHEN.fulls is not how full My kitchen says a place is (' + JSON.stringify(KIT.fulls) + ') — a place saved there as one of those words would be refused by every layout the engine checks');
       /* 5 · every kind is built with a shape the library has, and stands in a band of its own */
       let SH = {}; try { SH = vm.runInNewContext(fs.readFileSync(path.join(root, 'engine', 'shapes.js'), 'utf8') + '\n;SHAPES', {}, { filename: 'engine/shapes.js' }) || {}; }
       catch (e) { K.push('engine/shapes.js could not be read to ask which shapes it has (' + String(e.message || e).slice(0, 120) + ')'); }
@@ -1175,6 +1204,408 @@ function findChromium() {
     }
     fails.push(...K.filter(l => !/^COUNT-ONLY: /.test(l)));
     K.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+  }
+
+  /* ---- THE KITCHEN LAYOUT, OPEN, THE TAP, THE ZOOM AND THE CLOSET (2026-10-30) ----
+     engine/engine.js, grep "THE KITCHEN LAYOUT", "THE CAMERA'S ZOOM", "THE CLOSET". What a person would notice, each in its
+     own sentence below: a kitchen that stands half built, or one built from a layout the engine should have refused; a
+     place that does not open when he presses Open or taps it, opens the wrong place, or stays open after he put its page
+     down; a name he typed shown as something other than what he typed; two buttons on one square, or Open hiding a card
+     for good; a camera that will not come nearer or will not go back; a closet that loses his name; and, in a world that
+     asked for none of it, any of it at all. In the shell as it stands first: what it declares, every square of every room
+     swept for the slot, and anything it declared refused at boot. Then test kitchens made up for the purpose, harder than
+     a real one — every kind, a 40-column wall, a packed place, empty ones, the longest names in both languages, markup in a
+     name — on a page of their own at a laptop's size, with the engine's kitchen (engine/kitchen.js) and a zoom given to
+     the page as a world would give them, and the layouts the engine must refuse. Red first, each fault planted in a copy of
+     the tree outside the repository (docs/3D-LOG.md, 2026-10-30). */
+  {
+    const KL = [], say = s => KL.push(s);
+    /* 1 · THE SHELL AS IT STANDS: every square a person can stand on in every room, the slot asked there and held to the rule —
+       Open in front of a column of a layout this room has, the closet beside a closet, otherwise never either — and every
+       layout this shell declares standing (a refused one is a sentence in the log, read here) */
+    const own = await page.evaluate(() => {
+      const out = { rooms: 0, squares: 0, opens: 0, closets: 0, wrong: [], walls: Object.keys(KITWALL), zoom: !!(typeof CAMZ === 'object' && CAMZ.on), zf: typeof camZoomF === 'function' ? camZoomF() : null,
+        buttons: !!document.getElementById('zoomIn3d'), colMesh: !!TILEMESH[KITCOL], refused: mqLog.filter(e => e.kind === 'kitchen').map(e => e.msg), declared: typeof KITCHENWALLS === 'object' && KITCHENWALLS ? Object.keys(KITCHENWALLS) : [] };
+      const keep = { world, px, py, fx, fy, hid: $('world').hidden, mv: moving }, b = $('read'), was = { hidden: b.hidden, text: b.textContent, d: Object.assign({}, b.dataset) };
+      try {
+        $('world').hidden = false; moving = false;
+        Object.keys(WORLDS).forEach(id => { const w = WORLDS[id]; out.rooms++; world = id;
+          for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+            if (shutToPeople(w.grid[y][x]) || w.grid[y][x] === 'N') continue; out.squares++;
+            px = fx = x; py = fy = y; checkRead();
+            const K = KITWALL[id], kit = !!K && K.cols.some(c => c.fx === x && c.fy === y && w.grid[c.y][c.x] === KITCOL),
+              clo = [[0, -1], [0, 1], [-1, 0], [1, 0]].some(([dx, dy]) => w.grid[y + dy] && w.grid[y + dy][x + dx] === CLOSET);
+            const got = b.hidden ? 'nothing' : b.dataset.kit ? 'Open' : b.dataset.closet ? 'the closet' : 'Read', want = kit ? 'Open' : clo ? 'the closet' : null;
+            if (got === 'Open') out.opens++; if (got === 'the closet') out.closets++;
+            if (want ? got !== want : (got === 'Open' || got === 'the closet')) out.wrong.push(id + ' (' + x + ',' + y + ') offers ' + got + (want ? ', where it is ' + want : ', and nothing here is a kitchen column or a closet'));
+          } });
+      } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; $('world').hidden = keep.hid; moving = keep.mv;
+        b.hidden = was.hidden; b.textContent = was.text; Object.keys(b.dataset).forEach(k => delete b.dataset[k]); Object.assign(b.dataset, was.d); }
+      return out; });
+    own.wrong.slice(0, 4).forEach(m => say('the slot: ' + m));
+    own.refused.forEach(m => say('a kitchen this shell declares was refused at boot, so that room has none: ' + m));
+    own.declared.filter(id => !own.walls.includes(id)).forEach(id => say('this shell declares a kitchen for "' + id + '" and none stands there'));
+    if (!own.declared.length && !own.walls.length && own.colMesh) say('nothing here declares a kitchen and the kitchen column has a shape anyway — the engine binds it only when a layout stands');
+    if (!own.zoom && (own.buttons || own.zf !== 1)) say('this shell asks for no zoom and ' + (own.buttons ? 'has zoom buttons' : 'its camera is at ' + own.zf + ' of where it stands'));
+    if (!own.rooms || !own.squares) say('the slot was asked on no square at all, so nothing was measured');
+    console.log('  COUNT-ONLY: the kitchen and the closet, in this shell as it stands: ' + own.squares + ' squares of ' + own.rooms + ' rooms asked, Open on ' + own.opens + ', the closet on ' + own.closets +
+      ', layouts standing: ' + (own.walls.join(', ') || 'none') + ', zoom ' + (own.zoom ? 'asked for' : 'not asked for'));
+
+    /* 2 · A WORLD THAT DECLARES NOTHING (or a room of this one with no kitchen in it): no Open, no tap, no zoom, no closet */
+    const plainRoom = await page.evaluate(() => { const ids = Object.keys(WORLDS).filter(id => !KITWALL[id] && !WORLDS[id].rows.some(r => r.includes(CLOSET) || r.includes(KITCOL)));
+      return ids.includes(PL.home) ? PL.home : ids[0] || null; });
+    const has3d = await page.evaluate(() => typeof THREE !== 'undefined' && CAMS.includes('3d'));
+    if (!has3d) console.log('  COUNT-ONLY: the kitchen\'s tap and zoom were not asked in this shell, which has no 3D camera');
+    else if (plainRoom) {
+      const np = await browser.newPage({ viewport: { width: 1280, height: 800 } }), nErr = [];
+      np.on('pageerror', e => nErr.push(e.message));
+      await np.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await np.goto('file://' + file); await np.waitForTimeout(1200);
+      const at = await np.evaluate(id => { const w = WORLDS[id]; for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++) if (!shutToPeople(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y)) return [x, y]; return null; }, plainRoom);
+      if (!at) say('the room "' + plainRoom + '" has no square to stand on, so a world without a kitchen was not asked');
+      else {
+        await np.evaluate(([id, x, y]) => { $('intro').hidden = true; heroName = 'Probe'; world = id; px = fx = x; py = fy = y; dir = 'down'; enterWorld(false); camSet('3d'); }, [plainRoom, at[0], at[1]]);
+        await np.waitForTimeout(900);
+        const c0 = await np.evaluate(() => T3.cam ? T3.cam.position.toArray() : null);
+        const box = await np.evaluate(() => { const r = $('cv3').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width, r.height]; });
+        if (!c0 || !(box[2] > 0)) say('in a room with no kitchen the 3D camera did not draw, so its tap and its zoom were not asked');
+        else {
+          await np.mouse.click(box[0], box[1]); await np.waitForTimeout(150);
+          await np.mouse.move(box[0], box[1]); await np.mouse.wheel(0, 400); await np.waitForTimeout(250);
+          const after = await np.evaluate(() => ({ reader: !$('reader').hidden, open: Object.keys(KITOPEN).length, cam: T3.cam.position.toArray(), zoomIn: !!document.getElementById('zoomIn3d'), zoom: typeof CAMZ === 'object' && CAMZ.on, rel: [px, py] }));
+          if (after.reader || after.open) say('in "' + plainRoom + '", a room with no kitchen, a tap on the 3D picture opened ' + (after.reader ? 'a page' : 'a place'));
+          if (!after.zoom) {
+            if (after.zoomIn) say('a world that asks for no zoom has zoom buttons on its 3D picture');
+            /* the camera follows the hero, and the tap does not move him here (a tap is not a walk), so the camera stands where it stood */
+            if (String(after.rel) === String(at) && after.cam.some((v, i) => Math.abs(v - c0[i]) > 1e-12)) say('a world that asks for no zoom: the wheel over the 3D picture moved its camera (' + c0.map(v => v.toFixed(3)) + ' to ' + after.cam.map(v => v.toFixed(3)) + ')');
+          } else console.log('  COUNT-ONLY: this shell asks for a zoom, so "no zoom without asking" is asked of the test kitchens\' page below instead');
+        }
+      }
+      nErr.forEach(m => say('the page with no kitchen threw: ' + m.split('\n')[0]));
+      await np.close();
+    }
+
+    /* 3 · THE TEST KITCHENS, on a page of their own */
+    const needKit = await page.evaluate(() => typeof KITCHEN !== 'object');
+    const kp = await browser.newPage({ viewport: { width: 1280, height: 800 } }), kErr = [];
+    kp.on('pageerror', e => kErr.push(e.message));
+    await kp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needKit) await kp.addInitScript({ content: 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();' });
+    /* a zoom, and one kitchen this page declares for a room there is none of, which the engine must refuse out loud at boot,
+       and boot anyway (a shell that declares its own of either keeps its own: window.X is under a shell's const X) */
+    await kp.addInitScript(() => { window.CAMZOOM = true; window.KITCHENWALLS = { __boot_refusal: { wall: [[0, 0]], places: [{ kind: 'fridge', row: 'tall', col: 0 }] } }; });
+    await kp.goto('file://' + file); await kp.waitForTimeout(1500);
+    try {
+      const boot = await kp.evaluate(() => ({ mine: typeof KITCHENWALLS === 'object' && KITCHENWALLS && !!KITCHENWALLS.__boot_refusal, log: mqLog.filter(e => e.kind === 'kitchen' && /__boot_refusal/.test(e.msg)).map(e => [e.crit, e.msg]), stands: !!KITWALL.__boot_refusal }));
+      if (boot.mine) { if (!boot.log.length || !boot.log[0][0]) say('a kitchen declared for a room that does not exist was not refused out loud at boot (no critical "kitchen" line in the log)'); if (boot.stands) say('a kitchen declared for a room that does not exist stands anyway'); }
+      /* THE ROOM: a back wall of forty columns, a floor to stand on in front of it, a closet on the east side */
+      const T = await kp.evaluate(() => {
+        const ID = '__test_kitchen', N = 40, WD = N + 4, row = (a, m, z) => a + m + z;
+        const R = ['#'.repeat(WD), row('##', KITCOL.repeat(N), '##'), row('#', '.'.repeat(WD - 2), '#'), row('#', '.'.repeat(WD - 3), CLOSET + '#'), row('#', '.'.repeat(WD - 2), '#'), '#'.repeat(WD)];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: WD, H: R.length };
+        /* the longest names a place may have, thirty characters each, the cap exactly */
+        const LONG_ES = 'Alacena de doña Ñoña, la única', LONG_EN = 'The tall pantry shelf, by door', MARK = '<img src=x onerror=alert(1)>';
+        const cap = n => { if (Array.from(n).length !== 30) throw new Error('a longest name is not thirty characters: ' + n); return n; };
+        const places = [], FULL = KITCHEN.fulls;
+        for (let c = 0; c < N; c++) { const k = c % 5;
+          if (k === 0) places.push({ kind: 'fridge', row: 'tall', col: c, full: FULL[c % FULL.length] });
+          if (k === 1) places.push({ kind: 'upper-cupboards', row: 'upper', col: c, name: cap(LONG_ES) }, { kind: 'counter', row: 'counter', col: c, name: MARK }, { kind: 'drawers', row: 'lower', col: c, name: cap(LONG_EN), full: 'full' });
+          if (k === 2) places.push({ kind: 'shelves', row: 'upper', col: c }, { kind: 'lower-cupboards', row: 'lower', col: c, name: 'Vacío' });
+          if (k === 3) places.push({ kind: 'freezer', row: 'tall', col: c, name: 'Congelador' });
+          if (k === 4) places.push({ kind: 'upper-cupboards', row: 'upper', col: c }, { kind: 'lower-cupboards', row: 'lower', col: c, full: 'almost' }); }
+        const L = { wall: Array.from({ length: N }, (_, c) => [c + 2, 1]), places,
+          page: (pl, lg) => pl.name === 'Vacío' ? [] : pl.kind === 'fridge' ? Array.from({ length: 200 }, (_, i) => ({ kv: [['thing ' + i + ' · ' + lg, String(i)]] })) : [{ p: 'inside the ' + pl.kind + ' at ' + pl.col }] };
+        const laid = kitchenLay(ID, L);
+        return { ID, N, laid, LONG_ES: cap(LONG_ES), LONG_EN: cap(LONG_EN), MARK, places: places.length, cols: KITWALL[ID] ? KITWALL[ID].cols.length : 0, n: KITWALL[ID] ? KITWALL[ID].places.length : 0, mesh: !!TILEMESH[KITCOL] };
+      });
+      if (T.laid !== null) throw 'the test kitchen, a layout the engine should take, was refused: ' + T.laid;
+      if (T.cols !== T.N || T.n !== T.places) say('the test kitchen stands with ' + T.cols + ' of ' + T.N + ' columns and ' + T.n + ' of ' + T.places + ' places');
+      if (!T.mesh) say('a layout stands and the kitchen column has no shape for the 3D camera');
+
+      /* 3a · THE REFUSALS: each a layout the engine must refuse whole, with a sentence, leaving no kitchen at all — and a good
+         layout already standing in that room is gone after it, never half of one */
+      const ref = await kp.evaluate(ID => {
+        const good = () => ({ wall: [[2, 1], [3, 1]], places: [{ kind: 'fridge', row: 'tall', col: 0 }, { kind: 'counter', row: 'counter', col: 1 }] });
+        const R2 = ['######', '##' + KITCOL + KITCOL + '##', '#....#', '######'], RID = '__refusals';
+        WORLDS[RID] = { rows: R2.slice(), rows0: R2.slice(), grid: R2.map(r => r.split('')), npcs: [], W: 6, H: 4 };
+        const W3 = ['######', '##' + KITCOL + KITCOL + KITCOL + '#', '#....#', '######'], RID3 = '__refusals3';
+        WORLDS[RID3] = { rows: W3.slice(), rows0: W3.slice(), grid: W3.map(r => r.split('')), npcs: [], W: 6, H: 4 };
+        const SH = ['#####', '#' + KITCOL + '#.#', '#####'], RIDS = '__refusals_shut';   /* a column with nowhere to stand */
+        WORLDS[RIDS] = { rows: SH.slice(), rows0: SH.slice(), grid: SH.map(r => r.split('')), npcs: [], W: 5, H: 3 };
+        const g = f => { const L = good(); f(L); return L; }, p = (i, o) => L => Object.assign(L.places[i], o);
+        const cases = [
+          ['not an object', () => [1, 2], 'a layout is an object'],
+          ['null', () => null, 'a layout is an object'],
+          ['a key a layout does not have', () => g(L => { L.roof = 1; }), '"roof"'],
+          ['a page that is not a function', () => g(L => { L.page = 'x'; }), 'page'],
+          ['no wall', () => g(L => { L.wall = []; }), 'no column'],
+          ['a wall that is not a list', () => g(L => { L.wall = '2,1'; }), 'no column'],
+          ['41 columns', () => g(L => { L.wall = Array.from({ length: 41 }, (_, i) => [i, 1]); }), 'at most 40'],
+          ['a wall square that is not a square', () => g(L => { L.wall[1] = [3]; }), 'not a square'],
+          ['a wall square off the map', () => g(L => { L.wall[1] = [30, 1]; }), 'off the map'],
+          ['a wall square that is not a column in the map', () => g(L => { L.wall[1] = [1, 2]; }), 'not a kitchen column'],
+          ['one square twice', () => g(L => { L.wall[1] = [2, 1]; }), 'one square'],
+          ['a column in the map the wall does not name', () => ({ wall: [[2, 1], [3, 1]], places: [{ kind: 'fridge', row: 'tall', col: 0 }, { kind: 'counter', row: 'counter', col: 1 }], _room: RID3 }), 'does not name'],
+          ['no places', () => g(L => { L.places = []; }), 'no places'],
+          ['places that are not a list', () => g(L => { L.places = {}; }), 'no places'],
+          ['121 places', () => g(L => { L.places = Array.from({ length: 121 }, () => ({ kind: 'fridge', row: 'tall', col: 0 })); }), 'at most 120'],
+          ['a place that is not an object', () => g(L => { L.places[1] = 'counter'; }), 'not a place'],
+          ['a key a place does not have', () => g(p(1, { colour: 'red' })), '"colour"'],
+          ['a kind there is none of', () => g(p(1, { kind: 'oven' })), 'a kind there is none of'],
+          ['a kind given as an inherited name', () => g(p(1, { kind: 'toString' })), 'a kind there is none of'],
+          ['a tall piece out of the tall row', () => g(p(0, { row: 'upper' })), 'the tall row'],
+          ['a row piece in the tall row', () => g(p(1, { row: 'tall' })), 'stands in one of'],
+          ['a row there is none of', () => g(p(1, { row: 'middle' })), 'stands in one of'],
+          ['a column off the wall', () => g(p(1, { col: 2 })), 'columns 0 to 1'],
+          ['a column that is not a whole number', () => g(p(1, { col: 0.5 })), 'columns 0 to 1'],
+          ['two places in one spot', () => g(L => { L.places.push({ kind: 'counter', row: 'counter', col: 1 }); }), 'one spot'],
+          ['a tall piece with something else', () => g(L => { L.places.push({ kind: 'upper-cupboards', row: 'upper', col: 0 }); }), 'stands alone'],
+          ['two pieces in each other', () => g(L => { L.places.push({ kind: 'drawers', row: 'upper', col: 1 }, { kind: 'lower-cupboards', row: 'lower', col: 1 }); }), 'in each other'],
+          ['a column with nothing in it', () => g(L => { L.places.pop(); }), 'nothing in it'],
+          ['a name one character too long', () => g(p(1, { name: 'x'.repeat(31) })), 'not a name'],
+          ['a name too long in characters, not in code units', () => g(p(1, { name: '🍳'.repeat(31) })), 'not a name'],
+          ['a name with a control character', () => g(p(1, { name: 'a\u0007b' })), 'not a name'],
+          ['a name that turns the text round', () => g(p(1, { name: 'abc‮def' })), 'not a name'],
+          ['a name with a hidden space', () => g(p(1, { name: 'a​b' })), 'not a name'],
+          ['a name not trimmed', () => g(p(1, { name: ' abc' })), 'not a name'],
+          ['an empty name', () => g(p(1, { name: '' })), 'not a name'],
+          ['a name that is not text', () => g(p(1, { name: { toString: () => 'x' } })), 'not a name'],
+          ['a fullness off the list', () => g(p(1, { full: 'half' })), 'full'],
+          ['a fullness that is a number', () => g(p(1, { full: 1 })), 'full'],
+        ];
+        const out = [];
+        cases.forEach(([what, make, want]) => { const L = make(), room = L && L._room || RID; if (L && L._room) delete L._room;
+          kitchenLay(room, good());   /* a good one first, where the room can hold one */
+          const n0 = mqLog.filter(e => e.kind === 'kitchen').length;
+          let s; try { s = kitchenLay(room, L); } catch (e) { out.push(what + ': the check threw (' + e.message + ') instead of refusing it'); return; }
+          const logged = mqLog.filter(e => e.kind === 'kitchen' && e.crit).length > n0 || mqLog.some(e => e.kind === 'kitchen' && e.crit && e.msg.indexOf(String(s).slice(0, 60)) >= 0);
+          if (typeof s !== 'string' || !s) out.push(what + ': taken (' + JSON.stringify(s) + ') where it is refused');
+          else { if (s.indexOf(want) < 0) out.push(what + ': refused with a sentence that does not say why ("' + s + '", where it says "' + want + '")');
+            if (KITWALL[room]) out.push(what + ': refused, and a kitchen still stands in that room');
+            if (!logged) out.push(what + ': refused in silence, nothing critical in the log'); } });
+        /* a column nobody can stand in front of (something set down there) is not a fault of the layout: it stands, is
+           built, and offers no Open from anywhere */
+        { const s = kitchenLay(RIDS, { wall: [[1, 1]], places: [{ kind: 'fridge', row: 'tall', col: 0 }] });
+          if (s !== null) out.push('a column nobody can stand in front of: refused ("' + s + '"), where it stands and only offers no Open');
+          else { const keep = [world, px, py, $('world').hidden]; let offered = 0; world = RIDS; $('world').hidden = false;
+            try { const w = WORLDS[RIDS]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (shutToPeople(w.grid[y][x])) continue; px = x; py = y; checkRead(); if ($('read').dataset.kit) offered++; } }
+            finally { [world, px, py] = keep; $('world').hidden = keep[3]; checkRead(); }
+            if (offered) out.push('a column nobody can stand in front of offers Open from ' + offered + ' square(s) that are not in front of it'); } }
+        /* and a good one stands, so the refusals above were refusals of those faults and not of everything */
+        const ok = kitchenLay(RID, good());
+        if (ok !== null) out.push('the good layout the refusals start from is refused itself: ' + ok);
+        delete KITWALL[RID]; delete KITWALL[RID3]; delete KITWALL[RIDS]; delete WORLDS[RID]; delete WORLDS[RID3]; delete WORLDS[RIDS];
+        return { out, n: cases.length };
+      }, T.ID);
+      ref.out.forEach(m => say('a layout the engine must refuse: ' + m));
+      console.log('  COUNT-ONLY: the kitchen layout: ' + ref.n + ' layouts the engine must refuse, each refused whole with a sentence and logged; the test kitchen, ' + T.cols + ' columns and ' + T.n + ' places, taken');
+
+      /* 3b · BUILT: every column of the test kitchen is one shape, its places' pieces each in its own band and in its own
+         place, shut and open; and the flat cameras draw it */
+      const built = await kp.evaluate(ID => { const keep = world; world = ID; const out = [], K = KITWALL[ID];
+        const ext = ps => { const b = t3BakeParts(ps, h => h); let lo = Infinity; for (let i = 1; i < b.pos.length; i += 3) if (b.pos[i] < lo) lo = b.pos[i]; return { lo, hi: b.top }; };
+        let n = 0;
+        try { if (typeof SHAPES !== 'object' || typeof t3BakeParts !== 'function') return { none: true };
+          K.cols.forEach((c, ci) => { const mine = K.places.filter(p => p.col === ci);
+            [0, 1].forEach(t => { mine.forEach(p => { KITOPEN[ID + '|' + p.i] = t; });
+              const ps = kitColumnParts({ x: c.x, y: c.y }), tags = [...new Set(ps.map(q => q.place))].sort((a, b) => a - b);
+              if (JSON.stringify(tags) !== JSON.stringify(mine.map(p => p.i).sort((a, b) => a - b))) out.push('column ' + ci + (t ? ', open,' : '') + ' is built of places ' + JSON.stringify(tags) + ', and holds ' + JSON.stringify(mine.map(p => p.i)));
+              const es = mine.map(p => { const q = ps.filter(v => v.place === p.i); return q.length ? [p, ext(q)] : null; }).filter(Boolean);
+              es.forEach(([p, e]) => { n++; const b = KITCHEN.bands[p.kind]; if (e.lo < b.lo - 0.001 || e.hi > b.hi + 0.001) out.push('column ' + ci + ', the ' + p.kind + (t ? ' open' : '') + ', stands ' + e.lo.toFixed(3) + ' to ' + e.hi.toFixed(3) + ', out of its band (' + b.lo + ' to ' + b.hi + ')'); });
+              for (let a = 0; a < es.length; a++) for (let b = a + 1; b < es.length; b++) if (es[a][1].lo < es[b][1].hi - 0.001 && es[b][1].lo < es[a][1].hi - 0.001) out.push('column ' + ci + ': the ' + es[a][0].kind + ' and the ' + es[b][0].kind + ' stand in each other'); });
+            mine.forEach(p => { delete KITOPEN[ID + '|' + p.i]; }); });
+          /* the flat cameras: each column draws as its places' own letters, and asking them throws nothing */
+          K.cols.forEach((c, ci) => { const want = K.places.filter(p => p.col === ci).sort((a, b) => KITCHEN.rank[b.row] - KITCHEN.rank[a.row]).map(p => KITLETTER[p.kind]).join('');
+            if (kitLetters(c.x, c.y).join('') !== want) out.push('column ' + ci + ' is drawn flat as "' + kitLetters(c.x, c.y).join('') + '", and holds "' + want + '"'); });
+          Object.keys(KITLETTER).forEach(k => { if (typeof SHAPEBIND === 'object' && SHAPEBIND[KITLETTER[k]] !== KITCHEN.pieces[k]) out.push('the flat cameras draw a ' + k + ' as "' + KITLETTER[k] + '", which the engine binds to ' + SHAPEBIND[KITLETTER[k]] + ', and the 3D camera builds it as ' + KITCHEN.pieces[k]); });
+          Object.keys(KITCHEN.kinds).forEach(k => { if (!KITLETTER[k]) out.push('the kind "' + k + '" has no letter, so a flat camera draws no ' + k); });
+        } finally { world = keep; }
+        return { out, n }; }, T.ID);
+      if (built.none) console.log('  COUNT-ONLY: the test kitchen\'s columns were not built here, a shell with no 3D camera');
+      else { built.out.slice(0, 6).forEach(m => say('the test kitchen, built: ' + m)); if (!built.n) say('the test kitchen\'s columns built nothing to measure'); }
+
+      /* 3c · STANDING IN IT. Every square of the room asked for the slot: in front of each column Open, naming each place in
+         the column in the column's order and as it was typed; beside the closet the closet; never two buttons */
+      await kp.evaluate(([ID]) => { $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 2; py = fy = 2; dir = 'up'; enterWorld(false); }, [T.ID]);
+      await kp.waitForTimeout(300);
+      const sweep = await kp.evaluate(ID => { const w = WORLDS[ID], K = KITWALL[ID], out = [], b = $('read'); let opens = 0;
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (shutToPeople(w.grid[y][x])) continue;
+          px = fx = x; py = fy = y; checkTalk();
+          const shown = ['read', 'talk', 'serve'].filter(id => $(id) && !$(id).hidden);
+          if (shown.length > 1) out.push('(' + x + ',' + y + ') shows ' + shown.length + ' buttons: ' + shown.join(', '));
+          const ci = K.cols.findIndex(c => c.fx === x && c.fy === y);
+          if (ci >= 0) { opens++; const names = K.places.filter(p => p.col === ci).sort((a, c) => KITCHEN.rank[a.row] - KITCHEN.rank[c.row]).map(p => kitName(p, lang));
+            const want = (T().kitOpen || 'Open') + ' — ' + names.join(' · ');
+            if (b.hidden || !b.dataset.kit) out.push('in front of column ' + ci + ' (' + x + ',' + y + ') the slot is not Open');
+            else if (b.textContent !== want) out.push('in front of column ' + ci + ' the slot reads "' + b.textContent + '", where it reads "' + want + '"');
+            if (b.children.length) out.push('in front of column ' + ci + ' the slot holds ' + b.children.length + ' element(s): a name was read as markup'); } }
+        return { out, opens }; }, T.ID);
+      sweep.out.slice(0, 5).forEach(m => say('standing in the test kitchen: ' + m));
+      if (sweep.opens !== T.N) say('Open was asked in front of ' + sweep.opens + ' of the ' + T.N + ' columns');
+
+      /* a press, sampled every frame until it settles: `open` goes up to exactly 1 and the page opens only then */
+      const press = async (front, choose) => kp.evaluate(async ([ID, front, choose]) => {
+        const K = KITWALL[ID]; px = fx = front[0]; py = fy = front[1]; checkTalk();
+        const ci = K.cols.findIndex(c => c.fx === front[0] && c.fy === front[1]), mine = K.places.filter(p => p.col === ci);
+        const target = choose === undefined ? mine[0] : mine.find(p => p.kind === choose), seen = [];
+        $('read').click();
+        if (mine.length > 1) {   /* a column with more than one place offers each, on a page of its own */
+          const bs = [...$('docBody').querySelectorAll('button.dbtn')], names = mine.slice().sort((a, b) => KITCHEN.rank[a.row] - KITCHEN.rank[b.row]).map(p => kitName(p, lang));
+          if ($('reader').hidden || JSON.stringify(bs.map(x => x.textContent)) !== JSON.stringify(names)) return { err: 'a column of ' + mine.length + ' places offers ' + JSON.stringify(bs.map(x => x.textContent)) + ', where it offers each, ' + JSON.stringify(names) };
+          bs[names.indexOf(kitName(target, lang))].click(); }
+        await new Promise(res => { const t0 = performance.now(); const f = () => { seen.push([kitOpenOf(ID, target.i), !$('reader').hidden]); if ((seen[seen.length - 1][1] && kitOpenOf(ID, target.i) === 1) || performance.now() - t0 > 3000) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); });
+        return { i: target.i, seen, title: $('docTitle').textContent, html: $('docTitle').innerHTML, kids: $('docTitle').children.length + $('docBody').querySelectorAll('img').length, body: $('docBody').textContent, heads: [...$('docBody').querySelectorAll('h3.dh')].map(h => h.textContent) };
+      }, [T.ID, front, choose]);
+      const putDown = async i => kp.evaluate(async ([ID, i]) => { const seen = []; $('docClose').click();
+        await new Promise(res => { const t0 = performance.now(); const f = () => { seen.push(kitOpenOf(ID, i)); if (kitOpenOf(ID, i) === 0 && !kitBusy || performance.now() - t0 > 3000) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); });
+        return { seen, reader: !$('reader').hidden, left: Object.keys(KITOPEN).filter(k => KITOPEN[k] !== 0) }; }, [T.ID, i]);
+      let frames = 0;
+      const swung = (what, s, up) => { const v = up ? s.seen.map(q => q[0]) : s.seen; frames += v.length;
+        if (!v.length) { say(what + ': nothing was sampled'); return; }
+        if (v[v.length - 1] !== (up ? 1 : 0)) say(what + ': it ends at open ' + v[v.length - 1] + ', where it ends at exactly ' + (up ? 1 : 0));
+        if (v.some((x, k) => k && (up ? x < v[k - 1] : x > v[k - 1]))) say(what + ': it does not move one way, ' + JSON.stringify(v.slice(0, 12)));
+        if (!v.some(x => x > 0 && x < 1)) say(what + ': it jumped, no frame between shut and open (' + v.length + ' frames) — it swings by itself, over a short time');
+        if (up && s.seen.some(q => q[1] && q[0] < 1)) say(what + ': the page opened before the place had finished opening'); };
+      /* the fridge: one place, a packed one (200 things), the name it has none of shown as the world's word for it */
+      const fr = await press([2, 2]);
+      if (fr.err) say(fr.err);
+      else { swung('the fridge opening', fr, true);
+        if (!/thing 199/.test(fr.body)) say('the packed fridge\'s page does not reach its two-hundredth thing');
+        const p = await putDown(fr.i); swung('the fridge put down', p, false);
+        if (p.reader) say('the fridge\'s page was put down and the reader is still there');
+        if (p.left.length) say('after its page was put down, ' + p.left.length + ' place(s) are still open: ' + p.left.join(', ')); }
+      /* column 1: three places offered each; the counter chosen, its name markup typed in, shown as typed */
+      const ct = await press([3, 2], 'counter');
+      if (ct.err) say(ct.err);
+      else { swung('the counter opening', ct, true);
+        if (ct.title !== T.MARK || ct.kids) say('a name with markup in it is not shown exactly as typed on its page: the title reads "' + ct.title + '" and holds ' + ct.kids + ' element(s)');
+        if (!/inside the counter at 1/.test(ct.body)) say('the counter\'s page is not the page the world hands it');
+        await putDown(ct.i); }
+      /* the longest names, in both languages, in the same column */
+      const up = await press([3, 2], 'upper-cupboards'); if (!up.err && up.title !== T.LONG_ES) say('the longest Spanish name reads "' + up.title + '" on its page, where it was typed "' + T.LONG_ES + '"'); if (!up.err) await putDown(up.i);
+      const dr = await press([3, 2], 'drawers'); if (!dr.err && dr.title !== T.LONG_EN) say('the longest English name reads "' + dr.title + '" on its page, where it was typed "' + T.LONG_EN + '"'); if (!dr.err) await putDown(dr.i);
+      /* an empty place opens to its name and nothing else */
+      const em = await press([4, 2], 'lower-cupboards');
+      if (em.err) say(em.err); else { if (em.title !== 'Vacío' || em.body.trim() !== '') say('an empty place does not open to its name and nothing else (it reads "' + em.title + '" over "' + em.body.slice(0, 60) + '")'); await putDown(em.i); }
+      /* a card the world placed on a column's own square is at the end of every page that column opens */
+      const card = await kp.evaluate(ID => { const k = Object.keys(DC()).find(d => { const s = docSections(d); return Array.isArray(s) && s.length; }); if (!k) return null;
+        bldReads.push({ world: ID, x: 5, y: 1, doc: k }); return { k, title: docTitle(k) }; }, T.ID);
+      if (!card) console.log('  COUNT-ONLY: this shell has no document to place on a column, so a card at the end of a page was not asked');
+      else { const fz = await press([5, 2]);
+        if (fz.err) say(fz.err); else { const at = fz.heads.indexOf(card.title), mine = fz.body.indexOf('inside the freezer at 3');
+          if (at < 0) say('a card placed on the freezer\'s square is not on the page the freezer opens — Open took its place, and it is lost');
+          else if (mine < 0 || fz.body.indexOf(card.title) < mine) say('a card placed on the freezer\'s square is not at the end of its page, after what the world hands it');
+          await putDown(fz.i); }
+        await kp.evaluate(ID => { bldReads.splice(bldReads.findIndex(r => r.world === ID), 1); }, T.ID); }
+      /* less motion asked for: it opens at once, with no frame between */
+      await kp.emulateMedia({ reducedMotion: 'reduce' });
+      const rm = await press([2, 2]);
+      if (!rm.err) { if (rm.seen.some(q => q[0] > 0 && q[0] < 1)) say('a person who asked for less motion still sees the fridge swing, ' + rm.seen.filter(q => q[0] > 0 && q[0] < 1).length + ' frame(s) between shut and open');
+        const p = await putDown(rm.i); if (p.seen.some(x => x > 0 && x < 1)) say('a person who asked for less motion sees it swing shut'); }
+      await kp.emulateMedia({ reducedMotion: 'no-preference' });
+      console.log('  COUNT-ONLY: the test kitchen: ' + sweep.opens + ' columns offered Open, places opened and put down with ' + frames + ' frames sampled, ' + (card ? 'a card at the end of a page, ' : '') + 'and once with less motion');
+
+      /* 3d · THE 3D PICTURE: the tap, by real pointer events at the point the camera puts a place on the screen; the
+         doors swinging in the scene; the zoom */
+      if (!has3d) console.log('  COUNT-ONLY: the test kitchen\'s tap and zoom were not asked, a shell with no 3D camera');
+      else {
+        await kp.evaluate(() => { px = fx = 3; py = fy = 3; camSet('3d'); });
+        await kp.waitForTimeout(900);
+        const ok3 = await kp.evaluate(ID => !!(T3.group && String(T3.builtKey).indexOf(ID + '|') === 0), T.ID);
+        if (!ok3) say('the test kitchen did not build in the 3D camera, so its tap and zoom were not asked');
+        else {
+          const spot = (c, kind, dz) => kp.evaluate(([ID, c, kind, dz]) => { const K = KITWALL[ID], col = K.cols[c], p = K.places.find(q => q.col === c && (!kind || q.kind === kind)), b = KITCHEN.bands[p.kind];
+            const v = new THREE.Vector3(col.x + 0.5, (b.lo + b.hi) / 2, col.y + 0.5 + dz).project(T3.cam), r = $('cv3').getBoundingClientRect();
+            return { i: p.i, x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height, inside: Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95 }; }, [T.ID, c, kind, dz]);
+          const tapAt = async (s, what, expect) => { if (!s.inside) { say(what + ': the place is off the picture, so its tap was not asked'); return null; }
+            await kp.mouse.click(s.x, s.y);
+            const got = await kp.evaluate(async ID => { await new Promise(res => { const t0 = performance.now(); const f = () => (!$('reader').hidden || performance.now() - t0 > 2000) ? res() : requestAnimationFrame(f); requestAnimationFrame(f); });
+              return { reader: !$('reader').hidden, kit: kitNow ? kitNow.i : null, title: $('docTitle').textContent }; }, T.ID);
+            if (expect === null) { if (got.reader) say(what + ': a page opened (' + got.title + ')'); }
+            else if (!got.reader || got.kit !== expect) say(what + ': ' + (got.reader ? 'it opened place ' + got.kit + ' ("' + got.title + '")' : 'nothing opened'));
+            if (got.reader) await putDown(got.kit === null ? 0 : got.kit);
+            return got; };
+          /* the doors in the scene, mid-swing and back: the column's mesh is rebuilt where it stands, and shut it is the shut build */
+          const meshOf = c => kp.evaluate(([ID, c]) => { const col = KITWALL[ID].cols[c], m = T3.group.children.find(o => o.userData && o.userData.g === KITCOL && o.userData.x === col.x && o.userData.y === col.y);
+            if (!m) return null; const a = m.geometry.attributes.position.array; let h = 0; for (let i = 0; i < a.length; i++) h = (Math.imul(h, 31) + Math.round(a[i] * 1e5)) | 0;
+            return h + ':' + a.length; }, [T.ID, c]);
+          const shut1 = await meshOf(1);
+          /* each point on its piece's front face, at the middle of its band: the upper cupboards hang 0.34 deep on the wall,
+             the drawers stand 0.60 deep, the freezer 0.55 in the middle of its square */
+          const s1 = await spot(1, 'upper-cupboards', -0.12);
+          await tapAt(s1, 'a tap on the upper cupboards of column 1', s1.i);
+          const mid = await kp.evaluate(ID => { const i = KITWALL[ID].places.find(p => p.col === 1 && p.kind === 'upper-cupboards').i; KITOPEN[ID + '|' + i] = 0.5; const c = KITWALL[ID].cols[1]; t3Reshape(c.x, c.y); return i; }, T.ID);
+          const half = await meshOf(1);
+          await kp.evaluate(([ID, i]) => { KITOPEN[ID + '|' + i] = 0; const c = KITWALL[ID].cols[1]; t3Reshape(c.x, c.y); }, [T.ID, mid]);
+          const back = await meshOf(1);
+          if (!shut1) say('column 1 has no mesh in the 3D scene');
+          else { if (half === shut1) say('half open, column 1 in the 3D scene is the same mesh as shut — its doors do not swing in the picture'); if (back !== shut1) say('opened and put down, column 1 in the 3D scene is not the mesh it was shut'); }
+          const s2 = await spot(1, 'drawers', 0.13); await tapAt(s2, 'a tap on the drawers of column 1', s2.i);
+          const s3 = await spot(3, null, 0.3); await tapAt(s3, 'a tap on the freezer', s3.i);
+          const fl = await kp.evaluate(() => { const v = new THREE.Vector3(px + 0.5, 0, py + 1.5).project(T3.cam), r = $('cv3').getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height, inside: Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95 }; });
+          await tapAt(fl, 'a tap on the floor', null);
+          /* the zoom: two buttons named in the world's words, the wheel and a pinch; within its limits; and back */
+          const cam = () => kp.evaluate(() => { const [qx, qy] = focusXY(); return { d: T3.cam.position.distanceTo(new THREE.Vector3(qx + 0.5, 0.4, qy + 0.5)), p: T3.cam.position.toArray(), z: camZoom, lo: CAMZ.lo, hi: CAMZ.hi }; });
+          const frame = () => kp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+          const z0 = await cam();
+          const btn = await kp.evaluate(() => ['zoomIn3d', 'zoomOut3d'].map(id => { const b = document.getElementById(id); return b ? { hidden: b.hidden, name: b.getAttribute('aria-label') } : null; }));
+          if (!btn[0] || !btn[1] || btn[0].hidden || btn[1].hidden) say('a world that asks for a zoom has no zoom buttons on its 3D picture');
+          else { const t = await kp.evaluate(() => [T().zoomIn || 'Zoom in', T().zoomOut || 'Zoom out']);
+            if (btn[0].name !== t[0] || btn[1].name !== t[1]) say('the zoom buttons are named "' + btn[0].name + '" and "' + btn[1].name + '", not the world\'s words ("' + t[0] + '", "' + t[1] + '")');
+            await kp.click('#zoomIn3d'); await frame(); const zi = await cam();
+            if (!(zi.d < z0.d - 0.01)) say('the zoom-in button did not bring the camera nearer (' + z0.d.toFixed(3) + ' to ' + zi.d.toFixed(3) + ')');
+            await kp.click('#zoomOut3d'); await frame(); const zb = await cam();
+            if (zb.p.some((v, k) => Math.abs(v - z0.p[k]) > 1e-9)) say('in and out again, the camera is not back where it stood (' + z0.p.map(v => v.toFixed(4)) + ' and ' + zb.p.map(v => v.toFixed(4)) + ')');
+            await kp.click('#zoomOut3d'); await frame(); const zo = await cam();
+            if (!(zo.d > z0.d + 0.01)) say('the zoom-out button did not take the camera further (' + z0.d.toFixed(3) + ' to ' + zo.d.toFixed(3) + ')');
+            for (let k = 0; k < 20; k++) await kp.evaluate(() => { const b = document.getElementById('zoomIn3d'); if (!b.disabled) b.click(); });
+            await frame(); const zmin = await cam(), dis = await kp.evaluate(() => document.getElementById('zoomIn3d').disabled);
+            if (zmin.z !== zmin.lo) say('pressed twenty times, the zoom stops at ' + zmin.z + ', not at its limit ' + zmin.lo);
+            if (!dis) say('at its nearest the zoom-in button can still be pressed');
+            /* the wheel, over the picture: down takes it out */
+            const r = await kp.evaluate(() => { const b = $('cv3').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
+            await kp.mouse.move(r[0], r[1]); await kp.mouse.wheel(0, 300); await kp.waitForTimeout(150); await frame(); const zw = await cam();
+            if (!(zw.z > zmin.z)) say('the wheel over the 3D picture did not move the camera out (zoom ' + zmin.z + ' to ' + zw.z + ')');
+            /* two fingers spread twice as wide: twice as near, and no walk and no tap when they lift */
+            const pin = await kp.evaluate(async ([cx, cy]) => { const c3 = $('cv3'), at0 = [px, py], z1 = camZoom;
+              const ev = (type, id, x) => c3.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: cy, bubbles: true, isPrimary: id === 11, pointerType: 'touch' }));
+              ev('pointerdown', 11, cx - 25); ev('pointerdown', 12, cx + 25);
+              let heldMid = null;
+              for (let k = 1; k <= 5; k++) { ev('pointermove', 12, cx + 25 + k * 15); ev('pointermove', 11, cx - 25 - k * 10); heldMid = heldMid || held; await new Promise(r => requestAnimationFrame(r)); }
+              const zp = camZoom; ev('pointerup', 12, cx + 100); ev('pointerup', 11, cx - 75);
+              await new Promise(r => setTimeout(r, 120));
+              return { z1, zp, moved: String([px, py]) !== String(at0), reader: !$('reader').hidden, held: held || heldMid }; }, r);
+            if (!(pin.zp < pin.z1 - 0.01)) say('two fingers spread on the 3D picture did not bring the camera nearer (' + pin.z1 + ' to ' + pin.zp + ')');
+            if (pin.moved || pin.held) say('two fingers pinching on the 3D picture walked the hero');
+            if (pin.reader) say('two fingers lifting from a pinch opened a page, as if they were a tap');
+            console.log('  COUNT-ONLY: the test kitchen in 3D: four taps, the zoom from ' + z0.d.toFixed(2) + ' to ' + zi.d.toFixed(2) + ' and ' + zo.d.toFixed(2) + ' tiles by its buttons, held at ' + zmin.lo + ', out by the wheel to ' + zw.z.toFixed(3) + ', in by a pinch to ' + pin.zp); }
+        }
+      }
+
+      /* 3e · THE CLOSET: beside it the slot is the closet in the world's word; pressed, the creator opens over the world with
+         the name kept and every row it offers; a change made there is kept, the name still his */
+      const cl = await kp.evaluate(async ID => { const w = WORLDS[ID], out = []; camSet('top');
+        const cx = w.rows[3].indexOf(CLOSET); px = fx = cx - 1; py = fy = 3; checkTalk(); const b = $('read');
+        if (b.hidden || !b.dataset.closet) return { out: ['beside the closet the slot is not the closet'] };
+        if (b.textContent !== (T().closet || '👕')) out.push('beside the closet the slot reads "' + b.textContent + '", not the world\'s word for it');
+        const name0 = heroName, style0 = look.style; b.click(); await new Promise(r => setTimeout(r, 100));
+        if ($('creator').hidden || !$('world').hidden) return { out: out.concat(['pressed, the closet did not open the character creator over the world']) };
+        if (!$('lbName').hidden || !$('heroname').hidden) out.push('the closet\'s creator offers the name to be changed — the name is kept');
+        const want = T().closetTitle || T().chairTitle || T().crTitle; if ($('crTitle').textContent !== want) out.push('the closet\'s creator is titled "' + $('crTitle').textContent + '", not the world\'s words for it');
+        const rows = ['rowStyle', 'rowOutfit', 'rowShirt', 'rowSkin', 'rowHair'].filter(id => !$(id) || !$(id).querySelector('button'));
+        if (rows.length) out.push('the closet\'s creator offers nothing in ' + rows.join(', ') + ' — it changes everything the creator offers');
+        const pick = [...$('rowStyle').querySelectorAll('button')].find(x => x.getAttribute('aria-pressed') !== 'true'); if (pick) pick.click();
+        const style1 = look.style; $('begin').click(); await new Promise(r => setTimeout(r, 100));
+        if (!$('creator').hidden || $('world').hidden) out.push('its way out does not bring the world back');
+        if (heroName !== name0) out.push('the closet changed the name from "' + name0 + '" to "' + heroName + '"');
+        if (pick && (style1 === style0 || look.style !== style1)) out.push('a hairstyle picked in the closet was not kept');
+        if (chairOpen) out.push('after its way out, the creator still counts as open');
+        return { out }; }, T.ID);
+      cl.out.forEach(m => say('the closet: ' + m));
+    } catch (e) { if (typeof e === 'string') say(e); else say('the test kitchens could not be driven to the end, so they measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    kErr.forEach(m => say('the test kitchens\' page threw: ' + m.split('\n')[0]));
+    await kp.close();
+    fails.push(...KL.map(m => 'kitchen (2026-10-30): ' + m));
   }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----

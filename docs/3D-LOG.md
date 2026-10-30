@@ -925,3 +925,50 @@ polygon update for all of these, and what the marigolds taught, had been logged)
   one in the iso camera gets the engine's defaults. The fridge's and the freezer's doors and drawers all open together;
   one door or one drawer of several is not chosen. The cabinets' finish is the theme's wood and not a choice a game makes.
   Nothing is on a shelf or in a drawer: what is kept is a game's. No phone measured for cost.
+
+### 2026-10-30 · a kitchen wall built from a layout, opened by a press or a tap; the camera's zoom; and a closet
+
+- **The ask, in general words.** A world says where its kitchen wall stands and what places it has, and the engine
+  builds it; a person walks up to a place, or taps it in the 3D picture, and it opens by itself and shows what the world
+  keeps there; the 3D camera comes nearer and goes back; and a closet lets the person change their character. Every new
+  thing is off for a world that does not ask.
+- **What was made.**
+  - **A kitchen column** (`◧`, `engine/engine.js`, grep `THE KITCHEN LAYOUT`; `SHAPES.kitchenColumn`): one square of a
+    wall, built as the places in it are built, each kind with the piece `KITCHEN.pieces` names in its own band. Nothing new
+    is modelled: it is the six pieces of 2026-10-29 and the fridge, stacked. The template's four columns cost what they
+    cost then (120 parts, 1,440 triangles shut); a 40-column wall is 40 meshes, one draw call a column.
+  - **Opening**: `open` from 0 to 1 over 420 ms, eased to start and end at rest and set to exactly the end, at once for a
+    person who asked for less motion; each step rebuilds that one column where it stands (`t3Reshape`, `engine/engine3d.js`)
+    and nothing else in the room. The page opens when the place is open; putting it down shuts it.
+  - **The tap**: the engine's first ray test, the 3D library's own (`THREE.Raycaster`, `t3Pick`), from the frame's camera
+    against the room's solid pieces; which place of a column was touched is told by the height of the point, since every
+    piece stands in a band of its own.
+  - **The zoom** (`CAMZOOM`): the camera's distance and height scaled together, so its angle and the walls that cut away
+    for you stay the same; 0.5 to 1.6 of today's unless the world says otherwise.
+  - `⎕` **the closet** (`SHAPES.wardrobe`), built as a joiner builds one and a person fills one: the kitchen's carcass the
+    whole height on a kick set back, a hat shelf, a cornice proud of the front and a step paler (without it, rendered, it
+    read as a tall cupboard), a rail on two brackets, the cupboards' two doors hung on their outer edges with their bars at
+    a standing hand's height (0.50), and five hangers off one set at one pitch, each with something hanging edge-on to the
+    doors, a garment's length and colour the only things that vary, by the tile's own number on both axes. **38 parts,
+    484 triangles**, shut and open. Back on the wall, facing the room.
+  - **Iso heights and colours** for the six kitchen letters, the column (as tall as its tallest place) and the closet,
+    which 2026-10-29 left out.
+- **Measured** (`test/engine.smoke.js`). The closet against its drawing in the kitchen probe room: the whole height and
+  under the wall's top, against the wall, a kick in shade, two doors swinging on their outer edges with their handles,
+  handles at a hand's height, a rail across it with hangers of one shape and something hanging from each, inside the
+  carcass and clear of its floor, the garments not all one. Then (grep `THE KITCHEN LAYOUT, OPEN, THE TAP`) every square of
+  every room of the shell asked for the slot; a room with no kitchen tapped and wheeled in 3D; and on a page of its own a
+  made-up kitchen harder than a real one, a 40-column wall of every kind, a fridge of two hundred things, empty places,
+  the longest names in both languages and a name made of markup, with 38 layouts the engine must refuse, and a column with nowhere to stand in front of it, which stands and offers no Open: every column
+  built of its own places each in its band shut and open, Open in front of every column naming its places as typed,
+  never two buttons on a square, every opening sampled frame by frame to exactly 1 and every putting down to exactly 0,
+  a card on a column at the end of its page, less motion with no frame between, taps by real pointer events on the upper
+  cupboards, the drawers and the freezer, the doors swinging in the scene and the mesh back to the shut build after, the
+  zoom by its buttons, the wheel and a pinch, held at its limit and back, and the closet keeping the name. Each check was
+  shown red on a fault planted in a copy of the tree outside the repository, 21 of them, each in its own sentence.
+- **Meridian.** Lays neither letter, declares no layout and no zoom, and is unchanged: every shape the engine had, built
+  by the engine before this change and after it at 120 places each, plain and cleared, with `open` left out, 0, 0.5 and
+  1: 24,000 builds, every one deep-equal; one hundredth moved on a drawer's runners is red in 960 of them. Its camera is
+  exactly where it stood (`camZoomF()` is 1 and nothing else in the zoom runs). GAMEV and CACHE move together to mq-v242.
+- **Not done.** One wall a room; a place's doors all open together; nothing is drawn on a shelf or in a drawer in 3D
+  (what is kept is shown on the page); the closet opens for nothing but the creator; no phone measured for cost.
