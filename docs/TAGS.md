@@ -61,8 +61,8 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
 | Shape `open` | `engine/shapes.js`, grep `HOW FAR A THING IS OPEN` (`openOf`) | a number, `0`–`1`; unset, `0` and anything not a number are shut, past `1` is `1`; read by the fridge and the kitchen wall's pieces with a door or a drawer — registered below |
-| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `remove` `paint` `paintAll` `compact`) — registered below |
-| Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store`; a place's `kind` `row` `col` `name` `full` `finish` `id`; **closed**: any other key refuses the layout whole — registered below |
+| Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `moveTo` `remove` `paint` `paintAll` `compact`), with `gaps` (sprint 5) — registered below |
+| Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store` `gaps` `things` `keep`; a place's `kind` `row` `col` `name` `full` `finish` `id`; a thing's `id` `n` `name` `parts` `stand` `pic`; **closed**: any other key refuses the layout whole, and a thing off its list is refused whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
@@ -554,6 +554,39 @@ helper, and the person who hits it will be reading their content files, not `san
 - **Registered 2026-10-30 (sprint 4) — a picture's own words: `kv` beside `art`** on a reader's section. Not shown again
   under the picture (the picture shows them); what a screen reader is told it is (`role="img"` and its label) and what
   Copy and Download write, as `kv` always was. A picture with no `kv` is exactly as before.
+- **Registered 2026-10-30 (sprint 5) — `gaps` on a layout, and `KITCHEN.rules.moveTo` with the refusal codes `gaps`
+  `square` `taken` `room`.** `gaps: true` (exactly true; anything else is off) turns gaps on for that wall, set by the
+  world in its own code: the rules number no column again, a column a move or a remove leaves empty stays empty, left and
+  right step onto empty squares (a piece that is not tall still skipping a tall one's column), a tall piece moves onto an
+  empty square or swaps as before, nothing goes left of the first column or past the wall's squares (its `wall` and
+  `free` together where the layout lists them, else 40), an added piece takes the first column with room (a tall one the
+  first empty column), and compact changes nothing. `moveTo(layout, i, col)` puts a place on a column with room for it,
+  only with gaps on. The engine's check takes a wall column with nothing in it only with gaps on and draws it as a free
+  square; the builder puts the piece picked on an empty square by a tap; `store` is never handed `gaps`. Off, or left
+  out, every rule is as before, held row for row against My kitchen's wall. `gaps` collides with nothing already here.
+- **Registered 2026-10-30 (sprint 5) — a layout's `things` and `keep`, and a thing's `id` `n` `name` `parts` `stand`
+  `pic`.** `things: (place, lang) => [thing, …]`, what a place keeps, asked again every time the engine draws it and never
+  remembered: `id` (the world's own, 1 to 30 of `A–Z a–z 0–9 - _`, compared only), `n` (whole, 1 to 999), `name` (text, 1
+  to 40, shown as text only), `parts` (at most 24, each a part the engine already draws, `box` `sph` `cyl` `cone`
+  `torus`, with only a part's own keys, numbers finite within a piece and a colour `#rrggbb`; no glass), `stand` (how many
+  copies stand in 3D, 1 to 3, never past `n`) and `pic` (`(g, px)`, the world's own picture on a square canvas). At most 24
+  things a place. Checked at the edge: a thing that fails is refused whole, with one sentence in the log said once, and a
+  place holding one gives and takes nothing. Shown where a place's inside shows (a piece with doors or drawers while it
+  is open, the shelf and the counter always), on its shelves, its top drawer or its top, each made smaller to fit and
+  never larger; its parts carry `thing`, read by the suite and never by the bake. `keep: (change) => …` is where a world
+  keeps a thing moved: ONE change, `{<place id>: [{id, n}, …], <place id>: […]}`, the two places' new lists; a throw keeps
+  it from being made. The engine keeps no contents and the hand lasts the visit. Both optional; a layout with neither is
+  read and drawn exactly as before.
+- **Registered 2026-10-30 (sprint 5) — the hand: `KITHAND`, `#kitHand`, and a world's words for it**, in its strings per
+  language: `khTitle` (In your hand), `khBack` (✕'s name), `khTake` `khInHand` (a thing's button, told to a screen
+  reader), `khPutHere` `khPutBack` (with `{name}` and `{n}`, the offer first on a place's page), and the refusals `khNoId`
+  `khUnread` `khFull` (`{n}`) `khMany` (`{n}`) `khNotKept`; and the builder's `kbTaken` (no room on that square). Each
+  falls back to plain English. Escape puts a thing in hand back.
+- **Registered 2026-10-30 (sprint 5) — a reader's `grid` block, and the reader's `data-kit`.** `{grid: [{pic, label, sub,
+  on, aria, run}]}`: a row of buttons a finger's size, each with what `pic(css)` hands back (a canvas), its label and a
+  line under it, pressed when `on`, `run` on a press; Copy and Download write each as `- label sub`. The reader carries
+  `data-kit` while a kitchen place's page is open, and only then, so a shell may leave the room in view beside it. A page
+  with no grid, and every page that is not a kitchen place's, is exactly as before.
 - **Registered 2026-10-30 — the closet's parts: `rail`, `hanger`, `garment`**, beside `carcass`, `inside`, `shelf`, `door`,
   `handle` and `kick`, as the table's `cloth` and `plate` say what they are (`garment` and not `cloth`, which is the
   table's: one name, one part); read by the suite, never by the bake.
