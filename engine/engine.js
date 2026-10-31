@@ -5122,7 +5122,8 @@ function loop(ts){
        chair may be taking the keys now. */
     if(!covered&&!$("world").hidden){const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();}
   }
-  if(!$("world").hidden&&!covered)draw();
+  if(kitEmptyAt&&(world!==kitEmptyAt.id||px!==kitEmptyAt.x||py!==kitEmptyAt.y))kitEmptyOff();   /* the hero stepped away from an empty place: its doors shut (grep "AN EMPTY PLACE") */
+  if(!$("world").hidden&&(!covered||kitBeside()))draw();   /* behind a page, not drawn; but beside a kitchen place's page the room is in view, and drawn (sprint 6) */
 }
 /* the door marker — the third door affordance (the owner asked for a
    marker). Within three steps of a door that LEADS somewhere, a bouncing arrow floats over
@@ -5465,12 +5466,39 @@ function paperSkin(){
   return text;
 }
 const PAPER_APPLIED=paperSkin();
+/* WHERE THE READER STANDS (sprint 6; his confirmed goal of 2026-10-31, point 1: a kitchen place's page opened in full screen
+   stays inside the view). The reader is a panel OUTSIDE #vp, at the top of the page, and has always been: a quest hides #world,
+   and a document handed over in a quest must not go with it. In full screen the browser shows #vp and what is inside it and
+   nothing else, so a page outside it could only be seen by leaving full screen, which resized the canvas and left the room
+   dark. So, and only for a kitchen place's page opened while #vp is full screen, the reader stands INSIDE #vp for as long as
+   the page is open; every other page, and every other moment, finds it where it always was. It goes home when the page is put
+   down, when a card or a quest takes the screen, and when full screen is left. A page, the keys and the quest card are
+   untouched; Meridian has no kitchen page, so for it this is never called with `true`. */
+let readerHome=null;
+function readerSeat(inside){const r=$("reader"),vp=$("vp");if(!r||!vp)return;
+  if(inside){if(r.parentNode!==vp){if(!readerHome)readerHome={parent:r.parentNode,next:r.nextSibling};vp.appendChild(r);}return;}
+  if(!readerHome)return;
+  const h=readerHome;readerHome=null;
+  if(r.parentNode===vp&&h.parent&&h.parent.isConnected)h.parent.insertBefore(r,h.next&&h.next.parentNode===h.parent?h.next:null);}
+/* IS THE ROOM IN VIEW BESIDE THE KITCHEN PAGE? True while a kitchen place's page is open and the reader's own box is the
+   narrower part of the view (a shell docks it at the right, sprint 5), so the world is still drawn, live, in what is left
+   of the view. Measured when asked after the page opens, the window changes or full screen does; never on a page that has
+   no kitchen. A page that covers the view (a phone) is not beside anything, and the world is not drawn under it. */
+let docBesideV=null;
+function kitBeside(){const r=$("reader");if(!kitNow||!r||r.hidden||!r.dataset.kit)return false;
+  if(docBesideV===null){const a=r.getBoundingClientRect(),v=$("vp").getBoundingClientRect();docBesideV=v.width>0&&a.width>0&&a.width<v.width*0.75;}
+  return docBesideV;}
+window.addEventListener("resize",()=>{docBesideV=null;});
+document.addEventListener("fullscreenchange",()=>{docBesideV=null;});
 function docOpen(id,from){
   if(kitNow&&docDef(id)!==kitNow.doc)kitShut();   /* another page over a kitchen place's shuts it first */
   const secs=docSections(id);if(!secs)return;
   const d=docDef(id)||{},body=$("docBody");
   /* a kitchen place's page marks the reader, so a shell may leave the room in view beside it (sprint 5); never set otherwise */
   if(d.kit)$("reader").dataset.kit="1";else delete $("reader").dataset.kit;
+  /* and opened in full screen it stays in full screen, the reader standing inside the view (sprint 6, readerSeat above) */
+  const kitFs=!!d.kit&&$("vp").classList.contains("fs");
+  readerSeat(kitFs);docBesideV=null;
   docCur=id;docBack=from==="card"?"card":null;body.innerHTML="";
   $("docTitle").textContent=docTitle(id);
   /* ---- THE READER IS SHOWN BEFORE THE DOCUMENT IS DRAWN, AND THAT ORDER IS THE POINT ----
@@ -5489,7 +5517,7 @@ function docOpen(id,from){
   body.scrollTop=0;{const sc=$("paperScroll");if(sc)sc.scrollTop=0;}  /* the paper scrolls in its own box now, so that is what returns to the top */
   /* a document handed over inside a quest must NOT re-run exitFsForCard: questStart already
      ran it, and a second call records wasFs=false, so the player never gets fullscreen back. */
-  if(docBack!=="card")exitFsForCard();
+  if(docBack!=="card"){if(kitFs)wasFs=false;else exitFsForCard();}   /* a kitchen page in full screen keeps it, and leaves nothing to give back */
 }
 let docCur=null,docBack=null;   /* "card" while a document is being read inside a quest */
 /* ---------- READS / DOCS — a thing you can read without talking to anybody ----------
@@ -5721,9 +5749,11 @@ function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
   return {title,kit:{id,i:p.i},build:()=>{let secs=kitHandOffer(id,p);   /* with a thing in hand, putting it here comes first (grep "THE HAND") */
     if(K.page){try{const r=K.page(p,lang);if(Array.isArray(r))secs=secs.concat(r);}catch(e){mqwarn("kitchen","the page of place "+p.i+" in "+id+" failed: "+String(e&&e.message||e),false);}}
     secs=secs.concat(kitThingGrid(id,p));   /* what it keeps, each a button that takes it in hand (grep "THE THINGS IN A PLACE"); nothing, in a layout with no things */
-    const rows=K.places.filter(q=>q.col===p.col).map(q=>q.row);   /* a card whose row no place in this column stands in any more (a builder moved it) ends every page here, so Open never hides it */
-    RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row||!rows.includes(r.row))).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
+    kitCards(id,p).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
     return secs;}};}
+/* the cards placed on a place's column that end its page: a card whose row no place in this column stands in any more (a builder moved it) ends every page here, so Open never hides it */
+function kitCards(id,p){const K=KITWALL[id],c=K.cols[p.col],rows=K.places.filter(q=>q.col===p.col).map(q=>q.row);
+  return RD().filter(r=>r.world===id&&r.x===c.x&&r.y===c.y&&DC()[r.doc]&&(r.row===undefined||r.row===p.row||!rows.includes(r.row)));}
 /* SWINGING IT: `open` from where it is to `to` over KITSWING ms, eased so it starts and ends at rest, and set to exactly `to`
    at the end; at once for a person who asked for less motion. Each step rebuilds that one column in the 3D picture. */
 function kitSwing(id,i,to,done){const key=id+"|"+i,from=kitOpenOf(id,i),K=KITWALL[id],c=K&&K.places[i]&&K.cols[K.places[i].col];
@@ -5738,14 +5768,54 @@ function kitSwing(id,i,to,done){const key=id+"|"+i,from=kitOpenOf(id,i),K=KITWAL
 /* OPEN ONE PLACE: its doors swing, then its page; one at a time */
 function kitOpen(id,i){const K=KITWALL[id],p=K&&K.places[i];if(!p||kitBusy)return false;
   if(kitNow)kitShut();
+  if(kitEmptyAt)kitEmptyOff(kitEmptyAt.id===id&&kitEmptyAt.i===i);   /* another empty place's line goes first; this same place stays open and says it again */
+  const empty=kitIsEmpty(id,p);   /* asked before the doors swing, so the answer is the one the hero was standing there for */
   kitBusy=true;held=null;
-  kitSwing(id,i,1,()=>{kitBusy=false;const d=kitDoc(id,p);kitNow={id,i,doc:d};docOpen(d);
+  kitSwing(id,i,1,()=>{kitBusy=false;
+    if(empty){kitEmptySay(id,p);return;}   /* an empty place: its doors, a line, and no page (grep "AN EMPTY PLACE") */
+    const d=kitDoc(id,p);kitNow={id,i,doc:d};docOpen(d);checkRead();   /* the slot reads Close from here (sprint 6) */
     if(KITHAND){const b=$("docBody")&&$("docBody").querySelector(".dbtn");if(b)b.focus();}});   /* with a thing in hand, the keys go to putting it here */
   return true;}
-/* the page is put down: the place shuts again */
-function kitShut(){const n=kitNow;if(!n)return;kitNow=null;kitSwing(n.id,n.i,0);}
-/* the slot's press, standing in front: one place opens; several are offered, each on its own button */
+/* the page is put down: the place shuts again, and the slot reads Open again */
+function kitShut(){const n=kitNow;if(!n)return;kitNow=null;kitSwing(n.id,n.i,0);checkRead();}
+/* AN EMPTY PLACE SAYS IT IS EMPTY (sprint 6; his confirmed goal of 2026-10-31, point 4, and his answer that it is for kitchen
+   places). In a layout that hands `things`, a place that keeps nothing and has no card of its own on its page swings its doors
+   and says one short line in the world's words (`kitEmptyLine` in UI, below), and opens no page: there is nothing on it to
+   read. The doors shut again when the line is gone (KITSAYS ms) or when the hero steps away or leaves the room. With a thing in
+   hand the page opens as it does for any place, offering to put it there; a layout without `things` opens its page as ever;
+   a place whose things the world could not give (`bad`) is not said to be empty, since nobody knows. The line stands in #vp,
+   so it is seen in full screen, and is a status for a screen reader. Held by test/engine.smoke.js, grep "AN EMPTY PLACE". */
+const KITSAYS=2600;
+var kitEmptyAt=null,kitEmptyT=null;   /* vars, so a caller earlier in the boot reads them unset rather than throwing */
+function kitIsEmpty(id,p){const K=KITWALL[id];if(!K||typeof K.things!=="function")return false;
+  if(KITHAND&&KITHAND.id===id)return false;
+  const got=kitThingsOf(id,p.i);return !got.bad&&!got.list.length&&!kitCards(id,p).length;}
+/* the line: the world's word for this kind of place (a kind to a sentence), or its one sentence with {name}, or "{name}: empty." */
+function kitEmptyText(p){const t=T()||{},L=t.kitEmptyLine,has=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  let s=null;
+  if(typeof L==="string")s=L;
+  else if(L&&typeof L==="object"&&!Array.isArray(L))s=(!p.name&&has(L,p.kind)&&typeof L[p.kind]==="string")?L[p.kind]:(has(L,"*")&&typeof L["*"]==="string"?L["*"]:null);
+  if(typeof s!=="string"||!s)s="{name}: empty.";
+  return kitFill(s,{name:kitName(p,lang)});}
+function kitEmptySay(id,p){const vp=$("vp");if(!vp)return;
+  let b=$("kitSays");
+  if(!b){b=document.createElement("div");b.id="kitSays";b.setAttribute("role","status");b.setAttribute("aria-live","polite");b.hidden=true;
+    Object.assign(b.style,{position:"absolute",left:"50%",transform:"translateX(-50%)",bottom:"112px",zIndex:"6",maxWidth:"86%",textAlign:"center",pointerEvents:"none",
+      background:"rgba(20,16,30,.88)",color:"#EDE9F5",borderRadius:"999px",padding:"8px 14px",font:"500 13px 'IBM Plex Sans', system-ui, sans-serif",boxSizing:"border-box"});
+    vp.appendChild(b);}
+  b.textContent=kitEmptyText(p);b.hidden=false;
+  kitEmptyAt={id,i:p.i,x:px,y:py};
+  clearTimeout(kitEmptyT);kitEmptyT=setTimeout(()=>kitEmptyOff(),KITSAYS);}
+/* the line is gone: its doors shut (unless they are to stay as they are, `stay`) */
+function kitEmptyOff(stay){const n=kitEmptyAt;kitEmptyAt=null;clearTimeout(kitEmptyT);kitEmptyT=null;
+  const b=$("kitSays");if(b){b.hidden=true;b.textContent="";}
+  if(n&&!stay&&KITWALL[n.id])kitSwing(n.id,n.i,0);}
+/* the slot's press, standing in front: one place opens; several are offered, each on its own button. While one of them is
+   open the press shuts it, page and doors (sprint 6) */
 function kitPress(){const ps=kitFront(px,py);if(!ps||!ps.length)return;
+  if(kitNow&&kitNow.id===world&&ps.some(p=>p.i===kitNow.i)){
+    if($("reader")&&!$("reader").hidden)$("docClose").click();else{kitShut();checkTalk();}
+    return;}
   if(ps.length===1){kitOpen(world,ps[0].i);return;}
   const id=world,title={};Object.keys(UI).forEach(lg=>{title[lg]=((UI[lg]||{}).kitWhich)||((UI[lg]||{}).kitOpen)||"Open";});
   docOpen({title,build:()=>ps.map(p=>({btn:kitName(p,lang),run:()=>{$("docClose").click();kitOpen(id,p.i);}}))});}
@@ -6231,7 +6301,10 @@ function checkRead(){
   /* THE SLOT (2026-10-30, grep "THE KITCHEN LAYOUT"): in front of a kitchen column it is Open, beside a closet it is the
      closet, and otherwise it is Read as it always was. Both answer nothing in a world that lays neither. */
   if(!$("world").hidden&&!moving){const ks=kitFront(px,py);
-    if(ks&&ks.length){b.hidden=false;b.dataset.kit="1";b.textContent=(T().kitOpen||"Open")+" — "+ks.map(p=>kitName(p,lang)).join(" · ");return;}
+    if(ks&&ks.length){b.hidden=false;b.dataset.kit="1";
+      /* the place open in front of the hero reads Close with its name, and it alone: a column of several offers only that one to shut (sprint 6) */
+      const op=kitNow&&kitNow.id===world?ks.find(p=>p.i===kitNow.i):null;
+      b.textContent=op?(kitW("kitClose","Close")+" — "+kitName(op,lang)):(T().kitOpen||"Open")+" — "+ks.map(p=>kitName(p,lang)).join(" · ");return;}
     if(closetBy(px,py)){b.hidden=false;b.dataset.closet="1";b.textContent=T().closet||"👕";return;}}
   if(!$("world").hidden&&!moving)
     [[0,0],[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{const r=readAt(px+dx,py+dy);if(r)hit=r;return !!r;});
@@ -6308,7 +6381,7 @@ $("read").addEventListener("click",()=>{const rb=$("read");
   if(rb.dataset.closet){closetOpen();return;}       /* or the closet's */
   const id=rb.dataset.doc;if(id)docOpen(id);});
 $("npcDoc").addEventListener("click",()=>{if(npcHeld)docOpen(npcHeld,"card");});
-$("docClose").addEventListener("click",()=>{$("reader").hidden=true;
+$("docClose").addEventListener("click",()=>{$("reader").hidden=true;readerSeat(false);
   kitShut();   /* a kitchen place's page put down shuts the place (grep "THE KITCHEN LAYOUT"); nothing, for any other page */
   /* handed over by a person mid-quest: close returns to them, not to the street. checkTalk()
      here would light the talk button and nudge lines behind a card the player is still in. */
@@ -6428,7 +6501,7 @@ $("treat").addEventListener("click",()=>{
 });
 /* ---------- quest overlay ---------- */
 let wasFs=false;
-function exitFsForCard(){wasFs=$("vp").classList.contains("fs");
+function exitFsForCard(){wasFs=$("vp").classList.contains("fs");readerSeat(false);   /* a card or a page takes the screen: the reader stands where it always did */
   if(wasFs){$("vp").classList.remove("fs");document.body.classList.remove("noscroll");
     if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});setTimeout(sizeCanvas,60);}}
 function restoreFs(){if(wasFs){$("vp").classList.add("fs");document.body.classList.add("noscroll");setTimeout(sizeCanvas,60);}}
@@ -8200,6 +8273,9 @@ $("fsbtn").addEventListener("click",()=>{
   document.body.classList.toggle("noscroll",fs);
   if(fs&&vp.requestFullscreen)vp.requestFullscreen().catch(()=>{});
   else if(!fs&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  /* a kitchen page open when full screen is entered goes inside the view, and one open when it is left goes back out (sprint 6) */
+  if(fs){if(kitNow&&$("reader")&&!$("reader").hidden&&$("reader").dataset.kit)readerSeat(true);}else readerSeat(false);
+  docBesideV=null;
   setTimeout(sizeCanvas,80);
 });
 document.addEventListener("fullscreenchange",()=>{setTimeout(sizeCanvas,80);});
@@ -8348,6 +8424,7 @@ function kitBuildSet(id,next){const K=KITWALL[id],L=Object.assign({},next,{store
   catch(e){mqwarn("kitchen","a builder's change to "+JSON.stringify(String(id).slice(0,40))+" was not kept: "+String(e&&e.message||e),false);
     kitBuildSay(kitW("kbNotKept","That change could not be kept on this device, so it was not made."));return false;}
   KITWALL[id]=r.wall;Object.keys(KITOPEN).forEach(k=>{if(k.indexOf(id+"|")===0)delete KITOPEN[k];});
+  kitEmptyOff(true);   /* every place is built shut again, so a line about an empty one is over (sprint 6) */
   kitDirty();return true;}
 function kitBuildUndo(){const id=world,u=KITB.undo[id];
   if(!kitBuildOn()||kitBusy||kitNow||worldCovered())return false;
@@ -8370,7 +8447,16 @@ function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_
 function kitBuildAdd(kind,sure){const K=KITWALL[world];if(!kitBuildOn())return false;
   if(!sure&&K.places.some(p=>p.kind===kind)&&K.places.length<KITCHEN.most){KITB.mode="again";KITB.kind=kind;kitBuildShow();return false;}   /* a kind the kitchen has asks first */
   const nm=kitNameOf({kind});
-  return kitBuildChange(L=>KITCHEN.rules.add(L,kind),()=>kitFill(kitW("kbAdded","{name} added."),{name:nm}),r=>r.i);}
+  return kitBuildChange(L=>kitGiveId(K,KITCHEN.rules.add(L,kind)),()=>kitFill(kitW("kbAdded","{name} added."),{name:nm}),r=>r.i);}
+/* A PIECE ADDED HOLDS THINGS (sprint 6; his confirmed goal of 2026-10-31, point 3): a place with no id keeps nothing (kitCanHold),
+   and the rule that adds a piece (KITCHEN.rules.add, one copy for every game, My kitchen's too) gives it none. So here, and only
+   for a layout that hands `things` and `keep`, the piece just added is given the first of n1, n2, … that no place on the wall has
+   and that passes KITID. The world keeps the id with the layout it is handed, and reads it back through the check like any other. */
+function kitGiveId(K,r){if(!r||r.why||typeof K.things!=="function"||typeof K.keep!=="function")return r;
+  const P=r.layout&&r.layout.places,p=P&&P[r.i];if(!p||Object.prototype.hasOwnProperty.call(p,"id"))return r;
+  const taken=new Set(P.map(q=>q.id));
+  for(let n=1;n<=P.length+1;n++){const id="n"+n;if(!taken.has(id)&&KITID.test(id)){p.id=id;break;}}
+  return r;}
 function kitBuildRemove(){const K=KITWALL[world],i=kitBuildSel();if(i===null)return false;
   const o=kitWallOrder(K),at=o.findIndex(p=>p.i===i),nm=kitNameOf(K.places[i]);
   /* the pick goes to its neighbour on the wall: the piece after it in the wall's order, or before it at the end */

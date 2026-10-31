@@ -1104,3 +1104,44 @@ polygon update for all of these, and what the marigolds taught, had been logged)
 - **Not done.** The freezer's and the drawers' lower drawers show nothing (their contents stand in the top one). A place's
   things stand in the order the world lists them, not where a hand would put each. A thing in hand is not drawn in the
   hand of the person in 3D. Undo does not reach a put. One wall a room. No phone measured.
+
+### 2026-10-31 · sprint 6: a kitchen place's page in full screen; Open, then Close; a piece added holds things; an empty place says so
+
+His confirmed goals of 2026-10-31 (the four changes to a test kitchen, and the empty line); `GAMEV` and `CACHE` mq-v245. Four changes
+to `engine/engine.js`, each a thing a world may ask for; Meridian declares no kitchen and none reaches it.
+
+- **A kitchen place's page keeps full screen** (grep `WHERE THE READER STANDS`). In full screen the browser shows `#vp` and what is
+  inside it, and the reader is a panel outside `#vp` (a quest hides `#world`, and a document handed over in a quest must not go
+  with it), so a page opened there left full screen by `exitFsForCard`, the canvas was resized, which clears it, and nothing drew
+  it again behind a page that counted as covering the world: the room was dark. Now a page with `kit` opened while `#vp` is full
+  screen stays in full screen and the reader stands INSIDE `#vp` for as long as it is open (`readerSeat`); it goes back where it
+  always stood when the page is put down, when a card or a quest takes the screen, and when full screen is left. Every other page
+  leaves full screen exactly as before. The world is drawn, live, beside a kitchen page that does not cover the view (`kitBeside`:
+  the reader's own box under three quarters of the view's, measured after a page opens and when the window or full screen
+  changes); under a page that covers the view it is not drawn, as ever. Walking and the hero's keys behind the page are unchanged
+  (the world is still covered for them). Full screen entered with a kitchen page already open takes the page inside the view with
+  it. The "Which one?" page of a column of several places is not a place's page and still leaves full screen.
+- **Open, then Close** (grep `kitClose`). While a place in front of the hero is open, the slot reads Close and that place's name
+  (`kitClose` in UI, English "Close" when the world gives none) and shuts its page and doors by a press, Enter or Space; of a
+  column of several places only the open one is named. The slot is asked again when a page opens and when one shuts.
+- **A piece added holds things** (grep `A PIECE ADDED HOLDS THINGS`). `KITCHEN.rules.add` is My kitchen's rule and is unchanged; the
+  engine's builder gives the piece it just added an id, `n1`, `n2`, … the first no place on the wall has that passes `KITID`, and
+  only for a layout that hands `things` and `keep`. The world keeps the id with the layout it is handed and reads it back through
+  `kitchenCheck`, like the template's `p1` to `p7`.
+- **An empty place says so** (grep `AN EMPTY PLACE`). In a layout that hands `things`, a place that keeps nothing, with no card of
+  its own on its page, swings its doors and says one line (`kitEmptyLine` in UI: a sentence with `{name}`, or an object of one
+  sentence a kind with `"*"` for a piece with a name of its own; `"{name}: empty."` when the world gives none) in a status line
+  inside `#vp`, and opens no page; the doors shut again after 2.6 s or when the hero steps away or leaves the room. With a thing in
+  hand the page opens, offering to put it there; a layout without `things` opens its page as ever; a place whose things the world
+  could not give is not said to be empty.
+- **Measured** (`test/engine.smoke.js`, grep `THE KITCHEN'S FOUR FIXES`), red first on a copy of the tree at mq-v244 and then each
+  fault planted in a copy outside the repository: the page in full screen (kept, inside the view, the canvas not resized, drawn
+  beside a docked page and not under a covering one, the keys behind it not walking, a plain page still leaving full screen and
+  giving it back, the reader going home); the slot (Close and the open place's name alone, the world's word, a press, Enter and
+  Space, Escape); the empty line (once, three forms of words, the doors open then shut, stepping away, a thing in hand, a card, no
+  things, things that could not be read, a place that keeps a lime); the id (n1, then n2, n2 where n1 is taken, none in a kitchen
+  that keeps nothing, the egg put in the new cupboards, drawn in 3D, and the layout laid again). `engine/shapes.js` and
+  `engine/engine3d.js` are not touched, so every shape builds as it did.
+- **Not done.** The "Which one?" page leaves full screen. A tap on another place while a page is open is not heard (the world is
+  covered for the tap). On a screen too narrow to dock the page it covers the whole view, as every page does, and the slot that
+  reads Close is under it; the page's own Close and Escape still shut it. No phone measured.
