@@ -20,7 +20,10 @@ jobs:
     # test/gauge.js and test/horno.js start stops itself at 3 min and says so, three of them at most,
     # so 20 min is above a normal job plus every one of those limits together: when one hangs, its
     # own sentence prints before this fires.
-    timeout-minutes: 20
+    # Measured again 2026-10-30 and 31: the job had grown to 17 min 1 s and then 19 min 48 s on CI, and the next run was
+    # stopped at 20 min with its checks still passing. 30 min is that job with room to grow, and a hung check is still a
+    # red rather than a pull request stuck at "running"; a run uses only the minutes it takes.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
