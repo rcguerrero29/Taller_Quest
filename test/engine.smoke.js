@@ -2380,6 +2380,244 @@ function findChromium() {
     fails.push(...TH.map(m => 'the things in a place and the hand (sprint 5): ' + m));
   }
 
+  /* ---- THE KITCHEN'S FOUR FIXES (sprint 6 of the 3D kitchen) ----
+     engine/engine.js, grep "WHERE THE READER STANDS", "kitClose", "A PIECE ADDED HOLDS THINGS" and "AN EMPTY PLACE"; his confirmed
+     goals of 2026-10-31 (the four changes to the test kitchen, and the empty line). What a person would notice: a kitchen place's
+     page opened in full screen that throws full screen away, or stands outside the view, or leaves the room dark or the page
+     over the whole of it; any OTHER page that no longer leaves full screen; a slot that reads Open on a place that is open, or
+     Close on one that is not, or names the column's other places beside the open one, or does not shut the page and the doors by
+     a press, Enter and Space; a piece added in builder mode that holds nothing, or one that takes an id another place has, or
+     one given an id in a kitchen that keeps nothing; an empty place that opens a page, or says nothing, or says it twice, or
+     leaves its doors open for ever, or says it is empty with a thing in hand (which is to be offered a place to put it), or in
+     a kitchen that hands no things, or with a card of its own. On a page of its own: a made-up kitchen of the template's seven
+     places on four columns and three free squares, gaps on, its things answered from a stock the page holds. Red first, each
+     fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 6). */
+  {
+    const SX = [], say = s => SX.push(s);
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    const sp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), sErr = [];   /* less motion: a place swings at once, so nothing here waits on it */
+    sp.on('pageerror', e => sErr.push(e.message));
+    await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await sp.addInitScript({ content: kitSrc });
+    await sp.addInitScript(() => { window.BUILDER = {}; });
+    await sp.goto('file://' + file); await sp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await sp.waitForTimeout(200);
+    try {
+      const T0 = await sp.evaluate(() => {
+        const ID = '__kit_six', R = ['###########', '#' + KITCOL.repeat(7) + '###', '#.........#', '#.........#', '#.........#', '###########'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 11, H: 6 };
+        const part = c => [{ s: 'cyl', y: 0.04, r: 0.05, h: 0.08, c }, { s: 'sph', y: 0.1, r: 0.03, c: '#FFFFFF' }];
+        const thing = (id, n) => ({ id, n, name: 'Thing ' + id, parts: part('#C04020'), pic: (g, px) => { g.fillStyle = '#C04020'; g.fillRect(0, 0, px, px); } });
+        window.__stock = { p1: [['egg', 12], ['milk', 1]], p5: [['sugar', 2]], p3: [['milk', 1], ['lime', 3]], p6: [], p7: [['corn', 2]] };
+        window.__keeps = []; window.__stored = [];
+        window.__things = (pl, lg) => (window.__stock[pl.id] || []).map(([id, n]) => thing(id, n));
+        window.__keep = ch => { window.__keeps.push(JSON.parse(JSON.stringify(ch))); Object.keys(ch).forEach(pid => { window.__stock[pid] = ch[pid].map(t => [t.id, t.n]); }); };
+        window.__store = L => { window.__stored.push(JSON.parse(JSON.stringify(L))); };
+        const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        window.__layout = { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1], [6, 1], [7, 1]], places, things: window.__things, keep: window.__keep, page: pl => [{ p: 'inside ' + pl.id }], store: window.__store, gaps: true };
+        const s = kitchenLay(ID, window.__layout);
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 2; dir = 'up'; enterWorld(false); camSet('3d');
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        window.__readerParent = $('reader').parentElement; window.__stand = (x, y) => { px = fx = x; py = fy = y; moving = false; held = null; dir = 'up'; checkTalk(); };
+        Object.keys(UI).forEach(l => { if (UI[l] && typeof UI[l] === 'object') { delete UI[l].kitEmptyLine; delete UI[l].kitClose; } });   /* a shell that gives its own words (the town) is asked for the engine's, which are what is held here */
+        UI.en.kitKinds = { fridge: 'Fridge', freezer: 'Freezer', 'upper-cupboards': 'Upper cupboards', 'lower-cupboards': 'Lower cupboards', drawers: 'Drawers', shelves: 'Shelves', counter: 'Counter' };
+        return { ID, s };
+      });
+      if (T0.s !== null) throw 'the made-up kitchen was refused: ' + T0.s;
+      const ID = T0.ID;
+      const st = () => sp.evaluate(() => { const b = $('read'), r = $('reader'), vp = $('vp'), s = $('kitSays');
+        return { slot: b.hidden ? null : b.textContent, reader: !r.hidden, inVp: r.parentElement === vp, home: r.parentElement === window.__readerParent, fs: vp.classList.contains('fs'), noscroll: document.body.classList.contains('noscroll'),
+          kit: r.dataset.kit || null, now: kitNow ? kitNow.i : null, says: s && !s.hidden ? s.textContent : null, first: (document.querySelector('#docBody .dbtn') || {}).textContent || null,
+          cells: [...document.querySelectorAll('#docBody .dcell')].map(c => c.getAttribute('aria-label')), px, py, keeps: window.__keeps.length,
+          open: KITWALL[world] ? KITWALL[world].places.map(p => kitOpenOf(world, p.i)) : [], cv: [$('cv3').width, $('cv3').height] }; });
+      const wait = ms => sp.waitForTimeout(ms);
+      const SHELVES = 4, LOWER = 5, FRIDGE = 0;
+      /* 1 · FULL SCREEN KEEPS A KITCHEN PAGE INSIDE THE VIEW */
+      await sp.evaluate(() => __stand(1, 2)); await sp.click('#fsbtn'); await wait(200);
+      let S = await st();
+      if (!S.fs) throw 'the full-screen button did not put the view in full screen, so a page in full screen was not asked';
+      const cv0 = S.cv;
+      await sp.click('#read'); await wait(250); S = await st();
+      if (!S.reader || S.now !== FRIDGE) throw 'the fridge did not open its page';
+      if (!S.fs) say('a kitchen place\'s page opened in full screen left full screen');
+      if (!S.noscroll) say('a kitchen place\'s page opened in full screen let the page behind it scroll');
+      if (!S.inVp) say('a kitchen place\'s page opened in full screen stands outside the view (' + (S.home ? 'at the top of the page' : 'somewhere else') + '), where full screen shows nothing but the view');
+      const box = await sp.evaluate(() => { const a = $('reader').getBoundingClientRect(), v = $('vp').getBoundingClientRect(); return { a: [a.left, a.top, a.right, a.bottom].map(Math.round), v: [v.left, v.top, v.right, v.bottom].map(Math.round) }; });
+      if (!(box.a[2] - box.a[0] > 50) || box.a[0] < box.v[0] - 1 || box.a[1] < box.v[1] - 1 || box.a[2] > box.v[2] + 1 || box.a[3] > box.v[3] + 1) say('the page of a place in full screen is not inside the view: the page is at ' + box.a + ', the view at ' + box.v);
+      if (String(S.cv) !== String(cv0)) say('opening a place in full screen resized the room\'s picture from ' + cv0 + ' to ' + S.cv + ', which clears it, and nothing draws it again');
+      /* the room is drawn beside the page, live, when the shell docks the page at the right; and not under a page that covers it */
+      const draws = async (dock) => sp.evaluate(async dock => { const r = $('reader');
+        if (dock) { r.style.inset = '0 0 0 auto'; r.style.width = '360px'; r.style.background = 'none'; } else { r.style.inset = '0'; r.style.width = 'auto'; r.style.background = 'rgba(16,13,24,.88)'; }   /* both said here, so a shell's own docking (the town's) does not decide which this is */
+        window.dispatchEvent(new Event('resize')); await new Promise(res => setTimeout(res, 250));
+        let n = 0; const d0 = window.draw; window.draw = function () { n++; return d0.apply(this, arguments); };
+        await new Promise(res => setTimeout(res, 450)); window.draw = d0; return n; }, dock);
+      const nBeside = await draws(true), nCover = await draws(false);
+      if (nBeside < 3) say('beside a docked kitchen page the room was drawn ' + nBeside + ' times in 450 ms, where it is in view and drawn');
+      if (nCover > 0) say('under a kitchen page that covers the whole view the room was drawn ' + nCover + ' times in 450 ms, where nobody sees it');
+      await sp.evaluate(() => { const r = $('reader'); r.style.inset = ''; r.style.width = ''; r.style.background = ''; window.dispatchEvent(new Event('resize')); });
+      /* the hero's keys behind the page stay as they were: nothing walks */
+      const at0 = S.px + ',' + S.py; await sp.keyboard.press('ArrowRight'); await sp.keyboard.press('ArrowRight'); await wait(300); S = await st();
+      if (S.px + ',' + S.py !== at0) say('with a kitchen page open in full screen the arrow keys walked the hero from ' + at0 + ' to ' + S.px + ',' + S.py);
+      /* 2 · THE SLOT READS CLOSE, AND SHUTS PAGE AND DOORS (full screen first: the fridge is a column of one) */
+      if (S.slot !== 'Close — Fridge') say('with the fridge open the slot reads ' + JSON.stringify(S.slot) + ', where it reads Close and the fridge\'s name');
+      await sp.evaluate(() => $('read').click()); await wait(200); S = await st();
+      if (S.reader) say('the slot, pressed while the fridge was open, left its page open');
+      if (S.open[FRIDGE] !== 0) say('the slot, pressed while the fridge was open, left its doors at ' + S.open[FRIDGE]);
+      if (S.now !== null) say('the slot, pressed while the fridge was open, left the place open');
+      if (S.slot !== 'Open — Fridge') say('after the fridge was shut the slot reads ' + JSON.stringify(S.slot) + ', where it reads Open again');
+      if (!S.fs) say('shutting a kitchen place\'s page in full screen left full screen');
+      if (!S.home || S.inVp) say('after a kitchen place\'s page was put down the reader is not where it always stands, at the top of the page');
+      /* any OTHER page leaves full screen exactly as before, and gives it back when it is put down */
+      await sp.evaluate(() => docOpen({ title: { en: 'Plain' }, build: () => [{ p: 'a page that is not a kitchen place\'s' }] })); await wait(250); S = await st();
+      if (S.fs) say('a page that is not a kitchen place\'s stayed in full screen (it leaves it, as every page but a quest\'s own always has)');
+      if (S.inVp || S.kit) say('a page that is not a kitchen place\'s stands inside the view' + (S.kit ? ' and is marked as one' : ''));
+      await sp.evaluate(() => $('docClose').click()); await wait(250); S = await st();
+      if (!S.fs || !S.noscroll) say('putting down a page that is not a kitchen place\'s did not give full screen back');
+      await sp.evaluate(() => { $('card').hidden = true; $('world').hidden = false; world = '__kit_six'; __stand(1, 2); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); $('reader').hidden = true; });
+      /* leaving full screen with a kitchen page open sends the page back out of the view */
+      await sp.evaluate(() => { if (!$('vp').classList.contains('fs')) $('fsbtn').click(); }); await wait(150);
+      await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150); S = await st();
+      if (!S.inVp) say('(second try) a kitchen place\'s page in full screen stands outside the view');
+      await sp.evaluate(() => $('fsbtn').click()); await wait(200); S = await st();
+      if (S.fs) say('the full-screen button, pressed with a kitchen place\'s page open, did not leave full screen');
+      if (!S.home) say('leaving full screen with a kitchen place\'s page open left the reader inside the view');
+      await sp.evaluate(() => { $('docClose').click(); }); await wait(100);
+      /* and full screen entered with a page already open takes the page inside the view with it */
+      await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150);
+      await sp.evaluate(() => $('fsbtn').click()); await wait(200); S = await st();
+      if (!S.fs || !S.reader) say('full screen entered with the fridge\'s page open: full screen ' + S.fs + ', page ' + S.reader);
+      else if (!S.inVp) say('full screen entered with a kitchen place\'s page open left the page outside the view, which full screen does not show');
+      await sp.evaluate(() => { $('docClose').click(); if ($('vp').classList.contains('fs')) $('fsbtn').click(); }); await wait(200);
+      /* and out of full screen the page opens where it always has */
+      await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150); S = await st();
+      if (!S.reader || S.inVp || !S.home) say('out of full screen a kitchen place\'s page does not stand where it always has');
+      await sp.evaluate(() => $('docClose').click()); await wait(100);
+
+      /* 2 · CLOSE, IN A COLUMN OF SEVERAL PLACES: the shelves, with the lower cupboards under them */
+      await sp.evaluate(() => { const v = $('vp'); v.classList.remove('fs'); document.body.classList.remove('noscroll'); $('reader').hidden = true; if (typeof readerSeat === 'function') readerSeat(false); if (kitNow) kitShut(); window.dispatchEvent(new Event('resize')); });   /* each part starts from the room as it is out of full screen */
+      await sp.evaluate(() => __stand(3, 2)); await wait(80); S = await st();
+      if (S.slot !== 'Open — Shelves · Lower cupboards') say('in front of the shelves and the lower cupboards the slot reads ' + JSON.stringify(S.slot) + ', where it offers each, with Open');
+      await sp.evaluate(() => kitOpen('__kit_six', 4)); await wait(150); S = await st();
+      if (S.slot !== 'Close — Shelves') say('with the shelves open the slot reads ' + JSON.stringify(S.slot) + ', where it reads Close and the shelves\' name alone, not the lower cupboards');
+      await sp.evaluate(() => { UI.en.kitClose = 'Shut'; checkRead(); }); S = await st();
+      if (S.slot !== 'Shut — Shelves') say('the world\'s word for Close (Shut) is not what the slot reads: ' + JSON.stringify(S.slot));
+      await sp.evaluate(() => { delete UI.en.kitClose; UI.es = UI.es || {}; UI.es.kitClose = 'Cerrar'; lang = 'es'; checkRead(); }); S = await st();
+      if (!/^Cerrar — /.test(S.slot || '')) say('in Spanish the slot does not read the world\'s word for Close: ' + JSON.stringify(S.slot));
+      await sp.evaluate(() => { lang = 'en'; delete UI.es.kitClose; checkRead(); });
+      await sp.evaluate(() => $('read').click()); await wait(150); S = await st();
+      if (S.reader || S.open[SHELVES] !== 0 || S.now !== null) say('the slot pressed on the open shelves left them open (page ' + S.reader + ', doors ' + S.open[SHELVES] + ')');
+      if (S.slot !== 'Open — Shelves · Lower cupboards') say('after the shelves were shut the slot reads ' + JSON.stringify(S.slot) + ', where it offers both places again');
+      for (const key of ['Enter', 'Space']) {
+        await sp.evaluate(() => kitOpen('__kit_six', 4)); await wait(120);
+        await sp.evaluate(() => $('read').focus()); await sp.keyboard.press(key); await wait(150); S = await st();
+        if (S.reader || S.open[SHELVES] !== 0) say(key + ' on the slot of the open shelves did not shut their page and their doors');
+      }
+      /* Escape and the page's own Close still do */
+      await sp.evaluate(() => kitOpen('__kit_six', 4)); await wait(120); await sp.evaluate(() => { const t = document.activeElement; if (t && t !== document.body && t.blur) t.blur(); }); await sp.keyboard.press('Escape'); await wait(120); S = await st();
+      if (S.reader || S.slot !== 'Open — Shelves · Lower cupboards') say('Escape on an open place left its page open or the slot not reading Open (' + JSON.stringify(S.slot) + ')');
+
+      /* 4 · AN EMPTY PLACE SAYS IT IS EMPTY */
+      await sp.evaluate(() => { __stand(3, 2); window.__said = 0; const e0 = window.kitEmptySay; window.kitEmptySay = function () { window.__said++; return e0.apply(this, arguments); }; });
+      await sp.evaluate(() => kitOpen('__kit_six', 5)); await wait(150); S = await st();
+      if (S.reader || S.now !== null) say('the empty lower cupboards opened a page');
+      if (S.open[LOWER] !== 1) say('the empty lower cupboards did not swing their doors open (' + S.open[LOWER] + ')');
+      if (S.says !== 'Lower cupboards: empty.') say('the empty lower cupboards say ' + JSON.stringify(S.says) + ', where a world that gives no words has the place\'s name and "empty"');
+      if ((await sp.evaluate(() => window.__said)) !== 1) say('the line about the empty lower cupboards was said ' + (await sp.evaluate(() => window.__said)) + ' times for one press');
+      await wait(2900); S = await st();
+      if (S.says !== null) say('the line about the empty lower cupboards is still up after three seconds');
+      if (S.open[LOWER] !== 0) say('the empty lower cupboards\' doors stayed open when the line was gone (' + S.open[LOWER] + ')');
+      /* the world's words: one sentence a kind, one sentence with the name, and a piece with a name of its own */
+      await sp.evaluate(() => { UI.en.kitEmptyLine = { 'lower-cupboards': 'The lower cupboards are empty.', '*': '{name} has nothing in it.' }; kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (S.says !== 'The lower cupboards are empty.') say('the world\'s line for the lower cupboards is not what is said: ' + JSON.stringify(S.says));
+      /* stepping away shuts the doors */
+      await sp.evaluate(() => __stand(4, 2)); await wait(250); S = await st();
+      if (S.says !== null || S.open[LOWER] !== 0) say('stepping away from the empty lower cupboards left the line up (' + JSON.stringify(S.says) + ') or the doors open (' + S.open[LOWER] + ')');
+      await sp.evaluate(() => { UI.en.kitEmptyLine = 'The {name} is empty.'; __stand(3, 2); kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (S.says !== 'The Lower cupboards is empty.') say('a world\'s one sentence with {name} is not filled in: ' + JSON.stringify(S.says));
+      await wait(2900);
+      /* a second press while the line is up says it once more and still leaves one line and open doors */
+      await sp.evaluate(() => { delete UI.en.kitEmptyLine; window.__said = 0; kitOpen('__kit_six', 5); }); await wait(100);
+      await sp.evaluate(() => kitOpen('__kit_six', 5)); await wait(100); S = await st();
+      if (S.open[LOWER] !== 1 || !S.says) say('a second press on the empty place while its line was up left it shut or silent');
+      await wait(2900);
+      /* with a thing in hand the page opens, offering to put it there */
+      await sp.evaluate(() => { __stand(1, 2); kitOpen('__kit_six', 0); }); await wait(120);
+      await sp.click('#docBody .dcell'); await wait(120);
+      await sp.evaluate(() => { __stand(3, 2); kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (!S.reader || S.says) say('with a thing in hand the empty lower cupboards did not open their page (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      else if (!S.first || !/Put it here: Thing egg × 12/.test(S.first)) say('with the egg in hand the empty cupboards\' page does not offer putting it there first (' + JSON.stringify(S.first) + ')');
+      await sp.evaluate(() => { $('docClose').click(); kitHandBack(); });
+      /* a card of its own, and a layout that hands no things, and things the world could not give: the page opens as ever. A card
+         needs a pack that declares DOCS; one that declares none (the gauge's) has no card to be had, and is not asked for one */
+      if (await sp.evaluate(() => typeof DOCS === 'object' && !!DOCS && typeof bldReads !== 'undefined')) {
+      await sp.evaluate(() => { const K = KITWALL['__kit_six'], c = K.cols[K.places[5].col]; DOCS.__six_card = { title: { en: 'A card' }, build: () => [{ p: 'a card on the column' }] }; bldReads.push({ world: '__kit_six', x: c.x, y: c.y, doc: '__six_card' }); kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (!S.reader || S.says) say('an empty place with a card of its own on its page said it was empty instead of opening the page (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      await sp.evaluate(() => { $('docClose').click(); bldReads.pop(); delete DOCS.__six_card; });
+      } else console.log('  COUNT-ONLY: this pack declares no DOCS, so an empty place with a card of its own was not asked');
+      await sp.evaluate(() => { const L = Object.assign({}, window.__layout); delete L.things; delete L.keep; kitchenLay('__kit_six', L); kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (!S.reader || S.says) say('a kitchen that hands no things said its empty place was empty instead of opening its page (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      await sp.evaluate(() => { $('docClose').click(); kitchenLay('__kit_six', window.__layout); });
+      await sp.evaluate(() => { window.__stock.p6 = 'eggs'; kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (!S.reader || S.says) say('a place whose things the world could not give was said to be empty, where nobody knows (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      await sp.evaluate(() => { $('docClose').click(); window.__stock.p6 = []; });
+      await sp.evaluate(() => { window.__stock.p6 = [['lime', 2]]; kitOpen('__kit_six', 5); }); await wait(150); S = await st();
+      if (!S.reader || S.says) say('a place that keeps a lime said it was empty (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      await sp.evaluate(() => { $('docClose').click(); window.__stock.p6 = []; });
+
+      /* 3 · A PIECE ADDED IN BUILDER MODE HOLDS THINGS, together with the hand (sprint 5) */
+      await sp.evaluate(() => { admin = true; applyAdmin(); __stand(3, 2); window.__keeps.length = 0; window.__stored.length = 0; });
+      const added = await sp.evaluate(() => { const ok = kitBuildAdd('lower-cupboards', true), K = KITWALL['__kit_six'], p = K.places[K.places.length - 1], L = window.__stored[window.__stored.length - 1];
+        return { ok, n: K.places.length, id: p.id, kind: p.kind, said: $('kbSaid') ? $('kbSaid').textContent : null, stored: L ? L.places.map(q => q.id || null) : null, storedKeys: L ? Object.keys(L).sort().join(',') : null }; });
+      if (!added.ok) throw 'the builder did not add lower cupboards to the made-up kitchen (' + added.said + ')';
+      if (added.id !== 'n1') say('the piece just added was given the id ' + JSON.stringify(added.id) + ', where the first of n1, n2, … that no place has is n1');
+      if (!added.stored || added.stored.join() !== 'p1,p2,p3,p4,p5,p6,p7,n1') say('the world was handed the layout with ids ' + JSON.stringify(added.stored) + ', where the new piece\'s n1 goes with it');
+      if (added.storedKeys !== 'places,wall,free'.split(',').sort().join(',')) say('the world was handed a layout with ' + added.storedKeys + ', where it is the wall, the free squares and the places and nothing else');
+      const NEW = added.n - 1;
+      await sp.evaluate(() => { __stand(1, 2); kitOpen('__kit_six', 0); }); await wait(120);
+      await sp.click('#docBody .dcell'); await wait(120);
+      const newFront = await sp.evaluate(() => { const K = KITWALL['__kit_six'], c = K.cols[K.places[K.places.length - 1].col]; __stand(c.fx, c.fy); return [c.fx, c.fy, K.places.length - 1]; });
+      await sp.evaluate(i => kitOpen('__kit_six', i), NEW); await wait(150); S = await st();
+      if (!S.reader || S.says) say('the new cupboards did not open their page with the egg in hand (page ' + S.reader + ', line ' + JSON.stringify(S.says) + ')');
+      else if (!S.first || !/Put it here: Thing egg × 12/.test(S.first)) say('with the egg in hand the new cupboards\' page does not offer putting it there (' + JSON.stringify(S.first) + ')');
+      else {
+        await sp.click('#docBody .dbtn'); await wait(120);
+        const put = await sp.evaluate(() => ({ keeps: window.__keeps.slice(), stock: JSON.stringify(window.__stock.n1 || null), hand: !!KITHAND }));
+        if (put.stock !== JSON.stringify([['egg', 12]]) || !put.keeps.some(k => k.n1 && k.n1.length === 1 && k.n1[0].id === 'egg' && k.n1[0].n === 12)) say('putting the egg in the new cupboards handed the world ' + JSON.stringify(put.keeps) + ' and left their stock ' + put.stock);
+        S = await st();
+        if (!S.cells.some(c => /Thing egg, 12/.test(c))) say('the new cupboards\' page, laid again after the put, does not show the egg: ' + JSON.stringify(S.cells));
+        const in3d = await sp.evaluate(i => { const K = KITWALL['__kit_six'], c = K.cols[K.places[i].col]; KITOPEN['__kit_six|' + i] = 1; const n = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === i).length; KITOPEN['__kit_six|' + i] = 0; return n; }, NEW);
+        if (await sp.evaluate(() => typeof SHAPES === 'object' && !!SHAPES && typeof SHAPES.kitchenColumn === 'function') && in3d !== 2) say('the new cupboards, open, draw ' + in3d + ' parts of their things in 3D, where the egg\'s two are 2');
+        /* kept with the layout and read back through the check: the town lays what the world kept, with its own seams */
+        await sp.evaluate(() => $('docClose').click());
+        const back = await sp.evaluate(() => { const kept = window.__stored[window.__stored.length - 1], L = Object.assign({}, kept, { things: window.__things, keep: window.__keep, store: window.__store, gaps: true, page: window.__layout.page });
+          const why = kitchenCheck('__kit_six', L).why || null; const s = why ? why : kitchenLay('__kit_six', L), K = KITWALL['__kit_six']; return { why, s, ids: K ? K.places.map(p => p.id) : null }; });
+        if (back.why || back.s) say('the layout the world kept, with the new piece\'s id, is refused when it is laid again: ' + (back.why || back.s));
+        else if (String(back.ids) !== 'p1,p2,p3,p4,p5,p6,p7,n1') say('laid again, the kept layout\'s ids are ' + back.ids);
+        await sp.evaluate(i => kitOpen('__kit_six', i), NEW); await wait(150); S = await st();
+        if (!S.cells.some(c => /Thing egg, 12/.test(c))) say('after the kept layout was laid again the new cupboards\' page does not show the egg: ' + JSON.stringify(S.cells));
+        await sp.evaluate(() => { $('docClose').click(); });
+      }
+      /* a second piece takes the next free id, and one that would take a name another place has does not */
+      const ids2 = await sp.evaluate(() => { const o = {}; kitBuildAdd('drawers', true); const K = KITWALL['__kit_six']; o.second = K.places[K.places.length - 1].id;
+        const L = window.__stored[window.__stored.length - 1]; o.ids = L.places.map(q => q.id || null); return o; });
+      if (ids2.second !== 'n2') say('a second piece added was given ' + JSON.stringify(ids2.second) + ', where the next free id is n2');
+      const gap = await sp.evaluate(() => { const L = Object.assign({}, window.__layout); L.places = L.places.map(p => p.id === 'p3' ? Object.assign({}, p, { id: 'n1' }) : p); kitchenLay('__kit_six', L);
+        const ok = kitBuildAdd('lower-cupboards', true), K = KITWALL['__kit_six']; const id = K.places[K.places.length - 1].id; kitchenLay('__kit_six', window.__layout); return { ok, id }; });
+      if (gap.id !== 'n2') say('a kitchen where the counter already has the id n1 gave the piece added ' + JSON.stringify(gap.id) + ', where the first free is n2');
+      /* a kitchen that keeps nothing (My kitchen's kind): a piece added gets no id, and the rule itself is the one it always was */
+      const plain = await sp.evaluate(() => { const L = Object.assign({}, window.__layout); delete L.things; delete L.keep; L.places = L.places.slice(); kitchenLay('__kit_six', L);
+        window.__stored.length = 0; const ok = kitBuildAdd('lower-cupboards', true), K = KITWALL['__kit_six'], p = K.places[K.places.length - 1], S = window.__stored[window.__stored.length - 1];
+        const r = KITCHEN.rules.add({ places: [{ kind: 'fridge', row: 'tall', col: 0 }] }, 'drawers'); kitchenLay('__kit_six', window.__layout);
+        return { ok, id: Object.prototype.hasOwnProperty.call(p, 'id') ? p.id : null, stored: S ? Object.prototype.hasOwnProperty.call(S.places[S.places.length - 1], 'id') : null, rule: Object.prototype.hasOwnProperty.call(r.layout.places[r.i], 'id') }; });
+      if (!plain.ok) say('the builder did not add a piece to a kitchen that keeps nothing');
+      else if (plain.id !== null || plain.stored) say('a piece added to a kitchen that keeps nothing was given an id (' + JSON.stringify(plain.id) + '), where the world would be handed ids it never gave');
+      if (plain.rule) say('the rules\' own add gives a piece an id: it is the one rule for every game and does not');
+      console.log('  COUNT-ONLY: the kitchen\'s four fixes: a kitchen place\'s page in full screen kept inside the view (and a plain page leaving it as before), the slot reading Close and shutting by a press, Enter and Space, a piece added given an id and the egg put in it and laid again, and the empty lower cupboards saying so in three forms of words, with a thing in hand, a card, no things and unreadable things each opening the page');
+    } catch (e) { if (typeof e === 'string') say(e); else say('the four fixes could not be driven to the end, so they measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await sp.close();
+    fails.push(...SX.map(m => 'the kitchen\'s four fixes (sprint 6): ' + m));
+  }
+
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----
      The owner asked for the dog agility course to be fixed too, shaped and beautified.
      Before the gear can be shaped, the line it is shaped across has to be the park's own. Until
