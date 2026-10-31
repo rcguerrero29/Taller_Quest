@@ -2391,7 +2391,11 @@ function findChromium() {
      leaves its doors open for ever, or says it is empty with a thing in hand (which is to be offered a place to put it), or in
      a kitchen that hands no things, or with a card of its own. On a page of its own: a made-up kitchen of the template's seven
      places on four columns and three free squares, gaps on, its things answered from a stock the page holds. Red first, each
-     fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 6). */
+     fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 6).
+     COST: it runs in every shell, the gauge's three among them, whose inner runs are stopped at 180 s (test/gauge.js, LIMIT_S) and
+     take about 170 s here without it, so it spends about four seconds, not twenty: the flat camera, a swing that is at once, no wait
+     that a click or a fired timer does not answer (the empty line's 2.6 s is read off the timer armed for it, and the timer is run,
+     not waited out; the town's own check waits it out in real time). */
   {
     const SX = [], say = s => SX.push(s);
     const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
@@ -2415,7 +2419,7 @@ function findChromium() {
         const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
         window.__layout = { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1], [6, 1], [7, 1]], places, things: window.__things, keep: window.__keep, page: pl => [{ p: 'inside ' + pl.id }], store: window.__store, gaps: true };
         const s = kitchenLay(ID, window.__layout);
-        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 2; dir = 'up'; enterWorld(false); camSet('3d');
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 2; dir = 'up'; enterWorld(false); camSet('top');
         document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
         window.__readerParent = $('reader').parentElement; window.__stand = (x, y) => { px = fx = x; py = fy = y; moving = false; held = null; dir = 'up'; checkTalk(); };
         Object.keys(UI).forEach(l => { if (UI[l] && typeof UI[l] === 'object') { delete UI[l].kitEmptyLine; delete UI[l].kitClose; } });   /* a shell that gives its own words (the town) is asked for the engine's, which are what is held here */
@@ -2428,15 +2432,15 @@ function findChromium() {
         return { slot: b.hidden ? null : b.textContent, reader: !r.hidden, inVp: r.parentElement === vp, home: r.parentElement === window.__readerParent, fs: vp.classList.contains('fs'), noscroll: document.body.classList.contains('noscroll'),
           kit: r.dataset.kit || null, now: kitNow ? kitNow.i : null, says: s && !s.hidden ? s.textContent : null, first: (document.querySelector('#docBody .dbtn') || {}).textContent || null,
           cells: [...document.querySelectorAll('#docBody .dcell')].map(c => c.getAttribute('aria-label')), px, py, keeps: window.__keeps.length,
-          open: KITWALL[world] ? KITWALL[world].places.map(p => kitOpenOf(world, p.i)) : [], cv: [$('cv3').width, $('cv3').height] }; });
-      const wait = ms => sp.waitForTimeout(ms);
+          open: KITWALL[world] ? KITWALL[world].places.map(p => kitOpenOf(world, p.i)) : [], cv: [$('cv').style.height, $('cv3').style.height] }; });
+      const wait = ms => sp.waitForTimeout(Math.min(ms, 40)), settle = () => sp.waitForTimeout(110);   /* a swing is at once with less motion, and every click is awaited; what is waited for is a frame, or full screen's resize (80 ms) */
       const SHELVES = 4, LOWER = 5, FRIDGE = 0;
       /* 1 · FULL SCREEN KEEPS A KITCHEN PAGE INSIDE THE VIEW */
-      await sp.evaluate(() => __stand(1, 2)); await sp.click('#fsbtn'); await wait(200);
+      await sp.evaluate(() => __stand(1, 2)); await sp.click('#fsbtn'); await settle();
       let S = await st();
       if (!S.fs) throw 'the full-screen button did not put the view in full screen, so a page in full screen was not asked';
       const cv0 = S.cv;
-      await sp.click('#read'); await wait(250); S = await st();
+      await sp.click('#read'); await settle(); S = await st();
       if (!S.reader || S.now !== FRIDGE) throw 'the fridge did not open its page';
       if (!S.fs) say('a kitchen place\'s page opened in full screen left full screen');
       if (!S.noscroll) say('a kitchen place\'s page opened in full screen let the page behind it scroll');
@@ -2447,15 +2451,15 @@ function findChromium() {
       /* the room is drawn beside the page, live, when the shell docks the page at the right; and not under a page that covers it */
       const draws = async (dock) => sp.evaluate(async dock => { const r = $('reader');
         if (dock) { r.style.inset = '0 0 0 auto'; r.style.width = '360px'; r.style.background = 'none'; } else { r.style.inset = '0'; r.style.width = 'auto'; r.style.background = 'rgba(16,13,24,.88)'; }   /* both said here, so a shell's own docking (the town's) does not decide which this is */
-        window.dispatchEvent(new Event('resize')); await new Promise(res => setTimeout(res, 250));
+        window.dispatchEvent(new Event('resize')); await new Promise(res => setTimeout(res, 120));
         let n = 0; const d0 = window.draw; window.draw = function () { n++; return d0.apply(this, arguments); };
-        await new Promise(res => setTimeout(res, 450)); window.draw = d0; return n; }, dock);
+        await new Promise(res => setTimeout(res, 300)); window.draw = d0; return n; }, dock);
       const nBeside = await draws(true), nCover = await draws(false);
-      if (nBeside < 3) say('beside a docked kitchen page the room was drawn ' + nBeside + ' times in 450 ms, where it is in view and drawn');
-      if (nCover > 0) say('under a kitchen page that covers the whole view the room was drawn ' + nCover + ' times in 450 ms, where nobody sees it');
+      if (nBeside < 3) say('beside a docked kitchen page the room was drawn ' + nBeside + ' times in 300 ms, where it is in view and drawn');
+      if (nCover > 0) say('under a kitchen page that covers the whole view the room was drawn ' + nCover + ' times in 300 ms, where nobody sees it');
       await sp.evaluate(() => { const r = $('reader'); r.style.inset = ''; r.style.width = ''; r.style.background = ''; window.dispatchEvent(new Event('resize')); });
       /* the hero's keys behind the page stay as they were: nothing walks */
-      const at0 = S.px + ',' + S.py; await sp.keyboard.press('ArrowRight'); await sp.keyboard.press('ArrowRight'); await wait(300); S = await st();
+      const at0 = S.px + ',' + S.py; await sp.keyboard.press('ArrowRight'); await sp.keyboard.press('ArrowRight'); await settle(); S = await st();
       if (S.px + ',' + S.py !== at0) say('with a kitchen page open in full screen the arrow keys walked the hero from ' + at0 + ' to ' + S.px + ',' + S.py);
       /* 2 · THE SLOT READS CLOSE, AND SHUTS PAGE AND DOORS (full screen first: the fridge is a column of one) */
       if (S.slot !== 'Close — Fridge') say('with the fridge open the slot reads ' + JSON.stringify(S.slot) + ', where it reads Close and the fridge\'s name');
@@ -2474,19 +2478,19 @@ function findChromium() {
       if (!S.fs || !S.noscroll) say('putting down a page that is not a kitchen place\'s did not give full screen back');
       await sp.evaluate(() => { $('card').hidden = true; $('world').hidden = false; world = '__kit_six'; __stand(1, 2); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); $('reader').hidden = true; });
       /* leaving full screen with a kitchen page open sends the page back out of the view */
-      await sp.evaluate(() => { if (!$('vp').classList.contains('fs')) $('fsbtn').click(); }); await wait(150);
+      await sp.evaluate(() => { if (!$('vp').classList.contains('fs')) $('fsbtn').click(); }); await settle();
       await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150); S = await st();
       if (!S.inVp) say('(second try) a kitchen place\'s page in full screen stands outside the view');
-      await sp.evaluate(() => $('fsbtn').click()); await wait(200); S = await st();
+      await sp.evaluate(() => $('fsbtn').click()); await settle(); S = await st();
       if (S.fs) say('the full-screen button, pressed with a kitchen place\'s page open, did not leave full screen');
       if (!S.home) say('leaving full screen with a kitchen place\'s page open left the reader inside the view');
       await sp.evaluate(() => { $('docClose').click(); }); await wait(100);
       /* and full screen entered with a page already open takes the page inside the view with it */
       await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150);
-      await sp.evaluate(() => $('fsbtn').click()); await wait(200); S = await st();
+      await sp.evaluate(() => $('fsbtn').click()); await settle(); S = await st();
       if (!S.fs || !S.reader) say('full screen entered with the fridge\'s page open: full screen ' + S.fs + ', page ' + S.reader);
       else if (!S.inVp) say('full screen entered with a kitchen place\'s page open left the page outside the view, which full screen does not show');
-      await sp.evaluate(() => { $('docClose').click(); if ($('vp').classList.contains('fs')) $('fsbtn').click(); }); await wait(200);
+      await sp.evaluate(() => { $('docClose').click(); if ($('vp').classList.contains('fs')) $('fsbtn').click(); }); await settle();
       /* and out of full screen the page opens where it always has */
       await sp.evaluate(() => kitOpen('__kit_six', 0)); await wait(150); S = await st();
       if (!S.reader || S.inVp || !S.home) say('out of full screen a kitchen place\'s page does not stand where it always has');
@@ -2516,29 +2520,31 @@ function findChromium() {
       if (S.reader || S.slot !== 'Open — Shelves · Lower cupboards') say('Escape on an open place left its page open or the slot not reading Open (' + JSON.stringify(S.slot) + ')');
 
       /* 4 · AN EMPTY PLACE SAYS IT IS EMPTY */
-      await sp.evaluate(() => { __stand(3, 2); window.__said = 0; const e0 = window.kitEmptySay; window.kitEmptySay = function () { window.__said++; return e0.apply(this, arguments); }; });
+      await sp.evaluate(() => { __stand(3, 2); window.__said = 0; window.__tm = []; const s0 = window.setTimeout; window.setTimeout = function (f, ms) { if (ms === 2600) window.__tm.push(f); return s0.apply(this, arguments); }; const e0 = window.kitEmptySay; window.kitEmptySay = function () { window.__said++; return e0.apply(this, arguments); }; });
       await sp.evaluate(() => kitOpen('__kit_six', 5)); await wait(150); S = await st();
       if (S.reader || S.now !== null) say('the empty lower cupboards opened a page');
       if (S.open[LOWER] !== 1) say('the empty lower cupboards did not swing their doors open (' + S.open[LOWER] + ')');
       if (S.says !== 'Lower cupboards: empty.') say('the empty lower cupboards say ' + JSON.stringify(S.says) + ', where a world that gives no words has the place\'s name and "empty"');
       if ((await sp.evaluate(() => window.__said)) !== 1) say('the line about the empty lower cupboards was said ' + (await sp.evaluate(() => window.__said)) + ' times for one press');
-      await wait(2900); S = await st();
-      if (S.says !== null) say('the line about the empty lower cupboards is still up after three seconds');
+      /* its life is 2.6 s: the timer is armed for that, once, and fired (not waited out) it ends the line */
+      const armed = await sp.evaluate(() => ({ n: window.__tm.length, ms: KITSAYS })); if (armed.n !== 1 || armed.ms !== 2600) say('the line about the empty lower cupboards armed ' + armed.n + ' timer(s) of 2600 ms (the constant is ' + armed.ms + '), where one is armed');
+      await sp.evaluate(() => { const f = window.__tm.pop(); if (f) f(); window.__tm.length = 0; }); S = await st();
+      if (S.says !== null) say('the line about the empty lower cupboards is still up when its timer has run');
       if (S.open[LOWER] !== 0) say('the empty lower cupboards\' doors stayed open when the line was gone (' + S.open[LOWER] + ')');
       /* the world's words: one sentence a kind, one sentence with the name, and a piece with a name of its own */
       await sp.evaluate(() => { UI.en.kitEmptyLine = { 'lower-cupboards': 'The lower cupboards are empty.', '*': '{name} has nothing in it.' }; kitOpen('__kit_six', 5); }); await wait(150); S = await st();
       if (S.says !== 'The lower cupboards are empty.') say('the world\'s line for the lower cupboards is not what is said: ' + JSON.stringify(S.says));
       /* stepping away shuts the doors */
-      await sp.evaluate(() => __stand(4, 2)); await wait(250); S = await st();
+      await sp.evaluate(() => __stand(4, 2)); await settle(); S = await st();
       if (S.says !== null || S.open[LOWER] !== 0) say('stepping away from the empty lower cupboards left the line up (' + JSON.stringify(S.says) + ') or the doors open (' + S.open[LOWER] + ')');
       await sp.evaluate(() => { UI.en.kitEmptyLine = 'The {name} is empty.'; __stand(3, 2); kitOpen('__kit_six', 5); }); await wait(150); S = await st();
       if (S.says !== 'The Lower cupboards is empty.') say('a world\'s one sentence with {name} is not filled in: ' + JSON.stringify(S.says));
-      await wait(2900);
+      await sp.evaluate(() => kitEmptyOff());
       /* a second press while the line is up says it once more and still leaves one line and open doors */
       await sp.evaluate(() => { delete UI.en.kitEmptyLine; window.__said = 0; kitOpen('__kit_six', 5); }); await wait(100);
       await sp.evaluate(() => kitOpen('__kit_six', 5)); await wait(100); S = await st();
       if (S.open[LOWER] !== 1 || !S.says) say('a second press on the empty place while its line was up left it shut or silent');
-      await wait(2900);
+      await sp.evaluate(() => kitEmptyOff());
       /* with a thing in hand the page opens, offering to put it there */
       await sp.evaluate(() => { __stand(1, 2); kitOpen('__kit_six', 0); }); await wait(120);
       await sp.click('#docBody .dcell'); await wait(120);
