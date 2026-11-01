@@ -1145,3 +1145,43 @@ to `engine/engine.js`, each a thing a world may ask for; Meridian declares no ki
 - **Not done.** The "Which one?" page leaves full screen. A tap on another place while a page is open is not heard (the world is
   covered for the tap). On a screen too narrow to dock the page it covers the whole view, as every page does, and the slot that
   reads Close is under it; the page's own Close and Escape still shut it. No phone measured.
+
+### 2026-11-01 · sprint 7: a kitchen along more than one wall (an L or a U), and every place that keeps things given an id
+
+His confirmed goals of 2026-10-31 (a thing in hand put in a piece just added; L- and U-shaped kitchens, along walls only) and
+of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wall, the arrows, the line at a wall's end);
+`GAMEV` and `CACHE` mq-v246. Meridian declares no kitchen and none of this reaches it.
+
+- **Every place that keeps things has an id** (`engine/engine.js`, grep `EVERY PLACE THAT KEEPS THINGS HAS AN ID`). A kitchen kept
+  before sprint 6 has pieces the builder added with no id, and nothing gave them one later, so a thing in hand could not be put in
+  them. `kitchenLay` now gives every plain place with no id, in a layout that hands `things` and `keep`, the first of `n1`, `n2`,
+  … that no place has, in the places' order (as `kitGiveId` does for a piece added). It lays a copy and never changes what it was
+  handed; the same layout gets the same ids every time, so what is kept by them stays with them until the world keeps the layout
+  again. A layout with no things (My kitchen's kind) is given none.
+- **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/engine.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
+  name up to two side walls, `sides: [{squares: [[x,y], …], face}]`, `face` one of north, south, east, west; a place on one says
+  `side`, its index, and `col` along that wall's own squares. The check refuses, whole and in one sentence, side walls with gaps
+  off, more than two, a key a side wall does not have, a facing off the list, no squares, a square off the map or not `◧` or named
+  by any wall already, more than 40 squares in all, a place on a side wall there is none of, or past its squares. Inside the
+  engine a side wall's columns are numbered on past the back wall's, so everything that finds a place's square (Open, the tap,
+  the swing, the things, the frame, the empty line, Close, full screen) works on them unchanged; what the rules and the world are
+  handed counts each wall from 0 (`kitData`). Open is offered from the square a side wall faces. **The corner** where two walls
+  meet is on neither wall's list, so no piece stands in it: it is left empty.
+- **Facing the room** (`engine/shapes.js`, `face`). `kitchenColumn` hands each piece of a side wall's column its wall's `face`, and
+  the seven kitchen pieces turn to it with their back on that wall; the map alone would turn a fridge at a side wall's end to
+  face the open floor beside it. Left out, or a name not on the list, every piece reads the map as it always did: every shape
+  builds deep-equal on mq-v245 and mq-v246 (181,920 builds, a face left out, `'up'`, `7` and `''` among them).
+- **The rules** keep a piece on its own wall: left and right step along it and stop at its ends, up and down stay in its column;
+  `moveTo(layout, i, col, wall)` names the wall (left out, the back wall); an add takes the first room on the back wall, then on
+  each side wall. With gaps off, or no side walls, every rule answers exactly as before, held by comparing every rule's answer
+  with and without `sides` in node.
+- **The builder**: with a piece picked, a tap on any empty square of any wall puts it there; ◀ ▶ stay offered at a wall's end on a
+  wall with gaps and, pressed there, say one line instead of nothing (`kbWallEnd`, English when the world gives none: "That is
+  the end of its wall: to move it further, tap a square along the wall."). The world is handed `sides` with the layout.
+- **Measured** (`test/engine.smoke.js`, grep `THE KITCHEN ALONG MORE THAN ONE WALL`), red first with eleven faults planted in a
+  copy outside the repository: the rules on a side wall, eleven bad side walls refused whole, a tap onto the side wall, ◀ along
+  it and the line at its end, the lower cupboards and a freezer turned to face the room, the slot's Open from the square in
+  front, the eggs put there and drawn in 3D, Close, full screen, the empty line, and a kept kitchen's id-less pieces given
+  `n1` to `n3` with the eggs put in one.
+- **Not done.** No corner piece and no island. The 2D wall views draw a side wall's column as they draw any (from above, and
+  from the front). No phone measured.
