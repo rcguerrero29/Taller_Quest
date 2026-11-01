@@ -5559,17 +5559,29 @@ function readMarks(){const out=[];
      free    optional (2026-10-30): squares of the wall that hold no place yet, `[[x,y], …]`, in the order the wall grows
              into them: a column added past the wall's end stands on the first. Each holds `◧` in the map, and the wall and
              its free squares are at most 40 together. Nobody stands on one; in 3D it shows the fitter's tape on the floor.
-     places  `[{kind, row, col, name, full, finish, id}]`: a kind and a row from `KITCHEN` (a tall kind in the tall row,
-             every other in one of `KITCHEN.rows`, as My kitchen saves them), its column, and optionally a name (text, at
+     sides   optional (sprint 7 of the 3D kitchen: an L or a U, along walls only): up to 2 side walls, `[{squares, face}]`,
+             each its squares in order along it, `[[x,y], …]`, every one a `◧` in the map, and the way it faces the room,
+             one of `north`, `south`, `east`, `west` (KITFACE). Only on a wall with gaps (below): every square of a side wall
+             is a column that may stand empty, drawn with the fitter's tape. A piece on one is turned to face the room its
+             wall's way, its back on that wall (engine/shapes.js, `face`), and its Open is offered from the square it faces.
+             The back wall, its free squares and every side wall are at most 40 squares together, and no square is named by
+             two. THE CORNER where two walls meet is on neither wall's list, so no piece ever stands in it: it is left empty
+             (the map has floor there, or whatever the world draws). A layout with no side walls is exactly as before.
+     places  `[{kind, row, col, side, name, full, finish, id}]`: a kind and a row from `KITCHEN` (a tall kind in the tall row,
+             every other in one of `KITCHEN.rows`, as My kitchen saves them), its column, on a side wall that wall's
+             index in `sides` (`side`) with its column counted along that wall from 0, and optionally a name (text, at
              most 30 characters, nothing that cannot be shown), how full it is (one of `KITCHEN.fulls`), what it is
              finished in (one of `KITCHEN.finishes` by name, never a colour, and none on a kind `KITCHEN.unfinished`
              names; left out it is wood, as every kitchen was before), and an id (the world's own name for the place, 1 to
              30 letters, digits, - or _, no two alike: carried through every change the builder makes, so what a world
-             keeps in a place follows it when it moves; the engine never reads it). At most 120.
+             keeps in a place follows it when it moves; the engine never reads it). At most 120. In a layout that hands
+             `things` and `keep`, a place laid with no id is given one (grep "EVERY PLACE THAT KEEPS THINGS HAS AN ID").
+             What `page` is handed counts a side wall's columns on past the back wall's, the engine's own count, and
+             says `side`.
      page    optional: `(place, lang) => sections`, the reader's own blocks for that place. `place` is a frozen copy of
              what was checked, with `i`, its index in `places`.
      store   optional (2026-10-30): `(layout) => …`, where the world keeps a change the builder makes, handed a plain copy
-             of the new layout, `{wall, free, places}`. A layout with a store may be changed in builder mode (grep "THE
+             of the new layout, `{wall, free, places}`, and `sides` when it has them. A layout with a store may be changed in builder mode (grep "THE
              KITCHEN BUILDER"); one with none never is. The engine keeps no kitchen of its own.
      gaps    optional (sprint 5 of the 3D kitchen): `true` turns gaps on for this wall, as engine/kitchen.js's rules read
              it: a column of the wall may stand empty, a move leaves the column it left empty, a piece steps onto empty
@@ -5596,7 +5608,8 @@ function readMarks(){const out=[];
    is about the place in that row, and ends that place's page only, while a place stands in that row there (once none
    does, the builder having moved it, it ends every page of its column again). A world that declares no layout and lays
    no closet gets Read, and only Read, from the very same code. */
-const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420;
+const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420,KITSIDES=2;
+const KITFACE={north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};   /* the way a side wall faces the room, and the square in front of it (sprint 7) */
 const KITID=/^[A-Za-z0-9_-]{1,30}$/;   /* a place's id: the world's own name for it, carried through every change and never read by the engine */
 const KITUNSAFE=/[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/;   /* what may not be shown in a name: My kitchen's UNSAFE, the same characters */
 /* the engine's own letter for each kind's piece, so a flat camera draws a column as its places' own drawings; held equal
@@ -5611,8 +5624,8 @@ function kitchenCheck(id,L){
   if(!K||!plain(K.kinds)||!Array.isArray(K.rows)||!plain(K.bands)||!Array.isArray(K.fulls))return why("this page has no KITCHEN to check it against (engine/kitchen.js is loaded before the engine, or not at all)");
   if(!w)return why("there is no room called "+JSON.stringify(String(id).slice(0,40)));
   if(!plain(L))return why("a layout is an object with a wall and places");
-  const extra=Object.keys(L).find(k=>!["wall","free","places","page","store","gaps","things","keep"].includes(k));
-  if(extra!==undefined)return why("a layout has a wall, free squares, places, a page, a store, gaps, things and a keep, and this one says "+JSON.stringify(extra.slice(0,30)));
+  const extra=Object.keys(L).find(k=>!["wall","free","sides","places","page","store","gaps","things","keep"].includes(k));
+  if(extra!==undefined)return why("a layout has a wall, free squares, side walls, places, a page, a store, gaps, things and a keep, and this one says "+JSON.stringify(extra.slice(0,30)));
   if(own(L,"page")&&typeof L.page!=="function")return why("its page is not a function");
   if(own(L,"store")&&typeof L.store!=="function")return why("its store is not a function");
   if(own(L,"gaps")&&L.gaps!==true&&L.gaps!==false)return why("its gaps are "+JSON.stringify(String(L.gaps).slice(0,20))+", and gaps are on (true) or off (false)");
@@ -5645,40 +5658,84 @@ function kitchenCheck(id,L){
     if(w.rows[y][x]!==KITCOL)return why("free square "+f+", ("+x+","+y+"), is not a kitchen column ("+KITCOL+") in the map");
     if(at[x+","+y]!==undefined)return why("free square "+f+", ("+x+","+y+"), is "+(typeof at[x+","+y]==="number"?"column "+at[x+","+y]+" of its wall":"free square "+at[x+","+y].slice(1))+" already");
     at[x+","+y]="f"+f;free.push(Object.freeze([x,y]));}
+  /* THE SIDE WALLS (sprint 7, grep "SIDE WALLS" above): on a wall with gaps, at most KITSIDES, each its squares in order and
+     the way it faces, from a closed list; every square a `◧`, none named twice by any wall, and every wall's squares and
+     the free ones at most KITCOLS together. Their columns are numbered on past the back wall's, in the engine's own count */
+  const S=own(L,"sides")?L.sides:[],sides=[],back=cols.length;
+  if(!Array.isArray(S))return why("its side walls are not a list");
+  if(S.length&&!gaps)return why("it has side walls and its gaps are off, where a kitchen along more than one wall has gaps on");
+  if(S.length>KITSIDES)return why("it has "+S.length+" side walls, and a kitchen has at most "+KITSIDES);
+  let all=W.length+F.length;
+  for(let s=0;s<S.length;s++){const sw=S[s],it="side wall "+s;
+    if(!plain(sw))return why(it+" is not a wall of squares and a way it faces");
+    const ex=Object.keys(sw).find(k=>!["squares","face"].includes(k));
+    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a side wall has squares and a way it faces");
+    if(typeof sw.face!=="string"||!own(KITFACE,sw.face))return why(it+" faces "+JSON.stringify(String(sw.face).slice(0,20))+", and a wall faces "+Object.keys(KITFACE).join(", "));
+    const Q=sw.squares;
+    if(!Array.isArray(Q)||!Q.length)return why(it+" names no square");
+    all+=Q.length;if(all>KITCOLS)return why("its walls and its free squares are "+all+" squares or more, and a kitchen has at most "+KITCOLS);
+    const d=KITFACE[sw.face],from=cols.length;
+    for(let k=0;k<Q.length;k++){const q=Q[k];
+      if(!Array.isArray(q)||q.length!==2||!Number.isInteger(q[0])||!Number.isInteger(q[1]))return why("square "+k+" of "+it+" is not a square [x,y]");
+      const[x,y]=q;
+      if(x<0||y<0||x>=w.W||y>=w.H)return why("square "+k+" of "+it+", ("+x+","+y+"), is off the map");
+      if(w.rows[y][x]!==KITCOL)return why("square "+k+" of "+it+", ("+x+","+y+"), is not a kitchen column ("+KITCOL+") in the map");
+      if(at[x+","+y]!==undefined)return why("square "+k+" of "+it+", ("+x+","+y+"), is named by a wall already");
+      at[x+","+y]="s"+s;
+      const fx=x+d[0],fy=y+d[1],ok=fx>=0&&fy>=0&&fx<w.W&&fy<w.H&&!shutToPeople(w.rows[fy][fx])&&!DOORSET.has(w.rows[fy][fx]);   /* Open is offered from the square it faces */
+      cols.push(Object.assign(ok?{x,y,fx,fy}:{x,y,fx:-1,fy:-1},{side:s,face:sw.face}));}
+    sides.push(Object.freeze({face:sw.face,from,squares:Object.freeze(Q.map(q=>Object.freeze([q[0],q[1]])))}));}
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++)if(w.rows[y][x]===KITCOL&&at[x+","+y]===undefined)
-    return why("the map has a kitchen column at ("+x+","+y+") that its wall does not name, nor its free squares");
+    return why("the map has a kitchen column at ("+x+","+y+") that its wall does not name, nor its free squares"+(sides.length?", nor its side walls":""));
   const P=L.places;
   if(!Array.isArray(P)||!P.length)return why("it has no places");
   if(P.length>KITPLACES)return why("it has "+P.length+" places, and a kitchen has at most "+KITPLACES);
   const places=[],spot={},byCol=cols.map(()=>[]),ids=new Set();
   for(let i=0;i<P.length;i++){const p=P[i],it="place "+i;
     if(!plain(p))return why(it+" is not a place");
-    const ex=Object.keys(p).find(k=>!["kind","row","col","name","full","finish","id"].includes(k));
-    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a place has a kind, a row, a column, a name, a fullness, a finish and an id");
+    const ex=Object.keys(p).find(k=>!["kind","row","col","side","name","full","finish","id"].includes(k));
+    if(ex!==undefined)return why(it+" says "+JSON.stringify(ex.slice(0,30))+", and a place has a kind, a row, a column, a side wall, a name, a fullness, a finish and an id");
+    if(own(p,"side")&&!(Number.isInteger(p.side)&&p.side>=0&&p.side<sides.length))return why(it+" stands on side wall "+JSON.stringify(p.side)+", and "+(sides.length?"the layout's side walls are 0 to "+(sides.length-1):"the layout has none"));
+    const sw=own(p,"side")?sides[p.side]:null,n=sw?sw.squares.length:back;   /* a place on a side wall: its column along that wall */
     if(own(p,"id")){if(typeof p.id!=="string"||!KITID.test(p.id))return why(it+"'s id is not an id: 1 to 30 letters, digits, - or _");
       if(ids.has(p.id))return why("two places have the id "+JSON.stringify(p.id));ids.add(p.id);}
     if(typeof p.kind!=="string"||!own(K.kinds,p.kind))return why(it+" is of a kind there is none of ("+JSON.stringify(String(p.kind).slice(0,30))+")");
     if(K.kinds[p.kind]==="tall"?p.row!=="tall":!K.rows.includes(p.row))return why(it+", the "+p.kind+", stands in the row "+JSON.stringify(String(p.row).slice(0,20))+", where "+(K.kinds[p.kind]==="tall"?"a tall piece stands in the tall row":"it stands in one of "+K.rows.join(", ")));
-    if(!Number.isInteger(p.col)||p.col<0||p.col>=cols.length)return why(it+", the "+p.kind+", is in column "+JSON.stringify(p.col)+", and the wall has columns 0 to "+(cols.length-1));
+    if(!Number.isInteger(p.col)||p.col<0||p.col>=n)return why(it+", the "+p.kind+", is in column "+JSON.stringify(p.col)+", and "+(sw?"side wall "+p.side+" has squares":"the wall has columns")+" 0 to "+(n-1));
+    const gc=sw?sw.from+p.col:p.col;   /* its column in the engine's own count: the back wall's first, then each side wall's */
     if(own(p,"name")&&!(typeof p.name==="string"&&!KITUNSAFE.test(p.name)&&p.name===p.name.trim()&&p.name!==""&&Array.from(p.name).length<=KITNAME))
       return why(it+"'s name is not a name: text, trimmed, 1 to "+KITNAME+" characters, nothing that cannot be shown");
     if(own(p,"full")&&!K.fulls.includes(p.full))return why(it+" is "+JSON.stringify(String(p.full).slice(0,20))+" full, and a place is "+K.fulls.join(", ")+" or not said");
     if(own(p,"finish")){const FS=plain(K.finishes)?K.finishes:{};   /* a name on the list, never a colour (engine/kitchen.js, `finishes`) */
       if(typeof p.finish!=="string"||!own(FS,p.finish))return why(it+" is finished in "+JSON.stringify(String(p.finish).slice(0,20))+", and a finish is one of "+(Object.keys(FS).join(", ")||"none on this page"));
       if(Array.isArray(K.unfinished)&&K.unfinished.includes(p.kind))return why(it+", the "+p.kind+", is finished in "+p.finish+", and a "+p.kind+" takes no finish");}
-    const k=p.col+"|"+p.row;if(spot[k]!==undefined)return why("places "+spot[k]+" and "+i+" are in one spot, column "+p.col+", "+p.row);spot[k]=i;
-    const q={kind:p.kind,row:p.row,col:p.col,i};if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;if(own(p,"finish"))q.finish=p.finish;if(own(p,"id"))q.id=p.id;
-    places.push(Object.freeze(q));byCol[p.col].push(q);}
+    const k=gc+"|"+p.row;if(spot[k]!==undefined)return why("places "+spot[k]+" and "+i+" are in one spot, column "+p.col+(sw?" of side wall "+p.side:"")+", "+p.row);spot[k]=i;
+    const q={kind:p.kind,row:p.row,col:gc,i};if(sw)q.side=p.side;if(own(p,"name"))q.name=p.name;if(own(p,"full"))q.full=p.full;if(own(p,"finish"))q.finish=p.finish;if(own(p,"id"))q.id=p.id;
+    places.push(Object.freeze(q));byCol[gc].push(q);}
   for(let c=0;c<cols.length;c++){const ps=byCol[c];
     if(!ps.length){if(gaps)continue;return why("column "+c+" has nothing in it");}   /* an empty column, on a wall with gaps (sprint 5) */
     if(ps.length>1&&ps.some(p=>p.row==="tall"))return why("column "+c+" holds a tall piece and something else; a tall piece stands alone");
     for(let a=0;a<ps.length;a++)for(let b=a+1;b<ps.length;b++){const A=K.bands[ps[a].kind],B=K.bands[ps[b].kind];
       if(!A||!B||(A.lo<B.hi-0.001&&B.lo<A.hi-0.001))return why("in column "+c+" the "+ps[a].kind+" and the "+ps[b].kind+" would stand in each other");}}
-  return {wall:Object.freeze({id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null,
-    gaps,things:typeof L.things==="function"?L.things:null,keep:typeof L.keep==="function"?L.keep:null})};
+  const out={id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null,
+    gaps,things:typeof L.things==="function"?L.things:null,keep:typeof L.keep==="function"?L.keep:null};
+  if(sides.length){out.back=back;out.sides=Object.freeze(sides);}   /* only a kitchen along more than one wall says so */
+  return {wall:Object.freeze(out)};
 }
+/* EVERY PLACE THAT KEEPS THINGS HAS AN ID (sprint 7; his confirmed goal of 2026-10-31, a thing in hand put in a piece just
+   added): a kitchen kept before sprint 6 has pieces the builder added with no id, and a place with none keeps nothing
+   (kitCanHold). So a layout that hands `things` and `keep` is laid with every plain place that has no id given the first of
+   n1, n2, … that no place has and that passes KITID, in the places' order, as a piece added is given one (kitGiveId): the
+   same layout is given the same ids every time it is laid, and the world keeps them with the layout it is handed at the
+   builder's next change, or at once (the town does, on reading its kept kitchen back). Anything else is handed on as it
+   came, for the check to answer; a layout with no things is never given one (My kitchen's kind) */
+function kitIdsGiven(L){const plain=o=>!!o&&typeof o==="object"&&!Array.isArray(o)&&[Object.prototype,null].includes(Object.getPrototypeOf(o)),own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  if(!plain(L)||typeof L.things!=="function"||typeof L.keep!=="function"||!Array.isArray(L.places))return L;
+  const bare=p=>plain(p)&&!own(p,"id");if(!L.places.some(bare))return L;
+  const taken=new Set(L.places.map(p=>plain(p)&&own(p,"id")?p.id:undefined));let n=0;
+  return Object.assign({},L,{places:L.places.map(p=>{if(!bare(p))return p;let id;do{id="n"+(++n);}while(taken.has(id)||!KITID.test(id));taken.add(id);return Object.assign({},p,{id});})});}
 /* lay it, or refuse it whole and say why; the answer is the sentence, or null when it stands */
-function kitchenLay(id,L){const r=kitchenCheck(id,L);
+function kitchenLay(id,L){L=kitIdsGiven(L);const r=kitchenCheck(id,L);
   if(r.why){const had=!!KITWALL[id];delete KITWALL[id];
     mqwarn("kitchen",JSON.stringify(String(id).slice(0,40))+" is refused whole: "+r.why,true);
     if(had)kitDirty();return r.why;}
@@ -5708,7 +5765,9 @@ function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"
   if(c<0)return kitFreeAt(x,y)?kitTape(x,y):[];
   const ps=KITWALL[world].places.filter(p=>p.col===c);
   if(!ps.length)return kitFreeAt(x,y)?kitTape(x,y):[];   /* an empty column of a wall with gaps: the tape, as a free square */
-  const out=SHAPES.kitchenColumn({x,y,places:ps.map(p=>p.finish===undefined?{kind:p.kind,open:kitOpenOf(world,p.i)}:{kind:p.kind,open:kitOpenOf(world,p.i),finish:p.finish})}).map(q=>({...q,place:ps[q.place].i}));
+  const arg={x,y,places:ps.map(p=>p.finish===undefined?{kind:p.kind,open:kitOpenOf(world,p.i)}:{kind:p.kind,open:kitOpenOf(world,p.i),finish:p.finish})};
+  if(KITWALL[world].cols[c].face)arg.face=KITWALL[world].cols[c].face;   /* a side wall's column faces the room its wall's way (sprint 7) */
+  const out=SHAPES.kitchenColumn(arg).map(q=>({...q,place:ps[q.place].i}));
   /* what each place keeps, standing in it where its inside shows (grep "THE THINGS IN A PLACE"); nothing, in a layout with no things */
   if(KITWALL[world].things)ps.forEach(p=>{kitThingParts(world,p,out.filter(q=>q.place===p.i)).forEach(q=>out.push(q));});
   /* the place the builder has picked, framed (grep "THE KITCHEN BUILDER"); nothing, with the builder off */
@@ -5826,7 +5885,7 @@ function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||wo
   const build=kitBuildReady&&kitBuildOn();   /* in builder mode a tap PICKS a piece, and a tap on nothing puts the pick down (grep "THE KITCHEN BUILDER") */
   const h=t3Pick(cx,cy);
   /* with a piece picked, on a wall with gaps, a tap on an empty square puts it there (sprint 5) */
-  if(build&&KITWALL[world].gaps&&kitBuildSel()!==null){const sq=kitSquareAt(h);if(sq>=0)return kitBuildPlace(sq);}
+  if(build&&KITWALL[world].gaps&&kitBuildSel()!==null){const sq=kitSquareAt(h);if(sq!==-1)return kitBuildPlace(sq);}   /* a column, or a side wall's {col, side} (sprint 7) */
   if(!h||!h.object||!h.object.userData||h.object.userData.g!==KITCOL)return build?kitBuildPick(null):false;
   const c=kitColAt(h.object.userData.x,h.object.userData.y);if(c<0)return build?kitBuildPick(null):false;
   const ps=KITWALL[world].places.filter(p=>p.col===c);if(!ps.length)return build?kitBuildPick(null):false;
@@ -8350,7 +8409,10 @@ function paintAt(clientX,clientY){
    In a world that has a builder (`BUILDER`), in builder mode (the 🛠️ in Settings, `admin`), in a room whose kitchen
    layout (grep "THE KITCHEN LAYOUT") declares a `store`, a bar stands at the foot of the picture, in every camera: pick a piece by a tap on it in 3D, by ‹ and ›, or
    by [ and ]; move it ◀ ▶ ▲ ▼ (or Shift and an arrow), and on a wall with gaps (the layout's `gaps`, sprint 5) onto any
-   empty square, by the arrows or by a tap on the square (`kitBuildPlace`, the rules' moveTo); Paint it in one of the engine's finishes, or the whole kitchen at
+   empty square, by the arrows or by a tap on the square (`kitBuildPlace`, the rules' moveTo), and on a kitchen along more
+   than one wall (the layout's `sides`, sprint 7) by a tap on any empty square of any of its walls, the arrows stepping
+   along the piece's own wall and, at its end, saying in one line that a tap on a square along the wall moves it further
+   (`kbWallEnd`); Paint it in one of the engine's finishes, or the whole kitchen at
    once; Add a piece of a kind (a kind the kitchen has already asks first, as My kitchen does); Remove it (it asks first);
    and Undo (or Ctrl+Z). The piece picked is framed in gold in 3D.
    EVERY CHANGE GOES ONE WAY: the engine's rules (`KITCHEN.rules`, engine/kitchen.js) make the new layout from the one
@@ -8371,8 +8433,12 @@ const kitFill=(s,o)=>Object.keys(o).reduce((a,k)=>a.split("{"+k+"}").join(o[k]),
 function kitBuildOn(){const K=KITWALL[world];return buildOK()&&admin&&!!K&&typeof K.store==="function"&&typeof KITCHEN==="object"&&!!KITCHEN&&!!KITCHEN.rules&&!!$("world")&&!$("world").hidden;}
 function kitBuildSel(){if(!kitBuildOn())return null;const i=KITB.sel[world];return Number.isInteger(i)&&KITWALL[world].places[i]?i:null;}
 /* the layout as it stands, as data: what the rules are handed, and what the world is handed to keep */
-function kitData(K){return {wall:K.cols.map(c=>[c.x,c.y]),free:(K.free||[]).map(q=>[q[0],q[1]]),
-  places:K.places.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};}
+function kitData(K){const B=K.sides?K.back:K.cols.length,d={wall:K.cols.slice(0,B).map(c=>[c.x,c.y]),free:(K.free||[]).map(q=>[q[0],q[1]]),
+  places:K.places.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};
+    if(p.side!==undefined){q.col=p.col-K.sides[p.side].from;q.side=p.side;}   /* a side wall's place, counted along its own wall (sprint 7) */
+    ["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};
+  if(K.sides)d.sides=K.sides.map(w=>({squares:w.squares.map(q=>[q[0],q[1]]),face:w.face}));   /* only a kitchen along more than one wall has them */
+  return d;}
 /* the layout as the rules are asked it: as it stands, with the wall's gaps when the world turned them on (sprint 5). Never
    what the world is handed to keep: `gaps` is the world's own setting, not the kitchen's */
 function kitAsk(K){const d=kitData(K);if(K.gaps)d.gaps=true;return d;}
@@ -8382,8 +8448,11 @@ function kitAsk(K){const d=kitData(K);if(K.gaps)d.gaps=true;return d;}
 function kitSquareAt(h){const K=KITWALL[world];if(!K||!h)return -1;let x,y;
   const u=h.object&&h.object.userData;
   if(u&&u.g===KITCOL){x=u.x;y=u.y;}else if(h.point&&isFinite(h.point.x)&&isFinite(h.point.z)){x=Math.floor(h.point.x);y=Math.floor(h.point.z);}else return -1;
-  const c=K.cols.findIndex(q=>q.x===x&&q.y===y);if(c>=0)return K.places.some(p=>p.col===c)?-1:c;
-  const f=(K.free||[]).findIndex(q=>q[0]===x&&q[1]===y);return f>=0?K.cols.length+f:-1;}
+  const c=K.cols.findIndex(q=>q.x===x&&q.y===y);if(c>=0&&K.places.some(p=>p.col===c))return -1;
+  const B=K.sides?K.back:K.cols.length;
+  if(c>=0&&c<B)return c;
+  if(c>=0){const w=K.cols[c].side;return {col:c-K.sides[w].from,side:w};}   /* an empty square of a side wall (sprint 7): its wall, and its column along it */
+  const f=(K.free||[]).findIndex(q=>q[0]===x&&q[1]===y);return f>=0?B+f:-1;}
 /* the places in the wall's order: column by column from the left, and down each column */
 const kitWallOrder=K=>K.places.slice().sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);
 function kitBuildSay(s){KITB.said=String(s||"");kitBuildShow();}
@@ -8407,11 +8476,12 @@ function kitBuildChange(rule,said,selOf){const id=world,K=KITWALL[id];
   if(!kitBuildOn()||kitBusy||kitNow||worldCovered())return false;
   const before=kitData(K);let r;try{r=rule(kitAsk(K));}catch(e){r={why:String(e&&e.message||e)};}
   if(!r||r.why){kitBuildSay(kitBuildWhy(r));return false;}
-  const slots=before.wall.concat(before.free),P=r.layout.places,n=P.reduce((m,p)=>Math.max(m,p.col+1),0);
+  const slots=before.wall.concat(before.free),P=r.layout.places,n=P.reduce((m,p)=>p.side===undefined?Math.max(m,p.col+1):m,0);   /* the back wall's squares; a side wall's stay its own (sprint 7) */
   if(!P.length){kitBuildSay(kitW("kbLast","A kitchen keeps one piece at least."));return false;}
   if(n>slots.length){kitBuildSay(kitW("kbNoRoom","There is no free square on this wall for a new column."));return false;}
   const next={wall:slots.slice(0,n),free:slots.slice(n),
-    places:P.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};
+    places:P.map(p=>{const q={kind:p.kind,row:p.row,col:p.col};if(before.sides&&Number.isInteger(p.side))q.side=p.side;["name","full","finish","id"].forEach(k=>{if(p[k]!==undefined)q[k]=p[k];});return q;})};
+  if(before.sides)next.sides=before.sides;
   if(!kitBuildSet(id,next))return false;
   const u=KITB.undo[id]=KITB.undo[id]||[];u.push(before);if(u.length>KITUNDO)u.shift();
   KITB.sel[id]=selOf(r);KITB.mode=null;KITB.kind=null;kitBuildSay(said(r));return true;}
@@ -8432,13 +8502,18 @@ function kitBuildUndo(){const id=world,u=KITB.undo[id];
   if(!kitBuildSet(id,u[u.length-1]))return false;
   u.pop();if(!KITWALL[id].places[KITB.sel[id]])KITB.sel[id]=null;KITB.mode=null;KITB.kind=null;kitBuildSay(kitW("kbUndone","Undone."));return true;}
 const kitNameOf=p=>kitName(p,lang);
+/* AT A WALL'S END (sprint 7; his confirmed goal of 2026-11-01, point 3): on a wall with gaps a step left or right is refused
+   only at the end of the piece's own wall, so instead of nothing a short line says how to move it further: a tap on a square
+   along the wall (`kbWallEnd`, the world's words, English when it gives none) */
+const kitWallEnd=(K,i,side)=>!!K.gaps&&(side==="left"||side==="right")&&!KITCHEN.rules.canMove(kitAsk(K),i,side);
 function kitBuildMove(side){const i=kitBuildSel();if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
+  if(kitBuildOn()&&kitWallEnd(KITWALL[world],i,side)){kitBuildSay(kitW("kbWallEnd","That is the end of its wall: to move it further, tap a square along the wall."));return false;}
   const nm=kitNameOf(KITWALL[world].places[i]);
   return kitBuildChange(L=>KITCHEN.rules.move(L,i,side),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);}
 /* PUT ON AN EMPTY SQUARE, by a tap there, on a wall with gaps (sprint 5): the rules' moveTo, then the one way every change goes */
 function kitBuildPlace(c){const i=kitBuildSel();if(i===null)return false;
-  const nm=kitNameOf(KITWALL[world].places[i]);
-  kitBuildChange(L=>KITCHEN.rules.moveTo(L,i,c),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);return true;}
+  const nm=kitNameOf(KITWALL[world].places[i]),t=typeof c==="number"?{col:c}:c;   /* a column of the back wall, or {col, side} on a side wall (sprint 7) */
+  kitBuildChange(L=>KITCHEN.rules.moveTo(L,i,t.col,t.side),()=>kitFill(kitW("kbMoved","{name} moved."),{name:nm}),r=>r.i);return true;}
 function kitBuildPaint(f){const K=KITWALL[world],i=kitBuildSel(),fn=kitW("kbFin_"+f,f).toLowerCase();   /* the finish's name inside a sentence: "painted white" */
   if(KITB.all)return kitBuildChange(L=>KITCHEN.rules.paintAll(L,f),()=>kitFill(kitW("kbPaintedAll","The whole kitchen painted {finish}."),{finish:fn}),()=>i);
   if(i===null){kitBuildSay(kitW("kbPick","Tap a piece, or press ] to pick one."));return false;}
@@ -8527,7 +8602,7 @@ function kitBuildShow(){
     paint:kitW("kbPaint","Paint"),add:kitW("kbAdd","Add"),remove:kitW("kbRemove","Remove"),undo:kitW("kbUndo","Undo")};
   [...$("kbRow").children].forEach(bt=>{const a=bt.dataset.kb;   /* each a sign with its name for the pointer and the screen reader, so the row fits the picture */
     bt.textContent=bt.dataset.glyph;bt.setAttribute("aria-label",words[a]);bt.title=words[a];
-    bt.disabled=["left","right","up","down"].includes(a)?!(sel!==null&&KITCHEN.rules.canMove(kitAsk(K),sel,a)):a==="remove"?sel===null:a==="undo"?!undo:false;
+    bt.disabled=["left","right","up","down"].includes(a)?!(sel!==null&&(KITCHEN.rules.canMove(kitAsk(K),sel,a)||kitWallEnd(K,sel,a))):a==="remove"?sel===null:a==="undo"?!undo:false;   /* at a wall's end ◀ ▶ say how to go on (sprint 7) */
     style(bt,a==="paint"||a==="add"||a==="remove"?KITB.mode===a:undefined);});
   const more=$("kbMore");more.textContent="";more.hidden=!KITB.mode;
   const btn=(a,txt,v,first)=>{const bt=document.createElement("button");bt.type="button";bt.dataset.kb=a;if(v!==undefined)bt.dataset.v=v;if(first)bt.dataset.first="1";bt.textContent=txt;more.appendChild(bt);return bt;};

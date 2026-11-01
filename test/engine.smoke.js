@@ -1483,7 +1483,7 @@ function findChromium() {
           for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
             if (shutToPeople(w.grid[y][x]) || w.grid[y][x] === 'N') continue; out.squares++;
             px = fx = x; py = fy = y; checkRead();
-            const K = KITWALL[id], kit = !!K && K.cols.some(c => c.fx === x && c.fy === y && w.grid[c.y][c.x] === KITCOL),
+            const K = KITWALL[id], kit = !!K && K.cols.some((c, i) => c.fx === x && c.fy === y && w.grid[c.y][c.x] === KITCOL && K.places.some(p => p.col === i)),   /* a column with a place in it: an empty one (gaps, a side wall's square) has nothing to open */
               clo = [[0, -1], [0, 1], [-1, 0], [1, 0]].some(([dx, dy]) => w.grid[y + dy] && w.grid[y + dy][x + dx] === CLOSET);
             const got = b.hidden ? 'nothing' : b.dataset.kit ? 'Open' : b.dataset.closet ? 'the closet' : 'Read', want = kit ? 'Open' : clo ? 'the closet' : null;
             if (got === 'Open') out.opens++; if (got === 'the closet') out.closets++;
@@ -2171,7 +2171,11 @@ function findChromium() {
         const want = S.empties.map(e => e.i).join(',');
         if (want !== '4,5') say('with the shelves on the third empty square, the empty columns are ' + JSON.stringify(want) + ', not the two before it (4,5)');
         S.empties.filter(e => !e.tape).forEach(e => say('the empty column ' + e.i + ' is not drawn as a free square, the fitter\'s tape on the floor'));
-        if (S.right !== true) say('with the shelves on the wall\'s last square, the right arrow is still offered');
+        /* at the wall's end ▶ moves nothing, and is offered so that a press says how to move it further (sprint 7; his confirmed
+           goal of 2026-11-01, point 3), where until sprint 7 it was greyed out and said nothing */
+        if (S.right !== false) say('with the shelves on the wall\'s last square, the right arrow is greyed out, where a press says to tap a square along the wall');
+        else { const e = await gp.evaluate(() => { const n = (window.__gKept || []).length; document.querySelector('#kbRow [data-kb=right]').click(); return { said: $('kbSaid').textContent, n: (window.__gKept || []).length - n }; });
+          if (!/tap a square along the wall/.test(e.said) || e.n) say('▶ at the wall\'s last square ' + (e.n ? 'handed the world a layout' : 'said ' + JSON.stringify(e.said)) + ', where it moves nothing and says to tap a square along the wall'); }
       }
       /* the store is never handed gaps: what a world keeps cannot turn them on or off */
       const kept = await gp.evaluate(() => window.__gKept);
@@ -2622,6 +2626,182 @@ function findChromium() {
     sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
     await sp.close();
     fails.push(...SX.map(m => 'the kitchen\'s four fixes (sprint 6): ' + m));
+  }
+
+  /* ---- THE KITCHEN ALONG MORE THAN ONE WALL, AND EVERY PLACE GIVEN AN ID (sprint 7 of the 3D kitchen) ----
+     engine/kitchen.js, `sides` in "SIDE WALLS"; engine/engine.js, grep "THE SIDE WALLS", "AT A WALL'S END" and "EVERY PLACE THAT
+     KEEPS THINGS HAS AN ID"; engine/shapes.js, `face`. His confirmed goals of 2026-10-31 (a thing in hand put in a piece just
+     added; L- and U-shaped kitchens, along walls only) and 2026-11-01 (point 3: a tap on any empty square of the back wall or a
+     side wall moves the piece picked there; the arrows still step one square, and at a wall's end a short line says to tap a
+     square along the wall). What a person would notice: a piece on a side wall that faces anywhere but the room; a tap on a
+     side wall's empty square that does nothing; an arrow that carries a piece round the corner onto another wall, or does
+     nothing at a wall's end; a side wall's piece that cannot be opened, shut by its slot, hold a thing put in it, say it is
+     empty, or keep its page inside the view in full screen; a bad side wall laid, or laid in part; and a kitchen kept with a
+     piece that has no id, whose piece then keeps nothing. On a page of its own: a made-up room of eight by seven, its back
+     wall four columns and a free square, the corner square left floor, and a side wall of three squares down the east wall,
+     facing west. And, in node, the rules: a side wall's own squares, its ends, an add that goes round the corner when the back
+     wall is full, and `sides` changing nothing at all on a wall without gaps or a layout with no side walls (My kitchen's).
+     COST: every shell runs it, the gauge's three among them, so it spends about a second: the flat camera, a swing at once,
+     each wait a few frames. Red first, each fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 7). */
+  {
+    const SV = [], say = s => SV.push(s), vm = require('vm'), t0 = Date.now(), lap = [];
+    /* 1 · THE RULES, in node */
+    let KIT = null;
+    try { KIT = vm.runInContext(fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;KITCHEN', vm.createContext({ Object, Array, Number, Math, Set, String }), { filename: 'engine/kitchen.js' }); }
+    catch (e) { say('engine/kitchen.js does not run on its own (' + String(e.message || e).slice(0, 120) + ')'); }
+    if (KIT) { const RU = KIT.rules, J = JSON.stringify;
+      const tpl = () => KIT.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+      const SIDE = [{ squares: [[6, 2], [6, 3], [6, 4]], face: 'west' }];
+      const L0 = { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1]], places: tpl(), gaps: true, sides: SIDE };
+      let r = RU.moveTo(L0, 5, 1, 0);
+      if (!r || r.why || J(r.layout.places[5]) !== J({ kind: 'lower-cupboards', row: 'lower', col: 1, id: 'p6', side: 0 })) say('moveTo onto the side wall\'s second square put the lower cupboards at ' + J(r && (r.why || r.layout.places[5])));
+      else {
+        const L1 = r.layout;
+        if (!RU.canMove(L1, 5, 'up')) say('the lower cupboards alone on a side wall\'s square may not move up into the counter\'s row of their own column, which is empty');
+        const a = RU.move(L1, 5, 'left'); if (!a || a.why || a.layout.places[5].col !== 0 || a.layout.places[5].side !== 0) say('left on the side wall carried the lower cupboards to ' + J(a && (a.why || a.layout.places[5])) + ', where it is the side wall\'s first square');
+        else { if (RU.canMove(a.layout, 5, 'left')) say('at the side wall\'s first square a step left is offered, where it would carry the piece round the corner');
+          const b = RU.move(a.layout, 5, 'left'); if (!b.why || b.code !== 'still') say('a step left past a side wall\'s end was made: ' + J(b.layout && b.layout.places[5])); }
+        const c = RU.move(RU.move(L1, 5, 'right').layout, 5, 'right'); if (!c.why) say('a step right past the side wall\'s third square was made: ' + J(c.layout.places[5]));
+        const back = RU.moveTo(L1, 5, 4); if (!back || back.why || Object.prototype.hasOwnProperty.call(back.layout.places[5], 'side') || back.layout.places[5].col !== 4) say('moveTo with no wall named did not put the piece back on the back wall\'s free square: ' + J(back && (back.why || back.layout.places[5])));
+        const fz = RU.move(L1, 6, 'right'); if (!fz || fz.why || fz.layout.places[6].col !== 4 || fz.layout.places.some(p => p.side === 0 && p.col !== 1)) say('the freezer stepping right on the back wall moved what stands on the side wall: ' + J(fz && (fz.why || fz.layout.places)));
+        const tk = RU.moveTo(L1, 0, 1, 0); if (!tk.why || tk.code !== 'taken') say('the fridge was put on a side wall\'s square the lower cupboards stand on: ' + J(tk.layout && tk.layout.places[0]));
+        const no = RU.moveTo(L1, 0, 0, 1); if (!no.why || no.code !== 'square') say('a piece was put on side wall 1 of a layout with one side wall');
+        const off = RU.moveTo(L1, 0, 3, 0); if (!off.why || off.code !== 'square') say('a piece was put on square 3 of a side wall of three');
+      }
+      /* an add goes round the corner only when the back wall has no room */
+      const full = { wall: [[1, 1]], free: [], places: [{ kind: 'fridge', row: 'tall', col: 0 }], gaps: true, sides: SIDE };
+      const ad = RU.add(full, 'freezer'); if (!ad || ad.why || J(ad.layout.places[1]) !== J({ kind: 'freezer', row: 'tall', col: 0, side: 0 })) say('a freezer added to a full back wall stands at ' + J(ad && (ad.why || ad.layout.places[1])) + ', where it is the side wall\'s first square');
+      const ad2 = RU.add(L0, 'drawers'); if (!ad2 || ad2.why || Object.prototype.hasOwnProperty.call(ad2.layout.places[7], 'side')) say('drawers added to a back wall with room went round the corner: ' + J(ad2 && (ad2.why || ad2.layout.places[7])));
+      /* `sides` changes nothing on a packed wall, nor on a wall with gaps and no place on a side wall */
+      let walks = 0;
+      for (const gaps of [false, true]) for (const op of ['move', 'canMove', 'add', 'remove', 'paint', 'moveTo', 'compact']) for (let i = 0; i < 7; i++) for (const x of ['left', 'right', 'up', 'down', 'drawers', 'freezer', 'white', 0, 3, 4]) {
+        const A = { wall: L0.wall, free: L0.free, places: tpl(), gaps }, B = Object.assign({}, A, { sides: SIDE }), f = RU[op];
+        const ra = op === 'compact' ? f(A) : op === 'add' ? f(A, x) : f(A, i, x), rb = op === 'compact' ? f(B) : op === 'add' ? f(B, x) : f(B, i, x); walks++;
+        const strip = q => (q && q.layout ? Object.assign({}, q, { layout: Object.assign({}, q.layout, { sides: undefined }) }) : q);
+        if ((gaps === false || op !== 'add') && J(strip(ra)) !== J(strip(rb))) { say((gaps ? 'with gaps and no piece on a side wall' : 'on a wall without gaps') + ', ' + op + '(' + i + ', ' + J(x) + ') answers ' + J(strip(rb)).slice(0, 120) + ' with side walls named and ' + J(strip(ra)).slice(0, 120) + ' without'); break; }
+      }
+      if (walks < 900) say('the rules with and without side walls were compared ' + walks + ' times: nothing measured is not a pass');
+    }
+    /* 2 · ON A PAGE: the check, the facing, the builder, the hand, the empty line, Close, full screen, and the ids */
+    lap.push(['rules', Date.now() - t0]);
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    const sp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), sErr = [];
+    sp.on('pageerror', e => sErr.push(e.message));
+    await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await sp.addInitScript({ content: kitSrc });
+    await sp.addInitScript(() => { window.BUILDER = {}; });
+    await sp.goto('file://' + file); await sp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await sp.waitForTimeout(150);
+    try {
+      const T0 = await sp.evaluate(() => {
+        const ID = '__kit_seven', C = KITCOL, R = ['########', '#' + C.repeat(5) + '.#', '#.....' + C + '#', '#.....' + C + '#', '#.....' + C + '#', '#......#', '########'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 8, H: 7 };
+        const thing = (id, n) => ({ id, n, name: 'Thing ' + id, parts: [{ s: 'cyl', y: 0.04, r: 0.05, h: 0.08, c: '#C04020' }, { s: 'sph', y: 0.1, r: 0.03, c: '#FFFFFF' }], pic: (g, px) => { g.fillStyle = '#C04020'; g.fillRect(0, 0, px, px); } });
+        window.__stock = { p1: [['egg', 12]], p5: [['sugar', 2]] }; window.__stored = []; window.__keeps = [];
+        window.__things = pl => (window.__stock[pl.id] || []).map(([id, n]) => thing(id, n));
+        window.__keep = ch => { window.__keeps.push(JSON.parse(JSON.stringify(ch))); Object.keys(ch).forEach(pid => { window.__stock[pid] = ch[pid].map(t => [t.id, t.n]); }); };
+        window.__store = L => { window.__stored.push(JSON.parse(JSON.stringify(L))); };
+        const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        window.__L = () => ({ wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1]], sides: [{ squares: [[6, 2], [6, 3], [6, 4]], face: 'west' }], places: places.map(p => Object.assign({}, p)), things: window.__things, keep: window.__keep, page: () => [{ p: 'inside' }], store: window.__store, gaps: true });
+        /* each bad side wall refused whole, in one sentence, and no kitchen laid */
+        const bad = [['side walls with gaps off', L => { L.gaps = false; L.places[5].side = 0; L.places[5].col = 0; L.places.push({ kind: 'drawers', row: 'lower', col: 1, side: 0 }, { kind: 'drawers', row: 'lower', col: 2, side: 0 }); }], ['a facing off the list', L => { L.sides[0].face = 'up'; }], ['a square that is not a kitchen column', L => { L.sides[0].squares.push([5, 5]); }],
+          ['a square the back wall names', L => { L.sides[0].squares.push([4, 1]); }], ['three side walls', L => { L.sides = [L.sides[0], { squares: [[6, 3]], face: 'west' }, { squares: [[6, 4]], face: 'west' }]; }],
+          ['a side wall with a key of its own', L => { L.sides[0].color = 'red'; }], ['a place on a side wall there is none of', L => { L.places[5].side = 1; }], ['a place past its side wall\'s squares', L => { L.places[5].side = 0; L.places[5].col = 3; }],
+          ['side walls that are not a list', L => { L.sides = { squares: [] }; }], ['a side wall with no squares', L => { L.sides[0].squares = []; }], ['a square off the map', L => { L.sides[0].squares.push([9, 9]); }]];
+        const out = bad.map(([what, f]) => { const L = window.__L(); f(L); let s; try { s = kitchenLay(ID, L); } catch (e) { s = 'THREW ' + e.message; } return [what, s, !!KITWALL[ID]]; });
+        const ok = kitchenLay(ID, window.__L());
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 3; dir = 'up'; enterWorld(false); camSet('top');
+        document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
+        window.__stand = (x, y, d) => { px = fx = x; py = fy = y; moving = false; held = null; dir = d || 'up'; checkTalk(); };
+        Object.keys(UI).forEach(l => { if (UI[l] && typeof UI[l] === 'object') { delete UI[l].kitEmptyLine; delete UI[l].kitClose; delete UI[l].kbWallEnd; delete UI[l].kbMoved; } });
+        UI.en.kitKinds = { fridge: 'Fridge', freezer: 'Freezer', 'upper-cupboards': 'Upper cupboards', 'lower-cupboards': 'Lower cupboards', drawers: 'Drawers', shelves: 'Shelves', counter: 'Counter' };
+        return { ID, out, ok };
+      });
+      T0.out.forEach(([what, s, laid]) => { if (typeof s !== 'string' || !s) say('a layout with ' + what + ' was laid'); else if (/^THREW /.test(s)) say('a layout with ' + what + ' threw in the check (' + s.slice(6, 80) + '), where it is refused in a sentence'); else if (laid) say('a layout with ' + what + ' was refused, and a kitchen still stands'); else if (/[.;]\s+\S/.test(s.replace(/\(.*?\)/g, '').replace(/"[^"]*"/g, ''))) say('a layout with ' + what + ' is refused in more than one sentence: ' + s); });
+      if (T0.ok !== null) throw 'the made-up kitchen along two walls was refused: ' + T0.ok;
+      lap.push(['page', Date.now() - t0]);
+      const ID = T0.ID, LOWER = 5;
+      const st = () => sp.evaluate(() => { const b = $('read'), r = $('reader'), s = $('kitSays'), K = KITWALL[world];
+        return { slot: b.hidden ? null : b.textContent, reader: !r.hidden, inVp: r.parentElement === $('vp'), fs: $('vp').classList.contains('fs'), now: kitNow ? kitNow.i : null, says: s && !s.hidden ? s.textContent : null,
+          first: (document.querySelector('#docBody .dbtn') || {}).textContent || null, cells: [...document.querySelectorAll('#docBody .dcell')].map(c => c.getAttribute('aria-label')),
+          said: $('kbSaid') ? $('kbSaid').textContent : null, places: K ? K.places.map(p => p.side === undefined ? [p.col, -1] : [p.col - K.sides[p.side].from, p.side]) : null, open: K ? K.places.map(p => kitOpenOf(world, p.i)) : [] }; });
+      const frames = () => sp.waitForTimeout(40);
+      /* the builder: the lower cupboards picked, a tap on the side wall's middle square, then the arrows along it */
+      await sp.evaluate(() => { admin = true; applyAdmin(); __stand(3, 3); kitBuildPick(5); });
+      const tap = await sp.evaluate(() => { const t = kitSquareAt({ object: { userData: { g: KITCOL, x: 6, y: 3 } } }); const ok = t !== -1 && kitBuildPlace(t); const S = window.__stored[window.__stored.length - 1];
+        const K = KITWALL['__kit_seven'], p = K.places[5], c = K.cols[p.col];
+        return { t, ok, at: [c.x, c.y], kept: S ? S.places[5] : null, sides: S ? JSON.stringify(S.sides) : null, keys: S ? Object.keys(S).sort().join() : null }; });
+      if (String(tap.at) !== '6,3') say('a tap on the side wall\'s empty square (6,3), with the lower cupboards picked, left them at (' + tap.at + ') (' + JSON.stringify(tap.t) + ')');
+      if (!tap.kept || tap.kept.side !== 0 || tap.kept.col !== 1) say('the world was handed the lower cupboards on the side wall as ' + JSON.stringify(tap.kept) + ', where they are side wall 0, its column 1');
+      if (tap.sides !== JSON.stringify([{ squares: [[6, 2], [6, 3], [6, 4]], face: 'west' }])) say('the world was handed side walls ' + tap.sides + ', where it keeps the one it laid');
+      if (tap.keys !== 'free,places,sides,wall') say('the world was handed a layout with ' + tap.keys + ', where it is the wall, the free squares, the side walls and the places');
+      await sp.evaluate(() => kitBuildMove('left')); let S = await st();
+      if (String(S.places[LOWER]) !== '0,0') say('◀ on the side wall carried the lower cupboards to ' + S.places[LOWER] + ' (column, wall), where it is the side wall\'s first square');
+      const kept0 = await sp.evaluate(() => window.__stored.length);
+      const end = await sp.evaluate(() => { const bt = document.querySelector('#kitBuild [data-kb="left"]'); const dis = bt.disabled; bt.click(); return { dis, said: $('kbSaid').textContent, n: window.__stored.length }; }); S = await st();
+      if (end.dis) say('at the side wall\'s first square ◀ is greyed out, where a press says how to move the piece further');
+      if (end.said !== 'That is the end of its wall: to move it further, tap a square along the wall.') say('◀ at the end of the side wall says ' + JSON.stringify(end.said) + ', where it says to tap a square along the wall');
+      if (end.n !== kept0 || String(S.places[LOWER]) !== '0,0') say('◀ at the end of the side wall changed the kitchen: the piece stands at ' + S.places[LOWER]);
+      const end2 = await sp.evaluate(() => { kitBuildPick(0); kitBuildMove('left'); return $('kbSaid').textContent; });
+      if (!/tap a square along the wall/.test(end2)) say('◀ on the fridge, at the back wall\'s first column, says ' + JSON.stringify(end2) + ', where it says to tap a square along the wall');
+      await sp.evaluate(() => { kitBuildPick(5); kitBuildMove('right'); });
+      await sp.evaluate(() => { admin = false; applyAdmin(); });
+      lap.push(['builder', Date.now() - t0]);
+      /* the facing: every part of the side wall's piece turned west, its back on the east wall; the back wall's as before */
+      const face = await sp.evaluate(() => { if (typeof SHAPES !== 'object' || !SHAPES || typeof SHAPES.kitchenColumn !== 'function') return null; const K = KITWALL['__kit_seven'], c = K.cols[K.places[5].col];
+        const ps = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.place === 5), f = kitColumnParts({ x: 1, y: 1 }).filter(q => q.place === 0);
+        /* and the freezer on the side wall's last square, whose south side is open floor: the map alone would turn it to face south */
+        const L = kitAsk(K), r = KITCHEN.rules.moveTo(L, 6, 2, 0), out = { n: ps.length, ry: [...new Set(ps.filter(q => q.carcass).map(q => Math.round((q.ry || 0) * 1000)))], east: Math.max(...ps.map(q => q.x)), west: Math.min(...ps.map(q => q.x)), fridge: [...new Set(f.map(q => Math.round((q.ry || 0) * 1000)))] };
+        admin = true; applyAdmin(); kitBuildPick(6); kitBuildPlace({ col: 2, side: 0 }); admin = false; applyAdmin();
+        out.freezer = [...new Set(kitColumnParts({ x: 6, y: 4 }).filter(q => q.place === 6).map(q => Math.round((q.ry || 0) * 1000)))]; out.rule = !r.why; return out; });
+      if (face) { if (!face.n || String(face.ry) !== String(Math.round(-Math.PI / 2 * 1000))) say('the lower cupboards on the side wall, facing west, have their carcass turned ' + face.ry + ' (thousandths of a radian), where it is ' + Math.round(-Math.PI / 2 * 1000));
+        if (String(face.freezer) !== String(Math.round(-Math.PI / 2 * 1000))) say('the freezer on the side wall\'s last square, facing west, is turned ' + face.freezer + ' (thousandths of a radian), where it is ' + Math.round(-Math.PI / 2 * 1000) + ', whatever the open floor to its south');
+        if (!(face.east > 0.45 && face.west > -0.2)) say('the lower cupboards on the side wall do not stand with their back on the east wall (their parts run from x ' + face.west.toFixed(2) + ' to ' + face.east.toFixed(2) + ' in their square)'); }
+      else console.log('  COUNT-ONLY: this page builds no shapes, so the side wall\'s facing was not asked');
+      /* the hand: the eggs taken from the fridge and put in the lower cupboards on the side wall, by the slot from its front */
+      await sp.evaluate(() => { __stand(1, 2); kitOpen('__kit_seven', 0); }); await frames();
+      await sp.click('#docBody .dcell'); await frames();
+      await sp.evaluate(() => __stand(5, 3, 'right')); S = await st();   /* the square it faces, west of (6,3), said here and not read off the engine */
+      if (S.slot !== 'Open — Lower cupboards') say('in front of the side wall\'s lower cupboards the slot reads ' + JSON.stringify(S.slot) + ', where it reads Open and their name');
+      await sp.evaluate(() => $('read').click()); await frames(); S = await st();
+      if (!S.reader || S.now !== LOWER) say('the slot in front of the side wall\'s lower cupboards did not open them (page ' + S.reader + ', open ' + S.now + ')');
+      else if (!S.first || !/Put it here: Thing egg × 12/.test(S.first)) say('with the eggs in hand the side wall\'s lower cupboards do not offer putting them there (' + JSON.stringify(S.first) + ')');
+      else { await sp.click('#docBody .dbtn'); await frames(); S = await st();
+        if (JSON.stringify(await sp.evaluate(() => window.__stock.p6 || null)) !== JSON.stringify([['egg', 12]])) say('the eggs put in the side wall\'s lower cupboards were not kept there');
+        if (!S.cells.some(c => /Thing egg, 12/.test(c))) say('the side wall\'s lower cupboards\' page does not show the eggs put there: ' + JSON.stringify(S.cells));
+        const in3d = await sp.evaluate(() => { const K = KITWALL['__kit_seven'], c = K.cols[K.places[5].col]; return typeof SHAPES === 'object' && SHAPES ? kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 5).length : -1; });
+        if (in3d === 0) say('the side wall\'s lower cupboards, open, draw none of the eggs in 3D');
+        if (S.slot !== 'Close — Lower cupboards') say('with the side wall\'s lower cupboards open the slot reads ' + JSON.stringify(S.slot) + ', where it reads Close and their name');
+        await sp.evaluate(() => $('read').click()); await frames(); S = await st();
+        if (S.reader || S.open[LOWER] !== 0) say('Close on the side wall\'s lower cupboards left the page ' + (S.reader ? 'open' : 'shut') + ' and the doors at ' + S.open[LOWER]); }
+      lap.push(['hand', Date.now() - t0]);
+      /* full screen: the side wall's piece opened in full screen keeps its page inside the view */
+      await sp.evaluate(() => { window.__stock.p6 = [['egg', 12]]; }); await sp.click('#fsbtn'); await sp.waitForTimeout(100);
+      await sp.evaluate(() => $('read').click()); await frames(); S = await st();
+      if (!S.fs || !S.inVp) say('the side wall\'s lower cupboards opened in full screen ' + (!S.fs ? 'left full screen' : 'stand their page outside the view'));
+      await sp.evaluate(() => { if (!$('reader').hidden) $('read').click(); }); await sp.click('#fsbtn'); await sp.waitForTimeout(100);
+      /* the empty line: an empty piece on the side wall swings and says so */
+      await sp.evaluate(() => { admin = true; applyAdmin(); kitBuildPick(2); kitBuildPlace({ col: 1, side: 0 }); admin = false; applyAdmin(); const K = KITWALL['__kit_seven']; kitOpen('__kit_seven', 2); }); await frames(); S = await st();
+      if (S.reader || !S.says || !/empty/i.test(S.says)) say('the side wall\'s counter, empty, opened by a tap ' + (S.reader ? 'opened a page' : 'said ' + JSON.stringify(S.says)) + ', where it says it is empty and opens none');
+      lap.push(['fs+empty', Date.now() - t0]);
+      /* 3 · EVERY PLACE GIVEN AN ID: a kitchen kept with an added piece that has none, laid again: the piece is given n1 and holds the eggs */
+      const ids = await sp.evaluate(() => { kitEmptyOff(true); const L = window.__L(); L.wall.push(L.free.pop()); L.places.push({ kind: 'shelves', row: 'upper', col: 4 }); L.places.push({ kind: 'drawers', row: 'lower', col: 4 }); delete L.places[2].id;
+        const s = kitchenLay('__kit_seven', L), K = KITWALL['__kit_seven'];
+        const P = window.__L(); P.wall.push(P.free.pop()); delete P.things; delete P.keep; P.places.push({ kind: 'shelves', row: 'upper', col: 4 }); const s2 = kitchenLay('__kit_seven', P), bare = KITWALL['__kit_seven'].places[7].id;
+        kitchenLay('__kit_seven', L); return { s, s2, ids: K ? K.places.map(p => p.id) : null, bare: bare === undefined ? null : bare, same: L.places[7].id === undefined }; });
+      if (ids.s !== null) say('a kept kitchen with pieces that have no id was refused: ' + ids.s);
+      else if (String(ids.ids) !== 'p1,p2,n1,p4,p5,p6,p7,n2,n3') say('a kitchen laid with three places that have no id was given ' + ids.ids + ', where they take n1, n2 and n3 in the places\' order');
+      if (ids.bare !== null) say('a kitchen that keeps nothing was laid with an id given to a place (' + JSON.stringify(ids.bare) + ')');
+      if (!ids.same) say('laying a layout gave an id to the very layout the world handed in, where it is a copy that is laid');
+      await sp.evaluate(() => { window.__stock.p1 = [['egg', 12]]; __stand(1, 2); kitOpen('__kit_seven', 0); }); await frames(); await sp.click('#docBody .dcell'); await frames();
+      await sp.evaluate(() => { __stand(5, 2); kitOpen('__kit_seven', 7); }); await frames(); S = await st();
+      if (!S.first || !/Put it here: Thing egg/.test(S.first)) say('the shelves kept with no id, laid again, do not offer the eggs in hand a place (' + JSON.stringify(S.first) + ')');
+      else { await sp.click('#docBody .dbtn'); await frames(); if (!JSON.stringify(await sp.evaluate(() => window.__stock.n2 || null)).includes('egg')) say('the eggs put in the shelves kept with no id were not kept under the id they were given'); }
+      await sp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); });
+      console.log('  COUNT-ONLY: the kitchen along two walls: the rules on a side wall and its ends, ' + T0.out.length + ' bad side walls each refused whole, the lower cupboards tapped onto the side wall, ◀ along it and the line at its end, turned to face the room, opened by the slot, the eggs put in them, Close, full screen, the empty line; and a kept kitchen\'s pieces with no id given n1 to n3 and the eggs put in one (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + lap.map(([k, t]) => k + ' ' + (t / 1000).toFixed(1)).join(', ') + ')');
+    } catch (e) { if (typeof e === 'string') say(e); else say('the side walls could not be driven to the end, so they measured nothing after: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' ')); }
+    sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await sp.close();
+    fails.push(...SV.map(m => 'the kitchen along more than one wall (sprint 7): ' + m));
   }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----

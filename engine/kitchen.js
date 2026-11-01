@@ -75,9 +75,11 @@
                  paintAll(layout, finish) every place a finish goes on, in that finish ("paint the whole kitchen").
                  compact(layout)          the columns numbered again from the left with no empty column between, and
                                           nothing else: what a page does to a kitchen it reads, before it shows it.
-                 moveTo(layout, i, col)   the place put on column `col`, which has room for it: an empty column for any
-                                          piece, or, for a piece that is not tall, a column with no tall piece and its
-                                          own row free there. Only on a wall with gaps (a tap on an empty square).
+                 moveTo(layout, i, col, wall)  the place put on column `col` of a wall, which has room for it: an empty
+                                          column for any piece, or, for a piece that is not tall, a column with no tall
+                                          piece and its own row free there. `wall` left out is the back wall; a number is
+                                          a side wall, its index in the layout's `sides` (below). Only on a wall with gaps
+                                          (a tap on an empty square).
                GAPS (2026-10-30, `gaps` in the layout: true, and nothing else, turns them on; a world sets it for its own
                kitchen, and nothing kept on a device may). With gaps on, a piece may stand anywhere on the wall, with
                empty columns before it: no rule numbers the columns again, so a column a move or a remove leaves empty
@@ -90,6 +92,16 @@
                otherwise. A refusal then may also say `gaps` (moveTo on a wall without them), `square` (a column off the
                wall), `taken` (no room there) or `room` (no square left). With gaps off, or left out, every rule is
                exactly as it was before gaps: My kitchen's packed wall.
+               SIDE WALLS (sprint 7 of the 3D kitchen: an L or a U along walls, never an island). On a wall with gaps, a
+               layout may name up to 2 side walls, `sides: [{squares, face}, …]`, and a place on one says `side`, that
+               wall's index in the list, with `col` counted along that wall's own squares from 0 (a place that names no
+               `side` stands on the back wall, as every place did before). Each side wall has as many squares as
+               its `squares` list holds. Every rule keeps a piece on its own wall: left and right step along it and stop
+               at its ends, up and down stay in its column, and only moveTo, naming a wall, puts it on another. An added
+               piece takes the first column with room on the back wall, and then on each side wall in order. The corner
+               where two walls meet is on neither wall's list, so no piece ever stands there: it is left empty. `sides`
+               is read only with gaps on and only as a list: without gaps, or without side walls, every rule is exactly
+               as it was before them.
 
    A kind taken off `kinds` makes every kitchen saved with one in it unreadable to a page that checks a save against
    this list, so a kind is added here and never taken away; the check pins all seven. */
@@ -117,7 +129,7 @@ const KITCHEN = (function () {
      colsOf, cellOf, tallIn, sig, and addPiece's choice of column), worked on a copy of the places, never on what was
      handed in ---- */
   const own = (o, k) => o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
-  const SIDES = ['left', 'right', 'up', 'down'], COLS = 40;
+  const SIDES = ['left', 'right', 'up', 'down'], COLS = 40, SIDESMOST = 2;
   const no = (code, why) => ({ why, code });
   const said = v => '"' + String(v).slice(0, 30) + '"';
   /* the places a layout hands in, each copied: a list of plain objects, each of a kind on the list, in its own kind of
@@ -137,47 +149,57 @@ const KITCHEN = (function () {
   const named = (P, i) => (Number.isInteger(i) && i >= 0 && i < P.length ? null : no('place', 'there is no place ' + said(i) + ' in a layout of ' + P.length));
   const made = (L, P, extra) => Object.assign({ layout: Object.assign({}, L, { places: P }) }, extra);
   const colsOf = P => P.reduce((n, p) => Math.max(n, p.col + 1), 0);
-  const tallIn = (P, c) => P.find(p => p.col === c && p.row === 'tall') || null;
-  const cellOf = (P, row, c) => P.find(p => p.col === c && (p.row === 'tall' || p.row === row)) || null;
+  /* ON ONE WALL (sprint 7): `on` says whether a place stands on the wall being asked about; left out, every place does,
+     which is every layout with no side walls */
+  const ALL = () => true;
+  const tallIn = (P, c, on) => P.find(p => p.col === c && p.row === 'tall' && (on || ALL)(p)) || null;
+  const cellOf = (P, row, c, on) => P.find(p => p.col === c && (p.row === 'tall' || p.row === row) && (on || ALL)(p)) || null;
   /* no empty column is left on the wall: the columns are numbered again from the left, in their order */
   function compact(P) {
     const used = Array.from(new Set(P.map(p => p.col))).sort((a, b) => a - b);
     P.forEach(p => { p.col = used.indexOf(p.col); });
     return P;
   }
-  const sig = P => P.map((p, i) => i + ':' + p.row + ':' + p.col).sort().join('|');
+  const sig = P => P.map((p, i) => i + ':' + p.row + ':' + p.col + (Number.isInteger(p.side) ? ':' + p.side : '')).sort().join('|');
   /* GAPS: on only when the layout says `gaps: true`; then how many squares the wall has, its wall's and its free squares
      together where it lists them, 40 where it does not */
   const gapsOf = L => !!L && typeof L === 'object' && own(L, 'gaps') && L.gaps === true;
   const roomOf = L => (Array.isArray(L.wall) ? Math.min(COLS, L.wall.length + (Array.isArray(L.free) ? L.free.length : 0)) : COLS);
-  const wallOf = L => (gapsOf(L) ? { room: roomOf(L) } : null);
+  /* SIDE WALLS (sprint 7): read only with gaps on, and only from a list; each side wall's squares, as many as it lists, at
+     most 40. A place's wall is its `side`, an index into that list, or the back wall (-1) when it names none */
+  const sidesOf = L => (gapsOf(L) && Array.isArray(L.sides) ? L.sides.slice(0, SIDESMOST).map(w => Math.min(COLS, w && typeof w === 'object' && Array.isArray(w.squares) ? w.squares.length : 0)) : []);
+  const BACK = -1, wallKey = p => (Number.isInteger(p.side) && p.side >= 0 ? p.side : BACK);
+  const wallOf = L => { if (!gapsOf(L)) return null; const S = sidesOf(L);
+    return { room: roomOf(L), sides: S, key: S.length ? wallKey : () => BACK, roomOn: k => (k === BACK ? roomOf(L) : (S[k] || 0)) }; };
+  /* the places on one place's wall: every place, on a layout with no side walls */
+  const mates = (G, p) => { if (!G || !G.sides.length) return ALL; const k = G.key(p); return q => G.key(q) === k; };
   /* the wall made tidy after a change: packed with gaps off, left as it is with them on */
   const after = (P, G) => (G ? P : compact(P));
   /* A MOVE, on the copy P: true when it was made (whether it changes anything is canMove's). G is the wall with gaps on
      (its room), or null for a packed wall */
   function step(P, i, side, G) {
-    const p = P[i], n = G ? G.room : colsOf(P);
+    const p = P[i], on = mates(G, p), n = G ? G.roomOn(G.key(p)) : colsOf(P);   /* along its own wall, and no other (sprint 7) */
     if (side === 'left' || side === 'right') {
       const d = side === 'left' ? -1 : 1;
       if (p.row === 'tall') {
         const c1 = p.col, c2 = c1 + d;
         if (c2 < 0 || c2 >= n) return false;
-        P.forEach(x => { if (x.col === c2) x.col = c1; });
+        P.forEach(x => { if (x.col === c2 && on(x)) x.col = c1; });
         p.col = c2;
         return true;
       }
       let c2 = p.col + d;
-      while (c2 >= 0 && c2 < n && tallIn(P, c2)) c2 += d;
+      while (c2 >= 0 && c2 < n && tallIn(P, c2, on)) c2 += d;
       if (G && (c2 < 0 || c2 >= n)) return false;   /* with gaps, the wall's own squares and no further */
       if (c2 < 0) { P.forEach(x => { x.col += 1; }); p.col = 0; }
       else if (c2 >= n) p.col = n;
-      else { const o = cellOf(P, p.row, c2); if (o) o.col = p.col; p.col = c2; }
+      else { const o = cellOf(P, p.row, c2, on); if (o) o.col = p.col; p.col = c2; }
       return true;
     }
     if (p.row === 'tall') return false;
     const r2 = ROWS[ROWS.indexOf(p.row) + (side === 'up' ? -1 : 1)];
     if (!r2) return false;
-    const o = cellOf(P, r2, p.col);
+    const o = cellOf(P, r2, p.col, on);
     if (o) o.row = p.row;
     p.row = r2;
     return true;
@@ -200,37 +222,48 @@ const KITCHEN = (function () {
     step(P, i, side, G); after(P, G);
     return made(L, P, { i, did: 'moved', side, from, to: { row: P[i].row, col: P[i].col } });
   }
-  /* PUT ON A SQUARE (a tap on an empty one): only with gaps on, onto a column on the wall that has room for it */
-  function moveTo(L, i, col) {
+  /* PUT ON A SQUARE (a tap on an empty one): only with gaps on, onto a column on a wall that has room for it: the back
+     wall, or (sprint 7) the side wall `wall` names, an index into the layout's `sides` */
+  function moveTo(L, i, col, wall) {
     const P = read(L); if (!P) return NOT();
     const bad = named(P, i); if (bad) return bad;
     if (!gapsOf(L)) return no('gaps', 'a piece is put on a square of its own only on a wall with gaps');
-    const room = roomOf(L), p = P[i];
+    const G = wallOf(L), p = P[i], to = wall === undefined || wall === null ? BACK : wall;
+    if (to !== BACK && !(Number.isInteger(to) && to >= 0 && to < G.sides.length)) return no('square', 'there is no side wall ' + said(wall) + ' in a layout with ' + G.sides.length);
+    const room = G.roomOn(to), on = q => G.key(q) === to;
     if (!Number.isInteger(col) || col < 0 || col >= room) return no('square', 'there is no column ' + said(col) + ' on a wall of ' + room + ' squares');
-    if (p.col === col) return no('still', 'the ' + p.kind + ' stands in column ' + col + ' already');
-    const there = P.filter(q => q !== p && q.col === col);
+    if (p.col === col && G.key(p) === to) return no('still', 'the ' + p.kind + ' stands in column ' + col + ' already');
+    const there = P.filter(q => q !== p && q.col === col && on(q));
     if (p.row === 'tall' ? there.length : (there.some(q => q.row === 'tall') || there.some(q => q.row === p.row)))
       return no('taken', 'the ' + p.kind + ' has no room in column ' + col + (p.row === 'tall' ? ': a tall piece stands on an empty square' : ''));
-    const from = { row: p.row, col: p.col };
+    const from = { row: p.row, col: p.col }; if (G.key(p) !== BACK) from.side = G.key(p);
     p.col = col;
-    return made(L, P, { i, did: 'moved', side: null, from, to: { row: p.row, col } });
+    if (to === BACK) delete p.side; else p.side = to;
+    const at = { row: p.row, col }; if (to !== BACK) at.side = to;
+    return made(L, P, { i, did: 'moved', side: null, from, to: at });
   }
   function add(L, kind) {
     const P = read(L); if (!P) return NOT();
     if (typeof kind !== 'string' || !own(KINDS, kind)) return no('kind', 'there is no kind of place called ' + said(kind));
     if (P.length >= MOST) return no('most', 'a kitchen holds at most ' + MOST + ' pieces, and this one has ' + P.length);
     const G = wallOf(L), home = KINDS[kind], n = colsOf(P);
-    let col = G ? -1 : n;
-    if (G) for (let c = 0; c < G.room; c++) {   /* with gaps: the first column with room for it, a tall one the first empty one */
-      if (home === 'tall' ? P.some(p => p.col === c) : (tallIn(P, c) || cellOf(P, home, c))) continue;
-      col = c; break;
+    let col = G ? -1 : n, onto = BACK;
+    /* with gaps: the first column with room for it, a tall one the first empty one, on the back wall, and then (sprint 7)
+       on each side wall in its order */
+    if (G) for (const k of [BACK].concat(G.sides.map((_, s) => s))) {
+      const on = q => G.key(q) === k;
+      for (let c = 0; c < G.roomOn(k); c++) {
+        if (home === 'tall' ? P.some(p => p.col === c && on(p)) : (tallIn(P, c, on) || cellOf(P, home, c, on))) continue;
+        col = c; break;
+      }
+      if (col >= 0) { onto = k; break; }
     }
     else if (home !== 'tall') for (let c = 0; c < n; c++) {
       if (tallIn(P, c)) continue;
       if (!cellOf(P, home, c)) { col = c; break; }
     }
     if (col < 0) return no('room', 'there is no square left on this wall for a ' + kind);
-    P.push({ kind, row: home, col });
+    P.push(onto === BACK ? { kind, row: home, col } : { kind, row: home, col, side: onto });
     after(P, G);
     return made(L, P, { i: P.length - 1, did: 'added', column: col >= n ? 'new' : 'old' });
   }
