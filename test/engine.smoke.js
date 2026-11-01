@@ -2704,19 +2704,28 @@ function findChromium() {
         window.__L = () => ({ wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1]], sides: [{ squares: [[6, 2], [6, 3], [6, 4]], face: 'west' }], places: places.map(p => Object.assign({}, p)), things: window.__things, keep: window.__keep, page: () => [{ p: 'inside' }], store: window.__store, gaps: true });
         /* each bad side wall refused whole, in one sentence, and no kitchen laid */
         const bad = [['side walls with gaps off', L => { L.gaps = false; L.places[5].side = 0; L.places[5].col = 0; L.places.push({ kind: 'drawers', row: 'lower', col: 1, side: 0 }, { kind: 'drawers', row: 'lower', col: 2, side: 0 }); }], ['a facing off the list', L => { L.sides[0].face = 'up'; }], ['a square that is not a kitchen column', L => { L.sides[0].squares.push([5, 5]); }],
-          ['a square the back wall names', L => { L.sides[0].squares.push([4, 1]); }], ['three side walls', L => { L.sides = [L.sides[0], { squares: [[6, 3]], face: 'west' }, { squares: [[6, 4]], face: 'west' }]; }],
+          ['a square the back wall names', L => { L.sides[0].squares.push([4, 1]); }], ['three side walls', L => { L.sides = [{ squares: [[6, 2]], face: 'west' }, { squares: [[6, 3]], face: 'west' }, { squares: [[6, 4]], face: 'west' }]; }, /at most 2/],
+          ['a square both side walls name', L => { L.sides = [{ squares: [[6, 2], [6, 3]], face: 'west' }, { squares: [[6, 3], [6, 4]], face: 'west' }]; }], ['a square one side wall names twice', L => { L.sides[0].squares.push([6, 3]); }],
+          ['more than 40 squares in all', L => { L.sides[0].squares = Array.from({ length: 36 }, () => [6, 2]); }, /at most 40/],
           ['a side wall with a key of its own', L => { L.sides[0].color = 'red'; }], ['a place on a side wall there is none of', L => { L.places[5].side = 1; }], ['a place past its side wall\'s squares', L => { L.places[5].side = 0; L.places[5].col = 3; }],
           ['side walls that are not a list', L => { L.sides = { squares: [] }; }], ['a side wall with no squares', L => { L.sides[0].squares = []; }], ['a square off the map', L => { L.sides[0].squares.push([9, 9]); }]];
-        const out = bad.map(([what, f]) => { const L = window.__L(); f(L); let s; try { s = kitchenLay(ID, L); } catch (e) { s = 'THREW ' + e.message; } return [what, s, !!KITWALL[ID]]; });
+        const out = bad.map(([what, f, want]) => { const L = window.__L(); f(L); let s; try { s = kitchenLay(ID, L); } catch (e) { s = 'THREW ' + e.message; } return [what, s, !!KITWALL[ID], want ? String(want) : null]; });
+        /* a side wall facing a shut square has nowhere to stand: no Open square */
+        const E = window.__L(); E.sides[0].face = 'east'; const es = kitchenLay(ID, E), shut = es === null ? KITWALL[ID].cols.filter(c => c.side === 0).map(c => c.fx) : es;
+        /* ids already taken are not given again: one place already n1, the bare ones n2 and n3 */
+        const I = window.__L(); I.places[0].id = 'n1'; delete I.places[1].id; delete I.places[2].id; const is = kitchenLay(ID, I), taken = is === null ? KITWALL[ID].places.slice(0, 3).map(p => p.id) : is;
         const ok = kitchenLay(ID, window.__L());
         $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 3; py = fy = 3; dir = 'up'; enterWorld(false); camSet('top');
         document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
         window.__stand = (x, y, d) => { px = fx = x; py = fy = y; moving = false; held = null; dir = d || 'up'; checkTalk(); };
         Object.keys(UI).forEach(l => { if (UI[l] && typeof UI[l] === 'object') { delete UI[l].kitEmptyLine; delete UI[l].kitClose; delete UI[l].kbWallEnd; delete UI[l].kbMoved; } });
         UI.en.kitKinds = { fridge: 'Fridge', freezer: 'Freezer', 'upper-cupboards': 'Upper cupboards', 'lower-cupboards': 'Lower cupboards', drawers: 'Drawers', shelves: 'Shelves', counter: 'Counter' };
-        return { ID, out, ok };
+        return { ID, out, ok, shut, taken };
       });
-      T0.out.forEach(([what, s, laid]) => { if (typeof s !== 'string' || !s) say('a layout with ' + what + ' was laid'); else if (/^THREW /.test(s)) say('a layout with ' + what + ' threw in the check (' + s.slice(6, 80) + '), where it is refused in a sentence'); else if (laid) say('a layout with ' + what + ' was refused, and a kitchen still stands'); else if (/[.;]\s+\S/.test(s.replace(/\(.*?\)/g, '').replace(/"[^"]*"/g, ''))) say('a layout with ' + what + ' is refused in more than one sentence: ' + s); });
+      if (String(T0.shut) !== '-1,-1,-1') say('a side wall facing east into the wall offers Open from ' + JSON.stringify(T0.shut) + ', where it has no square to stand on (-1)');
+      if (String(T0.taken) !== 'n1,n2,n3') say('a layout with one place already n1 and two bare was laid with ids ' + JSON.stringify(T0.taken) + ', where the bare ones take n2 and n3');
+      T0.out.forEach(([what, s, laid, want]) => { if (want && typeof s === 'string' && !new RegExp(want.slice(1, -1)).test(s)) say('a layout with ' + what + ' is refused for another reason (' + s.slice(0, 90) + '), where its sentence says ' + want);
+        if (typeof s !== 'string' || !s) say('a layout with ' + what + ' was laid'); else if (/^THREW /.test(s)) say('a layout with ' + what + ' threw in the check (' + s.slice(6, 80) + '), where it is refused in a sentence'); else if (laid) say('a layout with ' + what + ' was refused, and a kitchen still stands'); else if (/[.;]\s+\S/.test(s.replace(/\(.*?\)/g, '').replace(/"[^"]*"/g, ''))) say('a layout with ' + what + ' is refused in more than one sentence: ' + s); });
       if (T0.ok !== null) throw 'the made-up kitchen along two walls was refused: ' + T0.ok;
       lap.push(['page', Date.now() - t0]);
       const ID = T0.ID, LOWER = 5;
