@@ -113,13 +113,16 @@ function kitchenCheck(id,L){
   if(!K||!plain(K.kinds)||!Array.isArray(K.rows)||!plain(K.bands)||!Array.isArray(K.fulls))return why("this page has no KITCHEN to check it against (engine/kitchen.js is loaded before the engine, or not at all)");
   if(!w)return why("there is no room called "+JSON.stringify(String(id).slice(0,40)));
   if(!plain(L))return why("a layout is an object with a wall and places");
-  const extra=Object.keys(L).find(k=>!["wall","free","sides","places","page","store","gaps","things","keep"].includes(k));
-  if(extra!==undefined)return why("a layout has a wall, free squares, side walls, places, a page, a store, gaps, things and a keep, and this one says "+JSON.stringify(extra.slice(0,30)));
+  const extra=Object.keys(L).find(k=>!["wall","free","sides","places","page","store","gaps","things","keep","tools"].includes(k));
+  if(extra!==undefined)return why("a layout has a wall, free squares, side walls, places, a page, a store, gaps, things and a keep, and this one says "+JSON.stringify(extra.slice(0,30))+" (and `tools`, which a layout with things and a keep may add)");
   if(own(L,"page")&&typeof L.page!=="function")return why("its page is not a function");
   if(own(L,"store")&&typeof L.store!=="function")return why("its store is not a function");
   if(own(L,"gaps")&&L.gaps!==true&&L.gaps!==false)return why("its gaps are "+JSON.stringify(String(L.gaps).slice(0,20))+", and gaps are on (true) or off (false)");
   if(own(L,"things")&&typeof L.things!=="function")return why("its things are not a function");
   if(own(L,"keep")&&typeof L.keep!=="function")return why("its keep is not a function");
+  if(own(L,"tools")){const T0=L.tools;   /* the kitchen's tools (sprint 8a, grep "THE KITCHEN'S TOOLS"): the game's own items and the one place it keeps a change */
+    if(!plain(T0)||Object.keys(T0).some(k=>!["own","keep"].includes(k))||typeof T0.own!=="function"||typeof T0.keep!=="function")return why("its tools are not an object with an own and a keep, both functions");
+    if(typeof L.things!=="function"||typeof L.keep!=="function")return why("it has tools and no things or no keep, and the tools work on what a place keeps");}
   const gaps=L.gaps===true;
   const W=L.wall;
   if(!Array.isArray(W)||!W.length)return why("its wall names no column");
@@ -207,7 +210,7 @@ function kitchenCheck(id,L){
     for(let a=0;a<ps.length;a++)for(let b=a+1;b<ps.length;b++){const A=K.bands[ps[a].kind],B=K.bands[ps[b].kind];
       if(!A||!B||(A.lo<B.hi-0.001&&B.lo<A.hi-0.001))return why("in column "+c+" the "+ps[a].kind+" and the "+ps[b].kind+" would stand in each other");}}
   const out={id,cols:Object.freeze(cols.map(c=>Object.freeze(c))),free:Object.freeze(free),places:Object.freeze(places),page:typeof L.page==="function"?L.page:null,store:typeof L.store==="function"?L.store:null,
-    gaps,things:typeof L.things==="function"?L.things:null,keep:typeof L.keep==="function"?L.keep:null};
+    gaps,things:typeof L.things==="function"?L.things:null,keep:typeof L.keep==="function"?L.keep:null,tools:own(L,"tools")?L.tools:null};
   if(sides.length){out.back=back;out.sides=Object.freeze(sides);}   /* only a kitchen along more than one wall says so */
   return {wall:Object.freeze(out)};
 }
@@ -232,7 +235,7 @@ function kitchenLay(id,L){L=kitIdsGiven(L);const r=kitchenCheck(id,L);
   if(!TILEMESH[KITCOL])TILEMESH[KITCOL]=o=>kitColumnParts(o);   /* the column's shape, unless the pack gave the letter its own */
   kitDirty();return null;}
 function kitDirty(){if(typeof t3Invalidate==="function")t3Invalidate();if(typeof checkTalk==="function"&&$("world")&&!$("world").hidden)checkTalk();
-  if(kitBuildReady)kitBuildShow();kitHandShow();}
+  if(kitBuildReady)kitBuildShow();kitHandShow();kitToolsShow();}
 /* the column at a square of the room you stand in, while the map still has its letter there */
 function kitColAt(x,y){const K=KITWALL[world],w=CW();if(!K||!w||!w.grid[y]||w.grid[y][x]!==KITCOL)return -1;
   return K.cols.findIndex(c=>c.x===x&&c.y===y);}
@@ -262,13 +265,13 @@ function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"
   /* the place the builder has picked, framed (grep "THE KITCHEN BUILDER"); nothing, with the builder off */
   const sel=kitBuildReady?kitBuildSel():null;
   if(sel!==null&&ps.some(p=>p.i===sel)){const col=KITWALL[world].cols[c];out.push(...kitFrame(out.filter(q=>q.place===sel&&!q.thing),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y));}
-  return out;}
-/* A FRAME ROUND A PICKED PIECE: four gold bars just outside the face it turns to the room, measured off its own parts as they
-   stand (each turned a quarter or not at all), so it fits a fridge and a shelf alike */
   /* the places that hold what is searched for, framed in the same gold while the results show (sprint 8a, grep "THE KITCHEN'S TOOLS") */
   if(KTOOLS.glow.size){const col=KITWALL[world].cols[c];ps.forEach(p=>{if(KTOOLS.glow.has(p.i))out.push(...kitFrame(out.filter(q=>q.place===p.i&&!q.thing&&!q.picked&&!q.faced&&!q.glow),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,glow:1,glowOf:p.i})));});}
   /* at a corner, the column the hero faces, framed in the same gold (sprint 8a, grep "AT A CORNER") */
   if(kitFacedWas===world+"|"+c){const col=KITWALL[world].cols[c];out.push(...kitFrame(out.filter(q=>!q.thing&&!q.picked),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,faced:1})));}
+  return out;}
+/* A FRAME ROUND A PICKED PIECE: four gold bars just outside the face it turns to the room, measured off its own parts as they
+   stand (each turned a quarter or not at all), so it fits a fridge and a shelf alike */
 function kitFrame(ps,dx,dy){if(!ps.length)return [];
   let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
   ps.forEach(p=>{const w=p.w!==undefined?p.w:2*(p.r||p.rb||0.03),d=p.d!==undefined?p.d:2*(p.r||p.rb||0.03),h=p.h!==undefined?p.h:2*(p.r||0.03),
@@ -319,6 +322,7 @@ function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
   return {title,kit:{id,i:p.i},build:()=>{let secs=kitHandOffer(id,p);   /* with a thing in hand, putting it here comes first (grep "THE HAND") */
     if(K.page){try{const r=K.page(p,lang);if(Array.isArray(r))secs=secs.concat(r);}catch(e){mqwarn("kitchen","the page of place "+p.i+" in "+id+" failed: "+String(e&&e.message||e),false);}}
     secs=secs.concat(kitThingGrid(id,p));   /* what it keeps, each a button that takes it in hand (grep "THE THINGS IN A PLACE"); nothing, in a layout with no things */
+    secs=secs.concat(kitToolsPage(id,p));   /* how full, and each thing's count and date (grep "THE KITCHEN'S TOOLS"); nothing, in a layout with no tools */
     kitCards(id,p).forEach(r=>{secs.push({h:docTitle(r.doc)});secs.push(...(docSections(r.doc)||[]));});
     return secs;}};}
 /* the cards placed on a place's column that end its page: a card whose row no place in this column stands in any more (a builder moved it) ends every page here, so Open never hides it */
@@ -337,6 +341,7 @@ function kitSwing(id,i,to,done){const key=id+"|"+i,from=kitOpenOf(id,i),K=KITWAL
   requestAnimationFrame(step);}
 /* OPEN ONE PLACE: its doors swing, then its page; one at a time */
 function kitOpen(id,i){const K=KITWALL[id],p=K&&K.places[i];if(!p||kitBusy)return false;
+  if(KTOOLS.open)kitToolsClose();   /* the kitchen panel and a place's page stand in the same place (sprint 8a) */
   if(kitNow)kitShut();
   if(kitEmptyAt)kitEmptyOff(kitEmptyAt.id===id&&kitEmptyAt.i===i);   /* another empty place's line goes first; this same place stays open and says it again */
   const empty=kitIsEmpty(id,p);   /* asked before the doors swing, so the answer is the one the hero was standing there for */
@@ -476,20 +481,25 @@ function kitThingsOf(id,i){const K=KITWALL[id],p=K&&K.places[i],out={list:[],bad
   r.forEach((t,k)=>{const it=at+", thing "+k;let bad=null;
     if(k>=KITTHINGS)bad="is past the "+KITTHINGS+" a place holds";
     else if(!t||typeof t!=="object"||Array.isArray(t))bad="is not a thing";
-    else if(Object.keys(t).some(q=>!["id","n","name","parts","stand","pic"].includes(q)))bad="says "+JSON.stringify(Object.keys(t).find(q=>!["id","n","name","parts","stand","pic"].includes(q)).slice(0,20))+", which a thing has not";
+    else if(Object.keys(t).some(q=>!["id","n","name","parts","stand","pic","date","own"].includes(q)))bad="says "+JSON.stringify(Object.keys(t).find(q=>!["id","n","name","parts","stand","pic","date","own"].includes(q)).slice(0,20))+", which a thing has not";
     else if(typeof t.id!=="string"||!KITID.test(t.id))bad="has no id: 1 to 30 letters, digits, - or _";
     else if(seen.has(t.id))bad="is "+t.id+" a second time";
     else if(!Number.isInteger(t.n)||t.n<1||t.n>KITMANY)bad="is "+JSON.stringify(t.n)+" of it, where a count is whole, from 1 to "+KITMANY;
     else if(!(typeof t.name==="string"&&!KITUNSAFE.test(t.name)&&t.name===t.name.trim()&&t.name!==""&&Array.from(t.name).length<=KITTHINGNAME))bad="has a name that is not a name: text, trimmed, 1 to "+KITTHINGNAME+" characters";
     else if(t.stand!==undefined&&!(Number.isInteger(t.stand)&&t.stand>=1&&t.stand<=KITCOPIES))bad="stands "+JSON.stringify(t.stand)+" copies, where 1 to "+KITCOPIES+" stand";
     else if(t.pic!==undefined&&typeof t.pic!=="function")bad="has a picture that is not a function";
+    else if(t.date!==undefined&&!kitDayOk(t.date))bad="has a date that is not one: "+JSON.stringify(String(t.date).slice(0,20))+", where a date is YYYY-MM-DD and a day that exists";
+    else if(t.own!==undefined&&typeof t.own!=="boolean")bad="says whether it is the player's own with something that is not true or false";
     else if(t.parts!==undefined){if(!Array.isArray(t.parts))bad="has parts that are not a list";
       else if(t.parts.length>KITPARTS)bad="has "+t.parts.length+" parts, and a thing has at most "+KITPARTS;
       else for(const q of t.parts){const w=kitPartBad(q);if(w){bad=w;break;}}}
     if(bad){kitThingWarn(it+" is refused whole: "+bad);out.bad=true;return;}
     seen.add(t.id);
-    out.list.push(Object.freeze({id:t.id,n:t.n,name:t.name,stand:t.stand===undefined?1:Math.min(t.stand,t.n),pic:t.pic||null,
+    out.list.push(Object.freeze({id:t.id,n:t.n,name:t.name,stand:t.stand===undefined?1:Math.min(t.stand,t.n),pic:t.pic||null,date:t.date||null,own:t.own===true,
       parts:Object.freeze((t.parts||[]).map(q=>Object.freeze(Object.assign({},q))))}));});
+  /* IN A KITCHEN WITH TOOLS, the things near or past their date come first, the soonest first; the rest stay in the world's order (sprint 8a) */
+  if(K.tools&&out.list.some(t=>t.date)){const t0=kitDayNum(kitToday()),near=t=>!!t.date&&kitDayNum(t.date)-t0<=KITSOON;
+    out.list=out.list.map((t,k)=>({t,k})).sort((a,b)=>{const na=near(a.t),nb=near(b.t);if(na!==nb)return na?-1:1;return na?kitDayNum(a.t.date)-kitDayNum(b.t.date)||a.k-b.k:a.k-b.k;}).map(x=>x.t);}
   return out;}
 /* HOW FAR ONE PART REACHES, from its middle, along x, y and z: generous for a turned part, which may reach any way */
 function kitReach(p){const sx=p.sx||1,sy=p.sy||1,sz=p.sz||1,s=p.s;
@@ -557,6 +567,8 @@ function kitCanHold(id,i){const K=KITWALL[id],p=K&&K.places[i];return !!p&&typeo
 function kitPic(t,css){const cv=document.createElement("canvas"),K=Math.min(3,window.devicePixelRatio||1),px=Math.round(css*K);
   cv.width=cv.height=px;cv.style.width=cv.style.height=css+"px";cv.style.display="block";
   if(t.pic){try{t.pic(cv.getContext("2d"),px);}catch(e){kitThingWarn("a thing's picture failed: "+String(e&&e.message||e).slice(0,80));}}
+  else{const g=cv.getContext("2d");g.fillStyle="rgba(237,233,245,.16)";g.beginPath();g.arc(px/2,px/2,px*0.4,0,Math.PI*2);g.fill();   /* no picture yet (a thing of the player's own): its first letter */
+    g.fillStyle="#EDE9F5";g.font="600 "+Math.round(px*0.42)+"px system-ui, sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText(Array.from(t.name||"?")[0].toUpperCase(),px/2,px/2+px*0.03);}
   return cv;}
 /* TAKE: from place i of the room's kitchen, the thing with that id; the page is put down and the hand shown */
 function kitTake(i,tid){const id=world,K=KITWALL[id];if(!kitCanHold(id,i))return false;
@@ -580,8 +592,8 @@ function kitPut(i){const id=world,K=KITWALL[id],h=KITHAND;if(!h||h.id!==id)retur
   const there=B.list.find(q=>q.id===t.id);
   if(!there&&B.list.length>=KITTHINGS)return say(kitFill(kitHandW("khFull","That place holds {n} things already."),{n:String(KITTHINGS)}));
   if(there&&there.n+t.n>KITMANY)return say(kitFill(kitHandW("khMany","A place holds at most {n} of one thing."),{n:String(KITMANY)}));
-  const from=A.list.filter(q=>q.id!==t.id).map(q=>({id:q.id,n:q.n})),to=B.list.map(q=>({id:q.id,n:q.id===t.id?q.n+t.n:q.n}));
-  if(!there)to.push({id:t.id,n:t.n});
+  const from=A.list.filter(q=>q.id!==t.id).map(kitEntry),to=B.list.map(q=>{const e=kitEntry(q);if(q.id===t.id){e.n=q.n+t.n;const d=[q.date,t.date].filter(Boolean).sort()[0];if(d)e.date=d;else delete e.date;}return e;});   /* a date goes with the thing; two dates, the earlier (sprint 8a) */
+  if(!there)to.push(kitEntry(t));
   const change={};change[K.places[h.from].id]=from;change[K.places[i].id]=to;
   try{K.keep(JSON.parse(JSON.stringify(change)));}
   catch(e){mqwarn("kitchen","a thing put in "+JSON.stringify(String(id).slice(0,40))+" was not kept: "+String(e&&e.message||e).slice(0,80),false);
@@ -720,7 +732,7 @@ function kitBuildChange(rule,said,selOf){const id=world,K=KITWALL[id];
   KITB.sel[id]=selOf(r);KITB.mode=null;KITB.kind=null;kitBuildSay(said(r));return true;}
 /* CHECKED, KEPT BY THE WORLD, LAID — in that order, or not at all */
 function kitBuildSet(id,next){const K=KITWALL[id],L=Object.assign({},next,{store:K.store});if(K.page)L.page=K.page;
-  if(K.gaps)L.gaps=true;if(K.things)L.things=K.things;if(K.keep)L.keep=K.keep;   /* the world's own settings and seams go on with the wall, never into what it keeps */
+  if(K.gaps)L.gaps=true;if(K.things)L.things=K.things;if(K.keep)L.keep=K.keep;if(K.tools)L.tools=K.tools;   /* the world's own settings and seams go on with the wall, never into what it keeps */
   const r=kitchenCheck(id,L);
   if(r.why){mqwarn("kitchen","a builder's change to "+JSON.stringify(String(id).slice(0,40))+" was refused: "+r.why,false);kitBuildSay(r.why);return false;}
   try{K.store(JSON.parse(JSON.stringify(next)));}
@@ -855,6 +867,267 @@ function kitBuildShow(){
   else if(KITB.mode==="remove"){if(!p){KITB.mode=null;more.hidden=true;}
     else{line(kitFill(kitW("kbRemoveAsk","Remove the {name}?"),{name:kitNameOf(p)}));style(btn("removeYes",kitW("kbRemoveYes","Remove"),undefined,true));style(btn("no",kitW("kbNo","No")));}}
   $("kbSaid").textContent=KITB.said||(p?kitW("kbKeys","[ ] pick · Shift+arrows move · Delete remove · Ctrl+Z undo"):kitW("kbPick","Tap a piece, or press ] to pick one."));}
+/* ═══════════ THE KITCHEN'S TOOLS (sprint 8a of the 3D kitchen) — a Kitchen button, a search, the dates, a thing of one's own ═══════════
+   His confirmed goal of 2026-11-02 (sprint 8a), borrowed from My kitchen's own code where it fits (its today, dueText, dueItems,
+   startOwn, saveOwn, startOwnRename, askOwnRemove, setFullness and searched), written once here so every game on the engine can
+   turn them on and no game writes them again. NOTHING PRIVATE ENTERS THE ENGINE: no food, id or word of a library; the game keeps its data, as with `store` and `keep`.
+   A GAME TURNS THEM ON with one more key in its layout, beside `things` and `keep` (it needs both):
+     tools   `{own, keep}`: `own()` answers `{<id>: <name>}`, the things of the player's own the game keeps (text, at most
+             KITTHINGNAME characters, ids `o-1`, `o-2`, … that pass KITID); `keep(change)` is handed ONE change, a plain
+             copy, `{places: {<place id>: [{id, n, date?}, …]}, own: {<id>: <name>}}`, either key left out when it does not change,
+             and keeps it whole or throws (then nothing changes). A thing a game answers through `things` may carry `date`
+             (`YYYY-MM-DD`, a day that exists, else the thing is refused whole) and `own: true`; a thing with no `parts` is
+             simply not drawn in 3D (an item of his own has no picture yet).
+   WHAT THE PLAYER GETS, in a game that turns them on:
+     · A KITCHEN BUTTON (🍳) inside the view (#vp, so full screen keeps it), or the K key, opens the kitchen panel: beside the
+       room where the view is wide, over it where it is not; Escape or its ✕ shuts it.
+     · A SEARCH at its top, across every place: text only, at most KITSEARCH characters, never a pattern. Each result names its
+       place; the places that hold a result glow in gold in 3D while the results show (kitFrame); a pick opens that place.
+     · A closed drawer just below it, "Past their date (N)", opening to list those, the longest past first.
+     · USE SOON: the things whose date is within KITSOON days, today included, the soonest first (day 30 is in, day 31 is out).
+     · ADD YOUR OWN ITEM: a name (trimmed, at most KITTHINGNAME characters, text, never one that is on the page already, in either
+       language) and a place; an item of his own is renamed, moved and removed (asking first).
+     · ON EACH PLACE'S PAGE: "How full?" (Not set and `KITCHEN.fulls`, kept with the layout through `store`), and each thing's count
+       (whole, 1 to KITTOOLMANY) and its optional date, set, changed or cleared; the things near or past their date first.
+     · DATES SHOWN BOTH WAYS: "Nov 20 · in 18 days", "Nov 2 · 3 days ago", "today" (the words are the game's, `kt…` in UI).
+   THE CLOCK IS READ IN ONE PLACE, kitToday(), once a time it is asked; nothing else here reads it, and test/engine.smoke.js
+   holds that. A DATE IS A GUIDE, NOT A DEADLINE: it sorts and it is said, and nothing is hidden, spoiled or removed by it.
+   Held by test/engine.smoke.js, grep "THE KITCHEN'S TOOLS". */
+const KITSEARCH=40,KITSOON=30,KITTOOLMANY=99,KITOWNS=200;
+function kitToolsK(){const K=KITWALL[world];return K&&K.tools&&typeof K.things==="function"&&typeof K.keep==="function"?K:null;}
+/* THE ONE READ OF THE CLOCK: the device's own date, as YYYY-MM-DD */
+function kitToday(){const d=new Date();return [d.getFullYear(),d.getMonth()+1,d.getDate()].map((n,i)=>String(n).padStart(i?2:4,"0")).join("-");}
+const KITDAY=/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+function kitDayOk(v){const m=typeof v==="string"?KITDAY.exec(v):null;if(!m)return false;const y=+m[1],mo=+m[2],d=+m[3];
+  if(y<1000||mo<1||mo>12||d<1)return false;
+  return d<=[31,(y%4===0&&y%100!==0)||y%400===0?29:28,31,30,31,30,31,31,30,31,30,31][mo-1];}
+const kitDayNum=v=>{const m=KITDAY.exec(v);return Math.round(Date.UTC(+m[1],+m[2]-1,+m[3])/86400000);};
+const kitDaysLeft=v=>kitDayNum(v)-kitDayNum(kitToday());
+const KITMONTHS={en:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]};
+/* "Nov 20 · in 18 days", "Nov 2 · 3 days ago", "today"; the year too when it is not this year's */
+function kitDueText(v){if(!kitDayOk(v))return "";
+  const n=kitDaysLeft(v);if(n===0)return kitW("ktToday","today");
+  const t=T()||{},M=Array.isArray(t.ktMonths)&&t.ktMonths.length===12?t.ktMonths:KITMONTHS.en,m=KITDAY.exec(v),y=+m[1],thisY=+kitToday().slice(0,4);
+  const day=kitFill(y===thisY?kitW("ktDate","{month} {d}"):kitW("ktDateY","{month} {d}, {y}"),{month:String(M[+m[2]-1]),d:String(+m[3]),y:String(y)});
+  const rel=n>0?(n===1?kitW("ktInOne","in 1 day"):kitFill(kitW("ktIn","in {n} days"),{n:String(n)})):(n===-1?kitW("ktAgoOne","1 day ago"):kitFill(kitW("ktAgo","{n} days ago"),{n:String(-n)}));
+  return day+" · "+rel;}
+/* a thing as the world keeps it: its id, its count and its date when it has one */
+const kitEntry=q=>q.date?{id:q.id,n:q.n,date:q.date}:{id:q.id,n:q.n};
+/* every thing in every place that can hold one, with where it is */
+function kitAllThings(K){const out=[];K.places.forEach(p=>{if(typeof p.id!=="string")return;kitThingsOf(world,p.i).list.forEach(t=>out.push({p,t}));});return out;}
+/* WHAT IS PAST ITS DATE AND WHAT IS DUE SOON: dated things only, the longest past first, then the soonest first */
+function kitDue(K){const all=kitAllThings(K).filter(r=>r.t.date).map(r=>({p:r.p,t:r.t,left:kitDaysLeft(r.t.date)}));
+  const by=(a,b)=>a.left-b.left||a.t.name.localeCompare(b.t.name);
+  return {past:all.filter(r=>r.left<0).sort(by),soon:all.filter(r=>r.left>=0&&r.left<=KITSOON).sort(by)};}
+/* THE SEARCH: text only. The query is lower-cased and looked for as it is in each thing's name; no part of it is ever a pattern */
+function kitSearchRows(K,q){const s=Array.from(String(q||"")).slice(0,KITSEARCH).join("").trim().toLowerCase();if(!s)return [];
+  return kitAllThings(K).filter(r=>r.t.name.toLowerCase().indexOf(s)>=0);}
+const KTOOLS={open:false,q:"",say:"",edit:null,glow:new Set(),el:null,btn:null,past:false};
+/* the places that glow, built again where they stand when the set changes */
+function kitGlowSet(set){const K=KITWALL[world];if(!K)return;const was=KTOOLS.glow;
+  if(set.size===was.size&&[...set].every(i=>was.has(i)))return;
+  KTOOLS.glow=set;
+  new Set([...was,...set]).forEach(i=>{const p=K.places[i],c=p&&K.cols[p.col];
+    if(c&&typeof t3Reshape==="function"&&typeof T3==="object"&&String(T3.builtKey||"").indexOf(world+"|")===0)t3Reshape(c.x,c.y);});}
+const kh=(tag,css,txt,at)=>{const n=document.createElement(tag);if(css)Object.assign(n.style,css);if(txt!==undefined)n.textContent=txt;if(at)Object.keys(at).forEach(k=>n.setAttribute(k,at[k]));return n;};
+const KT_FONT="'IBM Plex Sans', system-ui, sans-serif";
+const KT_BTN={minHeight:"36px",minWidth:"36px",padding:"0 10px",border:"1.5px solid rgba(237,233,245,.3)",borderRadius:"8px",background:"rgba(237,233,245,.12)",color:"inherit",font:"600 13px "+KT_FONT,cursor:"pointer"};
+const KT_IN={minHeight:"36px",padding:"0 8px",border:"1.5px solid rgba(237,233,245,.35)",borderRadius:"8px",background:"rgba(0,0,0,.25)",color:"inherit",font:"500 14px "+KT_FONT,boxSizing:"border-box",maxWidth:"100%"};
+const kitBtn=(txt,run,css,at)=>{const b=kh("button",Object.assign({},KT_BTN,css||{}),txt,Object.assign({type:"button"},at||{}));b.addEventListener("click",e=>{e.preventDefault();run();});return b;};
+/* a place's name on a pick list: its own, and its number when two share one */
+function kitPlaceNames(K){const out={},seen={};K.places.forEach(p=>{if(typeof p.id!=="string")return;const nm=kitName(p,lang);seen[nm]=(seen[nm]||0)+1;out[p.i]=nm;});
+  const n={};K.places.forEach(p=>{if(out[p.i]===undefined)return;const nm=out[p.i];if(seen[nm]>1){n[nm]=(n[nm]||0)+1;out[p.i]=nm+" ("+n[nm]+")";}});return out;}
+/* ONE CHANGE, handed whole to the game's keep: false (and a line) when it throws, else the places built again and the page drawn again */
+function kitToolsKeep(change,focus){const K=kitToolsK();if(!K)return false;
+  try{K.tools.keep(JSON.parse(JSON.stringify(change)));}
+  catch(e){mqwarn("kitchen","a change to the kitchen's tools was not kept: "+String(e&&e.message||e).slice(0,80),false);
+    KTOOLS.say=kitW("ktNotKept","That could not be kept on this device, so nothing changed.");if(KTOOLS.open)kitToolsRender();else if(typeof toast==="function")toast(KTOOLS.say,2600);return false;}
+  Object.keys(change.places||{}).forEach(pid=>{const p=K.places.find(q=>q.id===pid);if(p)kitReshapeAt(world,p.i);});
+  kitRepage();if(KTOOLS.open)kitToolsRender();
+  if(focus){const n=document.querySelector('[data-kt="'+focus+'"]');if(n)n.focus();}
+  return true;}
+/* ---- the names ---- */
+function kitOwnName(v){let s=String(v==null?"":v);s=s.replace(new RegExp(KITUNSAFE.source,"g"),"").replace(/\s+/g," ").trim();return Array.from(s).length>KITTHINGNAME?null:s;}
+function kitNameTaken(K,name,except){const n=name.toLowerCase(),langs=Object.keys(UI);
+  for(const p of K.places){if(typeof p.id!=="string")continue;
+    for(const lg of langs){let r;try{r=K.things(p,lg);}catch(e){continue;}
+      if(Array.isArray(r)&&r.some(t=>t&&t.id!==except&&typeof t.name==="string"&&t.name.toLowerCase()===n))return true;}}
+  let o={};try{o=K.tools.own()||{};}catch(e){}
+  return Object.keys(o).some(id=>id!==except&&typeof o[id]==="string"&&o[id].toLowerCase()===n);}
+function kitOwnMap(K){let o={};try{o=K.tools.own()||{};}catch(e){return {};}
+  const out={};if(o&&typeof o==="object"&&!Array.isArray(o))Object.keys(o).forEach(id=>{if(KITID.test(id)&&typeof o[id]==="string")out[id]=o[id];});return out;}
+const kitWhere=(K,id)=>K.places.find(p=>typeof p.id==="string"&&kitThingsOf(world,p.i).list.some(t=>t.id===id));
+/* ADD: a name and a place; one of it, no date, in that place */
+function kitOwnAdd(name,pid){const K=kitToolsK();if(!K)return false;const say=s=>{KTOOLS.say=s;kitToolsRender();return false;};
+  const v=kitOwnName(name);
+  if(v===null)return say(kitFill(kitW("ktLong","A name is at most {n} characters."),{n:String(KITTHINGNAME)}));
+  if(!v)return say(kitW("ktEmptyName","Give it a name."));
+  const own=kitOwnMap(K);if(Object.keys(own).length>=KITOWNS)return say(kitFill(kitW("ktMost","You can keep at most {n} things of your own."),{n:String(KITOWNS)}));
+  if(kitNameTaken(K,v,null))return say(kitW("ktTaken","There is a thing called that already."));
+  const p=K.places.find(q=>q.id===pid);if(!p)return say(kitW("ktPickPlace","Choose a place."));
+  const list=kitThingsOf(world,p.i).list;if(list.length>=KITTHINGS)return say(kitFill(kitW("khFull","That place holds {n} things already."),{n:String(KITTHINGS)}));
+  let n=1;while(own["o-"+n])n++;const id="o-"+n;if(!KITID.test(id))return say(kitW("ktNotKept","That could not be kept on this device, so nothing changed."));
+  const places={};places[p.id]=list.map(kitEntry).concat([{id,n:1}]);const o2=Object.assign({},own);o2[id]=v;
+  KTOOLS.say="";KTOOLS.q="";
+  const ok=kitToolsKeep({places,own:o2});if(ok){KTOOLS.say=kitFill(kitW("ktAdded","{name} is in {place}."),{name:v,place:kitName(p,lang)});kitToolsRender();}return ok;}
+function kitOwnRename(id,name){const K=kitToolsK();if(!K)return false;const say=s=>{KTOOLS.say=s;kitToolsRender();return false;};
+  const own=kitOwnMap(K);if(!own[id])return false;const v=kitOwnName(name);
+  if(v===null)return say(kitFill(kitW("ktLong","A name is at most {n} characters."),{n:String(KITTHINGNAME)}));
+  if(!v)return say(kitW("ktEmptyName","Give it a name."));
+  if(kitNameTaken(K,v,id))return say(kitW("ktTaken","There is a thing called that already."));
+  const o2=Object.assign({},own);o2[id]=v;KTOOLS.edit=null;KTOOLS.say="";return kitToolsKeep({own:o2},"own-rename-"+id);}
+function kitOwnMove(id,pid){const K=kitToolsK();if(!K)return false;const from=kitWhere(K,id),to=K.places.find(q=>q.id===pid);
+  if(!from||!to||from.i===to.i)return false;
+  const A=kitThingsOf(world,from.i).list,B=kitThingsOf(world,to.i).list,t=A.find(q=>q.id===id);
+  if(B.length>=KITTHINGS){KTOOLS.say=kitFill(kitW("khFull","That place holds {n} things already."),{n:String(KITTHINGS)});kitToolsRender();return false;}
+  const places={};places[from.id]=A.filter(q=>q.id!==id).map(kitEntry);places[to.id]=B.map(kitEntry).concat([kitEntry(t)]);
+  KTOOLS.say="";return kitToolsKeep({places},"own-move-"+id);}
+function kitOwnRemove(id){const K=kitToolsK();if(!K)return false;const own=kitOwnMap(K);if(!own[id])return false;
+  const places={};K.places.forEach(p=>{if(typeof p.id!=="string")return;const L=kitThingsOf(world,p.i).list;if(L.some(t=>t.id===id))places[p.id]=L.filter(t=>t.id!==id).map(kitEntry);});
+  const o2=Object.assign({},own);delete o2[id];KTOOLS.edit=null;KTOOLS.say="";return kitToolsKeep({places,own:o2});}
+/* A COUNT OR A DATE CHANGED on place p's page: that place's whole list, handed once */
+function kitSetThing(p,tid,patch,focus){const K=kitToolsK();if(!K||typeof p.id!=="string")return false;
+  const L=kitThingsOf(world,p.i).list;if(!L.some(t=>t.id===tid))return false;
+  const places={};places[p.id]=L.map(t=>{if(t.id!==tid)return kitEntry(t);const q=kitEntry(t);
+    if(patch.n!==undefined)q.n=patch.n;if(patch.date!==undefined){if(patch.date)q.date=patch.date;else delete q.date;}return q;});
+  return kitToolsKeep({places},focus);}
+/* HOW FULL, kept with the layout through `store`, never through `keep` */
+function kitSetFull(p,v){const K=kitToolsK();if(!K||typeof K.store!=="function"||(v!==null&&!KITCHEN.fulls.includes(v)))return false;
+  const next=kitData(K);if(v===null)delete next.places[p.i].full;else next.places[p.i].full=v;
+  const L=Object.assign({},next,{store:K.store,tools:K.tools});if(K.page)L.page=K.page;if(K.gaps)L.gaps=true;L.things=K.things;L.keep=K.keep;
+  const r=kitchenCheck(world,L);if(r.why){mqwarn("kitchen","how full a place is was refused: "+r.why,false);return false;}
+  try{K.store(JSON.parse(JSON.stringify(next)));}
+  catch(e){mqwarn("kitchen","how full a place is was not kept: "+String(e&&e.message||e).slice(0,80),false);if(typeof toast==="function")toast(kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}
+  KITWALL[world]=r.wall;kitDirty();kitRepage();
+  const n=document.querySelector('[data-kt="full-'+(v||"none")+'"]');if(n)n.focus();return true;}
+/* THE PLACE'S PAGE: how full, and each thing's count and date */
+function kitToolsPage(id,p){const K=KITWALL[id];if(!K||!K.tools||typeof p.id!=="string"||id!==world)return [];
+  const out=[];
+  if(typeof K.store==="function")out.push({node:box=>{
+    box.appendChild(kh("h3",null,kitW("kitHowFull","How full?"),{class:"dh"}));
+    const row=kh("div",{display:"flex",flexWrap:"wrap",gap:"6px",margin:"4px 0 10px"},undefined,{role:"group","aria-label":kitW("kitHowFull","How full?")});
+    [null].concat(KITCHEN.fulls).forEach(v=>{const on=(p.full||null)===v,lab=v===null?kitW("kitNotSet","Not set"):(((T()||{}).kitFull||{})[v]||v);
+      const b=kitBtn(lab,()=>kitSetFull(p,v),on?{borderColor:"#E0B45C",background:"rgba(224,180,92,.25)"}:{},{"aria-pressed":on?"true":"false","data-kt":"full-"+(v||"none")});row.appendChild(b);});
+    box.appendChild(row);}});
+  const L=kitThingsOf(id,p.i).list;
+  if(L.length)out.push({node:box=>{
+    box.appendChild(kh("h3",null,kitW("ktThings","Count and date"),{class:"dh"}));
+    L.forEach(t=>{const card=kh("div",{display:"flex",flexDirection:"column",gap:"6px",padding:"8px",margin:"6px 0",borderRadius:"10px",background:"rgba(255,255,255,.07)"});
+      const top=kh("div",{display:"flex",justifyContent:"space-between",gap:"8px",flexWrap:"wrap"});
+      top.appendChild(kh("b",null,t.name));
+      if(t.date){const left=kitDaysLeft(t.date);top.appendChild(kh("span",{color:left<0?"#F2A07A":left<=KITSOON?"#F2C230":"inherit",fontSize:"13px"},kitDueText(t.date),{"data-kt":"due-"+t.id}));}
+      card.appendChild(top);
+      const row=kh("div",{display:"flex",alignItems:"center",flexWrap:"wrap",gap:"6px"});
+      row.appendChild(kitBtn("−",()=>{if(t.n>1)kitSetThing(p,t.id,{n:t.n-1},"minus-"+t.id);},{},{"aria-label":kitW("ktLess","One fewer")+": "+t.name,"data-kt":"minus-"+t.id}));
+      row.appendChild(kh("span",{minWidth:"34px",textAlign:"center",font:"600 14px "+KT_FONT},String(t.n),{"aria-live":"polite","data-kt":"count-"+t.id}));
+      row.appendChild(kitBtn("+",()=>{if(t.n<KITTOOLMANY)kitSetThing(p,t.id,{n:t.n+1},"plus-"+t.id);},{},{"aria-label":kitW("ktMore","One more")+": "+t.name,"data-kt":"plus-"+t.id}));
+      const lab=kh("label",{display:"flex",alignItems:"center",gap:"6px",marginLeft:"6px",font:"500 13px "+KT_FONT});
+      lab.appendChild(document.createTextNode(kitW("ktUseBy","Use by")));
+      const inp=kh("input",KT_IN,undefined,{type:"date","data-kt":"date-"+t.id,"aria-label":kitW("ktUseBy","Use by")+": "+t.name});inp.value=t.date||"";
+      inp.addEventListener("change",()=>{const v=inp.value;if(v==="")kitSetThing(p,t.id,{date:""},"date-"+t.id);else if(kitDayOk(v))kitSetThing(p,t.id,{date:v},"date-"+t.id);else{inp.value=t.date||"";if(typeof toast==="function")toast(kitW("ktBadDate","That is not a date."),2200);}});
+      lab.appendChild(inp);row.appendChild(lab);
+      if(t.date)row.appendChild(kitBtn(kitW("ktClearDate","Clear date"),()=>kitSetThing(p,t.id,{date:""},"date-"+t.id),{},{"data-kt":"cleardate-"+t.id}));
+      card.appendChild(row);box.appendChild(card);});}});
+  return out;}
+/* ---- THE PANEL ---- */
+function kitToolsPlace(){const el=KTOOLS.el,vp=$("vp");if(!el||!vp)return;
+  const r=vp.getBoundingClientRect(),wide=r.width>=760,margin=!wide&&window.innerWidth-r.right>=372&&!vp.classList.contains("fs");
+  /* beside the room: inside a wide view at its right; or, where the page leaves room at the view's right (a laptop), in that room, fixed to the window; over the view otherwise (a phone) */
+  if(margin)Object.assign(el.style,{position:"fixed",top:"0",bottom:"0",left:"auto",right:"0",width:"360px"});
+  else Object.assign(el.style,wide?{position:"absolute",top:"0",bottom:"0",left:"auto",right:"0",width:"min(380px,44%)"}:{position:"absolute",top:"0",bottom:"0",right:"0",left:"0",width:"100%"});}
+window.addEventListener("resize",()=>kitToolsPlace());document.addEventListener("fullscreenchange",()=>kitToolsPlace());
+function kitToolsBuild(){if(KTOOLS.el)return KTOOLS.el;const vp=$("vp");if(!vp)return null;
+  const el=kh("div",{position:"absolute",top:"0",right:"0",bottom:"0",zIndex:"7",overflowY:"auto",boxSizing:"border-box",padding:"12px",background:"rgba(20,16,30,.96)",color:"#EDE9F5",font:"500 14px "+KT_FONT,
+    display:"flex",flexDirection:"column",gap:"10px"},undefined,{id:"kitPanel",role:"dialog","aria-label":"Kitchen"});el.hidden=true;
+  const head=kh("div",{display:"flex",justifyContent:"space-between",alignItems:"center"});
+  head.appendChild(kh("b",{fontSize:"17px"},"",{id:"kpTitle"}));
+  head.appendChild(kitBtn("✕",()=>kitToolsClose(),{},{id:"kpClose"}));el.appendChild(head);
+  const q=kh("input",Object.assign({},KT_IN,{width:"100%"}),undefined,{id:"kpSearch",type:"text",maxlength:String(KITSEARCH),autocomplete:"off",spellcheck:"false"});
+  q.addEventListener("input",()=>{KTOOLS.q=q.value;kitToolsRender();});
+  q.addEventListener("keydown",e=>{if(e.key==="Enter"){const K=kitToolsK(),r=K?kitSearchRows(K,q.value):[];if(r.length){e.preventDefault();kitToolsPick(r[0].p.i);}}});
+  el.appendChild(q);
+  el.appendChild(kh("div",null,undefined,{id:"kpResults","aria-live":"polite"}));
+  const det=kh("details",{border:"1px solid rgba(237,233,245,.25)",borderRadius:"8px",padding:"6px 8px"},undefined,{id:"kpPast"});
+  det.appendChild(kh("summary",{cursor:"pointer",font:"600 14px "+KT_FONT},"",{id:"kpPastSum"}));det.appendChild(kh("div",null,undefined,{id:"kpPastList"}));
+  det.addEventListener("toggle",()=>{KTOOLS.past=det.open;});el.appendChild(det);
+  el.appendChild(kh("div",null,undefined,{id:"kpSoon"}));
+  const add=kh("form",{display:"flex",flexDirection:"column",gap:"6px",borderTop:"1px solid rgba(237,233,245,.2)",paddingTop:"8px"},undefined,{id:"kpAdd"});
+  add.appendChild(kh("b",null,"",{id:"kpAddTitle"}));
+  add.appendChild(kh("input",Object.assign({},KT_IN,{width:"100%"}),undefined,{id:"kpName",type:"text",maxlength:String(KITTHINGNAME),autocomplete:"off"}));
+  add.appendChild(kh("select",Object.assign({},KT_IN,{width:"100%"}),undefined,{id:"kpPlace"}));
+  add.appendChild(kitBtn("",()=>kitOwnAdd($("kpName").value,$("kpPlace").value),{},{id:"kpAddBtn",type:"submit"}));   /* Enter in the name clicks it (the form's own default button) */
+  add.addEventListener("submit",e=>{e.preventDefault();kitOwnAdd($("kpName").value,$("kpPlace").value);});
+  el.appendChild(add);
+  el.appendChild(kh("div",{minHeight:"1.3em",color:"#F2C230",fontSize:"13px"},undefined,{id:"kpSay",role:"status","aria-live":"polite"}));
+  el.appendChild(kh("div",null,undefined,{id:"kpOwn"}));
+  el.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();kitToolsClose();}});
+  vp.appendChild(el);KTOOLS.el=el;kitToolsPlace();return el;}
+/* a result or a due line: the thing, its place, its date when it has one; a press opens that place */
+function kitToolsRow(K,names,r,dated){const b=kitBtn("",()=>kitToolsPick(r.p.i),{display:"flex",flexDirection:"column",alignItems:"flex-start",width:"100%",textAlign:"left",margin:"4px 0",padding:"6px 10px",minHeight:"44px"},{"data-kt":"pick-"+r.p.i+"-"+r.t.id});
+  b.appendChild(kh("b",null,kitFill(kitW("ktResult","{name} — {place}"),{name:r.t.name+(r.t.n>1?" × "+r.t.n:""),place:names[r.p.i]||kitName(r.p,lang)})));
+  if(dated&&r.t.date)b.appendChild(kh("span",{fontSize:"12px",opacity:"0.85"},kitDueText(r.t.date)));return b;}
+function kitToolsRender(){const K=kitToolsK(),el=KTOOLS.el;if(!el||!K)return;
+  const names=kitPlaceNames(K),t=n=>$(n);
+  t("kpTitle").textContent=kitW("ktTitle","Kitchen");t("kpClose").setAttribute("aria-label",kitW("ktClose","Close"));
+  const q=t("kpSearch");q.placeholder=kitW("ktSearchPh","Search every place");q.setAttribute("aria-label",kitW("ktSearch","Search every place"));if(q.value!==KTOOLS.q)q.value=KTOOLS.q;
+  const rs=t("kpResults");rs.textContent="";const rows=kitSearchRows(K,KTOOLS.q);
+  if(KTOOLS.q.trim()){if(!rows.length)rs.appendChild(kh("p",{margin:"4px 0",opacity:"0.85"},kitW("ktNone","Nothing found.")));
+    else rows.forEach(r=>rs.appendChild(kitToolsRow(K,names,r,true)));}
+  kitGlowSet(new Set(rows.map(r=>r.p.i)));
+  const due=kitDue(K),det=t("kpPast");
+  t("kpPastSum").textContent=kitFill(kitW("ktPast","Past their date ({n})"),{n:String(due.past.length)});
+  const pl=t("kpPastList");pl.textContent="";
+  if(!due.past.length)pl.appendChild(kh("p",{margin:"4px 0",opacity:"0.85"},kitW("ktPastNone","Nothing is past its date.")));else due.past.forEach(r=>pl.appendChild(kitToolsRow(K,names,r,true)));
+  if(det.open!==KTOOLS.past)det.open=KTOOLS.past;
+  const so=t("kpSoon");so.textContent="";so.appendChild(kh("b",null,kitW("ktSoon","Use soon")));
+  if(!due.soon.length)so.appendChild(kh("p",{margin:"4px 0",opacity:"0.85"},kitFill(kitW("ktSoonNone","Nothing is due in the next {n} days."),{n:String(KITSOON)})));else due.soon.forEach(r=>so.appendChild(kitToolsRow(K,names,r,true)));
+  t("kpAddTitle").textContent=kitW("ktAdd","Add your own item");t("kpName").placeholder=kitW("ktName","Name");t("kpName").setAttribute("aria-label",kitW("ktName","Name"));
+  const sel=t("kpPlace"),was=sel.value;sel.textContent="";sel.setAttribute("aria-label",kitW("ktPlace","Place"));
+  K.places.forEach(p=>{if(names[p.i]===undefined)return;const o=document.createElement("option");o.value=p.id;o.textContent=names[p.i];sel.appendChild(o);});
+  if(was&&[...sel.options].some(o=>o.value===was))sel.value=was;
+  t("kpAddBtn").textContent=kitW("ktAddBtn","Add");
+  t("kpSay").textContent=KTOOLS.say||"";
+  const ow=t("kpOwn");ow.textContent="";const own=kitOwnMap(K),ids=Object.keys(own);
+  if(ids.length){ow.appendChild(kh("b",null,kitW("ktOwn","Your own items")));
+    ids.forEach(id=>{const at=kitWhere(K,id),row=kh("div",{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px",margin:"6px 0",padding:"6px",borderRadius:"8px",background:"rgba(255,255,255,.07)"});
+      const ed=KTOOLS.edit&&KTOOLS.edit.id===id?KTOOLS.edit.mode:null;
+      if(ed==="rename"){const f=kh("input",Object.assign({},KT_IN,{flex:"1 1 140px"}),undefined,{type:"text",maxlength:String(KITTHINGNAME),"data-kt":"own-rename-"+id,"aria-label":kitW("ktRename","Rename")});f.value=own[id];
+        f.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();kitOwnRename(id,f.value);}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();KTOOLS.edit=null;kitToolsRender();}});
+        row.appendChild(f);row.appendChild(kitBtn(kitW("ktSave","Save"),()=>kitOwnRename(id,f.value)));row.appendChild(kitBtn(kitW("ktCancel","Cancel"),()=>{KTOOLS.edit=null;kitToolsRender();}));
+        ow.appendChild(row);setTimeout(()=>{if(KTOOLS.edit&&KTOOLS.edit.id===id){f.focus();f.select();}},0);return;}
+      if(ed==="remove"){row.appendChild(kh("span",{flex:"1 1 160px"},kitFill(kitW("ktRemoveAsk","Remove {name}?"),{name:own[id]})));
+        row.appendChild(kitBtn(kitW("ktYes","Yes, remove"),()=>kitOwnRemove(id),{},{"data-kt":"own-remove-yes-"+id}));
+        row.appendChild(kitBtn(kitW("ktKeep","No, keep it"),()=>{KTOOLS.edit=null;kitToolsRender();},{},{"data-kt":"own-remove-no-"+id}));ow.appendChild(row);
+        setTimeout(()=>{const n=document.querySelector('[data-kt="own-remove-no-'+id+'"]');if(n)n.focus();},0);return;}
+      row.appendChild(kh("b",{flex:"1 1 120px"},own[id]));
+      const mv=kh("select",Object.assign({},KT_IN,{maxWidth:"150px"}),undefined,{"data-kt":"own-move-"+id,"aria-label":kitW("ktMove","Move to")+": "+own[id]});
+      K.places.forEach(p=>{if(names[p.i]===undefined)return;const o=document.createElement("option");o.value=p.id;o.textContent=names[p.i];if(at&&at.i===p.i)o.selected=true;mv.appendChild(o);});
+      mv.addEventListener("change",()=>kitOwnMove(id,mv.value));row.appendChild(mv);
+      row.appendChild(kitBtn(kitW("ktRename","Rename"),()=>{KTOOLS.edit={id,mode:"rename"};kitToolsRender();},{},{"data-kt":"own-rename-btn-"+id}));
+      row.appendChild(kitBtn(kitW("ktRemove","Remove"),()=>{KTOOLS.edit={id,mode:"remove"};kitToolsRender();},{},{"data-kt":"own-remove-"+id}));
+      ow.appendChild(row);});}}
+function kitToolsOpen(){const K=kitToolsK();if(!K||$("world").hidden||KTOOLS.open)return false;
+  if(kitNow){kitShut();if($("reader")&&!$("reader").hidden)$("docClose").click();}
+  if(!kitToolsBuild())return false;
+  KTOOLS.open=true;KTOOLS.el.hidden=false;kitToolsPlace();kitToolsRender();kitToolsShow();
+  const q=$("kpSearch");if(q)q.focus();return true;}
+function kitToolsClose(){if(!KTOOLS.open)return false;KTOOLS.open=false;if(KTOOLS.el)KTOOLS.el.hidden=true;KTOOLS.edit=null;KTOOLS.say="";
+  kitGlowSet(new Set());kitToolsShow();const b=KTOOLS.btn;if(b&&!b.hidden)b.focus();return true;}
+/* a pick: the panel is put down and that place opens (its doors, its page) */
+function kitToolsPick(i){const id=world;kitToolsClose();return kitOpen(id,i);}
+/* THE BUTTON follows the room: there while the room's kitchen turned the tools on, and the panel goes with it */
+function kitToolsShow(){const K=kitToolsK(),vp=$("vp");let b=KTOOLS.btn;
+  if(!K||$("world").hidden){if(KTOOLS.open){KTOOLS.open=false;if(KTOOLS.el)KTOOLS.el.hidden=true;kitGlowSet(new Set());}if(b)b.hidden=true;return;}
+  if(!vp)return;
+  if(!b){b=kh("button",{position:"absolute",left:"12px",bottom:"12px",zIndex:"5",minHeight:"44px",padding:"0 14px",border:"none",borderRadius:"22px",background:"rgba(20,16,30,.86)",color:"#EDE9F5",font:"600 14px "+KT_FONT,cursor:"pointer"},undefined,{id:"kitBtn",type:"button"});
+    b.addEventListener("click",e=>{e.preventDefault();if(KTOOLS.open)kitToolsClose();else kitToolsOpen();});vp.appendChild(b);KTOOLS.btn=b;}
+  b.hidden=false;b.textContent="🍳 "+kitW("ktBtn","Kitchen");b.setAttribute("aria-label",kitW("ktBtn","Kitchen"));b.setAttribute("aria-expanded",KTOOLS.open?"true":"false");
+  if(KTOOLS.open)kitToolsRender();}
+/* the K key opens and shuts the panel, where the world has the keys (not while typing in a box); Escape inside the panel is its own */
+function kitToolsKey(e){if(!kitToolsK()||e.ctrlKey||e.metaKey||e.altKey||e.repeat)return false;
+  if((e.key==="k"||e.key==="K")&&keyForWorld(e)){e.preventDefault();if(KTOOLS.open)kitToolsClose();else kitToolsOpen();return true;}
+  if(e.key==="Escape"&&KTOOLS.open){e.preventDefault();kitToolsClose();return true;}
+  return false;}
 /* THE KITCHEN WALLS A WORLD DECLARES, laid once its rooms stand as this device last left them (the edits above), so a
    layout is checked against the map the person will walk in (grep "THE KITCHEN LAYOUT"). Nothing, for a world without. */
 if(typeof KITCHENWALLS==="object"&&KITCHENWALLS)Object.keys(KITCHENWALLS).forEach(id=>kitchenLay(id,KITCHENWALLS[id]));

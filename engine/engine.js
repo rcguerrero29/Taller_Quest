@@ -121,8 +121,8 @@ const SOLID=new Set(["#","D","K","P","B","F","G","X","T","W","V","A","U","Q","J"
    world declares one. A world that lays neither letter and declares no layout never reaches anything that reads them. */
 const KITCOL="◧",CLOSET="⎕",KITWALL={};
 /* WHAT engine.js READS BEFORE engine/kitchen-room.js HAS RUN (sprint 8a): the kitchen's code is a file of its own, written after this one, and
-   a name this file reads while it loads (checkTalk, camSet) must already stand. These four are `var`s, read unset, and the room's file
-   sets them again to the same values when it runs (grep "THE KITCHEN LAYOUT" in engine/kitchen-room.js); `kitNow` is declared here only. */
+   a name this file reads while it loads (checkTalk, camSet) must already stand. These four are \`var\`s, read unset, and the room's file
+   sets them again to the same values when it runs (grep "THE KITCHEN LAYOUT" in engine/kitchen-room.js); \`kitNow\` is declared here only. */
 var kitNow=null,kitEmptyAt=null,kitBuildReady=false,KITHAND=null;
 /* the content seam: a pack adds its own solid glyphs and declares which are doors */
 (typeof SOLIDX!=="undefined"?SOLIDX:"").split("").forEach(c=>SOLID.add(c));
@@ -5323,6 +5323,10 @@ function docRender(body,secs){
         c.addEventListener("click",()=>{try{if(typeof f.onCancel==="function")f.onCancel();else $("docClose").click();}catch(err){console.warn("DOC: cancel failed",err);}});row.appendChild(c);}
       box.appendChild(row);
       if(!f.noFocus){const first=box.querySelector("input,textarea,select");if(first)setTimeout(()=>{try{first.focus();}catch(e){}},0);}}
+    else if(typeof s2.node==="function"){ /* A BLOCK THE PAGE BUILDS ITSELF (sprint 8a): it is handed an empty box and fills it with the
+       page's own controls, as text and elements it makes; the reader never learns what is in it, and the markdown copy skips it.
+       The first use: a kitchen place's count and date controls (grep "THE KITCHEN'S TOOLS"). A page with none is exactly as before. */
+      const box=el("div","dnode");try{s2.node(box);}catch(err){console.warn("DOC: a block failed",err);}}
     else if(s2.docs){const row=el("div","ddocs");
       s2.docs.forEach(k=>{if(!DC()[k])return;const b=document.createElement("button");
         b.className="opt";b.textContent=docTitle(k);
@@ -5713,6 +5717,7 @@ function talkPick(){
 function checkTalk(){
   if(kitBuildReady)kitBuildShow();   /* the kitchen builder's bar follows the room (grep "THE KITCHEN BUILDER"); nothing, in a world without one */
   if(KITHAND||$("kitHand"))kitHandShow();   /* the thing in hand follows the room, and is put back on leaving it (grep "THE HAND"); nothing, in a world with no hand */
+  if(typeof kitToolsShow==="function")kitToolsShow();   /* the Kitchen button follows the room (grep "THE KITCHEN'S TOOLS" in engine/kitchen-room.js); nothing, in a world with no tools */
   if(DRONE.on){["talk","serve","read"].forEach(id=>{const b=$(id);if(b)b.hidden=true;});return;}   /* while you fly, nobody beside the hero is offered (#271) */
   portalNudge();
   checkRead();
@@ -5754,12 +5759,12 @@ function checkRead(){
   delete b.dataset.kit;delete b.dataset.closet;
   /* THE SLOT (2026-10-30, grep "THE KITCHEN LAYOUT"): in front of a kitchen column it is Open, beside a closet it is the
      closet, and otherwise it is Read as it always was. Both answer nothing in a world that lays neither. */
+  if(typeof kitFaceTrack==="function")kitFaceTrack();   /* the piece faced at a corner is framed in gold (grep "AT A CORNER" in engine/kitchen-room.js) */
   if(!$("world").hidden&&!moving&&typeof kitFront==="function"){const ks=kitFront(px,py);
     if(ks&&ks.length){b.hidden=false;b.dataset.kit="1";
       /* the place open in front of the hero reads Close with its name, and it alone: a column of several offers only that one to shut (sprint 6) */
       const op=kitNow&&kitNow.id===world?ks.find(p=>p.i===kitNow.i):null;
       b.textContent=op?(kitW("kitClose","Close")+" — "+kitName(op,lang)):(T().kitOpen||"Open")+" — "+ks.map(p=>kitName(p,lang)).join(" · ");return;}
-  if(typeof kitFaceTrack==="function")kitFaceTrack();   /* the piece faced at a corner is framed in gold (grep "AT A CORNER" in engine/kitchen-room.js) */
     if(closetBy(px,py)){b.hidden=false;b.dataset.closet="1";b.textContent=T().closet||"👕";return;}}
   if(!$("world").hidden&&!moving)
     [[0,0],[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{const r=readAt(px+dx,py+dy);if(r)hit=r;return !!r;});
@@ -5799,6 +5804,7 @@ window.addEventListener("keydown",e=>{
   if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"))return;
   if(kitBuildReady&&kitBuildKey(e))return;   /* the kitchen builder's keys, only while its bar stands (grep "THE KITCHEN BUILDER") */
   if(kitHandKey(e))return;   /* Escape puts back the thing in hand, while one is (grep "THE HAND") */
+  if(typeof kitToolsKey==="function"&&kitToolsKey(e))return;   /* K opens the kitchen panel, Escape shuts it (grep "THE KITCHEN'S TOOLS"); nothing, in a world with no tools */
   const mine=keyForWorld(e);
   if(mine&&keyDir(e)){held=keyDir(e);e.preventDefault();}
   /* Enter beside a person talks; Enter or Space beside a readable thing reads it, as its button does —

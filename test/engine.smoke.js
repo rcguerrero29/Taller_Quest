@@ -1105,6 +1105,298 @@ function findChromium() {
   fails.push(...r.filter(l => !/^COUNT-ONLY: /.test(l)));
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
+  /* ---- THE KITCHEN'S ROOM IN A FILE OF ITS OWN, THE CLOSET AS IT WAS, THE CORNER, AND THE KITCHEN'S TOOLS (sprint 8a of the 3D kitchen) ----
+     engine/kitchen-room.js (grep "THE KITCHEN'S TOOLS", "AT A CORNER"; engine/shapes.js, `apart`); his confirmed goals of 2026-11-02 in
+     docs/ASKS.md (the closet put back, the piece faced at a corner, the kitchen's tools with dates). What a person would notice, each in
+     its own sentence below: a kitchen that is built any differently for the move to a file of its own (every shape is held to the bytes
+     it had, by a hash, so a part off by one is a red); a closet that turns its doors another way for a cupboard beside it; at a corner
+     a slot that names both places, a gold frame round the wrong one or none, or one that does not follow a turn; a Kitchen button that
+     is missing, or in a game that asked for none, or that full screen drops; a search that finds what it should not (markup, a pattern)
+     or shows a result with no place or no glow; a drawer that counts or orders wrongly; Use soon with the wrong edge; a name taken or
+     too long or not text; a date that is not a date; a count or a date that does not reach what the game keeps; a clock read twice; and
+     anything leaving the device. On a page of its own with a made-up kitchen, the day fixed at 2026-11-02, and a stock the page holds.
+     Run alone with MQ_ONLY_8A=1 (it ends the run here). Red first, each fault planted in a copy of the tree outside the repository. */
+  {
+    const S8 = [], say = s => S8.push(s), crypto = require('crypto'), sha = o => crypto.createHash('sha256').update(JSON.stringify(o)).digest('hex');
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    /* 0 · THE MOVE, in the files: boot writes it after engine.js and before engine3d.js, the worker caches it, and engine.js holds none of it */
+    {
+      const eng = fs.readFileSync(path.join(root, 'engine', 'engine.js'), 'utf8'), room = fs.readFileSync(path.join(root, 'engine', 'kitchen-room.js'), 'utf8'), boot = fs.readFileSync(path.join(root, 'engine', 'boot.js'), 'utf8');
+      const at = n => boot.indexOf('w("engine/' + n + '")');
+      if (!(at('engine.js') >= 0 && at('kitchen-room.js') > at('engine.js') && at('engine3d.js') > at('kitchen-room.js'))) say('engine/boot.js does not write engine/kitchen-room.js after engine.js and before engine3d.js');
+      const sw = fs.existsSync(path.join(root, 'sw.js')) ? fs.readFileSync(path.join(root, 'sw.js'), 'utf8') : null;
+      if (sw !== null && sw.includes('./engine/engine.js') && !sw.includes('./engine/kitchen-room.js')) say('the service worker does not list engine/kitchen-room.js, so the game offline would have no kitchen');
+      ['kitchenCheck', 'kitchenLay', 'kitFront', 'kitDoc', 'kitOpen', 'kitPress', 'kitTake', 'kitPut', 'closetOpen', 'kitBuildShow', 'kitBuildAdd', 'kitToolsOpen', 'kitFacedCol'].forEach(f => {
+        if (!room.includes('function ' + f + '(')) say('engine/kitchen-room.js does not define ' + f);
+        if (eng.includes('function ' + f + '(')) say('engine/engine.js still defines ' + f + ', which lives in engine/kitchen-room.js now');
+      });
+      /* the clock is read in one place, and nothing in this file keeps anything or asks anything of anyone */
+      const dates = room.match(/new Date\(|Date\.now\(|performance\.timeOrigin|getTimezoneOffset/g) || [];
+      if (dates.length !== 1) say('engine/kitchen-room.js reads the clock ' + dates.length + ' times, where kitToday() reads it once and nothing else does');
+      const leave = room.match(/\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|window\.open\(|document\.cookie|localStorage|sessionStorage|indexedDB|\.postMessage\(|navigator\.share|navigator\.clipboard/g) || [];
+      if (leave.length) say('engine/kitchen-room.js reaches outside the page (' + [...new Set(leave)].join(', ') + '): it keeps nothing and asks nothing, the game does');
+    }
+    const kp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), kErr = [], kReq = [];
+    kp.on('pageerror', e => kErr.push(e.message));
+    await kp.route('**', r => { const u = r.request().url(); if (u.startsWith('file://')) return r.continue(); kReq.push(u); return r.abort(); });
+    if (needK) await kp.addInitScript({ content: kitSrc });
+    /* the day is fixed: 2026-11-02, at noon, for every clock read in the page */
+    await kp.addInitScript(() => { const R = Date, F = new R(2026, 10, 2, 12, 0, 0).getTime(); window.Date = class extends R { constructor(...a) { if (a.length) super(...a); else super(F); } static now() { return F; } }; });
+    await kp.goto('file://' + file); let kLoaded = true;
+    try { await kp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); }
+    catch (e) { kLoaded = false; say('the page never had its kitchen (kitchenLay is not defined after the engine loaded): engine/kitchen-room.js was not written or did not run'); }
+    await kp.waitForTimeout(66); kReq.length = 0;   /* what a shell asks of its own accord when it opens (a town's fonts and issues) is not the tools' */
+    try {
+      if (!kLoaded) throw new Error('no kitchen to ask');
+      const has3 = await kp.evaluate(() => typeof SHAPES === 'object' && !!SHAPES && typeof SHAPES.kitchenColumn === 'function' && typeof SHAPES.wardrobe === 'function');
+      /* 1 · EVERY SHAPE AS IT WAS: a kitchen of every kind along twelve columns, shut and open, and the closet, held to the bytes mq-v246 built them with */
+      if (has3) {
+        const SH = await kp.evaluate(() => {
+          const ID = '__s8_shapes', N = 12, WD = N + 4, row = (a, m, z) => a + m + z;
+          const R = ['#'.repeat(WD), row('##', KITCOL.repeat(N), '##'), row('#', '.'.repeat(WD - 2), '#'), row('#', '.'.repeat(WD - 3), CLOSET + '#'), row('#', '.'.repeat(WD - 2), '#'), '#'.repeat(WD)];
+          WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: WD, H: R.length };
+          const places = [], F = KITCHEN.fulls;
+          for (let c = 0; c < N; c++) { const k = c % 4;
+            if (k === 0) places.push({ kind: 'fridge', row: 'tall', col: c, full: F[c % F.length] });
+            if (k === 1) places.push({ kind: 'upper-cupboards', row: 'upper', col: c, finish: 'violet' }, { kind: 'counter', row: 'counter', col: c }, { kind: 'drawers', row: 'lower', col: c });
+            if (k === 2) places.push({ kind: 'shelves', row: 'upper', col: c }, { kind: 'lower-cupboards', row: 'lower', col: c });
+            if (k === 3) places.push({ kind: 'freezer', row: 'tall', col: c }); }
+          const laid = kitchenLay(ID, { wall: Array.from({ length: N }, (_, c) => [c + 2, 1]), places, gaps: true, page: () => [{ p: 'x' }] });
+          const was = world; world = ID; const cols = [];
+          for (let c = 0; c < N; c++) { const x = c + 2, y = 1, closed = JSON.stringify(kitColumnParts({ x, y })), letters = kitLetters(x, y);
+            KITWALL[ID].places.filter(q => q.col === c).forEach(q => { KITOPEN[ID + '|' + q.i] = 1; }); const open = JSON.stringify(kitColumnParts({ x, y }));
+            KITWALL[ID].places.filter(q => q.col === c).forEach(q => { delete KITOPEN[ID + '|' + q.i]; }); cols.push({ closed, letters, open }); }
+          const closet = JSON.stringify(SHAPES.wardrobe({ x: 14, y: 3 })); world = was; return { laid, cols, closet }; });
+        if (SH.laid !== null) say('the kitchen of every kind was refused: ' + SH.laid);
+        else if (sha({ cols: SH.cols, closet: SH.closet }) !== 'e800f58ae42aaa0d7e53c07a65b46ec95762f9c91927cf5d3cb6c7fa187a67c3') say('the kitchen of every kind is not built as it was before sprint 8a: its shapes, shut and open, or its closet, are not byte for byte those mq-v246 built (' + sha({ cols: SH.cols, closet: SH.closet }).slice(0, 12) + ')');
+        /* 2 · THE CLOSET AS IT STOOD: a kitchen column beside it is not its wall, so it faces the room as it did before sprint 7 */
+        const CL = await kp.evaluate(() => {
+          const mk = (ID, north) => { const R = ['############', '#☰#◧◧V◧◧◧◧##', '#.#.......' + north + '#', '#.........' + north + '#', '#.T.......⎕#', '#..........#', '####+#######'];
+            WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 12, H: 7 }; const was = world; world = ID;
+            const o = { parts: SHAPES.wardrobe({ x: 10, y: 4, open: 0 }), open: SHAPES.wardrobe({ x: 10, y: 4, open: 1 }) }; world = was; return o; };
+          const col = mk('__s8_cl_col', KITCOL), floor = mk('__s8_cl_floor', '.'), wall = mk('__s8_cl_wall', '#');
+          return { col, floor, ry: col.parts[0].ry, wallRy: wall.parts[0].ry, same: JSON.stringify(col) === JSON.stringify(floor) }; });
+        if (!CL.same) say('the closet beside a kitchen column does not stand as it does beside floor (its doors turn ' + CL.ry.toFixed(2) + ' where the room is to its west): a cupboard beside it is not its wall');
+        else if (sha(CL.col) !== '031a35996d0682d963d1619fd7e850f58d9a1ba3b92c9e125d8e6e458d6abe7f') say('the closet\'s parts, with a kitchen column beside it, are not those mq-v245 built (Taller_Quest 7a49f2a): ' + sha(CL.col).slice(0, 12));
+        if (CL.wallRy === undefined || Math.abs(CL.wallRy) > 1e-9) say('a closet with a plain wall to its north no longer faces south, as every closet did before (its turn is ' + CL.wallRy + ')');
+      } else console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so the shapes and the closet were not asked');
+      /* the gauge's and El Horno's shells are small fixtures for the engine's contract with a new world, and their engine checks sit near the
+         180 seconds their callers allow: the corner and the tools (about fifteen seconds of clicks) are asked of every other shell */
+      if (/content[\\/](gauge|horno)[\\/]/.test(idx)) throw 'SKIP8A';
+      /* 3 · AT A CORNER, THE PIECE FACED: a back wall, a side wall, and the square where they meet; the slot, the frame and a press follow the way he looks */
+      await kp.evaluate(() => {
+        const ID = '__s8_corner', R = ['############', '######' + KITCOL.repeat(4) + '##', '#' + '.'.repeat(9) + KITCOL + '#', '#' + '.'.repeat(9) + KITCOL + '#', '#' + '.'.repeat(10) + '#', '############'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 12, H: 6 };
+        const places = [['fridge', 'tall', 0], ['upper-cupboards', 'upper', 1], ['counter', 'counter', 1], ['drawers', 'lower', 1], ['shelves', 'upper', 2], ['lower-cupboards', 'lower', 2], ['freezer', 'tall', 3]].map(([kind, row, col], k) => ({ kind, row, col, id: 'p' + (k + 1) }));
+        places.push({ kind: 'lower-cupboards', row: 'lower', col: 0, side: 0, id: 's1' }, { kind: 'drawers', row: 'lower', col: 1, side: 0, id: 's2' });
+        const s = kitchenLay(ID, { wall: [[6, 1], [7, 1], [8, 1], [9, 1]], sides: [{ squares: [[10, 2], [10, 3]], face: 'west' }], gaps: true, places });
+        if (s) throw new Error('the corner kitchen was refused: ' + s);
+        $('intro').hidden = true; heroName = 'Probe'; world = ID; px = fx = 9; py = fy = 2; dir = 'up'; enterWorld(false); camSet('3d'); document.querySelectorAll('.settings').forEach(q => { q.hidden = true; }); checkTalk();
+      });
+      await kp.waitForTimeout(83);
+      const cs = () => kp.evaluate(() => { const K = KITWALL[world], cols = [[9, 1], [10, 2], [6, 1]].map(([x, y]) => kitColumnParts({ x, y }).filter(q => q.faced).length), gold = kitColumnParts({ x: 9, y: 1 }).filter(q => q.faced).every(q => q.c === '#F2C230');
+        return { slot: $('read').hidden ? null : $('read').textContent, front: (kitFront(px, py) || []).map(p => p.id), faced: cols, gold, at: [px, py], dir }; });
+      const turn = async k => { await kp.keyboard.down(k); await kp.waitForTimeout(53); await kp.keyboard.up(k); await kp.waitForTimeout(83); };
+      let C = await cs();
+      if (String(C.at) !== '9,2') say('the corner was not stood on: the hero is at ' + C.at);
+      else {
+        if (!/freezer/i.test(C.slot || '') || /lower.cupboards/i.test(C.slot || '')) say('at the corner, facing the back wall, the slot reads ' + JSON.stringify(C.slot) + ', where it names the freezer alone');
+        if (String(C.faced) !== String([C.faced[0], 0, 0]) || !C.faced[0]) say('at the corner, facing the back wall, the gold frame stands round ' + C.faced[0] + ' parts of the freezer column and ' + C.faced[1] + ' of the side wall\'s, where it is round the one faced alone');
+        if (!C.gold) say('the frame at the corner is not the builder\'s gold');
+        await turn('ArrowRight'); C = await cs();
+        if (!/lower.cupboards/i.test(C.slot || '') || /freezer/i.test(C.slot || '')) say('at the corner, turned toward the side wall, the slot reads ' + JSON.stringify(C.slot) + ', where it names the side wall\'s piece alone');
+        if (C.faced[0] || !C.faced[1]) say('turned toward the side wall, the gold frame did not move with him: ' + C.faced[0] + ' parts round the freezer and ' + C.faced[1] + ' round the side wall\'s piece');
+        await kp.evaluate(() => $('read').click()); await kp.waitForTimeout(50);
+        const op = await kp.evaluate(() => ({ now: kitNow ? kitNow.i : null, id: kitNow ? KITWALL[world].places[kitNow.i].id : null, reader: !$('reader').hidden }));
+        if (!op.reader || (op.id !== 's2' && op.id !== 's1')) say('a press at the corner, facing the side wall, opened ' + JSON.stringify(op) + ', where it opens that wall\'s piece');
+        await kp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); }); await kp.waitForTimeout(50);
+        await kp.evaluate(() => { dir = 'left'; checkTalk(); }); await kp.waitForTimeout(66); C = await cs();   /* facing neither: a warp can leave him so, and a step cannot (a turn toward free floor is a step) */
+        if (!(/freezer/i.test(C.slot || '') && /lower.cupboards/i.test(C.slot || ''))) say('at the corner, facing neither, the slot reads ' + JSON.stringify(C.slot) + ', where it offers both, as it always did');
+        if (C.faced.some(n => n)) say('at the corner, facing neither, a gold frame stands (' + C.faced + '), where none does');
+        await kp.evaluate(() => { px = fx = 6; py = fy = 2; dir = 'up'; checkTalk(); }); await kp.waitForTimeout(66); C = await cs();
+        if (C.faced.some(n => n) || !C.slot) say('in front of one column only, a frame stands (' + C.faced + ') or the slot is gone (' + JSON.stringify(C.slot) + '), where it is Open as ever');
+      }
+      await kp.evaluate(() => { world = PL.home; kitFaceTrack(); });
+      /* 4 · THE KITCHEN'S TOOLS, on a made-up kitchen with a stock of its own */
+      await kp.evaluate(() => {
+        const M = { en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] };
+        Object.assign(UI.en, { ktMonths: M.en });
+        Object.assign(UI.es, { ktMonths: M.es, ktToday: 'hoy', ktIn: 'en {n} días', ktInOne: 'en 1 día', ktAgo: 'hace {n} días', ktAgoOne: 'hace 1 día', ktDate: '{d} {month}', ktDateY: '{d} {month} {y}', ktTitle: 'Cocina', ktPast: 'Pasados de fecha ({n})', ktSoon: 'Usar pronto', ktBtn: 'Cocina', ktNone: 'No hay nada.' });
+        const ID = '__s8_tools', R = ['############', '#' + KITCOL.repeat(4) + '.....##', '#..........#', '#..........#', '#..........#', '############'];
+        WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 12, H: 6 };
+        const NAMES = { egg: ['Eggs', 'Huevos'], milk: ['Milk', 'Leche'], lime: ['Limes', 'Limones'], corn: ['Corn', 'Maíz'], chile: ['Chile powder', 'Chile en polvo'], beans: ['Beans', 'Frijoles'], rice: ['Rice', 'Arroz'], salt: ['Salt', 'Sal'], tea: ['Tea', 'Té'], oil: ['Oil', 'Aceite'] };
+        window.__stock = { p1: [['egg', 12, '2026-11-20'], ['milk', 1, '2026-10-30']], p3: [['lime', 3], ['chile', 1, '2026-12-02']], p4: [['beans', 2, '2026-12-03']], p6: [], p7: [['corn', 2]] };
+        window.__own = {}; window.__keeps = []; window.__keepThrow = false; window.__stored = []; window.__badThing = null;
+        const nm = (id, lg) => NAMES[id] ? NAMES[id][lg === 'es' ? 1 : 0] : window.__own[id];
+        const things = (pl, lg) => { const out = (window.__stock[pl.id] || []).map(([id, n, date]) => { const t = { id, n, name: nm(id, lg) }; if (date) t.date = date; if (window.__own[id]) t.own = true; else t.parts = [{ s: 'cyl', y: 0.04, r: 0.05, h: 0.08, c: '#C04020' }];
+          if (!window.__own[id]) t.pic = (g, px) => { g.fillStyle = '#C04020'; g.fillRect(0, 0, px, px); }; return t; });
+          if (window.__badThing && window.__badThing.p === pl.id) out.push(window.__badThing.t); return out; };
+        const commit = ch => { if (window.__keepThrow) throw new Error('this device keeps nothing today'); window.__keeps.push(JSON.parse(JSON.stringify(ch)));
+          Object.keys(ch.places || {}).forEach(pid => { window.__stock[pid] = ch.places[pid].map(t => t.date ? [t.id, t.n, t.date] : [t.id, t.n]); }); if (ch.own) window.__own = ch.own; };
+        const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        window.__layout = () => ({ wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places: places.map(p => Object.assign({}, p)), things, keep: ch => commit({ places: ch }), tools: { own: () => window.__own, keep: commit }, gaps: true, store: l => { if (window.__keepThrow) throw new Error('no'); window.__stored.push(JSON.parse(JSON.stringify(l))); }, page: pl => [{ p: 'inside ' + pl.id }] });
+        const s = kitchenLay(ID, window.__layout()); if (s) throw new Error('the tools kitchen was refused: ' + s);
+        const NO = '__s8_plain', R2 = R.slice(); WORLDS[NO] = { rows: R2.slice(), rows0: R2.slice(), grid: R2.map(r => r.split('')), npcs: [], W: 12, H: 6 };
+        const L2 = window.__layout(); delete L2.tools; kitchenLay(NO, L2);
+        window.__go = (id, x, y) => { world = id; px = fx = x; py = fy = y; dir = 'up'; enterWorld(false); camSet('3d'); document.querySelectorAll('.settings').forEach(q => { q.hidden = true; }); checkTalk(); };
+        window.__go(NO, 2, 2);
+      });
+      await kp.waitForTimeout(83);
+      const vis = sel => kp.evaluate(s => { const n = document.querySelector(s); if (!n || n.hidden) return false; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0; }, sel);
+      if (await vis('#kitBtn')) say('a game whose kitchen turned no tools on has a Kitchen button');
+      await kp.keyboard.press('k'); await kp.waitForTimeout(50);
+      if (await vis('#kitPanel')) say('the K key opened a kitchen panel in a game that asked for no tools');
+      await kp.evaluate(() => window.__go('__s8_tools', 2, 2)); await kp.waitForTimeout(83);
+      if (!(await vis('#kitBtn'))) say('a game that turned the tools on has no Kitchen button inside the view');
+      else {
+        const inVp = await kp.evaluate(() => !!$('kitBtn').closest('#vp'));
+        if (!inVp) say('the Kitchen button is not inside #vp, so full screen would drop it');
+        await kp.click('#kitBtn'); await kp.waitForTimeout(83);
+        const P = await kp.evaluate(() => { const p = $('kitPanel'); return { in: !!p.closest('#vp'), search: !!$('kpSearch'), drawer: $('kpPastSum') && $('kpPastSum').textContent, soon: !!$('kpSoon') && /Use soon/.test($('kpSoon').textContent), add: !!$('kpName') && !!$('kpPlace') && !!$('kpAddBtn'), beside: p.getBoundingClientRect().width < $('vp').getBoundingClientRect().width * 0.6 || p.getBoundingClientRect().left >= $('vp').getBoundingClientRect().right - 1, open: $('kpPast').open }; });
+        if (!P.in) say('the kitchen panel is not inside #vp');
+        if (!P.search || !P.drawer || !P.soon || !P.add) say('the kitchen panel lacks one of its four parts (search ' + P.search + ', drawer ' + P.drawer + ', use soon ' + P.soon + ', add ' + P.add + ')');
+        if (!P.beside) { if (await kp.evaluate(() => $('vp').getBoundingClientRect().width >= 760 || window.innerWidth - $('vp').getBoundingClientRect().right >= 372)) say('on a laptop the kitchen panel covers the view, where it stands beside the room'); else console.log('  COUNT-ONLY: this shell\'s view is narrower than 760 px, so the kitchen panel covers it, as it does on a phone'); }
+        if (P.open) say('the drawer of what is past its date is open at first, where it is closed');
+        if (P.drawer !== 'Past their date (1)') say('the drawer reads ' + JSON.stringify(P.drawer) + ', where one thing (the milk, 3 days past) is past its date');
+        await kp.keyboard.press('Escape'); await kp.waitForTimeout(50);
+        if (await vis('#kitPanel')) say('Escape did not shut the kitchen panel');
+        await kp.keyboard.press('k'); await kp.waitForTimeout(50);
+        if (!(await vis('#kitPanel'))) say('the K key did not open the kitchen panel');
+        await kp.click('#kpClose'); await kp.waitForTimeout(50);
+        if (await vis('#kitPanel')) say('the panel\'s ✕ did not shut it');
+        /* full screen keeps the button and the panel inside the view */
+        await kp.click('#fsbtn'); await kp.waitForTimeout(66); await kp.click('#kitBtn'); await kp.waitForTimeout(83);
+        const fs1 = await kp.evaluate(() => { const r = $('kitPanel').getBoundingClientRect(), v = $('vp').getBoundingClientRect(); return { fs: $('vp').classList.contains('fs'), size: r.width > 0 && r.height > 0, inside: r.left >= v.left - 1 && r.right <= v.right + 1 && r.top >= v.top - 1 && r.bottom <= v.bottom + 1 }; });
+        if (!fs1.size || !fs1.inside) say('in full screen the kitchen panel is not whole inside the view (' + JSON.stringify(fs1) + ')');
+        await kp.click('#kpClose'); await kp.click('#fsbtn'); await kp.waitForTimeout(50);
+      }
+      /* dates, both ways, in both languages */
+      const DT = await kp.evaluate(() => { const out = {}; ['en', 'es'].forEach(lg => { lang = lg; out[lg] = ['2026-11-20', '2026-10-30', '2026-11-02', '2026-11-03', '2026-11-01', '2026-12-02', '2027-01-15'].map(kitDueText); }); lang = 'en'; return out; });
+      const WANT = { en: ['Nov 20 · in 18 days', 'Oct 30 · 3 days ago', 'today', 'Nov 3 · in 1 day', 'Nov 1 · 1 day ago', 'Dec 2 · in 30 days', 'Jan 15, 2027 · in 74 days'], es: ['20 nov · en 18 días', '30 oct · hace 3 días', 'hoy', '3 nov · en 1 día', '1 nov · hace 1 día', '2 dic · en 30 días', '15 ene 2027 · en 74 días'] };
+      ['en', 'es'].forEach(lg => { if (String(DT[lg]) !== String(WANT[lg])) say('dates in ' + lg + ' read ' + JSON.stringify(DT[lg]) + ', where they read ' + JSON.stringify(WANT[lg])); });
+      const OKD = await kp.evaluate(() => ['2026-02-30', '2026-13-01', '2026-00-10', '2026-1-1', '26-01-01', '2026-02-29', '2024-02-29', '2026-12-31', '', null, 5, '2026-11-02T00:00', ' 2026-11-02', '2026-11-32'].map(v => kitDayOk(v)));
+      if (String(OKD) !== String([false, false, false, false, false, false, true, true, false, false, false, false, false, false])) say('what counts as a date is ' + OKD + ', where only a real day written YYYY-MM-DD does (2024-02-29 and 2026-12-31 do; 2026-02-30, 2026-02-29 and month 13 do not)');
+      /* a thing handed with a date that is not one is refused whole, once, with the thing beside it still listed */
+      const BD = await kp.evaluate(() => { const n0 = mqLog.length; window.__badThing = { p: 'p3', t: { id: 'bad', n: 1, name: 'Bad', date: '2026-02-30' } }; const L = kitThingsOf('__s8_tools', 2).list.map(t => t.id); kitThingsOf('__s8_tools', 2); window.__badThing = null;
+        return { L, said: mqLog.slice(n0).filter(e => e.kind === 'kitchen').map(e => e.msg) }; });
+      if (BD.L.includes('bad') || !BD.L.includes('lime')) say('a thing with the date 2026-02-30 was listed (' + BD.L + '), where it is refused whole and its neighbour stays');
+      if (BD.said.length !== 1 || !/date/.test(BD.said[0])) say('a date that is not one was said ' + BD.said.length + ' times in the log, where it is said once and says date');
+      /* the drawer's count and order, and Use soon's edge: today in, day 30 in, day 31 out, past out */
+      await kp.evaluate(() => { window.__stock = { p1: [['egg', 1, '2026-10-01'], ['milk', 1, '2026-10-30'], ['rice', 1, '2026-09-15'], ['salt', 2]], p3: [['lime', 1, '2026-11-02'], ['chile', 1, '2026-12-02']], p4: [['beans', 1, '2026-12-03'], ['tea', 1, '2027-06-01']], p6: [], p7: [['corn', 2, '2026-11-05']] }; window.__go('__s8_tools', 2, 2); });
+      await kp.waitForTimeout(66); await kp.click('#kitBtn'); await kp.waitForTimeout(66);
+      await kp.click('#kpPastSum'); await kp.waitForTimeout(50);
+      const DR = await kp.evaluate(() => { return { sum: $('kpPastSum').textContent, past: [...$('kpPastList').querySelectorAll('button')].map(b => b.innerText.replace(/\n/g, ' | ')), soon: [...$('kpSoon').querySelectorAll('button')].map(b => b.innerText.split('\n')[0]), open: $('kpPast').open }; });
+      if (DR.sum !== 'Past their date (3)') say('the drawer reads ' + JSON.stringify(DR.sum) + ', where three things are past their date');
+      if (DR.past.map(s => s.split(' — ')[0]).join() !== 'Rice,Eggs,Milk') say('the drawer lists ' + DR.past.map(s => s.split(' — ')[0]) + ', where the longest past comes first (Rice, Eggs, Milk)');
+      if (!DR.past.every(s => /ago/.test(s))) say('a line in the drawer does not say how long ago: ' + DR.past.join(' ; '));
+      if (DR.soon.map(s => s.split(' — ')[0]).join() !== 'Limes,Corn × 2,Chile powder') say('Use soon lists ' + DR.soon.map(s => s.split(' — ')[0]) + ', where the soonest comes first, today and day 30 are in, day 31 and later are out (Limes, Corn × 2, Chile powder)');
+      await kp.click('#kpPastSum'); await kp.waitForTimeout(50);
+      /* the search: text only, across every place, each result naming its place, the place glowing */
+      const SR = async q => { await kp.fill('#kpSearch', q); await kp.waitForTimeout(50); return kp.evaluate(() => ({ rows: [...$('kpResults').querySelectorAll('button')].map(b => b.innerText.split('\n')[0]), text: $('kpResults').innerText, imgs: $('kitPanel').querySelectorAll('img,script,svg').length, pwn: !!window.__pwn,
+        glow: KITWALL[world].places.filter(p => kitColumnParts({ x: KITWALL[world].cols[p.col].x, y: KITWALL[world].cols[p.col].y }).some(q => q.glowOf === p.i)).map(p => p.id), v: $('kpSearch').value.length })); };
+      let S1 = await SR('egg');
+      if (S1.rows.join().toLowerCase() !== 'eggs — fridge') say('a search for "egg" lists ' + JSON.stringify(S1.rows) + ', where it lists the eggs and names their place (Eggs — fridge)');
+      if (S1.glow.join() !== 'p1') say('with a result showing, the places that glow are ' + JSON.stringify(S1.glow) + ', where the fridge glows alone');
+      S1 = await SR('EGG'); if (S1.rows.length !== 1) say('a search is case sensitive: "EGG" finds ' + S1.rows.length);
+      S1 = await SR('l'); if (S1.rows.length < 4 || new Set(S1.glow).size < 2) say('a search for "l" finds ' + S1.rows.length + ' things in ' + S1.glow.length + ' places, where it finds them in every place that has one');
+      S1 = await SR('<img src=x onerror=window.__pwn=1>'); if (S1.imgs || S1.pwn || S1.rows.length || !/Nothing found/.test(S1.text)) say('markup typed in the search made ' + S1.imgs + ' elements or ran, or found something (' + JSON.stringify(S1.rows) + '), where it is only text and finds nothing');
+      for (const pat of ['.*', '^', '[', '(', '\\', 'e|m', '*', '.']) { S1 = await SR(pat); if (S1.rows.length || !/Nothing found/.test(S1.text)) { say('the search ' + JSON.stringify(pat) + ' found ' + JSON.stringify(S1.rows) + ', where a pattern is only text and no thing has that in its name'); break; } }
+      S1 = await SR('zzz'); if (S1.rows.length || S1.glow.length || !/Nothing found/.test(S1.text)) say('a search that matches nothing lists ' + JSON.stringify(S1.rows) + ' or glows ' + JSON.stringify(S1.glow) + ', where it says nothing was found');
+      S1 = await SR('x'.repeat(60)); if (S1.v > 40) say('the search box takes ' + S1.v + ' characters, where it takes 40');
+      const cap = await kp.evaluate(() => { const K = kitToolsK(); const long = 'e' + 'x'.repeat(100); return kitSearchRows(K, long).length === 0 && Array.from('a'.repeat(100)).slice(0, 40).length === 40; });
+      if (!cap) say('a search longer than 40 characters is not cut to 40');
+      await SR('egg'); await kp.keyboard.press('Enter'); await kp.waitForTimeout(83);
+      const PK = await kp.evaluate(() => ({ panel: !$('kitPanel').hidden, now: kitNow ? KITWALL[world].places[kitNow.i].id : null, reader: !$('reader').hidden, glow: KTOOLS.glow.size }));
+      if (PK.panel || PK.now !== 'p1' || !PK.reader) say('a pick opened ' + JSON.stringify(PK) + ', where the panel is put down and the fridge opens');
+      if (PK.glow) say('a place still glows after a pick');
+      await kp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); }); await kp.waitForTimeout(50);
+      /* a place's page: how full, each thing's count and date, near or past their date first */
+      await kp.evaluate(() => { window.__stock.p1 = [['egg', 12], ['milk', 1, '2026-12-20'], ['rice', 1, '2026-10-30'], ['salt', 2, '2026-11-10']]; window.__stored = []; window.__keeps = []; kitOpen('__s8_tools', 0); }); await kp.waitForTimeout(83);
+      const PG = await kp.evaluate(() => ({ cells: [...document.querySelectorAll('#docBody .dcell b')].map(b => b.textContent), full: [...document.querySelectorAll('#docBody [data-kt^=full-]')].map(b => b.dataset.kt + ':' + b.getAttribute('aria-pressed')), dates: [...document.querySelectorAll('#docBody [data-kt^=due-]')].map(s => s.textContent) }));
+      if (PG.cells.join() !== 'Rice,Salt,Eggs,Milk') say('the fridge\'s page lists ' + PG.cells + ', where the things near or past their date come first, the soonest first (Rice, Salt), then the rest in order (Eggs, Milk)');
+      if (PG.full.length !== 4 || !PG.full[0].endsWith('true')) say('the page\'s fullness choice is ' + JSON.stringify(PG.full) + ', where Not set is pressed and the three words follow');
+      if (PG.dates.join() !== '3 days ago'.replace(/^/, 'Oct 30 · ') + ',Nov 10 · in 8 days,Dec 20 · in 48 days') say('the page shows the dates ' + JSON.stringify(PG.dates));
+      await kp.click('#docBody [data-kt=full-almost]'); await kp.waitForTimeout(50);
+      const FL = await kp.evaluate(() => ({ stored: window.__stored.length, full: window.__stored.length ? window.__stored[window.__stored.length - 1].places[0].full : null, now: KITWALL[world].places[0].full, pressed: document.querySelector('#docBody [data-kt=full-almost]').getAttribute('aria-pressed'), keeps: window.__keeps.length }));
+      if (FL.stored !== 1 || FL.full !== 'almost' || FL.now !== 'almost' || FL.pressed !== 'true') say('choosing almost full stored ' + JSON.stringify(FL) + ', where the layout is stored once with the fridge almost full');
+      if (FL.keeps) say('how full a place is went through the game\'s keep, where it is kept with the layout');
+      await kp.click('#docBody [data-kt=plus-egg]'); await kp.waitForTimeout(50);
+      await kp.click('#docBody [data-kt=minus-salt]'); await kp.waitForTimeout(50);
+      let KP = await kp.evaluate(() => ({ keeps: window.__keeps.map(k => JSON.stringify(k)), egg: window.__stock.p1.find(t => t[0] === 'egg'), salt: window.__stock.p1.find(t => t[0] === 'salt') }));
+      if (!KP.egg || KP.egg[1] !== 13) say('a press on + for the eggs left them at ' + JSON.stringify(KP.egg) + ', where they are 13');
+      if (!KP.salt || KP.salt[1] !== 1 || KP.salt[2] !== '2026-11-10') say('a press on − for the salt left it at ' + JSON.stringify(KP.salt) + ', where it is 1 and keeps its date');
+      for (let k = 0; k < 3; k++) await kp.click('#docBody [data-kt=minus-salt]');
+      if ((await kp.evaluate(() => window.__stock.p1.find(t => t[0] === 'salt')[1])) !== 1) say('the count went below 1');
+      await kp.fill('#docBody [data-kt=date-egg]', '2026-11-15'); await kp.waitForTimeout(50);
+      KP = await kp.evaluate(() => ({ egg: window.__stock.p1.find(t => t[0] === 'egg'), order: [...document.querySelectorAll('#docBody .dcell b')].map(b => b.textContent) }));
+      if (!KP.egg || KP.egg[2] !== '2026-11-15') say('a date set on the eggs was kept as ' + JSON.stringify(KP.egg) + ', where it is 2026-11-15');
+      if (KP.order.join() !== 'Rice,Salt,Eggs,Milk') say('after the eggs took a date within the month the page lists ' + KP.order + ', where Rice, Salt and Eggs (the soonest first) come before Milk');
+      await kp.fill('#docBody [data-kt=date-egg]', ''); await kp.waitForTimeout(50);
+      KP = await kp.evaluate(() => window.__stock.p1.find(t => t[0] === 'egg'));
+      if (!KP || KP.length !== 2) say('a date cleared on the eggs left ' + JSON.stringify(KP) + ', where the date is gone and the count stays');
+      const BADD = await kp.evaluate(() => { const i = document.querySelector('#docBody [data-kt=date-egg]'); i.value = '2026-02-30'; const had = i.value; return had; });
+      if (BADD) { await kp.evaluate(() => document.querySelector('#docBody [data-kt=date-egg]').dispatchEvent(new Event('change'))); await kp.waitForTimeout(50); if ((await kp.evaluate(() => window.__stock.p1.find(t => t[0] === 'egg').length)) !== 2) say('a date that is not one (2026-02-30) was kept on the eggs'); }
+      /* a thing put in another place takes its date with it */
+      const HD = await kp.evaluate(() => { kitTake(0, 'rice'); const h = KITHAND && KITHAND.thing.date; kitOpen('__s8_tools', 2); return h; }); await kp.waitForTimeout(66);
+      await kp.evaluate(() => { const b = document.querySelector('#docBody .dbtn'); if (b) b.click(); }); await kp.waitForTimeout(50);
+      const MV = await kp.evaluate(() => ({ from: window.__stock.p1.map(t => t[0]), to: (window.__stock.p3 || []).find(t => t[0] === 'rice') }));
+      if (HD !== '2026-10-30' || !MV.to || MV.to[2] !== '2026-10-30' || MV.from.includes('rice')) say('a thing with a date put in another place arrived as ' + JSON.stringify(MV.to) + ', where its date goes with it');
+      await kp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); kitHandBack(); });
+      /* the same thing put where it is already, with a date of its own: the counts join and the earlier date stands */
+      await kp.evaluate(() => { window.__stock.p1 = [['egg', 2, '2026-11-20']]; window.__stock.p3 = [['egg', 3, '2026-11-05']]; kitTake(0, 'egg'); kitOpen('__s8_tools', 2); }); await kp.waitForTimeout(66);
+      await kp.evaluate(() => { const b = document.querySelector('#docBody .dbtn'); if (b) b.click(); }); await kp.waitForTimeout(50);
+      const JN = await kp.evaluate(() => window.__stock.p3.find(t => t[0] === 'egg'));
+      if (!JN || JN[1] !== 5 || JN[2] !== '2026-11-05') say('eggs put where eggs are, one dated Nov 5 and one Nov 20, are ' + JSON.stringify(JN) + ', where the counts join (5) and the earlier date stands');
+      await kp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); kitHandBack(); });
+      /* a keep that throws changes nothing and says so */
+      await kp.evaluate(() => { window.__stock.p1 = [['egg', 12]]; window.__keepThrow = true; kitOpen('__s8_tools', 0); }); await kp.waitForTimeout(66);
+      const before = await kp.evaluate(() => JSON.stringify(window.__stock)); await kp.click('#docBody [data-kt=plus-egg]'); await kp.waitForTimeout(50);
+      const after = await kp.evaluate(() => JSON.stringify(window.__stock));
+      if (before !== after) say('a keep that throws changed what the kitchen keeps');
+      await kp.evaluate(() => { window.__keepThrow = false; if (!$('reader').hidden) $('docClose').click(); });
+      /* a thing of his own: a name and a place; refused as empty, too long, taken (either language, either case), kept trimmed and as text */
+      await kp.evaluate(() => { window.__stock = { p1: [['egg', 12, '2026-11-20']], p3: [['lime', 3]], p6: [], p7: [] }; window.__own = {}; window.__keeps = []; window.__go('__s8_tools', 2, 2); }); await kp.waitForTimeout(66);
+      await kp.click('#kitBtn'); await kp.waitForTimeout(66);
+      const add = async (name, place) => { await kp.fill('#kpName', name); if (place) await kp.selectOption('#kpPlace', place); await kp.click('#kpAddBtn'); await kp.waitForTimeout(50);
+        return kp.evaluate(() => ({ say: $('kpSay').textContent, own: JSON.stringify(window.__own), keeps: window.__keeps.length })); };
+      let A = await add('   ', 'p1'); if (A.keeps || !A.say) say('an empty name was added or said nothing (' + JSON.stringify(A) + ')');
+      A = await add('Eggs', 'p1'); if (A.keeps || !/already/.test(A.say)) say('a name that is on the page already (Eggs) was added or said nothing (' + JSON.stringify(A) + ')');
+      A = await add('huevos', 'p1'); if (A.keeps || !/already/.test(A.say)) say('a name that is on the page in the other language (huevos) was added (' + JSON.stringify(A) + ')');
+      A = await kp.evaluate(() => { const before = window.__keeps.length; kitOwnAdd('x'.repeat(41), 'p1'); return { keeps: window.__keeps.length - before, say: $('kpSay').textContent }; });
+      if (A.keeps || !/at most 40/.test(A.say)) say('a name of 41 characters was added or said nothing (' + JSON.stringify(A) + ')');
+      A = await add('  Salsa verde  ', 'p3'); const st = await kp.evaluate(() => ({ own: window.__own, p3: window.__stock.p3, keeps: window.__keeps.map(k => JSON.stringify(k)) }));
+      if (JSON.stringify(st.own) !== '{"o-1":"Salsa verde"}' || !st.p3.some(t => t[0] === 'o-1' && t[1] === 1) || st.keeps.length !== 1) say('adding "  Salsa verde  " to the counter kept ' + JSON.stringify(st) + ', where it is "Salsa verde", one of it, in the counter, in one change');
+      A = await add('salsa VERDE', 'p1'); if (!/already/.test(A.say)) say('the same name in another case was added (' + JSON.stringify(A) + ')');
+      A = await add('<b>Hot</b> <img src=x onerror=window.__pwn=1>', 'p1'); const mk = await kp.evaluate(() => ({ own: window.__own, pwn: !!window.__pwn, imgs: document.querySelectorAll('#kitPanel img').length, text: $('kpOwn').innerText }));
+      if (mk.pwn || mk.imgs || !/<b>Hot<\/b>/.test(mk.text)) say('a name made of markup ran or was drawn as markup (' + JSON.stringify(mk) + '), where it is shown as the text typed');
+      const MS = await SR('hot');
+      if (MS.imgs || MS.pwn || MS.rows.length !== 1 || !/^<b>Hot<\/b> <img src=x onerror=window\.__p — /.test(MS.rows[0])) say('a thing named with markup, found by a search, is shown as ' + JSON.stringify(MS.rows) + ' with ' + MS.imgs + ' elements made, where it is the text typed and nothing runs');
+      await kp.evaluate(() => { window.__own = { 'o-1': 'Salsa verde' }; window.__stock.p1 = window.__stock.p1.filter(t => t[0] !== 'o-2'); kitToolsRender(); });
+      /* renamed, moved, removed (asking first) */
+      await kp.click('[data-kt=own-rename-btn-o-1]'); await kp.fill('[data-kt=own-rename-o-1]', 'Salsa roja'); await kp.keyboard.press('Enter'); await kp.waitForTimeout(50);
+      if ((await kp.evaluate(() => window.__own['o-1'])) !== 'Salsa roja') say('an item of his own was not renamed');
+      await kp.click('[data-kt=own-rename-btn-o-1]'); await kp.fill('[data-kt=own-rename-o-1]', 'Eggs'); await kp.keyboard.press('Enter'); await kp.waitForTimeout(50);
+      if ((await kp.evaluate(() => window.__own['o-1'])) !== 'Salsa roja') say('an item of his own was renamed to a name that is on the page already');
+      await kp.keyboard.press('Escape'); await kp.waitForTimeout(50);
+      if (await vis('#kitPanel')) { /* Escape in a rename field puts the field away, not the panel */ } else say('Escape in the rename field shut the whole panel, where it puts the field away');
+      await kp.selectOption('[data-kt=own-move-o-1]', 'p7'); await kp.waitForTimeout(50);
+      if (!(await kp.evaluate(() => window.__stock.p7.some(t => t[0] === 'o-1') && !window.__stock.p3.some(t => t[0] === 'o-1')))) say('an item of his own was not moved to the freezer');
+      await kp.click('[data-kt=own-remove-o-1]'); await kp.waitForTimeout(50);
+      if (!(await kp.evaluate(() => !!window.__own['o-1']))) say('Remove took the item out without asking first');
+      await kp.click('[data-kt=own-remove-no-o-1]'); await kp.waitForTimeout(50);
+      if (!(await kp.evaluate(() => !!window.__own['o-1']))) say('"No, keep it" removed the item');
+      await kp.click('[data-kt=own-remove-o-1]'); await kp.click('[data-kt=own-remove-yes-o-1]'); await kp.waitForTimeout(50);
+      if (await kp.evaluate(() => !!window.__own['o-1'] || window.__stock.p7.some(t => t[0] === 'o-1'))) say('an item of his own asked to be removed was still kept');
+      /* nothing left the device, and nothing was kept by the engine */
+      if (kReq.length) say('the page asked ' + kReq.length + ' address(es) outside itself: ' + kReq.slice(0, 2).join(' '));
+      console.log('  COUNT-ONLY: the closet and the shapes held to their bytes, the corner at four facings, and the kitchen\'s tools: the button and its keys, the panel in full screen, dates in both languages, the drawer, Use soon at day 30 and 31, the search with markup and patterns, own items added, renamed, moved and removed, a page\'s fullness, count and date');
+    } catch (e) { if (e === 'SKIP8A') console.log('  COUNT-ONLY: this is a small fixture shell, so the corner and the kitchen\'s tools were not asked here; the shapes and the closet were'); else if (!kLoaded) { /* said above */ } else say('the kitchen\'s tools could not be driven to the end, so they measured nothing after: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' ')); }
+    kErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await kp.close();
+    fails.push(...S8.map(m => 'the kitchen room, the closet and the tools (sprint 8a): ' + m));
+    if (process.env.MQ_ONLY_8A) { if (fails.length) { console.log('FAIL (8a only)\n- ' + fails.join('\n- ')); process.exit(1); } console.log('OK (8a only)'); process.exit(0); }
+  }
+
   /* ---- THE KITCHEN'S ONE COPY (2026-10-29) ----
      engine/kitchen.js holds the kinds of place a kitchen wall has, the rows they stand in, where a kitchen starts, the
      shape each kind is built with and how high each stands. A game's page reads it as its only copy, so a fault in it is
