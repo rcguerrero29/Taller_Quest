@@ -1222,3 +1222,10 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   trimmed, a count under 1, a date lost on the way, and fullness kept through `keep`.
 - **Not done.** No picture for an item of the player's own; no second date for one thing; the panel does not narrow the room's
   drawing beside it (it stands over the right of it); no phone measured here (the town's own check takes it at 390 by 844).
+
+- **Review round, 2026-11-02.** The gold frame at a corner was a hairline on the piece's front, which the camera sees edge-on on a side
+  wall. The piece faced now also wears a thick gold rim along its top edges and a gold ring on the floor square in front of it
+  (`kitFaceMark`); the glow and pick frames are as they were. **Measured**: gold pixels (#F2C230 within 40 a channel) in a crop round the
+  piece, 544 at a laptop's size and 149 at a phone's, against 0 and 1 for the hairline; the check asks 200 and 60. Also held now: an own
+  item's name is counted in characters (21 emoji), has no direction control (U+202A to 202E, 2066 to 2069, 200E, 200F), a count stops at 99
+  and "−" at 1 leaves 1, nothing glows after the room is left, and two things with one date list in name order.

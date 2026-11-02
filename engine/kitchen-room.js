@@ -1,6 +1,6 @@
 /* =========================================================
    THE KITCHEN ROOM — the kitchen wall, its things, its hand, its closet and its builder (sprint 8a, 2026-11-02)
-   Moved here, byte for byte, out of engine/engine.js, so the kitchen's tools (sprint 8a) have a file of their own and
+   Moved here, byte for byte apart from four var declarations kept in engine.js, out of engine/engine.js, so the kitchen's tools (sprint 8a) have a file of their own and
    engine.js stops growing. NOTHING CHANGES FOR A PLAYER: every shape and every page is the same, held by test/engine.smoke.js.
    It is written by engine/boot.js AFTER engine.js and before engine3d.js, in the same global scope, as engine3d.js is: what
    engine.js runs at load and needs from here is a `var` read unset (kitBuildReady, kitEmptyAt, KITHAND), and the kitchens a
@@ -268,7 +268,8 @@ function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"
   /* the places that hold what is searched for, framed in the same gold while the results show (sprint 8a, grep "THE KITCHEN'S TOOLS") */
   if(KTOOLS.glow.size){const col=KITWALL[world].cols[c];ps.forEach(p=>{if(KTOOLS.glow.has(p.i))out.push(...kitFrame(out.filter(q=>q.place===p.i&&!q.thing&&!q.picked&&!q.faced&&!q.glow),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,glow:1,glowOf:p.i})));});}
   /* at a corner, the column the hero faces, framed in the same gold (sprint 8a, grep "AT A CORNER") */
-  if(kitFacedWas===world+"|"+c){const col=KITWALL[world].cols[c];out.push(...kitFrame(out.filter(q=>!q.thing&&!q.picked),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,faced:1})));}
+  if(kitFacedWas===world+"|"+c){const col=KITWALL[world].cols[c],fdx=col.fx<0?0:col.fx-x,fdy=col.fx<0?1:col.fy-y,mine=out.filter(q=>!q.thing&&!q.picked&&!q.glow);
+    out.push(...kitFrame(mine,fdx,fdy).concat(kitFaceMark(mine,fdx,fdy)).map(q=>({...q,faced:1})));}
   return out;}
 /* A FRAME ROUND A PICKED PIECE: four gold bars just outside the face it turns to the room, measured off its own parts as they
    stand (each turned a quarter or not at all), so it fits a fridge and a shelf alike */
@@ -285,6 +286,20 @@ function kitFrame(ps,dx,dy){if(!ps.length)return [];
     out.push({s:"box",x,y:y1+T/2,z:mz,w:0.012,h:T,d:wz,c:G},{s:"box",x,y:lo,z:mz,w:0.012,h:T,d:wz,c:G},
       {s:"box",x,y:my,z:z0-T/2,w:0.012,h:hy,d:T,c:G},{s:"box",x,y:my,z:z1+T/2,w:0.012,h:hy,d:T,c:G});}
   return out.map(q=>({...q,picked:1}));}
+/* THE FACED PIECE, SEEN FROM ABOVE (review round, 2026-11-02): the builder's frame is a hairline on the piece's front, and the camera sees a front on a side
+   wall almost edge-on, so the piece faced at a corner did not read. Two more marks in the same gold, which the camera does see: a thick rim along the
+   piece's top edges, and a ring on the floor square in front of it (the square he stands on), as wide as the fitter's tape and twice as bright */
+function kitFaceMark(ps,dx,dy){if(!ps.length)return [];
+  let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity,y1=-Infinity;
+  ps.forEach(p=>{const w=p.w!==undefined?p.w:2*(p.r||p.rb||0.03),d=p.d!==undefined?p.d:2*(p.r||p.rb||0.03),h=p.h!==undefined?p.h:2*(p.r||0.03),
+    a=Math.abs(Math.cos(p.ry||0)),b=Math.abs(Math.sin(p.ry||0)),hx=a*w/2+b*d/2,hz=b*w/2+a*d/2;
+    x0=Math.min(x0,p.x-hx);x1=Math.max(x1,p.x+hx);z0=Math.min(z0,p.z-hz);z1=Math.max(z1,p.z+hz);y1=Math.max(y1,p.y+h/2);});
+  const G="#F2C230",W=0.08,H=0.03,out=[],ty=y1+H/2-0.004,mx=(x0+x1)/2,mz=(z0+z1)/2;
+  out.push({s:"box",x:mx,y:ty,z:z0+W/2,w:x1-x0,h:H,d:W,c:G},{s:"box",x:mx,y:ty,z:z1-W/2,w:x1-x0,h:H,d:W,c:G},
+    {s:"box",x:x0+W/2,y:ty,z:mz,w:W,h:H,d:z1-z0,c:G},{s:"box",x:x1-W/2,y:ty,z:mz,w:W,h:H,d:z1-z0,c:G});   /* the top's rim */
+  const L=0.9,T=0.08,fy=0.012;
+  [[0,-L/2,L,T],[0,L/2,L,T],[-L/2,0,T,L],[L/2,0,T,L]].forEach(([cx,cz,w,d])=>out.push({s:"box",x:dx+cx,y:fy/2,z:dy+cz,w,h:fy,d,c:G}));   /* the floor ring in front */
+  return out;}
 /* the letters a flat camera draws a column with, lowest first; and the iso camera's height and colour for it */
 function kitLetters(x,y){const c=kitColAt(x,y);if(c<0||typeof KITCHEN!=="object")return [];
   return KITWALL[world].places.filter(p=>p.col===c).sort((a,b)=>KITCHEN.rank[b.row]-KITCHEN.rank[a.row]).map(p=>KITLETTER[p.kind]).filter(Boolean);}

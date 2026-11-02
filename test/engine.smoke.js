@@ -1203,6 +1203,22 @@ function findChromium() {
         if (!/freezer/i.test(C.slot || '') || /lower.cupboards/i.test(C.slot || '')) say('at the corner, facing the back wall, the slot reads ' + JSON.stringify(C.slot) + ', where it names the freezer alone');
         if (String(C.faced) !== String([C.faced[0], 0, 0]) || !C.faced[0]) say('at the corner, facing the back wall, the gold frame stands round ' + C.faced[0] + ' parts of the freezer column and ' + C.faced[1] + ' of the side wall\'s, where it is round the one faced alone');
         if (!C.gold) say('the frame at the corner is not the builder\'s gold');
+        /* the frame must be SEEN from the game's camera: gold pixels (#F2C230, within 40 a channel) in a crop round the piece faced, at a laptop's size and a phone's,
+           more than a threshold measured on the finished frame (it was a hairline before, a few pixels), and none-to-few with nothing faced */
+        const goldAt = async (vw, vh) => { await kp.setViewportSize({ width: vw, height: vh }); await kp.waitForTimeout(400);
+          const pt = await kp.evaluate(() => { const v = new THREE.Vector3(9.5, 0.5, 1.5).project(T3.cam), r = $('cv3').getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height, w: innerWidth, h: innerHeight }; });
+          const R = vw > 600 ? 70 : 50, x = Math.max(0, Math.round(pt.x - R)), y = Math.max(0, Math.round(pt.y - R)), w = Math.min(2 * R, pt.w - x), h = Math.min(2 * R, pt.h - y);
+          if (!(w > 10 && h > 10)) return -1;
+          const png = await kp.screenshot({ clip: { x, y, width: w, height: h } });
+          return kp.evaluate(async b64 => { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); const img = await createImageBitmap(new Blob([u8], { type: 'image/png' })); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+            const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 0; k < d.length; k += 4) if (Math.abs(d[k] - 0xF2) < 40 && Math.abs(d[k + 1] - 0xC2) < 40 && Math.abs(d[k + 2] - 0x30) < 40) n++; return n; }, png.toString('base64')); };
+        const GOLD_MIN = { laptop: 200, phone: 60 };   /* measured on the finished frame: 544 and 149; the hairline frame: 0 and 1 */
+        for (const [nm, vw, vh] of [['laptop', 1280, 800], ['phone', 390, 844]]) { const n = await goldAt(vw, vh);
+          if (n < 0) say('at a ' + nm + '\'s size the piece faced at the corner is not on the screen, so its frame could not be counted');
+          else if (n < GOLD_MIN[nm]) say('at a ' + nm + '\'s size the frame round the piece faced at the corner is ' + n + ' gold pixels in a crop round it, where it is seen from the camera as at least ' + GOLD_MIN[nm]);
+          if (process.env.S8_SHOTS) await kp.screenshot({ path: path.join(process.env.S8_SHOTS, 'corner-' + nm + '.png') }); }
+        await kp.setViewportSize({ width: 1280, height: 800 }); await kp.waitForTimeout(300);
+
         await turn('ArrowRight'); C = await cs();
         if (!/lower.cupboards/i.test(C.slot || '') || /freezer/i.test(C.slot || '')) say('at the corner, turned toward the side wall, the slot reads ' + JSON.stringify(C.slot) + ', where it names the side wall\'s piece alone');
         if (C.faced[0] || !C.faced[1]) say('turned toward the side wall, the gold frame did not move with him: ' + C.faced[0] + ' parts round the freezer and ' + C.faced[1] + ' round the side wall\'s piece');
@@ -1325,8 +1341,9 @@ function findChromium() {
       let KP = await kp.evaluate(() => ({ keeps: window.__keeps.map(k => JSON.stringify(k)), egg: window.__stock.p1.find(t => t[0] === 'egg'), salt: window.__stock.p1.find(t => t[0] === 'salt') }));
       if (!KP.egg || KP.egg[1] !== 13) say('a press on + for the eggs left them at ' + JSON.stringify(KP.egg) + ', where they are 13');
       if (!KP.salt || KP.salt[1] !== 1 || KP.salt[2] !== '2026-11-10') say('a press on − for the salt left it at ' + JSON.stringify(KP.salt) + ', where it is 1 and keeps its date');
-      for (let k = 0; k < 3; k++) await kp.click('#docBody [data-kt=minus-salt]');
-      if ((await kp.evaluate(() => window.__stock.p1.find(t => t[0] === 'salt')[1])) !== 1) say('the count went below 1');
+      const MN = await kp.evaluate(() => { const out = []; for (let k = 0; k < 3; k++) { const b = document.querySelector('#docBody [data-kt=minus-salt]'); if (b) b.click(); }
+        const c = document.querySelector('#docBody [data-kt=count-salt]'); return { reads: c ? c.textContent : null, kept: (window.__stock.p1.find(t => t[0] === 'salt') || [])[1] }; });
+      if (MN.reads !== '1' || MN.kept !== 1) say('three presses on − at a count of 1: the count reads ' + JSON.stringify(MN.reads) + ' and the kept count is ' + MN.kept + ', where it reads 1 and stays 1');
       await kp.fill('#docBody [data-kt=date-egg]', '2026-11-15'); await kp.waitForTimeout(50);
       KP = await kp.evaluate(() => ({ egg: window.__stock.p1.find(t => t[0] === 'egg'), order: [...document.querySelectorAll('#docBody .dcell b')].map(b => b.textContent) }));
       if (!KP.egg || KP.egg[2] !== '2026-11-15') say('a date set on the eggs was kept as ' + JSON.stringify(KP.egg) + ', where it is 2026-11-15');
@@ -1387,6 +1404,27 @@ function findChromium() {
       if (!(await kp.evaluate(() => !!window.__own['o-1']))) say('"No, keep it" removed the item');
       await kp.click('[data-kt=own-remove-o-1]'); await kp.click('[data-kt=own-remove-yes-o-1]'); await kp.waitForTimeout(50);
       if (await kp.evaluate(() => !!window.__own['o-1'] || window.__stock.p7.some(t => t[0] === 'o-1'))) say('an item of his own asked to be removed was still kept');
+      /* his own thing's name: counted in characters, never in UTF-16 units; no direction control in what is shown or kept; a count capped at 99; nothing glowing once the room is left; equal dates in name order */
+      await kp.evaluate(() => { window.__stock = { p1: [['egg', 99], ['tea', 1, '2026-11-10'], ['salt', 1]], p3: [], p4: [['beans', 1, '2026-11-10']], p6: [], p7: [] }; window.__own = {}; window.__keeps = []; window.__go('__s8_tools', 2, 2); }); await kp.waitForTimeout(100);
+      if (!(await vis('#kitPanel'))) await kp.click('#kitBtn'); await kp.waitForTimeout(100);
+      const EM = await kp.evaluate(() => { kitOwnAdd('😀'.repeat(21), 'p1'); return Object.values(window.__own); });
+      if (EM.length !== 1 || Array.from(EM[0]).length !== 21) say('an own item of 21 emoji (42 UTF-16 units, 21 characters) was kept as ' + JSON.stringify(EM) + ', where a name is counted in characters and 21 are accepted');
+      const BD2 = await kp.evaluate(() => { const names = ['p\u202Eq', 'r\u2066s', 't\u2069u', 'v\u200Ew', 'y\u200Fz', 'a\u2067b', 'c\u202Ad']; names.forEach(n => kitOwnAdd(n, 'p1')); const kept = Object.values(window.__own).filter(n => !/^\u{1F600}/u.test(n));
+        return { kept, bad: kept.filter(n => /[\u202A-\u202E\u2066-\u2069\u200E\u200F]/.test(n)).length, shown: /[\u202A-\u202E\u2066-\u2069\u200E\u200F]/.test($('kpOwn').textContent) }; });
+      if (BD2.bad || BD2.shown) say('an own item named with a direction control (U+202E, U+2066 to 2069, U+200E, U+200F) was kept or shown with it: ' + JSON.stringify(BD2.kept.map(n => Array.from(n).map(c => c.codePointAt(0).toString(16)).join(' '))));
+      await kp.evaluate(() => { window.__own = {}; window.__stock.p1 = [['egg', 99], ['tea', 1, '2026-11-10'], ['salt', 1]]; kitToolsRender(); kitOpen('__s8_tools', 0); }); await kp.waitForTimeout(150);
+      await kp.evaluate(() => { const b = document.querySelector('#docBody [data-kt=plus-egg]'); if (b) b.click(); });
+      const CAP = await kp.evaluate(() => (window.__stock.p1.find(t => t[0] === 'egg') || [])[1]);
+      if (CAP !== 99) say('a press on + at a count of 99 left the count at ' + CAP + ', where 99 is the most');
+      await kp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); });
+      await kp.click('#kitBtn'); await kp.waitForTimeout(100);
+      const TIE = await kp.evaluate(() => { kitToolsRender(); return [...$('kpSoon').querySelectorAll('button')].map(b => b.innerText.split('\n')[0].split(' — ')[0]); });
+      if (TIE.join() !== 'Beans,Tea') say('two things with one date are listed ' + JSON.stringify(TIE) + ', where they stand in name order (Beans, Tea)');
+      await kp.fill('#kpSearch', 'e'); await kp.waitForTimeout(100);
+      const GL = await kp.evaluate(() => KTOOLS.glow.size); if (!GL) say('a search did not make a place glow, so what happens to the glow on leaving was not asked');
+      await kp.evaluate(() => window.__go('__s8_plain', 2, 2)); await kp.waitForTimeout(150);
+      const G2 = await kp.evaluate(() => { const n = KTOOLS.glow.size; window.__go('__s8_tools', 2, 2); const parts = KITWALL.__s8_tools.cols.reduce((a, c) => a + kitColumnParts({ x: c.x, y: c.y }).filter(q => q.glowOf !== undefined).length, 0); return { n, parts }; });
+      if (G2.n || G2.parts) say('after leaving the room the search\'s glow stays (' + G2.n + ' places, ' + G2.parts + ' gold parts when the room is entered again), where nothing glows');
       /* nothing left the device, and nothing was kept by the engine */
       if (kReq.length) say('the page asked ' + kReq.length + ' address(es) outside itself: ' + kReq.slice(0, 2).join(' '));
       console.log('  COUNT-ONLY: the closet and the shapes held to their bytes, the corner at four facings, and the kitchen\'s tools: the button and its keys, the panel in full screen, dates in both languages, the drawer, Use soon at day 30 and 31, the search with markup and patterns, own items added, renamed, moved and removed, a page\'s fullness, count and date');
