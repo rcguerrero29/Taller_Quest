@@ -1056,9 +1056,9 @@ window.addEventListener("resize",()=>kitToolsPlace());document.addEventListener(
 function kitToolsBuild(){if(KTOOLS.el)return KTOOLS.el;const vp=$("vp");if(!vp)return null;
   const el=kh("div",{position:"absolute",top:"0",right:"0",bottom:"0",zIndex:"7",overflowY:"auto",boxSizing:"border-box",padding:"12px",background:"rgba(20,16,30,.96)",color:"#EDE9F5",font:"500 14px "+KT_FONT,
     display:"flex",flexDirection:"column",gap:"10px"},undefined,{id:"kitPanel",role:"dialog","aria-label":"Kitchen"});el.hidden=true;
-  const head=kh("div",{display:"flex",justifyContent:"space-between",alignItems:"center"});
-  head.appendChild(kh("b",{fontSize:"17px"},"",{id:"kpTitle"}));
-  head.appendChild(kitBtn("✕",()=>kitToolsClose(),{},{id:"kpClose"}));el.appendChild(head);
+  const head=kh("div",{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px"});   /* the title has its own flexible space (it may wrap) beside a ✕ that keeps its size, top right */
+  head.appendChild(kh("b",{fontSize:"17px",flex:"1 1 auto",minWidth:"0",overflowWrap:"anywhere"},"",{id:"kpTitle"}));
+  head.appendChild(kitBtn("✕",()=>kitToolsClose(),{flex:"0 0 auto"},{id:"kpClose"}));el.appendChild(head);
   const q=kh("input",Object.assign({},KT_IN,{width:"100%"}),undefined,{id:"kpSearch",type:"text",maxlength:String(KITSEARCH),autocomplete:"off",spellcheck:"false"});
   q.addEventListener("input",()=>{KTOOLS.q=q.value;kitToolsRender();});
   q.addEventListener("keydown",e=>{if(e.key==="Enter"){const K=kitToolsK(),r=K?kitSearchRows(K,q.value):[];if(r.length){e.preventDefault();kitToolsPick(r[0].p.i);}}});
@@ -1080,8 +1080,10 @@ function kitToolsBuild(){if(KTOOLS.el)return KTOOLS.el;const vp=$("vp");if(!vp)r
   el.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();kitToolsClose();}});
   vp.appendChild(el);KTOOLS.el=el;kitToolsPlace();return el;}
 /* THE PANEL NARROWED TO ONE PLACE (a sign's tap): its title says so, and only that place's use-soon things stand in it, soonest first; the search, the drawer and the rest are put away until the panel is shut */
+/* each part of the panel shown as it was built or put away, its own display kept for when it comes back (the add form and the head are flex boxes) */
+function kitPanelParts(el,keep){[...el.children].forEach(c=>{if(keep(c)){if(c.dataset.kd!==undefined){c.style.display=c.dataset.kd;delete c.dataset.kd;}}else if(c.dataset.kd===undefined){c.dataset.kd=c.style.display;c.style.display="none";}});}
 function kitToolsNarrow(K,names,i){const el=KTOOLS.el,t=n=>$(n);
-  [...el.children].forEach(c=>{c.style.display=(c.id==="kpSoon"||c===t("kpTitle").parentElement)?"":"none";});
+  kitPanelParts(el,c=>c.id==="kpSoon"||c===t("kpTitle").parentElement);
   t("kpTitle").textContent=kitFill(kitW("ktSoonAt","Use soon · {place}"),{place:names[i]});t("kpClose").setAttribute("aria-label",kitW("ktClose","Close"));
   const rows=kitDue(K).soon.filter(r=>r.p.i===i);kitGlowSet(new Set([i]));
   const so=t("kpSoon");so.textContent="";
@@ -1093,7 +1095,7 @@ function kitToolsRow(K,names,r,dated){const b=kitBtn("",()=>kitToolsPick(r.p.i),
 function kitToolsRender(){const K=kitToolsK(),el=KTOOLS.el;if(!el||!K)return;
   const names=kitPlaceNames(K),t=n=>$(n),only=KTOOLS.only!==null&&names[KTOOLS.only]!==undefined?KTOOLS.only:null;
   if(only!==null){kitToolsNarrow(K,names,only);return;}
-  [...el.children].forEach(c=>{c.style.display="";});   /* the whole panel, as it is when it is not narrowed to one place */
+  kitPanelParts(el,()=>true);   /* the whole panel, as it is when it is not narrowed to one place */
   t("kpTitle").textContent=kitW("ktTitle","Kitchen");t("kpClose").setAttribute("aria-label",kitW("ktClose","Close"));
   const q=t("kpSearch");q.placeholder=kitW("ktSearchPh","Search every place");q.setAttribute("aria-label",kitW("ktSearch","Search every place"));if(q.value!==KTOOLS.q)q.value=KTOOLS.q;
   const rs=t("kpResults");rs.textContent="";const rows=kitSearchRows(K,KTOOLS.q);
@@ -1140,7 +1142,7 @@ function kitToolsOpen(only){const K=kitToolsK();if(!K||$("world").hidden||KTOOLS
   const q=$("kpSearch");if(q)q.focus();return true;}
 function kitToolsClose(){if(!KTOOLS.open)return false;KTOOLS.open=false;if(KTOOLS.el)KTOOLS.el.hidden=true;KTOOLS.edit=null;KTOOLS.say="";
   const was=KTOOLS.only;KTOOLS.only=null;kitGlowSet(new Set());kitToolsShow();
-  if(was!==null){KSIGN.back=was;return true;}   /* opened from a sign: focus goes back to that sign when it returns */
+  if(was!==null){KSIGN.back=was;KSIGN.backW=world;return true;}   /* opened from a sign: focus goes back to that sign when it returns */
   const b=KTOOLS.btn;if(b&&!b.hidden)b.focus();return true;}
 /* a pick: the panel is put down and that place opens (its doors, its page) */
 function kitToolsPick(i){const id=world;kitToolsClose();KSIGN.back=null;return kitOpen(id,i);}
@@ -1169,12 +1171,12 @@ function kitToolsKey(e){if(!kitToolsK()||e.ctrlKey||e.metaKey||e.altKey||e.repea
    narrowed to that place's use-soon things. WHEN TWO WOULD TOUCH the later one shrinks to its gold count alone (its words stay as its
    accessible name), then moves up until it is clear; no sign covers the Kitchen button, the slot, the view's button columns or another sign.
    The hit area is at least 44 by 44 px on a phone. What it counts is read when the room is built again and four times a second after. */
-const KSIGN={els:new Map(),on:false,key:"",t:0,tally:null,back:null,stale:true};
+const KSIGN={els:new Map(),on:false,tm:0,key:"",t:0,tally:null,back:null,backW:"",stale:true};
 const KSIGN_AVOID="#kitBtn,#read,#talk,#serve,.acts,#rot3d,#zoomIn3d,#zoomOut3d,.gear";
 /* a sign wanted at all: the game asked, and the room is the 3D camera's with nothing picked or open */
 function kitSignWanted(){const K=kitToolsK();if(!K||!K.tools||K.tools.signs!==true)return null;
   if(camMode!=="3d"||typeof T3!=="object"||!T3||!T3.cam||T3.fail||typeof THREE!=="object"||$("world").hidden||$("cv3").hidden)return null;
-  if(KTOOLS.open||kitNow||worldCovered()||(kitBuildReady&&kitBuildSel()!==null))return null;
+  if(KTOOLS.open||kitNow||worldCovered()||(kitBuildReady&&kitBuildOn()))return null;   /* with builder mode on the signs stay away, picked piece or none: the bar and its frame are the room's business then */
   return K;}
 /* each place's use-soon count and where its top-centre stands in the world, read again when the room or the language changes, when a change is kept, and a few times a second */
 function kitSignTally(K,ts){const key=world+"|"+lang+"|"+String(T3.builtKey);
@@ -1204,7 +1206,8 @@ function kitSignDress(e,n,full,wide){const pill=e.firstChild,c=pill.querySelecto
   else if(wide){Object.assign(st,{borderRadius:"16px",width:"",height:"",padding:"7px 11px",lineHeight:"1"});c.style.fontSize="12px";c.style.display="inline";c.textContent=n+" ";w.style.display="inline";w.style.fontSize="12px";}
   else{Object.assign(st,{borderRadius:"11px",width:"",height:"",padding:"4px 8px",lineHeight:"1"});c.style.fontSize="16px";c.style.display="block";c.style.lineHeight="1";w.style.display="block";w.style.fontSize="10px";w.style.fontWeight="600";w.style.lineHeight="1.2";}}
 function kitSignLoop(ts){KSIGN.on=false;const K=kitSignWanted();
-  if(!K){KSIGN.els.forEach(e=>{e.hidden=true;});if(kitToolsK()&&kitToolsK().tools.signs===true)kitSignKick();return;}   /* nothing wanted now: they are put away, and looked at again next frame */
+  if(!K){KSIGN.els.forEach(e=>{e.hidden=true;});if(KSIGN.back!==null&&KSIGN.backW!==world)KSIGN.back=null;
+    const k=kitToolsK();if(k&&k.tools.signs===true){KSIGN.on=true;KSIGN.tm=setTimeout(()=>{KSIGN.tm=0;requestAnimationFrame(kitSignLoop);},250);}return;}   /* nothing wanted now: they are put away and asked again four times a second, not every frame (so no place that changes what is wanted, the camera, the panel, a page, the builder, a room, can be missed) */
   KSIGN.on=true;requestAnimationFrame(kitSignLoop);
   const vp=$("vp"),vr=vp.getBoundingClientRect(),cr=$("cv3").getBoundingClientRect(),tally=kitSignTally(K,ts),wide=vr.width>=700,touch=vr.width<500||(window.matchMedia&&matchMedia("(pointer:coarse)").matches),min=touch?44:30;
   T3.cam.updateMatrixWorld();
@@ -1216,7 +1219,7 @@ function kitSignLoop(ts){KSIGN.on=false;const K=kitSignWanted();
   const placed=[];
   pts.forEach(p=>{const i=p.a.i;let e=KSIGN.els.get(i);if(!e){e=kitSignMake(i);KSIGN.els.set(i,e);}e.hidden=false;seen.add(i);
     const rect=(full)=>{kitSignDress(e,p.a.n,full,wide);const w=Math.max(min,e.firstChild.offsetWidth),h=Math.max(min,e.firstChild.offsetHeight+6);e.style.width=w+"px";e.style.height=h+"px";
-      const x=Math.min(vr.width-w/2-2,Math.max(w/2+2,p.x));return {l:x-w/2,r:x+w/2,t:p.y-4-h,b:p.y-4,x};};
+      const x=Math.min(vr.width-w/2-2,Math.max(w/2+2,p.x)),y=Math.min(vr.height-2,Math.max(h+6,p.y-4));return {l:x-w/2,r:x+w/2,t:y-h,b:y,x};};
     const hits=r=>placed.some(o=>kitSignHit(r,o))||avoid.some(o=>kitSignHit(r,o));
     let r=rect(true);
     if(hits(r))r=rect(false);   /* where it would touch, a sign shrinks to its gold count alone */
@@ -1228,8 +1231,9 @@ function kitSignLoop(ts){KSIGN.on=false;const K=kitSignWanted();
     const pl=e.firstChild,tl=pl.lastChild,pw=pl.offsetWidth;tl.style.left=Math.round(Math.max(9,Math.min(pw-9,p.x-(r.l+(r.r-r.l-pw)/2))))+"px";   /* its tail points at the place, wherever the sign had to stand */
     placed.push(r);e.style.transform="translate("+Math.round(r.l)+"px,"+Math.round(r.t)+"px)";});
   KSIGN.els.forEach((e,i)=>{if(!seen.has(i))e.hidden=true;});
-  if(KSIGN.back!==null){const e=KSIGN.els.get(KSIGN.back);KSIGN.back=null;if(e&&!e.hidden)e.focus();}}
-function kitSignKick(){if(KSIGN.on||!kitToolsK()||kitToolsK().tools.signs!==true){if(!KSIGN.on)KSIGN.els.forEach(e=>{e.hidden=true;});return;}KSIGN.stale=true;KSIGN.on=true;requestAnimationFrame(kitSignLoop);}
+  if(KSIGN.back!==null){const e=KSIGN.els.get(KSIGN.back),ok=KSIGN.backW===world&&seen.has(KSIGN.back);KSIGN.back=null;if(ok&&e&&!e.hidden)e.focus();}}   /* focus goes back once, to the sign it came from, in the room it came from; a room that changed or a place with nothing due any more lets it go */
+function kitSignKick(){if(KSIGN.tm){clearTimeout(KSIGN.tm);KSIGN.tm=0;requestAnimationFrame(kitSignLoop);return;}   /* a change that may make the signs wanted does not wait for the next look */
+  if(KSIGN.on||!kitToolsK()||kitToolsK().tools.signs!==true){if(!KSIGN.on)KSIGN.els.forEach(e=>{e.hidden=true;});return;}KSIGN.stale=true;KSIGN.on=true;requestAnimationFrame(kitSignLoop);}
 /* THE KITCHEN WALLS A WORLD DECLARES, laid once its rooms stand as this device last left them (the edits above), so a
    layout is checked against the map the person will walk in (grep "THE KITCHEN LAYOUT"). Nothing, for a world without. */
 if(typeof KITCHENWALLS==="object"&&KITCHENWALLS)Object.keys(KITCHENWALLS).forEach(id=>kitchenLay(id,KITCHENWALLS[id]));

@@ -1486,15 +1486,15 @@ function findChromium() {
         Object.assign(UI.en, { ktMonths: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] });
         Object.assign(UI.es, { ktMonths: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'], ktToday: 'hoy', ktIn: 'en {n} días', ktInOne: 'en 1 día', ktAgo: 'hace {n} días', ktAgoOne: 'hace 1 día', ktDate: '{d} {month}', ktDateY: '{d} {month} {y}', ktTitle: 'Cocina', ktBtn: 'Cocina', ktSign: '{n} usar pronto', ktSignWords: 'usar pronto', ktSoonAt: 'Usar pronto · {place}' });
         Object.assign(UI.en, { ktSign: '{n} use soon', ktSignWords: 'use soon', ktSoonAt: 'Use soon · {place}' });
-        UI.en.kitKinds = { fridge: 'Fridge', freezer: 'Freezer', 'upper-cupboards': 'Upper cupboards', 'lower-cupboards': 'Lower cupboards', drawers: 'Drawers', shelves: 'Shelves', counter: 'Counter' }; UI.es.kitKinds = { fridge: 'Refrigerador', freezer: 'Congelador', 'upper-cupboards': 'Alacenas', 'lower-cupboards': 'Gabinetes', drawers: 'Cajones', shelves: 'Repisas', counter: 'Mesón' };
+        UI.en.kitKinds = { fridge: 'Fridge', freezer: 'Freezer', 'upper-cupboards': 'Upper cupboards', 'lower-cupboards': 'Lower cupboards', drawers: 'Drawers', shelves: 'Shelves', counter: 'Counter' }; UI.es.kitKinds = { fridge: 'Refrigerador', freezer: 'Congelador', 'upper-cupboards': 'Gabinetes de arriba de la cocina', 'lower-cupboards': 'Gabinetes de abajo', drawers: 'Cajones', shelves: 'Repisas', counter: 'Mesón' };
         const R = ['############', '#' + KITCOL.repeat(4) + '.....##', '#..........#', '#..........#', '#..........#', '############'];
         const NAMES = { egg: 'Eggs', milk: 'Milk', lime: 'Limes', corn: 'Corn', chile: 'Chile powder', beans: 'Beans', rice: 'Rice', salt: 'Salt', tea: 'Tea', oil: 'Oil' };
         window.__stock = {}; window.__keeps = [];
         const things = pl => (window.__stock[pl.id] || []).map(([id, n, date]) => { const t = { id, n, name: NAMES[id], parts: [{ s: 'cyl', y: 0.04, r: 0.05, h: 0.08, c: '#C04020' }] }; if (date) t.date = date; return t; });
-        const commit = ch => { window.__keeps.push(ch); };
+        const commit = ch => { window.__keeps.push(ch); Object.keys(ch.places || {}).forEach(pid => { window.__stock[pid] = ch.places[pid].map(t => t.date ? [t.id, t.n, t.date] : [t.id, t.n]); }); };
         const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
-        ['__s8b_signs', '__s8b_nosign'].forEach(ID => { WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 12, H: 6 };
-          const tools = { own: () => ({}), keep: commit }; if (ID === '__s8b_signs') tools.signs = true;
+        ['__s8b_signs', '__s8b_signs2', '__s8b_nosign'].forEach(ID => { WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 12, H: 6 };
+          const tools = { own: () => ({}), keep: commit }; if (ID !== '__s8b_nosign') tools.signs = true;
           const s = kitchenLay(ID, { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places: places.map(p => Object.assign({}, p)), things, keep: ch => commit({ places: ch }), tools, gaps: true, store: () => {}, page: pl => [{ p: 'inside ' + pl.id }] });
           if (s) throw new Error('the signs kitchen was refused: ' + s); });
         window.__go = (id, x, y) => { world = id; px = fx = x; py = fy = y; dir = 'up'; enterWorld(false); camSet('3d'); document.querySelectorAll('.settings').forEach(q => { q.hidden = true; }); checkTalk(); };
@@ -1507,7 +1507,7 @@ function findChromium() {
       /* the stock: one place with one thing due (and a thing past its date, which is not counted), one with three (day 0, day 8 and day 30), one with only things past their date, one with a thing on day 31, one with none dated, one empty */
       const STOCK1 = { p1: [['egg', 12, '2026-11-06'], ['milk', 1, '2026-10-30']], p3: [['chile', 1, '2026-12-02'], ['lime', 3, '2026-11-02'], ['corn', 1, '2026-11-10']], p4: [['beans', 2, '2026-10-20'], ['rice', 1, '2026-10-01']], p5: [['salt', 1, '2026-12-03']], p6: [], p7: [['tea', 1]] };
       const STOCK2 = { p1: [['egg', 1, '2026-11-06']], p2: [['milk', 1, '2026-11-03'], ['rice', 1, '2026-11-04']], p5: [['salt', 1, '2026-11-20']], p7: [['tea', 3, '2026-11-09']] };   /* four places in four columns side by side: they touch at a laptop's size */
-      const setStock = (st, id) => sp.evaluate(([st, id]) => { window.__stock = st; window.__go(id || '__s8b_signs', 2, 2); }, [st, id]);
+      const setStock = (st, id) => sp.evaluate(([st, id]) => { window.__stock = st; KSIGN.stale = true; window.__go(id || '__s8b_signs', 2, 2); }, [st, id]);
       const signs = () => sp.evaluate(() => [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.getBoundingClientRect().width > 0).map(e => { const r = e.getBoundingClientRect(); return { i: +e.dataset.ksign, kind: KITWALL[world].places[+e.dataset.ksign].kind, label: e.getAttribute('aria-label'), form: e.dataset.form, text: e.innerText.replace(/\s+/g, ' ').trim(), l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; }));
       const none = () => sp.waitForFunction(() => ![...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden && e.getBoundingClientRect().width > 0), null, { timeout: 4000 });
       const some = n => sp.waitForFunction(n => [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.getBoundingClientRect().width > 0).length === n, n, { timeout: 4000 });
@@ -1552,6 +1552,35 @@ function findChromium() {
         if (G.out.length) say('at ' + nm + ' a sign covers what it must not: ' + G.out.slice(0, 3).join('; '));
         if (w < 500 && G.small) say('on a phone ' + G.small + ' sign(s) have a hit area under 44 by 44 px');
         shrunk[nm] = G.forms;
+        /* the button column and the slot stood under a place: the fixture slides the column (the slot is in it) over a place's sign and the signs keep clear of both */
+        const AS = await sp.evaluate(() => { const a = $('acts'), rd = $('read'); if (!a || !rd || rd.hidden) return { noslot: true }; const was = a.style.cssText, vr = $('vp').getBoundingClientRect(), cr = $('cv3').getBoundingClientRect(); T3.cam.updateMatrixWorld();
+          const t0 = KSIGN.tally[0], v = new THREE.Vector3(t0.wx, t0.wy, t0.wz).project(T3.cam), x = cr.left + (v.x + 1) / 2 * cr.width, y = cr.top + (1 - v.y) / 2 * cr.height;
+          a.dataset.was = was; a.style.right = 'auto'; a.style.bottom = 'auto'; a.style.left = Math.round(x - vr.left - 20) + 'px'; a.style.top = Math.round(y - vr.top - 70) + 'px'; return { x, y }; });
+        if (AS.noslot) say('at ' + nm + ' the fixture does not show the slot (#read), so a sign over it was not asked');
+        else {
+          await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+          const GA = await sp.evaluate(() => { const hit = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t, box = e => { const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; }, acts = box($('acts')), rd = box($('read'));
+            const S = [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.offsetWidth > 0), out = [];
+            S.forEach(e => { const b = box(e), k = KITWALL[world].places[+e.dataset.ksign].kind; if (hit(b, rd)) out.push(k + ' covers the slot'); else if (hit(b, acts)) out.push(k + ' covers the button column'); });
+            return { n: S.length, out, under: acts.r > acts.l && rd.r > rd.l }; });
+          if (GA.out.length) say('at ' + nm + ', with a place under the slot and the button column, a sign covers them: ' + GA.out.slice(0, 3).join('; '));
+          await sp.evaluate(() => { const a = $('acts'); a.style.cssText = a.dataset.was || ''; delete a.dataset.was; });
+        }
+      }
+      /* A FULL KITCHEN: every place holds something due; his collision rules hold here too (the part-two question: where do seven signs stand) */
+      const STOCKD = { p1: [['egg', 1, '2026-11-06']], p2: [['milk', 1, '2026-11-03'], ['rice', 1, '2026-11-04']], p3: [['lime', 1, '2026-11-05']], p4: [['beans', 3, '2026-11-08']], p5: [['salt', 1, '2026-11-20']], p6: [['tea', 1, '2026-11-09']], p7: [['corn', 2, '2026-11-12']] };
+      for (const [nm, w, h, fsOn] of sizes) {
+        const isFs = await sp.evaluate(() => $('vp').classList.contains('fs'));
+        if (isFs !== fsOn) await sp.click('#fsbtn');
+        await sp.setViewportSize({ width: w, height: h });
+        await setStock(STOCKD);
+        const ok = await W(() => document.querySelectorAll('[data-ksign]').length >= 7, null, 'in a full kitchen at ' + nm + ' not every place with things due got a sign');
+        if (!ok) continue;
+        await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        const G = await geo();
+        if (G.n !== 7) say('in a full kitchen at ' + nm + ' there are ' + G.n + ' signs, where seven places hold things due');
+        if (G.out.length) say('in a full kitchen (every place has things due) at ' + nm + ' a sign covers what it must not: ' + G.out.slice(0, 3).join('; '));
+        if (w < 500 && G.small) say('in a full kitchen on a phone ' + G.small + ' sign(s) have a hit area under 44 by 44 px');
       }
       if (!shrunk['a laptop\'s window (1366x768)'] || !shrunk['a laptop\'s window (1366x768)'].includes('count')) say('at a laptop\'s window four signs side by side all stay in full words (' + JSON.stringify(shrunk['a laptop\'s window (1366x768)']) + '), where two that would touch shrink to their gold count');
       else {
@@ -1571,6 +1600,26 @@ function findChromium() {
       if (!(await none().then(() => true, () => false))) say('the Kitchen panel is open and the signs stayed');
       await sp.keyboard.press('Escape');
       if (!(await some(4).then(() => true, () => false))) say('the panel was shut with Escape and the signs did not return');
+      /* 5b · BUILDER MODE: with it on the signs stay away, a piece picked or none; with it off they return */
+      await sp.evaluate(() => { if (typeof BUILDER === 'undefined') window.BUILDER = { name: 'Probe' }; admin = true; applyAdmin(); checkTalk(); });   /* a pack that has a builder: the shell's own has none, so this page is given one */
+      if (!(await sp.evaluate(() => kitBuildOn()))) say('builder mode could not be turned on in the signs kitchen, so signs with the builder were not asked');
+      else {
+        if (!(await none().then(() => true, () => false))) say('builder mode is on (nothing picked) and the signs stayed');
+        await sp.evaluate(() => kitBuildPick(0));
+        if (!(await none().then(() => true, () => false))) say('builder mode is on with a piece picked and the signs stayed');
+        await sp.evaluate(() => { kitBuildPick(null); admin = false; applyAdmin(); checkTalk(); });
+        if (!(await some(4).then(() => true, () => false))) say('builder mode was turned off and the signs did not return');
+      }
+      await sp.evaluate(() => { admin = false; applyAdmin(); checkTalk(); });
+      /* 5c · THE LOOP: wanted, it looks every frame; not wanted, at most four times a second */
+      const looks = () => sp.evaluate(() => new Promise(res => { const o = kitSignLoop; let n = 0; kitSignLoop = function (ts) { n++; return o(ts); }; setTimeout(() => { kitSignLoop = o; res(n); }, 1000); }));
+      await some(4);
+      const LW = await looks();
+      if (LW < 20) say('with the signs showing the loop looked only ' + LW + ' times in a second, where it follows every frame');
+      await sp.click('#kitBtn'); await none();
+      const LU = await looks();
+      if (LU > 5) say('with the Kitchen panel open (nothing wanted) the signs\' loop looked ' + LU + ' times in a second, where it looks at most four times a second');
+      await sp.keyboard.press('Escape'); await some(4);
       /* 6 · A TAP: the panel narrowed to that place's use-soon things, soonest first, with its title; a pick opens the place; Escape and ✕ shut it */
       await setStock({ p2: [['rice', 1, '2026-11-20'], ['milk', 2, '2026-11-03'], ['corn', 1, '2026-10-01'], ['salt', 1, '2026-12-02']], p3: [['egg', 1, '2026-11-05']], p6: [['tea', 1, '2026-11-04']] }); await some(3);
       const upper = await sp.evaluate(() => KITWALL.__s8b_signs.places.findIndex(p => p.kind === 'upper-cupboards'));
@@ -1617,14 +1666,85 @@ function findChromium() {
       }
       await sp.evaluate(() => camSet('3d'));
       if (!(await some(3).then(() => true, () => false))) say('back in the 3D camera the signs did not return');
+      /* 8b · EVERY PLACE'S SIGN STAYS INSIDE THE VIEW, through the four quarter-turns and zooming in and out, near the wall and far from it */
+      {
+        const inside = () => sp.evaluate(() => { const vr = $('vp').getBoundingClientRect(); return [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.offsetWidth > 0).map(e => { const r = e.getBoundingClientRect(); return (r.left < vr.left - 1 || r.right > vr.right + 1 || r.top < vr.top - 1 || r.bottom > vr.bottom + 1) ? KITWALL[world].places[+e.dataset.ksign].kind : null; }).filter(Boolean); });
+        const frames = () => sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        const zoomOn = await sp.evaluate(() => CAMZ.on);
+        for (const [hx, hy] of [[2, 2], [11, 4]]) {
+          await sp.evaluate(([x, y]) => { window.__go('__s8b_signs', x, y); }, [hx, hy]); await frames();
+          for (let q = 1; q <= 4; q++) {
+            await sp.evaluate(() => t3Turn(Math.PI / 2)); await sp.waitForFunction(() => !T3.turn, null, { timeout: 4000 }); await frames();
+            const o = await inside(); if (o.length) say('after ' + q + ' quarter-turn(s), with the hero at (' + hx + ',' + hy + '), a sign stands outside the view (' + o.slice(0, 2).join(', ') + ')');
+          }
+          if (zoomOn) for (const k of [1 / 1.2, 1 / 1.2, 1 / 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2]) {
+            await sp.evaluate(k => camZoomBy(k), k); await frames();
+            const o = await inside(); if (o.length) say('zoomed, with the hero at (' + hx + ',' + hy + '), a sign stands outside the view (' + o.slice(0, 2).join(', ') + ')');
+          }
+        }
+        if (!zoomOn) console.log('  COUNT-ONLY: this shell has no camera zoom, so the signs were not asked zoomed');
+        await sp.evaluate(() => { camZoomBy(1); window.__go('__s8b_signs', 2, 2); }); await some(3).catch(() => {});
+      }
+      /* 8c · A THING MOVED BY HAND AND A DATE CHANGED while the signs are up: the counts follow within a tally */
+      {
+        const ID3 = { p1: [['egg', 1, '2026-11-06']], p2: [['milk', 1, '2026-11-03'], ['rice', 1, '2026-11-04']], p5: [['salt', 1, '2026-12-20']] };
+        await setStock(ID3);
+        const read = () => sp.evaluate(() => [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.offsetWidth > 0).map(e => KITWALL[world].places[+e.dataset.ksign].kind + ':' + e.getAttribute('aria-label').split(' ')[0]).sort().join(' | '));
+        const follow = (want, what) => sp.waitForFunction(w => [...document.querySelectorAll('[data-ksign]')].filter(e => !e.hidden && e.offsetWidth > 0).map(e => KITWALL[world].places[+e.dataset.ksign].kind + ':' + e.getAttribute('aria-label').split(' ')[0]).sort().join(' | ') === w, want, { timeout: 4000 }).then(() => true, async () => { say(what + ': the signs read ' + JSON.stringify(await read()) + ', where they read ' + JSON.stringify(want)); return false; });
+        await follow('fridge:1 | upper-cupboards:2', 'before anything moves');
+        await sp.evaluate(() => { kitTake(0, 'egg'); kitOpen('__s8b_signs', 2); });
+        await sp.waitForFunction(() => !document.getElementById('reader').hidden, null, { timeout: 4000 }).catch(() => {});
+        await sp.evaluate(() => { const b = document.querySelector('#docBody .dbtn'); if (b) b.click(); });
+        await sp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); kitHandBack(); });
+        await follow('counter:1 | upper-cupboards:2', 'after the eggs (due in 4 days) were taken from the fridge and put on the counter by hand');
+        await sp.evaluate(() => kitToolsKeep({ places: { p5: [{ id: 'salt', n: 1, date: '2026-11-20' }] } }));
+        await follow('counter:1 | shelves:1 | upper-cupboards:2', 'after a date was changed into the window (shelves)');
+        await sp.evaluate(() => kitToolsKeep({ places: { p2: [{ id: 'milk', n: 1, date: '2026-12-31' }, { id: 'rice', n: 1, date: '2026-11-04' }] } }));
+        await follow('counter:1 | shelves:1 | upper-cupboards:1', 'after a date was changed out of the window (upper cupboards)');
+      }
+      /* 8d · A FOCUS THAT WAITS FOR A SIGN is let go when the room changes or its place has nothing due any more, and pulls nothing later */
+      {
+        await setStock(STOCK2); await some(4);
+        const upper2 = await sp.evaluate(() => KITWALL.__s8b_signs.places.findIndex(p => p.kind === 'upper-cupboards'));
+        await sp.evaluate(u => { kitToolsOpen(u); kitToolsClose(); window.__go('__s8b_signs2', 2, 2); }, upper2);
+        await some(4).catch(() => {}); await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        if (await sp.evaluate(() => !!document.activeElement && document.activeElement.hasAttribute('data-ksign'))) say('a sign took the focus in another room than the one the panel was opened from');
+        await sp.evaluate(u => { window.__go('__s8b_signs', 2, 2); }, upper2); await some(4).catch(() => {});
+        await sp.evaluate(() => { const b = document.activeElement; if (b && b.blur) b.blur(); });
+        await sp.evaluate(u => { kitToolsOpen(u); kitToolsClose(); kitToolsOpen(); window.__stock.p2 = []; KSIGN.stale = true; kitToolsClose(); }, upper2);   /* the focus waits while the panel is open again, and the place loses its due things meanwhile */
+        await sp.waitForFunction(() => ![...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden && e.offsetWidth > 0 && KITWALL[world].places[+e.dataset.ksign].kind === 'upper-cupboards') && [...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden), null, { timeout: 4000 }).catch(() => say('a place with nothing due any more kept its sign'));
+        await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        if (await sp.evaluate(() => KSIGN.back !== null)) say('the focus still waits for a sign of a place that has nothing due any more, where it is let go');
+        await sp.evaluate(() => { window.__stock.p2 = [['milk', 1, '2026-11-03']]; KSIGN.stale = true; });
+        await sp.waitForFunction(() => [...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden && e.offsetWidth > 0 && KITWALL[world].places[+e.dataset.ksign].kind === 'upper-cupboards'), null, { timeout: 4000 }).catch(() => {});
+        await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+        if (await sp.evaluate(() => !!document.activeElement && document.activeElement.hasAttribute('data-ksign'))) say('a sign took the focus when its place came back, where the focus had been let go when the place had nothing due');
+      }
       /* 9 · BOTH LANGUAGES */
       await sp.evaluate(() => { lang = 'es'; applyLang(); });
       const ES = await sp.waitForFunction(() => [...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden && /usar pronto/.test(e.getAttribute('aria-label'))), null, { timeout: 4000 }).then(() => signs(), () => null);
       if (!ES) say('in Spanish the signs do not say "N usar pronto"');
       else { if (!ES.every(s => /^\d+ usar pronto$/.test(s.label))) say('in Spanish a sign is named ' + JSON.stringify(ES.map(s => s.label)) + ', where it is "N usar pronto"');
         await sp.click('[data-ksign="' + upper + '"]'); await W(() => !document.getElementById('kitPanel').hidden, null, 'in Spanish a tap on a sign did not open the panel');
-        const T = await sp.evaluate(() => $('kpTitle').textContent); if (T !== 'Usar pronto · Alacenas') say('in Spanish the narrowed panel is titled ' + JSON.stringify(T)); await sp.keyboard.press('Escape'); }
+        const T = await sp.evaluate(() => $('kpTitle').textContent); if (T !== 'Usar pronto · Gabinetes de arriba de la cocina') say('in Spanish the narrowed panel is titled ' + JSON.stringify(T)); await sp.keyboard.press('Escape'); }
       await sp.evaluate(() => { lang = 'en'; applyLang(); });
+      /* 9b · THE NARROWED PANEL'S TITLE: its own flexible space beside a ✕ that keeps its size, top right (it may wrap; at least 8 px between them; the ✕ level with the title's first line), in both languages, at every size, with the longest place name */
+      for (const L of ['en', 'es']) for (const [nm, w, h, fsOn] of sizes) {
+        const isFs = await sp.evaluate(() => $('vp').classList.contains('fs'));
+        if (isFs !== fsOn) await sp.click('#fsbtn');
+        await sp.setViewportSize({ width: w, height: h });
+        await sp.evaluate(L => { lang = L; applyLang(); }, L); await setStock(STOCK2); await some(4).catch(() => {});
+        const up = await sp.evaluate(() => KITWALL.__s8b_signs.places.findIndex(p => p.kind === 'upper-cupboards'));
+        await sp.evaluate(u => { kitToolsClose(); kitToolsOpen(u); }, up);
+        await sp.waitForFunction(() => !document.getElementById('kitPanel').hidden, null, { timeout: 4000 }).catch(() => {});
+        const TT = await sp.evaluate(() => { const ti = $('kpTitle'), cl = $('kpClose'), rg = document.createRange(); rg.selectNodeContents(ti); const rs = [...rg.getClientRects()], c = cl.getBoundingClientRect(), vr = $('vp').getBoundingClientRect();
+          return { text: ti.textContent, lines: rs.length, textRight: Math.max(...rs.map(r => r.right)), tr: ti.getBoundingClientRect().right, firstTop: rs[0].top, firstBottom: rs[0].bottom, cl: c.left, ct: c.top, cb: c.bottom, cr: c.right, pr: $('kitPanel').getBoundingClientRect().right, cw: c.width, ch: c.height }; });
+        const what = 'in ' + (L === 'es' ? 'Spanish' : 'English') + ' at ' + nm + ' (' + JSON.stringify(TT.text) + ')';
+        if (TT.cl - Math.max(TT.textRight, TT.tr) < 8) say('the narrowed panel\'s title ' + what + ' ends ' + Math.round(TT.cl - Math.max(TT.textRight, TT.tr)) + ' px from the ✕, where there are at least 8');
+        if (!(TT.ct < TT.firstBottom && TT.cb > TT.firstTop)) say('the narrowed panel\'s ✕ ' + what + ' is not level with the title\'s first line (the ✕ spans ' + Math.round(TT.ct) + ' to ' + Math.round(TT.cb) + ', the first line ' + Math.round(TT.firstTop) + ' to ' + Math.round(TT.firstBottom) + ')');
+        if (TT.cr > TT.pr + 1 || TT.cw < 30 || TT.ch < 30) say('the narrowed panel\'s ✕ ' + what + ' is squeezed (' + Math.round(TT.cw) + ' by ' + Math.round(TT.ch) + ') or outside the panel');
+        await sp.keyboard.press('Escape');
+      }
       sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
       await sp.close();
       console.log('  COUNT-ONLY: the signs: counts per place (none for nothing due, past-only, day 31, undated), at a laptop, full screen and a phone, shrinking to the count, hidden while picked, open or paneled, the narrowed panel and its order, keys, the flat cameras, both languages');
