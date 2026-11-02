@@ -57,12 +57,28 @@ function findChromium() {
   { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
     browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
     browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
+  /* WAIT ON WHAT THE NEXT LINE READS, NOT ON THE CLOCK (the owner's confirmed goal of 2026-11-02).
+     This file used to sleep a fixed time wherever a page needed to be ready, and on a slow machine the
+     sleeps alone were over half the run (103 s of 184 s on the library shell). A fixed sleep both wastes
+     time and is not a guarantee. Each helper waits for the condition, with a timeout far above the sleep
+     it replaced so a slow machine is not failed for being slow, and a condition that never comes is
+     still a red (or the same "nothing" the sleep used to read) when the timeout runs out.
+     boot(p)    a page that has just loaded or reloaded: the document complete, the fonts settled, and the
+                loop given two frames (or 400 ms, because a headless page can throttle frames hard)
+     rafs(p)  n frames have gone by, with the same 400 ms floor
+     until(p, fn, arg, ms)  the page's own state turns true; false (not a throw) if it never does */
+  const boot = async p => { await p.waitForFunction(() => document.readyState === 'complete' && document.fonts.status === 'loaded', null, { timeout: 30000 }); await rafs(p); };
+  const rafs = (p, n = 2) => p.evaluate(n => new Promise(r => { let k = 0; const t = setTimeout(r, 400); const f = () => { if (++k >= n) { clearTimeout(t); r(); } else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n);
+  const until = (p, fn, arg, ms = 5000) => p.waitForFunction(fn, arg, { timeout: ms }).then(() => true, () => false);
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [], warns = [];
   page.on('pageerror', e => pageErrors.push(e.message));
   page.on('console', m => { if (m.type() === 'warning') warns.push(m.text()); });
   await page.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
   await page.goto('file://' + file);
+  /* NOT a wait on a condition: the people in a world wander on the clock, the census below counts the tiles they are NOT standing on,
+     and a world whose grass tile has somebody on it after a second and a half reads one tile fewer than the same world a few frames
+     after boot (measured on the library shell: 12 of 12 against 13 of 13). This sleep is the time passing, so it stays. */
   await page.waitForTimeout(1500);
   let fails = [];
 
@@ -1840,12 +1856,12 @@ function findChromium() {
       const np = await browser.newPage({ viewport: { width: 1280, height: 800 } }), nErr = [];
       np.on('pageerror', e => nErr.push(e.message));
       await np.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-      await np.goto('file://' + file); await np.waitForTimeout(1200);
+      await np.goto('file://' + file); await boot(np);
       const at = await np.evaluate(id => { const w = WORLDS[id]; for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++) if (!shutToPeople(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(id, x, y)) return [x, y]; return null; }, plainRoom);
       if (!at) say('the room "' + plainRoom + '" has no square to stand on, so a world without a kitchen was not asked');
       else {
         await np.evaluate(([id, x, y]) => { $('intro').hidden = true; heroName = 'Probe'; world = id; px = fx = x; py = fy = y; dir = 'down'; enterWorld(false); camSet('3d'); }, [plainRoom, at[0], at[1]]);
-        await np.waitForTimeout(900);
+        await until(np, () => !!(T3 && T3.cam), null, 2700); await rafs(np);
         const c0 = await np.evaluate(() => T3.cam ? T3.cam.position.toArray() : null);
         const box = await np.evaluate(() => { const r = $('cv3').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width, r.height]; });
         if (!c0 || !(box[2] > 0)) say('in a room with no kitchen the 3D camera did not draw, so its tap and its zoom were not asked');
@@ -1874,7 +1890,7 @@ function findChromium() {
     /* a zoom, and one kitchen this page declares for a room there is none of, which the engine must refuse out loud at boot,
        and boot anyway (a shell that declares its own of either keeps its own: window.X is under a shell's const X) */
     await kp.addInitScript(() => { window.CAMZOOM = true; window.KITCHENWALLS = { __boot_refusal: { wall: [[0, 0]], places: [{ kind: 'fridge', row: 'tall', col: 0 }] } }; });
-    await kp.goto('file://' + file); await kp.waitForTimeout(1500);
+    await kp.goto('file://' + file); await boot(kp);
     try {
       const boot = await kp.evaluate(() => ({ mine: typeof KITCHENWALLS === 'object' && KITCHENWALLS && !!KITCHENWALLS.__boot_refusal, log: mqLog.filter(e => e.kind === 'kitchen' && /__boot_refusal/.test(e.msg)).map(e => [e.crit, e.msg]), stands: !!KITWALL.__boot_refusal }));
       if (boot.mine) { if (!boot.log.length || !boot.log[0][0]) say('a kitchen declared for a room that does not exist was not refused out loud at boot (no critical "kitchen" line in the log)'); if (boot.stands) say('a kitchen declared for a room that does not exist stands anyway'); }
@@ -2120,7 +2136,7 @@ function findChromium() {
       if (!has3d) console.log('  COUNT-ONLY: the test kitchen\'s tap and zoom were not asked, a shell with no 3D camera');
       else {
         await kp.evaluate(() => { px = fx = 3; py = fy = 3; camSet('3d'); });
-        await kp.waitForTimeout(900);
+        await until(kp, ID => !!(T3.group && String(T3.builtKey).indexOf(ID + '|') === 0), T.ID, 2700); await rafs(kp);
         const ok3 = await kp.evaluate(ID => !!(T3.group && String(T3.builtKey).indexOf(ID + '|') === 0), T.ID);
         if (!ok3) say('the test kitchen did not build in the 3D camera, so its tap and zoom were not asked');
         else {
@@ -2239,7 +2255,7 @@ function findChromium() {
     np0.on('pageerror', e => nErr0.push(e.message));
     await np0.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     if (needK) await np0.addInitScript({ content: kitSrc });
-    await np0.goto('file://' + file); await np0.waitForTimeout(1200);
+    await np0.goto('file://' + file); await boot(np0);
     const sh = await np0.evaluate(async () => {
       const out = { builder: buildOK(), said: [] };
       if (out.builder) return out;   /* a shell with a builder is asked below, on a page of its own */
@@ -2270,7 +2286,7 @@ function findChromium() {
     await bp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     if (needK) await bp.addInitScript({ content: kitSrc });
     await bp.addInitScript(() => { window.BUILDER = {}; });
-    await bp.goto('file://' + file); await bp.waitForTimeout(1500);
+    await bp.goto('file://' + file); await boot(bp);
     try {
       /* 2a · THE FINISHES, built: wood (and a finish left out, or one off the list) exactly the parts every picture so far was
          built from, pinned below; every other finish the same parts in other colours, and only on what a finish goes on */
@@ -2410,7 +2426,7 @@ function findChromium() {
       const has3 = await bp.evaluate(() => typeof THREE !== 'undefined' && CAMS.includes('3d'));
       if (has3) {
         await bp.evaluate(() => { camSet('3d'); });
-        await bp.waitForTimeout(900);
+        await until(bp, () => !!(T3 && T3.cam), null, 2700); await rafs(bp);
         const spot = await bp.evaluate(ID => { const K = KITWALL[ID], p = K.places.find(q => q.kind === 'fridge'), c = K.cols[p.col], v = new THREE.Vector3(c.x + 0.5, 0.5, c.y + 0.5 + 0.3).project(T3.cam), r = $('cv3').getBoundingClientRect();
           return { i: p.i, x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, ID);
         await bp.mouse.click(spot.x, spot.y); await bp.waitForTimeout(500);
@@ -3474,7 +3490,7 @@ function findChromium() {
     await pp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     if (!declared) await pp.addInitScript(L => { window.PETPASS = L; }, letters);
     await pp.goto('file://' + file);
-    await pp.waitForTimeout(1500);
+    await boot(pp);
     const PT = [];
     const seen = await pp.evaluate(() => typeof PETPASS === 'string' ? PETPASS : null);
     if (seen !== letters) PT.push('the page meant to declare "' + letters + '" pets-only reads ' + JSON.stringify(seen) + ', so nothing below was asked of a world that declares it');
@@ -5958,7 +5974,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   wbp.on('pageerror', e => wbErr.push(e.message));
   await wbp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
   await wbp.goto('file://' + file);
-  await wbp.waitForTimeout(1500);
+  await boot(wbp);
   const walkBack = await wbp.evaluate(() => {
     const P = [];
     [['at the start', () => {}], ['with every lot raised', () => { for (let i = 0; i < 999; i++) done.add(i); chSeen = 999; applyGrowth(); }]].forEach(([when, grow]) => {
@@ -7241,7 +7257,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     tq.on('pageerror', e => tErr.push(e.message));
     tq.on('console', m => { if (/Texture has been resized/i.test(m.text())) tWarn.push(m.text()); });   /* three.js says it shrank a texture here, and only here */
     await tq.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-    await tq.goto('file://' + file); await tq.waitForTimeout(1500);
+    await tq.goto('file://' + file); await boot(tq);
     try {
       await tq.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
         ['reader', 'card'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; }); });
@@ -8200,13 +8216,19 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     }
     return { a };
   }
+  /* Escape puts the drone down: wait until it IS down (a landing is a short glide, then DRONE.on goes false), and give up only after
+     far longer than the sleep this stands in for, so a drone that never lands is still read as "still up" by the line after */
+  const droneDown = () => until(page, () => typeof DRONE === 'undefined' || !DRONE.on, null, 2700);
+  /* time passing, not a condition: the drone is up the instant B is pressed, but the camera eases toward where it looks for about
+     half a second, and the pictures taken next are compared with ones taken after a flight (measured: four frames of waiting
+     here read as "the camera stayed with the hero" in the iso camera, because the ease had not finished) */
   const pressB = async () => { await page.keyboard.press('b'); await page.waitForTimeout(520); };
   const absent = async (when) => {
     await page.keyboard.press('b'); await page.waitForTimeout(350);
     const r = await page.evaluate(() => ({ on: typeof DRONE !== 'undefined' && DRONE.on, cam: (camSet('top'), draw(), [camXg, camYg]) }));
     if (r.on) droneP.push('B flies a drone ' + when + ' in a game that declares no builder — its players were promised nothing of the kind');
     if (drSetup.camTop && (r.cam[0] !== drSetup.camTop[0] || r.cam[1] !== drSetup.camTop[1])) droneP.push('B moves the camera ' + when + ' in a game that declares no builder');
-    if (r.on) { await page.keyboard.press('Escape'); await page.waitForTimeout(700); }
+    if (r.on) { await page.keyboard.press('Escape'); await droneDown(); }
   };
   if (drSetup.err) droneP.push(drSetup.err);
   else {
@@ -8335,7 +8357,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         return out; });
       for (const [sx, sy, name] of spots) {
         await page.evaluate(([x, y]) => { DRONE.x = DRONE.sx = x; DRONE.y = DRONE.sy = y; DRONE.fx = x; DRONE.fy = y; DRONE.mt = 1; }, [sx, sy]);
-        await page.waitForTimeout(160);
+        await rafs(page, 4);
         const r6 = await page.evaluate(() => { const box = e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
           const card = document.getElementById('droneCard'), vp = document.getElementById('vp'), cv = document.getElementById('cv');
           if (!card || card.style.display === 'none') return { none: true };
@@ -8393,7 +8415,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const r8 = await page.evaluate(() => ({ cur, card: document.getElementById('card').hidden, reader: document.getElementById('reader').hidden }));
           if (r8.cur !== tk.cur || r8.card !== tk.card || !r8.reader) bad.push('Enter, pressed while flying the drone, started a conversation with ' + tk.who + ' back where you stood');
           await page.evaluate(() => { document.getElementById('card').hidden = true; document.getElementById('reader').hidden = true; });
-          await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+          await page.keyboard.press('Escape'); await droneDown();
         }
       }
       /* 9 · IF THE WORLD CHANGES UNDER IT, IT IS PUT DOWN. The world can change without a door —
@@ -8439,7 +8461,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         await pressB();
         const d = (await page.evaluate(k => k.x > 0 ? 'left' : 'right', drSetup.pick));
         await flyStep(d); await page.waitForTimeout(150);
-        await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+        await page.keyboard.press('Escape'); await droneDown();
         return page.evaluate(() => { const n = window.__drVoices, m = window.__drMus;
           musOn = m.on; MUSIC.ctx = m.ctx; MUSIC.master = m.master; musVoice = m.mv; musHowl = m.howl; musChirp = m.chirp; musTick = m.tick; if (MUSIC.timer) { clearInterval(MUSIC.timer); MUSIC.timer = null; } if (m.timer && typeof musRetime === 'function') musRetime();
           return n; });
@@ -8463,7 +8485,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       if (!r10.on) droneP.push('the Settings row for the drone does not fly it');
       else if (!r10.set) droneP.push('the Settings row lifts the drone off behind the Settings panel, where you cannot see it');
       await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
-      await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+      await page.keyboard.press('Escape'); await droneDown();
       /* and from the keyboard, beside a person: Enter on the focused row flies the drone and starts no
          conversation. This is why the row waited for #266 — before it, that one keystroke did both. */
       const nb = await page.evaluate(() => { for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
@@ -8479,7 +8501,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!r11.on) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', did not fly it');
         if (r11.cur !== nb.cur || !r11.card) droneP.push('Enter on the Settings row for the drone, beside ' + nb.who + ', also started a conversation with them');
         await page.evaluate(() => { document.getElementById('card').hidden = true; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
-        await page.keyboard.press('Escape'); await page.waitForTimeout(900);
+        await page.keyboard.press('Escape'); await droneDown();
       } else droneNote.push('COUNT-ONLY: nobody here could be stood beside with Talk showing, so Enter on the Settings row was not tried beside a person');
     }
     if (!drSetup.declared) {
@@ -8519,10 +8541,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     np.on('pageerror', e => nErr.push(e.message));
     await np.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await np.goto('file://' + file);
-    await np.waitForTimeout(1500);
+    await boot(np);
     await np.click('.classes button[data-c="architect"]');
     await np.click('#begin');
-    await np.waitForTimeout(800);
+    await until(np, () => !document.getElementById('world').hidden, null, 2400); await rafs(np);
     const has = await np.evaluate(() => {
       const fly = document.getElementById('openDrone');
       /* the rename lives in the drone's own Settings row: any other button in that row */
@@ -8542,16 +8564,18 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     } else if (!has.fly) R295.push('this game declares a builder and its Settings has no row for the drone, so there is nowhere to rename her');
     else if (!has.ren) R295.push('this game has a drone and her Settings row offers no way to rename her — the player cannot change the drone\'s name');
     else {
-      const row = async () => { await np.click('#gear'); await np.waitForTimeout(150);
+      const row = async () => { await np.click('#gear'); await until(np, () => !document.getElementById('settings').hidden, null, 3000);
         const t = await np.evaluate(() => document.getElementById('openDrone').textContent);
-        await np.click('#closeSet'); await np.waitForTimeout(150); return t; };
-      const card = async () => { await np.click('#gear'); await np.waitForTimeout(150); await np.click('#openDrone'); await np.waitForTimeout(700);
+        await np.click('#closeSet'); await until(np, () => document.getElementById('settings').hidden, null, 3000); return t; };
+      /* the card is waited for until it shows (it is read as "no card" if it never does), and after Escape until it is gone */
+      const droneCardUp = () => { const c = document.getElementById('droneCard'); return !!c && c.style.display !== 'none' && !!c.offsetParent; };
+      const card = async () => { await np.click('#gear'); await until(np, () => !document.getElementById('settings').hidden, null, 3000); await np.click('#openDrone'); await until(np, droneCardUp, null, 2100);
         const t = await np.evaluate(() => { const c = document.getElementById('droneCard');
           if (!c || c.style.display === 'none' || !c.offsetParent) return null;
           const t1 = c.querySelector(':scope > div > div > div'); return t1 ? t1.textContent : null; });
-        await np.keyboard.press('Escape'); await np.waitForTimeout(900); return t; };
-      const rename = async text => { await np.click('#gear'); await np.waitForTimeout(150);
-        await np.click('[data-p295="ren"]'); await np.waitForTimeout(200);
+        await np.keyboard.press('Escape'); await until(np, () => { const c = document.getElementById('droneCard'); return (!c || c.style.display === 'none' || !c.offsetParent) && !(typeof DRONE !== 'undefined' && DRONE.on); }, null, 2700); return t; };
+      const rename = async text => { await np.click('#gear'); await until(np, () => !document.getElementById('settings').hidden, null, 3000);
+        await np.click('[data-p295="ren"]'); await until(np, () => { const i = document.activeElement; return !!i && i.tagName === 'INPUT' && !!i.offsetParent; }, null, 600);
         const box = await np.evaluate(() => { const i = document.activeElement;
           if (!i || i.tagName !== 'INPUT' || !i.offsetParent) return null;
           const go = i.closest('.box') && i.closest('.box').querySelector('button'); if (go) go.setAttribute('data-p295', 'go');
@@ -8562,11 +8586,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (text) await np.keyboard.type(text);
         await np.click('[data-p295="go"]'); await np.waitForTimeout(300);
         return null; };
-      const reload = async () => { await np.reload(); await np.waitForTimeout(1500);
+      const reload = async () => { await np.reload(); await boot(np);
         const cont = await np.evaluate(() => { const b = document.getElementById('continueBtn'); return !!b && !b.hidden && !!b.offsetParent; });
         if (cont) await np.click('#continueBtn');
         else { await np.click('.classes button[data-c="architect"]'); await np.click('#begin'); }
-        await np.waitForTimeout(900);
+        await until(np, () => !document.getElementById('world').hidden, null, 2700); await rafs(np);
         await np.evaluate(() => { const fly = document.getElementById('openDrone'); const ren = fly ? [...fly.parentElement.querySelectorAll('button')].find(b => b !== fly) : null; if (ren) ren.setAttribute('data-p295', 'ren'); }); };
       const idOf = st => { const out = []; Object.keys(st.all).forEach(k => { if (k === st.save) return; const v = st.all[k] || '';
         if (!/Zumbi/.test(v) && !/"id"/.test(v)) return; try { const walk = o => { if (o && typeof o === 'object') { if (typeof o.id === 'string' && o.id) out.push(k + ':' + o.id); Object.values(o).forEach(walk); } }; walk(JSON.parse(v)); } catch (e) {} });
@@ -8656,7 +8680,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     ip.on('pageerror', e => iErr.push(e.message));
     await ip.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await ip.goto('file://' + file);
-    await ip.waitForTimeout(1500);
+    await boot(ip);
     const set = await ip.evaluate(declare);
     await ip.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
       document.getElementById('reader').hidden = true; document.getElementById('card').hidden = true; });
@@ -8672,9 +8696,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       return at();
     };
     const reload = async () => {
-      await ip.reload(); await ip.waitForTimeout(1500);
+      await ip.reload(); await boot(ip);
       await ip.evaluate(declare);                            /* the pack's lots again, as a boot would raise them */
-      await ip.click('#continueBtn'); await ip.waitForTimeout(600);
+      await ip.click('#continueBtn'); await until(ip, () => !document.getElementById('world').hidden, null, 1800); await rafs(ip);
       return at();
     };
     if (set.err) IR.push(set.err);
@@ -8735,14 +8759,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const oErr = [];
       op.on('pageerror', e => oErr.push(e.message));
       await op.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-      await op.goto('file://' + file); await op.waitForTimeout(1200);
+      await op.goto('file://' + file); await boot(op);
       await op.evaluate(o => { save(); const k = SK('1'), sv = JSON.parse(localStorage.getItem(k)); sv.w = o; localStorage.setItem(k, JSON.stringify(sv)); }, odd);
-      await op.reload(); await op.waitForTimeout(1200);
+      await op.reload(); await boot(op);
       const carried = await op.evaluate(() => (JSON.parse(localStorage.getItem(SK('1')) || '{}') || {}).w);
       if (carried !== odd) IR.push('a save whose place is called "' + odd + '" could not be planted — the game holds "' + carried + '" — so nothing was measured, which is not a pass');
       else {
         try { await op.click('#continueBtn', { timeout: 5000 }); } catch (e) { oErr.push('Continue could not be pressed: ' + String(e.message || e).split('\n')[0]); }
-        await op.waitForTimeout(700);
+        await until(op, () => !document.getElementById('world').hidden, null, 2100); await rafs(op);
         const r = await op.evaluate(() => ({ w: String(world), shown: !document.getElementById('world').hidden }));
         if (oErr.length || !r.shown || r.w === odd) IR.push('a save whose place is called "' + odd + '" — a name every object answers to — ' +
           (!r.shown ? 'stopped the game at the title when Continue was pressed' : r.w === odd ? 'put you inside it' : 'woke you in ' + r.w) + (oErr.length ? ', and the page threw: ' + oErr[0] : ''));
@@ -8770,7 +8794,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     kp.on('pageerror', e => kErr.push(e.message));
     await kp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await kp.goto('file://' + file);
-    await kp.waitForTimeout(1500);
+    await boot(kp);
     const K = [];
     const found = await kp.evaluate(() => {
       const $ = id => document.getElementById(id);
@@ -8854,7 +8878,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       if (w) K.push(tag + ' ' + key + ' on the focused gear beside ' + where + ' ' + (a.settings ? 'pressed the gear AND ' + w + ' — one key, two answers' : w + ' instead of pressing the gear') + '. On a laptop a focused button beside somebody cannot be pressed without the world answering too, and the builder\'s panels are buttons pressed with Enter (#266)');
       else if (!a.settings) K.push(tag + ' ' + key + ' on the focused gear beside ' + where + ' did not press it — Settings stayed shut — and nothing else answered either, so what a focused button does with ' + key + ' was not measured');
     };
-    const press = async k => { await kp.keyboard.press(k); await kp.waitForTimeout(350); };
+    const press = async k => { await kp.keyboard.press(k); await rafs(kp, 4); };   /* a key is answered in the handler; four frames for anything it started to show */
     /* hold an arrow the way a person does; let go the moment a step starts, so it is one tile */
     const hold = async (k, ms) => {
       const b = await st(); await kp.keyboard.down(k);
@@ -9028,7 +9052,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       await pp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await pp.goto('file://' + file);
       await pp.evaluate(() => { try { localStorage.clear(); } catch (e) {} });   /* a reload after a freeze starts a new game too */
-      await pp.reload(); await pp.waitForTimeout(1500);
+      await pp.reload(); await boot(pp);
       await pp.click('.classes button[data-c="architect"]');
       /* the hero wears a look that is not the default, chosen the way a player chooses it */
       const D = await pp.evaluate(() => sanitizeSave({ n: 'x' }).lk);
@@ -9040,7 +9064,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (want) await pp.click('button[aria-label="' + want + '"]');
       }
       await pp.click('#begin');
-      await pp.waitForTimeout(800);
+      await until(pp, () => !document.getElementById('world').hidden, null, 2400); await rafs(pp);
       return pp.evaluate(() => {
         const $ = id => document.getElementById(id);
         ['wanderUpdate', 'dogUpdate', 'catUpdate', 'pigUpdate', 'loroTick', 'critUpdate', 'ballUpdate', 'dogThingsUpdate',
@@ -9075,10 +9099,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       });
     };
     const camTo = async c => {
-      await pp.click('#gear'); await pp.waitForTimeout(150);
+      await pp.click('#gear'); await until(pp, () => !document.getElementById('settings').hidden, null, 3000);
       if (!(await pp.evaluate(() => document.getElementById('drwLook').open))) await pp.click('#drwLook summary');
       await pp.click('#camRow button[data-cam="' + c + '"]');
-      await pp.click('#closeSet'); await pp.waitForTimeout(c === '3d' ? 800 : 200);
+      await pp.click('#closeSet'); await until(pp, c2 => document.getElementById('settings').hidden && camMode === c2, c, c === '3d' ? 2400 : 600); await rafs(pp, c === '3d' ? 6 : 2);
       return pp.evaluate(() => camMode);
     };
     const grab = k => pp.evaluate(k2 => window.__p32.grab(k2), k);
@@ -9170,7 +9194,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     dp.on('pageerror', e => dErr.push(e.message));
     await dp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await dp.goto('file://' + file);
-    await dp.waitForTimeout(1500);
+    await boot(dp);
     const yard = await dp.evaluate(() => {
       wanderUpdate = function () {};
       camSet('top');
@@ -9266,6 +9290,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fp.on('pageerror', e => fErr.push(e.message));
     await fp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     await fp.goto('file://' + file);
+    /* time passing, not a condition: this page reports where the people stood when it found them ("Mira moved from 4,5 to 3,3" or
+       "where the map stands them"), and they wander on the clock, so the second and a half before it looks stays */
     await fp.waitForTimeout(1500);
     const found = await fp.evaluate(() => {
       const $ = id => document.getElementById(id);
@@ -9528,8 +9554,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     let link = null;
     try {
       await mp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-      await mp.goto('file://' + file); await mp.waitForTimeout(1200);
-      await mp.click('.classes button[data-c="architect"]'); await mp.click('#begin'); await mp.waitForTimeout(400);
+      await mp.goto('file://' + file); await boot(mp);
+      await mp.click('.classes button[data-c="architect"]'); await mp.click('#begin'); await until(mp, () => !document.getElementById('world').hidden, null, 1200); await rafs(mp);
       link = await mp.evaluate(w => { const u = passURL(), m = u.match(/#save=([A-Za-z0-9\-_]+)/); if (!m) return null;
         const j = JSON.parse(unb64u(m[1])); if (!j || !j.s || !j.s.lk) return null; j.s.lk.pattern = w;
         return u.replace(/#.*$/, '') + '#save=' + b64u(JSON.stringify(j)); }, word);
@@ -9543,9 +9569,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     try {
       if (!link) { SF.push('could not make a Trolley Pass to board — nothing was measured with the pattern "' + word + '"'); throw 0; }
       await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-      await sp.goto(link); await sp.waitForTimeout(1200);
+      await sp.goto(link); await boot(sp);
       let card = await sp.evaluate(() => !document.getElementById('tpFound').hidden);
-      for (let i = 0; !card && i < 20; i++) { await sp.waitForTimeout(250); card = await sp.evaluate(() => !document.getElementById('tpFound').hidden); }
+      /* the card is waited FOR, up to the same five seconds, and the wait ends the moment it shows. A page that has already
+         thrown (a shell that declares none of the pass's words throws at the card, #305) gets one last look and no more:
+         it will not draw a card five seconds later, and waiting those seconds out for one was ten of this run's seconds */
+      for (let i = 0; !card && i < 20; i++) {
+        card = await until(sp, () => !document.getElementById('tpFound').hidden, null, 250);
+        if (!card && sErr.length) { card = await sp.evaluate(() => !document.getElementById('tpFound').hidden); break; } }
       /* A SHELL THAT CANNOT BOARD A PASS AT ALL (#305: El Horno and the gauge throw at the card, because they
          declare none of its words) is said out loud, and the saved look is then drawn directly: the fault this
          guards is in the drawing, and every shell draws people. A card that fails WITHOUT an error is a red. */
@@ -9557,7 +9588,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const cams = !card ? [] : await sp.evaluate(() => (typeof CAMS === 'undefined' ? ['top', 'front', 'iso', '3d'] : CAMS.slice()));
       let kept = word;
       if (card) {
-        await Promise.all([sp.waitForEvent('load'), sp.click('#tpBoard')]); await sp.waitForTimeout(1200);
+        await Promise.all([sp.waitForEvent('load'), sp.click('#tpBoard')]); await boot(sp);
         await sp.click('#continueBtn'); await sp.waitForTimeout(500);
         kept = await sp.evaluate(() => look && look.pattern);
       }
