@@ -224,7 +224,7 @@ if (has('sw.js')) { const sw = read('sw.js');
 
 /* ---- 5 · and the game is actually there ----------------------------------------------------- */
 // An allowlist that drops a file is the other way to fail, and it is silent too.
-['index.html', 'shell.css', 'sw.js', 'sw-register.js', 'frame-guard.js', 'vendor/fonts/fonts.css', 'qr.js', 'manifest.webmanifest', 'engine/engine.js', 'engine/engine3d.js',
+['index.html', 'shell.css', 'sw.js', 'sw-register.js', 'frame-guard.js', 'vendor/fonts/fonts.css', 'qr.js', 'manifest.webmanifest', 'engine/engine.js', 'engine/kitchen-room.js', 'engine/engine3d.js',
  'vendor/three.min.js', 'content/meridian/config.js', 'content/meridian/maps.js', 'content/meridian/strings.js']
   .forEach(f => { if (!has(f)) fails.push('the upload is MISSING ' + f + ' — the allowlist has dropped part of the game'); });
 

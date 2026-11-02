@@ -85,8 +85,12 @@ const SHAPES=(function(){
   /* WHICH WAY A THING THAT STANDS AGAINST A WALL FACES — away from the wall, and across its own run. `facing`
      answers "the first open side", and the last bookcase of a run down a west wall has an open side to the
      SOUTH, so it turned to face along the run while its neighbours faced the room. A wall is solid and is not
-     one of this run. `back` says a wall is behind it, so the thing is pushed back until it touches it. */
-  const backToWall=(x,y)=>{const g=glyphAt(x,y),wall=(gx,gy)=>solidAt(gx,gy)&&!same(gx,gy,g);
+     one of this run. `back` says a wall is behind it, so the thing is pushed back until it touches it.
+     `apart` (sprint 8a): a string of letters that are not this thing's wall though they are solid. The closet names the kitchen
+     column, "◧": sprint 7 laid kitchen columns beside the test kitchen's closet, which read the nearest one as its wall and
+     turned its doors to the south; a closet stands against the room's wall, and a cupboard beside it is not that wall. Left
+     out, as every other piece calls it, nothing changes. */
+  const backToWall=(x,y,apart)=>{const g=glyphAt(x,y),wall=(gx,gy)=>solidAt(gx,gy)&&!same(gx,gy,g)&&!(apart&&apart.indexOf(glyphAt(gx,gy))>=0);
     const ew=same(x-1,y,g)||same(x+1,y,g),ns=same(x,y-1,g)||same(x,y+1,g);
     const hit=[[0,-1,0],[-1,0,Math.PI/2],[1,0,-Math.PI/2],[0,1,Math.PI]]            /* a wall to the north: face south … */
       .filter(([dx,dy])=>ew&&!ns?dx===0:ns&&!ew?dy===0:true).find(([dx,dy])=>wall(x+dx,y+dy));
@@ -842,7 +846,7 @@ const SHAPES=(function(){
      character creator is what a person opens it for. The parts say what they are: `carcass`, `inside`, `shelf`, `rail`,
      `hanger`, `garment`, `door`, `handle`, `kick`. */
   const CLOTH=["#3D5A80","#8C2F39","#4F6D3A","#C9A227","#5B4B8A","#2F3E46","#B5654A"];
-  const wardrobe=({x,y,open})=>{const D=0.58,lo=0.06,hi=0.98,at=backToWall(x,y),RY=0.8;
+  const wardrobe=({x,y,open})=>{const D=0.58,lo=0.06,hi=0.98,at=backToWall(x,y,"◧"),RY=0.8;   /* a kitchen column beside it is not its wall (sprint 8a) */
     const parts=[{s:"box",x:0,y:0.03,z:-0.015,w:0.98,h:0.06,d:D-0.03,c:KICK,kick:1}]                /* 1 · the kick, set back */
       .concat(carcass(lo,hi,D,C.desk,[0.86]));                                                    /*   the carcass, its hat shelf */
     parts.push({s:"box",x:0,y:hi+0.011,z:0.02,w:1.0,h:0.022,d:D+0.04,c:C.deskTop,carcass:1,cornice:1});   /*   the cornice, proud of the doors */

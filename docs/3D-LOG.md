@@ -1054,7 +1054,7 @@ polygon update for all of these, and what the marigolds taught, had been logged)
     a tall piece moves onto an empty square or swaps as before; nothing past the wall's squares. The check takes an empty
     column only with gaps on, and it is drawn as a free square, the fitter's tape (no new part). With a piece picked, a
     tap on an empty square puts it there: the ray hits the tape or the floor, and the square under the point is read.
-  - **The things in a place** (`things` on a layout; `engine/engine.js`, grep `THE THINGS IN A PLACE`). Each thing's parts
+  - **The things in a place** (`things` on a layout; `engine/kitchen-room.js`, grep `THE THINGS IN A PLACE`). Each thing's parts
     are the world's, in tile units, checked at the edge: kinds from the engine's own five (box, sph, cyl, cone, torus),
     a part's own keys and no others (no glass), numbers finite (x and z within half a tile of the thing's middle, y up to
     a tile, sizes above 0 and at most a tile, turns within a full turn, stretches up to 4), colours `#rrggbb`; at most 24
@@ -1152,13 +1152,13 @@ His confirmed goals of 2026-10-31 (a thing in hand put in a piece just added; L-
 of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wall, the arrows, the line at a wall's end);
 `GAMEV` and `CACHE` mq-v246. Meridian declares no kitchen and none of this reaches it.
 
-- **Every place that keeps things has an id** (`engine/engine.js`, grep `EVERY PLACE THAT KEEPS THINGS HAS AN ID`). A kitchen kept
+- **Every place that keeps things has an id** (`engine/kitchen-room.js`, grep `EVERY PLACE THAT KEEPS THINGS HAS AN ID`). A kitchen kept
   before sprint 6 has pieces the builder added with no id, and nothing gave them one later, so a thing in hand could not be put in
   them. `kitchenLay` now gives every plain place with no id, in a layout that hands `things` and `keep`, the first of `n1`, `n2`,
   … that no place has, in the places' order (as `kitGiveId` does for a piece added). It lays a copy and never changes what it was
   handed; the same layout gets the same ids every time, so what is kept by them stays with them until the world keeps the layout
   again. A layout with no things (My kitchen's kind) is given none.
-- **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/engine.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
+- **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/kitchen-room.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
   name up to two side walls, `sides: [{squares: [[x,y], …], face}]`, `face` one of north, south, east, west; a place on one says
   `side`, its index, and `col` along that wall's own squares. The check refuses, whole and in one sentence, side walls with gaps
   off, more than two, a key a side wall does not have, a facing off the list, no squares, a square off the map or not `◧` or named
@@ -1185,3 +1185,47 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   `n1` to `n3` with the eggs put in one.
 - **Not done.** No corner piece and no island. The 2D wall views draw a side wall's column as they draw any (from above, and
   from the front). No phone measured.
+
+### 2026-11-02 · sprint 8a: the kitchen's code in a file of its own, the closet as it stood, the piece faced at a corner, and the kitchen's tools
+
+- **A file of its own** (`engine/kitchen-room.js`, written by `engine/boot.js` after `engine.js` and before `engine3d.js`). The
+  kitchen layout, the things in a place, the hand, the empty line, where the reader stands, the closet and the builder moved out of
+  `engine.js`, 829 lines, as they were (the only difference: the four names `engine.js` reads while it loads, `kitNow`,
+  `kitEmptyAt`, `kitBuildReady` and `KITHAND`, are declared in `engine.js` as `var`s, and the slot asks `typeof kitFront` first). The
+  kitchens a world declares are laid at the foot of the new file. The worker caches it and the public build lists it.
+  **Measured**: a kitchen of twelve columns of every kind, shut and open, and the closet, hash to the same bytes on the engine
+  before the move, after it, and at mq-v245.
+- **The closet as it stood.** Sprint 7 laid kitchen columns beside the test kitchen's closet, and the closet read the nearest solid
+  square that was not a closet as its wall, so its doors turned south. `backToWall` takes a string of letters that are not this
+  piece's wall (`apart`), and the closet names the kitchen column. Every other piece calls it as before. **Measured**: the closet's
+  parts, a column to its north, equal the parts mq-v245 built with floor there (Taller_Quest 7a49f2a), and equal them no longer
+  when the line is taken out.
+- **At a corner, the piece faced.** A square in front of two columns offers the column on the square the hero looks at (`dir`): the
+  slot names its places, a press opens them, and a gold frame, the builder's, stands round it in 3D and follows a turn and a step.
+  Facing neither, or in front of one column, nothing changes.
+- **The kitchen's tools** (a layout key `tools: {own, keep}` beside `things` and `keep`; the game keeps its data). A Kitchen button
+  inside the view (so full screen keeps it) or the K key opens a panel, beside the room where the view is 760 px wide or more and over
+  it where it is not: a search across every place (text, at most 40 characters, never a pattern; each result names its place, the
+  places glow gold while results show, a pick opens one), a closed drawer "Past their date (N)", Use soon (within 30 days, today
+  in, day 31 out), and Add your own item (a name of at most 40 characters, never one already on the page in either language, in a
+  place; renamed, moved and removed, asking first). Each place's page gains "How full?" (kept with the layout through `store`) and
+  each thing's count (1 to 99) and an optional date, the things near or past their date first. A thing may carry `date`
+  (`YYYY-MM-DD`, a day that exists, else it is refused whole) and `own`. Dates read "Nov 20 · in 18 days", "Nov 2 · 3 days ago",
+  "today", the words and the month names the game's. The clock is read in one place, `kitToday()`. A thing taken in hand and put in
+  another place takes its date with it; two dates for one thing, the earlier. A reader block a page builds itself (`node`) is the
+  one change to `engine.js` besides the hooks (the slot, the keys, the button's follow).
+- **Measured** (`test/engine.smoke.js`, grep `THE KITCHEN'S ROOM IN A FILE OF ITS OWN`; `MQ_ONLY_8A=1` runs it alone, in seven
+  seconds), red first with twenty-three faults planted in a copy outside the repository: a shape off by one part, the file left out
+  of boot or of the worker, the closet's line taken out, the corner offering both or the wrong one or a frame that stays, a
+  search as a pattern or as markup or without its glow, the drawer reversed, Use soon's edge at day 29 and at day 31, a name taken
+  in one language only or in one case, a date that is any day, the clock read twice, a request leaving the page, a name not
+  trimmed, a count under 1, a date lost on the way, and fullness kept through `keep`.
+- **Not done.** No picture for an item of the player's own; no second date for one thing; the panel does not narrow the room's
+  drawing beside it (it stands over the right of it); no phone measured here (the town's own check takes it at 390 by 844).
+
+- **Review round, 2026-11-02.** The gold frame at a corner was a hairline on the piece's front, which the camera sees edge-on on a side
+  wall. The piece faced now also wears a thick gold rim along its top edges and a gold ring on the floor square in front of it
+  (`kitFaceMark`); the glow and pick frames are as they were. **Measured**: gold pixels (#F2C230 within 40 a channel) in a crop round the
+  piece, 544 at a laptop's size and 149 at a phone's, against 0 and 1 for the hairline; the check asks 200 and 60. Also held now: an own
+  item's name is counted in characters (21 emoji), has no direction control (U+202A to 202E, 2066 to 2069, 200E, 200F), a count stops at 99
+  and "−" at 1 leaves 1, nothing glows after the room is left, and two things with one date list in name order.
