@@ -5759,6 +5759,7 @@ function checkRead(){
       /* the place open in front of the hero reads Close with its name, and it alone: a column of several offers only that one to shut (sprint 6) */
       const op=kitNow&&kitNow.id===world?ks.find(p=>p.i===kitNow.i):null;
       b.textContent=op?(kitW("kitClose","Close")+" — "+kitName(op,lang)):(T().kitOpen||"Open")+" — "+ks.map(p=>kitName(p,lang)).join(" · ");return;}
+  if(typeof kitFaceTrack==="function")kitFaceTrack();   /* the piece faced at a corner is framed in gold (grep "AT A CORNER" in engine/kitchen-room.js) */
     if(closetBy(px,py)){b.hidden=false;b.dataset.closet="1";b.textContent=T().closet||"👕";return;}}
   if(!$("world").hidden&&!moving)
     [[0,0],[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{const r=readAt(px+dx,py+dy);if(r)hit=r;return !!r;});

@@ -265,6 +265,10 @@ function kitColumnParts({x,y}){const c=kitColAt(x,y);if(typeof SHAPES!=="object"
   return out;}
 /* A FRAME ROUND A PICKED PIECE: four gold bars just outside the face it turns to the room, measured off its own parts as they
    stand (each turned a quarter or not at all), so it fits a fridge and a shelf alike */
+  /* the places that hold what is searched for, framed in the same gold while the results show (sprint 8a, grep "THE KITCHEN'S TOOLS") */
+  if(KTOOLS.glow.size){const col=KITWALL[world].cols[c];ps.forEach(p=>{if(KTOOLS.glow.has(p.i))out.push(...kitFrame(out.filter(q=>q.place===p.i&&!q.thing&&!q.picked&&!q.faced&&!q.glow),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,glow:1,glowOf:p.i})));});}
+  /* at a corner, the column the hero faces, framed in the same gold (sprint 8a, grep "AT A CORNER") */
+  if(kitFacedWas===world+"|"+c){const col=KITWALL[world].cols[c];out.push(...kitFrame(out.filter(q=>!q.thing&&!q.picked),col.fx<0?0:col.fx-x,col.fx<0?1:col.fy-y).map(q=>({...q,faced:1})));}
 function kitFrame(ps,dx,dy){if(!ps.length)return [];
   let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
   ps.forEach(p=>{const w=p.w!==undefined?p.w:2*(p.r||p.rb||0.03),d=p.d!==undefined?p.d:2*(p.r||p.rb||0.03),h=p.h!==undefined?p.h:2*(p.r||0.03),
@@ -289,7 +293,25 @@ function kitName(p,lg){return p.name||(((UI[lg]||UI.en||{}).kitKinds)||{})[p.kin
 function kitFront(x,y){const K=KITWALL[world];if(!K)return null;
   const cs=K.cols.map((c,i)=>i).filter(i=>K.cols[i].fx===x&&K.cols[i].fy===y&&kitColAt(K.cols[i].x,K.cols[i].y)===i);
   if(!cs.length)return null;
-  return K.places.filter(p=>cs.includes(p.col)).sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);}
+  const f=kitFacedCol(x,y,cs);   /* at a corner, the column the hero faces alone (sprint 8a); both, facing neither, as before */
+  return K.places.filter(p=>f>=0?p.col===f:cs.includes(p.col)).sort((a,b)=>a.col-b.col||KITCHEN.rank[a.row]-KITCHEN.rank[b.row]);}
+/* AT A CORNER, THE PIECE FACED (sprint 8a; his confirmed goal of 2026-11-02: at a corner, the piece the hero faces is outlined in
+   gold and the slot names it, turning toward the other moves both). A corner is a square in front of more than one column (the
+   square beside the back wall's end and the side wall's first, where the two walls meet). Of those columns the one on the square
+   the hero looks at (`dir`) is the faced one: it alone is offered (the slot names its places, a press opens them), and a gold
+   frame stands round it in 3D, the builder's (kitFrame). Facing neither, or standing anywhere that is in front of one column
+   only, nothing is faced and every place in front is offered, as it always was. The frame follows a turn and a step
+   (kitFaceTrack, asked each time the slot is). Held by test/engine.smoke.js, grep "AT A CORNER". */
+function kitFacedCol(x,y,cs){if(!cs||cs.length<2||x!==px||y!==py)return -1;const K=KITWALL[world],d=DIRS[dir];if(!K||!d)return -1;
+  const f=cs.find(i=>K.cols[i].x===x+d[0]&&K.cols[i].y===y+d[1]);return f===undefined?-1:f;}
+var kitFacedWas=null;   /* the column framed now, "<room>|<column>", or null */
+function kitFaceTrack(){const K=KITWALL[world];let now=null;
+  if(K&&!$("world").hidden&&!moving){const cs=K.cols.map((c,i)=>i).filter(i=>K.cols[i].fx===px&&K.cols[i].fy===py&&kitColAt(K.cols[i].x,K.cols[i].y)===i),f=kitFacedCol(px,py,cs);
+    if(f>=0)now=world+"|"+f;}
+  if(now===kitFacedWas)return;
+  const was=kitFacedWas;kitFacedWas=now;
+  [was,now].forEach(k=>{if(!k)return;const[r,c]=k.split("|"),W=KITWALL[r],col=W&&W.cols[+c];
+    if(col&&r===world&&typeof t3Reshape==="function"&&typeof T3==="object"&&String(T3.builtKey||"").indexOf(world+"|")===0)t3Reshape(col.x,col.y);});}
 /* the page a place opens: the world's blocks for it, then every card placed on its column's square — a card that names the
    row of the place it is about (`row` on its READS entry, one of the column's rows) at the end of that place's page alone */
 function kitDoc(id,p){const K=KITWALL[id],c=K.cols[p.col];
