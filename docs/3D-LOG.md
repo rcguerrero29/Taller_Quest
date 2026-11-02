@@ -1054,7 +1054,7 @@ polygon update for all of these, and what the marigolds taught, had been logged)
     a tall piece moves onto an empty square or swaps as before; nothing past the wall's squares. The check takes an empty
     column only with gaps on, and it is drawn as a free square, the fitter's tape (no new part). With a piece picked, a
     tap on an empty square puts it there: the ray hits the tape or the floor, and the square under the point is read.
-  - **The things in a place** (`things` on a layout; `engine/engine.js`, grep `THE THINGS IN A PLACE`). Each thing's parts
+  - **The things in a place** (`things` on a layout; `engine/kitchen-room.js`, grep `THE THINGS IN A PLACE`). Each thing's parts
     are the world's, in tile units, checked at the edge: kinds from the engine's own five (box, sph, cyl, cone, torus),
     a part's own keys and no others (no glass), numbers finite (x and z within half a tile of the thing's middle, y up to
     a tile, sizes above 0 and at most a tile, turns within a full turn, stretches up to 4), colours `#rrggbb`; at most 24
@@ -1152,13 +1152,13 @@ His confirmed goals of 2026-10-31 (a thing in hand put in a piece just added; L-
 of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wall, the arrows, the line at a wall's end);
 `GAMEV` and `CACHE` mq-v246. Meridian declares no kitchen and none of this reaches it.
 
-- **Every place that keeps things has an id** (`engine/engine.js`, grep `EVERY PLACE THAT KEEPS THINGS HAS AN ID`). A kitchen kept
+- **Every place that keeps things has an id** (`engine/kitchen-room.js`, grep `EVERY PLACE THAT KEEPS THINGS HAS AN ID`). A kitchen kept
   before sprint 6 has pieces the builder added with no id, and nothing gave them one later, so a thing in hand could not be put in
   them. `kitchenLay` now gives every plain place with no id, in a layout that hands `things` and `keep`, the first of `n1`, `n2`,
   … that no place has, in the places' order (as `kitGiveId` does for a piece added). It lays a copy and never changes what it was
   handed; the same layout gets the same ids every time, so what is kept by them stays with them until the world keeps the layout
   again. A layout with no things (My kitchen's kind) is given none.
-- **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/engine.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
+- **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/kitchen-room.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
   name up to two side walls, `sides: [{squares: [[x,y], …], face}]`, `face` one of north, south, east, west; a place on one says
   `side`, its index, and `col` along that wall's own squares. The check refuses, whole and in one sentence, side walls with gaps
   off, more than two, a key a side wall does not have, a facing off the list, no squares, a square off the map or not `◧` or named

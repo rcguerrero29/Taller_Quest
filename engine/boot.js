@@ -39,6 +39,10 @@
        keeps that order exactly. */
     w("engine/shapes.js");}
   w("engine/engine.js");
+  /* the kitchen's room, wall, things, hand, closet and builder (sprint 8a): a file of its own, after engine.js (it reads the
+     engine's names when it runs, and lays the kitchens a world declares once the engine's rooms stand) and before engine3d.js.
+     It always loads, as engine3d.js does: a world with no kitchen declares none, and it lays nothing. */
+  w("engine/kitchen-room.js");
   /* engine3d.js ALWAYS loads, and only the library is conditional. It is 31KB gzipped against
      Three's 149, so the saving is nearly all in the library — and it declares `T3`, `t3Invalidate`
      and `draw3d`, which the rest of the engine and both suites reach for by bare name. A bare name

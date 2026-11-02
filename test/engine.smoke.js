@@ -2220,7 +2220,7 @@ function findChromium() {
   }
 
   /* ---- THE THINGS IN A PLACE AND THE HAND (sprint 5 of the 3D kitchen) ----
-     engine/engine.js, grep "THE THINGS IN A PLACE" and "THE HAND"; his confirmed goals of 2026-10-30 (sprint 5: an opened
+     engine/kitchen-room.js, grep "THE THINGS IN A PLACE" and "THE HAND"; his confirmed goals of 2026-10-30 (sprint 5: an opened
      place showing its foods, and grabbing's first iteration, done the way the 2D wall does it). What a person would notice:
      things standing where a door still hides them, or outside their piece; a thing the engine cannot draw drawn anyway, or a
      refusal said once a frame; a page that lists a thing twice or one that was refused; a thing taken that changes what is
@@ -2385,7 +2385,7 @@ function findChromium() {
   }
 
   /* ---- THE KITCHEN'S FOUR FIXES (sprint 6 of the 3D kitchen) ----
-     engine/engine.js, grep "WHERE THE READER STANDS", "kitClose", "A PIECE ADDED HOLDS THINGS" and "AN EMPTY PLACE"; his confirmed
+     engine/kitchen-room.js, grep "WHERE THE READER STANDS", "kitClose", "A PIECE ADDED HOLDS THINGS" and "AN EMPTY PLACE"; his confirmed
      goals of 2026-10-31 (the four changes to the test kitchen, and the empty line). What a person would notice: a kitchen place's
      page opened in full screen that throws full screen away, or stands outside the view, or leaves the room dark or the page
      over the whole of it; any OTHER page that no longer leaves full screen; a slot that reads Open on a place that is open, or
@@ -2629,7 +2629,7 @@ function findChromium() {
   }
 
   /* ---- THE KITCHEN ALONG MORE THAN ONE WALL, AND EVERY PLACE GIVEN AN ID (sprint 7 of the 3D kitchen) ----
-     engine/kitchen.js, `sides` in "SIDE WALLS"; engine/engine.js, grep "THE SIDE WALLS", "AT A WALL'S END" and "EVERY PLACE THAT
+     engine/kitchen.js, `sides` in "SIDE WALLS"; engine/kitchen-room.js, grep "THE SIDE WALLS", "AT A WALL'S END" and "EVERY PLACE THAT
      KEEPS THINGS HAS AN ID"; engine/shapes.js, `face`. His confirmed goals of 2026-10-31 (a thing in hand put in a piece just
      added; L- and U-shaped kitchens, along walls only) and 2026-11-01 (point 3: a tap on any empty square of the back wall or a
      side wall moves the piece picked there; the arrows still step one square, and at a wall's end a short line says to tap a

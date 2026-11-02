@@ -25,7 +25,7 @@ of them and plays exactly as before, and every shape it had builds the same on t
    `moveTo`.
 6. **Things in a place.** A world hands each place's things: an id, a count, a name, a picture and 3D parts. Each is
    checked whole at the edge (a closed list of part kinds, capped sizes and counts, `#rrggbb` colours), and stands on
-   the piece's shelves while its inside shows. In `engine/engine.js` (grep "THE THINGS IN A PLACE").
+   the piece's shelves while its inside shows. In `engine/kitchen-room.js` (grep "THE THINGS IN A PLACE").
 7. **The hand.** Take a thing from a place's page, see it in hand over the room, and put it in another place. The put is
    one change handed to the world's `keep`. The engine keeps no contents. In `engine/engine.js` (grep "THE HAND").
 
