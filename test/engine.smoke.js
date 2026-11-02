@@ -1501,6 +1501,8 @@ function findChromium() {
         window.__badLay = v => { const o = { own: () => ({}), keep: commit }; o.signs = v; const R2 = R.slice(); WORLDS.__s8b_bad = { rows: R2.slice(), rows0: R2.slice(), grid: R2.map(r => r.split('')), npcs: [], W: 12, H: 6 };
           return kitchenLay('__s8b_bad', { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places: places.map(p => Object.assign({}, p)), things, keep: ch => commit({ places: ch }), tools: o, gaps: true, store: () => {}, page: pl => [{ p: 'inside ' + pl.id }] }); };
       });
+      /* the town turns camera zoom on (its +/− buttons stand in the view); this shell has none, so the fixture gives it the same */
+      await sp.evaluate(() => { if (!CAMZ.on) { CAMZ.on = true; CAMZ.lo = 0.5; CAMZ.hi = 1.6; } camZoomShow(); });
       const BAD = await sp.evaluate(() => ({ str: window.__badLay('yes'), ok: window.__badLay(true) }));
       if (!BAD.str) say('a kitchen whose tools say signs: "yes" was accepted, where `signs` is true or false');
       if (BAD.ok) say('a kitchen whose tools say signs: true was refused: ' + BAD.ok);
@@ -1590,6 +1592,24 @@ function findChromium() {
         if (C && !/^\d+$/.test(C.text)) say('a sign shrunk to its count still shows ' + JSON.stringify(C.text) + ', where it is the count alone');
         if (C && !/^\d+ use soon$/.test(C.label)) say('a sign shrunk to its count has the name ' + JSON.stringify(C.label) + ' for a screen reader, where it keeps "N use soon"');
       }
+      /* A DENSE KITCHEN, AT BOOT AND ZOOMED IN (found by the review: six places with up to three things due each, the camera zoomed in three steps): no sign on the zoom buttons, the rotate button or another sign */
+      const STOCKL = { p1: [['egg', 12, '2026-10-30'], ['milk', 1, '2026-11-20'], ['rice', 10, '2026-11-03'], ['salt', 1, '2026-11-09'], ['tea', 1], ['oil', 1]], p2: [['lime', 1, '2026-11-04'], ['corn', 1, '2026-11-30'], ['chile', 4]], p3: [['beans', 3, '2026-11-10'], ['egg', 2, '2026-11-12'], ['rice', 1, '2026-11-05']], p4: [['milk', 2, '2026-11-06'], ['salt', 1, '2026-11-07'], ['tea', 2, '2026-12-01']], p5: [['lime', 1, '2026-11-08'], ['corn', 1, '2026-11-09'], ['oil', 1]], p7: [['chile', 2, '2026-12-02'], ['beans', 2, '2026-12-03']] };
+      for (const [nm, w, h, fsOn] of sizes) for (const zoomed of [false, true]) {
+        const isFs = await sp.evaluate(() => $('vp').classList.contains('fs'));
+        if (isFs !== fsOn) await sp.click('#fsbtn');
+        await sp.setViewportSize({ width: w, height: h });
+        await sp.evaluate(() => { while (camZoom < 1 - 1e-9 || camZoom > 1 + 1e-9) camZoomBy(camZoom < 1 ? 1.2 : 1 / 1.2); });
+        await setStock(STOCKL);
+        const what = 'in a dense kitchen (six places, up to three things due each) at ' + nm + (zoomed ? ' zoomed in three steps' : '');
+        const ok = await W(() => document.querySelectorAll('[data-ksign]').length >= 6, null, what + ' not every place with things due got a sign');
+        if (!ok) continue;
+        if (zoomed) await sp.evaluate(() => { for (let k = 0; k < 3; k++) camZoomBy(1 / 1.2); });
+        await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        const G = await geo();
+        if (G.out.length) say(what + ' a sign covers what it must not: ' + G.out.slice(0, 3).join('; '));
+        if (w < 500 && G.small) say(what + ' ' + G.small + ' sign(s) have a hit area under 44 by 44 px');
+      }
+      await sp.evaluate(() => { while (camZoom < 1 - 1e-9 || camZoom > 1 + 1e-9) camZoomBy(camZoom < 1 ? 1.2 : 1 / 1.2); });
       /* 5 · HIDDEN WHILE PICKED, WHILE ITS PAGE IS OPEN AND WHILE THE PANEL IS OPEN; and they return */
       await sp.setViewportSize({ width: 1366, height: 768 }); await setStock(STOCK2); await some(4);
       await sp.evaluate(() => kitOpen('__s8b_signs', 0));
