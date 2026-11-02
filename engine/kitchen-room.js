@@ -121,7 +121,8 @@ function kitchenCheck(id,L){
   if(own(L,"things")&&typeof L.things!=="function")return why("its things are not a function");
   if(own(L,"keep")&&typeof L.keep!=="function")return why("its keep is not a function");
   if(own(L,"tools")){const T0=L.tools;   /* the kitchen's tools (sprint 8a, grep "THE KITCHEN'S TOOLS"): the game's own items and the one place it keeps a change */
-    if(!plain(T0)||Object.keys(T0).some(k=>!["own","keep"].includes(k))||typeof T0.own!=="function"||typeof T0.keep!=="function")return why("its tools are not an object with an own and a keep, both functions");
+    if(!plain(T0)||Object.keys(T0).some(k=>!["own","keep","signs"].includes(k))||typeof T0.own!=="function"||typeof T0.keep!=="function")return why("its tools are not an object with an own and a keep, both functions (and perhaps `signs`)");
+    if(own(T0,"signs")&&typeof T0.signs!=="boolean")return why("its tools' `signs` is not true or false");
     if(typeof L.things!=="function"||typeof L.keep!=="function")return why("it has tools and no things or no keep, and the tools work on what a place keeps");}
   const gaps=L.gaps===true;
   const W=L.wall;
@@ -887,7 +888,7 @@ function kitBuildShow(){
    startOwn, saveOwn, startOwnRename, askOwnRemove, setFullness and searched), written once here so every game on the engine can
    turn them on and no game writes them again. NOTHING PRIVATE ENTERS THE ENGINE: no food, id or word of a library; the game keeps its data, as with `store` and `keep`.
    A GAME TURNS THEM ON with one more key in its layout, beside `things` and `keep` (it needs both):
-     tools   `{own, keep}`: `own()` answers `{<id>: <name>}`, the things of the player's own the game keeps (text, at most
+     tools   `{own, keep, signs?}` (`signs: true` turns on the signs, grep "THE SIGNS", words `ktSign`, `ktSignWords`, `ktSoonAt`): `own()` answers `{<id>: <name>}`, the things of the player's own the game keeps (text, at most
              KITTHINGNAME characters, ids `o-1`, `o-2`, … that pass KITID); `keep(change)` is handed ONE change, a plain
              copy, `{places: {<place id>: [{id, n, date?}, …]}, own: {<id>: <name>}}`, either key left out when it does not change,
              and keeps it whole or throws (then nothing changes). A thing a game answers through `things` may carry `date`
@@ -937,7 +938,7 @@ function kitDue(K){const all=kitAllThings(K).filter(r=>r.t.date).map(r=>({p:r.p,
 /* THE SEARCH: text only. The query is lower-cased and looked for as it is in each thing's name; no part of it is ever a pattern */
 function kitSearchRows(K,q){const s=Array.from(String(q||"")).slice(0,KITSEARCH).join("").trim().toLowerCase();if(!s)return [];
   return kitAllThings(K).filter(r=>r.t.name.toLowerCase().indexOf(s)>=0);}
-const KTOOLS={open:false,q:"",say:"",edit:null,glow:new Set(),el:null,btn:null,past:false};
+const KTOOLS={open:false,q:"",say:"",edit:null,glow:new Set(),el:null,btn:null,past:false,only:null};
 /* the places that glow, built again where they stand when the set changes */
 function kitGlowSet(set){const K=KITWALL[world];if(!K)return;const was=KTOOLS.glow;
   if(set.size===was.size&&[...set].every(i=>was.has(i)))return;
@@ -957,6 +958,7 @@ function kitToolsKeep(change,focus){const K=kitToolsK();if(!K)return false;
   try{K.tools.keep(JSON.parse(JSON.stringify(change)));}
   catch(e){mqwarn("kitchen","a change to the kitchen's tools was not kept: "+String(e&&e.message||e).slice(0,80),false);
     KTOOLS.say=kitW("ktNotKept","That could not be kept on this device, so nothing changed.");if(KTOOLS.open)kitToolsRender();else if(typeof toast==="function")toast(KTOOLS.say,2600);return false;}
+  KSIGN.stale=true;
   Object.keys(change.places||{}).forEach(pid=>{const p=K.places.find(q=>q.id===pid);if(p)kitReshapeAt(world,p.i);});
   kitRepage();if(KTOOLS.open)kitToolsRender();
   if(focus){const n=document.querySelector('[data-kt="'+focus+'"]');if(n)n.focus();}
@@ -1077,12 +1079,21 @@ function kitToolsBuild(){if(KTOOLS.el)return KTOOLS.el;const vp=$("vp");if(!vp)r
   el.appendChild(kh("div",null,undefined,{id:"kpOwn"}));
   el.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();kitToolsClose();}});
   vp.appendChild(el);KTOOLS.el=el;kitToolsPlace();return el;}
+/* THE PANEL NARROWED TO ONE PLACE (a sign's tap): its title says so, and only that place's use-soon things stand in it, soonest first; the search, the drawer and the rest are put away until the panel is shut */
+function kitToolsNarrow(K,names,i){const el=KTOOLS.el,t=n=>$(n);
+  [...el.children].forEach(c=>{c.style.display=(c.id==="kpSoon"||c===t("kpTitle").parentElement)?"":"none";});
+  t("kpTitle").textContent=kitFill(kitW("ktSoonAt","Use soon · {place}"),{place:names[i]});t("kpClose").setAttribute("aria-label",kitW("ktClose","Close"));
+  const rows=kitDue(K).soon.filter(r=>r.p.i===i);kitGlowSet(new Set([i]));
+  const so=t("kpSoon");so.textContent="";
+  if(!rows.length)so.appendChild(kh("p",{margin:"4px 0",opacity:"0.85"},kitFill(kitW("ktSoonNone","Nothing is due in the next {n} days."),{n:String(KITSOON)})));else rows.forEach(r=>so.appendChild(kitToolsRow(K,names,r,true)));}
 /* a result or a due line: the thing, its place, its date when it has one; a press opens that place */
 function kitToolsRow(K,names,r,dated){const b=kitBtn("",()=>kitToolsPick(r.p.i),{display:"flex",flexDirection:"column",alignItems:"flex-start",width:"100%",textAlign:"left",margin:"4px 0",padding:"6px 10px",minHeight:"44px"},{"data-kt":"pick-"+r.p.i+"-"+r.t.id});
   b.appendChild(kh("b",null,kitFill(kitW("ktResult","{name} — {place}"),{name:r.t.name+(r.t.n>1?" × "+r.t.n:""),place:names[r.p.i]||kitName(r.p,lang)})));
   if(dated&&r.t.date)b.appendChild(kh("span",{fontSize:"12px",opacity:"0.85"},kitDueText(r.t.date)));return b;}
 function kitToolsRender(){const K=kitToolsK(),el=KTOOLS.el;if(!el||!K)return;
-  const names=kitPlaceNames(K),t=n=>$(n);
+  const names=kitPlaceNames(K),t=n=>$(n),only=KTOOLS.only!==null&&names[KTOOLS.only]!==undefined?KTOOLS.only:null;
+  if(only!==null){kitToolsNarrow(K,names,only);return;}
+  [...el.children].forEach(c=>{c.style.display="";});   /* the whole panel, as it is when it is not narrowed to one place */
   t("kpTitle").textContent=kitW("ktTitle","Kitchen");t("kpClose").setAttribute("aria-label",kitW("ktClose","Close"));
   const q=t("kpSearch");q.placeholder=kitW("ktSearchPh","Search every place");q.setAttribute("aria-label",kitW("ktSearch","Search every place"));if(q.value!==KTOOLS.q)q.value=KTOOLS.q;
   const rs=t("kpResults");rs.textContent="";const rows=kitSearchRows(K,KTOOLS.q);
@@ -1121,17 +1132,21 @@ function kitToolsRender(){const K=kitToolsK(),el=KTOOLS.el;if(!el||!K)return;
       row.appendChild(kitBtn(kitW("ktRename","Rename"),()=>{KTOOLS.edit={id,mode:"rename"};kitToolsRender();},{},{"data-kt":"own-rename-btn-"+id}));
       row.appendChild(kitBtn(kitW("ktRemove","Remove"),()=>{KTOOLS.edit={id,mode:"remove"};kitToolsRender();},{},{"data-kt":"own-remove-"+id}));
       ow.appendChild(row);});}}
-function kitToolsOpen(){const K=kitToolsK();if(!K||$("world").hidden||KTOOLS.open)return false;
+function kitToolsOpen(only){const K=kitToolsK();if(!K||$("world").hidden||KTOOLS.open)return false;
+  KTOOLS.only=typeof only==="number"&&K.places[only]&&typeof K.places[only].id==="string"?only:null;   /* a sign's tap narrows the panel to that place's use-soon things (grep "THE SIGNS") */
   if(kitNow){kitShut();if($("reader")&&!$("reader").hidden)$("docClose").click();}
   if(!kitToolsBuild())return false;
   KTOOLS.open=true;KTOOLS.el.hidden=false;kitToolsPlace();kitToolsRender();kitToolsShow();
   const q=$("kpSearch");if(q)q.focus();return true;}
 function kitToolsClose(){if(!KTOOLS.open)return false;KTOOLS.open=false;if(KTOOLS.el)KTOOLS.el.hidden=true;KTOOLS.edit=null;KTOOLS.say="";
-  kitGlowSet(new Set());kitToolsShow();const b=KTOOLS.btn;if(b&&!b.hidden)b.focus();return true;}
+  const was=KTOOLS.only;KTOOLS.only=null;kitGlowSet(new Set());kitToolsShow();
+  if(was!==null){KSIGN.back=was;return true;}   /* opened from a sign: focus goes back to that sign when it returns */
+  const b=KTOOLS.btn;if(b&&!b.hidden)b.focus();return true;}
 /* a pick: the panel is put down and that place opens (its doors, its page) */
-function kitToolsPick(i){const id=world;kitToolsClose();return kitOpen(id,i);}
+function kitToolsPick(i){const id=world;kitToolsClose();KSIGN.back=null;return kitOpen(id,i);}
 /* THE BUTTON follows the room: there while the room's kitchen turned the tools on, and the panel goes with it */
 function kitToolsShow(){const K=kitToolsK(),vp=$("vp");let b=KTOOLS.btn;
+  kitSignKick();   /* the signs follow the room too (grep "THE SIGNS"); nothing, where the tools turned none on */
   if(!K||$("world").hidden){if(KTOOLS.open){KTOOLS.open=false;if(KTOOLS.el)KTOOLS.el.hidden=true;kitGlowSet(new Set());}if(b)b.hidden=true;return;}
   if(!vp)return;
   if(!b){b=kh("button",{position:"absolute",left:"12px",bottom:"12px",zIndex:"5",minHeight:"44px",padding:"0 14px",border:"none",borderRadius:"22px",background:"rgba(20,16,30,.86)",color:"#EDE9F5",font:"600 14px "+KT_FONT,cursor:"pointer"},undefined,{id:"kitBtn",type:"button"});
@@ -1143,6 +1158,78 @@ function kitToolsKey(e){if(!kitToolsK()||e.ctrlKey||e.metaKey||e.altKey||e.repea
   if((e.key==="k"||e.key==="K")&&keyForWorld(e)){e.preventDefault();if(KTOOLS.open)kitToolsClose();else kitToolsOpen();return true;}
   if(e.key==="Escape"&&KTOOLS.open){e.preventDefault();kitToolsClose();return true;}
   return false;}
+/* ═══════════ THE SIGNS (sprint 8b of the 3D kitchen) — a small sign over each place that holds things to use soon ═══════════
+   His confirmed goals of 2026-11-02 (sprint 8b and his picks from the rendered mocks). A GAME TURNS THEM ON with `signs: true` in its tools,
+   beside `own` and `keep`; a game that says nothing has none, and nothing here runs for it.
+   WHAT A SIGN SAYS: how many things in that place are due within KITSOON days (kitDue, the panel's own Use soon: what is past its date is
+   not counted here), "N use soon" (UI `ktSign`, `ktSignWords`); none for a place with nothing due. WHEN: in the 3D camera, in a room whose
+   kitchen turned them on, while nothing is picked, no page or panel is open and nothing covers the room; the flat cameras show none.
+   WHERE: a real button inside #vp, set each frame from the place's own top-centre projected through the game's 3D camera (not painted into the
+   room: it keeps its size at any zoom and screen, and a tap, Tab and Enter work as on any button). A tap or Enter opens the Kitchen panel
+   narrowed to that place's use-soon things. WHEN TWO WOULD TOUCH the later one shrinks to its gold count alone (its words stay as its
+   accessible name), then moves up until it is clear; no sign covers the Kitchen button, the slot, the view's button columns or another sign.
+   The hit area is at least 44 by 44 px on a phone. What it counts is read when the room is built again and four times a second after. */
+const KSIGN={els:new Map(),on:false,key:"",t:0,tally:null,back:null,stale:true};
+const KSIGN_AVOID="#kitBtn,#read,#talk,#serve,.acts,#rot3d,#zoomIn3d,#zoomOut3d,.gear";
+/* a sign wanted at all: the game asked, and the room is the 3D camera's with nothing picked or open */
+function kitSignWanted(){const K=kitToolsK();if(!K||!K.tools||K.tools.signs!==true)return null;
+  if(camMode!=="3d"||typeof T3!=="object"||!T3||!T3.cam||T3.fail||typeof THREE!=="object"||$("world").hidden||$("cv3").hidden)return null;
+  if(KTOOLS.open||kitNow||worldCovered()||(kitBuildReady&&kitBuildSel()!==null))return null;
+  return K;}
+/* each place's use-soon count and where its top-centre stands in the world, read again when the room or the language changes, when a change is kept, and a few times a second */
+function kitSignTally(K,ts){const key=world+"|"+lang+"|"+String(T3.builtKey);
+  if(KSIGN.tally&&!KSIGN.stale&&key===KSIGN.key&&ts-KSIGN.t<250)return KSIGN.tally;
+  const n={};kitDue(K).soon.forEach(r=>{n[r.p.i]=(n[r.p.i]||0)+1;});const out=[];
+  K.places.forEach(p=>{if(!n[p.i]||typeof p.id!=="string")return;const c=K.cols[p.col];if(!c)return;
+    const ps=kitColumnParts({x:c.x,y:c.y}).filter(q=>q.place===p.i&&!q.thing&&!q.picked&&!q.glow&&!q.faced);if(!ps.length)return;
+    let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity,y1=-Infinity;
+    ps.forEach(q=>{const w=q.w!==undefined?q.w:2*(q.r||q.rb||0.03),d=q.d!==undefined?q.d:2*(q.r||q.rb||0.03),h=q.h!==undefined?q.h:2*(q.r||0.03),
+      a=Math.abs(Math.cos(q.ry||0)),b=Math.abs(Math.sin(q.ry||0)),hx=a*w/2+b*d/2,hz=b*w/2+a*d/2;
+      x0=Math.min(x0,q.x-hx);x1=Math.max(x1,q.x+hx);z0=Math.min(z0,q.z-hz);z1=Math.max(z1,q.z+hz);y1=Math.max(y1,q.y+h/2);});
+    out.push({i:p.i,n:n[p.i],wx:c.x+0.5+(x0+x1)/2,wy:y1,wz:c.y+0.5+(z0+z1)/2});});
+  KSIGN.tally=out;KSIGN.key=key;KSIGN.t=ts;KSIGN.stale=false;return out;}
+const kitSignBox=e=>{const r=e.getBoundingClientRect();return {l:r.left,t:r.top,r:r.right,b:r.bottom};};
+const kitSignHit=(a,b)=>a.l<b.r&&a.r>b.l&&a.t<b.b&&a.b>b.t;
+/* one sign, made once: a button (the hit area) holding the pill, the count and the words */
+function kitSignMake(i){const e=kh("button",{position:"absolute",zIndex:"4",left:"0",top:"0",margin:"0",padding:"0",border:"none",background:"none",color:"#F6F1FF",cursor:"pointer",display:"flex",alignItems:"flex-end",justifyContent:"center",font:"700 12px "+KT_FONT,touchAction:"manipulation"},undefined,{type:"button","data-ksign":String(i)});
+  const pill=kh("span",{position:"relative",display:"block",boxSizing:"border-box",border:"1.5px solid #F2C230",background:"rgba(20,16,30,.94)",textAlign:"center",whiteSpace:"nowrap",boxShadow:"0 1px 4px rgba(0,0,0,.5)",marginBottom:"6px",pointerEvents:"none"},undefined,{"aria-hidden":"true"});
+  pill.appendChild(kh("b",{color:"#F2C230"},"",{"data-k":"n"}));pill.appendChild(kh("span",null,"",{"data-k":"w"}));
+  pill.appendChild(kh("span",{position:"absolute",left:"50%",bottom:"-6px",width:"9px",height:"9px",background:"rgba(20,16,30,.94)",borderRight:"1.5px solid #F2C230",borderBottom:"1.5px solid #F2C230",transform:"translateX(-50%) rotate(45deg)"}));
+  e.appendChild(pill);e.addEventListener("click",ev=>{ev.preventDefault();kitToolsOpen(i);});$("vp").appendChild(e);return e;}
+/* a sign dressed as its words in full (one line in a wide view, two in a narrow one) or as its gold count alone */
+function kitSignDress(e,n,full,wide){const pill=e.firstChild,c=pill.querySelector('[data-k="n"]'),w=pill.querySelector('[data-k="w"]'),label=kitFill(kitW("ktSign","{n} use soon"),{n:String(n)});
+  e.setAttribute("aria-label",label);e.dataset.form=full?"full":"count";c.textContent=String(n);w.textContent=kitW("ktSignWords","use soon");
+  const st=pill.style;
+  if(!full){Object.assign(st,{borderRadius:"50%",width:"28px",height:"28px",padding:"0",lineHeight:"25px"});c.style.fontSize="15px";c.style.display="block";c.style.lineHeight="25px";w.style.display="none";}
+  else if(wide){Object.assign(st,{borderRadius:"16px",width:"",height:"",padding:"7px 11px",lineHeight:"1"});c.style.fontSize="12px";c.style.display="inline";c.textContent=n+" ";w.style.display="inline";w.style.fontSize="12px";}
+  else{Object.assign(st,{borderRadius:"11px",width:"",height:"",padding:"4px 8px",lineHeight:"1"});c.style.fontSize="16px";c.style.display="block";c.style.lineHeight="1";w.style.display="block";w.style.fontSize="10px";w.style.fontWeight="600";w.style.lineHeight="1.2";}}
+function kitSignLoop(ts){KSIGN.on=false;const K=kitSignWanted();
+  if(!K){KSIGN.els.forEach(e=>{e.hidden=true;});if(kitToolsK()&&kitToolsK().tools.signs===true)kitSignKick();return;}   /* nothing wanted now: they are put away, and looked at again next frame */
+  KSIGN.on=true;requestAnimationFrame(kitSignLoop);
+  const vp=$("vp"),vr=vp.getBoundingClientRect(),cr=$("cv3").getBoundingClientRect(),tally=kitSignTally(K,ts),wide=vr.width>=700,touch=vr.width<500||(window.matchMedia&&matchMedia("(pointer:coarse)").matches),min=touch?44:30;
+  T3.cam.updateMatrixWorld();
+  const seen=new Set(),pts=[];
+  tally.forEach(a=>{const v=new THREE.Vector3(a.wx,a.wy,a.wz).project(T3.cam);if(v.z>1||v.z<-1)return;
+    pts.push({a,x:(v.x+1)/2*cr.width+cr.left-vr.left,y:(1-v.y)/2*cr.height+cr.top-vr.top});});
+  pts.sort((p,q)=>p.x-q.x||p.a.i-q.a.i);
+  const avoid=[...document.querySelectorAll(KSIGN_AVOID)].filter(e=>!e.hidden&&e.offsetWidth>0).map(e=>{const b=kitSignBox(e);return {l:b.l-vr.left,t:b.t-vr.top,r:b.r-vr.left,b:b.b-vr.top};});
+  const placed=[];
+  pts.forEach(p=>{const i=p.a.i;let e=KSIGN.els.get(i);if(!e){e=kitSignMake(i);KSIGN.els.set(i,e);}e.hidden=false;seen.add(i);
+    const rect=(full)=>{kitSignDress(e,p.a.n,full,wide);const w=Math.max(min,e.firstChild.offsetWidth),h=Math.max(min,e.firstChild.offsetHeight+6);e.style.width=w+"px";e.style.height=h+"px";
+      const x=Math.min(vr.width-w/2-2,Math.max(w/2+2,p.x));return {l:x-w/2,r:x+w/2,t:p.y-4-h,b:p.y-4,x};};
+    const hits=r=>placed.some(o=>kitSignHit(r,o))||avoid.some(o=>kitSignHit(r,o));
+    let r=rect(true);
+    if(hits(r))r=rect(false);   /* where it would touch, a sign shrinks to its gold count alone */
+    if(hits(r)){const w=r.r-r.l,h=r.b-r.t,c=[];   /* and if it still touches, it moves the shortest way to a clear place inside the view (up, or aside) */
+      for(let dy=0;dy>=-h*4;dy-=6)for(let dx=-w*2;dx<=w*2;dx+=8)c.push([dx,dy]);
+      c.sort((u,v)=>u[0]*u[0]+u[1]*u[1]-v[0]*v[0]-v[1]*v[1]);
+      const f=c.map(([dx,dy])=>({l:r.l+dx,r:r.r+dx,t:r.t+dy,b:r.b+dy,x:r.x+dx})).find(q=>q.l>=2&&q.r<=vr.width-2&&q.t>=2&&!hits(q));
+      if(f)r=f;}
+    const pl=e.firstChild,tl=pl.lastChild,pw=pl.offsetWidth;tl.style.left=Math.round(Math.max(9,Math.min(pw-9,p.x-(r.l+(r.r-r.l-pw)/2))))+"px";   /* its tail points at the place, wherever the sign had to stand */
+    placed.push(r);e.style.transform="translate("+Math.round(r.l)+"px,"+Math.round(r.t)+"px)";});
+  KSIGN.els.forEach((e,i)=>{if(!seen.has(i))e.hidden=true;});
+  if(KSIGN.back!==null){const e=KSIGN.els.get(KSIGN.back);KSIGN.back=null;if(e&&!e.hidden)e.focus();}}
+function kitSignKick(){if(KSIGN.on||!kitToolsK()||kitToolsK().tools.signs!==true){if(!KSIGN.on)KSIGN.els.forEach(e=>{e.hidden=true;});return;}KSIGN.stale=true;KSIGN.on=true;requestAnimationFrame(kitSignLoop);}
 /* THE KITCHEN WALLS A WORLD DECLARES, laid once its rooms stand as this device last left them (the edits above), so a
    layout is checked against the map the person will walk in (grep "THE KITCHEN LAYOUT"). Nothing, for a world without. */
 if(typeof KITCHENWALLS==="object"&&KITCHENWALLS)Object.keys(KITCHENWALLS).forEach(id=>kitchenLay(id,KITCHENWALLS[id]));
