@@ -1065,7 +1065,7 @@ function kitSetFull(p,v){const K=kitToolsK();if(!K||typeof K.store!=="function"|
   const L=Object.assign({},next,{store:K.store,tools:K.tools});if(K.page)L.page=K.page;if(K.gaps)L.gaps=true;L.things=K.things;L.keep=K.keep;
   const r=kitchenCheck(world,L);if(r.why){mqwarn("kitchen","how full a place is was refused: "+r.why,false);return false;}
   try{K.store(JSON.parse(JSON.stringify(next)));}
-  catch(e){mqwarn("kitchen","how full a place is was not kept: "+String(e&&e.message||e).slice(0,80),false);if(typeof toast==="function")toast(kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}
+  catch(e){const sd=kitRefused(e);if(!sd)mqwarn("kitchen","how full a place is was not kept: "+String(e&&e.message||e).slice(0,80),false);if(typeof toast==="function")toast(sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}
   KITWALL[world]=r.wall;kitDirty();kitRepage();
   const n=document.querySelector('[data-kt="full-'+(v||"none")+'"]');if(n)n.focus();return true;}
 /* THE PLACE'S PAGE: how full, and each thing's count and date */

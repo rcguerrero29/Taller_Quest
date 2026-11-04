@@ -133,6 +133,10 @@ async function run(root, browser) {
   if (!/Another tab changed your kitchen\./.test(ref.toasted)) say('a refused change says ' + JSON.stringify(ref.toasted) + ', where it says the game\'s own sentence');
   if (ref.ticker !== 0) say('a refused change the game has already said is written to the ticker too');
   if (!/could not be kept on this device/.test(ref.plain)) say('a change that fails with no sentence of the game\'s says ' + JSON.stringify(ref.plain) + ', where it says it could not be kept on this device');
+  /* 5b · the same for how full a place is (kept through store): the game's sentence, never the generic one */
+  const fu = await p.evaluate(() => { const L = window.__mk(window.__tools({ amount: true })); L.store = () => { const e = new Error('plain'); e.say = 'Another tab changed your kitchen.'; throw e; }; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2);
+    const TT = []; window.toast = m => { TT.push(String(m)); }; const ok = kitSetFull(KITWALL.__s9_am.places[0], KITCHEN.fulls[0]); return { ok, said: TT.join('|') }; });
+  if (fu.ok || !/Another tab changed your kitchen\./.test(fu.said) || /could not be kept/.test(fu.said)) say('a refused how-full says ' + JSON.stringify(fu.said) + ', where it says the game\'s own sentence');
   errs.forEach(m => say('the page threw: ' + m.split('\n')[0]));
   await p.close();
   return fails;
@@ -146,6 +150,7 @@ const PLANTS = [
   ['a thing from outside cannot be put', 'engine/kitchen-room.js', 'if(h.from!==null)change[K.places[h.from].id]=from;change[K.places[i].id]=to;', 'change[K.places[h.from].id]=from;change[K.places[i].id]=to;', /putting a thing taken from the drawer/],
   ['the drawer cut at 24', 'engine/kitchen-room.js', ',KITLOOSEMAX);', ',24);', /list 24 rows|130 loose things list|60 loose things list/],
   ['the cut taken before the search', 'engine/kitchen-room.js', 'all=got.list.filter(x=>!q||x.name.toLowerCase().includes(q)),list=all.slice(0,KITLOOSE);', 'all=got.list.slice(0,KITLOOSE).filter(x=>!q||x.name.toLowerCase().includes(q)),list=all;', /search for a loose thing past the cut/],
+  ['how full saying the generic sentence for a refusal', 'engine/kitchen-room.js', 'toast(sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}\n  KITWALL[world]=r.wall', 'toast(kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}\n  KITWALL[world]=r.wall', /a refused how-full says/],
   ['a refusal not saying the game\'s sentence', 'engine/kitchen-room.js', 'KTOOLS.say=sd||kitW("ktNotKept"', 'KTOOLS.say=kitW("ktNotKept"', /a refused change says/],
   ['the bar over the Kitchen button', 'engine/kitchen-room.js', 'b.style.left=off+"px";', 'b.style.left="12px";', /covers the Kitchen button/],
   ['spaces in a name not folded', 'engine/kitchen-room.js', '.replace(/\\s+/g," ").trim();\n  if(Array.from(nm).length>KITNAME)', '.trim();\n  if(Array.from(nm).length>KITNAME)', /handed to the game as/],
