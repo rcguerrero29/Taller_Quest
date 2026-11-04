@@ -127,15 +127,18 @@ async function run(root, browser) {
   if (lng.es !== 'Todavía sin guardar') say('the drawer\'s title is ' + JSON.stringify(lng.es) + ' in Spanish, where it is the game\'s own word');
   /* 5 · A REFUSED CHANGE SAYS THE GAME'S OWN SENTENCE, once: the engine shows it where the change was made and does not write the ticker */
   const ref = await p.evaluate(() => { const L = window.__mk(window.__tools({ amount: true, loose: () => [] })); L.tools.keep = () => { const e = new Error('plain'); e.say = 'Another tab changed your kitchen.'; throw e; }; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2);
-    const TT = []; window.toast = m => { TT.push(String(m)); }; const n0 = (typeof mqLog === 'object' ? mqLog.filter(e => e.kind === 'kitchen').length : 0); kitToolsKeep({ places: { p1: [] } }); const n1 = (typeof mqLog === 'object' ? mqLog.filter(e => e.kind === 'kitchen').length : 0);
-    const toasted = TT.join('|'); const L2 = window.__mk(window.__tools({ amount: true })); L2.tools.keep = () => { throw new Error('disk'); }; kitchenLay('__s9_am', L2); window.__go('__s9_am', 2, 2); TT.length = 0; kitToolsKeep({ places: { p1: [] } });
-    return { toasted, ticker: n1 - n0, plain: TT.join('|') }; });
+    const TT = [], TK = []; window.toast = m => { TT.push(String(m)); }; window.toastShow = m => { TK.push(String(m)); }; const n0 = (typeof mqLog === 'object' ? mqLog.filter(e => e.kind === 'kitchen').length : 0); kitToolsKeep({ places: { p1: [] } }); const n1 = (typeof mqLog === 'object' ? mqLog.filter(e => e.kind === 'kitchen').length : 0);
+    const drawerSays = KTOOLS.say, toasted = TK.join('|'), inTicker = TT.join('|'); const L2 = window.__mk(window.__tools({ amount: true })); L2.tools.keep = () => { throw new Error('disk'); }; kitchenLay('__s9_am', L2); window.__go('__s9_am', 2, 2); TT.length = 0; kitToolsKeep({ places: { p1: [] } });
+    return { drawerSays, toasted, inTicker, ticker: n1 - n0, plain: TT.join('|') }; });
   if (!/Another tab changed your kitchen\./.test(ref.toasted)) say('a refused change says ' + JSON.stringify(ref.toasted) + ', where it says the game\'s own sentence');
+  if (!/Another tab changed your kitchen\./.test(ref.drawerSays)) say('a refused change says ' + JSON.stringify(ref.drawerSays) + ' in the drawer, where it says the game\'s own sentence');
+  if (ref.inTicker) say('a refused change the game has already said is also written to the ticker (' + JSON.stringify(ref.inTicker) + ')');
   if (ref.ticker !== 0) say('a refused change the game has already said is written to the ticker too');
   if (!/could not be kept on this device/.test(ref.plain)) say('a change that fails with no sentence of the game\'s says ' + JSON.stringify(ref.plain) + ', where it says it could not be kept on this device');
   /* 5b · the same for how full a place is (kept through store): the game's sentence, never the generic one */
   const fu = await p.evaluate(() => { const L = window.__mk(window.__tools({ amount: true })); L.store = () => { const e = new Error('plain'); e.say = 'Another tab changed your kitchen.'; throw e; }; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2);
-    const TT = []; window.toast = m => { TT.push(String(m)); }; const ok = kitSetFull(KITWALL.__s9_am.places[0], KITCHEN.fulls[0]); return { ok, said: TT.join('|') }; });
+    const TT = [], TK = []; window.toast = m => { TT.push(String(m)); }; window.toastShow = m => { TK.push(String(m)); }; const ok = kitSetFull(KITWALL.__s9_am.places[0], KITCHEN.fulls[0]); return { ok, said: TK.join('|'), tick: TT.join('|') }; });
+  if (fu.tick) say('a refused how-full is also written to the ticker (' + JSON.stringify(fu.tick) + ')');
   if (fu.ok || !/Another tab changed your kitchen\./.test(fu.said) || /could not be kept/.test(fu.said)) say('a refused how-full says ' + JSON.stringify(fu.said) + ', where it says the game\'s own sentence');
   errs.forEach(m => say('the page threw: ' + m.split('\n')[0]));
   await p.close();
@@ -150,7 +153,8 @@ const PLANTS = [
   ['a thing from outside cannot be put', 'engine/kitchen-room.js', 'if(h.from!==null)change[K.places[h.from].id]=from;change[K.places[i].id]=to;', 'change[K.places[h.from].id]=from;change[K.places[i].id]=to;', /putting a thing taken from the drawer/],
   ['the drawer cut at 24', 'engine/kitchen-room.js', ',KITLOOSEMAX);', ',24);', /list 24 rows|130 loose things list|60 loose things list/],
   ['the cut taken before the search', 'engine/kitchen-room.js', 'all=got.list.filter(x=>!q||x.name.toLowerCase().includes(q)),list=all.slice(0,KITLOOSE);', 'all=got.list.slice(0,KITLOOSE).filter(x=>!q||x.name.toLowerCase().includes(q)),list=all;', /search for a loose thing past the cut/],
-  ['how full saying the generic sentence for a refusal', 'engine/kitchen-room.js', 'toast(sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}\n  KITWALL[world]=r.wall', 'toast(kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}\n  KITWALL[world]=r.wall', /a refused how-full says/],
+  ['how full saying the generic sentence for a refusal', 'engine/kitchen-room.js', 'kitSayRefusal(sd,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', 'kitSayRefusal(null,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', /a refused how-full says/],
+  ['a refusal written to the ticker too', 'engine/kitchen-room.js', 'if(sd&&typeof toastShow==="function")toastShow(sd,2600);else', 'if(false)toastShow(sd,2600);else', /also written to the ticker/],
   ['a refusal not saying the game\'s sentence', 'engine/kitchen-room.js', 'KTOOLS.say=sd||kitW("ktNotKept"', 'KTOOLS.say=kitW("ktNotKept"', /a refused change says/],
   ['the bar over the Kitchen button', 'engine/kitchen-room.js', 'b.style.left=off+"px";', 'b.style.left="12px";', /covers the Kitchen button/],
   ['spaces in a name not folded', 'engine/kitchen-room.js', '.replace(/\\s+/g," ").trim();\n  if(Array.from(nm).length>KITNAME)', '.trim();\n  if(Array.from(nm).length>KITNAME)', /handed to the game as/],

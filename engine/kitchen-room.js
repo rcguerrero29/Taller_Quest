@@ -598,6 +598,8 @@ function kitCanHold(id,i){const K=KITWALL[id],p=K&&K.places[i];return !!p&&typeo
    the hand's own put, and the game's `keep` is handed that one place (the thing named there was in none). `tools.rename: true`
    adds Rename to the builder's bar (grep "kitBuildRename"). Held by test/kitchen-seams.js. */
 /* A GAME'S OWN SENTENCE FOR A REFUSED CHANGE: an error its `keep`, `store` or tools' `keep` throws may carry `say`, text already in the player's language (at most 160 characters); it is shown where the change was made, instead of "could not be kept on this device", and the ticker is not written again (the game has said it) */
+/* a refusal is the game's own sentence, shown once on the toast and not written to the ticker; a plain failure goes the old way (toast, ticker) */
+function kitSayRefusal(sd,plain){if(sd&&typeof toastShow==="function")toastShow(sd,2600);else if(typeof toast==="function")toast(sd||plain,2600);}
 function kitRefused(e){return e&&typeof e==='object'&&typeof e.say==='string'&&e.say.trim()?String(e.say).replace(new RegExp(KITUNSAFE.source,'g'),'').slice(0,160):null;}
 function kitAmtOn(K){return !!(K&&K.tools&&K.tools.amount===true);}
 /* a thing's amount as words: "" for an uncounted thing, "none left", "2 bottles", or the usual "× 3" */
@@ -1008,7 +1010,7 @@ function kitPlaceNames(K){const out={},seen={};K.places.forEach(p=>{if(typeof p.
 function kitToolsKeep(change,focus){const K=kitToolsK();if(!K)return false;
   try{K.tools.keep(JSON.parse(JSON.stringify(change)));}
   catch(e){const sd=kitRefused(e);if(!sd)mqwarn("kitchen","a change to the kitchen's tools was not kept: "+String(e&&e.message||e).slice(0,80),false);
-    KTOOLS.say=sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed.");if(KTOOLS.open)kitToolsRender();else if(typeof toast==="function")toast(KTOOLS.say,2600);return false;}
+    KTOOLS.say=sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed.");if(KTOOLS.open)kitToolsRender();else kitSayRefusal(sd,KTOOLS.say);return false;}
   KSIGN.stale=true;
   Object.keys(change.places||{}).forEach(pid=>{const p=K.places.find(q=>q.id===pid);if(p)kitReshapeAt(world,p.i);});
   kitRepage();if(KTOOLS.open)kitToolsRender();
@@ -1065,7 +1067,7 @@ function kitSetFull(p,v){const K=kitToolsK();if(!K||typeof K.store!=="function"|
   const L=Object.assign({},next,{store:K.store,tools:K.tools});if(K.page)L.page=K.page;if(K.gaps)L.gaps=true;L.things=K.things;L.keep=K.keep;
   const r=kitchenCheck(world,L);if(r.why){mqwarn("kitchen","how full a place is was refused: "+r.why,false);return false;}
   try{K.store(JSON.parse(JSON.stringify(next)));}
-  catch(e){const sd=kitRefused(e);if(!sd)mqwarn("kitchen","how full a place is was not kept: "+String(e&&e.message||e).slice(0,80),false);if(typeof toast==="function")toast(sd||kitW("ktNotKept","That could not be kept on this device, so nothing changed."),2600);return false;}
+  catch(e){const sd=kitRefused(e);if(!sd)mqwarn("kitchen","how full a place is was not kept: "+String(e&&e.message||e).slice(0,80),false);kitSayRefusal(sd,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}
   KITWALL[world]=r.wall;kitDirty();kitRepage();
   const n=document.querySelector('[data-kt="full-'+(v||"none")+'"]');if(n)n.focus();return true;}
 /* THE PLACE'S PAGE: how full, and each thing's count and date */
