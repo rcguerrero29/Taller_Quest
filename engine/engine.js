@@ -6185,8 +6185,8 @@ function enterWorld(fresh){
   $("intro").hidden=true;$("creator").hidden=true;
   $("hud").hidden=false;$("xpbarwrap").hidden=(typeof HUDFACT==="function");showWorld();
   applyCtl();hud();setWorldTag();checkTalk();
-  if(fresh){toast(T().tut1,3000);
-    setTimeout(()=>toast(T().tut2,3800),3300);}
+  if(fresh){if(T().tut1)toast(T().tut1,3000);   /* a world with no welcome line shows no toast for it (no empty pill) */
+    if(T().tut2)setTimeout(()=>toast(T().tut2,3800),3300);}
 }
 document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("click",()=>{
   cls=b.querySelector("b").textContent;look.shirt=SHIRTS[b.dataset.c]||look.shirt;

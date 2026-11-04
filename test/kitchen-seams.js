@@ -150,6 +150,34 @@ async function run(root, browser) {
     const pl = KITWALL.__s9_am.places; const i = pl.findIndex(q => q.kind === 'counter'); let err = '', st = null, pt = null; try { st = kitHandStart({ id: 'z1', n: 1, name: 'Z', uncounted: true }); pt = kitPut(i); } catch (e) { err = String(e); } return { err, said: TK.join('|'), st, pt, i }; });
   if (process.env.DBG) console.log(dh);
   if (dh.err || !/Another tab changed your kitchen\./.test(dh.said)) say('a put refused by a game that dropped the hand ' + (dh.err ? 'threw ' + dh.err : 'says ' + JSON.stringify(dh.said)) + ', where the game\'s sentence is said');
+  /* 6 · TYPED TEXT KEPT when a change is refused, in the three fields that are the engine's own */
+  const tx = await p.evaluate(() => { const out = {}; const refuse = () => { const e = new Error('plain'); e.say = 'Another tab changed your kitchen.'; throw e; };
+    window.toast = () => {}; window.toastShow = () => {};
+    /* a · the Kitchen search stays when an add is refused, and is cleared when it is kept */
+    let L = window.__mk(window.__tools({ amount: true, loose: () => [] })); L.tools.keep = refuse; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2); kitToolsOpen();
+    KTOOLS.q = 'egg'; document.getElementById('kpSearch').value = 'egg'; kitOwnAdd('Salt shaker', KITWALL.__s9_am.places[0].id); out.searchKept = document.getElementById('kpSearch').value;
+    L = window.__mk(window.__tools({ amount: true, loose: () => [] })); kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2); KTOOLS.q = 'egg'; kitOwnAdd('Salt shaker', KITWALL.__s9_am.places[0].id); out.searchCleared = KTOOLS.q; kitToolsClose();
+    /* b · Rename */
+    L = window.__mk(window.__tools({ amount: true, rename: true, loose: () => [] })); L.store = refuse; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2); window.BUILDER = window.BUILDER || { name: 'Probe' }; admin = true; applyAdmin(); checkTalk();
+    kitBuildPick(KITWALL.__s9_am.places.findIndex(q => q.kind === 'drawers')); kitBuildAsk('rename'); const f0 = document.getElementById('kbRenameIn'); out.renameOpen = !!f0;
+    kitBuildRename('Typed name'); const f1 = document.getElementById('kbRenameIn'); out.renameKept = f1 ? f1.value : null; out.mode = KITB.mode;
+    kitBuildPickBy(1); out.draftAfterPick = KITB.draft; kitBuildAsk('rename'); out.fieldAfterPick = (document.getElementById('kbRenameIn') || {}).value;
+    kitBuildRename('Again'); kitBuildAsk('rename'); kitBuildAsk('rename'); out.draftAfterNo = KITB.draft; admin = false; applyAdmin();
+    /* c · the use-by date on a place's page */
+    L = window.__mk(window.__tools({ amount: true, loose: () => [] })); L.tools.keep = refuse; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2); window.__open('__s9_am', 'fridge');
+    return out; });
+  await p.waitForFunction(() => !document.getElementById('reader').hidden && document.querySelector('[data-kt="date-egg"]'), null, { timeout: 5000 }).catch(() => {});
+  const tx2 = await p.evaluate(() => { const out = {}; window.toast = () => {}; window.toastShow = () => {};
+    const inp = document.querySelector('[data-kt="date-egg"]'); out.dateField = !!inp; out.readerDbg = document.getElementById('reader').hidden + ' ' + document.getElementById('reader').innerText.slice(0, 200); if (inp) { inp.value = '2026-12-24'; inp.dispatchEvent(new Event('change')); kitRepage(); out.dateKept = (document.querySelector('[data-kt="date-egg"]') || {}).value; }
+    const L = window.__mk(window.__tools({ amount: true, loose: () => [] })); kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2); kitRepage(); const i2 = document.querySelector('[data-kt="date-egg"]'); if (i2) { i2.value = '2026-12-25'; i2.dispatchEvent(new Event('change')); } out.dateDraftAfterKept = KITDATE; return out; });
+  Object.assign(tx, tx2); if (process.env.DBG) console.log(tx.readerDbg);
+  if (tx.searchKept !== 'egg') say('after an add was refused the Kitchen search holds ' + JSON.stringify(tx.searchKept) + ', where it still holds what he typed');
+  if (tx.searchCleared !== '') say('after an add was kept the Kitchen search still holds ' + JSON.stringify(tx.searchCleared) + ', where it is cleared');
+  if (!tx.renameOpen || tx.renameKept !== 'Typed name' || tx.mode !== 'rename') say('after Rename was refused the name field holds ' + JSON.stringify(tx.renameKept) + ' (mode ' + tx.mode + '), where it still holds what he typed');
+  if (tx.draftAfterPick || tx.fieldAfterPick === 'Typed name') say('a Rename text typed for one piece is still held after another piece is picked');
+  if (tx.draftAfterNo) say('a Rename text is still held after the mode was left');
+  if (!tx.dateField || tx.dateKept !== '2026-12-24') say('after a use-by date was refused the date field holds ' + JSON.stringify(tx.dateKept) + ', where it still holds what he typed');
+  if (tx.dateDraftAfterKept) say('a use-by date that was kept is still held as a draft');
   errs.forEach(m => say('the page threw: ' + m.split('\n')[0]));
   await p.close();
   return fails;
@@ -167,6 +195,12 @@ const PLANTS = [
   ['a refusal written to the ticker too', 'engine/kitchen-room.js', 'if(sd&&typeof toastShow==="function")toastShow(sd,2600);else', 'if(false)toastShow(sd,2600);else', /also written to the ticker/],
   ['a refusal left held to say again', 'engine/kitchen-room.js', 'toastHeld.length>n)toastHeld.length=n;return;}', 'toastHeld.length>n)n;return;}', /left 1 held toast/],
   ['a put with no hand left throwing', 'engine/kitchen-room.js', 'const say=s=>{if(KITHAND){KITHAND.said=s;kitHandShow();}else kitSayRefusal(s,s);return false;};', 'const say=s=>{KITHAND.said=s;kitHandShow();return false;};', /dropped the hand/],
+  ['the search cleared before the add is kept', 'engine/kitchen-room.js', 'KTOOLS.say="";   /* his search is cleared only once the add is kept', 'KTOOLS.say="";KTOOLS.q="";   /* his search is cleared only once the add is kept', /Kitchen search holds/],
+  ['the search kept after an add', 'engine/kitchen-room.js', 'if(ok){KTOOLS.q="";KTOOLS.say=', 'if(ok){KTOOLS.say=', /search still holds/],
+  ['the Rename text not held', 'engine/kitchen-room.js', 'f.value=KITB.draft&&KITB.draft.id===world&&KITB.draft.i===kitBuildSel()?KITB.draft.text:(p.name||"");', 'f.value=p.name||"";', /name field holds/],
+  ['the Rename text held for another piece', 'engine/kitchen-room.js', 'if(KITB.mode!=="rename")KITB.draft=null;', 'void 0;', /still held after/],
+  ['the date typed not held', 'engine/kitchen-room.js', 'inp.value=KITDATE&&KITDATE.key===dk?KITDATE.text:(t.date||"");', 'inp.value=t.date||"";', /date field holds/],
+  ['a kept date still held', 'engine/kitchen-room.js', 'if(ok)KITDATE=null;return ok;}', 'return ok;}', /still held as a draft/],
   ['a refusal not saying the game\'s sentence', 'engine/kitchen-room.js', 'KTOOLS.say=sd||kitW("ktNotKept"', 'KTOOLS.say=kitW("ktNotKept"', /a refused change says/],
   ['the bar over the Kitchen button', 'engine/kitchen-room.js', 'b.style.left=off+"px";', 'b.style.left="12px";', /covers the Kitchen button/],
   ['spaces in a name not folded', 'engine/kitchen-room.js', '.replace(/\\s+/g," ").trim();\n  if(Array.from(nm).length>KITNAME)', '.trim();\n  if(Array.from(nm).length>KITNAME)', /handed to the game as/],
