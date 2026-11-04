@@ -599,7 +599,10 @@ function kitCanHold(id,i){const K=KITWALL[id],p=K&&K.places[i];return !!p&&typeo
    adds Rename to the builder's bar (grep "kitBuildRename"). Held by test/kitchen-seams.js. */
 /* A GAME'S OWN SENTENCE FOR A REFUSED CHANGE: an error its `keep`, `store` or tools' `keep` throws may carry `say`, text already in the player's language (at most 160 characters); it is shown where the change was made, instead of "could not be kept on this device", and the ticker is not written again (the game has said it) */
 /* a refusal is the game's own sentence, shown once on the toast and not written to the ticker; a plain failure goes the old way (toast, ticker) */
-function kitSayRefusal(sd,plain){if(sd&&typeof toastShow==="function")toastShow(sd,2600);else if(typeof toast==="function")toast(sd||plain,2600);}
+function kitSayRefusal(sd,plain){
+  /* with a page over the world the toast is held and would say it a second time when the page is put down: the ticker, which shows over the page, says it now and the held copy is dropped */
+  if(sd&&typeof worldCovered==="function"&&worldCovered()&&typeof toast==="function"){const n=typeof toastHeld!=="undefined"?toastHeld.length:0;toast(sd,2600);if(typeof toastHeld!=="undefined"&&toastHeld.length>n)toastHeld.length=n;return;}
+  if(sd&&typeof toastShow==="function")toastShow(sd,2600);else if(typeof toast==="function")toast(sd||plain,2600);}
 function kitRefused(e){return e&&typeof e==='object'&&typeof e.say==='string'&&e.say.trim()?String(e.say).replace(new RegExp(KITUNSAFE.source,'g'),'').slice(0,160):null;}
 function kitAmtOn(K){return !!(K&&K.tools&&K.tools.amount===true);}
 /* a thing's amount as words: "" for an uncounted thing, "none left", "2 bottles", or the usual "× 3" */

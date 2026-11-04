@@ -140,6 +140,10 @@ async function run(root, browser) {
     const TT = [], TK = []; window.toast = m => { TT.push(String(m)); }; window.toastShow = m => { TK.push(String(m)); }; const ok = kitSetFull(KITWALL.__s9_am.places[0], KITCHEN.fulls[0]); return { ok, said: TK.join('|'), tick: TT.join('|') }; });
   if (fu.tick) say('a refused how-full is also written to the ticker (' + JSON.stringify(fu.tick) + ')');
   if (fu.ok || !/Another tab changed your kitchen\./.test(fu.said) || /could not be kept/.test(fu.said)) say('a refused how-full says ' + JSON.stringify(fu.said) + ', where it says the game\'s own sentence');
+  /* 5c · with a page over the world the ticker says a refusal and no held toast says it again when the page is put down */
+  const cov = await p.evaluate(() => { const real = worldCovered, rt = toast; const TT = []; const h0 = toastHeld.length; worldCovered = () => true; toast = m => { TT.push(String(m)); toastHeld.push([m, 2600, false]); };
+    try { kitSayRefusal('Another tab changed your kitchen.', 'plain'); } finally { worldCovered = real; toast = rt; } const held = toastHeld.length - h0; toastHeld.length = h0; return { said: TT.length, held }; });
+  if (cov.said !== 1 || cov.held !== 0) say('a refusal with a page over the world is said ' + cov.said + ' time(s) now and left ' + cov.held + ' held toast(s) to say it again, where it is said once');
   errs.forEach(m => say('the page threw: ' + m.split('\n')[0]));
   await p.close();
   return fails;
@@ -155,6 +159,7 @@ const PLANTS = [
   ['the cut taken before the search', 'engine/kitchen-room.js', 'all=got.list.filter(x=>!q||x.name.toLowerCase().includes(q)),list=all.slice(0,KITLOOSE);', 'all=got.list.slice(0,KITLOOSE).filter(x=>!q||x.name.toLowerCase().includes(q)),list=all;', /search for a loose thing past the cut/],
   ['how full saying the generic sentence for a refusal', 'engine/kitchen-room.js', 'kitSayRefusal(sd,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', 'kitSayRefusal(null,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', /a refused how-full says/],
   ['a refusal written to the ticker too', 'engine/kitchen-room.js', 'if(sd&&typeof toastShow==="function")toastShow(sd,2600);else', 'if(false)toastShow(sd,2600);else', /also written to the ticker/],
+  ['a refusal left held to say again', 'engine/kitchen-room.js', 'toastHeld.length>n)toastHeld.length=n;return;}', 'toastHeld.length>n)n;return;}', /left 1 held toast/],
   ['a refusal not saying the game\'s sentence', 'engine/kitchen-room.js', 'KTOOLS.say=sd||kitW("ktNotKept"', 'KTOOLS.say=kitW("ktNotKept"', /a refused change says/],
   ['the bar over the Kitchen button', 'engine/kitchen-room.js', 'b.style.left=off+"px";', 'b.style.left="12px";', /covers the Kitchen button/],
   ['spaces in a name not folded', 'engine/kitchen-room.js', '.replace(/\\s+/g," ").trim();\n  if(Array.from(nm).length>KITNAME)', '.trim();\n  if(Array.from(nm).length>KITNAME)', /handed to the game as/],
