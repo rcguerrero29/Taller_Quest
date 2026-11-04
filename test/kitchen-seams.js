@@ -144,6 +144,12 @@ async function run(root, browser) {
   const cov = await p.evaluate(() => { const real = worldCovered, rt = toast; const TT = []; const h0 = toastHeld.length; worldCovered = () => true; toast = m => { TT.push(String(m)); toastHeld.push([m, 2600, false]); };
     try { kitSayRefusal('Another tab changed your kitchen.', 'plain'); } finally { worldCovered = real; toast = rt; } const held = toastHeld.length - h0; toastHeld.length = h0; return { said: TT.length, held }; });
   if (cov.said !== 1 || cov.held !== 0) say('a refusal with a page over the world is said ' + cov.said + ' time(s) now and left ' + cov.held + ' held toast(s) to say it again, where it is said once');
+  /* 5d · a game that drops the hand when it refuses (it lays its kitchen anew) still has the sentence said, and nothing throws */
+  const dh = await p.evaluate(() => { const L = window.__mk(window.__tools({ amount: true, loose: () => [] })); L.keep = () => { KITHAND = null; const e = new Error('plain'); e.say = 'Another tab changed your kitchen.'; throw e; }; kitchenLay('__s9_am', L); window.__go('__s9_am', 2, 2);
+    const TK = []; window.toastShow = m => { TK.push(String(m)); }; window.toast = m => { TK.push(String(m)); };
+    const pl = KITWALL.__s9_am.places; const i = pl.findIndex(q => q.kind === 'counter'); let err = '', st = null, pt = null; try { st = kitHandStart({ id: 'z1', n: 1, name: 'Z', uncounted: true }); pt = kitPut(i); } catch (e) { err = String(e); } return { err, said: TK.join('|'), st, pt, i }; });
+  if (process.env.DBG) console.log(dh);
+  if (dh.err || !/Another tab changed your kitchen\./.test(dh.said)) say('a put refused by a game that dropped the hand ' + (dh.err ? 'threw ' + dh.err : 'says ' + JSON.stringify(dh.said)) + ', where the game\'s sentence is said');
   errs.forEach(m => say('the page threw: ' + m.split('\n')[0]));
   await p.close();
   return fails;
@@ -160,6 +166,7 @@ const PLANTS = [
   ['how full saying the generic sentence for a refusal', 'engine/kitchen-room.js', 'kitSayRefusal(sd,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', 'kitSayRefusal(null,kitW("ktNotKept","That could not be kept on this device, so nothing changed."));return false;}\n  KITWALL[world]=r.wall', /a refused how-full says/],
   ['a refusal written to the ticker too', 'engine/kitchen-room.js', 'if(sd&&typeof toastShow==="function")toastShow(sd,2600);else', 'if(false)toastShow(sd,2600);else', /also written to the ticker/],
   ['a refusal left held to say again', 'engine/kitchen-room.js', 'toastHeld.length>n)toastHeld.length=n;return;}', 'toastHeld.length>n)n;return;}', /left 1 held toast/],
+  ['a put with no hand left throwing', 'engine/kitchen-room.js', 'const say=s=>{if(KITHAND){KITHAND.said=s;kitHandShow();}else kitSayRefusal(s,s);return false;};', 'const say=s=>{KITHAND.said=s;kitHandShow();return false;};', /dropped the hand/],
   ['a refusal not saying the game\'s sentence', 'engine/kitchen-room.js', 'KTOOLS.say=sd||kitW("ktNotKept"', 'KTOOLS.say=kitW("ktNotKept"', /a refused change says/],
   ['the bar over the Kitchen button', 'engine/kitchen-room.js', 'b.style.left=off+"px";', 'b.style.left="12px";', /covers the Kitchen button/],
   ['spaces in a name not folded', 'engine/kitchen-room.js', '.replace(/\\s+/g," ").trim();\n  if(Array.from(nm).length>KITNAME)', '.trim();\n  if(Array.from(nm).length>KITNAME)', /handed to the game as/],

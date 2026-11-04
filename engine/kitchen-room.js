@@ -640,7 +640,7 @@ function kitHandStart(thing){const K=kitToolsK();if(!K||!K.tools||typeof K.tools
 /* PUT: the thing in hand moved whole into place i, ONE change handed to the world, then laid */
 function kitPut(i){const id=world,K=KITWALL[id],h=KITHAND;if(!h||h.id!==id)return false;
   if(h.from===i){kitHandBack();kitRepage();return true;}
-  const say=s=>{KITHAND.said=s;kitHandShow();return false;};
+  const say=s=>{if(KITHAND){KITHAND.said=s;kitHandShow();}else kitSayRefusal(s,s);return false;};   /* a game that laid its kitchen anew on a refusal has dropped the hand: the sentence is then said as a refusal is */
   if(!kitCanHold(id,i)||(h.from!==null&&!kitCanHold(id,h.from)))return say(kitHandW("khNoId","That place keeps nothing yet."));
   const A=h.from===null?{list:[h.thing],bad:false}:kitThingsOf(id,h.from),B=kitThingsOf(id,i);
   if(A.bad||B.bad)return say(kitHandW("khUnread","Something in one of these places could not be read, so nothing is moved."));
