@@ -154,6 +154,8 @@ jobs:
         run: node test/smoke.js
       - name: The engine, against the game
         run: node test/engine.smoke.js --index index.html
+      - name: The kitchen's three seams (amount, hand from outside, rename), each planted red first
+        run: node test/kitchen-seams.js
       - name: The gauge — a brand-new world still boots and meets the engine on the same terms
         run: node test/gauge.js
       - name: El Horno — its shell still builds from index.html
