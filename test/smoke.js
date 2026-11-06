@@ -4194,7 +4194,7 @@ const CANDIDATES = [
        purple. Where it belongs is named here, building by building, and the building's door is read from the doors
        themselves (portalsOf), never from the function the fix changes: the second floor of the office IS the office,
        so Floor 2 is shown at HQ's door on Calle Principal. A place this table does not name is a red, so a new room
-       is given its building here the day it is built. RED ON PURPOSE until the engine change lands. */
+       is given its building here the day it is built. Written red on mq-v250, before the engine change; green from mq-v251. */
     {
       const BUILDING = { hq: 'hq', f2: 'hq', lc: 'lc', lo: 'lo', me: 'me', ta: 'ta', no: 'no', pa: 'pa', li: 'li', 'casa-w': 'casa-w', caseta: 'caseta', barberia: 'barberia' };
       const R = [], mp = await browser.newPage({ viewport: { width: 390, height: 844 } });

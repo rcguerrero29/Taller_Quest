@@ -5659,7 +5659,16 @@ function findChromium() {
        and the viewport measures nothing. Shown for the length of this one check and put back
        exactly as it was — the same move the #130 block above makes with #creator. */
     const wld = document.getElementById('world'), wasHidden = wld && wld.hidden;
+    /* the arrow is off until the player turns it on, so it is turned on here the way the map's switch turns
+       it on (bearSet, which is what a press of the switch calls; bearOn is never replaced), and put back
+       after exactly as it was: the same setting, and this device keeping what it kept before, or nothing */
+    if (typeof bearSet !== 'function' || typeof bearOn !== 'function') {
+      P.push('the street bearing cannot be switched on here (there is no bearSet), so where it lands was not asked — nothing to measure is not a pass');
+      return P; }
+    const wasOn = bearOn(); let keptWas = null;
+    try { keptWas = localStorage.getItem(SK('bearing')); } catch (e) {}
     if (wld) wld.hidden = false;
+    bearSet(true);
     try {
     /* NOTHING TO MEASURE IS NOT A PASS (docs/GAUGE.md). The first run of this check reported
        "Infinity%" for three directions and said nothing at all about north — because the viewport
@@ -5692,6 +5701,8 @@ function findChromium() {
           ' px over the edge) — a pill is inset by its own half-width, and the name decides that');
     });
     } finally { mapDest = null; bearLast = ''; bearPos = ''; bearingUI();
+                bearSet(wasOn);
+                try { if (keptWas === null) localStorage.removeItem(SK('bearing')); else localStorage.setItem(SK('bearing'), keptWas); } catch (e) {}
                 if (wld) wld.hidden = wasHidden; }
     return P;
   });
@@ -5705,9 +5716,10 @@ function findChromium() {
        · the arrow at the edge of the street stays off until the player turns it on with a switch in the map; the
          switch is remembered on this device, keeps nothing else there, and fits on a phone and a laptop in both
          languages.
-     RED ON PURPOSE until the engine change lands. On mq-v250 the ◉ is drawn only on a street the plan draws or at a
-     spot a pack wrote down by hand, so most rooms, the office every game starts in among them, open a map whose
-     caption promises a ◉ that is not there; and the arrow is always on, with nothing in the map to turn it off.
+     Written red, before the engine change of mq-v251, and green from it. On mq-v250 the ◉ was drawn only on a street
+     the plan draws or at a spot a pack wrote down by hand, so most rooms, the office every game starts in among them,
+     opened a map whose caption promised a ◉ that was not there; and the arrow was always on, with nothing in the map to
+     turn it off.
      The guards before this asked a stand-in, whether planPlace can place a world, and stayed green throughout: being
      placeable is not being drawn. So the map is opened with its real button in every place a door leads to, the ◉ is
      found by its own purple on whichever canvas the box shows, and a finger is put on it: at its centre and at eight

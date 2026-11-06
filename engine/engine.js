@@ -7051,30 +7051,51 @@ function markOf(n){ /* one person, one kind, in the order the pack declared */
    agreed exactly with what the doors already said, so all seven were copies of a fact the map
    already had. Five more worlds (pa, li, casa-w, caseta, barberia) were derivable and had no dot at
    all. A guard now holds a declared dot to the derived one, because the failure mode of a written-
-   down copy is that the door moves and the copy does not. */
-function planPlace(id,seen,pure){ /* pure: the doors ONLY, with the pack's own declarations ignored — how a guard asks whether a written-down spot is a copy or the only thing holding a world on the map */
-  const panels=planPanels(),drawn=panels.find(p2=>p2.world===id);
-  if(drawn)return {gx:drawn.ox,gy:drawn.oy,x:0,y:0,via:"drawn",panel:true};
-  seen=seen||{};if(seen[id])return null;seen[id]=1;
-  let best=null;
-  Object.keys(WORLDS).forEach(from=>{
-    if(best||from===id)return;
-    (typeof portalsOf==="function"?portalsOf(from):[]).forEach(d=>{
-      if(best||!d.p||d.p.to!==id)return;
-      const home=planPlace(from,seen,pure);if(!home)return;
-      /* A DOT HAS NO INSIDE. Adding the door's tile to a host that is DRAWN is right — the host's
-         ox,oy is a panel origin and the door sits at a place on that paper. Adding it to a host
-         that is itself only a dot is nonsense, and the first draft did exactly that: `f2` is
-         reached from hq(14,14), hq is a dot at (14,0), and f2 landed at (28,14) — a spot on the
-         street with no building under it. A world behind a world shares its address, which is also
-         true of the thing being modelled: the second floor of the office IS the office. */
-      best=home.panel?{gx:d.x+home.gx,gy:d.y+home.gy,x:d.x,y:d.y,via:from,panel:false}
-                     :{gx:home.gx,gy:home.gy,x:home.x,y:home.y,via:from+" (behind it)",panel:false};});});
-  if(best)return best;
-  if(pure)return null;
-  const M=(typeof MAPDOT!=="undefined"?MAPDOT:{});
-  if(M[id])return {gx:M[id][0],gy:M[id][1],x:M[id][0],y:M[id][1],via:"declared",panel:false};
-  return null;}
+   down copy is that the door moves and the copy does not.
+
+   THE NEAREST DOOR, NOT THE FIRST ONE FOUND (2026-11-06). The walk was depth-first: it took the first
+   door it met, world by world in the order they are declared, and the first door met is not the
+   nearest one. A room with its own door on the street could be reached sooner round the back,
+   through a neighbour's stairs, and was then shown on the neighbour's door. So the walk now goes
+   OUTWARD from the streets the plan draws, one door at a time, and a world takes its place from the
+   first ring of doors that reaches it: the fewest doors between it and a drawn street wins. Two doors
+   equally near: the one in the world the pack declares first, and in one world its first door — so a
+   tie is settled by the order the pack already writes, never by the way a search happened to turn.
+   A spot the pack wrote down (MAPDOT) answers only for a world no door can place, and a world behind
+   it shares it, as a room behind a building shares the building's door. The middle argument was the
+   old walk's memory of where it had been; it is ignored, so `planPlace(id,null,true)` still means
+   "the doors only". */
+function planPlace(id,_,pure){ /* pure: the doors ONLY, with the pack's own declarations ignored — how a guard asks whether a written-down spot is a copy or the only thing holding a world on the map */
+  const ids=Object.keys(WORLDS),at={},doors={};
+  planPanels().forEach(p2=>{at[p2.world]={gx:p2.ox,gy:p2.oy,x:0,y:0,via:"drawn",panel:true};});
+  if(at[id])return at[id];
+  ids.forEach(k=>{doors[k]=typeof portalsOf==="function"?portalsOf(k):[];});
+  /* one ring of doors at a time: each world not yet placed takes its place from the first world of
+     the last ring, in the pack's own order, that has a door into it */
+  const spread=ring=>{
+    while(ring.length){
+      const from=ids.filter(k=>ring.includes(k)),next=[];
+      ids.forEach(to=>{if(at[to])return;
+        for(const f of from){
+          const d=doors[f].find(q=>q.p&&q.p.to===to);if(!d)continue;
+          const home=at[f];
+          /* A DOT HAS NO INSIDE. Adding the door's tile to a host that is DRAWN is right — the host's
+             ox,oy is a panel origin and the door sits at a place on that paper. Adding it to a host
+             that is itself only a dot is nonsense, and the first draft did exactly that: `f2` is
+             reached from hq(14,14), hq is a dot at (14,0), and f2 landed at (28,14) — a spot on the
+             street with no building under it. A world behind a world shares its address, which is also
+             true of the thing being modelled: the second floor of the office IS the office. */
+          at[to]=home.panel?{gx:d.x+home.gx,gy:d.y+home.gy,x:d.x,y:d.y,via:f,panel:false}
+                           :{gx:home.gx,gy:home.gy,x:home.x,y:home.y,via:f+" (behind it)",panel:false};
+          next.push(to);return;}});
+      ring=next;}};
+  spread(ids.filter(k=>at[k]));
+  if(at[id]||pure)return at[id]||null;
+  const M=(typeof MAPDOT!=="undefined"?MAPDOT:{}),seeds=[];
+  ids.forEach(k=>{if(at[k]||!M[k])return;
+    at[k]={gx:M[k][0],gy:M[k][1],x:M[k][0],y:M[k][1],via:"declared",panel:false};seeds.push(k);});
+  spread(seeds);
+  return at[id]||null;}
 function planMarks(){
   const K=markKinds();if(!K.length)return[];
   const M=(typeof MAPDOT!=="undefined"?MAPDOT:{}),out=[],at={},panels=planPanels();
@@ -7307,12 +7328,53 @@ function destBearing(){
    showing. The engine builds it, like mapLegend, so no pack edits its own index.html.
    The arrowhead is a CSS triangle and not a glyph — today's lesson from the quest marker, which
    spent its whole life being painted by the device's emoji font in a colour nobody chose. */
+/* ---- AND IT IS THE PLAYER'S TO TURN ON (2026-11-06) ----
+   The arrow over the street is off until the player turns it on, with a switch in the map. A new
+   player and an old save start the same way, off, because no device has kept a setting for it yet;
+   nothing is migrated. The place line above the game keeps its "→ name" either way: the switch turns
+   off the arrow at the screen's edge, nothing else.
+   Kept the way the legend is kept, on this device and under this game's own prefix: "1" is on, and
+   anything else — no key, another value, storage that cannot be read — is off. It is read once, and
+   written only when the switch is pressed, never on opening the map, choosing somewhere or closing
+   it, so the map keeps nothing a player did not choose. A browser that refuses to keep it (a private
+   window, a full device) still honours the press for the rest of the visit. */
+let bearPref=null;
+function bearOn(){
+  if(bearPref===null){let v=null;try{v=localStorage.getItem(SK("bearing"));}catch(e){}
+    bearPref=(v==="1");}
+  return bearPref;}
+function bearSet(v){bearPref=!!v;mqStore(SK("bearing"),v?"1":"0");}
+/* THE SWITCH SITS IN THE MAP'S TITLE ROW, because that is in view the moment the map opens, on a phone
+   and on a laptop: the foot of the box scrolls, with Close stuck to it. The title and the switch share
+   one line where both fit; where they do not (Spanish on a phone), the switch goes whole onto a line of
+   its own under the title, so the title is never broken by it and no word of it is cut. The engine
+   builds it, as it builds the legend and "Somewhere to go", so no shell's own page changes: the title
+   is moved into a row of the engine's making, once. A real button, role="switch" with aria-checked,
+   44 px tall, reading "<name> · <state>". A pack names it in its plan words (arrow, arrowOn,
+   arrowOff); a pack that names nothing gets the same words in its player's language, chosen the way
+   the caption under the plan chooses its own, never English alone. */
+function mapArrowBtn(){
+  const title=$("mapTitle");if(!title||!title.parentNode)return;
+  let head=$("mapHead"),b=$("mapArrow");
+  if(!head){head=document.createElement("div");head.id="mapHead";
+    head.style.cssText="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 12px;";
+    title.parentNode.insertBefore(head,title);head.appendChild(title);title.style.margin="0";}
+  if(!b){b=document.createElement("button");b.id="mapArrow";b.type="button";b.setAttribute("role","switch");
+    b.style.cssText="flex:0 0 auto;max-width:100%;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;"+
+      "min-height:44px;padding:4px 14px;border-radius:999px;border:1.5px solid var(--line,#C9C3B4);background:var(--bg,#F2F1EA);"+
+      "color:inherit;font-family:inherit;font-weight:600;font-size:.8rem;line-height:1.2;text-align:center;cursor:pointer;";
+    b.addEventListener("click",()=>{bearSet(!bearOn());mapArrowBtn();});
+    head.appendChild(b);}
+  const t=(T().plan||{}),es=lang==="es",on=bearOn();
+  b.textContent=(t.arrow||(es?"Flechita hacia tu destino":"Arrow to your destination"))+" · "+
+    (on?(t.arrowOn||(es?"Prendida":"On")):(t.arrowOff||(es?"Apagada":"Off")));
+  b.setAttribute("aria-checked",on?"true":"false");}
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
   let el=document.getElementById("bearNav");
   const a=mapDest?destAim():null;
-  const show=!!a&&a.mode!=="here";
+  const show=!!a&&a.mode!=="here"&&bearOn();   /* and only once the player has switched it on */
   if(!show){if(el)el.hidden=true;bearLast="";return;}
   if(!el){
     el=document.createElement("div");el.id="bearNav";
@@ -7486,6 +7548,17 @@ function planPanels(){
   return ok.length?ok:one;
 }
 const planPanelOf=id=>planPanels().find(p2=>p2.world===id)||null;
+/* ---- WHERE YOU ARE ON THE PLAN, the one answer the ◉ and the caption both read (2026-11-06) ----
+   The ◉ used to be read from two places only, a street the plan draws or a spot the pack wrote down,
+   while the doors that place every room were read by the marks alone. So most rooms, the office every
+   game starts in among them, opened a map whose caption said "◉ you are here" over paper with no ◉ on
+   it, and the guard asked whether a world COULD be placed, never whether the map drew you there.
+   Now: on a street the plan draws, the tile you stand on; anywhere else, where the doors put your
+   world (planPlace) — in a room, its own building's door. null only where nothing can place you, and
+   there the caption does not promise a ◉ the paper will not show. */
+function planHere(){
+  const mine=planPanelOf(world);if(mine)return [fx+mine.ox,fy+mine.oy];
+  const at=planPlace(world);return at?[at.gx,at.gy]:null;}
 function drawTown(){
   const mc=$("mapcv"),g2=mc.getContext("2d"),s=10,panels=planPanels();
   const PW=Math.max(...panels.map(p2=>p2.ox+WORLDS[p2.world].W));
@@ -7532,16 +7605,16 @@ function drawTown(){
     g2.font="700 "+(l.s||10)+"px sans-serif";g2.fillStyle=l.c||"#3A2F17";
     g2.fillText(es?l.es:l.en,(l.x+pn.ox)*s+(l.dx||0),(l.y+pn.oy)*s);});
   /* the caption had 8px and no room. 9px, a letter of tracking and four more pixels of paper: it
-     is the line that explains the two colours, and it was the smallest type in the game. */
+     is the line that explains the two colours, and it was the smallest type in the game.
+     It promises the ◉ only where the ◉ is drawn: the same planHere() answers both, so the words and
+     the paper cannot disagree. Where a ◉ is drawn the line is the same, letter for letter, as before. */
+  const dot=planHere();
   g2.fillStyle="rgba(58,44,20,.10)";g2.fillRect(0,w.H*s,mc.width,18);
   g2.fillStyle="#7B7361";g2.font="600 9px ui-monospace,monospace";
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0.4px";
-  g2.fillText(es?"puertas y escaleras en dorado · ◉ estás aquí":"doors & stairs in gold · ◉ you are here",mc.width/2,w.H*s+12);
+  g2.fillText((es?"puertas y escaleras en dorado":"doors & stairs in gold")+(dot?(es?" · ◉ estás aquí":" · ◉ you are here"):""),mc.width/2,w.H*s+12);
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0px";
-  const M=typeof MAPDOT!=="undefined"?MAPDOT:{};
   drawPlanMarks(g2,s); /* the marks go UNDER the dot: you can always see yourself */
-  const mine=planPanelOf(world);
-  const dot=mine?[fx+mine.ox,fy+mine.oy]:(M[world]||null);
   if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
     const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,13);     /* you are a light on the paper */
     hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
@@ -7592,6 +7665,7 @@ function openMap(){
   drawTown();
   mapNoteSet();
   mapAnyBtn();
+  mapArrowBtn();
   $("mapov").hidden=false;held=null;
 }
 /* the button lives here rather than in the shell, so a pack gets it without touching its index */
