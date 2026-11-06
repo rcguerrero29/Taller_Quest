@@ -6023,8 +6023,8 @@ function findChromium() {
                 const how = 'a Trolley Pass made with the edge arrow switched on, on another device';
                 await q.goto(link); await boot(q);
                 if (!await until(q, () => { const c = document.getElementById('tpFound'); return !!c && !c.hidden; }, null, 3000)) {
-                  /* #305: a shell that declares none of the pass's words throws at the card, and is said out loud */
-                  if (qErr.length) MN.push('COUNT-ONLY: this shell cannot board a Trolley Pass (its arrival card threw: ' + qErr[0] + ' — #305), so whether the edge arrow\'s switch travels on one was not asked here');
+                  /* a shell that declares none of the pass's words throws at the card (El Horno and the gauge, a fault known and kept for later), and is said out loud */
+                  if (qErr.length) MN.push('COUNT-ONLY: this shell cannot board a Trolley Pass (its arrival card threw: ' + qErr[0] + '), so whether the edge arrow\'s switch travels on one was not asked here');
                   else MP.push('I opened ' + how + ' and no card offered to board it, and the page said nothing, so whether the switch travels on it was not asked — nothing to measure is not a pass'); }
                 else {
                   await Promise.all([q.waitForEvent('load'), q.click('#tpBoard')]); await boot(q);
