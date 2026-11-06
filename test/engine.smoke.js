@@ -5726,6 +5726,14 @@ function findChromium() {
       if (!await p.evaluate(() => { const b = document.getElementById('continueBtn'); return !!b && !b.hidden && !!b.offsetParent; })) return false;
       await p.click('#continueBtn');
       const ok = await until(p, () => !document.getElementById('world').hidden, null, 2700); await rafs(p); return ok; };
+    const reopen = async (ctx, old) => { await old.close(); const p = await ctx.newPage();
+      p.on('pageerror', e => MP.push('the page threw while the map was being asked about: ' + String(e.message).split('\n')[0]));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await p.goto('file://' + file); await boot(p);
+      if (!await p.evaluate(() => { const b = document.getElementById('continueBtn'); return !!b && !b.hidden && !!b.offsetParent; })) return null;
+      await p.click('#continueBtn');
+      if (!await until(p, () => !document.getElementById('world').hidden, null, 2700)) return null;
+      await rafs(p); return p; };
     const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 3000 }); } catch (e) { return false; }
       return until(p, () => !document.getElementById('mapov').hidden, null, 2000); };
     /* closed with Escape, the panel's own way out: a click on Close would have the browser scroll the box to reach the
@@ -5913,16 +5921,21 @@ function findChromium() {
             const b1 = await kept(p), sw1 = await findSwitch(p), pfx = await p.evaluate(() => SK(''));
             const ch = diffKeys(b0, b1);
             if (ch.length > 1) MP.push('Opening the map saved something I never chose: pressing the edge arrow\'s switch once changed ' + ch.length + ' things on this device (' + ch.join(', ') + '), and it keeps one');
-            else if (ch.length === 1 && !ch[0].startsWith(pfx)) MP.push('the edge arrow\'s switch is kept as "' + ch[0] + '", outside this game\'s own storage prefix "' + pfx + '", where another game on this site reads it');
+            else if (!ch.length) MP.push('I turned the edge arrow on and this device kept nothing of it, so it is forgotten as soon as the tab is closed');
+            else if (!ch[0].startsWith(pfx)) MP.push('the edge arrow\'s switch is kept as "' + ch[0] + '", outside this game\'s own storage prefix "' + pfx + '", where another game on this site reads it');
             if (!sw1 || !sw1.on) MP.push('I pressed the edge arrow\'s switch and it still says off');
             await mapShut(p);
             const now = await arrowIn(p, cams);
             if (now.length < cams.length) MP.push('I turned the arrow on and it did not appear: with somewhere picked and the switch on, closing the map shows an arrow in ' + now.length + ' of ' + cams.length + ' cameras (' + cams.join(', ') + ')');
-            if (!await resume(p)) MP.push('after a reload this game offered no Continue, so whether the switch was remembered was not measured — nothing to measure is not a pass');
+            /* came back: the tab is closed and the game opened again in a new tab of the same browser, so what the device keeps
+               is there and what lives only as long as a tab (its session storage, the page's memory) is not; a reload of the
+               same tab would keep both, and a switch remembered only by the tab would pass */
+            const p3 = await reopen(ctx, p);
+            if (!p3) MP.push('after closing the tab and opening the game again this game offered no Continue, so whether the switch was remembered was not measured — nothing to measure is not a pass');
             else {
-              await mapOpen(p); const sw2 = await findSwitch(p); await pickSomewhere(p); await mapShut(p);
-              const back = await arrowIn(p, cams);
-              if (back.length < cams.length) MP.push('I turned the arrow on, came back, and it was off: after a reload and a new destination there is an arrow in ' + back.length + ' of ' + cams.length + ' cameras' + (sw2 && !sw2.on ? ', and the switch in the map says off' : ''));
+              await mapOpen(p3); const sw2 = await findSwitch(p3); await pickSomewhere(p3); await mapShut(p3);
+              const back = await arrowIn(p3, cams);
+              if (back.length < cams.length) MP.push('I turned the arrow on, came back, and it was off: after closing the tab, opening the game again and choosing somewhere, there is an arrow in ' + back.length + ' of ' + cams.length + ' cameras' + (sw2 && !sw2.on ? ', and the switch in the map says off' : ''));
             }
           }
         }
