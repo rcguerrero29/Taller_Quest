@@ -7368,7 +7368,35 @@ function mapArrowBtn(){
   const t=(T().plan||{}),es=lang==="es",on=bearOn();
   b.textContent=(t.arrow||(es?"Flechita hacia tu destino":"Arrow to your destination"))+" · "+
     (on?(t.arrowOn||(es?"Prendida":"On")):(t.arrowOff||(es?"Apagada":"Off")));
-  b.setAttribute("aria-checked",on?"true":"false");}
+  b.setAttribute("aria-checked",on?"true":"false");
+  mapHeadFit();}
+/* ---- THE SWITCH DOES NOT MAKE THE BOX TALLER, AND THE MAP OPENS AT ITS TOP (2026-11-06) ----
+   Beside the title, the switch's 44 px made the title row 22 px taller than the title, and the plan, the line under it
+   and "Somewhere to go" went down by as much: on a laptop the line that says how to choose a destination went under
+   Close. So where the two share a line the row keeps the title's own height, and the switch keeps its whole 44 px
+   target, reaching into the box's padding above the row and the gap below it: vertical margins take the difference,
+   never more than that room. Where it takes a line of its own it adds its own height, as it always has, and touches
+   neither the title nor the plan. Measured once the box is shown, and again whenever the switch's words or the window
+   change, because a hidden box has no size to measure. */
+function mapHeadFit(){
+  const b=$("mapArrow"),title=$("mapTitle"),head=$("mapHead");if(!b||!title||!head)return;
+  b.style.marginTop=b.style.marginBottom="";
+  const t=title.getBoundingClientRect(),r=b.getBoundingClientRect();
+  if(!t.height||!r.height||r.top>=t.bottom-0.5)return;          /* hidden, or on a line of its own */
+  const extra=r.height-t.height;if(extra<=0)return;
+  const box=head.parentNode,room=(e,k)=>parseFloat(getComputedStyle(e)[k])||0;
+  const below=Math.min(extra/2,room(head,"marginBottom"));
+  const above=Math.min(extra-below,box&&box.firstElementChild===head?room(box,"paddingTop"):0);
+  b.style.marginTop=(-above)+"px";b.style.marginBottom=(-below)+"px";}
+/* The box opened where it was last left: once a laptop or a phone held sideways had scrolled down to "Somewhere to go",
+   every later opening put the switch, and the ◉ of every place at the top of the plan, above the box's top edge, under
+   a caption saying "◉ you are here". It opens at its top now, every time, whatever in it scrolls. Set once it is shown:
+   a hidden box keeps the scroll it had, and has none to set. */
+function mapShown(){
+  const ov=$("mapov");if(!ov||ov.hidden)return;
+  mapHeadFit();
+  [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden)mapHeadFit();});
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
@@ -7667,6 +7695,7 @@ function openMap(){
   mapAnyBtn();
   mapArrowBtn();
   $("mapov").hidden=false;held=null;
+  mapShown();
 }
 /* the button lives here rather than in the shell, so a pack gets it without touching its index */
 function mapAnyBtn(){
