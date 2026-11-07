@@ -151,13 +151,17 @@ if (process.argv.includes('--build-only')) process.exit(0);
    its renderer at zero CPU until somebody stopped it by hand; on GitHub that is a pull request stuck
    at "running", not a clear red. Measured 2026-09-30: one inner run takes 11-15 s on a loaded
    four-core machine, and the whole CI step, both runs, takes 23 s; the re-run on that busy machine
-   passed in 27 s. The limit is 180 s, more than six times that, so a slow machine is not failed for being
+   passed in 27 s. The limit was 180 s, more than six times that, so a slow machine is not failed for being
    slow and a stuck one fails inside three minutes, by name.
+   Measured again 2026-11-07: the engine's checks had grown, and on GitHub's machine the three worlds took 112 s, 165 s
+   and more than 180 s, the furniture world stopped at the limit with its checks still passing. The limit is 300 s: a
+   minute or more over the slowest normal run, and a stuck run still fails inside five minutes, by name. Each world's
+   time is printed beside its result, so the margin shows on every run.
    SIGKILL, not the default SIGTERM: Playwright gives the child its own SIGTERM handler, and a child
    whose event loop is stuck never runs any handler, so a polite signal can leave this file waiting
    for ever, which is the bug. Planted that way (SIGTERM, a child stuck in a loop), this file was
    still waiting four minutes past its limit when an outside watchdog stopped it. */
-const LIMIT_S = 180;
+const LIMIT_S = 300;
 function measure(shell, expectedFile, label) {
 const expectedPath = path.join(root, 'content', 'gauge', expectedFile);
 let out = '';
@@ -169,7 +173,7 @@ try {
   out = (e.stdout || '') + (e.stderr || '');
   if (e.code === 'ETIMEDOUT') {
     console.log('FAIL — ' + label + ' timed out: its engine checks (node test/engine.smoke.js --index ' + shell + ') were');
-    console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes under 30 s, so they were stopped.');
+    console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes two to three minutes on GitHub\'s machine (on 2026-11-07: 112 s, 165 s, and over 180 s for the furniture world), so they were stopped.');
     console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
     console.log('last thing it printed is where it stuck.');
     console.log('--- the last thing the inner run printed ---');
@@ -178,6 +182,7 @@ try {
   }
 }
 
+console.log('  COUNT-ONLY: ' + label + ': its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of their ' + LIMIT_S + ' s stop');
 const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
   // one line carries a live frame count; the number is noise, the fact is not
   .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')).sort();

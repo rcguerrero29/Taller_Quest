@@ -1197,7 +1197,7 @@ function findChromium() {
         if (CL.wallRy === undefined || Math.abs(CL.wallRy) > 1e-9) say('a closet with a plain wall to its north no longer faces south, as every closet did before (its turn is ' + CL.wallRy + ')');
       } else console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so the shapes and the closet were not asked');
       /* the gauge's and El Horno's shells are small fixtures for the engine's contract with a new world, and their engine checks sit near the
-         180 seconds their callers allow: the corner and the tools (about fifteen seconds of clicks) are asked of every other shell */
+         300 seconds their callers allow (180 until 2026-11-07): the corner and the tools (about fifteen seconds of clicks) are asked of every other shell */
       if (/content[\\/](gauge|horno)[\\/]/.test(idx)) throw 'SKIP8A';
       /* 3 · AT A CORNER, THE PIECE FACED: a back wall, a side wall, and the square where they meet; the slot, the frame and a press follow the way he looks */
       await kp.evaluate(() => {
@@ -3105,7 +3105,7 @@ function findChromium() {
      a kitchen that hands no things, or with a card of its own. On a page of its own: a made-up kitchen of the template's seven
      places on four columns and three free squares, gaps on, its things answered from a stock the page holds. Red first, each
      fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 6).
-     COST: it runs in every shell, the gauge's three among them, whose inner runs are stopped at 180 s (test/gauge.js, LIMIT_S) and
+     COST: it runs in every shell, the gauge's three among them, whose inner runs are stopped at 300 s (180 s until 2026-11-07; test/gauge.js, LIMIT_S) and
      take 170 s or so here without it, so it spends about two and a half seconds, not twenty: the flat camera, a swing that is at once, no wait
      that a click or a fired timer does not answer (the empty line's 2.6 s is read off the timer armed for it, and the timer is run,
      not waited out; the town's own check waits it out in real time). */

@@ -693,9 +693,11 @@ async function played() {
    renderer at zero CPU. Measured 2026-09-30: the shared suite against this shell takes 15 s on a
    loaded four-core machine; the gauge's re-run on that busy machine passed in 27 s. The limit is
    180 s, more than six times that, so a slow machine is not failed for being slow and a stuck run
-   fails inside three minutes, by name. SIGKILL, because Playwright gives the child its own SIGTERM
+   fails inside three minutes, by name. Measured again 2026-11-07: the engine's checks had grown, and on GitHub's machine
+   the gauge's worlds, the same size of run as this one, took 112 s, 165 s and more than 180 s. The limit is 300 s, as
+   the gauge's: a minute or more over the slowest normal run, and a stuck run still fails inside five minutes. SIGKILL, because Playwright gives the child its own SIGTERM
    handler and a child whose event loop is stuck never runs any handler. */
-const LIMIT_S = 180;
+const LIMIT_S = 300;
 function demands() {
   const expectedPath = path.join(root, 'content', 'horno', 'expected.txt');
   let out = '';
@@ -707,7 +709,7 @@ function demands() {
     out = (e.stdout || '') + (e.stderr || '');
     if (e.code === 'ETIMEDOUT') {
       console.log('FAIL — el horno\'s engine checks (node test/engine.smoke.js --index content/horno/index.html) timed out:');
-      console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes under 30 s, so they were stopped.');
+      console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes two to three minutes on GitHub\'s machine (on 2026-11-07, the gauge\'s three worlds took 112 s, 165 s and over 180 s), so they were stopped.');
       console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
       console.log('last thing it printed is where it stuck.');
       console.log('--- the last thing the inner run printed ---');
@@ -715,6 +717,7 @@ function demands() {
       return false;
     }
   }
+  console.log('  COUNT-ONLY: el horno: its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of their ' + LIMIT_S + ' s stop');
   const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
     .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')).sort();
   if (!/COUNT-ONLY|\bOK\b|^FAIL/m.test(out)) {
