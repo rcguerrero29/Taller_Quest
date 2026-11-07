@@ -5738,7 +5738,7 @@ function findChromium() {
       const ctx = await browser.newContext({ viewport: { width: w, height: h } }), p = await ctx.newPage();
       p.on('pageerror', e => MP.push('the page threw while the map was being asked about: ' + String(e.message).split('\n')[0]));
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
-      await p.goto('file://' + file); await boot(p);
+      await p.goto('file://' + file); await boot(p); await p.evaluate(YOUHELP);
       return { ctx, p }; };
     const begin = async p => { await p.click('.classes button[data-c="architect"]'); await p.click('#begin');
       const ok = await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p); return ok; };
@@ -5807,18 +5807,37 @@ function findChromium() {
       g.fillText = function (t, x, y, ...r) { said.push([String(t), y]); return real.call(this, t, x, y, ...r); };
       try { drawTown(); } finally { delete g.fillText; if (g.fillText !== real) g.fillText = real; }
       return said.filter(([, y]) => y > src.height - 18.5).map(([t]) => t).join(' ').replace(/\s+/g, ' ').trim(); };
+    /* THE ◉ IS A DISC, OR A RING ROUND A MARKER (2026-11-07). Where the ◉ would cover a marker at your own door, or the
+       destination chosen there, you are drawn as a violet ring round that door with the marker whole inside it. So the ◉
+       is found as a shape, not an average: a circle is fitted to its violet pixels (least squares, Kasa's fit, on
+       coordinates taken from their mean), which finds a ring cut by the paper's edge at its own centre, where the mean of
+       what is left of it is not. It is a disc where its violet comes near its centre (the nearest violet pixel is within
+       four tenths of the farthest one's distance) and a ring where the middle is clear; the pixel at the centre alone is
+       not asked, because the disc is centred on a corner of four pixels and one of them is its highlight. r is the fitted
+       circle's radius (the middle of a ring's band), ro the farthest violet pixel from the centre, lo the nearest, ext the
+       violet's own extent on the canvas, in canvas pixels. Put in each page as __mqYou (YOUHELP) for the page's own
+       functions. */
+    const youShape = c => { const W = c.width, H = c.height, d = c.getContext('2d').getImageData(0, 0, W, H).data, P = [];
+      for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224;
+        if (a * a + b * b + e * e < 900) { const q = i / 4; P.push([q % W + 0.5, Math.floor(q / W) + 0.5]); } }
+      const n = P.length; if (!n) return { n: 0 };
+      let mx = 0, my = 0; P.forEach(([x, y]) => { mx += x; my += y; }); mx /= n; my /= n;
+      let Suu = 0, Svv = 0, Suv = 0, Suz = 0, Svz = 0, x0 = W, y0 = H, x1 = 0, y1 = 0;
+      P.forEach(([x, y]) => { const u = x - mx, v = y - my, z = u * u + v * v; Suu += u * u; Svv += v * v; Suv += u * v; Suz += u * z; Svz += v * z;
+        if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; });
+      const det = Suu * Svv - Suv * Suv; let cx = mx, cy = my;
+      if (Math.abs(det) > 1e-9) { cx = mx + (Suz * Svv - Svz * Suv) / (2 * det); cy = my + (Svz * Suu - Suz * Suv) / (2 * det); }
+      let r = 0, ro = 0, lo = Infinity; P.forEach(([x, y]) => { const q = Math.hypot(x - cx, y - cy); r += q; if (q > ro) ro = q; if (q < lo) lo = q; }); r /= n;
+      return { n, cx, cy, r, ro, lo, disc: lo < 0.4 * ro, ext: [x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5] }; };
+    const YOUHELP = '(() => { window.__mqYou = ' + youShape + '; return true; })()';
     /* the ◉ on the map as it is open now: found on the engine's sheet and on whichever canvas the box shows */
     const measureDot = () => {
       const ov = document.getElementById('mapov'), src = document.getElementById('mapcv');
       const area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
       const shown = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40)
         .sort((a, b) => area(b) - area(a))[0] || null;
-      const scan = c => { const W = c.width, d = c.getContext('2d').getImageData(0, 0, W, c.height).data; let n = 0, sx = 0, sy = 0;
-        for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224;
-          if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
-        return n ? { n, cx: sx / n + 0.5, cy: sy / n + 0.5 } : { n: 0 }; };
-      const sheet = scan(src), seen = shown ? scan(shown) : { n: 0 };
-      const out = { shown: !!shown, sheet: sheet.n, seen: seen.n, tile: sheet.n ? [Math.floor(sheet.cx / 10), Math.floor(sheet.cy / 10)] : null, cover: [], under: [] };
+      const sheet = __mqYou(src), seen = shown ? __mqYou(shown) : { n: 0 };
+      const out = { shown: !!shown, sheet: sheet.n, seen: seen.n, tile: sheet.n ? [Math.floor(sheet.cx / 10), Math.floor(sheet.cy / 10)] : null, ring: !!sheet.n && !sheet.disc, alone: false, cover: [], under: [] };
       const ring = rad => [[0, 0]].concat([0, 1, 2, 3, 4, 5, 6, 7].map(q => [Math.cos(q * Math.PI / 4) * rad, Math.sin(q * Math.PI / 4) * rad]));
       if (shown && seen.n) {   /* where a finger lands: the box may letterbox the canvas (object-fit: contain) */
         const r = shown.getBoundingClientRect(), k = Math.min(r.width / shown.width, r.height / shown.height);
@@ -5827,11 +5846,19 @@ function findChromium() {
         ring(4.5).forEach(([dx, dy]) => { const el = document.elementFromPoint(ox + (seen.cx + dx) * k, oy + (seen.cy + dy) * k);
           if (el !== shown) out.cover.push(name(el)); });
         out.cover = [...new Set(out.cover)]; }
-      if (sheet.n) {           /* on the paper: the ◉'s own violet at its centre and round it, so nothing is drawn over it */
+      if (sheet.n) {           /* on the paper, nothing drawn over the ◉. A disc: its own violet at its centre and round it, as it
+                                  always was. A ring: its own violet all the way round (24 points on its band), wherever the
+                                  paper does not cut it; and a ring only round a marker, or the destination, standing at that
+                                  door, because a ring round nothing is not where you are. The marker inside is section 17's */
         const g = src.getContext('2d');
-        ring(2.5).forEach(([dx, dy]) => { const d = g.getImageData(Math.floor(sheet.cx + dx), Math.floor(sheet.cy + dy), 1, 1).data;
+        const pts = sheet.disc ? ring(2.5) : [...Array(24).keys()].map(q => [Math.cos(q * Math.PI / 12) * sheet.r, Math.sin(q * Math.PI / 12) * sheet.r]);
+        pts.forEach(([dx, dy]) => { const x = sheet.cx + dx, y = sheet.cy + dy;
+          if (!sheet.disc && (x < 0 || y < 0 || x >= src.width || y >= src.height)) return;   /* where the paper's own edge cuts a ring */
+          const d = g.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
           if (!(d[2] > d[0] + 20 && d[2] > d[1] + 60)) out.under.push(d[0] + ',' + d[1] + ',' + d[2]); });
-        out.under = [...new Set(out.under)]; }
+        out.under = [...new Set(out.under)];
+        if (!sheet.disc) { const [tx, ty] = out.tile;
+          out.alone = !planMarks().some(m => m.gx === tx && m.gy === ty) && !(mapDest && mapDest.gx === tx && mapDest.gy === ty); } }
       const panels = planPanels(), mine = panels.find(q => q.world === world), drawnW = new Set(panels.map(q => q.world));
       out.mine = mine ? [Math.round(fx) + mine.ox, Math.round(fy) + mine.oy] : null;
       if (out.tile && !mine) { const [tx, ty] = out.tile;
@@ -5894,7 +5921,7 @@ function findChromium() {
               id, name: (T().locs || {})[id] || id, drawn: drawn.has(id), byDoor: byDoor.has(id), spot: !byDoor.has(id) && M[id] ? M[id].slice(0, 2) : null,
               placed: byDoor.has(id) || declared.has(id), at: land[id] || free(id) })); }, grown);
           if (!spots) { MP.push('this engine has no plan panels or doors to ask, so where the map puts you was not measured'); break; }
-          const none = [], hidden = [], under = [], notHere = [], offDoor = [], notYours = [], unplaced = [], silent = [], promised = []; let opened = 0;
+          const none = [], hidden = [], under = [], notHere = [], offDoor = [], notYours = [], unplaced = [], silent = [], promised = [], alone = [], rings = []; let opened = 0;
           for (const s of spots) {
             if (!s.placed) { unplaced.push(s.name); continue; }
             await p.evaluate(([w, x, y]) => { document.querySelectorAll('.settings').forEach(q => { q.hidden = true; });
@@ -5907,7 +5934,8 @@ function findChromium() {
             if (m.sheet < 10 || m.seen < 10) { none.push(s.name); if (/◉/.test(words)) promised.push(s.name + ' (“' + words + '”)'); continue; }
             if (!words.includes(promise)) silent.push(s.name + ' (“' + words + '”)');
             if (m.cover.length) hidden.push(s.name + ' (a finger on the ◉ lands on ' + m.cover.join(', ') + ')');
-            if (m.under.length) under.push(s.name + ' (' + m.under.slice(0, 3).join(' · ') + ' where the ◉ should be)');
+            if (m.under.length) under.push(s.name + ' (' + m.under.slice(0, 3).join(' · ') + ' where the ◉ should be' + (m.ring ? ', on the ring round its door' : '') + ')');
+            if (m.ring) { rings.push(s.name); if (m.alone) alone.push(s.name + ' (a ring at ' + m.tile + ')'); }
             if (s.drawn) { if (!m.mine || m.tile[0] !== m.mine[0] || m.tile[1] !== m.mine[1]) notHere.push(s.name + ' (drawn at ' + m.tile + ', standing at ' + m.mine + ')'); }
             else if (s.byDoor) { if (!m.door) offDoor.push(s.name + ' (drawn at ' + m.tile + (m.on ? ' on ' + m.on : ', on no street the plan draws') + ')');
               else if (!m.yours) notYours.push(s.name + ' (drawn on ' + m.doorOf + '\'s door at ' + m.tile + ')'); }
@@ -5919,9 +5947,11 @@ function findChromium() {
           if (silent.length) MP.push('The map shows where I am and the line under it does not say so: in ' + silent.join('; ') + ' (' + when + ')');
           if (hidden.length) MP.push('I opened the map and can\'t see where I am: the ◉ is drawn, and in ' + hidden.join('; ') + ' (' + when + ')');
           if (under.length) MP.push('I opened the map and the ◉ is under something else drawn on the plan, in ' + under.join('; ') + ' (' + when + ') — you can always see yourself, so the ◉ is drawn last');
+          if (alone.length) MP.push('I opened the map and I am drawn as a ring round a door where no marker stands, in ' + alone.join('; ') + ' (' + when + ') — the ring is only where the ◉ would cover a marker, or the destination, at my own door');
           if (notHere.length) MP.push('On ' + notHere.join('; ') + ', the ◉ is not where I stand (' + when + ')');
           if (offDoor.length) MP.push('In ' + offDoor.join('; ') + ', the ◉ is not on a door into a building — a room is shown at the door of the building it is in (' + when + ')');
           if (notYours.length) MP.push('In ' + notYours.join('; ') + ', the ◉ is on another building\'s door: from that door I cannot walk to where I am without going back out to the street (' + when + ')');
+          if (rings.length) MN.push('COUNT-ONLY: ' + when + ', the ◉ was a ring round a marker at the door in ' + rings.length + ' place(s): ' + rings.join(', '));
           MN.push('COUNT-ONLY: the map was opened with its real button in ' + opened + ' place(s) ' + when +
             (unplaced.length ? '; ' + unplaced.length + ' place(s) that no door leads into from a street the plan draws, and with no spot of their own, were not asked for a ◉: ' + unplaced.join(', ') : ''));
         }
@@ -6141,9 +6171,8 @@ function findChromium() {
       const dotFirst = () => { const ov = document.getElementById('mapov'), area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
         const plan = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
         if (!plan) return { plan: false, n: 0 };
-        const W = plan.width, d = plan.getContext('2d').getImageData(0, 0, W, plan.height).data; let n = 0, sx = 0, sy = 0;
-        for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224; if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
-        return { plan: true, id: plan.id || '', n, cx: n ? sx / n + 0.5 : 0, cy: n ? sy / n + 0.5 : 0 }; };
+        const s = __mqYou(plan);
+        return { plan: true, id: plan.id || '', n: s.n, cx: s.n ? s.cx : 0, cy: s.n ? s.cy : 0, disc: !!s.disc, ro: s.n ? s.ro : 0, ext: s.n ? s.ext : null }; };
       /* "Somewhere to go": wholly inside what the box shows, and a finger at its top, centre and foot lands on it */
       const anyNow = () => { const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, bb = box.getBoundingClientRect(), e = document.getElementById('mapAny');
         const t = bb.top + box.clientTop, b = t + box.clientHeight, out = { bx: bb.left + bb.width / 2, by: t + box.clientHeight / 2, scroll: Math.round(box.scrollTop) };
@@ -6170,13 +6199,19 @@ function findChromium() {
           out.sw = why; }
         if (d && d.n && plan) { const r = plan.getBoundingClientRect(), k = Math.min(r.width / plan.width, r.height / plan.height);
           const x = r.left + (r.width - plan.width * k) / 2 + d.cx * k, y = r.top + (r.height - plan.height * k) / 2 + d.cy * k, el = document.elementFromPoint(x, y);
-          const x0 = Math.max(0, Math.floor(d.cx - 8)), y0 = Math.max(0, Math.floor(d.cy - 8)), x1 = Math.min(plan.width, Math.ceil(d.cx + 8)), y1 = Math.min(plan.height, Math.ceil(d.cy + 8)); let n = 0;
+          const hb = d.disc ? 8 : Math.max(8, Math.ceil(d.ro) + 2);   /* the violet looked for round where it was: 8 sheet pixels for a disc, as always; a ring's own reach for a ring */
+          const x0 = Math.max(0, Math.floor(d.cx - hb)), y0 = Math.max(0, Math.floor(d.cy - hb)), x1 = Math.min(plan.width, Math.ceil(d.cx + hb)), y1 = Math.min(plan.height, Math.ceil(d.cy + hb)); let n = 0;
           if (x1 > x0 && y1 > y0) { const q = plan.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0).data;
             for (let i = 0; i < q.length; i += 4) { const a = q[i] - 122, b = q[i + 1] - 63, e = q[i + 2] - 224; if (a * a + b * b + e * e < 900) n++; } }
-          const why = [], rad = 6 * k;   /* the ◉ is a disc of 5 sheet pixels with a 1-pixel ring: all of it is asked to be in view, not its centre alone */
+          /* all of it is asked to be in view, not its centre alone. A disc of 5 sheet pixels with a 1-pixel ring round it: 6 sheet
+             pixels round its centre, as it always was. A ring round a marker: the whole of what is drawn of it, and the pale
+             keyline a pixel outside its violet (where the paper's own edge cuts a ring, what is cut is not drawn, and not asked) */
+          const ox2 = r.left + (r.width - plan.width * k) / 2, oy2 = r.top + (r.height - plan.height * k) / 2;
+          const e = d.disc || !d.ext ? [d.cx - 6, d.cy - 6, d.cx + 6, d.cy + 6] : [d.ext[0] - 1, d.ext[1] - 1, d.ext[2] + 1, d.ext[3] + 1];
+          const et = oy2 + e[1] * k, eb = oy2 + e[3] * k, el2 = ox2 + e[0] * k, er = ox2 + e[2] * k, why = [];
           if (y < vt) why.push('is ' + Math.round(vt - y) + ' px above the top of what the box shows'); else if (y > vb) why.push('is ' + Math.round(y - vb) + ' px below what the box shows');
-          else if (y - rad < vt) why.push('is cut by the top of what the box shows, its centre ' + Math.round(y - vt) + ' px under that edge'); else if (y + rad > vb) why.push('is cut by the foot of what the box shows, its centre ' + Math.round(vb - y) + ' px above it');
-          else if (x - rad < vl || x + rad > vr) why.push('is outside what the box shows, or cut by its side'); else if (el !== plan) why.push('is under ' + name(el) + ': a finger on it lands there');
+          else if (et < vt) why.push('is cut by the top of what the box shows, its centre ' + Math.round(y - vt) + ' px under that edge'); else if (eb > vb) why.push('is cut by the foot of what the box shows, its centre ' + Math.round(vb - y) + ' px above it');
+          else if (el2 < vl || er > vr) why.push('is outside what the box shows, or cut by its side'); else if (el !== plan) why.push('is under ' + name(el) + ': a finger on it lands there');
           out.dot = { same: (plan.id || '') === d.id, here: n, why }; }
         return out; };
       const { ctx, p } = await page2(1280, 800);
@@ -6299,9 +6334,10 @@ function findChromium() {
       await c.close();
     }
 
-    /* THE MAP'S THIRD CHECKS (11 to 16): a click on a marker at every size, where you are going in a colour of its own,
-       "Somewhere to go" only where you can go, a room's question, and the edge arrow's switch with the line under it.
-       Written red on mq-v251 before the engine change, each in the sentence a person would say. */
+    /* THE MAP'S THIRD CHECKS (11 to 18): a click on a marker at every size, where you are going in a colour of its own,
+       "Somewhere to go" only where you can go, a room's question, and the edge arrow's switch with the line under it;
+       then you as a ring round a marker at your own door, and every other map drawn as it was. Written red on mq-v251
+       before the engine change, each in the sentence a person would say. */
 
     /* the plan the box shows, where its paper is on the screen, and where the engine painted each marker. The paper is
        found inside its canvas the way the browser fits it there (object-fit and object-position): where the box is not
@@ -6333,7 +6369,7 @@ function findChromium() {
         name: m.who ? (npcName(m.who) || m.who) : (((T().locs || {})[m.w] || m.w) + '\'s door') }));
       return { marks, painted: seen.length, t, PW, PH }; };
     /* the helpers above and below, put in a page under one name so the page's own functions can call them */
-    const MAPHELP = () => '(() => { window.__mqMap = { planAt: ' + planAt + ', paintedMarks: ' + paintedMarks + ', placeName: ' + placeName + ', doorsInto: ' + doorsInto + ' }; return true; })()';
+    const MAPHELP = () => '(() => { window.__mqMap = { planAt: ' + planAt + ', paintedMarks: ' + paintedMarks + ', placeName: ' + placeName + ', doorsInto: ' + doorsInto + ', placesNow: ' + placesNow + ' }; return true; })()';
     /* where a person stands, by name, for a red line */
     const placeName = w => ((typeof T === 'function' && T().locs) || {})[w] || w;
     /* the doors a plan draws that lead into a world: into it, or into a world from which it is reached through doors without
@@ -6345,6 +6381,17 @@ function findChromium() {
         while (todo.length) portalsOf(todo.shift()).forEach(e => { const t2 = e.p && e.p.to; if (t2 && WORLDS[t2] && !drawnW.has(t2) && !reach.has(t2)) { reach.add(t2); todo.push(t2); } });
         reach.forEach(w => { (out[w] = out[w] || []).push({ x: d.x + q.ox, y: d.y + q.oy, on: q.world }); }); }));
       return out; };
+    /* every place a player can be put to open the map from (17, 18): every world, home first, at the tile a door into it
+       lands on (home at its spawn, the park at its gate), and where no door lands, its first free tile, as section 1 puts
+       the player there. Read from the worlds' own rows */
+    const placesNow = () => {
+      const land = {};
+      Object.keys(WORLDS).forEach(from => portalsOf(from).forEach(d => { if (d.p && WORLDS[d.p.to] && !land[d.p.to]) land[d.p.to] = [d.p.x, d.p.y]; }));
+      if (WORLDS[PL.home] && PL.spawn) land[PL.home] = [PL.spawn[0], PL.spawn[1]];
+      if (WORLDS[PL.park] && PL.parkIn) land[PL.park] = land[PL.park] || [PL.parkIn[0], PL.parkIn[1]];
+      const free = id => { const w = WORLDS[id]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') return [x, y]; return [0, 0]; };
+      return [PL.home].concat(Object.keys(WORLDS).filter(id => id !== PL.home)).filter(id => WORLDS[id] && !/^__/.test(id))
+        .map(id => ({ id, name: ((typeof T === 'function' && T().locs) || {})[id] || id, at: land[id] || free(id) })); };
 
     /* 11 · A CLICK OR A TAP ON A MARKER CHOOSES IT, at the seven sizes a playtester plays at, with the edge arrow's switch
             off and on: 390×844, 844×390, 768×1024, 1024×768, 1280×800, 1440×900, and 1920×1080 in the game's full
@@ -6468,14 +6515,19 @@ function findChromium() {
             and the soft field round it. Each must be at least 40 apart in greyscale brightness (Rec.601, 0.299 R +
             0.587 G + 0.114 B) from the ◉'s violet and from the paper, both read off the plan: the ◉ with the player on a
             street the plan draws, the paper where no street is drawn. Written red on mq-v251, where the flag, the ring
-            and the field were the ◉'s own violet and the pole a darker one. */
+            and the field were the ◉'s own violet and the pole a darker one.
+            AND NO PART OF ITS FLAG IS OFF THE MAP (2026-11-07). A door on the paper's top row has no room above it for a
+            flag: there the flag hangs below the door, and the pole and the flag are found on whichever side of the disc
+            their paint is. None of their pixels may lie outside the canvas the plan is drawn on. Written red on mq-v251,
+            which flew every flag above its door, off the top of the map at the two doors on the top row, the office's
+            among them. */
     {
       const { ctx, p } = await page2(1280, 800);
       if (!await begin(p)) MP.push('the game did not start, so the colour of where you are going was not measured — nothing to measure is not a pass');
       else {
         await p.evaluate(MAPHELP());
         const look = await p.evaluate(() => {
-          const out = { n: 0, violet: [], parts: [], dot: null, paper: null, why: [], any: false }, nowhere = '__mapNowhereDest';
+          const out = { n: 0, violet: [], parts: [], off: [], dot: null, paper: null, why: [], any: false }, nowhere = '__mapNowhereDest';
           const src = document.getElementById('mapcv'), g = src.getContext('2d');
           const isV = (r, g2, b) => { const a = r - 122, q = g2 - 63, e = b - 224; return a * a + q * q + e * e < 900; };
           const median = list => { if (!list.length) return null; const m = k => { const v = list.map(c => c[k]).sort((a, b) => a - b); return v[v.length >> 1]; }; return [m(0), m(1), m(2)]; };
@@ -6506,8 +6558,8 @@ function findChromium() {
             dests.forEach(D => {
               if (!D.pick() || !mapDest) { if (D.name !== 'where “Somewhere to go” sent me') out.why.push('choosing ' + D.name + ' with a tap on its own tile chose nothing'); return; }
               if (D.name === 'where “Somewhere to go” sent me') { out.any = true; D.name = 'where “Somewhere to go” sent me (' + (npcName(mapDest.who) || __mqMap.placeName(mapDest.w)) + ')'; }
-              let sPlan = null;
-              drawPlanMarks = function (g2, s) { sPlan = s; return real.drawPlanMarks.apply(this, arguments); };
+              let sPlan = null, sT = null;   /* and the transform the plan draws its marks under: where its paper sits on its canvas */
+              drawPlanMarks = function (g2, s) { sPlan = s; sT = g2.getTransform(); return real.drawPlanMarks.apply(this, arguments); };
               try { drawTown(); } finally { drawPlanMarks = real.drawPlanMarks; }
               const d2 = g.getImageData(0, 0, src.width, src.height).data; let nv = 0;
               for (let i = 0; i < d2.length; i += 4) if (isV(d2[i], d2[i + 1], d2[i + 2])) nv++;
@@ -6524,15 +6576,30 @@ function findChromium() {
               const pix = (x, y) => { if (x < 0 || y < 0 || x >= B.W || y >= B.H) return null; const i = (y * B.W + x) * 4;
                 const a = 1 - ((Wh.d[i] - B.d[i]) + (Wh.d[i + 1] - B.d[i + 1]) + (Wh.d[i + 2] - B.d[i + 2])) / 765;
                 return { a, c: a > 0.03 ? [B.d[i] / a, B.d[i + 1] / a, B.d[i + 2] / a].map(v => Math.min(255, v)) : null }; };
-              let Ro = 0; for (let r = 0; r < 60; r++) { const q2 = pix(Math.floor(cx), Math.floor(cy + r)); if (!q2 || q2.a < 0.9) { Ro = r; break; } }
-              const parts = { flag: [], pole: [], ring: [], 'field round it': [] };
-              for (let y = Math.max(0, Math.floor(cy - 6 * Ro)); y < Math.min(B.H, cy + 3 * Ro); y++) for (let x = Math.max(0, Math.floor(cx - 3 * Ro)); x < Math.min(B.W, cx + 3 * Ro); x++) {
-                const q2 = pix(x, y); if (!q2 || !q2.c) continue;
-                const dx = x + 0.5 - cx, dy = y + 0.5 - cy, dist = Math.hypot(dx, dy);
-                if (dy > 0 && dist >= Ro - 1.6 && dist <= Ro - 0.6 && q2.a >= 0.95) parts.ring.push(q2.c);
-                else if (dy > 0 && dist > Ro + 0.5 && q2.a > 0.04 && q2.a < 0.7) parts['field round it'].push(q2.c);
-                else if (dy < -(Ro + 1) && dx <= 0 && dx >= -1 && q2.a >= 0.6) parts.pole.push(q2.c);   /* the pole's own side: the flag flies to its right */
-                else if (dy < -(Ro + 1) && dx >= 2 && q2.a >= 0.9) parts.flag.push(q2.c); }
+              /* the disc's edge, straight out to its left, where neither the pole nor the flag ever is */
+              let Ro = 0; for (let r = 0; r < 60; r++) { const q2 = pix(Math.floor(cx) - 1 - r, Math.floor(cy)); if (!q2 || q2.a < 0.9) { Ro = r; break; } }
+              /* the flag flies above the disc, or below it where above would leave the paper (rule 11): it is on whichever side
+                 of the disc has the solid paint; the ring and the field are read on the other side, the pole and flag on it */
+              const y0r = Math.max(0, Math.floor(cy - 6 * Ro)), y1r = Math.min(B.H, cy + 6 * Ro), x0r = Math.max(0, Math.floor(cx - 3 * Ro)), x1r = Math.min(B.W, cx + 3 * Ro);
+              let up = 0, down = 0;
+              for (let y = y0r; y < y1r; y++) for (let x = x0r; x < x1r; x++) { const q2 = pix(x, y); if (!q2 || q2.a < 0.9) continue;
+                const dy = y + 0.5 - cy; if (dy < -(Ro + 1)) up++; else if (dy > Ro + 1) down++; }
+              const side = up >= down ? -1 : 1, parts = { flag: [], pole: [], ring: [], 'field round it': [] };
+              let off = 0;
+              for (let y = y0r; y < y1r; y++) for (let x = x0r; x < x1r; x++) {
+                const q2 = pix(x, y); if (!q2) continue;
+                const dx = x + 0.5 - cx, dy = y + 0.5 - cy, dist = Math.hypot(dx, dy), away = side * dy;
+                /* AND NONE OF THE POLE OR THE FLAG IS OFF THE MAP: a door on the paper's top row may have its disc and the ring
+                   round it cut by the canvas's edge, never its flag, which is what says where you are going. The canvas is
+                   placed round the paper as the plan places it (the transform its marks are drawn under) */
+                const ex = pad - (sT ? sT.e : 0), ey = pad - (sT ? sT.f : 0);
+                if (away > Ro + 1 && q2.a >= 0.5 && (x < ex || y < ey || x >= ex + src.width || y >= ey + src.height)) off++;
+                if (!q2.c) continue;
+                if (away < 0 && dist >= Ro - 1.6 && dist <= Ro - 0.6 && q2.a >= 0.95) parts.ring.push(q2.c);
+                else if (away < 0 && dist > Ro + 0.5 && q2.a > 0.04 && q2.a < 0.7) parts['field round it'].push(q2.c);
+                else if (away > Ro + 1 && dx <= 0 && dx >= -1 && q2.a >= 0.6) parts.pole.push(q2.c);   /* the pole's own side: the flag flies to its right */
+                else if (away > Ro + 1 && dx >= 2 && q2.a >= 0.9) parts.flag.push(q2.c); }
+              if (off) out.off.push([D.name, off, side < 0 ? 'above' : 'below']);
               Object.keys(parts).forEach(k => { const c = median(parts[k]); out.parts.push({ m: D.name, k, c: c ? c.map(Math.round) : null, n: parts[k].length }); });
             });
           } finally { delete WORLDS[nowhere]; drawPlanMarks = real.drawPlanMarks; planMarks = real.planMarks; drawMark = real.drawMark; Math.random = real.random;
@@ -6546,6 +6613,7 @@ function findChromium() {
         if (!look.paper) MN.push('COUNT-ONLY: this plan\'s streets cover all its paper, so the paper\'s brightness was taken as the stock\'s own, 233');
         look.why.forEach(w => MP.push('the colour of where I am going was not measured: ' + w));
         if (!look.n && !look.any) MN.push('COUNT-ONLY: this game has no markers and “Somewhere to go” found nobody, so no destination was drawn to measure');
+        if (look.off.length) MP.push('Where I am going is drawn with its flag off the map: ' + look.off.slice(0, 3).map(([m, n, sd]) => 'with ' + m + ' chosen, ' + n + ' pixels of its pole and flag, ' + sd + ' its disc, lie past the edge of the map, where nobody sees them').join('; ') + ' — a destination on the paper\'s top row hangs its flag below the door');
         if (look.violet.length) MP.push('With nobody\'s ◉ on the map, I chose somewhere and the map still shows the ◉\'s own violet: ' + look.violet.slice(0, 3).map(([m, n]) => n + ' violet pixels with ' + m + ' chosen').join('; ') + ' — where I am going is drawn in the colour that says where I am');
         if (look.dot) {
           const dL = luma(look.dot), pL = look.paper ? luma(look.paper) : 233, worst = {};
@@ -6952,6 +7020,234 @@ function findChromium() {
       }
       await ctx.close();
       await decode.close();
+    }
+
+    /* 17 · WHERE THE ◉ WOULD COVER A MARKER AT YOUR OWN DOOR, YOU ARE A RING ROUND IT, AND THE RING HAS NO FLAG. At the start
+            of a game, and with every district open and every quest still to do, the player is put in every place a door
+            leads to (placesNow), and wherever the ◉ stands on a door whose marker the engine paints there, the plan is
+            drawn in the same page as it is, with no ◉ at all, and with that marker chosen as where you are going. Then:
+              · the ◉ is a violet ring, with no violet at its centre, and its centre is on the door's within a pixel and a half;
+              · the marker is whole inside it in its own colour: its own-colour pixels (where the engine paints it alone, on
+                black and on white, opaque and in the colour its kind is declared in) show at least 90% of what they show
+                with no ◉ at all, so the ◉'s glow and shadow are under it; and none of them is as far from the door as the
+                ring's violet;
+              · the same with that marker chosen as the destination: the disc it stands in (its paint straight out from its
+                centre, drawn alone) looks as it does with no ◉ in at least 90% of its pixels, and is inside the ring's violet;
+              · the ring has no flag: with nothing chosen, everything the ◉ adds to the plan is within 16 pixels of the door,
+                and past the ring's own edge it is only a glow, no channel more than 40 from the plan with no ◉.
+            Written red on mq-v251, which drew the solid ◉ over the marker at the office's door. */
+    {
+      const { ctx, p } = await page2(1280, 800);
+      if (!await begin(p)) MP.push('the game did not start, so the ring round a marker at your own door was not asked about — nothing to measure is not a pass');
+      else if (!await p.evaluate(() => typeof markKinds !== 'function' || markKinds().length > 0)) MN.push('COUNT-ONLY: this game marks nobody on its map, so the ◉ never stands on a marker and no ring was asked about');
+      else {
+        await p.evaluate(MAPHELP());
+        let asked = 0; const seen = [];
+        for (const grown of [false, true]) {
+          const when = grown ? 'with every district open and every quest still to do' : 'at the start of a game';
+          const look = await p.evaluate(grown => {
+            const out = { places: [], asked: 0 };
+            if (grown && typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); }
+            const src = document.getElementById('mapcv'), g = src.getContext('2d');
+            const real = { drawMark, drawPlanMarks, planHere, planMarks };
+            const isV = (d, i) => { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224; return a * a + b * b + e * e < 900; };
+            const far2 = (d, i, c) => { const a = d[i] - c[0], b = d[i + 1] - c[1], e = d[i + 2] - c[2]; return a * a + b * b + e * e; };
+            const rgb = h => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(h || '')); return m ? [1, 2, 3].map(i => parseInt(m[i], 16)) : null; };
+            const at = (m, x, y) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f];
+            /* the plan as the engine draws it now, with or without its ◉: its pixels, and each mark it paints (where, which
+               kind, how big, under which transform), and the transform the destination is drawn under */
+            const paint = noDot => { const marks = []; let tf = null, sP = 10;
+              drawMark = function (gg, cx, cy, k, r) { if (gg && gg.canvas === src) marks.push({ cx, cy, k, r, tf: gg.getTransform() }); return real.drawMark.apply(this, arguments); };
+              drawPlanMarks = function (g2, s) { tf = g2.getTransform(); sP = s; return real.drawPlanMarks.apply(this, arguments); };
+              if (noDot) planHere = () => null;
+              try { drawTown(); } finally { drawMark = real.drawMark; drawPlanMarks = real.drawPlanMarks; planHere = real.planHere; }
+              return { d: g.getImageData(0, 0, src.width, src.height).data, marks, tf, sP, you: noDot ? null : __mqYou(src) }; };
+            /* one thing drawn by itself on black and on white, the plan's size and under its transform: how opaque each of
+               its pixels is, and its colour */
+            const alone = draw => { const [K, Wt] = ['#000000', '#ffffff'].map(bg => { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+                const q = c.getContext('2d'); q.fillStyle = bg; q.fillRect(0, 0, c.width, c.height); draw(q); return q.getImageData(0, 0, c.width, c.height).data; });
+              return i => { const a = 1 - ((Wt[i] - K[i]) + (Wt[i + 1] - K[i + 1]) + (Wt[i + 2] - K[i + 2])) / 765; return { a, c: a > 0.03 ? [K[i] / a, K[i + 1] / a, K[i + 2] / a] : null }; }; };
+            const box = (cx, cy, h) => { const o = []; for (let y = Math.max(0, Math.floor(cy - h)); y < Math.min(src.height, Math.ceil(cy + h)); y++) for (let x = Math.max(0, Math.floor(cx - h)); x < Math.min(src.width, Math.ceil(cx + h)); x++) o.push([x, y, (y * src.width + x) * 4, Math.hypot(x + 0.5 - cx, y + 0.5 - cy)]); return o; };
+            const violet = (d, cx, cy) => { let lo = Infinity, hi = 0; box(cx, cy, 30).forEach(([, , i, r]) => { if (isV(d, i)) { if (r < lo) lo = r; if (r > hi) hi = r; } }); return { lo, hi }; };
+            const was = { world, px, py, fx, fy, mapDest };
+            try {
+              __mqMap.placesNow().forEach(pl => {
+                world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
+                const here = planHere(); if (!here) return;
+                out.asked++;
+                const A = paint(false), C = at(A.tf, here[0] * A.sP + A.sP / 2, here[1] * A.sP + A.sP / 2);
+                const mk = A.marks.find(m => { const q = at(m.tf, m.cx, m.cy); return Math.abs(q[0] - C[0]) < 0.5 && Math.abs(q[1] - C[1]) < 0.5; });
+                if (!mk) return;                                   /* no marker at this door: the ◉ is the disc it always was (section 1) */
+                const r = { name: pl.name, you: A.you.n ? { disc: !!A.you.disc, off: Math.hypot(A.you.cx - C[0], A.you.cy - C[1]) } : null };
+                const B = paint(true), own = rgb((MARKS[mk.k] || {}).c), M = at(mk.tf, mk.cx, mk.cy);
+                if (!own) { r.noOwn = mk.k; out.places.push(r); return; }
+                /* the marker's own-colour pixels: where the engine paints it alone, opaque and in its own colour */
+                const iso = alone(q => { q.setTransform(mk.tf); real.drawMark(q, mk.cx, mk.cy, mk.k, mk.r); });
+                const S = box(M[0], M[1], 4 * mk.r).filter(([, , i]) => { const v = iso(i); return v.a >= 0.95 && v.c && far2(v.c, 0, own) <= 900; });
+                const mine = d => S.filter(([, , i]) => far2(d, i, own) <= 900);
+                const v = violet(A.d, C[0], C[1]), inB = mine(B.d);
+                Object.assign(r, { kind: mk.k, nA: mine(A.d).length, nB: inB.length, reach: inB.reduce((a, q) => Math.max(a, Math.hypot(q[0] + 0.5 - C[0], q[1] + 0.5 - C[1])), 0), inner: v.lo, outer: v.hi });
+                /* AND THE RING HAS NO FLAG: what the ◉ adds to the plan, held against the plan with no ◉ (the strip of words
+                   under the plan says "◉ you are here" only where a ◉ is drawn, so it is left out) */
+                let far = 0, bright = 0, farAt = null; const edge = (v.hi || 6) + 3;   /* the ring's violet, and its pale keyline outside it */
+                for (let y = 0; y < src.height - 18; y++) for (let x = 0; x < src.width; x++) { const i = (y * src.width + x) * 4;
+                  const dd = Math.max(Math.abs(A.d[i] - B.d[i]), Math.abs(A.d[i + 1] - B.d[i + 1]), Math.abs(A.d[i + 2] - B.d[i + 2]));
+                  if (!dd) continue; const rr = Math.hypot(x + 0.5 - C[0], y + 0.5 - C[1]);
+                  if (rr > 16.5) { far++; if (!farAt) farAt = [x, y, Math.round(rr)]; } else if (rr > edge && dd > 40) bright++; }
+                Object.assign(r, { far, bright, farAt });
+                /* and that marker chosen as where you are going, at your own door */
+                mapDest = null;
+                if (mapPick(here[0] + 0.5, here[1] + 0.5) && mapDest && mapDest.gx === here[0] && mapDest.gy === here[1]) {
+                  const A2 = paint(false), B2 = paint(true);
+                  const isoD = alone(q => { q.setTransform(A2.tf); planMarks = () => []; drawMark = () => {}; try { real.drawPlanMarks(q, A2.sP); } finally { planMarks = real.planMarks; drawMark = real.drawMark; } });
+                  /* the disc it stands in: its paint straight out to the left of its centre, where neither its pole nor its flag is */
+                  let Ro = 0; for (let k = 0; k < 40; k++) { const x = Math.floor(C[0]) - 1 - k, y = Math.floor(C[1]); if (x < 0 || y < 0 || y >= src.height || isoD((y * src.width + x) * 4).a < 0.9) { Ro = k; break; } }
+                  const SD = box(C[0], C[1], Ro + 1).filter(([, , i, rr]) => rr <= Ro + 0.5 && isoD(i).a >= 0.95);
+                  const v2 = violet(A2.d, C[0], C[1]);
+                  r.dest = { you: A2.you.n ? { disc: !!A2.you.disc, off: Math.hypot(A2.you.cx - C[0], A2.you.cy - C[1]) } : null, n: SD.length, Ro,
+                    same: SD.filter(([, , i]) => far2(A2.d, i, [B2.d[i], B2.d[i + 1], B2.d[i + 2]]) <= 576).length, inner: v2.lo, outer: v2.hi,
+                    nA: mine(A2.d).length, nB: mine(B2.d).length };
+                } else r.dest = { none: true };
+                mapDest = null;
+                out.places.push(r);
+              });
+            } finally { drawMark = real.drawMark; drawPlanMarks = real.drawPlanMarks; planHere = real.planHere; planMarks = real.planMarks;
+              world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown(); }
+            return out; }, grown);
+          asked += look.asked;
+          for (const r of look.places) {
+            const at2 = r.name + ' (' + when + ')'; seen.push(r.name + (grown ? ' (every district open)' : ''));
+            if (r.noOwn) { MP.push('the marker at my door in ' + at2 + ' is of a kind (' + r.noOwn + ') with no colour of its own, so whether the ◉ covers it was not measured'); continue; }
+            if (!r.you) { MP.push('I opened the map in ' + at2 + ', where a marker stands at my door, and it shows no ◉ at all'); continue; }
+            if (r.you.disc) MP.push('I opened the map in ' + at2 + ' and the ◉ is drawn over the marker at my door: a solid ◉ on it, where it should be a ring round the door with the marker whole inside');
+            else if (r.you.off > 1.5) MP.push('I opened the map in ' + at2 + ' and the ring is not round my door: its centre is ' + r.you.off.toFixed(1) + ' px from the door\'s');
+            if (!r.nB) MP.push('the marker at my door in ' + at2 + ' shows none of its own colour even with no ◉ drawn, so whether the ◉ covers it was not measured — nothing to measure is not a pass');
+            else if (r.nA < 0.9 * r.nB) MP.push('I opened the map in ' + at2 + ' and the marker at my door shows ' + Math.round(100 * r.nA / r.nB) + '% of its own colour (' + r.nA + ' of the ' + r.nB + ' pixels it shows with no ◉): the ◉, its glow or its shadow is over it, and it needs 90%');
+            else if (!r.you.disc && r.inner <= r.reach) MP.push('I opened the map in ' + at2 + ' and the marker at my door is not whole inside the ring: its colour reaches ' + r.reach.toFixed(1) + ' px from the door and the ring\'s violet starts at ' + r.inner.toFixed(1) + ' px');
+            /* the ring has no flag: nothing the ◉ draws reaches past 16 px, whatever shape the violet makes (a violet flag
+               would bend the circle fitted to it); and past a ring's own edge, only its glow */
+            if (r.far) MP.push('I opened the map in ' + at2 + ' with nothing chosen, and the ◉ at my door draws ' + r.far + ' pixels farther than 16 px from it (the first ' + r.farAt[2] + ' px away, at ' + r.farAt[0] + ',' + r.farAt[1] + '): the ring has no flag');
+            else if (!r.you.disc && r.bright) MP.push('I opened the map in ' + at2 + ' with nothing chosen, and past its own edge the ring draws ' + r.bright + ' solid pixels: the ring has no flag, and past it there is only its glow');
+            const d = r.dest || { none: true }, wd = 'I chose the marker at my own door as where I am going (' + at2 + ')';
+            if (d.none) { MP.push('in ' + at2 + ' a tap on the marker at my own door did not choose it, so the ring round where I am going was not asked about'); continue; }
+            if (!d.you) MP.push(wd + ' and the map shows no ◉ at all');
+            else if (d.you.disc) MP.push(wd + ' and the ◉ is drawn over it: a solid ◉ on the disc it stands in, where it should be a ring round it');
+            else if (d.you.off > 1.5) MP.push(wd + ' and the ring is not round my door: its centre is ' + d.you.off.toFixed(1) + ' px from the door\'s');
+            if (!d.n) MP.push(wd + ' and the disc it stands in could not be found where the engine draws it alone, so whether the ◉ covers it was not measured');
+            else if (d.same < 0.9 * d.n) MP.push(wd + ' and ' + Math.round(100 * d.same / d.n) + '% of the disc it stands in looks as it does with no ◉ (' + d.same + ' of ' + d.n + ' pixels): the ◉ or its glow is over where I am going, and it needs 90%');
+            else if (!d.you.disc && d.inner <= d.Ro) MP.push(wd + ' and it is not whole inside the ring: the disc it stands in reaches ' + d.Ro + ' px from the door and the ring\'s violet starts at ' + d.inner.toFixed(1) + ' px');
+            if (d.nB && d.nA < 0.9 * d.nB) MP.push(wd + ' and its marker shows ' + Math.round(100 * d.nA / d.nB) + '% of its own colour (' + d.nA + ' of ' + d.nB + ' pixels), and it needs 90%');
+            if (r.you && !r.you.disc && d.you && !d.you.disc && grown === false && seen.length === 1)
+              MN.push('COUNT-ONLY: the ring at ' + r.name + '\'s door: round its marker, violet from ' + r.inner.toFixed(1) + ' to ' + r.outer.toFixed(1) + ' px, the marker\'s colour to ' + r.reach.toFixed(1) + ' px (' + Math.round(100 * r.nA / r.nB) + '% of it shown); round where I am going, violet from ' + d.inner.toFixed(1) + ' to ' + d.outer.toFixed(1) + ' px, its disc to ' + d.Ro + ' px (' + Math.round(100 * d.same / d.n) + '% of it as with no ◉)');
+          }
+        }
+        if (!seen.length) MN.push('COUNT-ONLY: in the ' + asked + ' place(s) where the map shows a ◉, it never stood on a door with a marker, so no ring was asked about');
+        else MN.push('COUNT-ONLY: the ◉ stood on a marker at the door in ' + seen.length + ' of ' + asked + ' place(s): ' + seen.join(', '));
+      }
+      await ctx.close();
+    }
+
+    /* 18 · EVERY OTHER MAP IS DRAWN AS IT WAS. The engine before this change (the commit this branch grew from, read as
+            section 3 reads it) and the engine under test are opened side by side, each starts a game, and both are put in
+            the same state: at the start of a game, and with every district open and every quest still to do. In every
+            place a door leads to (placesNow) the plan is drawn with nothing chosen and the two are held pixel for pixel:
+            the same everywhere, but within 16 pixels of your own door where the ◉ there is a ring round a marker. Then, from
+            the place a game starts and from the first street the plan draws, each marker is chosen in turn, and one place
+            "Somewhere to go" picks: the two may differ only where either engine draws where you are going (found by drawing
+            it alone, under the plan's own transform) and within 16 pixels of a ring. Each plan is drawn twice first and must
+            come out the same twice, or nothing here could be held pixel for pixel. Green on mq-v251 by construction (it is
+            held against itself), so it was planted red in a copy: the plan moved down a pixel, and a ring drawn round a door
+            with no marker. */
+    {
+      if (!before) MP.push('the engine before this change cannot be read here (no git, or no origin/main), so every other map was not held pixel for pixel against it — that is not a pass');
+      else {
+        const { ctx, p } = await page2(1280, 800), c2 = await browser.newContext({ viewport: { width: 1280, height: 800 } }), oErr = [];
+        const o = await oldPage(c2, oErr);
+        if (!await begin(p) || !await begin(o)) MP.push('the game did not start on both engines, so every other map was not held against the engine before this change — nothing to measure is not a pass' + (oErr.length ? ' (the engine before it threw: ' + oErr[0] + ')' : ''));
+        else {
+          await p.evaluate(MAPHELP());
+          /* the plan drawn now, kept in the page, with a fingerprint for each 10×10 block of it; where your own door is and
+             whether a marker the engine paints stands on it; and where the destination is drawn, drawn alone */
+          const snapNow = () => {
+            const src = document.getElementById('mapcv'), g = src.getContext('2d'), real = { drawMark, drawPlanMarks, planMarks }, marks = []; let tf = null, sP = 10;
+            drawMark = function (gg, cx, cy) { if (gg && gg.canvas === src) { const m = gg.getTransform(); marks.push([m.a * cx + m.c * cy + m.e, m.b * cx + m.d * cy + m.f]); } return real.drawMark.apply(this, arguments); };
+            drawPlanMarks = function (g2, s) { tf = g2.getTransform(); sP = s; return real.drawPlanMarks.apply(this, arguments); };
+            try { drawTown(); } finally { drawMark = real.drawMark; drawPlanMarks = real.drawPlanMarks; }
+            const W = src.width, H = src.height, d = g.getImageData(0, 0, W, H).data, tw = Math.ceil(W / 10), th = Math.ceil(H / 10), hs = [];
+            window.__mqSnap = { W, H, d };
+            for (let ty = 0; ty < th; ty++) for (let tx = 0; tx < tw; tx++) { let h = 0x811c9dc5;
+              for (let y = ty * 10; y < Math.min(H, ty * 10 + 10); y++) for (let x = tx * 10; x < Math.min(W, tx * 10 + 10); x++) { const i = (y * W + x) * 4;
+                for (let k = 0; k < 4; k++) { h ^= d[i + k]; h = Math.imul(h, 16777619) >>> 0; } }
+              hs.push(h); }
+            const here = typeof planHere === 'function' ? planHere() : null; let ring = null;
+            if (here && tf) { const C = [tf.a * (here[0] * sP + sP / 2) + tf.c * (here[1] * sP + sP / 2) + tf.e, tf.b * (here[0] * sP + sP / 2) + tf.d * (here[1] * sP + sP / 2) + tf.f];
+              if (marks.some(m => Math.abs(m[0] - C[0]) < 0.5 && Math.abs(m[1] - C[1]) < 0.5) || (mapDest && mapDest.gx === here[0] && mapDest.gy === here[1])) ring = C; }
+            let foot = null;
+            if (mapDest && tf) { const c = document.createElement('canvas'); c.width = W; c.height = H; const q = c.getContext('2d'); q.setTransform(tf);
+              const mine = real.planMarks().filter(m => m.gx === mapDest.gx && m.gy === mapDest.gy);
+              planMarks = () => mine; try { real.drawPlanMarks(q, sP); } finally { planMarks = real.planMarks; }
+              const a = q.getImageData(0, 0, W, H).data; foot = []; for (let i = 3; i < a.length; i += 4) if (a[i]) foot.push((i - 3) / 4); }
+            return { W, H, tw, th, hs, ring, foot, dest: mapDest ? [mapDest.w, mapDest.x, mapDest.y] : null }; };
+          const tilesOf = list => { const { W, H, d } = window.__mqSnap;
+            return list.map(([tx, ty]) => { const o2 = []; for (let y = ty * 10; y < Math.min(H, ty * 10 + 10); y++) for (let x = tx * 10; x < Math.min(W, tx * 10 + 10); x++) { const i = (y * W + x) * 4; o2.push(d[i], d[i + 1], d[i + 2], d[i + 3]); } return o2; }); };
+          const put = ([w, x, y]) => { document.querySelectorAll('.settings').forEach(q => { q.hidden = true; }); world = w; px = fx = x; py = fy = y; moving = false; held = null; mapDest = null; setWorldTag(); return true; };
+          /* the two plans held pixel for pixel, but where a pixel may differ */
+          const hold = async (a, b, ok) => {
+            if (a.W !== b.W || a.H !== b.H) return { size: a.W + '×' + a.H + ' against ' + b.W + '×' + b.H };
+            const diff = []; a.hs.forEach((h, i) => { if (h !== b.hs[i]) diff.push([i % a.tw, Math.floor(i / a.tw)]); });
+            if (!diff.length) return { bad: 0 };
+            const list = diff.slice(0, 600), pa = await p.evaluate(tilesOf, list), pb = await o.evaluate(tilesOf, list);
+            let bad = 0, first = null;
+            list.forEach(([tx, ty], j) => { const A = pa[j], B = pb[j]; let k = 0;
+              for (let y = ty * 10; y < Math.min(a.H, ty * 10 + 10); y++) for (let x = tx * 10; x < Math.min(a.W, tx * 10 + 10); x++, k += 4) {
+                if (A[k] === B[k] && A[k + 1] === B[k + 1] && A[k + 2] === B[k + 2] && A[k + 3] === B[k + 3]) continue;
+                if (ok(x, y)) continue; bad++; if (!first) first = [x, y]; } });
+            return { bad, first, more: diff.length > list.length ? diff.length - list.length : 0 }; };
+          const nearRing = (a, x, y) => !!a.ring && Math.hypot(x + 0.5 - a.ring[0], y + 0.5 - a.ring[1]) <= 16.5;
+          const said = (r, what) => r.size ? what + ': the plan is ' + r.size + ' pixels' : what + ': ' + r.bad + ' pixel(s) differ, the first at ' + r.first + ' on the plan' + (r.more ? ' (and ' + r.more + ' more blocks of it not read)' : '');
+          let placesHeld = 0, ringsHeld = 0, destsHeld = 0, twice = 0;
+          for (const grown of [false, true]) {
+            const when = grown ? 'with every district open and every quest still to do' : 'at the start of a game';
+            const grow = g2 => { if (g2 && typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); } return true; };
+            await p.evaluate(grow, grown); await o.evaluate(grow, grown);
+            const places = await p.evaluate(() => __mqMap.placesNow()), bads = [];
+            for (const pl of places) {
+              await p.evaluate(put, [pl.id, pl.at[0], pl.at[1]]); await o.evaluate(put, [pl.id, pl.at[0], pl.at[1]]);
+              const a = await p.evaluate(snapNow), b = await o.evaluate(snapNow);
+              if (!twice++) { const a2 = await p.evaluate(snapNow), b2 = await o.evaluate(snapNow);
+                if (a2.hs.join() !== a.hs.join() || b2.hs.join() !== b.hs.join()) MP.push('The map in ' + pl.name + ' (' + when + ') comes out differently each time it is drawn, so it cannot be held pixel for pixel against the engine before this change — that is not a pass'); }
+              const r = await hold(a, b, (x, y) => nearRing(a, x, y)); placesHeld++; if (a.ring) ringsHeld++;
+              if (r.size || r.bad) bads.push(said(r, pl.name + (a.ring && !r.size ? ', more than 16 px from my door, where a marker stands' : ''))); }
+            if (bads.length) MP.push('With nothing chosen, the map is not drawn as it was before this change (' + when + '): in ' + bads.slice(0, 3).join('; ') + (bads.length > 3 ? '; and in ' + (bads.length - 3) + ' more place(s)' : '') + ' — only the ring round a marker at my own door may differ');
+            /* where you are going: each marker in turn, and "Somewhere to go", from home and from the first street */
+            const froms = await p.evaluate(() => { const pn = planPanels()[0]; return [PL.home, pn && pn.world].filter((w, i, all) => w && WORLDS[w] && all.indexOf(w) === i); });
+            const dbad = [];
+            for (const w of froms) {
+              const pl = places.find(q => q.id === w); if (!pl) continue;
+              await p.evaluate(put, [pl.id, pl.at[0], pl.at[1]]); await o.evaluate(put, [pl.id, pl.at[0], pl.at[1]]);
+              const marks = await p.evaluate(() => planMarks().map(m => ({ gx: m.gx, gy: m.gy, name: m.who ? (npcName(m.who) || m.who) : __mqMap.placeName(m.w) + '\'s door' })));
+              const picks = marks.map(m => ({ name: m.name, how: [m.gx + 0.5, m.gy + 0.5] })).concat([{ name: 'where “Somewhere to go” sent me', how: 'any' }]);
+              for (const k of picks) {
+                const pick = how => { mapDest = null; if (how === 'any') { const r0 = Math.random; Math.random = () => 0.5;
+                    try { const b0 = document.getElementById('mapAny'); if (b0) b0.click(); else if (typeof mapRandomDest === 'function') mapRandomDest(); } finally { Math.random = r0; } }
+                  else mapPick(how[0], how[1]); return true; };
+                await p.evaluate(pick, k.how); await o.evaluate(pick, k.how);
+                const a = await p.evaluate(snapNow), b = await o.evaluate(snapNow);
+                if (!a.dest || !b.dest) { if (k.how !== 'any') dbad.push(k.name + ' (standing in ' + pl.name + '): ' + (!a.dest ? 'the engine under test' : 'the engine before it') + ' chose nothing'); continue; }
+                if (k.how !== 'any' && a.dest.join() !== b.dest.join()) { dbad.push(k.name + ' (standing in ' + pl.name + '): the two engines chose different places'); continue; }
+                const fa = new Set(a.foot || []), fb = new Set(b.foot || []);
+                const r = await hold(a, b, (x, y) => nearRing(a, x, y) || fa.has(y * a.W + x) || fb.has(y * a.W + x)); destsHeld++;
+                if (r.size || r.bad) dbad.push(said(r, k.name + ' chosen, standing in ' + pl.name));
+              }
+              await p.evaluate(() => { mapDest = null; drawTown(); }); await o.evaluate(() => { mapDest = null; drawTown(); });
+            }
+            if (dbad.length) MP.push('With somewhere chosen, the map is not drawn as it was before this change beyond where I am going and the ring (' + when + '): ' + dbad.slice(0, 3).join('; ') + (dbad.length > 3 ? '; and ' + (dbad.length - 3) + ' more' : ''));
+          }
+          if (oErr.length) MP.push('the engine before this change threw while its maps were drawn for the comparison: ' + oErr[0]);
+          MN.push('COUNT-ONLY: the map was held pixel for pixel against the engine at ' + before.base + ' in ' + placesHeld + ' place(s) with nothing chosen (' + ringsHeld + ' of them at a door where a marker stands, where 16 px round that door may differ) and with ' + destsHeld + ' destination(s) chosen' + (before.same ? ' — that engine is this one, byte for byte, so this is green by construction' : ''));
+        }
+        await c2.close(); await ctx.close();
+      }
     }
 
     Object.keys(own).forEach(L => { const o = own[L], both = [...o.on].filter(w => o.off.has(w));
