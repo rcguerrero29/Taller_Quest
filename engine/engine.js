@@ -7020,6 +7020,23 @@ const MARKS={
     Δ54.6 from work and Δ46.7 from the plan's own paper, clear both ways (Pili's rule, measured). */
   read:{c:"#F2E6C6",sh:"card"}     /* something to read — the cream card the rooms already draw */
 };
+/* WHERE YOU ARE GOING HAS A COLOUR OF ITS OWN (2026-11-07). The chosen destination's flag, the ring of the disc it
+   stands in and the soft field round it were #7A3FE0, the ◉'s own violet, and its pole a darker violet: on the paper
+   "going there" said "here", and in black and white the two were one mark. They are a sky blue now, which no tile on
+   the plan is drawn in, and the ◉'s violet is the ◉'s alone. Measured as the marks above are, in Rec.601 luma: the
+   flag, the ring and the field (#55AEF2) are 155.1, Δ56.1 from the ◉'s violet (99.0) and Δ78.0 from the paper
+   (233.1); the flag's lit edge, white at .34 over it, is 189.1, still Δ44.0 from the paper; the pole (#12355A) is
+   46.8, Δ52.2 from the violet and dark on the paper, the way a pole is. Its SHAPE is what tells it from the marks it
+   may stand beside, work (131.8) and host (186.4): a pennant on a pole, never a person or a speech bubble. */
+const DESTMARK={c:"#55AEF2",field:"rgba(85,174,242,.16)",pole:"#12355A"};
+/* THE PAPER'S TOP MARGIN, in canvas pixels (2026-11-07). 0: the plan's top row is the canvas's top edge, so the ring
+   round a door on that row (the office every game starts in has its door there) is cut by the edge, and a flag on that
+   row hangs below its door instead of flying off the paper. It is one setting so that a strip of paper above the top
+   row can be added by changing this number and nothing else: about 6 makes room for the ring, about 14 for a flag above
+   a top-row door too. The canvas grows by it, the paper and its folds run up into it, everything on the plan moves down
+   by it, a flag flies above its door wherever it fits under it, and a click is read with it. Every map would then move
+   down by that much, which is a change to every map. */
+const PLANTOP=0;
 const markKinds=()=>((typeof MAPMARK!=="undefined"&&Array.isArray(MAPMARK))?MAPMARK:[]).filter(k=>MARKS[k]);
 function markOf(n){ /* one person, one kind, in the order the pack declared */
   const K=markKinds();if(!K.length||!n)return null;
@@ -7169,6 +7186,13 @@ function drawMark(g,cx,cy,k,r){ /* ONE painter, two surfaces: the plan and its o
   g.restore();}
 let mapDest=null; /* {w,x,y} — ONE at a time, and never saved. A destination is what you are doing
                      right now; a saved one is the list A3 bans, wearing a compass. */
+/* WHERE YOU ARE GOING IS DRAWN, on the paper, in canvas pixels at s a tile: the centre of the disc it stands in, the
+   disc's radius, and which way its flag flies (U=1 above its door; U=-1 below a door on the paper's top row, which has
+   no room above it, so where you are going is never off the map). drawPlanMarks draws it from here and a tap is held
+   against it here (destTapped), so the spot a finger clears is the spot the eye sees. */
+function destSpot(s){
+  const cx=(mapDest.gx===undefined?mapDest.x:mapDest.gx)*s+s/2,cy=(mapDest.gy===undefined?mapDest.y:mapDest.gy)*s+s/2,R=s*0.86;
+  return {cx,cy,R,U:(cy+PLANTOP-R*2.1<0)?-1:1};}
 function drawPlanMarks(g2,s){
   /* while one mark is chosen the others step back, because "this one" is only visible against
      "not those" — the half of legibility that is always left out (owner, 2026-09-16) */
@@ -7191,24 +7215,22 @@ function drawPlanMarks(g2,s){
      the paper whatever is behind it, and every other mark on the plan is dimmed. The last one is
      the cheap half of legibility and the half that is always forgotten — "this one" is only ever
      visible against "not those". */
-  const cx=(mapDest.gx===undefined?mapDest.x:mapDest.gx)*s+s/2,
-        cy=(mapDest.gy===undefined?mapDest.y:mapDest.gy)*s+s/2;
+  const {cx,cy,R,U}=destSpot(s);    /* on the top row its flag hangs below the door; everywhere else it flies above, as it did */
   g2.save();
-  const R=s*0.86;
-  g2.fillStyle="rgba(122,63,224,.16)";                       /* a soft field, so the eye lands here first */
+  g2.fillStyle=DESTMARK.field;                               /* a soft field, so the eye lands here first */
   g2.beginPath();g2.arc(cx,cy,R*1.5,0,7);g2.fill();
   g2.strokeStyle="rgba(58,44,20,.30)";g2.lineWidth=Math.max(2,s*0.22);  /* the pole, and its shadow */
-  g2.beginPath();g2.moveTo(cx+1,cy+1);g2.lineTo(cx+1,cy-R*2.1+1);g2.stroke();
-  g2.strokeStyle="#4A2A8E";g2.lineWidth=Math.max(1.4,s*0.16);
-  g2.beginPath();g2.moveTo(cx,cy);g2.lineTo(cx,cy-R*2.1);g2.stroke();
-  g2.fillStyle="#7A3FE0";                                     /* the flag itself */
-  g2.beginPath();g2.moveTo(cx,cy-R*2.1);g2.lineTo(cx+R*1.5,cy-R*1.72);
-  g2.lineTo(cx,cy-R*1.34);g2.closePath();g2.fill();
+  g2.beginPath();g2.moveTo(cx+1,cy+1);g2.lineTo(cx+1,cy-U*R*2.1+1);g2.stroke();
+  g2.strokeStyle=DESTMARK.pole;g2.lineWidth=Math.max(1.4,s*0.16);
+  g2.beginPath();g2.moveTo(cx,cy);g2.lineTo(cx,cy-U*R*2.1);g2.stroke();
+  g2.fillStyle=DESTMARK.c;                                    /* the flag itself */
+  g2.beginPath();g2.moveTo(cx,cy-U*R*2.1);g2.lineTo(cx+R*1.5,cy-U*R*1.72);
+  g2.lineTo(cx,cy-U*R*1.34);g2.closePath();g2.fill();
   g2.fillStyle="rgba(255,255,255,.34)";
-  g2.beginPath();g2.moveTo(cx,cy-R*2.1);g2.lineTo(cx+R*1.5,cy-R*1.72);g2.lineTo(cx,cy-R*1.9);g2.closePath();g2.fill();
+  g2.beginPath();g2.moveTo(cx,cy-U*R*2.1);g2.lineTo(cx+R*1.5,cy-U*R*1.72);g2.lineTo(cx,cy-U*R*1.9);g2.closePath();g2.fill();
   g2.fillStyle="#F4F1EA";                                     /* the disc the mark stands in */
   g2.beginPath();g2.arc(cx,cy,R,0,7);g2.fill();
-  g2.lineWidth=Math.max(2,s*0.22);g2.strokeStyle="#7A3FE0";
+  g2.lineWidth=Math.max(2,s*0.22);g2.strokeStyle=DESTMARK.c;
   g2.beginPath();g2.arc(cx,cy,R,0,7);g2.stroke();
   g2.restore();
   drawMark(g2,cx,cy,mapDest.k||((planMarks().find(m=>m.gx===mapDest.gx&&m.gy===mapDest.gy)||{}).k),s*0.56);}
@@ -7267,7 +7289,21 @@ function mapLegend(){
     drawMark(cv.getContext("2d"),10,10,k,6);
     row.appendChild(cv);row.appendChild(document.createTextNode(t[k]||k));
     box.appendChild(row);});}
+/* ---- A TAP ON WHERE YOU ARE GOING CLEARS IT, BEFORE ANYTHING UNDER IT (2026-11-07) ----
+   The line under the map says to tap the destination again to clear it, and that was true only of a mark chosen by a
+   tap: the picker cleared a destination only when the nearest mark was that very place, and a person "Somewhere to go"
+   picks keeps where they stand while their flag stands on their building's door. So a tap on that flag did nothing on a
+   bare door, and on a door with a mark of its own chose the building instead, a place nobody picked. A tap on the disc
+   the destination stands in, or on its pole and flag, as they are drawn (destSpot, a pixel and a half of slack round
+   them), now clears it first; a second tap there then chooses whatever mark is under it. A tap anywhere else is read
+   as it always was. X,Y: the point on the paper, in canvas pixels at 10 a tile. */
+function destTapped(X,Y){
+  const s=10,{cx,cy,R,U}=destSpot(s),k=1.5,yA=cy-U*R*2.1,yB=cy-U*R*1.34;
+  if(Math.hypot(X-cx,Y-cy)<=R+Math.max(2,s*0.22)/2+k)return true;                                /* the disc, and its edge */
+  if(Math.abs(X-cx)<=Math.max(1.4,s*0.16)/2+1+k&&Y>=Math.min(cy,yA)-k&&Y<=Math.max(cy,yA)+k)return true;   /* the pole */
+  return X>=cx-k&&X<=cx+R*1.5+k&&Y>=Math.min(yA,yB)-k&&Y<=Math.max(yA,yB)+k;}                   /* the flag */
 function mapPick(tx,ty){ /* tile coords, fractional — it is a finger, not a cursor */
+  if(mapDest&&destTapped(tx*10,ty*10)){mapDest=null;drawTown();setWorldTag();mapNoteSet();return true;}
   let best=null,bd=1e9;
   /* the finger is on PAPER, so the hit test is against gx,gy — and what gets STORED is the
      world position, because that is what the street arrow will be pointed at */
@@ -7353,9 +7389,15 @@ function bearSet(v){bearPref=!!v;mqStore(SK("bearing"),v?"1":"0");}
    44 px tall, reading "<name> · <state>". A pack names it in its plan words (arrow, arrowOn,
    arrowOff); a pack that names nothing gets the same words in its player's language, chosen the way
    the caption under the plan chooses its own, never English alone. */
+/* ---- ON LOOKS ON, AND ITS NAME IS SAID ONCE (2026-11-07) ----
+   On and off wore the same fill, so the only difference was one word at its end; on, it wears the fill a chosen
+   settings row wears now (the accent), and its word for the state stays. Its words were its name too, so a screen
+   reader heard "<name> · On, switch, on": the state twice, and a name that changed with it. The state word is now
+   hidden from a screen reader, which hears the state from aria-checked, and the name is the same either way. Its
+   words are one item of the flex box the button is, so the space before the state is kept. */
 function mapArrowBtn(){
   const title=$("mapTitle");if(!title||!title.parentNode)return;
-  let head=$("mapHead"),b=$("mapArrow");
+  let head=$("mapHead"),b=$("mapArrow"),hint=$("mapArrowHint");
   if(!head){head=document.createElement("div");head.id="mapHead";
     head.style.cssText="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 12px;";
     title.parentNode.insertBefore(head,title);head.appendChild(title);title.style.margin="0";}
@@ -7363,13 +7405,35 @@ function mapArrowBtn(){
     b.style.cssText="flex:0 0 auto;max-width:100%;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;"+
       "min-height:44px;padding:4px 14px;border-radius:999px;border:1.5px solid var(--line,#C9C3B4);background:var(--bg,#F2F1EA);"+
       "color:inherit;font-family:inherit;font-weight:600;font-size:.8rem;line-height:1.2;text-align:center;cursor:pointer;";
+    const words=document.createElement("span"),nm=document.createElement("span"),st=document.createElement("span");
+    nm.id="mapArrowName";st.id="mapArrowState";st.setAttribute("aria-hidden","true");
+    words.appendChild(nm);words.appendChild(st);b.appendChild(words);
     b.addEventListener("click",()=>{bearSet(!bearOn());mapArrowBtn();});
     head.appendChild(b);}
+  if(!hint){hint=document.createElement("p");hint.id="mapArrowHint";
+    hint.style.cssText="flex:1 0 100%;margin:0;font-size:.75rem;line-height:1.3;color:var(--muted,currentColor);";
+    head.appendChild(hint);}
   const t=(T().plan||{}),es=lang==="es",on=bearOn();
-  b.textContent=(t.arrow||(es?"Flechita hacia tu destino":"Arrow to your destination"))+" · "+
-    (on?(t.arrowOn||(es?"Prendida":"On")):(t.arrowOff||(es?"Apagada":"Off")));
+  $("mapArrowName").textContent=t.arrow||(es?"Flechita hacia tu destino":"Arrow to your destination");
+  $("mapArrowState").textContent=" · "+(on?(t.arrowOn||(es?"Prendida":"On")):(t.arrowOff||(es?"Apagada":"Off")));
   b.setAttribute("aria-checked",on?"true":"false");
+  b.style.background=on?"var(--accent,#7A3FE0)":"var(--bg,#F2F1EA)";
+  b.style.borderColor=on?"var(--accent,#7A3FE0)":"var(--line,#C9C3B4)";
+  b.style.color=on?"var(--accent-ink,#FFFFFF)":"inherit";
+  hint.textContent=t.arrowHint||(es?"Nomás sale cuando ya tienes destino.":"Only shows once you've got a destination.");
+  mapArrowHint();
   mapHeadFit();}
+/* ---- AND UNDER IT, WHEN THE ARROW SHOWS (2026-11-07) ----
+   Switched on with nowhere chosen, the arrow has nothing to point at, so pressing the switch seemed to do nothing. A
+   line under the switch says why: the arrow shows only once you have a destination. It is shown while the switch is on
+   and nothing is chosen, and never inside the switch. While the switch is on its room is kept even when the line is
+   hidden, so choosing or clearing a destination never moves the plan under a finger; only turning the switch on or off
+   makes or gives back that room. A pack names the words in its plan words (arrowHint); a pack that names none gets the
+   engine's in its player's language, as the switch's own words. */
+function mapArrowHint(){
+  const h=$("mapArrowHint");if(!h)return;
+  h.style.display=bearOn()?"":"none";
+  h.style.visibility=mapDest?"hidden":"";}
 /* ---- THE SWITCH DOES NOT MAKE THE BOX TALLER, AND THE MAP OPENS AT ITS TOP (2026-11-06) ----
    Beside the title, the switch's 44 px made the title row 22 px taller than the title, and the plan, the line under it
    and "Somewhere to go" went down by as much: on a laptop the line that says how to choose a destination went under
@@ -7378,25 +7442,43 @@ function mapArrowBtn(){
    never more than that room. Where it takes a line of its own it adds its own height, as it always has, and touches
    neither the title nor the plan. Measured once the box is shown, and again whenever the switch's words or the window
    change, because a hidden box has no size to measure. */
+/* AND THE LINE UNDER IT (2026-11-07) starts two pixels under the switch's foot, under its right end where it sits beside
+   the title and under its left end where it has a line of its own. Its room comes out of the plan's height wherever the
+   shell caps that height, so the box is no taller with the switch on, and on a laptop the line under the plan that says
+   how to choose a destination stays in view as the map opens; where the plan is not capped (a phone held upright) the
+   box grows by the line instead, and has room to. */
 function mapHeadFit(){
   const b=$("mapArrow"),title=$("mapTitle"),head=$("mapHead");if(!b||!title||!head)return;
+  const hint=$("mapArrowHint"),cv=$("mapcv");
   b.style.marginTop=b.style.marginBottom="";
+  if(hint)hint.style.marginTop="0px";   /* zero, never "": an empty margin is a paragraph's own 1em, which the fit below would replace */
+  if(cv)cv.style.maxHeight="";
   const t=title.getBoundingClientRect(),r=b.getBoundingClientRect();
-  if(!t.height||!r.height||r.top>=t.bottom-0.5)return;          /* hidden, or on a line of its own */
-  const extra=r.height-t.height;if(extra<=0)return;
-  const box=head.parentNode,room=(e,k)=>parseFloat(getComputedStyle(e)[k])||0;
-  const below=Math.min(extra/2,room(head,"marginBottom"));
-  const above=Math.min(extra-below,box&&box.firstElementChild===head?room(box,"paddingTop"):0);
-  b.style.marginTop=(-above)+"px";b.style.marginBottom=(-below)+"px";}
+  if(!t.height||!r.height)return;                                  /* hidden: a hidden box has no size to measure */
+  const beside=r.top<t.bottom-0.5,extra=r.height-t.height;         /* or the switch has a line of its own */
+  if(beside&&extra>0){
+    const box=head.parentNode,room=(e,k)=>parseFloat(getComputedStyle(e)[k])||0;
+    const below=Math.min(extra/2,room(head,"marginBottom"));
+    const above=Math.min(extra-below,box&&box.firstElementChild===head?room(box,"paddingTop"):0);
+    b.style.marginTop=(-above)+"px";b.style.marginBottom=(-below)+"px";}
+  if(!hint||hint.style.display==="none")return;
+  hint.style.textAlign=beside?"right":"left";
+  hint.style.marginTop=(b.getBoundingClientRect().bottom+2-hint.getBoundingClientRect().top)+"px";
+  if(!cv)return;
+  const y1=cv.getBoundingClientRect().top;hint.style.display="none";
+  const y0=cv.getBoundingClientRect().top;hint.style.display="";
+  const cap=parseFloat(getComputedStyle(cv).maxHeight),room2=y1-y0;
+  if(room2>0&&isFinite(cap))cv.style.maxHeight=Math.max(0,cap-room2)+"px";}
 /* The box opened where it was last left: once a laptop or a phone held sideways had scrolled down to "Somewhere to go",
    every later opening put the switch, and the ◉ of every place at the top of the plan, above the box's top edge, under
    a caption saying "◉ you are here". It opens at its top now, every time, whatever in it scrolls. Set once it is shown:
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
+  mapNoteHold();
   mapHeadFit();
   [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden)mapHeadFit();});
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapNoteHold();mapHeadFit();}});
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
@@ -7587,12 +7669,27 @@ const planPanelOf=id=>planPanels().find(p2=>p2.world===id)||null;
 function planHere(){
   const mine=planPanelOf(world);if(mine)return [fx+mine.ox,fy+mine.oy];
   const at=planPlace(world);return at?[at.gx,at.gy]:null;}
+/* ---- YOU, AS A RING ROUND A MARKER AT YOUR OWN DOOR (2026-11-07) ----
+   The ◉ is drawn last, over everything, so you can always see yourself; and in a room whose door carries a marker (the
+   office every game starts in, its upper floor, a district's shop) that put the ◉ on the marker, the one thing there
+   you came to the map to find. Where the ◉ would cover a marker, or the destination chosen at your own door, you are a
+   violet ring round that door instead, with the marker, or the disc the destination stands in, whole inside it in its
+   own colour. Your glow and your shadow go under the marker; the ring goes over everything, so nothing covers you. The
+   ring has no flag, so it never reads as somewhere to go. Its inner radius is 8.4 canvas px round a marker (the widest
+   mark reaches about 8.2 with its pale halo) and 10.8 round a destination's disc (8.6, and 1.1 of its edge), in 2.2 px
+   of the ◉'s violet with a pale keyline a pixel each side. Everywhere else the ◉ is the disc it was, pixel for pixel.
+   Returns the ring's inner radius, or 0 for the disc. */
+function youRing(dot){
+  if(!dot)return 0;
+  if(mapDest){const gx=mapDest.gx===undefined?mapDest.x:mapDest.gx,gy=mapDest.gy===undefined?mapDest.y:mapDest.gy;
+    if(gx===dot[0]&&gy===dot[1])return 10.8;}
+  return planMarks().some(m=>m.gx===dot[0]&&m.gy===dot[1])?8.4:0;}
 function drawTown(){
   const mc=$("mapcv"),g2=mc.getContext("2d"),s=10,panels=planPanels();
   const PW=Math.max(...panels.map(p2=>p2.ox+WORLDS[p2.world].W));
   const PH=Math.max(...panels.map(p2=>p2.oy+WORLDS[p2.world].H));
   const w={W:PW,H:PH};
-  mc.width=PW*s;mc.height=PH*s+18;
+  mc.width=PW*s;mc.height=PH*s+18+PLANTOP;
   /* ---- THE PLAN IS A PIECE OF PAPER (2026-09-15) ----
      It was one flat #EFE9DA fill with flat squares on it, which is a data visualisation of a
      street and not a map of one — the same fault as every mock that day: the drawing was fine and
@@ -7608,6 +7705,7 @@ function drawTown(){
     g2.globalAlpha=0.03+prnd()*0.05;g2.fillStyle=prnd()<0.5?"#B6A883":"#FFFBF0";
     g2.fillRect(Math.floor(prnd()*mc.width),Math.floor(prnd()*mc.height),1,1);}
   g2.globalAlpha=1;
+  g2.translate(0,PLANTOP);                              /* the paper's top margin (PLANTOP): everything below is on the plan */
   const col={...BASECOL,...(typeof MAPCOL!=="undefined"?MAPCOL:{})};
   panels.forEach(p2=>{const ww=WORLDS[p2.world];
     for(let y=0;y<ww.H;y++)for(let x=0;x<ww.W;x++)
@@ -7616,12 +7714,12 @@ function drawTown(){
      a ridge and a ridge has two sides. Over the tiles, since the paper is folded with the map on
      it — this is the one mark on the plan that is not a thing in the city. */
   [Math.round(mc.width/3),Math.round(mc.width*2/3)].forEach(fx2=>{
-    g2.fillStyle="rgba(96,80,46,.13)";g2.fillRect(fx2,0,1,w.H*s);
-    g2.fillStyle="rgba(255,250,235,.30)";g2.fillRect(fx2+1,0,1,w.H*s);});
+    g2.fillStyle="rgba(96,80,46,.13)";g2.fillRect(fx2,-PLANTOP,1,w.H*s+PLANTOP);
+    g2.fillStyle="rgba(255,250,235,.30)";g2.fillRect(fx2+1,-PLANTOP,1,w.H*s+PLANTOP);});
   const vg=g2.createRadialGradient(mc.width/2,w.H*s/2,Math.min(mc.width,w.H*s)*0.32,
                                    mc.width/2,w.H*s/2,Math.max(mc.width,w.H*s)*0.62);
   vg.addColorStop(0,"rgba(58,44,20,0)");vg.addColorStop(1,"rgba(58,44,20,.16)");
-  g2.fillStyle=vg;g2.fillRect(0,0,mc.width,w.H*s);
+  g2.fillStyle=vg;g2.fillRect(0,-PLANTOP,mc.width,w.H*s+PLANTOP);
   const es=lang==="es";
   const flags=worldFlags();   /* the same facts the mural reads */
   g2.textAlign="center";
@@ -7642,8 +7740,18 @@ function drawTown(){
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0.4px";
   g2.fillText((es?"puertas y escaleras en dorado":"doors & stairs in gold")+(dot?(es?" · ◉ estás aquí":" · ◉ you are here"):""),mc.width/2,w.H*s+12);
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0px";
+  const ring=youRing(dot);
+  if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;              /* a ring: your glow and shadow go UNDER the marker */
+    const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,15);
+    hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
+    g2.fillStyle=hal;g2.beginPath();g2.arc(dx2,dy2,15,0,7);g2.fill();
+    g2.fillStyle="rgba(58,44,20,.30)";
+    g2.beginPath();g2.ellipse(dx2+1,dy2+4,5.4,2.2,0,0,7);g2.fill();}
   drawPlanMarks(g2,s); /* the marks go UNDER the dot: you can always see yourself */
-  if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
+  if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2,lw=2.2,rc=ring+lw/2;   /* and the ring over them: nothing covers you */
+    g2.save();g2.strokeStyle="#F2F1EA";g2.lineWidth=lw+2;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();
+    g2.strokeStyle="#7A3FE0";g2.lineWidth=lw;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();g2.restore();}
+  else if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
     const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,13);     /* you are a light on the paper */
     hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
     g2.fillStyle=hal;g2.beginPath();g2.arc(dx2,dy2,13,0,7);g2.fill();
@@ -7663,12 +7771,30 @@ function drawTown(){
    possible, which is the same fault as a save that fails quietly and a map that draws another
    street: a surface saying a thing that is not true. It says what is actually there now. */
 function mapNoteSet(){
+  mapArrowHint();                                                  /* the line under the switch reads the same choice */
   const t=T(),pl=t.plan||{},n=$("mapNote");if(!n)return;
   if(mapDest){n.textContent="🎯 "+destName()+(pl.chosen?"  ·  "+pl.chosen:"");return;}
   const here="📍 "+t.locs[world]+(world===PL.upstairs?"  ·  ⇧":"");
   const any=planMarks().length;
   n.textContent=here+(any&&pl.tap?"  ·  "+pl.tap:(pl.none?"  ·  "+pl.none:""));
 }
+/* ---- THE LINE UNDER THE MAP KEEPS ITS HEIGHT WHILE THE MAP IS OPEN (2026-11-07) ----
+   It names where you are going, and a long name takes it onto a second line. The box sits in the middle of the screen,
+   so the box grew by that line and the plan above it moved by half of it, about 10 px on a phone held upright, under
+   the finger that had just chosen; clearing it moved the plan back. Choosing or clearing must never move the map. So as
+   the map opens, and whenever the window changes size while it is open, the line is given the height of the tallest
+   thing it can say from here: where you stand, or where you are going, for every person and place it could name. Where
+   every one of them fits on one line, as on a laptop, nothing changes. */
+function mapNoteHold(){
+  const n=$("mapNote");if(!n||!n.getClientRects().length)return;
+  const t=T(),pl=t.plan||{},was=n.textContent,tail=pl.chosen?"  ·  "+pl.chosen:"",names=new Set(Object.values(t.locs||{}));
+  Object.keys(WORLDS).forEach(id=>(WORLDS[id].npcs||[]).forEach(q=>{const nm=npcName(q.npc);if(nm)names.add(nm);}));
+  n.style.minHeight="";
+  const keep=mapDest;mapDest=null;mapNoteSet();mapDest=keep;   /* where you stand, as the line says it with nothing chosen */
+  let h=n.getBoundingClientRect().height;
+  names.forEach(nm=>{n.textContent="🎯 "+nm+tail;h=Math.max(h,n.getBoundingClientRect().height);});
+  n.textContent=was;mapArrowHint();
+  if(h>0)n.style.minHeight=h+"px";}
 /* ---- AND SOMEWHERE TO GO WHEN NOBODY WANTS ANYTHING ----
    He also asked to be able to pick a random destination. Everything the plan could do was tied
    to a quest, so the moment the city had nothing left to ask of you the map became a picture. This
@@ -7676,16 +7802,34 @@ function mapNoteSet(){
    and the arrow in the street will take you to them. Chosen from the people the pack declared —
    never the one you are already standing next to, because being sent where you are is not an
    answer. */
+/* ONLY WHERE YOU CAN GO NOW, AND ITS FLAG ON THE DOOR (2026-11-07). It chose from every person the pack declares,
+   so at the start of a game it sent you to the people of businesses not built yet, behind doors the street does not
+   have, and it drew the flag of anyone in a room at that room's own tile numbers as if they were the street's: a
+   flag in the middle of Calle Principal for somebody in an office upstairs. Now the people it chooses from are those
+   in a place you can walk into now: where you stand, home, the park the leash leads to, the tram stops, and every
+   place a door leads into from one of those, through the doors the city has today, so a business's people join the
+   day its door is built. Its flag stands where the map shows that place: on a street the plan draws, where the person
+   stands; in a room, on its building's door (planPlace, the answer the ◉ reads). Somebody the map cannot show is not
+   chosen. Only the flag's place on the paper moves: the destination keeps where the person really stands, in their own
+   world, which is what the street arrow, the line above the game and arriving read. */
+function worldsNow(){ /* the places a player can walk into now, through the doors the city has */
+  const seen=new Set(),todo=[],add=id=>{if(id&&WORLDS[id]&&!seen.has(id)){seen.add(id);todo.push(id);}};
+  add(world);add(PL.home);if(PL.park&&PL.parkIn)add(PL.park);
+  (typeof TRV!=="undefined"&&Array.isArray(TRV)?TRV:[]).forEach(d=>{if(d)add(d.w);});
+  while(todo.length)portalsOf(todo.shift()).forEach(d=>{if(d.p)add(d.p.to);});
+  return seen;}
 function mapRandomDest(){
-  const pool=[];
-  Object.keys(WORLDS).forEach(id=>{(WORLDS[id].npcs||[]).forEach(n=>{
+  const pool=[],now=worldsNow();
+  Object.keys(WORLDS).forEach(id=>{
+    if(!now.has(id))return;                                       /* not built yet, or no way in today */
+    const pn=planPanelOf(id),at=pn?null:planPlace(id);if(!pn&&!at)return;   /* the map has to be able to show it */
+    (WORLDS[id].npcs||[]).forEach(n=>{
     if(id===world&&Math.abs(n.x-px)+Math.abs(n.y-py)<=2)return;   /* not where you already are */
     if(!npcName(n.npc))return;                                    /* it has to be nameable */
-    pool.push({w:id,x:n.x,y:n.y,who:n.npc});});});
+    pool.push({w:id,x:n.x,y:n.y,who:n.npc,gx:pn?n.x+pn.ox:at.gx,gy:pn?n.y+pn.oy:at.gy});});});
   if(!pool.length)return false;
   const p2=pool[(Math.random()*pool.length)|0];
-  const pn=planPanelOf(p2.w);
-  mapDest={w:p2.w,x:p2.x,y:p2.y,gx:pn?p2.x+pn.ox:undefined,gy:pn?p2.y+pn.oy:undefined,who:p2.who};
+  mapDest={w:p2.w,x:p2.x,y:p2.y,gx:p2.gx,gy:p2.gy,who:p2.who};
   drawTown();setWorldTag();mapNoteSet();
   return true;
 }
@@ -7714,10 +7858,26 @@ $("mapbtn").addEventListener("click",openMap);
 /* tapping a mark is how a destination is chosen — the plan is the only place it can be, because
    the plan is the only place you can see them all at once (the owner asked to choose
    his destination). A tap in open ground changes nothing: a miss must never clear what you picked. */
+/* WHERE THE FINGER IS ON THE PAPER (2026-11-07). A click was read as if the paper filled its box, and it does not: the
+   shell lets the plan be no taller than most of the screen and fits it inside its box (object-fit), so wherever the
+   box is wider than the paper (a laptop, a tablet or a phone held sideways) the paper sits in the middle with a margin
+   each side, and a finger on a marker landed tiles away from it: on a laptop eight markers in nine chose nobody. The
+   paper is found inside its box the way the browser fits it there, and a click in the margin beside it is a miss,
+   which changes nothing, like a click on empty paper. */
+function mapPaperAt(c,x,y){ /* the screen point x,y in the plan's own pixels, or null where it is beside the paper */
+  const r=c.getBoundingClientRect();if(!r.width||!r.height||!c.width||!c.height)return null;
+  const cs=getComputedStyle(c),n=v=>parseFloat(v)||0,fit=cs.objectFit;
+  const L=r.left+n(cs.borderLeftWidth)+n(cs.paddingLeft),T=r.top+n(cs.borderTopWidth)+n(cs.paddingTop);
+  const W=r.right-n(cs.borderRightWidth)-n(cs.paddingRight)-L,H=r.bottom-n(cs.borderBottomWidth)-n(cs.paddingBottom)-T;
+  let kx=W/c.width,ky=H/c.height;
+  if(fit==="contain"||fit==="scale-down")kx=ky=Math.min(kx,ky,fit==="scale-down"?1:Infinity);
+  else if(fit==="cover")kx=ky=Math.max(kx,ky);else if(fit==="none")kx=ky=1;
+  const pos=String(cs.objectPosition||"50% 50%").split(/\s+/),at=(v,free)=>/%$/.test(v)?free*parseFloat(v)/100:n(v);
+  const X=(x-L-at(pos[0]||"50%",W-c.width*kx))/kx,Y=(y-T-at(pos[1]||"50%",H-c.height*ky))/ky;
+  return (X<0||Y<0||X>c.width||Y>c.height)?null:[X,Y];}
 $("mapcv").addEventListener("click",e=>{
-  const c=$("mapcv"),r=c.getBoundingClientRect();if(!r.width||!c.width)return;
-  const sc=c.width/r.width,s=10;
-  mapPick((e.clientX-r.left)*sc/s,(e.clientY-r.top)*sc/s);});
+  const at=mapPaperAt($("mapcv"),e.clientX,e.clientY),s=10;if(!at)return;
+  mapPick(at[0]/s,(at[1]-PLANTOP)/s);});
 $("mapClose").addEventListener("click",()=>{$("mapov").hidden=true;});
 function openTravel(){
   const t=T().pass,list=$("tvList");
