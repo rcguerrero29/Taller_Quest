@@ -68,7 +68,8 @@ const UI={
         tap:"tap a mark to make it your destination",chosen:"tap it again to clear it",
         none:"nobody is waiting on you right now",any:"Somewhere to go →",
         key:"what the marks mean",ride:"take the tram",
-        arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off"},
+        arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off",
+        arrowHint:"Only shows once you've got a destination."},
   /* what a person is told when the device stops keeping things. Plain, and never the word
      "quota" — the sentence has to say what it costs THEM (2026-09-16). */
   save:{full:"⚠ This device is out of room — what you do now is not being saved. Freeing some space will fix it.",
@@ -313,7 +314,8 @@ One source of truth for one very good pet.
         tap:"toca una marca para poner tu destino",chosen:"tócala otra vez para quitarlo",
         none:"ahorita nadie te está esperando",any:"Un lugar a dónde ir →",
         key:"qué quieren decir las marcas",ride:"toma el tranvía",
-        arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada"},
+        arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
+        arrowHint:"Nomás sale cuando ya tienes destino."},
   save:{full:"⚠ Este aparato ya no tiene espacio — lo que hagas ahora no se está guardando. Liberar espacio lo arregla.",
         blocked:"⚠ Este navegador no deja guardar. Una ventana privada hace eso; una normal sí guarda tu avance.",
         back:"Ya está guardando otra vez — tu avance se queda."},

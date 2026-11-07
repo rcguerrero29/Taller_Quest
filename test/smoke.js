@@ -4225,10 +4225,19 @@ const CANDIDATES = [
         try { await mp.click('#mapbtn', { timeout: 3000 }); } catch (e) { R.push('in ' + s.name + ' the map button could not be pressed, so the map was not opened there'); continue; }
         await until(() => !document.getElementById('mapov').hidden, 2000);
         const m = await mp.evaluate(() => {
-          const c = document.getElementById('mapcv'), W = c.width, d = c.getContext('2d').getImageData(0, 0, W, c.height).data; let n = 0, sx = 0, sy = 0;
+          /* the ◉ found as a shape, not an average (2026-11-07): where it would cover the marker at your own door it is a ring
+             round that door, and at the office's door on the top row the paper's edge cuts it, so the mean of what is left sits
+             low; a circle fitted to its violet pixels (least squares, on coordinates taken from their mean) is centred on the door */
+          const c = document.getElementById('mapcv'), W = c.width, d = c.getContext('2d').getImageData(0, 0, W, c.height).data, P = [];
           for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224;
-            if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
-          const panels = planPanels(), mine = panels.find(q => q.world === world), tile = n ? [Math.floor(sx / n / 10), Math.floor(sy / n / 10)] : null;
+            if (a * a + b * b + e * e < 900) { const q = i / 4; P.push([q % W + 0.5, Math.floor(q / W) + 0.5]); } }
+          const n = P.length; let cx = 0, cy = 0;
+          if (n) { let mx = 0, my = 0; P.forEach(([x, y]) => { mx += x; my += y; }); mx /= n; my /= n; cx = mx; cy = my;
+            let Suu = 0, Svv = 0, Suv = 0, Suz = 0, Svz = 0;
+            P.forEach(([x, y]) => { const u = x - mx, v = y - my, z = u * u + v * v; Suu += u * u; Svv += v * v; Suv += u * v; Suz += u * z; Svz += v * z; });
+            const det = Suu * Svv - Suv * Suv;
+            if (Math.abs(det) > 1e-9) { cx = mx + (Suz * Svv - Svz * Suv) / (2 * det); cy = my + (Svz * Suu - Suz * Suv) / (2 * det); } }
+          const panels = planPanels(), mine = panels.find(q => q.world === world), tile = n ? [Math.floor(cx / 10), Math.floor(cy / 10)] : null;
           let doorTo = null;
           if (tile) { const pn = panels.find(q => tile[0] >= q.ox && tile[1] >= q.oy && tile[0] < q.ox + WORLDS[q.world].W && tile[1] < q.oy + WORLDS[q.world].H);
             const dd = pn ? portalsOf(pn.world).find(q => q.x === tile[0] - pn.ox && q.y === tile[1] - pn.oy) : null;
@@ -4322,6 +4331,19 @@ const CANDIDATES = [
         finally { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }
       }
       fails.push(...R);
+    }
+    /* ---- MERIDIAN NAMES THE LINE UNDER THE EDGE ARROW'S SWITCH, IN BOTH ITS LANGUAGES ----
+       Switched on with nowhere chosen, the edge arrow has nothing to point at, so the engine puts a line under its switch
+       saying it shows only once you have a destination. A game names those words in its plan words (arrowHint), as it
+       names the switch's own; Meridian names them in English and in Spanish, each its own words: not the switch's name,
+       and not the same words in the two languages. The shared suite asks the map to show them where they are named
+       (test/engine.smoke.js, 16). Red on mq-v251, which had no such line. */
+    {
+      const w = await page.evaluate(() => ['en', 'es'].map(L => { const pl = ((typeof UI !== 'undefined' && UI[L]) || {}).plan || {}; return { L, hint: pl.arrowHint, name: pl.arrow }; }));
+      w.forEach(({ L, hint, name }) => { const inL = L === 'es' ? 'in Spanish' : 'in English';
+        if (typeof hint !== 'string' || !hint.trim()) fails.push('Meridian names no words ' + inL + ' for the line under the edge arrow\'s switch that says it shows only once you have a destination, so a player ' + inL + ' gets the engine\'s own');
+        else if (hint === name) fails.push('Meridian\'s line under the edge arrow\'s switch ' + inL + ' is the switch\'s own name, “' + hint + '”'); });
+      if (w[0].hint && w[0].hint === w[1].hint) fails.push('Meridian\'s line under the edge arrow\'s switch is the same in English and in Spanish, “' + w[0].hint + '”: one of the two languages is shown the other\'s words');
     }
     /* #208 — AN ENDING MAY PAY OFF A SCENE; IT MAY NOT STAGE ONE AGAIN.
        Reported by a narrative designer, not by a test: La Espiga tells you how its story ended, and
