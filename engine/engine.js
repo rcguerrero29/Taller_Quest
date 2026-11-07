@@ -7029,6 +7029,14 @@ const MARKS={
    46.8, Δ52.2 from the violet and dark on the paper, the way a pole is. Its SHAPE is what tells it from the marks it
    may stand beside, work (131.8) and host (186.4): a pennant on a pole, never a person or a speech bubble. */
 const DESTMARK={c:"#55AEF2",field:"rgba(85,174,242,.16)",pole:"#12355A"};
+/* THE PAPER'S TOP MARGIN, in canvas pixels (2026-11-07). 0: the plan's top row is the canvas's top edge, so the ring
+   round a door on that row (the office every game starts in has its door there) is cut by the edge, and a flag on that
+   row hangs below its door instead of flying off the paper. It is one setting so that a strip of paper above the top
+   row can be added by changing this number and nothing else: about 6 makes room for the ring, about 14 for a flag above
+   a top-row door too. The canvas grows by it, the paper and its folds run up into it, everything on the plan moves down
+   by it, a flag flies above its door wherever it fits under it, and a click is read with it. Every map would then move
+   down by that much, which is a change to every map. */
+const PLANTOP=0;
 const markKinds=()=>((typeof MAPMARK!=="undefined"&&Array.isArray(MAPMARK))?MAPMARK:[]).filter(k=>MARKS[k]);
 function markOf(n){ /* one person, one kind, in the order the pack declared */
   const K=markKinds();if(!K.length||!n)return null;
@@ -7203,18 +7211,20 @@ function drawPlanMarks(g2,s){
   const cx=(mapDest.gx===undefined?mapDest.x:mapDest.gx)*s+s/2,
         cy=(mapDest.gy===undefined?mapDest.y:mapDest.gy)*s+s/2;
   g2.save();
-  const R=s*0.86;
+  /* a door on the paper's top row has no room above it for a flag: there it hangs below the door (U=-1), so where you
+     are going is never off the map. Everywhere else it flies above, as it did */
+  const R=s*0.86,U=(cy+PLANTOP-R*2.1<0)?-1:1;
   g2.fillStyle=DESTMARK.field;                               /* a soft field, so the eye lands here first */
   g2.beginPath();g2.arc(cx,cy,R*1.5,0,7);g2.fill();
   g2.strokeStyle="rgba(58,44,20,.30)";g2.lineWidth=Math.max(2,s*0.22);  /* the pole, and its shadow */
-  g2.beginPath();g2.moveTo(cx+1,cy+1);g2.lineTo(cx+1,cy-R*2.1+1);g2.stroke();
+  g2.beginPath();g2.moveTo(cx+1,cy+1);g2.lineTo(cx+1,cy-U*R*2.1+1);g2.stroke();
   g2.strokeStyle=DESTMARK.pole;g2.lineWidth=Math.max(1.4,s*0.16);
-  g2.beginPath();g2.moveTo(cx,cy);g2.lineTo(cx,cy-R*2.1);g2.stroke();
+  g2.beginPath();g2.moveTo(cx,cy);g2.lineTo(cx,cy-U*R*2.1);g2.stroke();
   g2.fillStyle=DESTMARK.c;                                    /* the flag itself */
-  g2.beginPath();g2.moveTo(cx,cy-R*2.1);g2.lineTo(cx+R*1.5,cy-R*1.72);
-  g2.lineTo(cx,cy-R*1.34);g2.closePath();g2.fill();
+  g2.beginPath();g2.moveTo(cx,cy-U*R*2.1);g2.lineTo(cx+R*1.5,cy-U*R*1.72);
+  g2.lineTo(cx,cy-U*R*1.34);g2.closePath();g2.fill();
   g2.fillStyle="rgba(255,255,255,.34)";
-  g2.beginPath();g2.moveTo(cx,cy-R*2.1);g2.lineTo(cx+R*1.5,cy-R*1.72);g2.lineTo(cx,cy-R*1.9);g2.closePath();g2.fill();
+  g2.beginPath();g2.moveTo(cx,cy-U*R*2.1);g2.lineTo(cx+R*1.5,cy-U*R*1.72);g2.lineTo(cx,cy-U*R*1.9);g2.closePath();g2.fill();
   g2.fillStyle="#F4F1EA";                                     /* the disc the mark stands in */
   g2.beginPath();g2.arc(cx,cy,R,0,7);g2.fill();
   g2.lineWidth=Math.max(2,s*0.22);g2.strokeStyle=DESTMARK.c;
@@ -7641,12 +7651,27 @@ const planPanelOf=id=>planPanels().find(p2=>p2.world===id)||null;
 function planHere(){
   const mine=planPanelOf(world);if(mine)return [fx+mine.ox,fy+mine.oy];
   const at=planPlace(world);return at?[at.gx,at.gy]:null;}
+/* ---- YOU, AS A RING ROUND A MARKER AT YOUR OWN DOOR (2026-11-07) ----
+   The ◉ is drawn last, over everything, so you can always see yourself; and in a room whose door carries a marker (the
+   office every game starts in, its upper floor, a district's shop) that put the ◉ on the marker, the one thing there
+   you came to the map to find. Where the ◉ would cover a marker, or the destination chosen at your own door, you are a
+   violet ring round that door instead, with the marker, or the disc the destination stands in, whole inside it in its
+   own colour. Your glow and your shadow go under the marker; the ring goes over everything, so nothing covers you. The
+   ring has no flag, so it never reads as somewhere to go. Its inner radius is 8.4 canvas px round a marker (the widest
+   mark reaches about 8.2 with its pale halo) and 10.8 round a destination's disc (8.6, and 1.1 of its edge), in 2.2 px
+   of the ◉'s violet with a pale keyline a pixel each side. Everywhere else the ◉ is the disc it was, pixel for pixel.
+   Returns the ring's inner radius, or 0 for the disc. */
+function youRing(dot){
+  if(!dot)return 0;
+  if(mapDest){const gx=mapDest.gx===undefined?mapDest.x:mapDest.gx,gy=mapDest.gy===undefined?mapDest.y:mapDest.gy;
+    if(gx===dot[0]&&gy===dot[1])return 10.8;}
+  return planMarks().some(m=>m.gx===dot[0]&&m.gy===dot[1])?8.4:0;}
 function drawTown(){
   const mc=$("mapcv"),g2=mc.getContext("2d"),s=10,panels=planPanels();
   const PW=Math.max(...panels.map(p2=>p2.ox+WORLDS[p2.world].W));
   const PH=Math.max(...panels.map(p2=>p2.oy+WORLDS[p2.world].H));
   const w={W:PW,H:PH};
-  mc.width=PW*s;mc.height=PH*s+18;
+  mc.width=PW*s;mc.height=PH*s+18+PLANTOP;
   /* ---- THE PLAN IS A PIECE OF PAPER (2026-09-15) ----
      It was one flat #EFE9DA fill with flat squares on it, which is a data visualisation of a
      street and not a map of one — the same fault as every mock that day: the drawing was fine and
@@ -7662,6 +7687,7 @@ function drawTown(){
     g2.globalAlpha=0.03+prnd()*0.05;g2.fillStyle=prnd()<0.5?"#B6A883":"#FFFBF0";
     g2.fillRect(Math.floor(prnd()*mc.width),Math.floor(prnd()*mc.height),1,1);}
   g2.globalAlpha=1;
+  g2.translate(0,PLANTOP);                              /* the paper's top margin (PLANTOP): everything below is on the plan */
   const col={...BASECOL,...(typeof MAPCOL!=="undefined"?MAPCOL:{})};
   panels.forEach(p2=>{const ww=WORLDS[p2.world];
     for(let y=0;y<ww.H;y++)for(let x=0;x<ww.W;x++)
@@ -7670,12 +7696,12 @@ function drawTown(){
      a ridge and a ridge has two sides. Over the tiles, since the paper is folded with the map on
      it — this is the one mark on the plan that is not a thing in the city. */
   [Math.round(mc.width/3),Math.round(mc.width*2/3)].forEach(fx2=>{
-    g2.fillStyle="rgba(96,80,46,.13)";g2.fillRect(fx2,0,1,w.H*s);
-    g2.fillStyle="rgba(255,250,235,.30)";g2.fillRect(fx2+1,0,1,w.H*s);});
+    g2.fillStyle="rgba(96,80,46,.13)";g2.fillRect(fx2,-PLANTOP,1,w.H*s+PLANTOP);
+    g2.fillStyle="rgba(255,250,235,.30)";g2.fillRect(fx2+1,-PLANTOP,1,w.H*s+PLANTOP);});
   const vg=g2.createRadialGradient(mc.width/2,w.H*s/2,Math.min(mc.width,w.H*s)*0.32,
                                    mc.width/2,w.H*s/2,Math.max(mc.width,w.H*s)*0.62);
   vg.addColorStop(0,"rgba(58,44,20,0)");vg.addColorStop(1,"rgba(58,44,20,.16)");
-  g2.fillStyle=vg;g2.fillRect(0,0,mc.width,w.H*s);
+  g2.fillStyle=vg;g2.fillRect(0,-PLANTOP,mc.width,w.H*s+PLANTOP);
   const es=lang==="es";
   const flags=worldFlags();   /* the same facts the mural reads */
   g2.textAlign="center";
@@ -7696,8 +7722,18 @@ function drawTown(){
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0.4px";
   g2.fillText((es?"puertas y escaleras en dorado":"doors & stairs in gold")+(dot?(es?" · ◉ estás aquí":" · ◉ you are here"):""),mc.width/2,w.H*s+12);
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0px";
+  const ring=youRing(dot);
+  if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;              /* a ring: your glow and shadow go UNDER the marker */
+    const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,15);
+    hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
+    g2.fillStyle=hal;g2.beginPath();g2.arc(dx2,dy2,15,0,7);g2.fill();
+    g2.fillStyle="rgba(58,44,20,.30)";
+    g2.beginPath();g2.ellipse(dx2+1,dy2+4,5.4,2.2,0,0,7);g2.fill();}
   drawPlanMarks(g2,s); /* the marks go UNDER the dot: you can always see yourself */
-  if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
+  if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2,lw=2.2,rc=ring+lw/2;   /* and the ring over them: nothing covers you */
+    g2.save();g2.strokeStyle="#F2F1EA";g2.lineWidth=lw+2;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();
+    g2.strokeStyle="#7A3FE0";g2.lineWidth=lw;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();g2.restore();}
+  else if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
     const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,13);     /* you are a light on the paper */
     hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
     g2.fillStyle=hal;g2.beginPath();g2.arc(dx2,dy2,13,0,7);g2.fill();
@@ -7806,7 +7842,7 @@ function mapPaperAt(c,x,y){ /* the screen point x,y in the plan's own pixels, or
   return (X<0||Y<0||X>c.width||Y>c.height)?null:[X,Y];}
 $("mapcv").addEventListener("click",e=>{
   const at=mapPaperAt($("mapcv"),e.clientX,e.clientY),s=10;if(!at)return;
-  mapPick(at[0]/s,at[1]/s);});
+  mapPick(at[0]/s,(at[1]-PLANTOP)/s);});
 $("mapClose").addEventListener("click",()=>{$("mapov").hidden=true;});
 function openTravel(){
   const t=T().pass,list=$("tvList");
