@@ -7186,6 +7186,13 @@ function drawMark(g,cx,cy,k,r){ /* ONE painter, two surfaces: the plan and its o
   g.restore();}
 let mapDest=null; /* {w,x,y} — ONE at a time, and never saved. A destination is what you are doing
                      right now; a saved one is the list A3 bans, wearing a compass. */
+/* WHERE YOU ARE GOING IS DRAWN, on the paper, in canvas pixels at s a tile: the centre of the disc it stands in, the
+   disc's radius, and which way its flag flies (U=1 above its door; U=-1 below a door on the paper's top row, which has
+   no room above it, so where you are going is never off the map). drawPlanMarks draws it from here and a tap is held
+   against it here (destTapped), so the spot a finger clears is the spot the eye sees. */
+function destSpot(s){
+  const cx=(mapDest.gx===undefined?mapDest.x:mapDest.gx)*s+s/2,cy=(mapDest.gy===undefined?mapDest.y:mapDest.gy)*s+s/2,R=s*0.86;
+  return {cx,cy,R,U:(cy+PLANTOP-R*2.1<0)?-1:1};}
 function drawPlanMarks(g2,s){
   /* while one mark is chosen the others step back, because "this one" is only visible against
      "not those" — the half of legibility that is always left out (owner, 2026-09-16) */
@@ -7208,12 +7215,8 @@ function drawPlanMarks(g2,s){
      the paper whatever is behind it, and every other mark on the plan is dimmed. The last one is
      the cheap half of legibility and the half that is always forgotten — "this one" is only ever
      visible against "not those". */
-  const cx=(mapDest.gx===undefined?mapDest.x:mapDest.gx)*s+s/2,
-        cy=(mapDest.gy===undefined?mapDest.y:mapDest.gy)*s+s/2;
+  const {cx,cy,R,U}=destSpot(s);    /* on the top row its flag hangs below the door; everywhere else it flies above, as it did */
   g2.save();
-  /* a door on the paper's top row has no room above it for a flag: there it hangs below the door (U=-1), so where you
-     are going is never off the map. Everywhere else it flies above, as it did */
-  const R=s*0.86,U=(cy+PLANTOP-R*2.1<0)?-1:1;
   g2.fillStyle=DESTMARK.field;                               /* a soft field, so the eye lands here first */
   g2.beginPath();g2.arc(cx,cy,R*1.5,0,7);g2.fill();
   g2.strokeStyle="rgba(58,44,20,.30)";g2.lineWidth=Math.max(2,s*0.22);  /* the pole, and its shadow */
@@ -7286,7 +7289,21 @@ function mapLegend(){
     drawMark(cv.getContext("2d"),10,10,k,6);
     row.appendChild(cv);row.appendChild(document.createTextNode(t[k]||k));
     box.appendChild(row);});}
+/* ---- A TAP ON WHERE YOU ARE GOING CLEARS IT, BEFORE ANYTHING UNDER IT (2026-11-07) ----
+   The line under the map says to tap the destination again to clear it, and that was true only of a mark chosen by a
+   tap: the picker cleared a destination only when the nearest mark was that very place, and a person "Somewhere to go"
+   picks keeps where they stand while their flag stands on their building's door. So a tap on that flag did nothing on a
+   bare door, and on a door with a mark of its own chose the building instead, a place nobody picked. A tap on the disc
+   the destination stands in, or on its pole and flag, as they are drawn (destSpot, a pixel and a half of slack round
+   them), now clears it first; a second tap there then chooses whatever mark is under it. A tap anywhere else is read
+   as it always was. X,Y: the point on the paper, in canvas pixels at 10 a tile. */
+function destTapped(X,Y){
+  const s=10,{cx,cy,R,U}=destSpot(s),k=1.5,yA=cy-U*R*2.1,yB=cy-U*R*1.34;
+  if(Math.hypot(X-cx,Y-cy)<=R+Math.max(2,s*0.22)/2+k)return true;                                /* the disc, and its edge */
+  if(Math.abs(X-cx)<=Math.max(1.4,s*0.16)/2+1+k&&Y>=Math.min(cy,yA)-k&&Y<=Math.max(cy,yA)+k)return true;   /* the pole */
+  return X>=cx-k&&X<=cx+R*1.5+k&&Y>=Math.min(yA,yB)-k&&Y<=Math.max(yA,yB)+k;}                   /* the flag */
 function mapPick(tx,ty){ /* tile coords, fractional — it is a finger, not a cursor */
+  if(mapDest&&destTapped(tx*10,ty*10)){mapDest=null;drawTown();setWorldTag();mapNoteSet();return true;}
   let best=null,bd=1e9;
   /* the finger is on PAPER, so the hit test is against gx,gy — and what gets STORED is the
      world position, because that is what the street arrow will be pointed at */
@@ -7458,9 +7475,10 @@ function mapHeadFit(){
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
+  mapNoteHold();
   mapHeadFit();
   [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden)mapHeadFit();});
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapNoteHold();mapHeadFit();}});
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
@@ -7760,6 +7778,23 @@ function mapNoteSet(){
   const any=planMarks().length;
   n.textContent=here+(any&&pl.tap?"  ·  "+pl.tap:(pl.none?"  ·  "+pl.none:""));
 }
+/* ---- THE LINE UNDER THE MAP KEEPS ITS HEIGHT WHILE THE MAP IS OPEN (2026-11-07) ----
+   It names where you are going, and a long name takes it onto a second line. The box sits in the middle of the screen,
+   so the box grew by that line and the plan above it moved by half of it, about 10 px on a phone held upright, under
+   the finger that had just chosen; clearing it moved the plan back. Choosing or clearing must never move the map. So as
+   the map opens, and whenever the window changes size while it is open, the line is given the height of the tallest
+   thing it can say from here: where you stand, or where you are going, for every person and place it could name. Where
+   every one of them fits on one line, as on a laptop, nothing changes. */
+function mapNoteHold(){
+  const n=$("mapNote");if(!n||!n.getClientRects().length)return;
+  const t=T(),pl=t.plan||{},was=n.textContent,tail=pl.chosen?"  ·  "+pl.chosen:"",names=new Set(Object.values(t.locs||{}));
+  Object.keys(WORLDS).forEach(id=>(WORLDS[id].npcs||[]).forEach(q=>{const nm=npcName(q.npc);if(nm)names.add(nm);}));
+  n.style.minHeight="";
+  const keep=mapDest;mapDest=null;mapNoteSet();mapDest=keep;   /* where you stand, as the line says it with nothing chosen */
+  let h=n.getBoundingClientRect().height;
+  names.forEach(nm=>{n.textContent="🎯 "+nm+tail;h=Math.max(h,n.getBoundingClientRect().height);});
+  n.textContent=was;mapArrowHint();
+  if(h>0)n.style.minHeight=h+"px";}
 /* ---- AND SOMEWHERE TO GO WHEN NOBODY WANTS ANYTHING ----
    He also asked to be able to pick a random destination. Everything the plan could do was tied
    to a quest, so the moment the city had nothing left to ask of you the map became a picture. This
