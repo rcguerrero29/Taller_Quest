@@ -4186,6 +4186,143 @@ const CANDIDATES = [
     });
     fails.push(...onmap);
 
+    /* ---- AND IN EACH OF THE FIFTEEN THE MAP SHOWS YOU THERE: on the street where you stand, in a room at its own
+       building's door, in the park at the park's own spot ----
+       The block above asks planPlace whether each world CAN be placed, and stayed green while twelve of these fifteen
+       opened a map with no ◉ at all, the office every game starts in among them: placeable is not drawn. So here the
+       map is opened with its real button in each place, in the grown city, and the ◉ is found on the paper by its own
+       purple. Where it belongs is named here, building by building, and the building's door is read from the doors
+       themselves (portalsOf), never from the function the fix changes: the second floor of the office IS the office,
+       so Floor 2 is shown at HQ's door on Calle Principal. A place this table does not name is a red, so a new room
+       is given its building here the day it is built. Written red on mq-v250, before the engine change; green from mq-v251. */
+    {
+      const BUILDING = { hq: 'hq', f2: 'hq', lc: 'lc', lo: 'lo', me: 'me', ta: 'ta', no: 'no', pa: 'pa', li: 'li', 'casa-w': 'casa-w', caseta: 'caseta', barberia: 'barberia' };
+      const R = [], mp = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      const mErr = []; mp.on('pageerror', e => mErr.push(String(e.message).split('\n')[0]));
+      const until = (fn, ms) => mp.waitForFunction(fn, null, { timeout: ms || 3000 }).then(() => true, () => false);
+      const frames = n => mp.evaluate(n => new Promise(r => { let k = 0; const t = setTimeout(r, 400); const f = () => { if (++k >= n) { clearTimeout(t); r(); } else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n || 2);
+      await mp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await mp.goto(index); await mp.waitForTimeout(1200);
+      await mp.click('.classes button[data-c="architect"]'); await mp.click('#begin');
+      await until(() => !document.getElementById('world').hidden, 2400); await frames();
+      const spots = await mp.evaluate(B => {
+        camSet('top');
+        CHAPTERS.forEach(c => (c.quests || []).forEach(i => done.add(i))); chSeen = CHAPTERS.length; applyGrowth();
+        const panels = planPanels(), drawn = {}; panels.forEach(q => { drawn[q.world] = q; });
+        const land = {}; Object.keys(WORLDS).forEach(from => portalsOf(from).forEach(d => { if (d.p && WORLDS[d.p.to] && !land[d.p.to]) land[d.p.to] = [d.p.x, d.p.y]; }));
+        land[PL.home] = [PL.spawn[0], PL.spawn[1]]; if (!land[PL.park]) land[PL.park] = [PL.parkIn[0], PL.parkIn[1]];
+        return Object.keys(WORLDS).map(id => { const s = { id, name: T().locs[id] || id, at: land[id] || [1, 1] };
+          if (drawn[id]) s.here = true;
+          else if (B[id]) { s.building = T().locs[B[id]] || B[id]; s.doors = [];
+            panels.forEach(q => portalsOf(q.world).forEach(d => { if (d.p && d.p.to === B[id]) s.doors.push({ on: T().locs[q.world] || q.world, at: [d.x + q.ox, d.y + q.oy] }); })); }
+          else if (typeof MAPDOT !== 'undefined' && MAPDOT[id]) s.spot = MAPDOT[id].slice(0, 2);
+          return s; }); }, BUILDING);
+      const none = [], belongs = [];
+      for (const s of spots) {
+        await mp.evaluate(([w, x, y]) => { document.querySelectorAll('.settings').forEach(q => { q.hidden = true; });
+          world = w; px = fx = x; py = fy = y; moving = false; held = null; mapDest = null; setWorldTag(); }, [s.id, s.at[0], s.at[1]]);
+        await frames();
+        try { await mp.click('#mapbtn', { timeout: 3000 }); } catch (e) { R.push('in ' + s.name + ' the map button could not be pressed, so the map was not opened there'); continue; }
+        await until(() => !document.getElementById('mapov').hidden, 2000);
+        const m = await mp.evaluate(() => {
+          const c = document.getElementById('mapcv'), W = c.width, d = c.getContext('2d').getImageData(0, 0, W, c.height).data; let n = 0, sx = 0, sy = 0;
+          for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224;
+            if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
+          const panels = planPanels(), mine = panels.find(q => q.world === world), tile = n ? [Math.floor(sx / n / 10), Math.floor(sy / n / 10)] : null;
+          let doorTo = null;
+          if (tile) { const pn = panels.find(q => tile[0] >= q.ox && tile[1] >= q.oy && tile[0] < q.ox + WORLDS[q.world].W && tile[1] < q.oy + WORLDS[q.world].H);
+            const dd = pn ? portalsOf(pn.world).find(q => q.x === tile[0] - pn.ox && q.y === tile[1] - pn.oy) : null;
+            if (dd && dd.p) doorTo = T().locs[dd.p.to] || dd.p.to; }
+          return { n, tile, doorTo, here: mine ? [Math.round(fx) + mine.ox, Math.round(fy) + mine.oy] : null }; });
+        await mp.keyboard.press('Escape'); await until(() => document.getElementById('mapov').hidden, 2000);
+        const at = t => t[0] + ',' + t[1], same = (a, b) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
+        if (m.n < 10) { none.push(s.name); if (s.doors && s.doors.length) belongs.push(s.name + ' on ' + s.building + '\'s door, ' + s.doors.map(d => d.on + ' ' + at(d.at)).join(' or ')); continue; }
+        if (s.here) { if (!same(m.tile, m.here)) R.push('On ' + s.name + ' the ◉ is not where I stand: it is drawn at ' + at(m.tile) + ' and I am at ' + at(m.here) + ' on the plan'); }
+        else if (s.doors) {
+          if (!s.doors.length) R.push(s.building + ' has no door on a street the plan draws, so where ' + s.name + ' belongs could not be read — name another building for it here');
+          else if (!s.doors.some(d => same(d.at, m.tile))) R.push(m.doorTo ? 'In ' + s.name + ' the dot is on another building\'s door: it is drawn on ' + m.doorTo + '\'s door at ' + at(m.tile) + ', and ' + s.building + '\'s is ' + s.doors.map(d => d.on + ' ' + at(d.at)).join(' or ')
+            : 'In ' + s.name + ' the ◉ is not on ' + s.building + '\'s door: it is drawn at ' + at(m.tile) + ', where there is no door, and ' + s.building + '\'s is ' + s.doors.map(d => d.on + ' ' + at(d.at)).join(' or ')); }
+        else if (s.spot) { if (!same(m.tile, s.spot)) R.push('In ' + s.name + ' the ◉ is drawn at ' + at(m.tile) + ', and the plan\'s own spot for it is ' + at(s.spot)); }
+        else R.push('Meridian has a place this check does not know where to show, ' + s.name + ' (' + s.id + '): name its building in BUILDING here');
+      }
+      if (none.length) R.unshift('I opened the map in ' + none[0] + ' and it doesn\'t show where I am' + (none.length > 1 ? ' — nor in ' + none.slice(1).join(', ') : '') +
+        ' (' + none.length + ' of ' + spots.length + ' places, with every district open; the caption says “◉ you are here”, and every place in this city is on its map)' +
+        (belongs.length ? '. Where each belongs: ' + belongs.join('; ') : ''));
+      if (mErr.length) R.push('the page threw while the map was opened in each place: ' + mErr[0]);
+      await mp.close();
+      fails.push(...R);
+    }
+
+    /* ---- CALLE PRINCIPAL'S MAP IS THE ONE IT WAS: the streets and the park against the engine before this change ----
+       Giving every room its ◉ may not move anything else on the paper. So the plan is drawn by the engine as it is on
+       this branch and by the engine at the commit this branch grew from (git merge-base with origin/main), side by side
+       in the same browser, with the same content: standing on Calle Principal, on Calle Dos and in the park, at the
+       start of a game and with every district open, every tile of the plan must be the same, and so must the marks
+       anchored at a building's door. People wander, so their own marks are taken off for the picture (they are drawn
+       where they stand, which this change does not touch). Each engine draws the plan twice first, and the two must
+       agree, or a difference would be the clock and not the change. Green on any commit whose engine is the base's,
+       which is every commit before the change: it can only go red on the branch that moves it. */
+    {
+      const R = [], { execFileSync } = require('child_process'), os = require('os'), ROOT = path.resolve(__dirname, '..');
+      const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      let base = null; try { base = git('merge-base', 'origin/main', 'HEAD').trim(); } catch (e) {}
+      if (!base) R.push('the engine before this change cannot be read here (no git, or no origin/main), so whether Calle Principal\'s map looks different from yesterday cannot be asked — that is not a pass');
+      else {
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mq-plan-before-'));
+        try {
+          fs.cpSync(ROOT, tmp, { recursive: true, filter: src => !/^(\.git|node_modules|shots|docs|test)(\/|$)/.test(path.relative(ROOT, src)) });
+          const then = git('ls-tree', '--name-only', base, 'engine/').split('\n').filter(f => /\.js$/.test(f));
+          fs.readdirSync(path.join(tmp, 'engine')).forEach(f => fs.unlinkSync(path.join(tmp, 'engine', f)));
+          then.forEach(f => fs.writeFileSync(path.join(tmp, f), execFileSync('git', ['show', base + ':' + f], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 })));
+          const same = then.every(f => fs.existsSync(path.join(ROOT, f)) && fs.readFileSync(path.join(ROOT, f)).equals(fs.readFileSync(path.join(tmp, f))))
+            && fs.readdirSync(path.join(ROOT, 'engine')).filter(f => /\.js$/.test(f)).length === then.length;
+          const draw = async url => {
+            const p = await browser.newPage({ viewport: { width: 480, height: 900 } });
+            await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+            await p.goto(url); await p.waitForTimeout(1200);
+            await p.click('.classes button[data-c="architect"]'); await p.click('#begin'); await p.waitForTimeout(500);
+            const got = await p.evaluate(() => {
+              const out = { pics: {}, marks: {}, twice: true }, src = document.getElementById('mapcv'), g = src.getContext('2d');
+              const tiles = () => { const W = src.width, H = src.height, d = g.getImageData(0, 0, W, H).data, hs = [];
+                for (let ty = 0; ty < Math.ceil(H / 10); ty++) for (let tx = 0; tx < Math.ceil(W / 10); tx++) { let h = 2166136261;
+                  for (let y = ty * 10; y < Math.min(H, ty * 10 + 10); y++) for (let x = tx * 10; x < Math.min(W, tx * 10 + 10); x++) {
+                    const i = (y * W + x) * 4; h = Math.imul(h ^ (d[i] + 256 * d[i + 1] + 65536 * d[i + 2]), 16777619) >>> 0; }
+                  hs.push(h); }
+                return { W, H, cols: Math.ceil(W / 10), hs }; };
+              const realMarks = drawPlanMarks, keep = { world, px, py, fx, fy, mapDest };
+              const drawnW = new Set(planPanels().map(q => q.world));
+              const stand = [['Calle Principal', 'st'], ['Calle Dos', 'ex'], ['the park', 'pk']].map(([nm, w]) => w === PL.park ? [nm, w, PL.parkIn[0], PL.parkIn[1]] : [nm, w, WORLDS[w].W >> 1, WORLDS[w].H >> 1]);
+              try {
+                for (const grown of [false, true]) {
+                  if (grown) { CHAPTERS.forEach(c => (c.quests || []).forEach(i => done.add(i))); chSeen = CHAPTERS.length; applyGrowth(); }
+                  const when = grown ? 'with every district open' : 'at the start of a game';
+                  out.marks[when] = planMarks().filter(m => !drawnW.has(m.w)).map(m => m.ws.join('+') + ' ' + m.k + ' at ' + m.gx + ',' + m.gy).sort();
+                  drawPlanMarks = function (g2, s) { const was = planMarks; planMarks = () => was().filter(m => !drawnW.has(m.w)); try { return realMarks(g2, s); } finally { planMarks = was; } };
+                  stand.forEach(([nm, w, x, y]) => { world = w; px = fx = x; py = fy = y; mapDest = null;
+                    drawTown(); const a = tiles(); drawTown(); const b = tiles();
+                    if (a.hs.join() !== b.hs.join()) out.twice = false;
+                    out.pics[nm + ', standing at ' + x + ',' + y + ', ' + when] = a; });
+                  drawPlanMarks = realMarks;
+                }
+              } finally { drawPlanMarks = realMarks; world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; mapDest = keep.mapDest; }
+              return out; });
+            await p.close(); return got; };
+          const now = await draw(index), was = await draw('file://' + path.join(tmp, 'index.html'));
+          if (!now.twice || !was.twice) R.push('the plan is not drawn the same twice in a row ' + (!now.twice ? 'by this engine' : 'by the engine at ' + base.slice(0, 7)) + ', so whether Calle Principal\'s map changed cannot be asked — the difference would be the clock');
+          else {
+            Object.keys(now.pics).forEach(k => { const a = now.pics[k], b = was.pics[k];
+              if (!b || a.W !== b.W || a.H !== b.H) { R.push('Calle Principal\'s map looks different from yesterday: on ' + k + ' the plan is ' + a.W + '×' + a.H + ' and the engine at ' + base.slice(0, 7) + ' drew it ' + (b ? b.W + '×' + b.H : 'not at all')); return; }
+              const off = a.hs.map((h, i) => h !== b.hs[i] ? i : -1).filter(i => i >= 0);
+              if (off.length) R.push('Calle Principal\'s map looks different from yesterday: on ' + k + ', ' + off.length + ' of ' + a.hs.length + ' tiles of the plan are drawn differently from the engine at ' + base.slice(0, 7) + ', the first at tile ' + (off[0] % a.cols) + ',' + Math.floor(off[0] / a.cols)); });
+            Object.keys(now.marks).forEach(k => { const a = now.marks[k], b = was.marks[k] || [];
+              if (a.join('|') !== b.join('|')) R.push('the plan\'s marks moved from yesterday (' + k + '): ' + (b.filter(x => !a.includes(x)).join('; ') || 'nothing') + ' became ' + (a.filter(x => !b.includes(x)).join('; ') || 'nothing')); });
+            if (!R.length) console.log('  NOTE: Calle Principal, Calle Dos and the park draw the same plan, tile for tile, and the same anchored marks, as the engine at ' + base.slice(0, 7) + (same ? ' (the engine\'s files are the same bytes, so this could not have failed)' : ' (the engine\'s files differ)'));
+          }
+        } catch (e) { R.push('the plan could not be drawn by the engine before this change, so whether Calle Principal\'s map changed was not measured: ' + String(e && e.message || e).split('\n')[0]); }
+        finally { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }
+      }
+      fails.push(...R);
+    }
     /* #208 — AN ENDING MAY PAY OFF A SCENE; IT MAY NOT STAGE ONE AGAIN.
        Reported by a narrative designer, not by a test: La Espiga tells you how its story ended, and
        then Doña Licha is still standing there with a question about the same afternoon — the two

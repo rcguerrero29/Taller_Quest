@@ -5659,7 +5659,16 @@ function findChromium() {
        and the viewport measures nothing. Shown for the length of this one check and put back
        exactly as it was — the same move the #130 block above makes with #creator. */
     const wld = document.getElementById('world'), wasHidden = wld && wld.hidden;
+    /* the arrow is off until the player turns it on, so it is turned on here the way the map's switch turns
+       it on (bearSet, which is what a press of the switch calls; bearOn is never replaced), and put back
+       after exactly as it was: the same setting, and this device keeping what it kept before, or nothing */
+    if (typeof bearSet !== 'function' || typeof bearOn !== 'function') {
+      P.push('the street bearing cannot be switched on here (there is no bearSet), so where it lands was not asked — nothing to measure is not a pass');
+      return P; }
+    const wasOn = bearOn(); let keptWas = null;
+    try { keptWas = localStorage.getItem(SK('bearing')); } catch (e) {}
     if (wld) wld.hidden = false;
+    bearSet(true);
     try {
     /* NOTHING TO MEASURE IS NOT A PASS (docs/GAUGE.md). The first run of this check reported
        "Infinity%" for three directions and said nothing at all about north — because the viewport
@@ -5692,11 +5701,610 @@ function findChromium() {
           ' px over the edge) — a pill is inset by its own half-width, and the name decides that');
     });
     } finally { mapDest = null; bearLast = ''; bearPos = ''; bearingUI();
+                bearSet(wasOn);
+                try { if (keptWas === null) localStorage.removeItem(SK('bearing')); else localStorage.setItem(SK('bearing'), keptWas); } catch (e) {}
                 if (wld) wld.hidden = wasHidden; }
     return P;
   });
   fails.push(...bearings);
 
+  /* ---- WHEREVER THE MAP OPENS IT SHOWS WHERE YOU ARE, AND THE EDGE ARROW WAITS TO BE TURNED ON ----
+     Two rules, each asked of the screen a person is looking at, never of the function that ought to produce it:
+       · the caption under the map says "◉ you are here", so wherever the map opens the ◉ is drawn where you are — in
+         a room, at the door of the building the room is in — and where nothing can place you, the caption does not
+         promise one;
+       · the arrow at the edge of the street stays off until the player turns it on with a switch in the map; the
+         switch is remembered on this device, keeps nothing else there, and fits on a phone and a laptop in both
+         languages.
+     Written red, before the engine change of mq-v251, and green from it. On mq-v250 the ◉ was drawn only on a street
+     the plan draws or at a spot a pack wrote down by hand, so most rooms, the office every game starts in among them,
+     opened a map whose caption promised a ◉ that was not there; and the arrow was always on, with nothing in the map to
+     turn it off.
+     The guards before this asked a stand-in, whether planPlace can place a world, and stayed green throughout: being
+     placeable is not being drawn. So the map is opened with its real button in every place a door leads to, the ◉ is
+     found by its own purple on whichever canvas the box shows, and a finger is put on it: at its centre and at eight
+     points round it the screen must show the paper, and on the paper nothing may be drawn over it.
+     AND ITS SECOND HALF, written red on the first build of mq-v251, which every sentence above passed. The box kept its
+     scroll, so once a laptop or a phone held sideways had scrolled to "Somewhere to go", every later opening put the
+     switch and the ◉ at the top of the plan above the box (7); the switch made the title row 22 px taller and pushed
+     the line that says how to choose under Close on a laptop (8). And five sentences here read something beside the
+     thing: the switch's checked state for its words, the arrow for the switch on coming back, a save written a second
+     earlier for a save from before the switch, a hash of the caption strip for its words, any door for your own
+     building's door. Nothing asked whether the switch travels on a Trolley Pass (9) or whether a press survives a
+     browser that refuses to keep it (10). */
+  {
+    const MP = [], MN = [];                                 /* reds, and what was seen (printed, never failed) */
+    const page2 = async (w, h) => {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h } }), p = await ctx.newPage();
+      p.on('pageerror', e => MP.push('the page threw while the map was being asked about: ' + String(e.message).split('\n')[0]));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await p.goto('file://' + file); await boot(p);
+      return { ctx, p }; };
+    const begin = async p => { await p.click('.classes button[data-c="architect"]'); await p.click('#begin');
+      const ok = await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p); return ok; };
+    const cont = async p => {
+      if (!await p.evaluate(() => { const b = document.getElementById('continueBtn'); return !!b && !b.hidden && !!b.offsetParent; })) return false;
+      await p.click('#continueBtn');
+      const ok = await until(p, () => !document.getElementById('world').hidden, null, 2700); await rafs(p); return ok; };
+    const reopen = async (ctx, old) => { await old.close(); const p = await ctx.newPage();
+      p.on('pageerror', e => MP.push('the page threw while the map was being asked about: ' + String(e.message).split('\n')[0]));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await p.goto('file://' + file); await boot(p);
+      return await cont(p) ? p : null; };
+    const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 3000 }); } catch (e) { return false; }
+      return until(p, () => !document.getElementById('mapov').hidden, null, 2000); };
+    /* closed with Escape, the panel's own way out, where a check is not about the way out: a click on Close has the
+       browser scroll the box to reach the sticky button first. Section 7 closes it both ways, as a person does */
+    const mapShut = async p => { await p.keyboard.press('Escape');
+      if (!await until(p, () => document.getElementById('mapov').hidden, null, 1500)) { await p.click('#mapClose', { timeout: 3000 }).catch(() => {});
+        await until(p, () => document.getElementById('mapov').hidden, null, 2000); }
+      await rafs(p, 3); };
+    const setLang = (p, L) => p.evaluate(L => { const b = document.getElementById(L === 'es' ? 'optEs' : 'optEn'); if (b) b.click(); else { lang = L; applyLang(); } }, L);
+    const langsOf = p => p.evaluate(() => ['en', 'es'].filter(L => typeof UI !== 'undefined' && UI[L]));
+    const inLang = L => L === 'es' ? 'in Spanish' : L === 'en' ? 'in English' : 'in ' + (L || 'its language');
+    /* everything this device keeps, but the engine's own log (it is written whenever the engine has something to say) */
+    const kept = p => p.evaluate(() => { const o = {}, lg = SK('log');
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k !== lg) o[k] = localStorage.getItem(k); } } catch (e) {}
+      return o; });
+    const diffKeys = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => a[k] !== b[k]).sort();
+    const pillSays = p => p.evaluate(() => { const e = document.getElementById('bearNav');
+      if (!e || e.hidden || !e.getClientRects().length) return null;
+      const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return null;
+      return e.textContent.replace(/\s+/g, ' ').trim() || '(an arrow with no words)'; });
+    /* the switch is whatever the map's box offers as one, role="switch" or a checkbox, and what a finger presses is its
+       label when it has one; it is marked so that a real click can find it. It is read for its checked state AND for its
+       words, with the words this game gives each state: the pack's own, where it names them */
+    const findSwitch = p => p.evaluate(() => {
+      document.querySelectorAll('[data-mq-arrow-switch]').forEach(e => e.removeAttribute('data-mq-arrow-switch'));
+      const ov = document.getElementById('mapov'), c = ov && ov.querySelector('[role="switch"], input[type="checkbox"]');
+      if (!c) return null;
+      const lab = c.tagName === 'INPUT' ? (c.closest('label') || (c.id ? ov.querySelector('label[for="' + c.id + '"]') : null)) : null;
+      (lab || c).setAttribute('data-mq-arrow-switch', '1');
+      const pl = (typeof T === 'function' && T() && T().plan) || {};
+      return { on: c.getAttribute('aria-checked') === 'true' || c.checked === true, words: ((lab || c).textContent || '').replace(/\s+/g, ' ').trim(),
+        word: { on: typeof pl.arrowOn === 'string' ? pl.arrowOn : '', off: typeof pl.arrowOff === 'string' ? pl.arrowOff : '' }, lang: typeof lang === 'string' ? lang : '' }; });
+    /* WHAT THE SWITCH SAYS, against the state it is in: its words end in this game's word for that state, the pack's own
+       where it names one, and a red line quotes them. Where a pack names none, the engine's own words are kept here by
+       language, and the words for on may not be the words for off (asked at the end of the block, and printed) */
+    const own = {};
+    const misSays = (sw, on) => { const want = on ? sw.word.on : sw.word.off, other = on ? sw.word.off : sw.word.on;
+      if (!want) { const k = sw.lang || '?'; own[k] = own[k] || { on: new Set(), off: new Set() }; own[k][on ? 'on' : 'off'].add(sw.words); return false; }
+      return !sw.words.endsWith(want) || (!!other && !want.endsWith(other) && sw.words.endsWith(other)); };
+    const press = p => p.click('[data-mq-arrow-switch]', { timeout: 3000 }).then(() => rafs(p), () => {});
+    /* "Somewhere to go", pressed for real; where it finds nobody to send you to, a spot six tiles east is chosen, and said */
+    const pickSomewhere = async p => {
+      try { await p.click('#mapAny', { timeout: 3000 }); } catch (e) {}
+      if (await p.evaluate(() => !!mapDest)) return '';
+      await p.evaluate(() => { mapDest = { w: world, x: px + 6, y: py, who: null }; setWorldTag(); });
+      return 'COUNT-ONLY: "Somewhere to go" found nobody to send you to, so the edge arrow was asked about with a spot six tiles east chosen instead'; };
+    const camsOf = p => p.evaluate(() => (typeof CAMS !== 'undefined' && Array.isArray(CAMS) ? CAMS : ['top']).filter(c => c === 'top' || c === '3d'));
+    const arrowIn = async (p, cams) => { const said = [];
+      for (const cam of cams) { await p.evaluate(c => camSet(c), cam); await rafs(p, 3); const t = await pillSays(p); if (t) said.push(cam + ' camera: "' + t + '"'); }
+      return said; };
+    /* THE WORDS THE MAP WRITES UNDER ITSELF, read as its canvas is asked to write them: the plan is drawn again with the
+       canvas's own fillText listened to, and what lands in the strip under the plan is the caption */
+    const captionNow = () => { const src = document.getElementById('mapcv'), g = src.getContext('2d'), said = [], real = g.fillText;
+      g.fillText = function (t, x, y, ...r) { said.push([String(t), y]); return real.call(this, t, x, y, ...r); };
+      try { drawTown(); } finally { delete g.fillText; if (g.fillText !== real) g.fillText = real; }
+      return said.filter(([, y]) => y > src.height - 18.5).map(([t]) => t).join(' ').replace(/\s+/g, ' ').trim(); };
+    /* the ◉ on the map as it is open now: found on the engine's sheet and on whichever canvas the box shows */
+    const measureDot = () => {
+      const ov = document.getElementById('mapov'), src = document.getElementById('mapcv');
+      const area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+      const shown = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40)
+        .sort((a, b) => area(b) - area(a))[0] || null;
+      const scan = c => { const W = c.width, d = c.getContext('2d').getImageData(0, 0, W, c.height).data; let n = 0, sx = 0, sy = 0;
+        for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224;
+          if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
+        return n ? { n, cx: sx / n + 0.5, cy: sy / n + 0.5 } : { n: 0 }; };
+      const sheet = scan(src), seen = shown ? scan(shown) : { n: 0 };
+      const out = { shown: !!shown, sheet: sheet.n, seen: seen.n, tile: sheet.n ? [Math.floor(sheet.cx / 10), Math.floor(sheet.cy / 10)] : null, cover: [], under: [] };
+      const ring = rad => [[0, 0]].concat([0, 1, 2, 3, 4, 5, 6, 7].map(q => [Math.cos(q * Math.PI / 4) * rad, Math.sin(q * Math.PI / 4) * rad]));
+      if (shown && seen.n) {   /* where a finger lands: the box may letterbox the canvas (object-fit: contain) */
+        const r = shown.getBoundingClientRect(), k = Math.min(r.width / shown.width, r.height / shown.height);
+        const ox = r.left + (r.width - shown.width * k) / 2, oy = r.top + (r.height - shown.height * k) / 2;
+        const name = el => !el ? 'nothing (it is off the screen)' : el.id ? '#' + el.id : (el.closest && el.closest('[id]')) ? '#' + el.closest('[id]').id + ' (its ' + el.tagName.toLowerCase() + ')' : el.tagName.toLowerCase();
+        ring(4.5).forEach(([dx, dy]) => { const el = document.elementFromPoint(ox + (seen.cx + dx) * k, oy + (seen.cy + dy) * k);
+          if (el !== shown) out.cover.push(name(el)); });
+        out.cover = [...new Set(out.cover)]; }
+      if (sheet.n) {           /* on the paper: the ◉'s own violet at its centre and round it, so nothing is drawn over it */
+        const g = src.getContext('2d');
+        ring(2.5).forEach(([dx, dy]) => { const d = g.getImageData(Math.floor(sheet.cx + dx), Math.floor(sheet.cy + dy), 1, 1).data;
+          if (!(d[2] > d[0] + 20 && d[2] > d[1] + 60)) out.under.push(d[0] + ',' + d[1] + ',' + d[2]); });
+        out.under = [...new Set(out.under)]; }
+      const panels = planPanels(), mine = panels.find(q => q.world === world), drawnW = new Set(panels.map(q => q.world));
+      out.mine = mine ? [Math.round(fx) + mine.ox, Math.round(fy) + mine.oy] : null;
+      if (out.tile && !mine) { const [tx, ty] = out.tile;
+        const pn = panels.find(q => tx >= q.ox && ty >= q.oy && tx < q.ox + WORLDS[q.world].W && ty < q.oy + WORLDS[q.world].H);
+        const d = pn ? portalsOf(pn.world).find(q => q.x === tx - pn.ox && q.y === ty - pn.oy) : null;
+        out.door = !!(d && d.p && WORLDS[d.p.to] && !drawnW.has(d.p.to)); out.on = pn ? pn.world : null;
+        /* AND IT IS YOUR OWN BUILDING'S DOOR: it leads into the world you are in, or into a world from which yours is
+           reached through doors without going back out to a street the plan draws. The doors are read from the worlds'
+           own rows (portalsOf), never from planPlace, the answer under test */
+        if (out.door) { const reach = new Set([d.p.to]), todo = [d.p.to];
+          while (todo.length) portalsOf(todo.shift()).forEach(q => { const to = q.p && q.p.to; if (to && WORLDS[to] && !drawnW.has(to) && !reach.has(to)) { reach.add(to); todo.push(to); } });
+          out.yours = reach.has(world); out.doorOf = (T().locs || {})[d.p.to] || d.p.to; } }
+      return out; };
+    /* THE ENGINE BEFORE THIS CHANGE, read the way test/smoke.js reads it: the commit this branch grew from (git merge-base
+       with origin/main), every engine file at that commit. oldPage() opens this same shell on that engine, its files
+       answered from git, so a returning player can carry a save yesterday's engine wrote, never one the engine under
+       test wrote a second earlier */
+    const before = (() => { const { execFileSync } = require('child_process');
+      const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+      try { const base = git('merge-base', 'origin/main', 'HEAD').trim(), files = {};
+        git('ls-tree', '--name-only', base, 'engine/').split('\n').filter(f => /\.js$/.test(f)).forEach(f => { files[f] = git('show', base + ':' + f); });
+        if (!Object.keys(files).length) return null;
+        const now = fs.readdirSync(path.join(root, 'engine')).filter(f => /\.js$/.test(f)).map(f => 'engine/' + f);
+        const same = now.length === Object.keys(files).length && now.every(f => files[f] !== undefined && fs.readFileSync(path.join(root, f), 'utf8') === files[f]);
+        return { base: base.slice(0, 7), files, same }; } catch (e) { return null; } })();
+    const oldPage = async (ctx, errs) => { const p = await ctx.newPage(), eng = require('url').pathToFileURL(path.join(root, 'engine')).href + '/';
+      p.on('pageerror', e => errs.push(String(e.message).split('\n')[0]));
+      await p.route('**', r => { const u = r.request().url();
+        if (u.startsWith(eng)) { const f = 'engine/' + decodeURIComponent(u.slice(eng.length).split(/[?#]/)[0]);
+          return before.files[f] === undefined ? r.fulfill({ status: 404, body: '' }) : r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: before.files[f] }); }
+        return u.startsWith('file://') ? r.continue() : r.abort(); });
+      await p.goto('file://' + file); await boot(p); return p; };
+
+    /* 1 · THE ◉, at the start of a game and with every district open, in every place a door leads to */
+    {
+      const { ctx, p } = await page2(390, 844);
+      if (!await begin(p)) MP.push('the game did not start, so the map was opened nowhere — nothing to measure is not a pass');
+      else {
+        await p.evaluate(() => { if (typeof CAMS !== 'undefined' && CAMS.includes('top')) camSet('top'); });
+        const promise = await p.evaluate(() => lang === 'es' ? '◉ estás aquí' : '◉ you are here');   /* in the language the game is in */
+        for (const grown of [false, true]) {
+          const when = grown ? 'with every district open' : 'at the start of a game';
+          const spots = await p.evaluate(grown => {
+            if (grown && typeof CHAPTERS !== 'undefined' && typeof applyGrowth === 'function') {
+              CHAPTERS.forEach(c => (c.quests || []).forEach(i => done.add(i))); chSeen = CHAPTERS.length; applyGrowth(); }
+            if (typeof planPanels !== 'function' || typeof portalsOf !== 'function') return null;
+            const drawn = new Set(planPanels().map(q => q.world)), M = typeof MAPDOT !== 'undefined' ? MAPDOT : {};
+            /* the doors, followed from the streets the plan draws: a door from a placed world places the world it opens */
+            const follow = seed => { const s = new Set(seed);
+              for (let more = true; more;) { more = false;
+                [...s].forEach(from => portalsOf(from).forEach(d => { if (d.p && WORLDS[d.p.to] && !s.has(d.p.to)) { s.add(d.p.to); more = true; } })); }
+              return s; };
+            const byDoor = follow(drawn), declared = follow(Object.keys(M).filter(k => WORLDS[k] && !byDoor.has(k)));
+            const land = {};
+            Object.keys(WORLDS).forEach(from => portalsOf(from).forEach(d => { if (d.p && WORLDS[d.p.to] && !land[d.p.to]) land[d.p.to] = [d.p.x, d.p.y]; }));
+            if (WORLDS[PL.home] && PL.spawn) land[PL.home] = [PL.spawn[0], PL.spawn[1]];
+            if (WORLDS[PL.park] && PL.parkIn) land[PL.park] = land[PL.park] || [PL.parkIn[0], PL.parkIn[1]];
+            const free = id => { const w = WORLDS[id]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') return [x, y]; return [0, 0]; };
+            return [PL.home].concat(Object.keys(WORLDS).filter(id => id !== PL.home)).filter(id => WORLDS[id]).map(id => ({
+              id, name: (T().locs || {})[id] || id, drawn: drawn.has(id), byDoor: byDoor.has(id), spot: !byDoor.has(id) && M[id] ? M[id].slice(0, 2) : null,
+              placed: byDoor.has(id) || declared.has(id), at: land[id] || free(id) })); }, grown);
+          if (!spots) { MP.push('this engine has no plan panels or doors to ask, so where the map puts you was not measured'); break; }
+          const none = [], hidden = [], under = [], notHere = [], offDoor = [], notYours = [], unplaced = [], silent = [], promised = []; let opened = 0;
+          for (const s of spots) {
+            if (!s.placed) { unplaced.push(s.name); continue; }
+            await p.evaluate(([w, x, y]) => { document.querySelectorAll('.settings').forEach(q => { q.hidden = true; });
+              world = w; px = fx = x; py = fy = y; moving = false; held = null; mapDest = null; setWorldTag(); }, [s.id, s.at[0], s.at[1]]);
+            await rafs(p);
+            if (!await mapOpen(p)) { MP.push('in ' + s.name + ' (' + when + ') the map button could not be pressed, so the map was not opened there'); continue; }
+            const m = await p.evaluate(measureDot), words = await p.evaluate(captionNow);
+            await mapShut(p); opened++;
+            if (!m.shown) { MP.push('the map opened in ' + s.name + ' (' + when + ') showed no canvas at all — nothing was measured'); continue; }
+            if (m.sheet < 10 || m.seen < 10) { none.push(s.name); if (/◉/.test(words)) promised.push(s.name + ' (“' + words + '”)'); continue; }
+            if (!words.includes(promise)) silent.push(s.name + ' (“' + words + '”)');
+            if (m.cover.length) hidden.push(s.name + ' (a finger on the ◉ lands on ' + m.cover.join(', ') + ')');
+            if (m.under.length) under.push(s.name + ' (' + m.under.slice(0, 3).join(' · ') + ' where the ◉ should be)');
+            if (s.drawn) { if (!m.mine || m.tile[0] !== m.mine[0] || m.tile[1] !== m.mine[1]) notHere.push(s.name + ' (drawn at ' + m.tile + ', standing at ' + m.mine + ')'); }
+            else if (s.byDoor) { if (!m.door) offDoor.push(s.name + ' (drawn at ' + m.tile + (m.on ? ' on ' + m.on : ', on no street the plan draws') + ')');
+              else if (!m.yours) notYours.push(s.name + ' (drawn on ' + m.doorOf + '\'s door at ' + m.tile + ')'); }
+            else if (s.spot && (m.tile[0] !== s.spot[0] || m.tile[1] !== s.spot[1])) offDoor.push(s.name + ' (drawn at ' + m.tile + ', and its own spot on the plan is ' + s.spot + ')');
+          }
+          if (none.length) MP.push('I opened the map in ' + none[0] + ' and it doesn\'t show where I am' + (none.length > 1 ? ' — nor in ' + none.slice(1).join(', ') : '') +
+            ' (' + none.length + ' of ' + opened + ' places, ' + when + '; the paper has no ◉)');
+          if (promised.length) MP.push('Where the map can\'t show me, it still promises the ◉ under itself: in ' + promised.join('; ') + ' (' + when + ')');
+          if (silent.length) MP.push('The map shows where I am and the line under it does not say so: in ' + silent.join('; ') + ' (' + when + ')');
+          if (hidden.length) MP.push('I opened the map and can\'t see where I am: the ◉ is drawn, and in ' + hidden.join('; ') + ' (' + when + ')');
+          if (under.length) MP.push('I opened the map and the ◉ is under something else drawn on the plan, in ' + under.join('; ') + ' (' + when + ') — you can always see yourself, so the ◉ is drawn last');
+          if (notHere.length) MP.push('On ' + notHere.join('; ') + ', the ◉ is not where I stand (' + when + ')');
+          if (offDoor.length) MP.push('In ' + offDoor.join('; ') + ', the ◉ is not on a door into a building — a room is shown at the door of the building it is in (' + when + ')');
+          if (notYours.length) MP.push('In ' + notYours.join('; ') + ', the ◉ is on another building\'s door: from that door I cannot walk to where I am without going back out to the street (' + when + ')');
+          MN.push('COUNT-ONLY: the map was opened with its real button in ' + opened + ' place(s) ' + when +
+            (unplaced.length ? '; ' + unplaced.length + ' place(s) that no door leads into from a street the plan draws, and with no spot of their own, were not asked for a ◉: ' + unplaced.join(', ') : ''));
+        }
+        /* 2 · WHAT THE MAP SAYS UNDER ITSELF, read in its own words, in each language: standing on a street the plan draws,
+               where the ◉ is drawn, the words carry "◉ you are here" ("◉ estás aquí"); in a planted place with no door, no
+               street and no spot of its own, where no ◉ is drawn, they carry no ◉ at all. */
+        const cap = await p.evaluate(() => {
+          const out = { langs: [], silent: [], promised: [], dotted: 0, none: [] }, nowhere = '__mapNowhere';
+          const src = document.getElementById('mapcv'), g = src.getContext('2d');
+          const say = () => { const said = [], real = g.fillText;   /* the same reading as captionNow, in this page */
+            g.fillText = function (t, x, y, ...r) { said.push([String(t), y]); return real.call(this, t, x, y, ...r); };
+            try { drawTown(); } finally { delete g.fillText; if (g.fillText !== real) g.fillText = real; }
+            return said.filter(([, y]) => y > src.height - 18.5).map(([t]) => t).join(' ').replace(/\s+/g, ' ').trim(); };
+          const purple = () => { const d = g.getImageData(0, 0, src.width, src.height).data; let n = 0;
+            for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224; if (a * a + b * b + e * e < 900) n++; } return n; };
+          const was = { world, px, py, fx, fy, mapDest, lang }, pn = planPanels()[0];
+          try {
+            mapDest = null;
+            ['en', 'es'].filter(L => typeof UI !== 'undefined' && UI[L]).forEach(L => { lang = L; out.langs.push(L);
+              world = pn.world; py = fy = 0; px = fx = 0; const a = say();
+              if (!purple()) out.none.push(L);
+              else if (!a.includes(L === 'es' ? '◉ estás aquí' : '◉ you are here')) out.silent.push([L, a]);
+              WORLDS[nowhere] = { W: 5, H: 5, rows: ['.....', '.....', '.....', '.....', '.....'], grid: [0, 1, 2, 3, 4].map(() => '.....'.split('')), npcs: [] };
+              world = nowhere; px = fx = 2; py = fy = 2;
+              const c = say(), n = purple(); delete WORLDS[nowhere];
+              if (n) out.dotted = n; else if (c.includes('◉')) out.promised.push([L, c]); });
+          } finally { delete WORLDS[nowhere]; world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; lang = was.lang; drawTown(); }
+          return out; });
+        if (!cap.langs.length) MP.push('this game declares no words in English or Spanish, so the caption under the map was not read');
+        if (cap.none.length) MP.push('standing on a street the plan draws, the map drew no ◉ (' + cap.none.map(inLang).join(', ') + '), so what it says under itself where it shows me could not be read — nothing to measure is not a pass');
+        cap.silent.forEach(([L, w]) => MP.push('The map shows where I am on the street and the line under it does not say so (' + inLang(L) + '): “' + w + '”'));
+        if (cap.dotted) MP.push('a place with no door, no street and no spot of its own was given a ◉ anyway (' + cap.dotted + ' violet pixels) — the map shows you somewhere you are not');
+        cap.promised.forEach(([L, w]) => MP.push('Where the map can\'t show me, it still says it does: a place with no door, no street and no spot of its own opens a map with no ◉ over the words “' + w + '” (' + inLang(L) + ')'));
+      }
+      await ctx.close();
+    }
+
+    /* 3, 4, 6 · THE EDGE ARROW IS OFF UNTIL IT IS TURNED ON, IT IS REMEMBERED, AND THE MAP KEEPS NOTHING ELSE.
+       A new player opens the map, presses "Somewhere to go" and closes it: nothing kept, and no arrow in the top camera
+       or in 3D. The switch is then pressed for real: one thing kept, under this game's own prefix, the switch says on in
+       its words, and the arrow is there; after the tab is closed and the game opened again it is still there, and the
+       switch says on by itself. A returning player, whose save the engine before this change wrote, is asked the same as
+       a new one: no setting kept, so no arrow, and the switch says off. */
+    {
+      const { ctx, p } = await page2(390, 844);
+      if (!await begin(p)) MP.push('the game did not start, so the edge arrow was not asked about — nothing to measure is not a pass');
+      else {
+        const cams = await camsOf(p);
+        if (!cams.includes('3d')) MN.push('COUNT-ONLY: this game offers no 3D camera, so the edge arrow was asked about in the top camera only');
+        const k0 = await kept(p);
+        if (!await mapOpen(p)) MP.push('the map button could not be pressed, so the edge arrow was not asked about');
+        else {
+          const k1 = await kept(p), how = await pickSomewhere(p), k2 = await kept(p);
+          await mapShut(p); const k3 = await kept(p);
+          if (how) MN.push(how);
+          const wrote = [...new Set([...diffKeys(k0, k1), ...diffKeys(k0, k2), ...diffKeys(k0, k3)])];
+          if (wrote.length) MP.push('Opening the map saved something I never chose: opening it, picking somewhere to go and closing it changed ' + wrote.join(', ') + ' on this device');
+          const said = await arrowIn(p, cams);
+          if (said.length) MP.push('I picked somewhere and an arrow appeared that I never turned on (a new player; ' + said.join(', ') + ')');
+          await mapOpen(p);
+          const sw = await findSwitch(p);
+          if (!sw) { MP.push('I opened the map to turn the edge arrow on and there is no switch for it'); await mapShut(p); }
+          else {
+            if (sw.on || misSays(sw, false)) MP.push('I opened the map as a new player and the edge arrow\'s switch says “' + sw.words + '”' + (sw.on ? ', checked: it is on before anybody turned it on' : ''));
+            const b0 = await kept(p); await press(p);
+            const b1 = await kept(p), sw1 = await findSwitch(p), pfx = await p.evaluate(() => SK(''));
+            const ch = diffKeys(b0, b1);
+            if (ch.length > 1) MP.push('Opening the map saved something I never chose: pressing the edge arrow\'s switch once changed ' + ch.length + ' things on this device (' + ch.join(', ') + '), and it keeps one');
+            else if (!ch.length) MP.push('I turned the edge arrow on and this device kept nothing of it, so it is forgotten as soon as the tab is closed');
+            else if (!ch[0].startsWith(pfx)) MP.push('the edge arrow\'s switch is kept as "' + ch[0] + '", outside this game\'s own storage prefix "' + pfx + '", where another game on this site reads it');
+            if (!sw1) MP.push('I pressed the edge arrow\'s switch and then there was no switch in the map');
+            else if (!sw1.on) MP.push('I pressed the edge arrow\'s switch on and it is still off: unchecked, and saying “' + sw1.words + '”');
+            else if (misSays(sw1, true)) MP.push('I pressed the edge arrow\'s switch on and it still says “' + sw1.words + '”');
+            await mapShut(p);
+            const now = await arrowIn(p, cams);
+            if (now.length < cams.length) MP.push('I turned the arrow on and it did not appear: with somewhere picked and the switch on, closing the map shows an arrow in ' + now.length + ' of ' + cams.length + ' cameras (' + cams.join(', ') + ')');
+            /* came back: the tab is closed and the game opened again in a new tab of the same browser, so what the device keeps
+               is there and what lives only as long as a tab (its session storage, the page's memory) is not; a reload of the
+               same tab would keep both, and a switch remembered only by the tab would pass */
+            const p3 = await reopen(ctx, p);
+            if (!p3) MP.push('after closing the tab and opening the game again this game offered no Continue, so whether the switch was remembered was not measured — nothing to measure is not a pass');
+            else {
+              await mapOpen(p3); const sw2 = await findSwitch(p3); await pickSomewhere(p3); await mapShut(p3);
+              const back = await arrowIn(p3, cams);
+              if (back.length < cams.length) MP.push('I turned the arrow on, came back, and it was off: after closing the tab, opening the game again and choosing somewhere, there is an arrow in ' + back.length + ' of ' + cams.length + ' cameras');
+              /* and the switch says so itself, in its words and its checked state: a switch that kept a state of its own
+                 would say off over a live arrow, and the arrow alone would not see it */
+              if (!sw2) MP.push('I turned the arrow on, came back, and there is no switch in the map');
+              else if (!sw2.on || misSays(sw2, true)) MP.push('I turned the arrow on, came back, and the switch in the map says “' + sw2.words + '”' + (sw2.on ? '' : ', unchecked'));
+              /* 9 · THE SWITCH DOES NOT TRAVEL ON A TROLLEY PASS. A pass carries a save, and the switch is this device's
+                     own: a pass made here, with the switch on, is boarded on another device, and there, with somewhere
+                     chosen, there is no arrow, the switch says off, and nothing is kept under the switch's key */
+              const link = await p3.evaluate(() => { try { return typeof passURL === 'function' ? passURL() : null; } catch (e) { return null; } });
+              if (!link) MP.push('this game could not make a Trolley Pass with the edge arrow switched on, so whether the switch travels on one was not asked — nothing to measure is not a pass');
+              else {
+                const c4 = await browser.newContext({ viewport: { width: 390, height: 844 } }), q = await c4.newPage(), qErr = [];
+                q.on('pageerror', e => qErr.push(String(e.message).split('\n')[0]));
+                await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+                const how = 'a Trolley Pass made with the edge arrow switched on, on another device';
+                await q.goto(link); await boot(q);
+                if (!await until(q, () => { const c = document.getElementById('tpFound'); return !!c && !c.hidden; }, null, 3000)) {
+                  /* a shell that declares none of the pass's words throws at the card (El Horno and the gauge, a fault known and kept for later), and is said out loud */
+                  if (qErr.length) MN.push('COUNT-ONLY: this shell cannot board a Trolley Pass (its arrival card threw: ' + qErr[0] + '), so whether the edge arrow\'s switch travels on one was not asked here');
+                  else MP.push('I opened ' + how + ' and no card offered to board it, and the page said nothing, so whether the switch travels on it was not asked — nothing to measure is not a pass'); }
+                else {
+                  await Promise.all([q.waitForEvent('load'), q.click('#tpBoard')]); await boot(q);
+                  if (!await cont(q)) MP.push('I boarded ' + how + ' and it offered no Continue, so whether the switch travels on it was not asked');
+                  else if (!await mapOpen(q)) MP.push('I boarded ' + how + ' and could not press the map button, so whether the switch travels on it was not asked');
+                  else {
+                    const sw4 = await findSwitch(q); await pickSomewhere(q); await mapShut(q);
+                    const there = await arrowIn(q, cams), k4 = await q.evaluate(() => { try { return [SK('bearing'), localStorage.getItem(SK('bearing'))]; } catch (e) { return [SK('bearing'), 'unreadable']; } });
+                    if (there.length) MP.push('I boarded ' + how + ', picked somewhere, and an arrow appeared that this device never turned on (' + there.join(', ') + ')');
+                    if (!sw4) MP.push('I boarded ' + how + ' and there is no switch in its map');
+                    else if (sw4.on || misSays(sw4, false)) MP.push('I boarded ' + how + ', and the switch in its map says “' + sw4.words + '”' + (sw4.on ? ', checked' : ''));
+                    if (k4[1] !== null) MP.push('I boarded ' + how + ', and that device now keeps "' + k4[1] + '" under ' + k4[0] + ', which only a press of its own switch may write');
+                    if (qErr.length) MP.push('the page threw after I boarded ' + how + ': ' + qErr[0]);
+                  }
+                }
+                await c4.close();
+              }
+            }
+          }
+        }
+        /* A RETURNING PLAYER WHOSE SAVE IS FROM BEFORE THIS CHANGE: the engine this branch grew from plays a new game on a
+           fresh device, in this same shell, and the engine under test continues that save on that device */
+        if (!before) MP.push('the engine before this change cannot be read here (no git, or no origin/main), so a returning player whose save is from before it was not asked about the edge arrow — that is not a pass');
+        else {
+          const c2 = await browser.newContext({ viewport: { width: 390, height: 844 } }), oErr = [];
+          const old = await oldPage(c2, oErr), had = await old.evaluate(() => typeof bearOn === 'function');
+          const s0 = await begin(old) ? await old.evaluate(() => { try { return localStorage.getItem(SK('1')); } catch (e) { return null; } }) : null;
+          await old.close();
+          if (!s0) MP.push('the engine before this change (' + before.base + ') kept no save in this shell, so a returning player whose save is from before it was not asked about the edge arrow' + (oErr.length ? ' (it threw: ' + oErr[0] + ')' : ''));
+          else {
+            const q = await c2.newPage();
+            q.on('pageerror', e => MP.push('the page threw while a returning player was asked about the edge arrow: ' + String(e.message).split('\n')[0]));
+            await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+            await q.goto('file://' + file); await boot(q);
+            const came = 'I came back with a save the engine before this change wrote';
+            if (!await cont(q)) MP.push(came + ' and it offered no Continue, so a returning player was not asked about the edge arrow');
+            else if (!await mapOpen(q)) MP.push(came + ' and could not press the map button, so the edge arrow was not asked about');
+            else {
+              const sw5 = await findSwitch(q); await pickSomewhere(q); await mapShut(q);
+              const said = await arrowIn(q, cams);
+              if (said.length) MP.push(came + ', picked somewhere, and an arrow appeared that I never turned on (' + said.join(', ') + ')');
+              if (!sw5) MP.push(came + ', opened the map, and there is no switch for the edge arrow in it');
+              else if (sw5.on || misSays(sw5, false)) MP.push(came + ', opened the map, and the edge arrow\'s switch says “' + sw5.words + '”' + (sw5.on ? ', checked' : ''));
+              MN.push('COUNT-ONLY: the returning player\'s save was written by the engine at ' + before.base + (had ? ', which already has the switch' : ', from before there was a switch') + (before.same ? ' (that engine is this one, byte for byte)' : ''));
+            }
+          }
+          await c2.close();
+        }
+      }
+      await ctx.close();
+    }
+
+    /* 5 · THE SWITCH FITS, at a phone and a laptop, in both languages, as the map opens and switched on: in view with the
+           box unscrolled, a finger at its centre lands on it, 44 px or more each way, its words whole and saying the state
+           it is in after each press, and the map's title still on one line beside it */
+    {
+      const layout = () => {
+        const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, title = document.getElementById('mapTitle');
+        const hit = document.querySelector('[data-mq-arrow-switch]'), r = hit.getBoundingClientRect(), b = box.getBoundingClientRect();
+        const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), why = [];
+        if (r.bottom > b.bottom + 0.5) why.push('it is ' + Math.round(r.bottom - b.bottom) + ' px below the bottom of the box');
+        if (r.top < b.top - 0.5) why.push('it is above the top of the box');
+        if (r.right > b.right + 0.5 || r.left < b.left - 0.5) why.push('it runs past the side of the box');
+        if (r.bottom > innerHeight || r.top < 0 || r.right > innerWidth || r.left < 0) why.push('it is off the screen');
+        if (!el || !(el === hit || hit.contains(el))) why.push('a finger at its centre lands on ' + (!el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase()));
+        const cut = hit.scrollWidth > hit.clientWidth + 1 || hit.scrollHeight > hit.clientHeight + 1 ||
+          [...hit.querySelectorAll('*')].some(e => { const q = e.getBoundingClientRect(); return q.width > 0 && (q.left < r.left - 0.5 || q.right > r.right + 0.5 || e.scrollWidth > e.clientWidth + 1); });
+        let lines = 0;
+        if (title && title.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(title);
+          lines = new Set([...rg.getClientRects()].filter(q => q.width > 0).map(q => Math.round(q.top))).size; }
+        return { w: r.width, h: r.height, why, cut, words: hit.textContent.replace(/\s+/g, ' ').trim(), lines, title: title ? title.textContent : '' }; };
+      const { ctx, p } = await page2(390, 844);
+      if (!await begin(p)) MP.push('the game did not start, so where the edge arrow\'s switch sits was not measured — nothing to measure is not a pass');
+      else {
+        const langs = await langsOf(p);
+        for (const [w, h, size] of [[390, 844, 'on a phone, 390×844'], [1280, 800, 'on a laptop, 1280×800']]) {
+          await p.setViewportSize({ width: w, height: h }); await rafs(p);
+          for (const L of langs) {
+            const where = size + ', ' + inLang(L);
+            await setLang(p, L); await rafs(p);
+            if (!await mapOpen(p)) { MP.push('the map button could not be pressed ' + where + ', so where the switch sits was not measured'); continue; }
+            for (const on of [false, true]) {
+              const sw = await findSwitch(p);
+              if (!sw) { MP.push('I opened the map (' + where + ') and there is no switch for the edge arrow in it'); break; }
+              if (sw.on !== on) { await press(p); const s2 = await findSwitch(p);
+                if (!s2 || s2.on !== on) MP.push('I pressed the edge arrow\'s switch ' + (on ? 'on' : 'off') + ' (' + where + ') and it did not turn: it says “' + (s2 ? s2.words : '') + '”');
+                else if (misSays(s2, on)) MP.push('I pressed the edge arrow\'s switch ' + (on ? 'on' : 'off') + ' (' + where + ') and it says “' + s2.words + '”'); }
+              const m = await p.evaluate(layout), st = on ? 'switched on' : 'as the map opens';
+              if (m.why.length) MP.push('I can\'t see the switch without scrolling (' + where + ', ' + st + '): ' + m.why.join('; '));
+              if (m.w < 44 || m.h < 44) MP.push('the edge arrow\'s switch is ' + Math.round(m.w) + '×' + Math.round(m.h) + ' px (' + where + '), under the 44 px a thumb needs');
+              if (m.cut) MP.push('the edge arrow\'s switch has its words cut off (' + where + ', ' + st + '): "' + m.words + '"');
+              if (m.lines > 1) MP.push('the map\'s title runs onto ' + m.lines + ' lines beside the switch (' + where + ', ' + st + '): "' + m.title + '"');
+            }
+            const s3 = await findSwitch(p) || {};
+            if (s3.on) { await press(p); const s4 = await findSwitch(p);   /* put it back as it was */
+              if (!s4 || s4.on) MP.push('I pressed the edge arrow\'s switch off (' + where + ') and it did not turn: it says “' + (s4 ? s4.words : '') + '”');
+              else if (misSays(s4, false)) MP.push('I pressed the edge arrow\'s switch off (' + where + ') and it still says “' + s4.words + '”'); }
+            await mapShut(p);
+          }
+        }
+      }
+      await ctx.close();
+    }
+
+    /* 7 · OPENED TWICE: THE MAP OPENS AT ITS TOP. On a laptop and on a phone held sideways "Somewhere to go" sits under
+           Close as the map opens, so a person scrolls the box once to reach it. The map is opened with its button, the
+           box scrolled with the wheel over it until "Somewhere to go" is wholly in view, it is pressed, the map closed with
+           Close (and again with Escape) and opened again with its button. Then the switch is wholly in view and a finger
+           at its centre lands on it; and where the ◉ is drawn, its place on the screen is inside what the box shows and a
+           finger there lands on the plan. Measured on what the screen shows: the plan is whichever canvas the box shows (a
+           pack may show it through a window of its own and hide the engine's), and a map that shows no plan is a red. */
+    {
+      /* where the ◉ is on the plan the box shows, before anything is chosen (a destination is drawn in the ◉'s violet) */
+      const dotFirst = () => { const ov = document.getElementById('mapov'), area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+        const plan = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+        if (!plan) return { plan: false, n: 0 };
+        const W = plan.width, d = plan.getContext('2d').getImageData(0, 0, W, plan.height).data; let n = 0, sx = 0, sy = 0;
+        for (let i = 0; i < d.length; i += 4) { const a = d[i] - 122, b = d[i + 1] - 63, e = d[i + 2] - 224; if (a * a + b * b + e * e < 900) { n++; const q = i / 4; sx += q % W; sy += Math.floor(q / W); } }
+        return { plan: true, id: plan.id || '', n, cx: n ? sx / n + 0.5 : 0, cy: n ? sy / n + 0.5 : 0 }; };
+      /* "Somewhere to go": wholly inside what the box shows, and a finger at its top, centre and foot lands on it */
+      const anyNow = () => { const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, bb = box.getBoundingClientRect(), e = document.getElementById('mapAny');
+        const t = bb.top + box.clientTop, b = t + box.clientHeight, out = { bx: bb.left + bb.width / 2, by: t + box.clientHeight / 2, scroll: Math.round(box.scrollTop) };
+        if (!e || !e.getClientRects().length) return Object.assign(out, { gone: true });
+        const r = e.getBoundingClientRect(), x = r.left + r.width / 2, on = y => { const el = document.elementFromPoint(x, y); return !!el && (el === e || e.contains(el)); };
+        return Object.assign(out, { x, y: r.top + r.height / 2, ok: r.top >= Math.max(t, 0) - 0.5 && r.bottom <= Math.min(b, innerHeight) + 0.5 && on(r.top + 1) && on(r.top + r.height / 2) && on(r.bottom - 1) }); };
+      const settle = p => p.evaluate(() => new Promise(res => { const b = document.querySelector('#mapov .box') || document.getElementById('mapov');
+        let last = -1, same = 0, k = 0; const t = setTimeout(() => res(b.scrollTop), 1500);
+        const f = () => { const s = b.scrollTop; same = s === last ? same + 1 : 0; last = s; if (same >= 3 || ++k > 90) { clearTimeout(t); res(s); } else requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+      /* opened again: the switch, and the ◉ where it was drawn when the map first opened, on the plan the box shows now */
+      const seenAgain = d => { const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, bb = box.getBoundingClientRect();
+        const area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+        const plan = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+        const vt = Math.max(bb.top + box.clientTop, 0), vb = Math.min(bb.top + box.clientTop + box.clientHeight, innerHeight);
+        const vl = Math.max(bb.left + box.clientLeft, 0), vr = Math.min(bb.left + box.clientLeft + box.clientWidth, innerWidth);
+        const name = el => !el ? 'nothing' : el.id ? '#' + el.id : (el.closest && el.closest('[id]')) ? '#' + el.closest('[id]').id + ' (its ' + el.tagName.toLowerCase() + ')' : el.tagName.toLowerCase();
+        const out = { scroll: Math.round(box.scrollTop), sw: null, dot: null, plan: !!plan };
+        const c = ov.querySelector('[role="switch"], input[type="checkbox"]'), hit = c ? (c.tagName === 'INPUT' && c.closest('label')) || c : null;
+        if (hit) { const r = hit.getBoundingClientRect(), el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), why = [];
+          if (r.top < vt - 0.5) why.push('its top is ' + Math.round(vt - r.top) + ' px above the top of what the box shows');
+          if (r.bottom > vb + 0.5) why.push('its foot is ' + Math.round(r.bottom - vb) + ' px below what the box shows');
+          if (r.left < vl - 0.5 || r.right > vr + 0.5) why.push('it runs past the side of the box');
+          if (!el || !(el === hit || hit.contains(el))) why.push('a finger at its centre lands on ' + name(el));
+          out.sw = why; }
+        if (d && d.n && plan) { const r = plan.getBoundingClientRect(), k = Math.min(r.width / plan.width, r.height / plan.height);
+          const x = r.left + (r.width - plan.width * k) / 2 + d.cx * k, y = r.top + (r.height - plan.height * k) / 2 + d.cy * k, el = document.elementFromPoint(x, y);
+          const x0 = Math.max(0, Math.floor(d.cx - 8)), y0 = Math.max(0, Math.floor(d.cy - 8)), x1 = Math.min(plan.width, Math.ceil(d.cx + 8)), y1 = Math.min(plan.height, Math.ceil(d.cy + 8)); let n = 0;
+          if (x1 > x0 && y1 > y0) { const q = plan.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0).data;
+            for (let i = 0; i < q.length; i += 4) { const a = q[i] - 122, b = q[i + 1] - 63, e = q[i + 2] - 224; if (a * a + b * b + e * e < 900) n++; } }
+          const why = [], rad = 6 * k;   /* the ◉ is a disc of 5 sheet pixels with a 1-pixel ring: all of it is asked to be in view, not its centre alone */
+          if (y < vt) why.push('is ' + Math.round(vt - y) + ' px above the top of what the box shows'); else if (y > vb) why.push('is ' + Math.round(y - vb) + ' px below what the box shows');
+          else if (y - rad < vt) why.push('is cut by the top of what the box shows, its centre ' + Math.round(y - vt) + ' px under that edge'); else if (y + rad > vb) why.push('is cut by the foot of what the box shows, its centre ' + Math.round(vb - y) + ' px above it');
+          else if (x - rad < vl || x + rad > vr) why.push('is outside what the box shows, or cut by its side'); else if (el !== plan) why.push('is under ' + name(el) + ': a finger on it lands there');
+          out.dot = { same: (plan.id || '') === d.id, here: n, why }; }
+        return out; };
+      const { ctx, p } = await page2(1280, 800);
+      if (!await begin(p)) MP.push('the game did not start, so the map was not opened twice — nothing to measure is not a pass');
+      else {
+        const langs = await langsOf(p); let undotted = 0, rounds = 0;
+        for (const [w, h, size] of [[1280, 800, 'on a laptop, 1280×800'], [844, 390, 'on a phone held sideways, 844×390']]) {
+          await p.setViewportSize({ width: w, height: h }); await rafs(p);
+          for (const L of langs) {
+            await setLang(p, L); await rafs(p);
+            for (const out of ['Close', 'Escape']) {
+              const where = size + ', ' + inLang(L) + ', closed with ' + out;
+              await p.evaluate(() => { mapDest = null; if (typeof setWorldTag === 'function') setWorldTag(); });
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the map was not opened twice'); continue; }
+              await rafs(p); const d0 = await p.evaluate(dotFirst);
+              if (!d0.plan) { MP.push('I opened the map (' + where + ') and the box shows no plan at all — nothing to measure is not a pass'); await mapShut(p); continue; }
+              let a = await p.evaluate(anyNow), wheel = 0;
+              for (; !a.gone && !a.ok && wheel < 12; wheel++) { await p.mouse.move(a.bx, a.by); await p.mouse.wheel(0, 100); await settle(p); a = await p.evaluate(anyNow); }
+              if (!a.ok) { MP.push('I scrolled the map with the wheel ' + wheel + ' time(s) (' + where + ') and "Somewhere to go" never came wholly into view' + (a.gone ? ': there is no "Somewhere to go"' : ' (the box scrolled ' + a.scroll + ' px)') + ', so the map was not opened a second time from there'); await mapShut(p); continue; }
+              await p.evaluate(() => { window.__mqRandom = Math.random; Math.random = () => 0.5; });   /* the same "somewhere" every run */
+              await p.mouse.click(a.x, a.y); await rafs(p);
+              await p.evaluate(() => { if (window.__mqRandom) { Math.random = window.__mqRandom; delete window.__mqRandom; } });
+              if (out === 'Close') { const c = await p.evaluate(() => { const e = document.getElementById('mapClose'), r = e && e.getBoundingClientRect(); return r && r.width ? [r.left + r.width / 2, r.top + r.height / 2] : null; });
+                if (c) await p.mouse.click(c[0], c[1]); }
+              else await p.keyboard.press('Escape');
+              if (!await until(p, () => document.getElementById('mapov').hidden, null, 2000)) { MP.push(out + ' did not close the map (' + where + ')'); await mapShut(p); continue; }
+              await rafs(p, 3);
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed a second time (' + where + ')'); continue; }
+              await rafs(p, 3); rounds++;
+              const m = await p.evaluate(seenAgain, d0);
+              const did = 'I scrolled the map to "Somewhere to go"' + (wheel ? ' (' + wheel + ' turn(s) of the wheel)' : '') + ', pressed it, closed the map with ' + out + ' and opened it again (' + size + ', ' + inLang(L) + ')';
+              if (!m.sw) MP.push(did + ', and there is no switch for the edge arrow in it');
+              else if (m.sw.length) MP.push(did + ', and the switch is not in view: ' + m.sw.join('; ') + (m.scroll ? ' (the box opened scrolled ' + m.scroll + ' px)' : ''));
+              if (d0.n < 10) undotted++;
+              else if (!m.plan) MP.push(did + ', and the box shows no plan at all — nothing to measure is not a pass');
+              else if (!m.dot || !m.dot.same || m.dot.here < Math.min(10, d0.n / 2)) MP.push(did + ', and the ◉ is not on the plan the box shows where it was drawn when the map first opened');
+              else if (m.dot.why.length) MP.push(did + ', and I can\'t see where I am: the ◉ ' + m.dot.why.join('; ') + (m.scroll ? ' (the box opened scrolled ' + m.scroll + ' px)' : '') + ', while the caption says “◉ you are here”');
+              await mapShut(p);
+            }
+          }
+        }
+        if (undotted) MN.push('COUNT-ONLY: where this game starts the map draws no ◉, so in ' + undotted + ' of ' + rounds + ' second opening(s) only the switch was asked to be in view');
+      }
+      await ctx.close();
+    }
+
+    /* 8 · THE SWITCH DOES NOT MAKE THE BOX TALLER. Where it shares the title's line, the row keeps the title's own height:
+           the plan's top edge is where it is with the switch taken out of the row (measured in the same page, the switch
+           hidden and then shown again), within a pixel. Where it takes a line of its own it may add its own height, and
+           touches neither the title nor the plan. And in this game's own shell, on a laptop, a finger on the line under
+           the plan (how to choose a destination) lands on it as the map opens, as it did before there was a switch. */
+    {
+      const rowNow = () => { const ov = document.getElementById('mapov'), title = document.getElementById('mapTitle');
+        const c = ov.querySelector('[role="switch"], input[type="checkbox"]'), sw = c ? (c.tagName === 'INPUT' && c.closest('label')) || c : null;
+        const area = q => { const r = q.getBoundingClientRect(); return r.width * r.height; };
+        const plan = [...ov.querySelectorAll('canvas')].filter(q => q.width && q.height && q.getClientRects().length && q.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+        if (!title || !sw || !plan) return { title: !!title, sw: !!sw, plan: !!plan };
+        const t = title.getBoundingClientRect(), r = sw.getBoundingClientRect(), y1 = plan.getBoundingClientRect().top;
+        const was = sw.style.display; sw.style.display = 'none'; const y0 = plan.getBoundingClientRect().top; sw.style.display = was;
+        const note = document.getElementById('mapNote'), n = note && note.getBoundingClientRect(), nel = n && n.height ? document.elementFromPoint(n.left + n.width / 2, n.top + n.height / 2) : null;
+        return { title: true, sw: true, plan: true, beside: r.top < t.bottom - 0.5 && r.bottom > t.top + 0.5, pushed: +(y1 - y0).toFixed(2),
+          toTitle: +(r.top - t.bottom).toFixed(2), toPlan: +(y1 - r.bottom).toFixed(2), right: r.left >= t.right,
+          note: n && n.height ? (nel && (nel === note || note.contains(nel)) ? '' : (nel ? (nel.id ? '#' + nel.id : nel.tagName.toLowerCase()) : 'nothing')) : 'no note' }; };
+      const gameShell = path.relative(root, file) === 'index.html';
+      const { ctx, p } = await page2(1280, 800);
+      if (!await begin(p)) MP.push('the game did not start, so the map\'s title row was not measured — nothing to measure is not a pass');
+      else {
+        const langs = await langsOf(p);
+        for (const [w, h, size] of [[1280, 800, 'on a laptop, 1280×800'], [390, 844, 'on a phone, 390×844'], [360, 780, 'on a small phone, 360×780']]) {
+          await p.setViewportSize({ width: w, height: h }); await rafs(p);
+          for (const L of langs) {
+            const where = size + ', ' + inLang(L);
+            await setLang(p, L); await rafs(p);
+            if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the map\'s title row was not measured'); continue; }
+            await rafs(p, 3); const m = await p.evaluate(rowNow);
+            if (!m.sw || !m.title || !m.plan) MP.push('I opened the map (' + where + ') and it has no ' + [!m.title && 'title', !m.sw && 'switch', !m.plan && 'plan'].filter(Boolean).join(' or ') + ' to measure — nothing to measure is not a pass');
+            else if (m.beside) { if (Math.abs(m.pushed) > 1) MP.push('The edge arrow\'s switch makes the map\'s box taller (' + where + '): beside the title, it puts the plan ' + Math.abs(m.pushed) + ' px ' + (m.pushed > 0 ? 'lower' : 'higher') + ' than it is with the switch taken out of the row'); }
+            else { if (m.toTitle < 1) MP.push('The edge arrow\'s switch, on a line of its own under the title (' + where + '), touches the title: ' + (m.toTitle < 0 ? 'it reaches ' + Math.abs(m.toTitle) + ' px over it' : 'nothing is between them'));
+              if (m.toPlan < 1) MP.push('The edge arrow\'s switch, on a line of its own (' + where + '), touches the plan: ' + (m.toPlan < 0 ? 'it reaches ' + Math.abs(m.toPlan) + ' px over it' : 'nothing is between them')); }
+            if (gameShell && w === 1280 && m.note) MP.push('The line under the map that says how to choose a destination is under something else as the map opens (' + where + '): a finger on it lands on ' + m.note);
+            await mapShut(p);
+          }
+        }
+      }
+      await ctx.close();
+    }
+
+    /* 10 · A BROWSER THAT REFUSES TO KEEP IT. A private window or a full device may refuse every write, or every read and
+            write; a press of the switch is still honoured for the visit: the switch says on, the arrow shows with somewhere
+            chosen, and the page throws nothing. The refusal starts once the game has begun, so the game itself starts */
+    for (const mode of ['writes', 'reads and writes']) {
+      const c = await browser.newContext({ viewport: { width: 390, height: 844 } }), err = [];
+      await c.addInitScript(m => { const S = Storage.prototype, set = S.setItem, get = S.getItem, rm = S.removeItem;
+        const no = () => { const e = new Error('this browser keeps nothing'); e.name = 'SecurityError'; throw e; };
+        S.setItem = function (k, v) { if (window.__mqRefuse) no(); return set.call(this, k, v); };
+        S.removeItem = function (k) { if (window.__mqRefuse) no(); return rm.call(this, k); };
+        if (m !== 'writes') S.getItem = function (k) { if (window.__mqRefuse) no(); return get.call(this, k); }; }, mode);
+      const q = await c.newPage(); q.on('pageerror', e => err.push(String(e.message).split('\n')[0]));
+      await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await q.goto('file://' + file); await boot(q);
+      const how = 'in a browser that refuses ' + (mode === 'writes' ? 'every write' : 'every read and every write');
+      if (!await begin(q)) MP.push('the game did not start, so a press of the switch ' + how + ' was not asked about — nothing to measure is not a pass');
+      else {
+        const cams = await camsOf(q);
+        await q.evaluate(() => { window.__mqRefuse = true; });
+        if (!await mapOpen(q)) MP.push('the map button could not be pressed ' + how + ', so the switch was not asked about');
+        else {
+          const hw = await pickSomewhere(q), s0 = await findSwitch(q);
+          if (!s0) MP.push('I opened the map ' + how + ' and there is no switch for the edge arrow in it');
+          else {
+            await press(q); const s1 = await findSwitch(q); await mapShut(q);
+            const said = await arrowIn(q, cams);
+            if (!s1 || !s1.on || misSays(s1, true)) MP.push('I pressed the edge arrow\'s switch on ' + how + ', and it says “' + (s1 ? s1.words : '') + '”' + (s1 && !s1.on ? ', unchecked: the press was lost' : ''));
+            if (said.length < cams.length) MP.push('I turned the edge arrow on ' + how + ' and picked somewhere' + (hw ? ' (a spot six tiles east)' : '') + ', and the arrow shows in ' + said.length + ' of ' + cams.length + ' cameras: the press did not last the visit');
+          }
+        }
+        await q.evaluate(() => { window.__mqRefuse = false; }).catch(() => {});
+      }
+      if (err.length) MP.push('the page threw ' + how + ': ' + err[0]);
+      await c.close();
+    }
+
+    Object.keys(own).forEach(L => { const o = own[L], both = [...o.on].filter(w => o.off.has(w));
+      if (both.length) MP.push('the edge arrow\'s switch says “' + both[0] + '” both on and off (' + inLang(L) + '), so its words do not tell a player which it is');
+      else if (o.on.size && o.off.size) MN.push('COUNT-ONLY: this game names no words for the edge arrow\'s switch, so the engine\'s own were read (' + inLang(L) + '): on “' + [...o.on].join('” / “') + '”, off “' + [...o.off].join('” / “') + '”'); });
+    MN.forEach(l => fails.push(l));
+    MP.forEach(l => fails.push(l));
+  }
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
