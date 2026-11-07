@@ -4323,6 +4323,19 @@ const CANDIDATES = [
       }
       fails.push(...R);
     }
+    /* ---- MERIDIAN NAMES THE LINE UNDER THE EDGE ARROW'S SWITCH, IN BOTH ITS LANGUAGES ----
+       Switched on with nowhere chosen, the edge arrow has nothing to point at, so the engine puts a line under its switch
+       saying it shows only once you have a destination. A game names those words in its plan words (arrowHint), as it
+       names the switch's own; Meridian names them in English and in Spanish, each its own words: not the switch's name,
+       and not the same words in the two languages. The shared suite asks the map to show them where they are named
+       (test/engine.smoke.js, 16). Red on mq-v251, which had no such line. */
+    {
+      const w = await page.evaluate(() => ['en', 'es'].map(L => { const pl = ((typeof UI !== 'undefined' && UI[L]) || {}).plan || {}; return { L, hint: pl.arrowHint, name: pl.arrow }; }));
+      w.forEach(({ L, hint, name }) => { const inL = L === 'es' ? 'in Spanish' : 'in English';
+        if (typeof hint !== 'string' || !hint.trim()) fails.push('Meridian names no words ' + inL + ' for the line under the edge arrow\'s switch that says it shows only once you have a destination, so a player ' + inL + ' gets the engine\'s own');
+        else if (hint === name) fails.push('Meridian\'s line under the edge arrow\'s switch ' + inL + ' is the switch\'s own name, “' + hint + '”'); });
+      if (w[0].hint && w[0].hint === w[1].hint) fails.push('Meridian\'s line under the edge arrow\'s switch is the same in English and in Spanish, “' + w[0].hint + '”: one of the two languages is shown the other\'s words');
+    }
     /* #208 — AN ENDING MAY PAY OFF A SCENE; IT MAY NOT STAGE ONE AGAIN.
        Reported by a narrative designer, not by a test: La Espiga tells you how its story ended, and
        then Doña Licha is still standing there with a question about the same afternoon — the two
