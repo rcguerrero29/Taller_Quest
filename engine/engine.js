@@ -7708,7 +7708,12 @@ function ringClear(g2,words,cx,cy,rc,bw){   /* called just before the ring (radi
     k.fillStyle=k.strokeStyle="#000";k.lineWidth=2*RINGCLEAR;k.lineJoin="round";
     near.forEach(q=>{k.font=q.font;k.textAlign=q.align;k.textBaseline=q.base;if(k.letterSpacing!==undefined&&q.ls!==undefined)k.letterSpacing=q.ls;
       k.fillText(q.t,q.x,q.y);k.strokeText(q.t,q.x,q.y);});                   /* each letter, and RINGCLEAR px round it */
-    k.globalCompositeOperation="destination-in";k.lineWidth=bw+1;               /* only where the ring itself is drawn: nothing else moves */
+    /* only where the ring itself is drawn: nothing else moves. The band is the ring's width and 2 px more each side, so
+       every pixel the ring's soft edge touches lies wholly inside it and is put back whole. At 1 px more in all (until
+       2026-11-07, the day it was built) the band's own soft edge fell inside the ring's, a faint trace of the ring stayed
+       on a few pixels beside a letter, and a letter on the pale blue of where you are going lost 5% of its contrast in
+       one browser and 12% in another. */
+    k.globalCompositeOperation="destination-in";k.lineWidth=bw+4;
     k.beginPath();k.arc(cx,cy,rc,0,7);k.stroke();
     u.globalCompositeOperation="destination-in";u.drawImage(cut,0,0);
     g2.save();g2.setTransform(1,0,0,1,0,0);g2.drawImage(under,X,Y);g2.restore();};}
