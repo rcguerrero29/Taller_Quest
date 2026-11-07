@@ -7507,11 +7507,12 @@ function findChromium() {
     }
 
     /* 21 · "SOMEWHERE TO GO" SKIPS THE BUILDING YOU ARE IN WHILE ANYONE ELSE CAN BE REACHED. At the start of a game the player
-            is put in every room a door from a street the plan draws leads into (placesNow: the office where a game starts,
-            its upper floor, and every other room the city has then), and "Somewhere to go" is pressed with its random number
-            swept over its whole range. The building a room is in is read from the doors themselves (doorsInto), never from
-            the picker or from planPlace: every room that shares a door on a street the plan draws with it, its other floors
-            among them. Then:
+            is put in every room the map shows at a door (placesNow: the office where a game starts, its upper floor, and every
+            other room the city has then), and "Somewhere to go" is pressed with its random number swept over its whole range.
+            The building a room is in is read where the map shows it, never from the picker: every room the map shows at the
+            door you are drawn at when you stand in it (planHere, which section 1 holds to the ◉ on the paper and to a door
+            that leads into that room), its other floors among them. Rooms joined only by a passage, each drawn at a door of
+            its own, are separate buildings. Then:
               · while anyone outside that building is picked, nobody inside it is, on any of its floors;
               · with nobody outside it to reach (everyone else taken off the map for the check, and put back), a pick still
                 lands inside it, wherever someone there stands more than two steps away;
@@ -7531,9 +7532,12 @@ function findChromium() {
         const S = await p.evaluate(() => {
           const out = { rooms: [], streets: [], why: [] }, btn = document.getElementById('mapAny');
           if (!btn) { out.why.push('there is no “Somewhere to go” in the map'); return out; }
-          const into = __mqMap.doorsInto(), drawn = new Set(planPanels().map(q => q.world)), door = d => d.on + ':' + d.x + ',' + d.y;
-          /* the building a room is in: every room that shares a door on a street the plan draws with it */
-          const building = id => { const mine = new Set((into[id] || []).map(door)); return new Set(Object.keys(into).filter(w => into[w].some(d => mine.has(door(d))))); };
+          const drawn = new Set(planPanels().map(q => q.world));
+          /* where the map shows a room: the door you are drawn at, standing in it. The building a room is in: every room the
+             map shows at that door */
+          const shownAt = id => { const was2 = world; world = id; try { const h = planHere(); return h ? h[0] + ',' + h[1] : null; } finally { world = was2; } };
+          const building = id => { const at = shownAt(id); return new Set(Object.keys(WORLDS).filter(w => !drawn.has(w) && !/^__/.test(w) && shownAt(w) === at)); };
+          const named = B => [...B].some(w => (WORLDS[w].npcs || []).some(q => npcName(q.npc)));
           const people = Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0), M = Math.max(8, people + 2);   /* every place in the list it picks from, as section 13 sweeps it */
           const real = Math.random, was = { world, px, py, fx, fy, mapDest };
           const sweep = () => { const picks = new Map();
@@ -7548,8 +7552,9 @@ function findChromium() {
             try { return f(); } finally { Object.keys(kept).forEach(id => { WORLDS[id].npcs = kept[id]; }); } };
           try {
             __mqMap.placesNow().forEach(pl => {
-              if (drawn.has(pl.id) || !into[pl.id]) return;          /* a street the plan draws, or a place no door from one leads into */
+              if (drawn.has(pl.id) || !shownAt(pl.id)) return;       /* a street the plan draws, or a place the map cannot show */
               const B = building(pl.id), r = { name: pl.name, floors: [...B].map(__mqMap.placeName) };
+              if (!named(B)) return;                                 /* nobody in it to pick */
               world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
               const all = sweep();
               Object.assign(r, { n: all.length, inside: all.filter(q => B.has(q.w)).map(nm), outside: all.filter(q => !B.has(q.w)).length });
@@ -7567,8 +7572,8 @@ function findChromium() {
                 r.beside = { who: side.who, n: got.length, near: got.filter(q => steps(q, world, px, py) <= 2).map(q => nm(q) + ', ' + steps(q, world, px, py) + ' step(s) away') }; }
               out.rooms.push(r); });
             /* on a street the plan draws there is no building to skip */
-            const home = PL.home && into[PL.home] ? building(PL.home) : null;
-            const homeCan = home ? [...home].some(w => (WORLDS[w].npcs || []).some(q => npcName(q.npc))) : false;
+            const home = PL.home && WORLDS[PL.home] && !drawn.has(PL.home) && shownAt(PL.home) ? building(PL.home) : null;
+            const homeCan = home ? named(home) : false;
             if (homeCan) __mqMap.placesNow().forEach(pl => { if (!drawn.has(pl.id)) return;
               world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
               const all = sweep();
