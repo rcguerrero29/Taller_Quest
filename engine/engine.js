@@ -804,7 +804,7 @@ const UIDEF={
   parkSum:(f,t,h,d)=>`🎾 ${f} ${f===1?"entrega":"entregas"} · 🦴 ${t} ${t===1?"premio":"premios"} · 🐶 ${h} ${h===1?"aullido":"aullidos"} · 🕳 ${d} ${d===1?"hoyo":"hoyos"}`,
   parkLove:"Una buena visita.",parkTeaser:"Vuelve cuando quieras.",parkClose:"↩ Volver",
   plan:{work:"tiene trabajo para ti",host:"tiene una pregunta sobre este cuarto",read:"algo que leer",key:"qué quieren decir las marcas",
-    any:"Un lugar a dónde ir",ride:"toma el tranvía",arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
+    any:"Un lugar adonde ir",ride:"toma el tranvía",arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
     arrowHint:"Nomás sale cuando ya tienes destino."},
   save:{full:"Este dispositivo ya no tiene espacio — lo que hagas ahora no se está guardando.",
     blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso."},
