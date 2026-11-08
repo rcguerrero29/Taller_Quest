@@ -816,6 +816,9 @@ function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiP
   Object.keys(d).forEach(k=>{const g=d[k],w=Object.prototype.hasOwnProperty.call(o,k)?o[k]:null;
     if(uiPlain(g)&&uiPlain(w))try{Object.setPrototypeOf(w,g);}catch(e){}});});}
 const T=()=>{const o=UI[lang];if(o!==UIAT){uiLay();UIAT=o;}return o;};
+/* One of the engine's own words, in the player's language, for a read that keeps a fallback of its own: a language object the
+   list could not be laid beneath still gets a word, and the word is kept once, in UIDEF, never written again beside a read. */
+const uiDef=(k,w)=>{const d=UIDEF[lang]||UIDEF.en,v=d[k];return w===undefined?v:v&&v[w];};
 const AQ=()=>lang==="es"?QES:QEN;
 const npcName=k=>CHILLN[k]?CHILLN[k][lang]:NPCN[lang][k];
 const shortName=k=>String(npcName(k)||"").split(" ·")[0];   /* the name without its job title */
@@ -1292,7 +1295,7 @@ const CAMPINCH=new Map(),CAMPINCHED=new Set();let camPinch0=null;
 const camPinching=()=>CAMZ.on&&CAMPINCHED.size>0;
 const camPinched=id=>CAMZ.on&&CAMPINCHED.has(id);
 function camZoomShow(){if(!CAMZ.on)return;const vp=$("vp");if(!vp)return;const t=T()||{};
-  [["zoomIn3d","+",t.zoomIn||"Zoom in",106,1/1.2,camZoom<=CAMZ.lo+1e-9],["zoomOut3d","−",t.zoomOut||"Zoom out",154,1.2,camZoom>=CAMZ.hi-1e-9]].forEach(([id,txt,name,top,k,end])=>{
+  [["zoomIn3d","+",t.zoomIn||uiDef("zoomIn"),106,1/1.2,camZoom<=CAMZ.lo+1e-9],["zoomOut3d","−",t.zoomOut||uiDef("zoomOut"),154,1.2,camZoom>=CAMZ.hi-1e-9]].forEach(([id,txt,name,top,k,end])=>{
     let b=$(id);
     if(!b){b=document.createElement("button");b.id=id;b.type="button";b.textContent=txt;
       Object.assign(b.style,{position:"absolute",right:"12px",top:top+"px",width:"40px",height:"40px",border:"none",borderRadius:"50%",
@@ -7389,7 +7392,7 @@ function mapLegend(){
   const tog=document.createElement("button");tog.id="mapLegTog";tog.type="button";
   tog.textContent=open?"i\u00A0\u2715":"i";
   tog.setAttribute("aria-expanded",open?"true":"false");
-  tog.setAttribute("aria-label",t.key||"key");
+  tog.setAttribute("aria-label",t.key||uiDef("plan","key"));
   tog.style.cssText="flex:0 0 auto;min-width:26px;height:26px;border-radius:999px;cursor:pointer;"+
     "border:1.5px solid var(--line,#C9C3B4);background:var(--bg,#F2F1EA);color:inherit;"+
     "font:600 12px/1 ui-monospace,monospace;padding:0 7px;";
@@ -7398,7 +7401,7 @@ function mapLegend(){
   if(!open){                                            /* collapsed: the key is one button */
     const hint=document.createElement("span");
     hint.style.cssText="opacity:.62;font-size:.75rem;";
-    hint.textContent=t.key||"";box.appendChild(hint);return;}
+    hint.textContent=t.key||uiDef("plan","key");box.appendChild(hint);return;}
   drawn.forEach(k=>{
     const row=document.createElement("span");row.setAttribute("data-kind",k);
     row.style.cssText="display:inline-flex;align-items:center;gap:6px;";
@@ -7530,14 +7533,14 @@ function mapArrowBtn(){
   if(!hint){hint=document.createElement("p");hint.id="mapArrowHint";
     hint.style.cssText="flex:1 0 100%;margin:0;font-size:.75rem;line-height:1.3;color:var(--muted,currentColor);";
     head.appendChild(hint);}
-  const t=(T().plan||{}),es=lang==="es",on=bearOn();
-  $("mapArrowName").textContent=t.arrow||(es?"Flechita hacia tu destino":"Arrow to your destination");
-  $("mapArrowState").textContent=" · "+(on?(t.arrowOn||(es?"Prendida":"On")):(t.arrowOff||(es?"Apagada":"Off")));
+  const t=(T().plan||{}),on=bearOn();
+  $("mapArrowName").textContent=t.arrow||uiDef("plan","arrow");
+  $("mapArrowState").textContent=" · "+(on?(t.arrowOn||uiDef("plan","arrowOn")):(t.arrowOff||uiDef("plan","arrowOff")));
   b.setAttribute("aria-checked",on?"true":"false");
   b.style.background=on?"var(--accent,#7A3FE0)":"var(--bg,#F2F1EA)";
   b.style.borderColor=on?"var(--accent,#7A3FE0)":"var(--line,#C9C3B4)";
   b.style.color=on?"var(--accent-ink,#FFFFFF)":"inherit";
-  hint.textContent=t.arrowHint||(es?"Nomás sale cuando ya tienes destino.":"Only shows once you've got a destination.");
+  hint.textContent=t.arrowHint||uiDef("plan","arrowHint");
   mapArrowHint();
   mapHeadFit();}
 /* ---- AND UNDER IT, WHEN THE ARROW SHOWS (2026-11-07) ----
@@ -7621,7 +7624,7 @@ function bearingUI(){
     const key="ride|"+name;
     if(key!==bearLast){bearLast=key;
       document.getElementById("bearTip").style.display="none";
-      document.getElementById("bearLbl").textContent=((T().plan||{}).ride||"tram")+" · "+name;
+      document.getElementById("bearLbl").textContent=((T().plan||{}).ride||uiDef("plan","ride"))+" · "+name;
       el.style.left="50%";el.style.top="8%";}
     return;}
   document.getElementById("bearTip").style.display="block";
@@ -8014,7 +8017,7 @@ function mapAnyBtn(){
     b.addEventListener("click",()=>{mapRandomDest();mapAnyBtn();});
     host.parentNode.insertBefore(b,host.nextSibling);}
   const t=(T().plan||{});
-  b.textContent=t.any||"Somewhere to go";
+  b.textContent=t.any||uiDef("plan","any");
 }
 $("mapbtn").addEventListener("click",openMap);
 /* tapping a mark is how a destination is chosen — the plan is the only place it can be, because

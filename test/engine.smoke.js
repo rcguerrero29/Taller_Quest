@@ -12127,7 +12127,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (c === '{') depth++; if (c === '}') depth--;
         tok.push({ t: 'p', v: c, line }); i++;
       }
-      const reads = [], computed = [], at = (k, j) => tok[j] && tok[j].v === k, id = j => tok[j] && tok[j].t === 'id';
+      const reads = [], computed = [], fallbacks = [], at = (k, j) => tok[j] && tok[j].v === k, id = j => tok[j] && tok[j].t === 'id';
+      const str = j => tok[j] && tok[j].t === 's';
+      const fb = (key, j, line) => { if (!at('||', j)) return;   /* j: the token right after the read */
+        if (str(j + 1) && !at('.', j + 2) && !at('[', j + 2)) fallbacks.push([key, line, [tok[j + 1].v]]);
+        else if (at('(', j + 1) && id(j + 2) && at('?', j + 3) && str(j + 4) && at(':', j + 5) && str(j + 6) && at(')', j + 7)) fallbacks.push([key, line, [tok[j + 4].v, tok[j + 6].v]]); };
       const isT = j => at('T', j) && id(j) && at('(', j + 1) && at(')', j + 2) && !at('.', j - 1);
       const scopes = [{ names: {} }];
       const look = name => { for (let s = scopes.length - 1; s >= 0; s--) if (name in scopes[s].names) return scopes[s].names[name]; return null; };
@@ -12158,29 +12162,30 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (at('(', j) && isT(j + 1)) { let k = j + 4, g = null;   /* (T()||{}).w and (T().G||{}).w */
           if (at('.', k) && id(k + 1)) { g = tok[k + 1].v; k += 2; }
           if (at('||', k) && at('{', k + 1) && at('}', k + 2) && at(')', k + 3) && at('.', k + 4) && id(k + 5)) {
-            reads.push([(g ? g + '.' : '') + tok[k + 5].v, tok[j].line]); if (g) reads.push([g, tok[j].line]); j = k + 5; continue; } }
+            reads.push([(g ? g + '.' : '') + tok[k + 5].v, tok[j].line]); if (g) reads.push([g, tok[j].line]); fb((g ? g + '.' : '') + tok[k + 5].v, k + 6, tok[j].line); j = k + 5; continue; } }
         if (isT(j)) { const k = j + 3;
           if (at('.', k) && id(k + 1)) { const w = tok[k + 1].v;
-            if (at('.', k + 2) && id(k + 3)) { reads.push([w + '.' + tok[k + 3].v, tok[j].line]); reads.push([w, tok[j].line]); }
-            else { if (at('[', k + 2)) computed.push([w, '', tok[j].line]); reads.push([w, tok[j].line]); } }
+            if (at('.', k + 2) && id(k + 3)) { reads.push([w + '.' + tok[k + 3].v, tok[j].line]); reads.push([w, tok[j].line]); fb(w + '.' + tok[k + 3].v, k + 4, tok[j].line); }
+            else { if (at('[', k + 2)) computed.push([w, '', tok[j].line]); reads.push([w, tok[j].line]); fb(w, k + 2, tok[j].line); } }
           else if (at('[', k)) computed.push([null, '', tok[j].line]);
           continue; }
         if (id(j) && !at('.', j - 1) && (at('.', j + 1) || at('[', j + 1))) {
           const b = look(v); if (!b) continue;
           if (at('.', j + 1) && id(j + 2)) { const w = tok[j + 2].v;
-            if (b.g) { reads.push([b.g + '.' + w, tok[j].line]); continue; }
-            if (at('.', j + 3) && id(j + 4) && !at('(', j + 5)) { reads.push([w + '.' + tok[j + 4].v, tok[j].line]); reads.push([w, tok[j].line]); }
-            else { if (at('[', j + 3)) computed.push([w, '', tok[j].line]); reads.push([w, tok[j].line]); }
+            if (b.g) { reads.push([b.g + '.' + w, tok[j].line]); fb(b.g + '.' + w, j + 3, tok[j].line); continue; }
+            if (at('.', j + 3) && id(j + 4) && !at('(', j + 5)) { reads.push([w + '.' + tok[j + 4].v, tok[j].line]); reads.push([w, tok[j].line]); fb(w + '.' + tok[j + 4].v, j + 5, tok[j].line); }
+            else { if (at('[', j + 3)) computed.push([w, '', tok[j].line]); reads.push([w, tok[j].line]); fb(w, j + 3, tok[j].line); }
             continue; }
           if (at('[', j + 1)) computed.push([b.g, (tok[j + 2] && tok[j + 2].t === 's' && at('+', j + 3)) ? tok[j + 2].v : '', tok[j].line]);
         }
       }
-      return { reads, computed };
+      return { reads, computed, fallbacks };
     };
     const NOTWORD = new Set('length concat map forEach filter find findIndex some every slice split join indexOf includes call apply bind toString reduce push sort'.split(' '));
     const read = {}, comp = [];
+    const fallbacks = [];
     ['engine.js', 'kitchen-room.js'].forEach(f => { let src = ''; try { src = fs.readFileSync(path.join(root, 'engine', f), 'utf8'); } catch (e) { return; }
-      const r = wordsRead(src);
+      const r = wordsRead(src); r.fallbacks.forEach(([k, l, vs]) => fallbacks.push([k, f + ':' + l, vs]));
       r.reads.forEach(([k, l]) => { if (!NOTWORD.has(k.split('.').pop())) (read[k] = read[k] || []).push(f + ':' + l); });
       r.computed.forEach(([g, pre, l]) => comp.push({ g, pre, at: f + ':' + l })); });
     /* the reader's preconditions: the reads this block exists for, and a list that size, or it would pass anything */
@@ -12251,6 +12256,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
           (W.defKeys[L] || []).forEach(k => { if (!(W.defKeys[O] || []).includes(k)) WD.push('the engine keeps "' + k + '" in ' + LN[L] + ' and not in ' + LN[O]);
             else if (L === 'en' && W.shape.en[k] !== W.shape.es[k]) WD.push('the engine\'s "' + k + '" is a ' + W.shape.en[k] + ' in English and a ' + W.shape.es[k] + ' in Spanish'); }); });
+        /* ONE COPY OF EACH WORD: a word the engine keeps is not given a second wording beside a read of it (x||"word", x||"",
+           or x||(es?"palabra":"word")); the fallback, where one is wanted, is the engine's own word, read from its list,
+           or the two drift apart the day one of them is changed */
+        { const kept = new Set(W.defKeys.en || []);
+          fallbacks.filter(([k]) => kept.has(k)).forEach(([k, where, vs]) =>
+            WD.push('the engine reads "' + k + '" with a wording of its own written beside it ("' + vs.join('" / "') + '") at engine/' + where + ', where its own list already holds that word')); }
         /* every word the engine keeps is a word it reads: by name, under a group or a prefix it reads by a key worked out in play,
            or in a group it reads whole and hands on (the save warnings' words go to the warning that way) */
         (W.defKeys.en || []).forEach(k => { const g = k.split('.')[0];
