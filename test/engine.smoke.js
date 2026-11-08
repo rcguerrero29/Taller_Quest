@@ -12094,9 +12094,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const WD = [], WN = [];
     /* 1 · THE LIST — the reader. Tokens first (nothing from inside a comment, a string, a template's text or a regex),
        then the names bound to T() or to a group of its words, scope by scope, so a name declared again inside a nested
-       block, or taken as a parameter, is not read as T()'s. Planted against a parse of the whole engine (2026-11-08):
-       the same 281 words in engine/engine.js, and in engine/kitchen-room.js one fewer than a parse that ignores scope,
-       the one it should not count. */
+       block, or taken as a parameter, is not read as T()'s. Measured against a full parse of the engine (2026-11-08): in
+       engine/engine.js the 280 words the parse finds, and one it misses, (T().plan||{}).ride; in engine/kitchen-room.js
+       two fewer than a parse that ignores scope: a name declared again in a nested block, which is not T()'s, and a word
+       read by a quoted key, which this reader counts as read by a key worked out in play. */
     const wordsRead = src => {
       const tok = [], tmpl = [], n = src.length; let i = 0, line = 1, depth = 0;
       const isId = c => /[A-Za-z0-9_$]/.test(c);
@@ -12234,9 +12235,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
           (W.defKeys[L] || []).forEach(k => { if (!(W.defKeys[O] || []).includes(k)) WD.push('the engine keeps "' + k + '" in ' + LN[L] + ' and not in ' + LN[O]);
             else if (L === 'en' && W.shape.en[k] !== W.shape.es[k]) WD.push('the engine\'s "' + k + '" is a ' + W.shape.en[k] + ' in English and a ' + W.shape.es[k] + ' in Spanish'); }); });
-        /* every word the engine keeps is a word it reads: by name, or under a group or a prefix it reads by a key worked out in play */
+        /* every word the engine keeps is a word it reads: by name, under a group or a prefix it reads by a key worked out in play,
+           or in a group it reads whole and hands on (the save warnings' words go to the warning that way) */
         (W.defKeys.en || []).forEach(k => { const g = k.split('.')[0];
-          const byName = !!read[k], byGroup = k.includes('.') && comp.some(c => c.g === g), byPrefix = comp.some(c => c.g === null && c.pre && k.startsWith(c.pre));
+          const whole = !!read[g] && !Object.keys(read).some(r => r.startsWith(g + '.'));
+          const byName = !!read[k], byGroup = k.includes('.') && (whole || comp.some(c => c.g === g)), byPrefix = comp.some(c => c.g === null && c.pre && k.startsWith(c.pre));
           if (!byName && !byGroup && !byPrefix) WD.push('the engine keeps a word nobody reads: "' + k + '"'); });
       }
       const counts = {};
@@ -12292,7 +12295,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           for (const wid of Object.keys(WORLDS)) for (const n of WORLDS[wid].npcs) for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) {
             world = wid; const x = n.x + dx, y = n.y + dy; if (isSolid(x, y)) continue;
             px = fx = x; py = fy = y; dir = d; moving = false; held = null; checkTalk();
-            const b = document.getElementById('talk'); out.push([shortName(n.npc) || n.npc, b.hidden ? null : b.textContent]); break; }
+            /* the button is for whoever the engine picks (the one faced, else one with a quest), not always the one stood beside */
+            const b = document.getElementById('talk'), who = talkPick(); out.push([who ? (shortName(who.npc) || who.npc) : '', b.hidden ? null : b.textContent]); break; }
           [world, px, py, dir] = keep; fx = px; fy = py; checkTalk(); return out; });
         if (!talk.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' nobody stands in this world, so no Talk button was read');
         talk.forEach(([nm, s]) => { if (s !== null && (bad(s) || !s.includes(nm))) WD.push('in ' + LN[L] + ', beside ' + nm + ' the Talk button reads "' + s + '"'); });
@@ -12372,7 +12376,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         await panel('Settings', () => document.getElementById('gear').click(), ['drwCtlLb', 'drwLookLb', 'drwSelfLb', 'drwSoundLb', 'drwGameLb'], () => document.getElementById('closeSet').click(), L);
         const heads = await wp.evaluate(() => ['Ctl', 'Look', 'Self', 'Sound', 'Game'].map(k => { const e = document.getElementById('drw' + k + 'Lb'); return e && e.textContent === k ? k : null; }).filter(Boolean));
         if (heads.length) WD.push('in ' + LN[L] + ', Settings heads its sections with their code names: ' + heads.join(', '));
-        const rows = await wp.evaluate(() => [...document.querySelectorAll('#themeRow button,#thCustom,#seasonRow button')].filter(b => !b.textContent.trim() || /undefined/.test(b.textContent)).map(b => b.id || b.dataset.th || b.dataset.season || '?'));
+        const rows = await wp.evaluate(() => { document.getElementById('gear').click();   /* only what Settings can show: a row this world hides is not read */
+          const out = [...document.querySelectorAll('#themeRow button,#thCustom,#seasonRow button')].filter(b => !b.closest('[hidden]') && (!b.textContent.trim() || /undefined/.test(b.textContent)))
+            .map(b => b.id || (b.dataset.th ? 'the theme ' + b.dataset.th : b.dataset.sn ? 'the season ' + b.dataset.sn : 'a button'));
+          document.getElementById('closeSet').click(); return out; });
         if (rows.length) WD.push('in ' + LN[L] + ', Settings has ' + rows.length + ' button(s) with no words on them (' + rows.join(', ') + ')');
         { const h = await wp.evaluate(() => document.getElementById('ctlHint').textContent); if (!h.trim() || bad(h)) WD.push('in ' + LN[L] + ', the line that says how to walk reads "' + h + '"'); }
         await panel('the Multiplayer panel', () => { document.getElementById('gear').click(); document.getElementById('openMp').click(); }, ['mpTitle', 'mpNote'], () => document.getElementById('mpClose').click(), L);

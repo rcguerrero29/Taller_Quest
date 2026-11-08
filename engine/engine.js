@@ -698,7 +698,124 @@ let PEERS=[];
 const RECORD=(typeof RECORDSRC==="object"&&RECORDSRC)||{enabled:false,boot(){}};
 /* the game's name is the pack's (config.js GAMENAME); the engine prints it and never owns it */
 const GN=()=>typeof GAMENAME==="string"?GAMENAME:"";
-const T=()=>UI[lang];
+/* THE ENGINE'S OWN WORDS, FOR A WORLD THAT NAMES NONE. Every word a player reads is the world's: T() hands the engine the
+   world's words in the player's language. A word a world left out used to come out as nothing at all, and in a second
+   world that was a Talk button reading "undefined" before the person's name, a Trolley Pass link that threw before its
+   card showed, a door out of a home that is also the park that threw, a Report tab that threw once a call was in the log,
+   a theme editor, a stakes switch and a new character that threw, and a map that spoke English to a Spanish player. So
+   the engine keeps a short list of words of its own, in English and in Spanish, for the screens every world has, in
+   plain words that belong to no world. A world's own word always comes first, word by word and inside a group of words
+   as well, and Meridian, which names every word a screen of its asks for, reads exactly as it did.
+   LAID BENEATH, NOT COPIED. Each language's words get the engine's as their prototype, and each of their groups the
+   engine's group of the same name, once per language object; T() hands back the world's own object, so nothing is done
+   per call. A copy would go stale the moment anything writes a word into a world after the game starts, and things do:
+   the text lab, a room the engine builds, the suite. A language object or a group that is not a plain object, or is
+   shared between two languages, is left as it is (the first language to reach it keeps it), and a group a world sets
+   after the game has started is its own, whole.
+   NOT HERE: a word a world names only for a thing it has (its dogs, its chair, its endings, its tram), a word read only to
+   decide whether to say anything (a world that names none says nothing there), a world's own story and names, and the
+   kitchen's words, which the kitchen keeps in its own code. test/engine.smoke.js (grep "A WORLD'S OWN WORD COMES FIRST")
+   lists every word the engine reads and holds each one to one of those. Before boot the save warnings still use
+   SAVE_FALLBACK, above: T() cannot run that early. */
+const UIDEF={
+ en:{
+  talkPre:"💬 ",
+  quest:"Quest",followup:" · follow-up",codexLb:"📜 The idea",okH:"✅ Solid call",midH:"◐ Partly right",badH:"✕ Not this time",
+  lvlUp:"⬆ Level up — you are now ",nextDoom:"Carry on",
+  stkToast:m=>m==="hearts"?"Hearts on: a wrong call costs one.":"Hearts off.",
+  admToast:"Admin on: pick a brush, then tap a tile.",isoEdit:"Tiles are edited from the top camera.",
+  undoToast:"Edit undone.",undoEmpty:"Nothing to undo.",
+  nmTitle:"New character",nmLb:"Name them",nmOk:"✨ Create",nmCancel:"Cancel",nmEditTitle:"Edit character",nmSave:"💾 Save",
+  nmLook:"🎲 New look",nmOut:"📦 Move out",npcMade:n=>n+" moved in.",npcGone:"They moved away.",
+  npcFull:"Twelve is the most — nobody else fits.",npcSaved:"Updated.",npcLook:"New look!",
+  npcLease:"They live here — this world's own people stay.",
+  chill:["Nice day for standing exactly here.","I'm not in the way. I AM the way.","Just watching the day go by."],
+  tlOk:"Texts updated.",tlErr:"That JSON didn't parse — nothing changed.",tlNoHit:"No match.",
+  teSaved:"✨ Palette saved.",teFixed:"🪄 Text colors adjusted for contrast.",teNamePh:"Palette name",
+  palFull:"Eight palettes is the most — remove one first.",
+  palNames:{meridian:"Classic",forest:"Forest",fairy:"Fairy",sunset:"Sunset"},
+  themes:{meridian:"🏛️ Classic",forest:"🌿 Forest",fairy:"🧚 Fairy",sunset:"🌇 Sunset",custom:"✨ Custom"},
+  replayArm:"⚠️ Tap again to erase everything",replayToast:n=>`Starting over, ${n}.`,updToast:"updated.",
+  seasonAuto:"📅 By the calendar",seasonOff:"Year-round",
+  drwCtl:"🎮 Controls",drwLook:"🎨 Picture",drwSelf:"🪞 Your look",drwSound:"🔊 Sound",drwGame:"⚙️ Game",
+  hintSwipe:"Touch anywhere and drag to walk · let go to stop · ⚙️ to switch controls.",
+  hintJoy:"Joystick or arrow keys to walk · ⚙️ to switch controls.",hintPad:"D-pad or arrow keys to walk · ⚙️ to switch controls.",
+  mpTitle:"🌐 Multiplayer",mpNote:"🚧 Not built yet. For now this world is yours alone.",
+  expCopied:"Copied to clipboard.",petPh:"Pet's name",
+  repHint:"Every call you made, written up: the question, your answer and why. Copy it, or download it as Markdown.",
+  repEmpty:"No decisions yet. Answer a quest and this report writes itself.",
+  repSum:(d,q,pct)=>`**${d} ${d===1?"decision":"decisions"} across ${q} ${q===1?"quest":"quests"} — ${pct}% on the first try.**`,
+  repRole:(c,q,pct)=>`${c} ${c===1?"decision":"decisions"} across ${q} ${q===1?"quest":"quests"} · ${pct}% first try`,
+  repL:{roles:"What you practiced",side:"Other quests",question:"Question",call:"Your call",verdict:"Verdict",why:"Why",
+    ok:"✅ Solid call",mid:"◐ Partly right",bad:"✕ Miss",advanced:"Right — on to the next step.",concepts:"Ideas practiced",
+    attempts:"attempts",foot:"Written by the game from your own play."},
+  tpTitle:"🎫 Pass",
+  tpNote:"Your game as a link. Scan the code with your other device's camera, or share the link to it — opening it there always asks first.",
+  tpShare:"📤 Share",tpCopy:"🔗 Copy link",tpCopied:"Link copied.",tpFoundLb:"🎫 A game came with this link",
+  tpFoundTx:(n,x,d,q)=>`${n}'s game — ${x} XP, ${d} of ${q} quests.`,
+  tpReplace:n=>`Playing it replaces the game kept on this device (${n}).`,
+  tpBoard:"🎫 Play this game",tpSkip:"Keep this device's game",
+  parkTitle:"🌳 A visit to the park",
+  parkSum:(f,t,h,d)=>`🎾 ${f} ${f===1?"fetch":"fetches"} · 🦴 ${t} ${t===1?"treat":"treats"} · 🐶 ${h} ${h===1?"howl":"howls"} · 🕳 ${d} ${d===1?"hole":"holes"}`,
+  parkLove:"A good visit.",parkTeaser:"Come back any time.",parkClose:"↩ Back",
+  plan:{work:"has work for you",host:"has a question about this room",read:"something to read",key:"what the marks mean",
+    any:"Somewhere to go",ride:"take the tram",arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off",
+    arrowHint:"Only shows once you've got a destination."},
+  save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked},
+  zoomIn:"Zoom in",zoomOut:"Zoom out"},
+ es:{
+  talkPre:"💬 ",
+  quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ En parte",badH:"✕ Esta vez no",
+  lvlUp:"⬆ Subiste de nivel — ahora eres ",nextDoom:"Seguir",
+  stkToast:m=>m==="hearts"?"Corazones encendidos: una mala decisión cuesta uno.":"Corazones apagados.",
+  admToast:"Admin activado: elige un pincel y toca una casilla.",isoEdit:"Las casillas se editan desde la cámara de arriba.",
+  undoToast:"Edición deshecha.",undoEmpty:"Nada que deshacer.",
+  nmTitle:"Nuevo personaje",nmLb:"Ponle nombre",nmOk:"✨ Crear",nmCancel:"Cancelar",nmEditTitle:"Editar personaje",nmSave:"💾 Guardar",
+  nmLook:"🎲 Otro look",nmOut:"📦 Mudanza",npcMade:n=>n+" se mudó aquí.",npcGone:"Se mudó a otra parte.",
+  npcFull:"Doce es el máximo — ya no cabe nadie.",npcSaved:"Actualizado.",npcLook:"¡Look nuevo!",
+  npcLease:"Viven aquí — la gente de este mundo se queda.",
+  chill:["Buen día para estar parado justo aquí.","No estorbo. SOY el camino.","Nomás viendo pasar el día."],
+  tlOk:"Textos actualizados.",tlErr:"Ese JSON no se pudo leer — no cambió nada.",tlNoHit:"Sin coincidencias.",
+  teSaved:"✨ Paleta guardada.",teFixed:"🪄 Colores de texto ajustados al contraste.",teNamePh:"Nombre de la paleta",
+  palFull:"Ocho paletas es el máximo — quita una primero.",
+  palNames:{meridian:"Clásico",forest:"Bosque",fairy:"Hada",sunset:"Atardecer"},
+  themes:{meridian:"🏛️ Clásico",forest:"🌿 Bosque",fairy:"🧚 Hada",sunset:"🌇 Atardecer",custom:"✨ Personalizado"},
+  replayArm:"⚠️ Toca otra vez para borrar todo",replayToast:n=>`De nuevo desde el principio, ${n}.`,updToast:"actualizado.",
+  seasonAuto:"📅 Según el calendario",seasonOff:"Todo el año",
+  drwCtl:"🎮 Controles",drwLook:"🎨 Imagen",drwSelf:"🪞 Tu apariencia",drwSound:"🔊 Sonido",drwGame:"⚙️ Juego",
+  hintSwipe:"Toca cualquier parte y arrastra para caminar · suelta para detenerte · ⚙️ para cambiar controles.",
+  hintJoy:"Joystick o flechas para caminar · ⚙️ para cambiar controles.",hintPad:"Cruceta o flechas para caminar · ⚙️ para cambiar controles.",
+  mpTitle:"🌐 Multijugador",mpNote:"🚧 Todavía no está hecho. Por ahora este mundo es solo tuyo.",
+  expCopied:"Copiado al portapapeles.",petPh:"Nombre de la mascota",
+  repHint:"Cada decisión que tomaste, por escrito: la pregunta, tu respuesta y por qué. Cópialo, o descárgalo en Markdown.",
+  repEmpty:"Todavía no hay decisiones. Responde una misión y este reporte se escribe solo.",
+  repSum:(d,q,pct)=>`**${d} ${d===1?"decisión":"decisiones"} en ${q} ${q===1?"misión":"misiones"} — ${pct}% al primer intento.**`,
+  repRole:(c,q,pct)=>`${c} ${c===1?"decisión":"decisiones"} en ${q} ${q===1?"misión":"misiones"} · ${pct}% al primer intento`,
+  repL:{roles:"Lo que practicaste",side:"Otras misiones",question:"Pregunta",call:"Tu decisión",verdict:"Veredicto",why:"Por qué",
+    ok:"✅ Buena decisión",mid:"◐ En parte",bad:"✕ Fallo",advanced:"Correcto — al siguiente paso.",concepts:"Ideas practicadas",
+    attempts:"intentos",foot:"Lo escribió el juego con lo que jugaste."},
+  tpTitle:"🎫 Pase",
+  tpNote:"Tu partida como enlace. Escanea el código con la cámara de tu otro dispositivo, o compártele el enlace — al abrirlo allá siempre se pregunta primero.",
+  tpShare:"📤 Compartir",tpCopy:"🔗 Copiar enlace",tpCopied:"Enlace copiado.",tpFoundLb:"🎫 Este enlace trae una partida",
+  tpFoundTx:(n,x,d,q)=>`La partida de ${n} — ${x} XP, ${d} de ${q} misiones.`,
+  tpReplace:n=>`Jugarla reemplaza la partida guardada en este dispositivo (${n}).`,
+  tpBoard:"🎫 Jugar esta partida",tpSkip:"Quedarme con la de este dispositivo",
+  parkTitle:"🌳 Una visita al parque",
+  parkSum:(f,t,h,d)=>`🎾 ${f} ${f===1?"entrega":"entregas"} · 🦴 ${t} ${t===1?"premio":"premios"} · 🐶 ${h} ${h===1?"aullido":"aullidos"} · 🕳 ${d} ${d===1?"hoyo":"hoyos"}`,
+  parkLove:"Una buena visita.",parkTeaser:"Vuelve cuando quieras.",parkClose:"↩ Volver",
+  plan:{work:"tiene trabajo para ti",host:"tiene una pregunta sobre este cuarto",read:"algo que leer",key:"qué quieren decir las marcas",
+    any:"Un lugar a dónde ir",ride:"toma el tranvía",arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
+    arrowHint:"Nomás sale cuando ya tienes destino."},
+  save:{full:"Este dispositivo ya no tiene espacio — lo que hagas ahora no se está guardando.",
+    blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso."},
+  zoomIn:"Acercar",zoomOut:"Alejar"}};
+const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
+let UIAT=null;   /* the language object the engine's words were last laid beneath */
+function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
+  try{Object.setPrototypeOf(o,d);}catch(e){return;}
+  Object.keys(d).forEach(k=>{const g=d[k],w=Object.prototype.hasOwnProperty.call(o,k)?o[k]:null;
+    if(uiPlain(g)&&uiPlain(w))try{Object.setPrototypeOf(w,g);}catch(e){}});});}
+const T=()=>{const o=UI[lang];if(o!==UIAT){uiLay();UIAT=o;}return o;};
 const AQ=()=>lang==="es"?QES:QEN;
 const npcName=k=>CHILLN[k]?CHILLN[k][lang]:NPCN[lang][k];
 const shortName=k=>String(npcName(k)||"").split(" ·")[0];   /* the name without its job title */
