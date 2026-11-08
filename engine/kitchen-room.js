@@ -436,10 +436,11 @@ function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||wo
      name   its name in `lang`, text of at most KITTHINGNAME characters, shown as text and nothing else;
      parts  optional: one of it in 3D, at most KITPARTS parts, each a part the engine already draws (`box`, `sph`, `cyl`,
             `cone` or `torus`, as engine/engine3d.js's t3Prim builds them) with only the keys a part has (`s`, `x`,`y`,`z`,
-            `w`,`h`,`d`, `r`,`rt`,`rb`,`t`,`arc`, `rx`,`ry`,`rz`, `sx`,`sy`,`sz`, `c`): numbers finite and within a piece
+            `w`,`h`,`d`, `r`,`rt`,`rb`,`t`,`arc`, `rx`,`ry`,`rz`, `sx`,`sy`,`sz`, `c` and `cb`: the engine's one list but
+            glass, grep "WHAT A THING'S PART MAY SAY"): numbers finite and within a piece
             (x and z within KITREACH, half a tile, of the thing's middle, y from just under what it stands on to a tile
             over it; sizes above 0 and at most KITSIZE, a tile; turns within a full turn; stretches above 0 and at most
-            4), and a colour `#rrggbb`, in TILE UNITS as every shape is;
+            4), a colour `#rrggbb`, and a second colour `#rrggbb` if it has one, in TILE UNITS as every shape is;
      stand  optional: how many copies of it stand in 3D, 1 to KITCOPIES (left out, one), and never more than n: twelve eggs
             need not be twelve eggs;
      pic    optional: `(g, px)`, the world's own picture of it, drawn on a square canvas px wide (its page and the hand).
@@ -462,7 +463,7 @@ const KITPRIM=["box","sph","cyl","cone","torus"],KITHEX=/^#[0-9a-fA-F]{6}$/;
    fit where it stands is its sizes, while where it stands is worked out again and its turns and stretches are kept */
 let KITKEYS=null;
 const kitKeys=()=>KITKEYS||(KITKEYS=Object.freeze({say:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]!=="glass")),
-  sizes:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="size"))}));
+  sizes:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="size")),colours:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="colour"))}));
 /* WHERE THINGS STAND IN EACH KIND, in the piece's own frame before it is turned to the room: each level a floor (y, the top
    of what they stand on), the clear height over it (h), its width (w) and depth (d) about z, and how far it comes out
    with its drawer when open (pull). `bare`: nothing to open, so its things always show. Measured off engine/shapes.js:
@@ -489,6 +490,7 @@ function kitPartBad(p){const plain=!!p&&typeof p==="object"&&!Array.isArray(p)&&
   if(!KITPRIM.includes(p.s))return "a part is a "+JSON.stringify(String(p.s).slice(0,20))+", and the engine draws "+KITPRIM.join(", ");
   if(typeof p.c!=="string"||!KITHEX.test(p.c))return "a part's colour is "+JSON.stringify(String(p.c).slice(0,20))+", not #rrggbb";
   for(const k of KEYS){if(k==="s"||k==="c"||p[k]===undefined)continue;const v=p[k];
+    if(kitKeys().colours.includes(k)){if(typeof v!=="string"||!KITHEX.test(v))return "a part's "+k+" is "+JSON.stringify(String(v).slice(0,20))+", not #rrggbb";continue;}
     if(typeof v!=="number"||!isFinite(v))return "a part's "+k+" is not a number";
     if((k==="x"||k==="z")&&Math.abs(v)>KITREACH)return "a part's "+k+" is "+v+", past "+KITREACH+" from the thing's middle";
     if(k==="y"&&(v<-0.05||v>1))return "a part's y is "+v+", outside the thing";

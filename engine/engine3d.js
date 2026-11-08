@@ -264,11 +264,13 @@ function t3Reuse(key){
      angle    arc rx ry rz      how much of a ring, and how it is turned, in radians, yaw first (YXZ)
      stretch  sx sy sz          how far it is stretched along each axis
      colour   c                 its colour, #rrggbb, drawn through the player's colour theme
+              cb                a second colour, #rrggbb: the part shades from c at its highest point to cb at its lowest
+                                (engine/engine3d.js, grep "A SECOND COLOUR")
      glass    a                 under 1 it is glass: a second, see-through mesh
    A length is a place or a size. A key that is not here draws nothing (a marker a world keeps on a part for itself).
    test/prims.js fails when the builder reads a key this list does not name, or this list names one it never reads. */
 const PARTKEYS=Object.freeze({s:"shape",x:"place",y:"place",z:"place",w:"size",h:"size",d:"size",r:"size",rt:"size",rb:"size",t:"size",
-  arc:"angle",rx:"angle",ry:"angle",rz:"angle",sx:"stretch",sy:"stretch",sz:"stretch",c:"colour",a:"glass"});
+  arc:"angle",rx:"angle",ry:"angle",rz:"angle",sx:"stretch",sy:"stretch",sz:"stretch",c:"colour",cb:"colour",a:"glass"});
 const meshGeo={};
 const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   const key=s+"|"+[p.w,p.h,p.d,p.r,p.rt,p.rb,p.t,p.arc].map(n).join("|");
@@ -292,7 +294,7 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
    part's colour when one Color was shared by the solid and the glass bakes, and now it draws white, as a
    lone bad colour always did. Every colour written in the games is #rrggbb.) */
 const t3BakeParts=(list,tint)=>{tint=tint||tc;
-  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color();
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color(),cb=new THREE.Color();
   /* HOW TALL THIS THING IS, and it is the parts that say so (crew iteration 14, la ofrendera).
      `wallH` answers that question for a BOX — a formula over the glyph's declared `lift` — and a
      mesh has never had a lift, so anything set down at `wallH` on a mesh tile is set down at the
@@ -314,7 +316,17 @@ const t3BakeParts=(list,tint)=>{tint=tint||tc;
     const gg=t3Prim(p).clone().applyMatrix4(m4);
     const pa=gg.attributes.position.array,na=gg.attributes.normal.array;
     c.set(tint(p.c||"#888888"));
-    for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);col.push(c.r,c.g,c.b);
+    /* A SECOND COLOUR (`cb`): the part shades evenly from its own colour at its highest point to cb at its lowest, by height as
+       it stands, after its turns, so a leaning part shades by how it leans and not along its own axis. Each corner takes the mix
+       for its own height, worked out here once, as the shape is built, and the face between corners is blended as it is drawn:
+       nothing more is done while the game runs, and no triangle is added. Both colours go through the same theme (`tint`), and
+       the time of day tints the one material both are drawn with, so both alike. A part without cb takes its one colour on
+       every corner, exactly as it always did; one whose cb three.js cannot read shades from its colour to the same colour. */
+    let lo=0,span=0;
+    if(p.cb){cb.copy(c).set(tint(p.cb));lo=Infinity;let hi=-Infinity;for(let i=1;i<pa.length;i+=3){if(pa[i]<lo)lo=pa[i];if(pa[i]>hi)hi=pa[i];}span=hi-lo;}
+    for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);
+      if(!p.cb)col.push(c.r,c.g,c.b);
+      else{const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}
       if(pa[i+1]>top)top=pa[i+1];
       if(pa[i]<sx0)sx0=pa[i]; if(pa[i]>sx1)sx1=pa[i];
       if(pa[i+2]<sz0)sz0=pa[i+2]; if(pa[i+2]>sz1)sz1=pa[i+2];}

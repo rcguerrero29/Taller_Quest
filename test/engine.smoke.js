@@ -3093,14 +3093,17 @@ function findChromium() {
     fails.push(...TH.map(m => 'the things in a place and the hand (sprint 5): ' + m));
   }
 
-  /* ---- THE ONE LIST OF WHAT A PART MAY SAY ----
-     engine/engine3d.js, grep "THE ONE LIST OF WHAT A PART MAY SAY"; engine/kitchen-room.js, grep "WHAT A THING'S PART MAY SAY".
-     Every reader of parts takes what it takes from one list in the engine. What a person would notice: a thing the kitchen
-     refuses although its part says nothing the engine cannot draw, or takes although its part is glass or says what no part
-     says; and a thing made smaller to fit where it stands whose turns, stretches or colours changed with its size. Every key
-     is read off the engine's own list as it stands, so a key the list gains is asked here without this block changing. On a
-     page of its own: a made-up kitchen of the template's seven places, whose counter is handed one thing at a time. Red
-     first on the engine before the list, in a copy of the tree outside the repository. */
+  /* ---- THE ONE LIST OF WHAT A PART MAY SAY, AND A PART SHADED INTO A SECOND COLOUR ----
+     engine/engine3d.js, grep "THE ONE LIST OF WHAT A PART MAY SAY" and "A SECOND COLOUR"; engine/kitchen-room.js, grep "WHAT A
+     THING'S PART MAY SAY". Every reader of parts takes what it takes from one list in the engine. What a person would notice:
+     a thing the kitchen refuses although its part says nothing the engine cannot draw, or takes although its part is glass,
+     says what no part says, or names a colour that is not one; a thing made smaller to fit where it stands whose turns,
+     stretches or colours changed with its size; and a part that names a second colour drawn in one, shaded the wrong way up,
+     along its own axis instead of as it stands, with either end outside the player's colour theme, or drawn with a material
+     the time of day does not tint. Every key is read off the engine's own list as it stands, so a key the list gains is asked
+     here without this block changing. On a page of its own: a made-up kitchen of the template's seven places, whose counter is
+     handed one thing at a time. Red first on the engine before the list and before the second colour, in a copy of the tree
+     outside the repository. */
   {
     const OL = [], say = s => OL.push(s);
     const needK = await page.evaluate(() => typeof KITCHEN !== 'object');
@@ -3130,7 +3133,9 @@ function findChromium() {
           const base = { s: 'box', y: 0.02, w: 0.04, h: 0.04, d: 0.04, c: '#C04020' };
           const ask = part => { window.__pk.p3 = [{ id: 'one', n: 1, name: 'One', parts: [part] }]; const r = kitThingsOf(ID, 2); delete window.__pk.p3; return r.bad ? 'refused' : r.list.length === 1 ? 'taken' : 'neither'; };
           return { ID, laid, got: Object.keys(PARTKEYS).map(k => [k, PARTKEYS[k], ask(Object.assign({}, base, { [k]: GOOD[PARTKEYS[k]] }))]),
-            stranger: ask(Object.assign({}, base, { zz: 0.1 })) };
+            stranger: ask(Object.assign({}, base, { zz: 0.1 })),
+            /* each colour key but the part's own (which the block above holds) named with a word where a colour goes */
+            notColour: Object.keys(PARTKEYS).filter(k => PARTKEYS[k] === 'colour' && k !== 'c').map(k => [k, ask(Object.assign({}, base, { [k]: 'red' }))]) };
         }, [GOOD]);
         if (K.laid) throw 'the made-up kitchen was refused: ' + K.laid;
         K.got.forEach(([k, kind, got]) => {
@@ -3138,6 +3143,7 @@ function findChromium() {
           else if (got !== 'taken') say('the kitchen ' + (got === 'refused' ? 'refuses' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ' (a ' + kind + ' on the one list of what a part may say), so the engine draws that part everywhere but in a kitchen');
         });
         if (K.stranger !== 'refused') say('the kitchen ' + (K.stranger === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says zz, which is on no list of what a part may say');
+        K.notColour.forEach(([k, got]) => { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part\'s ' + k + ' is the word "red", where a colour is #rrggbb'); });
         /* 2 · MADE SMALLER TO FIT: a thing too big for the counter, whose one part says every key of the list but glass. Its sizes
            shrink together, by one number under 1; what it is turned and stretched by, and its colours, stay as they were; where it
            stands is worked out again and its yaw turned to the room, so those two are not compared */
@@ -3163,6 +3169,48 @@ function findChromium() {
           });
         }
         console.log('  COUNT-ONLY: the one list of what a part may say: ' + keys.length + ' keys (' + keys.map(k => k + ' ' + L.list[k]).join(', ') + '); the kitchen asked to take a thing whose part says each of them, and one that says what no part says' + (S.none ? '' : '; a thing too big for the counter made smaller by its sizes alone'));
+      }
+      /* 3 · A PART SHADED INTO A SECOND COLOUR, read off the bytes the engine draws (t3BakeParts, the name tests call, and the
+         mesh t3MeshOf hands the scene): every corner the mix of the two colours for its own height as the part stands, its
+         colour at its highest corner and the second at its lowest, through the player's colour theme as well; four parts, one
+         leaning far over, so a shading along a part's own axis shows; the mesh drawn with the one material the time of day
+         tints; and a part with no second colour its one colour on every corner. Asked whether or not the list above exists. */
+      const SC = await op.evaluate(() => {
+        if (typeof THREE === 'undefined' || typeof t3BakeParts !== 'function' || typeof t3MeshOf !== 'function') return { none: true };
+        const C = new THREE.Color(), rgb = h => { C.set(h); return [C.r, C.g, C.b]; }, hex = (r, g, b) => '#' + C.setRGB(r, g, b).getHexString();
+        const THEME = h => '#' + (parseInt(h.slice(1), 16) ^ 0x5a5a5a).toString(16).padStart(6, '0');   /* a colour theme that moves every colour, both ends */
+        const PARTS = [['a box', { s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF', cb: '#000000' }],
+          ['a sphere', { s: 'sph', y: 0.3, r: 0.2, c: '#F0C040', cb: '#402010' }],
+          ['a cylinder leaning far over', { s: 'cyl', y: 0.3, r: 0.05, h: 0.6, rz: 1.2, ry: 0.4, c: '#80C0F0', cb: '#102030' }],
+          ['a ring stood on its edge', { s: 'torus', y: 0.3, r: 0.2, t: 0.04, c: '#E0E0E0', cb: '#202020' }]];
+        const out = [];
+        for (const [what, p] of PARTS) for (const [how, tint] of [['as asked', h => h], ['through a colour theme', THEME]]) {
+          const b = t3BakeParts([p], tint), n = b.pos.length / 3; let lo = Infinity, hi = -Infinity, vlo = 0, vhi = 0;
+          for (let v = 0; v < n; v++) { const y = b.pos[3 * v + 1]; if (y < lo) { lo = y; vlo = v; } if (y > hi) { hi = y; vhi = v; } }
+          const top = rgb(tint(p.c)), bot = rgb(tint(p.cb)); let worst = 0;
+          for (let v = 0; v < n; v++) { const k = (b.pos[3 * v + 1] - lo) / (hi - lo); for (let ch = 0; ch < 3; ch++) worst = Math.max(worst, Math.abs(b.col[3 * v + ch] - (bot[ch] + (top[ch] - bot[ch]) * k))); }
+          out.push({ what, how, n, worst, low: hex(b.col[3 * vlo], b.col[3 * vlo + 1], b.col[3 * vlo + 2]), high: hex(b.col[3 * vhi], b.col[3 * vhi + 1], b.col[3 * vhi + 2]), wantLow: tint(p.cb), wantHigh: tint(p.c) });
+        }
+        /* the same box, as the scene is handed it */
+        const p = PARTS[0][1], m = t3MeshOf([p], { probe: 'a second colour' }), col = m.geometry.attributes.color.array, b = t3BakeParts([p], tc);
+        let off = 0; for (let i = 0; i < col.length; i++) if (col[i] !== Math.fround(b.col[i])) off++;
+        const mats = m.children.length + 1, tinted = T3.tintables.includes(m.material);
+        const at = T3.tintables.indexOf(m.material); if (at >= 0) T3.tintables.splice(at, 1); m.geometry.dispose(); m.material.dispose();   /* the scene's list left as it was */
+        /* and a part with no second colour */
+        const one = t3BakeParts([{ s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF' }], h => h); let uneven = 0; for (let i = 0; i < one.col.length; i++) if (one.col[i] !== 1) uneven++;
+        return { out, off, of: col.length, mats, tinted, uneven };
+      });
+      if (SC.none) console.log('  COUNT-ONLY: this shell loads no 3D library, so a part shaded into a second colour was not built here');
+      else {
+        SC.out.forEach(r => {
+          if (r.worst <= 1e-6) return;
+          if (r.low === r.high) say(r.what + ', ' + r.how + ', is drawn in one colour, ' + r.low + ' from its foot to its top, where it was asked to shade from ' + r.wantHigh + ' at its top to ' + r.wantLow + ' at its foot');
+          else say(r.what + ', ' + r.how + ', is not shaded evenly by its height as it stands: its lowest corner is ' + r.low + ' and its highest ' + r.high + ', where ' + r.wantLow + ' and ' + r.wantHigh + ' were asked, and one corner is ' + r.worst.toFixed(3) + ' off the mix for its height');
+        });
+        if (SC.off) say('the mesh the scene is handed for a part with a second colour carries other colours than the engine\'s own bake through the player\'s colour theme: ' + SC.off + ' of ' + SC.of + ' values differ');
+        if (SC.mats !== 1 || !SC.tinted) say('a part with a second colour is drawn ' + (SC.mats !== 1 ? 'with ' + SC.mats + ' materials' : 'with a material the time of day does not tint') + ', so night does not fall on its two colours alike');
+        if (SC.uneven) say('a part with no second colour is not its one colour on every corner: ' + SC.uneven + ' values differ');
+        console.log('  COUNT-ONLY: a part shaded into a second colour: ' + SC.out.length / 2 + ' parts (' + SC.out.filter((r, i) => i % 2 === 0).map(r => r.what + ', ' + r.n + ' corners').join('; ') + '), each read corner by corner against the mix for its height, as asked and through a colour theme; the mesh the scene is handed; and a part with no second colour');
       }
     } catch (e) { if (typeof e === 'string') say(e); else say('the list could not be asked to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
     oErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
