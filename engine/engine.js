@@ -7684,6 +7684,39 @@ function youRing(dot){
   if(mapDest){const gx=mapDest.gx===undefined?mapDest.x:mapDest.gx,gy=mapDest.gy===undefined?mapDest.y:mapDest.gy;
     if(gx===dot[0]&&gy===dot[1])return 10.8;}
   return planMarks().some(m=>m.gx===dot[0]&&m.gy===dot[1])?8.4:0;}
+/* ---- AND THE RING IS SEE-THROUGH WHERE IT CROSSES A WORD ON THE MAP (2026-11-07) ----
+   A building's name is written over its door, and the ring stands round your own: the office's name runs through it,
+   and La Cocina's is centred on its door. The ring was drawn over those letters and hid them. Now, wherever the ring
+   crosses a word the plan writes (a building's name, any other label, the line under the plan), it is see-through over
+   the letters: the map as it was the moment before the ring is put back over each letter and RINGCLEAR canvas px round
+   it, so every letter keeps its own ground, the way a printed map breaks a road where a name crosses it. Everywhere else
+   the ring is the solid ring it was, pixel for pixel, and so is every ring that crosses no word. Only the ring: its
+   glow, its shadow and the marker inside it are drawn under it and stay as they are. */
+const RINGCLEAR=2;
+function planWord(g2,t,x,y){     /* a word just written on the plan: what, where, how, and the box its letters fill */
+  const m=g2.measureText(t);
+  return {t,x,y,font:g2.font,align:g2.textAlign,base:g2.textBaseline,ls:g2.letterSpacing,
+    b:[x-m.actualBoundingBoxLeft,y-m.actualBoundingBoxAscent,x+m.actualBoundingBoxRight,y+m.actualBoundingBoxDescent]};}
+function ringClear(g2,words,cx,cy,rc,bw){   /* called just before the ring (radius rc, bw wide) is drawn; returns what puts its words back through it, or null */
+  const R=rc+bw/2+1.5,e=RINGCLEAR+1,near=words.filter(q=>q.b[0]-e<cx+R&&q.b[2]+e>cx-R&&q.b[1]-e<cy+R&&q.b[3]+e>cy-R);
+  if(!near.length)return null;
+  const T=g2.getTransform(),X=Math.floor(T.a*cx+T.c*cy+T.e-R)-1,Y=Math.floor(T.b*cx+T.d*cy+T.f-R)-1,N=Math.ceil(2*R)+3;
+  const under=document.createElement("canvas");under.width=under.height=N;
+  const u=under.getContext("2d");u.drawImage(g2.canvas,-X,-Y);                /* the map round the ring, the moment before it */
+  return ()=>{const cut=document.createElement("canvas");cut.width=cut.height=N;
+    const k=cut.getContext("2d");k.setTransform(T.a,T.b,T.c,T.d,T.e-X,T.f-Y);
+    k.fillStyle=k.strokeStyle="#000";k.lineWidth=2*RINGCLEAR;k.lineJoin="round";
+    near.forEach(q=>{k.font=q.font;k.textAlign=q.align;k.textBaseline=q.base;if(k.letterSpacing!==undefined&&q.ls!==undefined)k.letterSpacing=q.ls;
+      k.fillText(q.t,q.x,q.y);k.strokeText(q.t,q.x,q.y);});                   /* each letter, and RINGCLEAR px round it */
+    /* only where the ring itself is drawn: nothing else moves. The band is the ring's width and 2 px more each side, so
+       every pixel the ring's soft edge touches lies wholly inside it and is put back whole. At 1 px more in all (until
+       2026-11-07, the day it was built) the band's own soft edge fell inside the ring's, a faint trace of the ring stayed
+       on a few pixels beside a letter, and a letter on the pale blue of where you are going lost 5% of its contrast in
+       one browser and 12% in another. */
+    k.globalCompositeOperation="destination-in";k.lineWidth=bw+4;
+    k.beginPath();k.arc(cx,cy,rc,0,7);k.stroke();
+    u.globalCompositeOperation="destination-in";u.drawImage(cut,0,0);
+    g2.save();g2.setTransform(1,0,0,1,0,0);g2.drawImage(under,X,Y);g2.restore();};}
 function drawTown(){
   const mc=$("mapcv"),g2=mc.getContext("2d"),s=10,panels=planPanels();
   const PW=Math.max(...panels.map(p2=>p2.ox+WORLDS[p2.world].W));
@@ -7723,13 +7756,15 @@ function drawTown(){
   const es=lang==="es";
   const flags=worldFlags();   /* the same facts the mural reads */
   g2.textAlign="center";
+  const words=[];                                       /* every word written on the plan, for the ring to keep clear of */
   (typeof TOWNLBL!=="undefined"?TOWNLBL:[]).forEach(l=>{
     if(l.when&&!l.when(flags))return;
     /* a label with no `world` belongs to the first panel, which is what every row meant before
        there was more than one — so an existing pack's labels do not move */
     const pn=l.world?planPanelOf(l.world):panels[0];if(!pn)return;
     g2.font="700 "+(l.s||10)+"px sans-serif";g2.fillStyle=l.c||"#3A2F17";
-    g2.fillText(es?l.es:l.en,(l.x+pn.ox)*s+(l.dx||0),(l.y+pn.oy)*s);});
+    const t=es?l.es:l.en,lx=(l.x+pn.ox)*s+(l.dx||0),ly=(l.y+pn.oy)*s;
+    g2.fillText(t,lx,ly);words.push(planWord(g2,t,lx,ly));});
   /* the caption had 8px and no room. 9px, a letter of tracking and four more pixels of paper: it
      is the line that explains the two colours, and it was the smallest type in the game.
      It promises the ◉ only where the ◉ is drawn: the same planHere() answers both, so the words and
@@ -7738,7 +7773,8 @@ function drawTown(){
   g2.fillStyle="rgba(58,44,20,.10)";g2.fillRect(0,w.H*s,mc.width,18);
   g2.fillStyle="#7B7361";g2.font="600 9px ui-monospace,monospace";
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0.4px";
-  g2.fillText((es?"puertas y escaleras en dorado":"doors & stairs in gold")+(dot?(es?" · ◉ estás aquí":" · ◉ you are here"):""),mc.width/2,w.H*s+12);
+  const cap=(es?"puertas y escaleras en dorado":"doors & stairs in gold")+(dot?(es?" · ◉ estás aquí":" · ◉ you are here"):"");
+  g2.fillText(cap,mc.width/2,w.H*s+12);words.push(planWord(g2,cap,mc.width/2,w.H*s+12));
   if(g2.letterSpacing!==undefined)g2.letterSpacing="0px";
   const ring=youRing(dot);
   if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;              /* a ring: your glow and shadow go UNDER the marker */
@@ -7749,8 +7785,10 @@ function drawTown(){
     g2.beginPath();g2.ellipse(dx2+1,dy2+4,5.4,2.2,0,0,7);g2.fill();}
   drawPlanMarks(g2,s); /* the marks go UNDER the dot: you can always see yourself */
   if(ring){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2,lw=2.2,rc=ring+lw/2;   /* and the ring over them: nothing covers you */
+    const clear=ringClear(g2,words,dx2,dy2,rc,lw+2);                          /* and you cover no word: see-through over its letters */
     g2.save();g2.strokeStyle="#F2F1EA";g2.lineWidth=lw+2;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();
-    g2.strokeStyle="#7A3FE0";g2.lineWidth=lw;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();g2.restore();}
+    g2.strokeStyle="#7A3FE0";g2.lineWidth=lw;g2.beginPath();g2.arc(dx2,dy2,rc,0,7);g2.stroke();g2.restore();
+    if(clear)clear();}
   else if(dot){const dx2=dot[0]*s+s/2,dy2=dot[1]*s+s/2;
     const hal=g2.createRadialGradient(dx2,dy2,1,dx2,dy2,13);     /* you are a light on the paper */
     hal.addColorStop(0,"rgba(122,63,224,.34)");hal.addColorStop(1,"rgba(122,63,224,0)");
@@ -7818,17 +7856,24 @@ function worldsNow(){ /* the places a player can walk into now, through the door
   (typeof TRV!=="undefined"&&Array.isArray(TRV)?TRV:[]).forEach(d=>{if(d)add(d.w);});
   while(todo.length)portalsOf(todo.shift()).forEach(d=>{if(d.p)add(d.p.to);});
   return seen;}
+/* AND NOT INTO THE BUILDING YOU ARE IN (2026-11-07). From the office every game starts in, nearly half its picks were
+   somebody in the office or upstairs: a flag on your own door, which sends you nowhere. Now, in a room, anybody in a
+   room of the building you are in is skipped, on any of its floors, while anybody elsewhere can be reached. Every room of
+   a building stands at that building's door on the paper (planPlace), the door you are drawn at (planHere), so the
+   building is read there. When nobody elsewhere can be reached it still picks inside, as before; on a street the plan
+   draws there is no building to skip; and anybody within two steps of you is still skipped, everywhere. */
 function mapRandomDest(){
-  const pool=[],now=worldsNow();
+  const pool=[],now=worldsNow(),door=planPanelOf(world)?null:planHere();   /* in a room: your building's door on the paper */
   Object.keys(WORLDS).forEach(id=>{
     if(!now.has(id))return;                                       /* not built yet, or no way in today */
     const pn=planPanelOf(id),at=pn?null:planPlace(id);if(!pn&&!at)return;   /* the map has to be able to show it */
     (WORLDS[id].npcs||[]).forEach(n=>{
     if(id===world&&Math.abs(n.x-px)+Math.abs(n.y-py)<=2)return;   /* not where you already are */
     if(!npcName(n.npc))return;                                    /* it has to be nameable */
-    pool.push({w:id,x:n.x,y:n.y,who:n.npc,gx:pn?n.x+pn.ox:at.gx,gy:pn?n.y+pn.oy:at.gy});});});
-  if(!pool.length)return false;
-  const p2=pool[(Math.random()*pool.length)|0];
+    pool.push({w:id,x:n.x,y:n.y,who:n.npc,gx:pn?n.x+pn.ox:at.gx,gy:pn?n.y+pn.oy:at.gy,inside:!!(door&&!pn&&at.gx===door[0]&&at.gy===door[1])});});});
+  const away=pool.filter(q=>!q.inside),from=away.length?away:pool;   /* the building you are in, only when nobody else can be reached */
+  if(!from.length)return false;
+  const p2=from[(Math.random()*from.length)|0];
   mapDest={w:p2.w,x:p2.x,y:p2.y,gx:p2.gx,gy:p2.gy,who:p2.who};
   drawTown();setWorldTag();mapNoteSet();
   return true;

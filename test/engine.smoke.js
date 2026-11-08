@@ -1197,7 +1197,7 @@ function findChromium() {
         if (CL.wallRy === undefined || Math.abs(CL.wallRy) > 1e-9) say('a closet with a plain wall to its north no longer faces south, as every closet did before (its turn is ' + CL.wallRy + ')');
       } else console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so the shapes and the closet were not asked');
       /* the gauge's and El Horno's shells are small fixtures for the engine's contract with a new world, and their engine checks sit near the
-         180 seconds their callers allow: the corner and the tools (about fifteen seconds of clicks) are asked of every other shell */
+         300 seconds their callers allow (180 until 2026-11-07): the corner and the tools (about fifteen seconds of clicks) are asked of every other shell */
       if (/content[\\/](gauge|horno)[\\/]/.test(idx)) throw 'SKIP8A';
       /* 3 · AT A CORNER, THE PIECE FACED: a back wall, a side wall, and the square where they meet; the slot, the frame and a press follow the way he looks */
       await kp.evaluate(() => {
@@ -3105,7 +3105,7 @@ function findChromium() {
      a kitchen that hands no things, or with a card of its own. On a page of its own: a made-up kitchen of the template's seven
      places on four columns and three free squares, gaps on, its things answered from a stock the page holds. Red first, each
      fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, sprint 6).
-     COST: it runs in every shell, the gauge's three among them, whose inner runs are stopped at 180 s (test/gauge.js, LIMIT_S) and
+     COST: it runs in every shell, the gauge's three among them, whose inner runs are stopped at 300 s (180 s until 2026-11-07; test/gauge.js, LIMIT_S) and
      take 170 s or so here without it, so it spends about two and a half seconds, not twenty: the flat camera, a swing that is at once, no wait
      that a click or a fired timer does not answer (the empty line's 2.6 s is read off the timer armed for it, and the timer is run,
      not waited out; the town's own check waits it out in real time). */
@@ -5849,11 +5849,25 @@ function findChromium() {
       if (sheet.n) {           /* on the paper, nothing drawn over the ◉. A disc: its own violet at its centre and round it, as it
                                   always was. A ring: its own violet all the way round (24 points on its band), wherever the
                                   paper does not cut it; and a ring only round a marker, or the destination, standing at that
-                                  door, because a ring round nothing is not where you are. The marker inside is section 17's */
+                                  door, because a ring round nothing is not where you are. The marker inside is section 17's.
+                                  And where a ring crosses a word the plan writes it is see-through over the letters, so a point
+                                  of its band within 4 px of a word's ink is not asked here: section 22 measures those letters */
         const g = src.getContext('2d');
+        let overWord = () => false;
+        if (!sheet.disc) {     /* the words the plan writes, read as its canvas is asked to write them, and drawn alone */
+          const words = [], real = g.fillText;
+          g.fillText = function (t, x, y, ...r) { words.push([String(t), x, y, this.font, this.textAlign, this.textBaseline, this.letterSpacing, this.getTransform()]); return real.call(this, t, x, y, ...r); };
+          try { drawTown(); } finally { delete g.fillText; if (g.fillText !== real) g.fillText = real; }
+          const wc = document.createElement('canvas'); wc.width = src.width; wc.height = src.height; const wq = wc.getContext('2d');
+          words.forEach(([t, x, y, font, al, base, ls, tf]) => { wq.setTransform(tf); wq.font = font; wq.textAlign = al; wq.textBaseline = base;
+            if (wq.letterSpacing !== undefined && ls !== undefined) wq.letterSpacing = ls; wq.fillStyle = '#fff'; wq.fillText(t, x, y); });
+          const wd = wq.getImageData(0, 0, wc.width, wc.height).data;
+          overWord = (x, y) => { for (let yy = Math.floor(y) - 4; yy <= Math.floor(y) + 4; yy++) for (let xx = Math.floor(x) - 4; xx <= Math.floor(x) + 4; xx++)
+            if (xx >= 0 && yy >= 0 && xx < wc.width && yy < wc.height && wd[(yy * wc.width + xx) * 4 + 3] >= 13) return true; return false; }; }
         const pts = sheet.disc ? ring(2.5) : [...Array(24).keys()].map(q => [Math.cos(q * Math.PI / 12) * sheet.r, Math.sin(q * Math.PI / 12) * sheet.r]);
         pts.forEach(([dx, dy]) => { const x = sheet.cx + dx, y = sheet.cy + dy;
           if (!sheet.disc && (x < 0 || y < 0 || x >= src.width || y >= src.height)) return;   /* where the paper's own edge cuts a ring */
+          if (overWord(x, y)) return;                                                          /* where it is see-through over a word */
           const d = g.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
           if (!(d[2] > d[0] + 20 && d[2] > d[1] + 60)) out.under.push(d[0] + ',' + d[1] + ',' + d[2]); });
         out.under = [...new Set(out.under)];
@@ -7057,7 +7071,9 @@ function findChromium() {
                 centre, drawn alone) looks as it does with no ◉ in at least 90% of its pixels, and is inside the ring's violet;
               · the ring has no flag: with nothing chosen, everything the ◉ adds to the plan is within 16 pixels of the door,
                 and past the ring's own edge it is only a glow, no channel more than 40 from the plan with no ◉.
-            Written red on mq-v251, which drew the solid ◉ over the marker at the office's door. */
+            Written red on mq-v251, which drew the solid ◉ over the marker at the office's door. Since mq-v253 the ring is
+            see-through where it crosses a word the plan writes (section 22), so its own shape is read on the plan drawn
+            with no word written, and what a player sees round it on the plan as drawn. */
     {
       const { ctx, p } = await page2(1280, 800);
       if (!await begin(p)) MP.push('the game did not start, so the ring round a marker at your own door was not asked about — nothing to measure is not a pass');
@@ -7077,13 +7093,19 @@ function findChromium() {
             const rgb = h => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(h || '')); return m ? [1, 2, 3].map(i => parseInt(m[i], 16)) : null; };
             const at = (m, x, y) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f];
             /* the plan as the engine draws it now, with or without its ◉: its pixels, and each mark it paints (where, which
-               kind, how big, under which transform), and the transform the destination is drawn under */
-            const paint = noDot => { const marks = []; let tf = null, sP = 10;
+               kind, how big, under which transform), and the transform the destination is drawn under. Where the ring
+               crosses a word the plan writes it is see-through over the letters (section 22), so the ◉'s own shape (where
+               it is, disc or ring, its violet's reach) is read on the same plan drawn with no word written on any canvas,
+               where nothing is over it; what a player sees round it is read on the plan as drawn */
+            const paint = noDot => { const marks = []; let tf = null, sP = 10, you = null, bare = null;
+              if (!noDot) { const CP = CanvasRenderingContext2D.prototype, rf = CP.fillText, rs = CP.strokeText;
+                CP.fillText = function () {}; CP.strokeText = function () {};
+                try { drawTown(); you = __mqYou(src); bare = g.getImageData(0, 0, src.width, src.height).data; } finally { CP.fillText = rf; CP.strokeText = rs; } }
               drawMark = function (gg, cx, cy, k, r) { if (gg && gg.canvas === src) marks.push({ cx, cy, k, r, tf: gg.getTransform() }); return real.drawMark.apply(this, arguments); };
               drawPlanMarks = function (g2, s) { tf = g2.getTransform(); sP = s; return real.drawPlanMarks.apply(this, arguments); };
               if (noDot) planHere = () => null;
               try { drawTown(); } finally { drawMark = real.drawMark; drawPlanMarks = real.drawPlanMarks; planHere = real.planHere; }
-              return { d: g.getImageData(0, 0, src.width, src.height).data, marks, tf, sP, you: noDot ? null : __mqYou(src) }; };
+              return { d: g.getImageData(0, 0, src.width, src.height).data, bare, marks, tf, sP, you }; };
             /* one thing drawn by itself on black and on white, the plan's size and under its transform: how opaque each of
                its pixels is, and its colour */
             const alone = draw => { const [K, Wt] = ['#000000', '#ffffff'].map(bg => { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
@@ -7107,7 +7129,7 @@ function findChromium() {
                 const iso = alone(q => { q.setTransform(mk.tf); real.drawMark(q, mk.cx, mk.cy, mk.k, mk.r); });
                 const S = box(M[0], M[1], 4 * mk.r).filter(([, , i]) => { const v = iso(i); return v.a >= 0.95 && v.c && far2(v.c, 0, own) <= 900; });
                 const mine = d => S.filter(([, , i]) => far2(d, i, own) <= 900);
-                const v = violet(A.d, C[0], C[1]), inB = mine(B.d);
+                const v = violet(A.bare, C[0], C[1]), inB = mine(B.d);
                 Object.assign(r, { kind: mk.k, nA: mine(A.d).length, nB: inB.length, reach: inB.reduce((a, q) => Math.max(a, Math.hypot(q[0] + 0.5 - C[0], q[1] + 0.5 - C[1])), 0), inner: v.lo, outer: v.hi });
                 /* AND THE RING HAS NO FLAG: what the ◉ adds to the plan, held against the plan with no ◉ (the strip of words
                    under the plan says "◉ you are here" only where a ◉ is drawn, so it is left out) */
@@ -7125,7 +7147,7 @@ function findChromium() {
                   /* the disc it stands in: its paint straight out to the left of its centre, where neither its pole nor its flag is */
                   let Ro = 0; for (let k = 0; k < 40; k++) { const x = Math.floor(C[0]) - 1 - k, y = Math.floor(C[1]); if (x < 0 || y < 0 || y >= src.height || isoD((y * src.width + x) * 4).a < 0.9) { Ro = k; break; } }
                   const SD = box(C[0], C[1], Ro + 1).filter(([, , i, rr]) => rr <= Ro + 0.5 && isoD(i).a >= 0.95);
-                  const v2 = violet(A2.d, C[0], C[1]);
+                  const v2 = violet(A2.bare, C[0], C[1]);
                   r.dest = { you: A2.you.n ? { disc: !!A2.you.disc, off: Math.hypot(A2.you.cx - C[0], A2.you.cy - C[1]) } : null, n: SD.length, Ro,
                     same: SD.filter(([, , i]) => far2(A2.d, i, [B2.d[i], B2.d[i + 1], B2.d[i + 2]]) <= 576).length, inner: v2.lo, outer: v2.hi,
                     nA: mine(A2.d).length, nB: mine(B2.d).length };
@@ -7480,6 +7502,280 @@ function findChromium() {
         }
         if (moved.length) MP.push('Choosing or clearing where I am going moves the map under my finger: ' + moved.slice(0, 3).join('; ') + (moved.length > 3 ? '; and ' + (moved.length - 3) + ' more' : '') + ' — only turning the edge arrow on or off may move it');
         MN.push('COUNT-ONLY: the plan\'s top was read in ' + places + ' opening(s) of the map (' + rounds + ' round(s) of sizes, languages and the edge arrow off and on), each with up to four destinations chosen and cleared' + (noSwitch ? '; this game\'s map has no switch for the edge arrow, so it was asked with the arrow as it is' : ''));
+      }
+      await ctx.close();
+    }
+
+    /* 21 · "SOMEWHERE TO GO" SKIPS THE BUILDING YOU ARE IN WHILE ANYONE ELSE CAN BE REACHED. At the start of a game the player
+            is put in every room the map shows at a door (placesNow: the office where a game starts, its upper floor, and every
+            other room the city has then), and "Somewhere to go" is pressed with its random number swept over its whole range.
+            The building a room is in is read where the map shows it, never from the picker: every room the map shows at the
+            door you are drawn at when you stand in it (planHere, which section 1 holds to the ◉ on the paper and to a door
+            that leads into that room), its other floors among them. Rooms joined only by a passage, each drawn at a door of
+            its own, are separate buildings. Then:
+              · while anyone outside that building is picked, nobody inside it is, on any of its floors;
+              · with nobody outside it to reach (everyone else taken off the map for the check, and put back), a pick still
+                lands inside it, wherever someone there stands more than two steps away;
+              · and there the two-step skip holds, as before: standing beside someone in the building, with nobody outside it
+                to reach, nobody two steps away or fewer is picked;
+              · on a street the plan draws there is no building to skip: from there a pick still lands in the office.
+            Written red on mq-v252, which skipped only the people within two steps of you, so from the office it sent you to
+            the office or upstairs nearly half the time.
+            Sections 22 and 23 below share its page and its game: 21 and 23 ask where a game starts, before 22 opens every
+            district. */
+    {
+      const { ctx, p } = await pageAt(1280, 800, false, 'the map was asked where “Somewhere to go” sends you, where the ring crosses a name and after the screen turned');
+      if (!await begin(p)) MP.push('the game did not start, so where “Somewhere to go” sends you, where the ring crosses a name and whether the map holds still after the screen turns were not asked — nothing to measure is not a pass');
+      else if (!await mapOpen(p)) MP.push('the map button could not be pressed, so where “Somewhere to go” sends you, where the ring crosses a name and whether the map holds still after the screen turns were not asked');
+      else {
+        await p.evaluate(MAPHELP());
+        const S = await p.evaluate(() => {
+          const out = { rooms: [], streets: [], why: [] }, btn = document.getElementById('mapAny');
+          if (!btn) { out.why.push('there is no “Somewhere to go” in the map'); return out; }
+          const drawn = new Set(planPanels().map(q => q.world));
+          /* where the map shows a room: the door you are drawn at, standing in it. The building a room is in: every room the
+             map shows at that door */
+          const shownAt = id => { const was2 = world; world = id; try { const h = planHere(); return h ? h[0] + ',' + h[1] : null; } finally { world = was2; } };
+          const building = id => { const at = shownAt(id); return new Set(Object.keys(WORLDS).filter(w => !drawn.has(w) && !/^__/.test(w) && shownAt(w) === at)); };
+          const named = B => [...B].some(w => (WORLDS[w].npcs || []).some(q => npcName(q.npc)));
+          const people = Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0), M = Math.max(8, people + 2);   /* every place in the list it picks from, as section 13 sweeps it */
+          const real = Math.random, was = { world, px, py, fx, fy, mapDest };
+          const sweep = () => { const picks = new Map();
+            for (let i = 0; i < M; i++) { Math.random = () => (i + 0.5) / M; mapDest = null; try { btn.click(); } finally { Math.random = real; }
+              if (mapDest && !picks.has(mapDest.w + '|' + mapDest.who)) picks.set(mapDest.w + '|' + mapDest.who, { w: mapDest.w, x: mapDest.x, y: mapDest.y, who: mapDest.who }); }
+            mapDest = null; return [...picks.values()]; };
+          const nm = q => (npcName(q.who) || q.who) + ' (' + __mqMap.placeName(q.w) + ')';
+          const steps = (q, w, x, y) => q.w === w ? Math.abs(q.x - x) + Math.abs(q.y - y) : Infinity;
+          const free = (w, x, y) => { const W = WORLDS[w]; return x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.rows[y][x]) && W.grid[y][x] !== 'N' && !(W.npcs || []).some(n => n.x === x && n.y === y); };
+          /* everyone outside the building taken off the map while f runs, and put back */
+          const alone = (B, f) => { const kept = {}; Object.keys(WORLDS).forEach(id => { if (!B.has(id)) { kept[id] = WORLDS[id].npcs; WORLDS[id].npcs = []; } });
+            try { return f(); } finally { Object.keys(kept).forEach(id => { WORLDS[id].npcs = kept[id]; }); } };
+          try {
+            __mqMap.placesNow().forEach(pl => {
+              if (drawn.has(pl.id) || !shownAt(pl.id)) return;       /* a street the plan draws, or a place the map cannot show */
+              const B = building(pl.id), r = { name: pl.name, floors: [...B].map(__mqMap.placeName) };
+              if (!named(B)) return;                                 /* nobody in it to pick */
+              world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
+              const all = sweep();
+              Object.assign(r, { n: all.length, inside: all.filter(q => B.has(q.w)).map(nm), outside: all.filter(q => !B.has(q.w)).length });
+              /* with nobody outside it to reach: who in it could be picked (named, and more than two steps away), and who is */
+              const could = [...B].reduce((n, w) => n + (WORLDS[w].npcs || []).filter(q => npcName(q.npc) && steps({ w, x: q.x, y: q.y }, world, px, py) > 2).length, 0);
+              r.alone = { could, n: alone(B, sweep).length };
+              /* and standing beside someone in it, nobody two steps away or fewer */
+              let side = null;
+              for (const w of B) { for (const q of (WORLDS[w].npcs || [])) { if (!npcName(q.npc)) continue;
+                  const at = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [q.x + dx, q.y + dy]).find(([x, y]) => free(w, x, y));
+                  if (at) { side = { w, at, who: npcName(q.npc) }; break; } }
+                if (side) break; }
+              if (side) { world = side.w; px = fx = side.at[0]; py = fy = side.at[1];
+                const got = alone(B, sweep);
+                r.beside = { who: side.who, n: got.length, near: got.filter(q => steps(q, world, px, py) <= 2).map(q => nm(q) + ', ' + steps(q, world, px, py) + ' step(s) away') }; }
+              out.rooms.push(r); });
+            /* on a street the plan draws there is no building to skip */
+            const home = PL.home && WORLDS[PL.home] && !drawn.has(PL.home) && shownAt(PL.home) ? building(PL.home) : null;
+            const homeCan = home ? named(home) : false;
+            if (homeCan) __mqMap.placesNow().forEach(pl => { if (!drawn.has(pl.id)) return;
+              world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
+              const all = sweep();
+              out.streets.push({ name: pl.name, n: all.length, home: all.filter(q => home.has(q.w)).length, homeName: __mqMap.placeName(PL.home) }); });
+          } finally { Math.random = real; world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown();
+            if (typeof setWorldTag === 'function') setWorldTag(); if (typeof mapNoteSet === 'function') mapNoteSet(); }
+          return out; });
+        S.why.forEach(w => MP.push('“Somewhere to go” was not asked whether it skips the building I am in: ' + w));
+        const list = a => a.slice(0, 3).join('; ') + (a.length > 3 ? '; and ' + (a.length - 3) + ' more' : '');
+        S.rooms.forEach(r => {
+          const its = r.floors.length > 1 ? ' (' + r.floors.join(', ') + ')' : '';
+          if (r.inside.length && r.outside) MP.push('At the start of a game, in ' + r.name + ', “Somewhere to go” sent me inside the building I am in' + its + ' while ' + r.outside + ' people elsewhere could be reached: ' + r.inside.length + ' of the ' + r.n + ' people it picked, ' + list(r.inside));
+          if (r.alone.could && !r.alone.n) MP.push('In ' + r.name + ', with nobody outside the building I am in to reach, “Somewhere to go” sent me nowhere, though ' + r.alone.could + ' people in it stand more than two steps away — when nobody else can be reached, a pick may still land inside it');
+          if (r.beside && r.beside.near.length) MP.push('Standing right beside ' + r.beside.who + ' in ' + r.name + ', with nobody outside the building to reach, “Somewhere to go” sent me to someone two steps away or fewer: ' + list(r.beside.near));
+        });
+        S.streets.forEach(s => { if (!s.home) MP.push('On ' + s.name + ', “Somewhere to go” never sent me into ' + s.homeName + ' (it picked ' + s.n + ' people): on a street there is no building to skip'); });
+        if (!S.rooms.length) MN.push('COUNT-ONLY: no room a door from a street the plan draws leads into could be stood in at the start of a game, so whether “Somewhere to go” skips the building you are in was not asked');
+        else MN.push('COUNT-ONLY: “Somewhere to go” was swept from ' + S.rooms.length + ' room(s) at the start of a game: ' + S.rooms.map(r => r.name + ', ' + r.n + ' picked, ' + r.inside.length + ' inside its building, ' + r.alone.n + ' with nobody outside it' + (r.beside ? ', ' + r.beside.n + ' beside ' + r.beside.who : '')).join('; ') + (S.streets.length ? '; and from ' + S.streets.length + ' street(s) the plan draws, ' + S.streets.map(s => s.home + ' of ' + s.n + ' in ' + s.homeName).join(', ') : ''));
+        await mapShut(p);
+
+        /* 23 · AND IT HOLDS STILL AFTER THE SCREEN TURNS WITH THE MAP OPEN. A phone held sideways (844×390) opens the map with its
+                button in the office where a game starts, in each language; with the map still open the phone is turned upright
+                (390×844); then the longest names it can choose there (the marker and the person "Somewhere to go" picks whose lines
+                under the map are the longest, as section 20 finds them) are each chosen and cleared, and the top of the plan is
+                read before, after choosing and after clearing: it may not move by half a pixel. Turned this way because upright is
+                the taller line: held sideways every name fits on one line, and upright the longest takes two, so a map that measured
+                its line only as it opened, and not again when the screen turned, moves under the finger here (section 20 opens the
+                map afresh at each size, so it cannot see that). Written red on a copy of mq-v252 whose window no longer measured
+                the line again when it changed size with the map open, which every other section passed; green on mq-v252. */
+        {
+          const langs = await langsOf(p), turned = [], said = []; let asked = 0;
+          for (const L of langs) {
+            await mapShut(p); await p.setViewportSize({ width: 844, height: 390 }); await rafs(p);
+            await setLang(p, L);
+            if (!await mapOpen(p)) { MP.push('the map button could not be pressed on a phone held sideways (' + inLang(L) + '), so whether the map holds still after the screen turns was not asked'); continue; }
+            /* the longest lines it can say from here: a marker's, and a person's "Somewhere to go" picks */
+            const D = await p.evaluate(() => {
+              const t = T(), pl = t.plan || {}, tail = pl.chosen ? '  ·  ' + pl.chosen : '', line = (who, w) => ('🎯 ' + ((who && npcName(who)) || (t.locs || {})[w] || '') + tail).length, out = [];
+              const marks = planMarks().map(m => ({ how: 'tap', gx: m.gx, gy: m.gy, len: line(m.who, m.w) })).sort((a, b) => b.len - a.len);
+              if (marks.length) out.push(marks[0]);
+              const btn = document.getElementById('mapAny'), people = [], M = Math.max(8, Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0) + 2);
+              if (btn) { for (let i = 0; i < M; i++) { const v = (i + 0.5) / M; mapDest = null; const r = Math.random; Math.random = () => v;   /* every place in the list it picks from */
+                  try { btn.click(); } finally { Math.random = r; }
+                  if (mapDest) people.push({ how: 'any', v, len: line(mapDest.who, mapDest.w) }); } }
+              people.sort((a, b) => b.len - a.len); if (people.length) out.push(people[0]);
+              mapDest = null; drawTown(); if (typeof mapNoteSet === 'function') mapNoteSet(); if (typeof setWorldTag === 'function') setWorldTag();
+              return out; });
+            if (!D.length) { await mapShut(p); MN.push('COUNT-ONLY: there is nothing to choose on this game\'s map (' + inLang(L) + '), so whether it holds still after the screen turns was not asked'); continue; }
+            await p.setViewportSize({ width: 390, height: 844 }); await rafs(p, 3);         /* turned upright, the map still open */
+            const r = await p.evaluate(D => {
+              const ov = document.getElementById('mapov'), area = c => { const q = c.getBoundingClientRect(); return q.width * q.height; };
+              const plan = () => [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+              const top = () => { const c = plan(); return c ? c.getBoundingClientRect().top : NaN; };
+              const note = document.getElementById('mapNote');
+              const lines = () => { if (!note) return 0; const rg = document.createRange(); rg.selectNodeContents(note); return new Set([...rg.getClientRects()].map(q => Math.round(q.top))).size; };
+              const box = document.querySelector('#mapov .box') || ov; box.scrollTop = 0;
+              if (ov.hidden) return { shut: true };
+              const t0 = top(), out = [];
+              if (!isFinite(t0)) return { none: true };
+              D.forEach(d => {
+                mapDest = null;
+                if (d.how === 'tap') mapPick(d.gx + 0.5, d.gy + 0.5);
+                else { const r = Math.random; Math.random = () => d.v; try { document.getElementById('mapAny').click(); } finally { Math.random = r; } }
+                if (!mapDest) return;
+                const name = ((note || {}).textContent || '').trim(), t1 = top(), n = lines();
+                mapPick((mapDest.gx === undefined ? mapDest.x : mapDest.gx) + 0.5, (mapDest.gy === undefined ? mapDest.y : mapDest.gy) + 0.5);
+                if (mapDest) { mapDest = null; drawTown(); setWorldTag(); mapNoteSet(); }                  /* cleared as the engine clears one, where a tap does not (section 19's to say) */
+                out.push({ name, lines: n, d1: +(t1 - t0).toFixed(1), d2: +(top() - t0).toFixed(1) }); });
+              return { out }; }, D);
+            await mapShut(p);
+            if (r.shut) { MP.push('turning the phone upright closed the map (' + inLang(L) + '), where it stays open'); continue; }
+            if (r.none) { MP.push('I turned the phone upright with the map open (' + inLang(L) + ') and the box shows no plan to measure — nothing to measure is not a pass'); continue; }
+            r.out.forEach(o => { asked++; said.push('“' + o.name + '” on ' + o.lines + ' line(s), ' + inLang(L));
+              if (Math.abs(o.d1) > 0.5 || Math.abs(o.d2) > 0.5) turned.push(inLang(L) + ', choosing “' + o.name + '” moved the plan ' + Math.abs(o.d1) + ' px ' + (o.d1 < 0 ? 'up' : 'down') + (Math.abs(o.d2) > 0.5 ? ', and clearing it left it ' + Math.abs(o.d2) + ' px ' + (o.d2 < 0 ? 'up' : 'down') : ', and clearing it put it back')); });
+          }
+          if (turned.length) MP.push('I opened the map on a phone held sideways and turned it upright with the map still open, and choosing or clearing where I am going moved the map under my finger: ' + turned.join('; ') + ' — the line under the map is measured again when the screen turns');
+          MN.push('COUNT-ONLY: a phone held sideways opened the map, was turned upright with it open, and ' + asked + ' name(s) were chosen and cleared there' + (said.length ? ': ' + said.join('; ') : ''));
+        }
+
+        /* 22 · WHERE THE RING CROSSES A NAME IT IS SEE-THROUGH OVER THE LETTERS, AND SOLID EVERYWHERE ELSE. At the seven sizes, in
+                each language, at the start of a game and with every district open and every quest still to do, the map is opened
+                with its button and the player put in every place a door leads to (placesNow); wherever the ◉ is a ring (a marker
+                at your own door, and that marker chosen there as where you are going), the plan is drawn twice in the page: as the
+                engine draws it, and with no word written on any canvas at all. Each is read at its end and at the end of its
+                marks, before anything after them, which is the ring. So the same map with only the ring left out is the first
+                drawing at the end of its marks (the ring's glow and shadow are drawn under the marks, so they stay), and the
+                ring's own pixels are where the second differs from itself at the end of its marks. Each word the plan writes (the
+                pack's names and labels, and the line under the plan), read as its canvas is asked to write it, is drawn alone and
+                split into its letters where the canvas measures them. Then:
+                  · each letter under the ring (its ink, or a pixel beside its ink, on the ring's pixels) keeps at least 90% of the
+                    contrast it has on the map with only the ring left out: the difference between the luminance of its ink and
+                    that of the pixels beside its ink, the same pixels on both maps;
+                  · everywhere else the ring is what it is with no word on the map at all: on its pixels more than 4 px from any
+                    letter's ink nothing differs, so it is see-through over the letters only, never fainter everywhere.
+                The plan is one sheet, drawn the same whatever the window and shown scaled pixel for pixel, so it is measured as it
+                is drawn at each size. Written red on mq-v252, which drew the ring over the letters of the office's name at its
+                door and of La Cocina's at its own. */
+        {
+          const ringLetters = () => {
+            const src = document.getElementById('mapcv'), g = src.getContext('2d'), CP = CanvasRenderingContext2D.prototype, rf = CP.fillText, rs = CP.strokeText, rdm = drawPlanMarks;
+            /* the plan as the engine draws it, at its end and at the end of its marks, and the words it wrote before then */
+            const draw = noWords => { let pre = null; const words = [];
+              if (noWords) { CP.fillText = function () {}; CP.strokeText = function () {}; }
+              else g.fillText = function (t, x, y, ...r) { if (!pre) words.push({ t: String(t), x, y, font: this.font, align: this.textAlign, base: this.textBaseline, ls: this.letterSpacing, tf: this.getTransform() }); return rf.call(this, t, x, y, ...r); };
+              drawPlanMarks = function () { const r = rdm.apply(this, arguments); pre = g.getImageData(0, 0, src.width, src.height).data; return r; };
+              try { drawTown(); } finally { drawPlanMarks = rdm; delete g.fillText; if (g.fillText !== rf) g.fillText = rf; CP.fillText = rf; CP.strokeText = rs; }
+              return { now: g.getImageData(0, 0, src.width, src.height).data, pre, words }; };
+            const F = draw(true), you = __mqYou(src), A = draw(false), W = src.width, H = src.height;
+            if (!you.n || you.disc) return { ring: false };
+            if (!F.pre || !A.pre) return { ring: true, none: 'its marks were not drawn through drawPlanMarks, so the map with only the ring left out could not be drawn' };
+            const dif = (a, b, i) => Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2]));
+            /* the ring's own pixels: where the drawing with no word differs from itself at the end of its marks */
+            const foot = new Uint8Array(W * H); let x0 = W, y0 = H, x1 = -1, y1 = -1, nF = 0;
+            for (let j = 0; j < W * H; j++) if (dif(F.now, F.pre, j * 4) > 6) { foot[j] = 1; nF++; const x = j % W, y = (j / W) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+            if (!nF) return { ring: true, none: 'nothing is drawn after its marks, so where the ring lies could not be found' };
+            const c = document.createElement('canvas'); c.width = W; c.height = H; const q = c.getContext('2d');
+            const at = (tf, x, y) => [tf.a * x + tf.c * y + tf.e, tf.b * x + tf.d * y + tf.f];
+            const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+            const lum = (d, j) => 0.2126 * lin(d[j * 4]) + 0.7152 * lin(d[j * 4 + 1]) + 0.0722 * lin(d[j * 4 + 2]);
+            const nearInk = new Uint8Array(W * H), out = { ring: true, letters: [], fainter: 0, foot: nF };
+            A.words.forEach(w => {
+              q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, W, H);
+              q.setTransform(w.tf); q.font = w.font; q.textAlign = w.align; q.textBaseline = w.base; if (q.letterSpacing !== undefined && w.ls !== undefined) q.letterSpacing = w.ls;
+              const m = q.measureText(w.t), p0 = at(w.tf, w.x - m.actualBoundingBoxLeft, w.y - m.actualBoundingBoxAscent), p1 = at(w.tf, w.x + m.actualBoundingBoxRight, w.y + m.actualBoundingBoxDescent);
+              const bx0 = Math.max(0, Math.floor(Math.min(p0[0], p1[0])) - 2), by0 = Math.max(0, Math.floor(Math.min(p0[1], p1[1])) - 2);
+              const bx1 = Math.min(W - 1, Math.ceil(Math.max(p0[0], p1[0])) + 2), by1 = Math.min(H - 1, Math.ceil(Math.max(p0[1], p1[1])) + 2);
+              if (bx1 < x0 - 6 || bx0 > x1 + 6 || by1 < y0 - 6 || by0 > y1 + 6) return;                   /* nowhere near the ring */
+              q.fillStyle = '#fff'; rf.call(q, w.t, w.x, w.y);
+              const bw = bx1 - bx0 + 1, a = q.getImageData(bx0, by0, bw, by1 - by0 + 1).data;
+              const al = (x, y) => x < bx0 || y < by0 || x > bx1 || y > by1 ? 0 : a[((y - by0) * bw + (x - bx0)) * 4 + 3];
+              for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (al(x, y) >= 13)
+                for (let yy = Math.max(0, y - 4); yy <= Math.min(H - 1, y + 4); yy++) for (let xx = Math.max(0, x - 4); xx <= Math.min(W - 1, x + 4); xx++) nearInk[yy * W + xx] = 1;
+              /* its letters, where the canvas measures them: each one's ink, and the pixels beside its ink */
+              const cps = Array.from(w.t), start = w.align === 'center' ? w.x - m.width / 2 : (w.align === 'right' || w.align === 'end') ? w.x - m.width : w.x;
+              let done = 0;
+              cps.forEach((ch, n) => { const upto = q.measureText(cps.slice(0, n + 1).join('')).width, xs = at(w.tf, start + done, w.y)[0], xe = at(w.tf, start + upto, w.y)[0]; done = upto;
+                if (!ch.trim()) return;
+                const I = [], G = [], seen = new Set();
+                for (let y = by0; y <= by1; y++) for (let x = Math.max(bx0, Math.floor(xs)); x <= Math.min(bx1, Math.ceil(xe)); x++) if (x + 0.5 >= xs && x + 0.5 < xe && al(x, y) >= 128) I.push(y * W + x);
+                I.forEach(j => { const x = j % W, y = (j / W) | 0;
+                  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const X = x + dx, Y = y + dy, k = Y * W + X;
+                    if (X >= 0 && Y >= 0 && X < W && Y < H && al(X, Y) <= 25 && !seen.has(k)) { seen.add(k); G.push(k); } }); });
+                if (!I.length || !G.length || !(I.some(j => foot[j]) || G.some(j => foot[j]))) return;      /* the ring does not cross it */
+                const con = d => { let li = 0, lg = 0; I.forEach(j => { li += lum(d, j); }); G.forEach(j => { lg += lum(d, j); }); return Math.abs(li / I.length - lg / G.length); };
+                out.letters.push({ word: w.t, ch, now: con(A.now), was: con(A.pre) }); }); });
+            /* and everywhere else the ring is what it is with no word on the map at all */
+            let through = 0;
+            for (let j = 0; j < W * H; j++) if (foot[j]) { const dd = dif(A.now, F.now, j * 4); if (dd > 6) through++; if (!nearInk[j] && dd > 2) out.fainter++; }
+            out.through = through / nF;                               /* how much of the ring is see-through here, for the line printed below */
+            return out; };
+          await p.evaluate('(() => { window.__mqRing = ' + ringLetters + '; return true; })()');
+          /* where a ring can be at all: a place whose door, where the map shows you, carries a marker, in either state of the city */
+          const grow = g => { if (g && typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); } };
+          const ringAt = () => { const was = { world, px, py, fx, fy }; let n = 0;
+            try { __mqMap.placesNow().forEach(pl => { world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; const h = planHere(); if (h && planMarks().some(m => m.gx === h[0] && m.gy === h[1])) n++; }); }
+            finally { world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; }
+            return n; };
+          const langs = await langsOf(p), bad = new Map(), fainter = [], none = [], hid = new Set(), mostly = new Map(); let rings = 0, letters = 0, low = null, opened = 0;
+          for (const grown of [false, true]) {
+            const when = grown ? 'with every district open and every quest still to do' : 'at the start of a game';
+            await p.evaluate(grow, grown);
+            if (!await p.evaluate(ringAt)) continue;                                  /* no marker at any door you can stand behind */
+            let wasFull = false;
+            for (const [w, h, size, , full] of SEVEN) {
+              await mapShut(p); await sizeTo(p, w, h, full, wasFull); wasFull = !!full;
+              for (const L of langs) {
+                await setLang(p, L);
+                if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + size + ', ' + inLang(L) + ', ' + when + '), so the ring was not measured where it crosses a name'); continue; }
+                opened++;
+                const R = await p.evaluate(() => { const was = { world, px, py, fx, fy, mapDest }, res = [];
+                  try {
+                    __mqMap.placesNow().forEach(pl => {
+                      world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
+                      const here = planHere(); if (!here || !planMarks().some(m => m.gx === here[0] && m.gy === here[1])) return;   /* no marker at this door: no ring (section 1's to say) */
+                      res.push(Object.assign({ name: pl.name, dest: false }, __mqRing()));
+                      mapDest = null;
+                      if (mapPick(here[0] + 0.5, here[1] + 0.5) && mapDest && mapDest.gx === here[0] && mapDest.gy === here[1]) res.push(Object.assign({ name: pl.name, dest: true }, __mqRing()));
+                      mapDest = null; });
+                  } finally { world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown(); }
+                  return res; });
+                await mapShut(p);
+                R.forEach(r => { if (!r.ring) return; rings++;
+                  const where = r.name + (r.dest ? ', its marker chosen as where I am going' : '') + ' (' + size + ', ' + inLang(L) + ', ' + when + ')';
+                  if (r.none) { none.push(where + ': ' + r.none); return; }
+                  if (r.fainter) fainter.push(where + ': ' + r.fainter + ' pixel(s)');
+                  if (r.through > 0.5) { const k = r.name + (r.dest ? ' (its marker chosen)' : ''); mostly.set(k, Math.max(mostly.get(k) || 0, r.through)); }
+                  r.letters.forEach(t => { letters++;
+                    if (t.was < 0.02) { hid.add('“' + t.ch + '” of “' + t.word + '”'); return; }   /* hidden already with no ring, under the marker or the destination */
+                    const k = t.now / t.was; if (!low || k < low.k) low = { k, t, where };
+                    if (k < 0.9) { const key = r.name + '|' + t.word + '|' + t.ch, e = bad.get(key); if (!e || k < e.k) bad.set(key, { k, t, where }); } }); });
+              }
+            }
+            if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          }
+          if (bad.size) { const B = [...bad.values()].sort((a, b) => a.k - b.k);
+            MP.push('I opened the map where I am a ring round my own door, and the ring hides letters of a name: ' + B.slice(0, 3).map(e => '“' + e.t.ch + '” of “' + e.t.word + '” keeps ' + Math.round(100 * e.k) + '% of the contrast it has with only the ring left out, in ' + e.where).join('; ') + (B.length > 3 ? '; and ' + (B.length - 3) + ' more letter(s)' : '') + ' — every letter under the ring keeps 90%'); }
+          if (fainter.length) MP.push('Where it crosses no letter, the ring is not drawn as it is with no word on the map, so it is fainter everywhere rather than see-through over the letters: in ' + fainter.slice(0, 3).join('; ') + (fainter.length > 3 ? '; and ' + (fainter.length - 3) + ' more' : ''));
+          if (none.length) MP.push('Where I am a ring, the letters under it could not be measured: ' + none.slice(0, 3).join('; ') + ' — nothing to measure is not a pass');
+          if (mostly.size) MN.push('COUNT-ONLY: where words cover most of it, the ring is see-through over more than half its length: ' + [...mostly].map(([k, f]) => k + ' ' + Math.round(100 * f) + '%').join(', ') + ' — there you are shown by its glow and what is left of it');
+          if (!rings) MN.push('COUNT-ONLY: the ◉ was never a ring in any place a door leads to, so no letter under a ring was measured');
+          else MN.push('COUNT-ONLY: the ring was drawn ' + rings + ' time(s) in ' + opened + ' opening(s) of the map (seven sizes, ' + langs.length + ' language(s), at the start of a game and with every district open), and ' + letters + ' letter(s) under it were measured' + (low ? ', the lowest keeping ' + Math.round(100 * low.k) + '% of its contrast (“' + low.t.ch + '” of “' + low.t.word + '”, ' + low.where + ')' : '') + (hid.size ? '; ' + hid.size + ' letter(s) under it are hidden with no ring at all, by the marker or the destination, and were not asked: ' + [...hid].slice(0, 4).join(', ') : ''));
+        }
       }
       await ctx.close();
     }
