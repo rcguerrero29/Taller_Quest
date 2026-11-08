@@ -105,6 +105,7 @@ function loadBuilder(src, label, three, threeLabel) {
   const ctx = threeContext(three, threeLabel);
   const wrap = '(function(T3,tc,t3Note){\n' + code + '\n;return {' +
     'PARTKEYS:typeof PARTKEYS!=="undefined"?PARTKEYS:undefined,' +
+    't3CornerMix:typeof t3CornerMix==="function"?t3CornerMix:undefined,' +
     'meshGeo:typeof meshGeo!=="undefined"?meshGeo:undefined,' +
     't3Prim:typeof t3Prim==="function"?t3Prim:undefined,' +
     't3MeshOf:typeof t3MeshOf==="function"?t3MeshOf:undefined,' +

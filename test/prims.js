@@ -28,6 +28,11 @@
         MAY SAY`), which every other reader of parts takes its own keys from. It must be frozen, call every key a kind a
         reader knows, and name exactly the keys the builder reads (every `p.<key>` in its lines), no more and no fewer.
         The harvest and the twins read their keys from it too, and a colour key is twinned with a colour.
+     5¾. THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED: every corner of a part with a second colour takes its colour from
+        t3CornerMix, which is told where the thing stands; today it uses the part's own two colours alone. Asked through the mesh
+        the scene is handed, with t3CornerMix's body rewritten in memory: as it is, five parts come out the same in two places; a
+        stand-in for a room's light given only here shades them differently there; and a sentinel body reaches every corner,
+        glass included, so nothing else works out a mix.
      6. It reads .github/workflows/ci.yml and fails when CI no longer runs this file's self-test and then
         its --ci comparison, exactly, in one step a red can fail, because a gate nobody runs protects
         nothing. Which commit CI compares with is decided here (--ci), not in ci.yml, so the self-test
@@ -274,6 +279,44 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
     if (off.length) fails.push('t3BakeParts — the name tests call — gives different bytes from the mesh the engine draws for ' + said(off.length) + ' parts, so a test reading it would be checking something players never see. The first is ' + where(off[0]) + '.');
   }
 
+  /* ---- THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED (engine/engine3d.js, grep the same words) ----
+     Every corner of a part with a second colour takes its colour from t3CornerMix, which is told where the thing stands, so a later
+     light of the room has one place to come in; today it uses the part's own two colours alone. Asked through the mesh the
+     scene is handed (t3MeshOf), the solid and the glass, with the one place's body rewritten here, in memory, never on disk:
+       today       the engine's own body: five parts standing in two places come out byte for byte the same both times;
+       a light     a stand-in for a room's light, given only in this gate (half as bright at x 5): the same five parts come out
+                   differently at x 2 and at x 5, so the one place is told where the thing stands and the mesh hands it on;
+       a sentinel  a body that answers one colour: every corner of every one of them takes it, so nothing else works out a mix. */
+  {
+    const NAME = 'function t3CornerMix(', at0 = engineNew.indexOf(NAME), again = at0 < 0 ? -1 : engineNew.indexOf(NAME, at0 + 1);
+    const open = at0 < 0 ? -1 : engineNew.indexOf('{', at0), body = open < 0 ? null : P.objectSpans(engineNew).find(([a]) => a === open);
+    if (at0 < 0 || again >= 0 || !body || typeof probe.t3CornerMix !== 'function') fails.push('the shape builder in engine/engine3d.js has ' + (again >= 0 ? 'more than one' : 'no') +
+      ' one place that works out a corner\'s mix of a part\'s two colours, told where the thing stands (`function t3CornerMix(`, grep `THE ONE PLACE A CORNER\'S TWO COLOURS ARE MIXED`), so a later light of the room would have to be written into every place that mixes them.');
+    else {
+      const withBody = b => engineNew.slice(0, open) + '{' + b + '}' + engineNew.slice(body[1] + 1);
+      const STAND = 'const d=at&&at.x===5?0.5:1;out[0]=(foot.r+(top.r-foot.r)*k)*d;out[1]=(foot.g+(top.g-foot.g)*k)*d;out[2]=(foot.b+(top.b-foot.b)*k)*d;return out;';
+      const SENT = 'out[0]=0.25;out[1]=0.5;out[2]=0.75;return out;', S3 = [0.25, 0.5, 0.75].map(Math.fround);
+      const SHADED = [{ s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF', cb: '#000000' }, { s: 'sph', y: 0.3, r: 0.2, c: '#F0C040', cb: '#402010' },
+        { s: 'cyl', y: 0.3, r: 0.05, h: 0.6, rz: 1.2, ry: 0.4, c: '#80C0F0', cb: '#102030' }, { s: 'torus', y: 0.3, r: 0.2, t: 0.04, c: '#E0E0E0', cb: '#202020' },
+        { s: 'box', x: 0.3, y: 0.2, w: 0.1, h: 0.4, d: 0.1, c: '#C0E0F0', cb: '#204060', a: 0.5 }];
+      const HERE = { world: 'the gate', x: 2, y: 3 }, THERE = { world: 'the gate', x: 5, y: 3 };
+      const colours = (B, where) => { const m = B.t3MeshOf(SHADED, TAG, where); return [m, ...m.children].map(o => o.geometry.attributes.color.array); };
+      const alike = (a, b) => a.length === b.length && a.every((x, i) => x.length === b[i].length && x.every((v, j) => v === b[i][j]));
+      let L, Z;
+      try { const T = NEW.fresh(); if (!alike(colours(T, HERE), colours(T, THERE))) fails.push('today\'s mix of a part\'s two colours changes with where the thing stands: the same five parts come out differently at x 2 and at x 5, so things would no longer look as they do.'); }
+      catch (e) { fails.push('the one place could not be asked on the working tree\'s builder: ' + String(e.message || e).slice(0, 140)); }
+      try { L = P.loadBuilder(withBody(STAND), 'engine/engine3d.js with a stand-in for a room\'s light', threeNew, 'vendor/three.min.js').fresh(); Z = P.loadBuilder(withBody(SENT), 'engine/engine3d.js with a sentinel mix', threeNew, 'vendor/three.min.js').fresh(); }
+      catch (e) { fails.push('the one place, rewritten in memory for a stand-in light, no longer loads: ' + String(e.message || e).slice(0, 140)); }
+      if (L && alike(colours(L, HERE), colours(L, THERE))) fails.push('a stand-in for a room\'s light, given only in this gate, shades the same five parts the same at x 2 and at x 5: the one place that mixes a corner\'s two colours is not told where the thing stands, or the bake or the mesh does not hand it on.');
+      if (Z) {
+        let n = 0, off = 0; colours(Z, HERE).forEach(a => { for (let i = 0; i < a.length; i += 3) { n++; if (a[i] !== S3[0] || a[i + 1] !== S3[1] || a[i + 2] !== S3[2]) off++; } });
+        if (!n) fails.push('the five parts with a second colour built no corner at all, so whether the one place mixes them could not be asked.');
+        else if (off) fails.push(off + ' of the ' + n + ' corners of five parts with a second colour took their colour from somewhere other than the one place that mixes them (t3CornerMix): a second place works out the mix, and a later light given there would miss them.');
+        else info.push('the one place a corner\'s two colours are mixed: today the same in two places; a stand-in light given only here shades them differently; a sentinel reached all ' + n + ' corners, glass included');
+      }
+    }
+  }
+
   /* ---- the collision pass: one builder, one cache, the whole harvest and every part's twins ---- */
   const shared = NEW.fresh(), crossed = [], forgot = {};
   let twins = 0;
@@ -475,9 +518,9 @@ function selftest() {
     { name: 'a cache key that forgot rb (a cone-shaped pot and a straight one share a shape)', neu: e => plant(e, 'p.rt,p.rb,', 'p.rt,'), want: /differ only in rb came out the same/ },
     { name: 'parts turned in another order, XYZ', neu: e => plant(e, '"YXZ"', '"XYZ"'), want: /would look different/ },
     { name: 'the default grey one shade lighter', neu: e => plant(e, '"#888888"', '"#898989"'), want: /colours changed/ },
-    { name: 'the mesh drawn with a tint t3BakeParts is not given', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list,h=>h==="#888888"?"#898989":tc(h))'), want: /t3BakeParts — the name tests call — gives different bytes/ },
-    { name: 'the mesh drops the theme (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default is the identity', neu: e => plant(plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)'), 'tint=tint||tc;', 'tint=tint||(h=>h);'), want: /their colours changed/ },
-    { name: 'the mesh forgets to pass tc (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default keeps the theme — GREEN, which is why the default is tc', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)') },
+    { name: 'the mesh drawn with a tint t3BakeParts is not given', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,h=>h==="#888888"?"#898989":tc(h),at)'), want: /t3BakeParts — the name tests call — gives different bytes/ },
+    { name: 'the mesh drops the theme (t3BakeParts(list,tc,at) → t3BakeParts(list,undefined,at)) and the bake\'s default is the identity', neu: e => plant(plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,undefined,at)'), 'tint=tint||tc;', 'tint=tint||(h=>h);'), want: /their colours changed/ },
+    { name: 'the mesh forgets to pass tc (t3BakeParts(list,tc,at) → t3BakeParts(list,undefined,at)) and the bake\'s default keeps the theme — GREEN, which is why the default is tc', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,undefined,at)') },
     { name: 'the default grey one step redder in one channel (#888888 → #898888), which a theme that folds neighbours would hide', neu: e => plant(e, 'p.c||"#888888"', 'p.c||"#898888"'), want: /colours changed/ },
     { name: 'a wireframe left on the solid material', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,wireframe:true})'), want: /material \(wireframe undefined → true\)/ },
     { name: 'an emissive glow on the solid material (night does not dim it)', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,emissive:0x333333})'), want: /material \(emissive 0 → 3355443\)/ },
@@ -501,6 +544,11 @@ function selftest() {
     { name: 'a builder that reaches outside its boundary', neu: e => plant(e, 'const meshGeo={};', 'const meshGeo={};const someWorld=CW();'), want: /failed as it loaded/ },
     { name: 't3BakeParts gone under another name', neu: e => e.split('t3BakeParts').join('t3Bake2'), want: /has no t3BakeParts/ },
     { name: 'the one list of what a part may say taken out of the builder', neu: e => plant(e, 'const PARTKEYS=', 'const PARTKEYS_GONE='), want: /has no one list of what a part may say/ },
+    { name: 'the one place a corner\'s two colours are mixed gone under another name', neu: e => e.split('t3CornerMix').join('t3Blend'), want: /has no one place that works out a corner's mix/ },
+    { name: 'the mix worked out in the bake again, beside the one place', neu: e => plant(e, 'else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);col.push(mix[0],mix[1],mix[2]);}', 'else{const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}'), want: /took their colour from somewhere other than the one place/ },
+    { name: 'the bake not telling the one place where the thing stands', neu: e => plant(e, 't3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix)', 't3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,null,mix)'), want: /shades the same five parts the same at x 2 and at x 5/ },
+    { name: 'the mesh not handing on where the thing stands', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,tc)'), want: /shades the same five parts the same at x 2 and at x 5/ },
+    { name: 'today\'s mix reading where the thing stands', neu: e => plant(e, 'out[0]=foot.r+(top.r-foot.r)*k;', 'out[0]=(foot.r+(top.r-foot.r)*k)*(at&&at.x>3?0.9:1);'), want: /today's mix of a part's two colours changes with where the thing stands/ },
     { name: 'the one list left open to change (not frozen)', neu: e => plant(e, 'const PARTKEYS=Object.freeze({', 'const PARTKEYS=({'), want: /is not frozen/ },
     { name: 'the builder reading a key the one list does not name (p.sw)', neu: e => plant(e, 'sc.set(p.sx||1,', 'sc.set(p.sx||p.sw||1,'), want: /reads `p\.sw`, which the one list of what a part may say does not name/ },
     { name: 'the one list naming a key the builder never reads (q)', neu: e => plant(e, 'a:"glass"});', 'a:"glass",q:"size"});'), want: /names `q`, which the shape builder never reads/ },

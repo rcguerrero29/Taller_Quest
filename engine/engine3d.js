@@ -282,6 +282,15 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   else if(s==="torus")g=new THREE.TorusGeometry(p.r||0.2,p.t||0.03,6,14,p.arc||Math.PI*2); /* an arch is a torus with an arc, standing in the XY plane */
   else g=new THREE.BoxGeometry(p.w||0.1,p.h||0.1,p.d||0.1);
   return meshGeo[key]=g.toNonIndexed();};
+/* THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED: every corner of a part that names a second colour takes its colour from
+   here and from nowhere else (the bake below calls it once a corner). It is handed the part's own colour at its top and its
+   second colour at its foot, both as the theme gave them (THREE.Color), how far up the part the corner stands (k: 0 at the
+   part's lowest point, 1 at its highest), and WHERE THE THING STANDS (`at`: {world, x, y}, the room and the tile, or null
+   for a thing that stands nowhere, like a moving car); it writes the corner's colour into `out` and hands it back. Today it
+   reads the two colours and k alone, so `at` changes nothing and every thing looks as it did: it is the one place a later
+   light of the room where a thing stands would come in, without a pack's parts written again. test/prims.js plants a
+   stand-in for that light here, in memory, and holds this to being the only place the mix is worked out. */
+function t3CornerMix(top,foot,k,at,out){out[0]=foot.r+(top.r-foot.r)*k;out[1]=foot.g+(top.g-foot.g)*k;out[2]=foot.b+(top.b-foot.b)*k;return out;}
 /* THE BAKE, with a name a test can call (#316): a list of parts in, the merged vertices out — positions,
    normals and one colour per vertex — plus how tall the thing stands and how far it reaches. `tint` turns
    the colour a part asks for into the colour drawn: the engine passes `tc`, the player's colour theme
@@ -292,9 +301,10 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
    no byte for any part whose colour three.js can read, and the gate proves that against the engine as it
    was. (A colour three.js cannot read leaves a THREE.Color as it was: it used to inherit the last solid
    part's colour when one Color was shared by the solid and the glass bakes, and now it draws white, as a
-   lone bad colour always did. Every colour written in the games is #rrggbb.) */
-const t3BakeParts=(list,tint)=>{tint=tint||tc;
-  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color(),cb=new THREE.Color();
+   lone bad colour always did. Every colour written in the games is #rrggbb.) `at`, where the thing stands, is handed on
+   to the one place a corner's two colours are mixed (t3CornerMix, above), and to nothing else. */
+const t3BakeParts=(list,tint,at)=>{tint=tint||tc;
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),tr=new THREE.Vector3(),c=new THREE.Color(),cb=new THREE.Color(),mix=[0,0,0];
   /* HOW TALL THIS THING IS, and it is the parts that say so (crew iteration 14, la ofrendera).
      `wallH` answers that question for a BOX — a formula over the glyph's declared `lift` — and a
      mesh has never had a lift, so anything set down at `wallH` on a mesh tile is set down at the
@@ -318,7 +328,8 @@ const t3BakeParts=(list,tint)=>{tint=tint||tc;
     c.set(tint(p.c||"#888888"));
     /* A SECOND COLOUR (`cb`): the part shades evenly from its own colour at its highest point to cb at its lowest, by height as
        it stands, after its turns, so a leaning part shades by how it leans and not along its own axis. Each corner takes the mix
-       for its own height, worked out here once, as the shape is built, and the face between corners is blended as it is drawn:
+       for its own height from the one place that mixes them (t3CornerMix, told where the thing stands), once, as the shape is
+       built, and the face between corners is blended as it is drawn:
        nothing more is done while the game runs, and no triangle is added. Both colours go through the same theme (`tint`), and
        the time of day tints the one material both are drawn with, so both alike. A part without cb takes its one colour on
        every corner, exactly as it always did; one whose cb three.js cannot read shades from its colour to the same colour. */
@@ -326,18 +337,19 @@ const t3BakeParts=(list,tint)=>{tint=tint||tc;
     if(p.cb){cb.copy(c).set(tint(p.cb));lo=Infinity;let hi=-Infinity;for(let i=1;i<pa.length;i+=3){if(pa[i]<lo)lo=pa[i];if(pa[i]>hi)hi=pa[i];}span=hi-lo;}
     for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);
       if(!p.cb)col.push(c.r,c.g,c.b);
-      else{const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}
+      else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);col.push(mix[0],mix[1],mix[2]);}
       if(pa[i+1]>top)top=pa[i+1];
       if(pa[i]<sx0)sx0=pa[i]; if(pa[i]>sx1)sx1=pa[i];
       if(pa[i+2]<sz0)sz0=pa[i+2]; if(pa[i+2]>sz1)sz1=pa[i+2];}
     gg.dispose();});
   return {pos,nor,col,top,span:[sx0,sx1,sz0,sz1]};};
-const t3MeshOf=(parts,tag)=>{
+const t3MeshOf=(parts,tag,at)=>{
   /* the top and the reach of the WHOLE thing, solid and glass together: each bake's, folded in the order
      they are baked with the same strict comparisons the vertex loop uses, so the answer is the one a
-     single loop over every vertex would give */
+     single loop over every vertex would give. `at`, where the thing stands ({world, x, y}, or nothing for a
+     thing that stands nowhere), goes to the bake for the one place a corner's two colours are mixed. */
   let top=-Infinity,sx0=Infinity,sx1=-Infinity,sz0=Infinity,sz1=-Infinity;
-  const bake=list=>{const b=t3BakeParts(list,tc);
+  const bake=list=>{const b=t3BakeParts(list,tc,at);
     if(b.top>top)top=b.top;
     if(b.span[0]<sx0)sx0=b.span[0]; if(b.span[1]>sx1)sx1=b.span[1];
     if(b.span[2]<sz0)sz0=b.span[2]; if(b.span[3]>sz1)sz1=b.span[3];
@@ -496,7 +508,7 @@ function t3Build(key){
     const mv=(typeof tileView==="function")&&tileView(gch,"mesh");if(!mv)return false;
     let parts;try{parts=typeof mv==="function"?mv({x,y}):mv;}catch(e){t3Note("mesh "+gch,e);return false;}
     if(!Array.isArray(parts)||!parts.length)return false;
-    try{const m=t3MeshOf(parts,{mesh:true,g:gch,x,y});m.position.set(cx,0,cz);topY[x+","+y]=m.t3Top;
+    try{const m=t3MeshOf(parts,{mesh:true,g:gch,x,y},{world,x,y});m.position.set(cx,0,cz);topY[x+","+y]=m.t3Top;
       if(m.t3Span)t3Cover(cx,cz,m.t3Span,m.t3Top);
       grp.add(m);return true;}
     catch(e){t3Note("mesh "+gch,e);return false;}};
@@ -709,7 +721,7 @@ function t3Build(key){
       const bm=(typeof tileView==="function")&&tileView("prop:bridge","mesh");
       if(bm){let parts=null;const edges=[-1,1].filter(sd=>!isB(x+(ew?0:sd),y+(ew?sd:0)));
         try{parts=typeof bm==="function"?bm({x,y,ew,cam,slp,h:BRIDGEH,edges,pet}):bm;}catch(e){t3Note("mesh prop:bridge",e);}
-        if(Array.isArray(parts)&&parts.length){try{const bmm=t3MeshOf(parts,{bridgeMesh:true,mesh:true,x,y});
+        if(Array.isArray(parts)&&parts.length){try{const bmm=t3MeshOf(parts,{bridgeMesh:true,mesh:true,x,y},{world,x,y});
           bmm.position.set(cx,BRIDGEH+cam,cz);if(ew)bmm.rotation.z=Math.atan2(slp,1);else{bmm.rotation.y=Math.PI/2;bmm.rotation.z=Math.atan2(slp,1);}
           grp.add(bmm);}catch(e){t3Note("mesh prop:bridge",e);}}}
       /* papel picado (the owner asked for it too): when the season hands a palette
@@ -894,7 +906,7 @@ function t3Build(key){
              a glyph, so it is asked for by kind, through the same table and the same builder (2026-09-21). */
           const pm=(typeof tileView==="function")&&tileView("prop:ofrenda","mesh");
           if(pm){let parts=null;try{parts=typeof pm==="function"?pm({x:p.x,y:p.y}):pm;}catch(e){t3Note("mesh prop:ofrenda",e);}
-            if(Array.isArray(parts)&&parts.length){try{const m=t3MeshOf(parts,{prop:true,ofrenda:true,mesh:true,x:p.x,y:p.y});
+            if(Array.isArray(parts)&&parts.length){try{const m=t3MeshOf(parts,{prop:true,ofrenda:true,mesh:true,x:p.x,y:p.y},{world,x:p.x,y:p.y});
               const sc=up?0.8:1;m.scale.set(sc,sc,sc);m.position.set(p.x+0.5,(p.h!==undefined?p.h:(up?tileTop(p.x,p.y,g):stairLift(w,p.x,p.y)))+0.01,p.y+0.5);grp.add(m);return;}
               catch(e){t3Note("mesh prop:ofrenda",e);}}}
           const c=document.createElement("canvas");c.width=32*K;c.height=32*K;const g2=c.getContext("2d");g2.scale(K,K);drawOfrenda(g2,0,0);
@@ -1416,7 +1428,7 @@ function t3Reshape(x,y){if(!T3.group||!T3.scene)return false;
   const mv=typeof tileView==="function"&&tileView(old.userData.g,"mesh");if(!mv)return false;
   let parts;try{parts=typeof mv==="function"?mv({x,y}):mv;}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
   if(!Array.isArray(parts)||!parts.length)return false;
-  let m;try{m=t3MeshOf(parts,old.userData);}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
+  let m;try{m=t3MeshOf(parts,old.userData,{world,x,y});}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
   m.position.copy(old.position);m.t3Top=old.t3Top;
   const gone=[];old.traverse(o=>{if(o.material)gone.push(o.material);});
   T3.group.remove(old);t3Dispose(old);
