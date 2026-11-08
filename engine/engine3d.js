@@ -252,6 +252,23 @@ function t3Reuse(key){
    the lines between the sentinels may read THREE,
    T3.tintables, tc and t3Note from outside and nothing else; reach for anything more and the gate
    says it cannot load the builder. Cut by these comments, never by line number. */
+/* THE ONE LIST OF WHAT A PART MAY SAY: every key the builder below reads off a part, and what kind of thing it is. Until this
+   list each reader of parts kept its own copy: the kitchen kept the keys a thing's part may say and the lengths it makes
+   smaller to fit a shelf (engine/kitchen-room.js), and a world that exports its parts, or keeps them in its own units and
+   scales them, kept the fields it lets out and the lengths it scales. A key added to one was refused by the next. Each reads
+   this list now and takes from it exactly what it took before:
+     shape    s                 the primitive t3Prim builds: box, sph, cyl, cone or torus
+     place    x y z             where its middle stands, in tile units, y up from the floor and the tile's centre at (0,0)
+     size     w h d r rt rb t   a box's width, height and depth; a radius, and a cylinder's at its top and its bottom; a
+                                torus's tube
+     angle    arc rx ry rz      how much of a ring, and how it is turned, in radians, yaw first (YXZ)
+     stretch  sx sy sz          how far it is stretched along each axis
+     colour   c                 its colour, #rrggbb, drawn through the player's colour theme
+     glass    a                 under 1 it is glass: a second, see-through mesh
+   A length is a place or a size. A key that is not here draws nothing (a marker a world keeps on a part for itself).
+   test/prims.js fails when the builder reads a key this list does not name, or this list names one it never reads. */
+const PARTKEYS=Object.freeze({s:"shape",x:"place",y:"place",z:"place",w:"size",h:"size",d:"size",r:"size",rt:"size",rb:"size",t:"size",
+  arc:"angle",rx:"angle",ry:"angle",rz:"angle",sx:"stretch",sy:"stretch",sz:"stretch",c:"colour",a:"glass"});
 const meshGeo={};
 const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
   const key=s+"|"+[p.w,p.h,p.d,p.r,p.rt,p.rb,p.t,p.arc].map(n).join("|");

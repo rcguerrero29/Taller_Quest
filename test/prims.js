@@ -24,6 +24,10 @@
      5. It prints how many parts it collected and fails below a floor, because a harvest of zero passes
         every comparison there is. The primitives it expects are read out of the builder (kindsOf), and
         it fails when the harvest holds none of one, so a primitive learnt tomorrow is not skipped.
+     5½. THE ONE LIST: the builder keeps one list of what a part may say (PARTKEYS, grep `THE ONE LIST OF WHAT A PART
+        MAY SAY`), which every other reader of parts takes its own keys from. It must be frozen, call every key a kind a
+        reader knows, and name exactly the keys the builder reads (every `p.<key>` in its lines), no more and no fewer.
+        The harvest and the twins read their keys from it too, and a colour key is twinned with a colour.
      6. It reads .github/workflows/ci.yml and fails when CI no longer runs this file's self-test and then
         its --ci comparison, exactly, in one step a red can fail, because a gate nobody runs protects
         nothing. Which commit CI compares with is decided here (--ci), not in ci.yml, so the self-test
@@ -125,11 +129,11 @@ const phrase = (d, their) => {
 const TAG = { mesh: true, gate: 'the shape gate' };
 const build = (B, list) => P.partsOf(B.t3MeshOf(list, TAG), B.T3);
 
-/* a twin differing only in key k */
-function twin(p, k, kinds) {
+/* a twin differing only in key k; a colour key (the one list's kind `colour`) is twinned with another colour */
+function twin(p, k, kinds, colours) {
   const q = { ...p };
   if (k === 's') q.s = kinds[(kinds.indexOf(kind(p)) + 1) % kinds.length];
-  else if (k === 'c') q.c = p.c === '#123456' ? '#654321' : '#123456';
+  else if (k === 'c' || (colours && colours.has(k))) q[k] = p[k] === '#123456' ? '#654321' : '#123456';
   else q[k] = typeof p[k] === 'number' ? +(p[k] * 1.25 + 0.05).toFixed(6) : 0.37;
   return q;
 }
@@ -163,7 +167,23 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
 
   /* the keys the builder actually reads: a key added tomorrow (arc0, seg) is harvested and twinned without anybody editing this file */
   const reads = [...new Set([...NEW.code.matchAll(/\bp\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]))];
-  const keys = [...new Set([...P.PART_KEYS, ...reads])];
+  /* ---- THE ONE LIST OF WHAT A PART MAY SAY and the builder agree ----
+     engine/engine3d.js keeps one list of every key a part may carry and what kind of thing each is (grep `THE ONE LIST OF WHAT A
+     PART MAY SAY`), and every other reader of parts takes its own from it: which keys a kitchen's thing may say, which it makes
+     smaller to fit, which a world scales into its own units and which it lets out. So the list must name exactly what the
+     builder reads: a key the builder reads and the list leaves out is refused by those readers, and a key the list names and
+     the builder never reads is a promise that draws nothing. And every kind must be one a reader knows how to treat. */
+  const LIST = probe.PARTKEYS, KINDS = ['shape', 'place', 'size', 'angle', 'stretch', 'colour', 'glass'];
+  const listed = LIST && typeof LIST === 'object' ? Object.keys(LIST) : [];
+  if (!LIST || typeof LIST !== 'object') fails.push('the shape builder in engine/engine3d.js has no one list of what a part may say (`PARTKEYS`, grep `THE ONE LIST OF WHAT A PART MAY SAY`), so every reader of parts keeps a list of its own, and a key added to one of them is refused by the others.');
+  else {
+    if (!Object.isFrozen(LIST)) fails.push('the one list of what a part may say is not frozen, so any script can add a key to it, or change one, for every reader of parts at once.');
+    listed.filter(k => !KINDS.includes(LIST[k])).forEach(k => fails.push('the one list of what a part may say calls `' + k + '` a ' + JSON.stringify(String(LIST[k]).slice(0, 30)) + ', which is none of the kinds a reader of parts knows how to treat (' + KINDS.join(', ') + ').'));
+    reads.filter(k => !listed.includes(k)).forEach(k => fails.push('the shape builder reads `p.' + k + '`, which the one list of what a part may say does not name, so a kitchen refuses a thing whose part carries it and a world that scales its parts never scales it.'));
+    listed.filter(k => !reads.includes(k)).forEach(k => fails.push('the one list of what a part may say names `' + k + '`, which the shape builder never reads, so a part that carries it is drawn as if it did not.'));
+  }
+  const colours = new Set(listed.filter(k => LIST[k] === 'colour'));
+  const keys = [...new Set([...P.PART_KEYS, ...listed, ...reads])];
   /* and the primitives it knows, read the same way: a primitive added tomorrow is harvested and must be drawn */
   const kinds = P.kindsOf(NEW.code);
 
@@ -264,7 +284,7 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
        blame every key, x and c among them, which are not in the cache key at all (Beto, #316 recheck) */
     if (s.error || differs(s, b).length) { crossed.push(x); continue; }
     for (const k of keys) {
-      const q = twin(x.part, k, kinds);
+      const q = twin(x.part, k, kinds, colours);
       const one = builtOn('the working tree', shared, [q]), two = builtOn('the working tree', NEW.fresh(), [q]);
       if (one.error || two.error) continue;
       twins++;
@@ -480,6 +500,11 @@ function selftest() {
     { name: 'the boundary comments taken out', neu: e => plant(plant(e, P.BEGIN, 'shape builder start'), P.END, 'shape builder stop'), want: /no boundary around the shape builder/ },
     { name: 'a builder that reaches outside its boundary', neu: e => plant(e, 'const meshGeo={};', 'const meshGeo={};const someWorld=CW();'), want: /failed as it loaded/ },
     { name: 't3BakeParts gone under another name', neu: e => e.split('t3BakeParts').join('t3Bake2'), want: /has no t3BakeParts/ },
+    { name: 'the one list of what a part may say taken out of the builder', neu: e => plant(e, 'const PARTKEYS=', 'const PARTKEYS_GONE='), want: /has no one list of what a part may say/ },
+    { name: 'the one list left open to change (not frozen)', neu: e => plant(e, 'const PARTKEYS=Object.freeze({', 'const PARTKEYS=({'), want: /is not frozen/ },
+    { name: 'the builder reading a key the one list does not name (p.sw)', neu: e => plant(e, 'sc.set(p.sx||1,', 'sc.set(p.sx||p.sw||1,'), want: /reads `p\.sw`, which the one list of what a part may say does not name/ },
+    { name: 'the one list naming a key the builder never reads (q)', neu: e => plant(e, 'a:"glass"});', 'a:"glass",q:"size"});'), want: /names `q`, which the shape builder never reads/ },
+    { name: 'a key of a kind no reader of parts knows ("see-through")', neu: e => plant(e, 'a:"glass"});', 'a:"see-through"});'), want: /calls `a` a "see-through", which is none of the kinds/ },
     { name: 'the shape library\'s turn mirrored (engine/shapes.js `turned`, one sign)', src: s => plantFile(s, 'engine/shapes.js', 'x:p.x*cr+p.z*sr,z:-p.x*sr+p.z*cr', 'x:p.x*cr-p.z*sr,z:p.x*sr+p.z*cr'), want: /`turned` no longer turns a part the way this gate turns it/ },
     { name: 'nothing to harvest', src: s => s.map(x => ({ ...x, text: '' })), want: /found no parts at all/ },
     { name: 'the shape library not read', src: s => s.filter(x => x.file !== 'engine/shapes.js'), want: /engine\/shapes\.js was not read at all/ },

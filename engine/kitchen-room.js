@@ -455,7 +455,14 @@ function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||wo
    column's own and are built in that tile (`t3Reshape`), so nothing else in the room is touched. Held by
    test/engine.smoke.js, grep "THE THINGS IN A PLACE". */
 const KITTHINGS=24,KITPARTS=24,KITMANY=999,KITCOPIES=3,KITTHINGNAME=40,KITREACH=0.5,KITSIZE=1,KITUNIT=20;
-const KITPRIM=["box","sph","cyl","cone","torus"],KITPARTKEYS=["s","x","y","z","w","h","d","r","rt","rb","t","arc","rx","ry","rz","sx","sy","sz","c"],KITHEX=/^#[0-9a-fA-F]{6}$/;
+const KITPRIM=["box","sph","cyl","cone","torus"],KITHEX=/^#[0-9a-fA-F]{6}$/;
+/* WHAT A THING'S PART MAY SAY, AND WHAT IS MADE SMALLER SO IT FITS: both read off the shape builder's one list (engine/engine3d.js,
+   grep "THE ONE LIST OF WHAT A PART MAY SAY"), in its order, on the first part checked, since this file loads before that one. A
+   thing's part may say every key of it but how see-through it is (`a`: nothing a place keeps is glass); what is made smaller to
+   fit where it stands is its sizes, while where it stands is worked out again and its turns and stretches are kept */
+let KITKEYS=null;
+const kitKeys=()=>KITKEYS||(KITKEYS=Object.freeze({say:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]!=="glass")),
+  sizes:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="size"))}));
 /* WHERE THINGS STAND IN EACH KIND, in the piece's own frame before it is turned to the room: each level a floor (y, the top
    of what they stand on), the clear height over it (h), its width (w) and depth (d) about z, and how far it comes out
    with its drawer when open (pull). `bare`: nothing to open, so its things always show. Measured off engine/shapes.js:
@@ -477,10 +484,11 @@ function kitThingWarn(s){if(KITSAID.has(s)||KITSAID.size>200)return;KITSAID.add(
 /* ONE PART, checked: null when it may be drawn, else why not */
 function kitPartBad(p){const plain=!!p&&typeof p==="object"&&!Array.isArray(p)&&[Object.prototype,null].includes(Object.getPrototypeOf(p));
   if(!plain)return "a part is not a part";
-  const ex=Object.keys(p).find(k=>!KITPARTKEYS.includes(k));if(ex!==undefined)return "a part says "+JSON.stringify(ex.slice(0,20))+", which a part has not";
+  const KEYS=kitKeys().say;
+  const ex=Object.keys(p).find(k=>!KEYS.includes(k));if(ex!==undefined)return "a part says "+JSON.stringify(ex.slice(0,20))+", which a part has not";
   if(!KITPRIM.includes(p.s))return "a part is a "+JSON.stringify(String(p.s).slice(0,20))+", and the engine draws "+KITPRIM.join(", ");
   if(typeof p.c!=="string"||!KITHEX.test(p.c))return "a part's colour is "+JSON.stringify(String(p.c).slice(0,20))+", not #rrggbb";
-  for(const k of KITPARTKEYS){if(k==="s"||k==="c"||p[k]===undefined)continue;const v=p[k];
+  for(const k of KEYS){if(k==="s"||k==="c"||p[k]===undefined)continue;const v=p[k];
     if(typeof v!=="number"||!isFinite(v))return "a part's "+k+" is not a number";
     if((k==="x"||k==="z")&&Math.abs(v)>KITREACH)return "a part's "+k+" is "+v+", past "+KITREACH+" from the thing's middle";
     if(k==="y"&&(v<-0.05||v>1))return "a part's y is "+v+", outside the thing";
@@ -554,7 +562,7 @@ function kitStand(t,L,sx,sw,open,shift,ry,k){const ps=t.parts;if(!ps.length)retu
       const lx=((p.x||0)-cx)*f,lzz=((p.z||0)-cz)*f;
       const px2=ox+lx*ct+lzz*st,pz2=lz+(-lx*st+lzz*ct)+shift;
       q.x=px2*cr+pz2*sr;q.z=-px2*sr+pz2*cr;q.y=L.y+((p.y||0)-y0)*f;
-      ["w","h","d","r","rt","rb","t"].forEach(s=>{if(q[s]!==undefined)q[s]*=f;});
+      kitKeys().sizes.forEach(s=>{if(q[s]!==undefined)q[s]*=f;});
       q.ry=(p.ry||0)+turn+ry;out.push(q);});}
   return out;}
 /* EVERY THING OF ONE PLACE in its column's parts, `piece` the piece's own parts as built (so its turn and its wall are

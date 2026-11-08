@@ -3093,6 +3093,83 @@ function findChromium() {
     fails.push(...TH.map(m => 'the things in a place and the hand (sprint 5): ' + m));
   }
 
+  /* ---- THE ONE LIST OF WHAT A PART MAY SAY ----
+     engine/engine3d.js, grep "THE ONE LIST OF WHAT A PART MAY SAY"; engine/kitchen-room.js, grep "WHAT A THING'S PART MAY SAY".
+     Every reader of parts takes what it takes from one list in the engine. What a person would notice: a thing the kitchen
+     refuses although its part says nothing the engine cannot draw, or takes although its part is glass or says what no part
+     says; and a thing made smaller to fit where it stands whose turns, stretches or colours changed with its size. Every key
+     is read off the engine's own list as it stands, so a key the list gains is asked here without this block changing. On a
+     page of its own: a made-up kitchen of the template's seven places, whose counter is handed one thing at a time. Red
+     first on the engine before the list, in a copy of the tree outside the repository. */
+  {
+    const OL = [], say = s => OL.push(s);
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object');
+    const op = await browser.newPage({ viewport: { width: 640, height: 480 }, reducedMotion: 'reduce' }), oErr = [];
+    op.on('pageerror', e => oErr.push(e.message));
+    await op.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await op.addInitScript({ content: 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();' });
+    await op.goto('file://' + file);
+    try {
+      if (!await until(op, () => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, 15000)) throw 'the page never had a kitchen to lay, so nothing was asked';
+      /* a good value for each kind of key, inside every range the kitchen holds a part to */
+      const GOOD = { shape: 'box', place: 0.1, size: 0.04, angle: 0.3, stretch: 1.2, colour: '#3060A0', glass: 0.5 };
+      const L = await op.evaluate(() => typeof PARTKEYS === 'object' && PARTKEYS ? { list: Object.assign({}, PARTKEYS), frozen: Object.isFrozen(PARTKEYS) } : null);
+      if (!L) say('the engine keeps no one list of what a part may say, so the kitchen, and every world that scales its parts into its own units or lets them out, keeps a list of its own, and a key added to one is refused by the next');
+      else {
+        const keys = Object.keys(L.list), unknown = keys.filter(k => !Object.prototype.hasOwnProperty.call(GOOD, L.list[k]));
+        if (!L.frozen) say('the one list of what a part may say is not frozen, so any script can change it for every reader of parts at once');
+        if (unknown.length) say('the one list calls ' + unknown.map(k => k + ' a ' + JSON.stringify(String(L.list[k]))).join(', ') + ', which is no kind of key a reader of parts knows');
+        /* 1 · THE KITCHEN TAKES every key of the list but glass, and nothing that is not on it */
+        const K = await op.evaluate(([GOOD]) => {
+          const ID = '__kit_partkeys', R = ['##########', '#' + KITCOL.repeat(4) + '#####', '#........#', '#........#', '##########'];
+          WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 10, H: 5 };
+          window.__pk = {};
+          const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+          const laid = kitchenLay(ID, { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places, things: pl => window.__pk[pl.id] || [], keep: () => {} });
+          if (laid !== null) return { laid };
+          const base = { s: 'box', y: 0.02, w: 0.04, h: 0.04, d: 0.04, c: '#C04020' };
+          const ask = part => { window.__pk.p3 = [{ id: 'one', n: 1, name: 'One', parts: [part] }]; const r = kitThingsOf(ID, 2); delete window.__pk.p3; return r.bad ? 'refused' : r.list.length === 1 ? 'taken' : 'neither'; };
+          return { ID, laid, got: Object.keys(PARTKEYS).map(k => [k, PARTKEYS[k], ask(Object.assign({}, base, { [k]: GOOD[PARTKEYS[k]] }))]),
+            stranger: ask(Object.assign({}, base, { zz: 0.1 })) };
+        }, [GOOD]);
+        if (K.laid) throw 'the made-up kitchen was refused: ' + K.laid;
+        K.got.forEach(([k, kind, got]) => {
+          if (kind === 'glass') { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ', which makes the part glass, and nothing a place keeps is glass'); }
+          else if (got !== 'taken') say('the kitchen ' + (got === 'refused' ? 'refuses' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ' (a ' + kind + ' on the one list of what a part may say), so the engine draws that part everywhere but in a kitchen');
+        });
+        if (K.stranger !== 'refused') say('the kitchen ' + (K.stranger === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says zz, which is on no list of what a part may say');
+        /* 2 · MADE SMALLER TO FIT: a thing too big for the counter, whose one part says every key of the list but glass. Its sizes
+           shrink together, by one number under 1; what it is turned and stretched by, and its colours, stay as they were; where it
+           stands is worked out again and its yaw turned to the room, so those two are not compared */
+        const S = await op.evaluate(([ID, GOOD]) => {
+          if (typeof SHAPES !== 'object' || !SHAPES || typeof SHAPES.kitchenColumn !== 'function') return { none: true };
+          const part = { s: 'box', x: 0.02, y: 0, z: 0.01, w: 0.4, h: 0.6, d: 0.2, r: 0.2, rt: 0.2, rb: 0.1, t: 0.03, arc: 1, rx: 0.2, ry: 0.3, rz: 0.1, sx: 1.1, sy: 0.9, sz: 1.2, c: '#C04020' };
+          Object.keys(PARTKEYS).forEach(k => { if (part[k] === undefined && PARTKEYS[k] !== 'glass') part[k] = GOOD[PARTKEYS[k]]; });
+          window.__pk.p3 = [{ id: 'big', n: 1, name: 'Big', parts: [part] }];
+          const w0 = world; let got;
+          try { world = ID; const K = KITWALL[ID], c = K.cols[K.places[2].col]; got = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2); }
+          finally { world = w0; delete window.__pk.p3; }
+          return { part, got };
+        }, [K.ID, GOOD]);
+        if (S.none) console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so what a thing is made smaller by was not asked in 3D; what the kitchen takes was');
+        else if (S.got.length !== 1) say('a thing of one part too big for the counter stands there as ' + S.got.length + ' parts, where it is 1');
+        else {
+          const q = S.got[0], sizes = keys.filter(k => L.list[k] === 'size' && typeof S.part[k] === 'number'), by = sizes.map(k => q[k] / S.part[k]);
+          if (!sizes.length) say('the one list names no size, so nothing a thing is made smaller by could be asked');
+          else if (!(by[0] < 1)) say('a thing too big for the counter was not made smaller: its ' + sizes[0] + ' is ' + q[sizes[0]] + ', as it was given');
+          else if (by.some(f => Math.abs(f - by[0]) > 1e-9)) say('a thing made smaller to fit the counter changed shape: its sizes were made smaller by different amounts (' + sizes.map((k, i) => k + ' ×' + by[i].toFixed(4)).join(', ') + '), where every size shrinks together');
+          keys.filter(k => ['angle', 'stretch', 'colour', 'shape'].includes(L.list[k]) && k !== 'ry').forEach(k => {
+            if (q[k] !== S.part[k]) say('a thing made smaller to fit the counter has its ' + k + ' changed too (' + JSON.stringify(S.part[k]) + ' → ' + JSON.stringify(q[k]) + '), which is a' + (L.list[k] === 'angle' ? 'n' : '') + ' ' + L.list[k] + ' and not a size: only its sizes are made smaller');
+          });
+        }
+        console.log('  COUNT-ONLY: the one list of what a part may say: ' + keys.length + ' keys (' + keys.map(k => k + ' ' + L.list[k]).join(', ') + '); the kitchen asked to take a thing whose part says each of them, and one that says what no part says' + (S.none ? '' : '; a thing too big for the counter made smaller by its sizes alone'));
+      }
+    } catch (e) { if (typeof e === 'string') say(e); else say('the list could not be asked to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    oErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await op.close();
+    fails.push(...OL.map(m => 'the one list of what a part may say: ' + m));
+  }
+
   /* ---- THE KITCHEN'S FOUR FIXES (sprint 6 of the 3D kitchen) ----
      engine/kitchen-room.js, grep "WHERE THE READER STANDS", "kitClose", "A PIECE ADDED HOLDS THINGS" and "AN EMPTY PLACE"; his confirmed
      goals of 2026-10-31 (the four changes to the test kitchen, and the empty line). What a person would notice: a kitchen place's

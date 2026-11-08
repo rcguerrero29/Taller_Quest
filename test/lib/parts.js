@@ -12,11 +12,13 @@
                                                   `function t3Build`, which is how the first gate cut it)
      pageScript(src, label)     → the same lines as a script a page can inject before it loads (a mockup's
                                   addInitScript): it defines T3, tc and t3Note only if the page has not,
-                                  and leaves t3Prim, t3MeshOf, t3BakeParts and meshGeo on window
+                                  and leaves t3Prim, t3MeshOf, t3BakeParts, meshGeo and PARTKEYS on window
      loadBuilder(src, label, three)
                                 → a factory; each call to .fresh() is a builder with its OWN shape cache:
-                                  { t3Prim, t3MeshOf, t3BakeParts, meshGeo, notes, T3, tc }. `three` is
-                                  the text of the three.js to build on, the working tree's when left out
+                                  { t3Prim, t3MeshOf, t3BakeParts, meshGeo, PARTKEYS, notes, T3, tc }.
+                                  PARTKEYS is the builder's one list of what a part may say (undefined in
+                                  an engine from before it). `three` is the text of the three.js to build
+                                  on, the working tree's when left out
      harvest(src, file, keys, kinds)
                                 → every literal part written in a pack's art.js or engine/shapes.js
      kindsOf(code)              → the primitives a builder knows, read out of its code (box, and every
@@ -65,6 +67,7 @@ function pageScript(src, label) {
   const { code } = cutBuilder(src, label);
   return 'var T3=window.T3||{tintables:[]},tc=window.tc||(h=>h),t3Note=window.t3Note||(()=>{});\n' + code +
     '\n;window.t3Prim=t3Prim;window.t3MeshOf=t3MeshOf;window.meshGeo=meshGeo;' +
+    'window.PARTKEYS=typeof PARTKEYS!=="undefined"?PARTKEYS:undefined;' +
     'window.t3BakeParts=typeof t3BakeParts==="function"?t3BakeParts:undefined;\n';
 }
 
@@ -101,6 +104,7 @@ function loadBuilder(src, label, three, threeLabel) {
   const { code, how } = cutBuilder(src, label);
   const ctx = threeContext(three, threeLabel);
   const wrap = '(function(T3,tc,t3Note){\n' + code + '\n;return {' +
+    'PARTKEYS:typeof PARTKEYS!=="undefined"?PARTKEYS:undefined,' +
     'meshGeo:typeof meshGeo!=="undefined"?meshGeo:undefined,' +
     't3Prim:typeof t3Prim==="function"?t3Prim:undefined,' +
     't3MeshOf:typeof t3MeshOf==="function"?t3MeshOf:undefined,' +
