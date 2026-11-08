@@ -12230,6 +12230,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             lang = keep; T(); } });
         return out; }, Object.keys(read));
       if (!W.hasDef) WD.push('the engine keeps no words of its own (UIDEF in engine/engine.js), so any word a world leaves out comes out as nothing');
+      /* a world's own word comes first, read against the world's own words file as it ships, so nothing the page wrote over the
+         world's words can stand in for them: every word the engine also keeps must reach the screen as the file says it */
+      const shipped = (() => { try { const h = fs.readFileSync(file, 'utf8'), m = /<script src="([^"]*strings\.js)"><\/script>/.exec(h); if (!m) return null;
+        const vm = require('vm'), box = { console, art: () => null, logKind: () => [], logCrit: () => [] }; vm.createContext(box);
+        vm.runInContext(fs.readFileSync(path.resolve(path.dirname(file), m[1]), 'utf8') + '\n;this.__UI = UI;', box); return box.__UI; } catch (e) { return null; } })();
+      const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
+      if (!shipped) WN.push('COUNT-ONLY: this shell\'s words file could not be read outside the page, so a world\'s own word was checked against the page alone');
+      else if (W.hasDef) for (const L of W.langs) {
+        const ks = [...new Set((W.defKeys.en || []).concat(W.defKeys.es || []))].filter(k => { const p = k.split('.'), o = shipped[L];
+          return !!o && (p.length === 1 ? Object.prototype.hasOwnProperty.call(o, k) : !!o[p[0]] && Object.prototype.hasOwnProperty.call(o[p[0]], p[1])); });
+        const got = await wp.evaluate(([L, ks]) => { const keep = lang; lang = L; const t = T(), out = {};
+          const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
+          ks.forEach(k => { const p = k.split('.'); out[k] = sig(p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k]); }); lang = keep; T(); return out; }, [L, ks]);
+        ks.forEach(k => { const p = k.split('.'), want = sig(p.length > 1 ? shipped[L][p[0]][p[1]] : shipped[L][k]);
+          if (got[k] !== want) WD.push('in ' + LN[L] + ' the game gives ' + String(got[k]).slice(0, 60) + ' for "' + k + '", where this world\'s own words say ' + want.slice(0, 60)); });
+        if (!ks.length && L === W.langs[0]) WN.push('COUNT-ONLY: this world names none of the engine\'s own words, so none of them could stand in front of one'); }
       W.first.forEach(x => WD.push('in ' + LN[x.split(' ')[0]] + ' the engine\'s word for "' + x.split(' ')[1] + '" stands in front of the word this world names for it'));
       if (W.hasDef) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
@@ -12351,11 +12367,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const p2 = await c2.newPage(), e2 = []; p2.on('pageerror', e => e2.push(String(e.message).split('\n')[0]));
           await p2.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
           await p2.goto(url); await boot(p2);
-          const card = await p2.evaluate(() => { const c = document.getElementById('tpFound'), r = c.getBoundingClientRect(); return { shown: !c.hidden && r.width > 0 && r.height > 0, text: c.innerText, lang }; });
+          const card = await p2.evaluate(() => { const c = document.getElementById('tpFound'), r = c.getBoundingClientRect();
+            return { shown: !c.hidden && r.width > 0 && r.height > 0, text: c.innerText, blank: ['tpFoundLb', 'tpFoundTx', 'tpBoard', 'tpSkip'].filter(i => !(document.getElementById(i) || {}).textContent) }; });
           const how = 'a Trolley Pass link opened on a device with ' + (kept ? 'a game kept' : 'nothing kept');
           if (e2.length) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + e2[0] + '"' + (card.shown ? '' : ', and no card showed'));
           else if (!card.shown) WD.push('in ' + LN[L] + ', ' + how + ' shows no card');
-          else if (bad(card.text)) WD.push('in ' + LN[L] + ', ' + how + ' shows "' + card.text.replace(/\s+/g, ' ').trim() + '"');
+          else if (bad(card.text) || card.blank.length) WD.push('in ' + LN[L] + ', ' + how + ' shows "' + card.text.replace(/\s+/g, ' ').trim() + '"' + (card.blank.length ? ', with nothing where its words go (#' + card.blank.join(', #') + ')' : ''));
           else (report['pass' + kept] = report['pass' + kept] || {})[L] = card.text.replace(/\d+/g, '#');
           await p2.close(); if (!kept) await c2.close(); }
         /* walking out of the park by a door */
