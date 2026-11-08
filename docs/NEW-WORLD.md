@@ -127,11 +127,25 @@ glyph that has one is never a box and never a picture. **Five primitives, and th
       r, t, arc,        // torus: ring radius, tube, and how much of the ring
       rx,ry,rz, sx,sy,sz,
       c:"#RRGGBB",
+      cb:"#RRGGBB",     // a second colour: c at the part's highest point, cb at its lowest
       a: 0.55 }         // ANY `a` under 1 is GLASS — a second, transparent mesh under the tile's
 
 `torus` is easy to miss and it is the one that stops things looking printed: a ring on a stove, an
 arch over a door, the bones on a pan de muerto, the handle of a cup. The engine's own comment said
 "box, sphere, cylinder, cone" for a year while the code had five; it says five now.
+
+`cb` (2026-11-08) shades a part evenly from its own colour at its highest point to `cb` at its
+lowest, by height as the part stands, after its turns: a leaning part shades by how it leans, not
+along its own axis. It is worked out once, as the shape is built, so it costs nothing while the game
+runs, and it adds no triangle. Both colours go through the player's colour theme, and the time of day
+tints them alike, because they are drawn with one material. A foot in shade or a toasted underside is
+one part with a `cb`, not a second part. A part without `cb` is built exactly as before.
+
+**Every key a part may say is in one list** in the engine, with what kind of thing each is (shape,
+place, size, angle, stretch, colour, glass): `PARTKEYS`, in `engine/engine3d.js` (grep `THE ONE LIST
+OF WHAT A PART MAY SAY`). Anything that reads parts takes its keys from there: the kitchen's check of a
+thing's parts, what it makes smaller to fit a shelf, and whatever a world writes to scale its parts
+into its own units or to send them somewhere else. A key that is not on it draws nothing.
 
 ### What the engine already has a shape for — and the ONE line you write to take it
 

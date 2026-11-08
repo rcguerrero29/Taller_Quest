@@ -61,6 +61,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Swag `mount` | `engine/engine.js`, grep `WHERE A STRING HANGS` (the words: `SWAG_MOUNTS`) | 3, **closed**: `poles` (default) · `wall` · `ceiling`; an unknown word hangs on poles and is a red in `test/engine.smoke.js` — registered below |
 | Swag `reach` | `engine/engine.js`, grep `HOW FAR A WALL STRING HANGS DOWN ITS WALL` (the range: `SWAG_REACH`) | a number, `0`–`32`; unset is where a wall string always hung; read on a `wall` string only; anything else hangs as if unset and is a red in `test/engine.smoke.js` — registered below |
 | Shape `open` | `engine/shapes.js`, grep `HOW FAR A THING IS OPEN` (`openOf`) | a number, `0`–`1`; unset, `0` and anything not a number are shut, past `1` is `1`; read by the fridge and the kitchen wall's pieces with a door or a drawer — registered below |
+| Part keys | `engine/engine3d.js`, grep `THE ONE LIST OF WHAT A PART MAY SAY` (`PARTKEYS`) | 21, each with its kind: `s` shape · `x y z` place · `w h d r rt rb t` size · `arc rx ry rz` angle · `sx sy sz` stretch · `c cb` colour · `a` glass; the one list every reader of parts takes its keys from, and `cb`, a second colour by height, added 2026-11-08 — registered below |
 | Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `moveTo` `remove` `paint` `paintAll` `compact`), with `gaps` (sprint 5) — registered below |
 | Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store` `gaps` `things` `keep`; a place's `kind` `row` `col` `name` `full` `finish` `id`; a thing's `id` `n` `name` `parts` `stand` `pic`; **closed**: any other key refuses the layout whole, and a thing off its list is refused whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
@@ -590,6 +591,16 @@ helper, and the person who hits it will be reading their content files, not `san
 - **Registered 2026-10-30 — the closet's parts: `rail`, `hanger`, `garment`**, beside `carcass`, `inside`, `shelf`, `door`,
   `handle` and `kick`, as the table's `cloth` and `plate` say what they are (`garment` and not `cloth`, which is the
   table's: one name, one part); read by the suite, never by the bake.
+- **Registered 2026-11-08 — the one list of what a part may say (`PARTKEYS`), and a part's second colour `cb`.** In
+  `engine/engine3d.js` (grep `THE ONE LIST OF WHAT A PART MAY SAY`), frozen: every key a part may carry and what kind of
+  thing it is: `s` shape; `x y z` place; `w h d r rt rb t` size; `arc rx ry rz` angle; `sx sy sz` stretch; `c cb`
+  colour; `a` glass. A length is a place or a size. The kitchen takes from it the keys a thing's part may say (every one
+  but glass) and the keys it makes smaller to fit a shelf (the sizes), in place of the two lists it kept; whatever else
+  reads parts takes its keys from it the same way, and `test/prims.js` holds it to exactly the keys the shape builder
+  reads. `cb` (`#rrggbb`): the part shades evenly from `c` at its highest point to `cb` at its lowest, by height as it
+  stands after its turns, worked out once as it is built; both through the colour theme, one material for the time of
+  day. It is a colour, not a size: nothing makes it smaller or scales it. A part without it, and every world that writes
+  none, is built exactly as before. `cb` collides with nothing already here.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 

@@ -25,9 +25,13 @@ The 3D camera builds a tile from a LIST OF PARTS when the pack declares one: `TI
 **your pack's** `art.js` (`content/meridian/art.js`, `content/horno/art.js`, or whatever
 `content/<world>/art.js` you are building — this seam belongs to every pack, not to Meridian), or
 equivalently `TILEART[g].mesh`, a function `({x,y}) => parts` or a plain list.
-A part is `{s:"box"|"sph"|"cyl"|"cone"|"torus", x,y,z, w,h,d | r | rt,rb,h | r,t,arc, c:"#hex",
+A part is `{s:"box"|"sph"|"cyl"|"cone"|"torus", x,y,z, w,h,d | r | rt,rb,h | r,t,arc, c:"#hex", cb:"#hex",
 rx,ry,rz, sx,sy,sz, a}` in TILE UNITS — a tile is 1.0, a person is about 1.0 tall, y is up, the
-tile's centre is (0,0). The engine (`engine/engine3d.js`, `t3MeshOf`) merges the parts into ONE mesh
+tile's centre is (0,0). `cb` is a second colour: the part shades evenly from `c` at its highest point
+to `cb` at its lowest, by height as it stands, worked out once as it is built (a foot in shade is one
+part, not two). Every key a part may say, and what kind of thing it is, is in one list (`PARTKEYS`,
+`engine/engine3d.js`, grep `THE ONE LIST OF WHAT A PART MAY SAY`); whatever reads parts takes its keys
+from there. The engine (`engine/engine3d.js`, `t3MeshOf`) merges the parts into ONE mesh
 per tile with vertex colours and one Lambert material, low-poly on purpose (sphere 8×6, cylinder 10,
 cone 8). Rotation order is YXZ: a part can lean (`rz`) and the whole thing can still be turned to face
 a door (`ry`). A part with `a:` under 1 is glass — a second, transparent mesh hung under the tile's.
