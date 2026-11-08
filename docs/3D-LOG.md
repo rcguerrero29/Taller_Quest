@@ -1260,3 +1260,37 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
 - **Cost:** no triangle and no draw call. The bake reads a part's corners once more only when the part names `cb`.
 - **Not done:** nothing in Meridian draws with `cb` yet, so its look is as it was. No direction other than height; no blend
   across a part's width; no colour per face.
+
+### 2026-11-08 · review: a second colour under the engine's one light, and how far the mesh hash reaches (Chema)
+- **Decided the same day:** a part's second colour stays the thing's own colour, as built, for now. A shade that follows the
+  light of where a thing stands is left to a later change, and the engine keeps the one place it would come in
+  (`t3CornerMix`, grep `THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED`): told where the thing stands, it reads only the
+  part's own two colours today, so nothing on screen changed.
+- **Measured, the second colour under the engine's light:** the sun and the ambient give every flat face one value, so `cb`
+  is the only thing in a scene that changes with height. On a sphere it equals a sky-and-ground light to four decimals over
+  240 corners, through the engine's own bake; a squashed sphere is within 0.10, a box's sides 0.50 off, a flared wall 0.71 off.
+- **Measured, what real light would do:** a one-bounce overcast sky, 12,000 rays a point. The whole height gradient comes from
+  the light bounced off what a thing stands on, which the engine does not model:
+
+  | What it stands on | A straight side 4.5 tall: mid-height / foot | A wall flaring from 5 to 8 over 6.5: mid-height / foot |
+  |---|---|---|
+  | pale (albedo 0.8) | 4% / 16% darker | 9% / 34% darker |
+  | mid (albedo 0.4) | 3% / 10% | 8% / 26% |
+  | black (albedo 0) | no change (±1.5%) | no change (±1.5%) |
+
+  A straight ramp is right at the foot and a few points heavy mid-face. Judge it on the rows the game draws, where a side two
+  to twelve rows tall is read by its mean, never on a close-up. One colour carried wherever a thing is put suits one floor:
+  on a darker one it is too strong.
+- **Even, in the hex a pack writes,** because the vendored three.js is r149 in its legacy colour mode; a move to colour-managed
+  three.js changes this along with every other colour. No seam on any face: the colour is linear in height, and height is
+  linear across any flat triangle.
+- **How far the mesh hash reaches:** every object under the world's group. One colour planted one step off in a copy was seen
+  in the stove's drip bowl (one world, one object), and not in the trolley's skirt, because the trolley is built every frame
+  and hung on the scene rather than the world's group, nor in the ofrenda's cloth while the clock was held out of season.
+  The lane then ran the hash in season as well (the ofrenda standing, 1,724 meshes, the same as before); the trolley stays
+  outside it, unchanged by construction (no part in this repository names `cb`, and a part without one takes the path it
+  always took). Walk `T3.scene` too before the hash is used as a gate.
+- **Rejected:** the shade on a short foot part instead of a ramp up the side, on the belief that a straight side sees the same
+  half of the sky at every height. True of the sky, not of the floor; withdrawn before it ran.
+- **Not measured:** a closed cabinet with a shelf above, a lamp, the light from an open door; neither the engine nor the
+  simulation models them.
