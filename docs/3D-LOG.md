@@ -1229,3 +1229,34 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   piece, 544 at a laptop's size and 149 at a phone's, against 0 and 1 for the hairline; the check asks 200 and 60. Also held now: an own
   item's name is counted in characters (21 emoji), has no direction control (U+202A to 202E, 2066 to 2069, 200E, 200F), a count stops at 99
   and "−" at 1 leaves 1, nothing glows after the room is left, and two things with one date list in name order.
+
+### 2026-11-08 · one list of what a part may say, and a part shaded into a second colour
+- **Goal served:** a part can shade into a second colour by its height, at no cost while the game runs; and every reader of
+  parts takes its keys from one list, so a key added once is taken everywhere instead of being refused by the next copy.
+- **Shipped, the list:** `PARTKEYS`, frozen, inside the shape builder's sentinels in `engine/engine3d.js` (grep `THE ONE LIST
+  OF WHAT A PART MAY SAY`): 21 keys, each with its kind (shape, place, size, angle, stretch, colour, glass). The kitchen reads
+  from it, on the first part it checks, the keys a thing's part may say (every one but glass, in the order it always
+  checked them) and the keys it makes smaller to fit a shelf (the sizes); a world that scales or sends out its parts does
+  the same. `test/prims.js` holds the list to the builder: frozen, every kind one a reader knows, and exactly the keys the
+  builder reads, no more and no fewer.
+- **Shipped, the colour:** `cb` on a part. In `t3BakeParts` each corner takes the mix of `c` and `cb` for its own height as
+  the part stands, after its turns: `c` at the part's highest point, `cb` at its lowest, so a leaning part shades by how it
+  leans and not along its own axis. Both through the colour theme (`tc`), both under the one material the time of day
+  tints. A part without `cb` takes its one colour on every corner, as before; one whose `cb` cannot be read shades to its own.
+- **Measured, nothing else moved:** the shape gate builds all 482 distinct literal parts, facing all four doors, byte for byte
+  as before, with 21 twins each in one cache. Every object under the scene's group in every world, hashed (geometry bytes,
+  material, the pixels of every canvas it is painted with, place, turn, tag), is the same on the engine before the list and
+  after both changes: Meridian's 15 worlds (1,398 meshes as it boots, 1,476 with every district open) and El Horno's (38),
+  the clock and the dice held still; the control (one engine twice) was the same, and one colour planted one step off in a
+  copy was seen, in the one world and the one object that carry it.
+- **Measured, the colour:** `test/engine.smoke.js`, grep `THE ONE LIST OF WHAT A PART MAY SAY`: a box, a sphere, a cylinder
+  leaning far over and a ring stood on its edge, read corner by corner against the mix for each corner's height, as asked and
+  through a colour theme (36, 240, 120 and 504 corners); the mesh the scene is handed carries the bake's colours, on one
+  tinted material. Red first on the engine before: the list missing, and each of the four drawn in one colour, in both
+  themes. Fourteen plants in a copy outside the repository, each red in its own sentence: shaded upside down, along a part's
+  own axis, outside the theme, dropped by the mesh, a material the time of day never reaches, a plain part shaded anyway, the
+  kitchen taking a word for a colour, glass, a key on no list, dropping a size from what it takes or from what it shrinks,
+  shrinking an angle, and the list left open.
+- **Cost:** no triangle and no draw call. The bake reads a part's corners once more only when the part names `cb`.
+- **Not done:** nothing in Meridian draws with `cb` yet, so its look is as it was. No direction other than height; no blend
+  across a part's width; no colour per face.
