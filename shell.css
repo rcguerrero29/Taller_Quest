@@ -381,10 +381,14 @@
      stamp. His conditional is the argument and it is right: the map STOPS THE GAME, and a thing
      that stops the game has to be worth stopping for. It gets its own width now — nearly the whole
      phone, and a real panel on a desktop. */
-  #mapov .box{width:min(94vw,860px); max-width:none; padding:16px;}
+  #mapov .box{--mappad:16px; width:min(94vw,860px); max-width:none; padding:var(--mappad);}
   #mapov #mapcv{max-height:70svh; object-fit:contain;}
   .settings .box>.close{position:sticky; bottom:-18px; z-index:2; margin-bottom:0;
     box-shadow:0 -14px 16px -8px var(--surface);}
+  /* AND THE MAP'S CLOSE RIDES THE MAP'S OWN FOOT (2026-11-08). The rule above pins every panel's Close by the 18 px of padding
+     every other box has; the map's box has 16, so its Close hung 2 px past the box and its rounded corners were cut off
+     wherever the box scrolls. The map's padding is said once, above, and its Close rides exactly that. No other panel moves. */
+  #mapov .box>.close{bottom:calc(0px - var(--mappad));}
   .settings h3{font-family:'Unbounded',sans-serif; font-size:.9rem; margin:0 0 12px;}
   /* Rosa, finding 6. These were one line whose items shared the space equally, were never allowed
      to be narrower than their own text, and were never allowed to wrap — so in Spanish on a 1440px

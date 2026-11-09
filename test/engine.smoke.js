@@ -7780,6 +7780,150 @@ function findChromium() {
       await ctx.close();
     }
 
+    /* 24 · THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT, AND THE FOOT OF ITS BOX.
+            On a screen shaped like a laptop's or wider the map takes the left half of the screen from top to bottom, wherever
+            that draws the plan at least as big as the box in the middle draws it, and the game shows in the right half,
+            lightly dimmed and standing still, with the player in view; a tap on it closes the map, as a tap beside the box
+            always has. Everywhere else (a tablet held sideways, squarer screens and phones) the map keeps the box in the
+            middle. While the map is open, at every size, nothing in the world moves, the player's own step under way
+            included, and everything picks up where it stopped when the map closes. And the foot of the map's box: Close inside
+            it, the plan as it first opened whatever scroll the box was left with, and the line under the plan clear of Close.
+            Each part below says what it asks of the screen and what it was written red on. */
+    {
+      const own24 = path.relative(root, file) === 'index.html';
+      const decode = await browser.newPage();   /* a photograph is read on a blank page of its own, as section 15 reads one */
+      await decode.setContent('<!doctype html><title>read</title>');
+      /* the box, Close, the plan and the line's words, where the screen shows them now. The line's words start at its first
+         letter: the pin before them is a picture. A finger is put on each line of them, at both ends and the middle */
+      const footNow = () => {
+        const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, bb = box.getBoundingClientRect();
+        const R = e => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? [r.left, r.top, r.right, r.bottom] : null; };
+        const out = { box: [bb.left, bb.top, bb.right, bb.bottom], top: bb.top + box.clientTop, inner: bb.top + box.clientTop + box.clientHeight, scrolls: box.scrollHeight > box.clientHeight + 1,
+          close: R(document.getElementById('mapClose')), W: innerWidth, H: innerHeight };
+        const area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+        const plan = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+        if (plan) { const r = plan.getBoundingClientRect(), k = Math.min(r.width / plan.width, r.height / plan.height);
+          out.plan = { own: plan !== document.getElementById('mapcv'), w: r.width, h: r.height, paperW: plan.width * k, paperH: plan.height * k }; }
+        const note = document.getElementById('mapNote'), tn = note && note.textContent.trim() ? [...note.childNodes].find(n => n.nodeType === 3 && /[\p{L}\p{N}]/u.test(n.textContent)) : null;
+        if (tn) { const rg = document.createRange(); rg.setStart(tn, tn.textContent.search(/[\p{L}\p{N}]/u)); rg.setEnd(tn, tn.textContent.length);
+          const rs = [...rg.getClientRects()].filter(q => q.width > 0 && q.height > 0);
+          if (rs.length) { out.words = [Math.min(...rs.map(q => q.left)), Math.min(...rs.map(q => q.top)), Math.max(...rs.map(q => q.right)), Math.max(...rs.map(q => q.bottom))];
+            const bad = []; rs.forEach(q => { const y = (q.top + q.bottom) / 2;
+              [q.left + Math.min(4, q.width / 3), (q.left + q.right) / 2, q.right - Math.min(4, q.width / 3)].forEach(x => { const el = document.elementFromPoint(x, y);
+                if (!el || !(el === note || note.contains(el))) bad.push(!el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase()); }); });
+            out.under = [...new Set(bad)]; out.said = note.textContent.trim(); } }
+        return out; };
+      const toArrow = async (p, on) => { if (!await mapOpen(p)) return false; const sw = await findSwitch(p); if (sw && sw.on !== on) await press(p); await mapShut(p); return true; };
+
+      /* a · CLOSE SITS WHOLLY INSIDE THE MAP'S BOX, at ten sizes, in each language, with the edge arrow off and on: its lower
+             edge at or above the inside of the box's lower edge, wherever the box scrolls and wherever it does not. The rule
+             that pins every panel's Close to the foot of its box counts on 18 px of padding, and the map's box has 16.
+             Written red on mq-v253: Close hung 1.6 to 2.4 px below the box in 54 of the 60 openings.
+         On one page and in one round of openings, the map opened with its button each time: every size, each language,
+         the edge arrow off and on */
+      {
+        const SIZES24 = [[1280, 800, 'a laptop, 1280×800', 'line'], [1440, 900, 'a laptop, 1440×900', 'line'], [1920, 1080, 'a large screen, 1920×1080', 'line'],
+          [1280, 720, 'a laptop, 1280×720', 'line'], [1024, 768, 'a tablet held sideways, 1024×768', 'line'], [768, 1024, 'a tablet, 768×1024', ''],
+          [844, 390, 'a phone held sideways, 844×390', ''], [390, 844, 'a phone, 390×844', 'room'], [390, 560, 'a short phone, 390×560', 'phone'], [360, 640, 'a short phone, 360×640', 'phone room']];
+        const { ctx, p } = await page2(1280, 800);
+        if (!await begin(p)) MP.push('the game did not start, so the foot of the map\'s box was not measured — nothing to measure is not a pass');
+        else {
+          /* the flat camera behind the map, which draws the street cheaply between openings: the box does not depend on it. The
+             edge arrow is left on or off as a player leaves it (the switch's own press is sections 5, 15 and 16's, and b's) */
+          await p.evaluate(() => { if (typeof CAMS !== 'undefined' && CAMS.includes('top')) camSet('top'); });
+          const langs = await langsOf(p); let opened = 0, read = 0, lowest = null;
+          const hung = [], lineUnder = [], shaded = [], faint = [], unseen = [], shrunk = [], none = [];
+          for (const scheme of ['light']) {
+            await p.emulateMedia({ colorScheme: scheme }); await rafs(p);
+            for (const [w, h, size, kind] of SIZES24) {
+              await p.setViewportSize({ width: w, height: h }); await rafs(p);
+              for (const L of langs) {
+                await setLang(p, L);
+                for (const on of [false, true]) {
+                  await p.evaluate(on => bearSet(on), on);
+                  const where = size + ', ' + inLang(L) + ', the edge arrow ' + (on ? 'on' : 'off') + (scheme === 'dark' ? ', on the dark box' : '');
+                  if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the foot of its box was not measured'); continue; }
+                  await rafs(p, 2); opened++;
+                  const m = await p.evaluate(footNow);
+                  /* a */
+                  if (!m.close) none.push(where + ': there is no Close in the box');
+                  else if (m.close[3] > m.inner + 0.5) hung.push(where + ': ' + (m.close[3] - m.inner).toFixed(1) + ' px' + (m.scrolls ? '' : ', where the box does not scroll'));
+                  await mapShut(p);
+                }
+              }
+            }
+          }
+          await p.emulateMedia({ colorScheme: 'light' }); await p.evaluate(() => bearSet(false));
+          const list = a => a.slice(0, 4).join('; ') + (a.length > 4 ? '; and ' + (a.length - 4) + ' more' : '');
+          if (hung.length) MP.push('The map\'s Close bar hangs below the bottom of its box, so its rounded corners are cut off: on ' + list(hung));
+          if (none.length) MP.push('The foot of the map\'s box could not be measured: on ' + list(none) + ' — nothing to measure is not a pass');
+          MN.push('COUNT-ONLY: the map was opened ' + opened + ' time(s) to measure the foot of its box');
+        }
+        await ctx.close();
+      }
+
+      /* b · WITH THE EDGE ARROW ON, THE MAP REOPENS AS IT FIRST OPENED, whatever scroll its box was left with: on a tablet and
+             a phone held sideways, in each language, the box is scrolled to its foot with the wheel, the map closed with Close
+             and opened again, and the plan is the height it had the first time. And once at each size, with the box at its
+             foot, the window changes size with the map open: the plan is the height a fresh opening at the new size gives it,
+             and the box keeps the scroll a person left it with. Written red on mq-v253: the plan came back 28.4 px taller
+             (509.2 then 537.6 px, and 244.6 then 273 px), and grew the same way when the window changed size. */
+      {
+        const { ctx, p } = await page2(1024, 768);
+        if (!await begin(p)) MP.push('the game did not start, so whether the map reopens as it first opened was not asked — nothing to measure is not a pass');
+        else {
+          const langs = await langsOf(p);
+          const planH = () => { const ov = document.getElementById('mapov'), area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+            const c = [...ov.querySelectorAll('canvas')].filter(q => q.width && q.height && q.getClientRects().length && q.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0];
+            return c ? +c.getBoundingClientRect().height.toFixed(1) : null; };
+          const boxAt = () => { const b = document.querySelector('#mapov .box'), r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, s: b.scrollTop, max: b.scrollHeight - b.clientHeight }; };
+          const still = () => p.evaluate(() => new Promise(res => { const b = document.querySelector('#mapov .box'); let last = -1, same = 0, k = 0;
+            const f = () => { const s = b.scrollTop; same = s === last ? same + 1 : 0; last = s; if (same >= 3 || ++k > 90) res(s); else requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+          /* to the foot of the box with the wheel, as a person scrolls it */
+          const toFoot = async () => { let a = await p.evaluate(boxAt);
+            for (let k = 0; k < 12 && a.s < a.max - 1; k++) { await p.mouse.move(a.x, a.y); await p.mouse.wheel(0, 200); await still(); a = await p.evaluate(boxAt); }
+            return a; };
+          let asked = 0;
+          if (!await toArrow(p, true)) MP.push('the map button could not be pressed, so the edge arrow was not switched on to reopen the map');
+          else for (const [w, h, size, w2, h2] of [[1024, 768, 'a tablet held sideways, 1024×768', 1000, 740], [844, 390, 'a phone held sideways, 844×390', 860, 400]]) {
+            await p.setViewportSize({ width: w, height: h }); await rafs(p);
+            for (const L of langs) {
+              await setLang(p, L);
+              const where = size + ', ' + inLang(L) + ', with the edge arrow on';
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the map was not reopened'); continue; }
+              await rafs(p, 2); const h0 = await p.evaluate(planH), a = await toFoot();
+              if (h0 === null) { MP.push('I opened the map (' + where + ') and the box shows no plan to measure — nothing to measure is not a pass'); await mapShut(p); continue; }
+              if (a.max < 1) { MN.push('COUNT-ONLY: the map\'s box does not scroll (' + where + '), so it was not reopened from its foot'); await mapShut(p); continue; }
+              const c = await p.evaluate(() => { const r = document.getElementById('mapClose').getBoundingClientRect(); return r.width ? [r.left + r.width / 2, r.top + r.height / 2] : null; });
+              if (c) await p.mouse.click(c[0], c[1]);
+              if (!await until(p, () => document.getElementById('mapov').hidden, null, 2000)) { MP.push('Close did not close the map (' + where + ')'); await mapShut(p); continue; }
+              await rafs(p, 2);
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed a second time (' + where + ')'); continue; }
+              await rafs(p, 2); const h1 = await p.evaluate(planH); asked++;
+              if (Math.abs(h1 - h0) > 0.5) MP.push('On ' + where + ', I scrolled the map to the bottom (' + Math.round(a.s) + ' px), closed it with Close and opened it again, and the plan came back ' + Math.abs(h1 - h0).toFixed(1) + ' px ' + (h1 > h0 ? 'taller' : 'shorter') + ' than the first time (' + h0 + ' then ' + h1 + ' px) — every opening looks like the first');
+              await mapShut(p);
+            }
+            /* and the window changes size once with the box at its foot (in the language the game is in) */
+            const where = size + ', with the edge arrow on';
+            if (!await mapOpen(p)) continue;
+            await rafs(p, 2); const a = await toFoot();
+            await p.setViewportSize({ width: w2, height: h2 }); await rafs(p, 3);
+            const hA = await p.evaluate(planH), sA = await p.evaluate(() => document.querySelector('#mapov .box').scrollTop);
+            await mapShut(p); await mapOpen(p); await rafs(p, 2); const hB = await p.evaluate(planH); await mapShut(p); asked++;
+            if (hA === null || hB === null) MP.push('the box showed no plan after the window changed size (' + where + ') — nothing to measure is not a pass');
+            else if (Math.abs(hA - hB) > 0.5) MP.push('On ' + where + ', I scrolled the map to the bottom and the window changed to ' + w2 + '×' + h2 + ' with the map open: the plan became ' + hA + ' px tall, where the map opened afresh at that size draws it ' + hB + ' px');
+            if (a.s > 1 && sA < 1) MP.push('On ' + where + ', the window changed size with the map scrolled to its foot, and the box was put back at its top: the scroll a person left it with is theirs');
+          }
+          await toArrow(p, false);
+          MN.push('COUNT-ONLY: the map was reopened from the foot of its box, or the window changed size there, ' + asked + ' time(s)');
+        }
+        await ctx.close();
+      }
+
+      await decode.close();
+    }
+    /* end of 24 */
+
     Object.keys(own).forEach(L => { const o = own[L], both = [...o.on].filter(w => o.off.has(w));
       if (both.length) MP.push('the edge arrow\'s switch says “' + both[0] + '” both on and off (' + inLang(L) + '), so its words do not tell a player which it is');
       else if (o.on.size && o.off.size) MN.push('COUNT-ONLY: this game names no words for the edge arrow\'s switch, so the engine\'s own were read (' + inLang(L) + '): on “' + [...o.on].join('” / “') + '”, off “' + [...o.off].join('” / “') + '”'); });

@@ -7422,7 +7422,7 @@ function mapArrowBtn(){
   b.style.color=on?"var(--accent-ink,#FFFFFF)":"inherit";
   hint.textContent=t.arrowHint||(es?"Nomás sale cuando ya tienes destino.":"Only shows once you've got a destination.");
   mapArrowHint();
-  mapHeadFit();}
+  mapAtTop(()=>{mapHeadFit();});}
 /* ---- AND UNDER IT, WHEN THE ARROW SHOWS (2026-11-07) ----
    Switched on with nowhere chosen, the arrow has nothing to point at, so pressing the switch seemed to do nothing. A
    line under the switch says why: the arrow shows only once you have a destination. It is shown while the switch is on
@@ -7475,10 +7475,21 @@ function mapHeadFit(){
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
-  mapNoteHold();
-  mapHeadFit();
+  mapAtTop(()=>{mapNoteHold();mapHeadFit();});
   [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapNoteHold();mapHeadFit();}});
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapNoteHold();mapHeadFit();});}});
+/* ---- AND IT IS MEASURED WITH THE BOX AT ITS TOP (2026-11-08) ----
+   The room the plan gives the edge arrow's line was read with the box still holding the scroll it was left with. Scrolled to
+   its foot (on a tablet held sideways that is how "Somewhere to go" is reached), the browser's scroll anchoring held the plan
+   still while the line was hidden for the reading, so the reading found no room, and the next opening, or the window
+   changing size with the box scrolled down, gave the plan its 28 px back. So the box is measured at its top, with the
+   browser's anchoring off for the measuring alone, and is handed back the scroll it had: the player's own scrolling is left
+   as it is. */
+function mapAtTop(f){
+  const ov=$("mapov"),box=ov&&ov.querySelector(".box");if(!box){f();return;}
+  const st=box.scrollTop,oa=box.style.overflowAnchor;
+  box.style.overflowAnchor="none";if(st)box.scrollTop=0;
+  try{f();}finally{if(st)box.scrollTop=st;box.style.overflowAnchor=oa;}}
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
