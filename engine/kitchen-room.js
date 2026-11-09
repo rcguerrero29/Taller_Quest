@@ -437,10 +437,11 @@ function kitTap(cx,cy){if(!KITWALL[world]||camMode!=="3d"||$("world").hidden||wo
      parts  optional: one of it in 3D, at most KITPARTS parts, each a part the engine already draws (`box`, `sph`, `cyl`,
             `cone` or `torus`, as engine/engine3d.js's t3Prim builds them) with only the keys a part has (`s`, `x`,`y`,`z`,
             `w`,`h`,`d`, `r`,`rt`,`rb`,`t`,`arc`, `rx`,`ry`,`rz`, `sx`,`sy`,`sz`, `c` and `cb`: the engine's one list but
-            glass, grep "WHAT A THING'S PART MAY SAY"): numbers finite and within a piece
-            (x and z within KITREACH, half a tile, of the thing's middle, y from just under what it stands on to a tile
-            over it; sizes above 0 and at most KITSIZE, a tile; turns within a full turn; stretches above 0 and at most
-            4), a colour `#rrggbb`, and a second colour `#rrggbb` if it has one, in TILE UNITS as every shape is;
+            glass, grep "WHAT A THING'S PART MAY SAY"): each held by its kind on that list (grep "HOW FAR A THING'S PART MAY
+            GO"): numbers finite and within a piece (x and z within KITREACH, half a tile, of the thing's middle, y from just
+            under what it stands on to a tile over it; sizes above 0 and at most KITSIZE, a tile; turns within a full turn;
+            stretches above 0 and at most 4), a colour `#rrggbb`, and a second colour `#rrggbb` if it has one, in TILE UNITS
+            as every shape is; a key of a kind this file holds no bound for is refused;
      stand  optional: how many copies of it stand in 3D, 1 to KITCOPIES (left out, one), and never more than n: twelve eggs
             need not be twelve eggs;
      pic    optional: `(g, px)`, the world's own picture of it, drawn on a square canvas px wide (its page and the hand).
@@ -463,7 +464,19 @@ const KITPRIM=["box","sph","cyl","cone","torus"],KITHEX=/^#[0-9a-fA-F]{6}$/;
    fit where it stands is its sizes, while where it stands is worked out again and its turns and stretches are kept */
 let KITKEYS=null;
 const kitKeys=()=>KITKEYS||(KITKEYS=Object.freeze({say:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]!=="glass")),
-  sizes:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="size")),colours:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="colour"))}));
+  sizes:Object.freeze(Object.keys(PARTKEYS).filter(k=>PARTKEYS[k]==="size"))}));
+/* HOW FAR A THING'S PART MAY GO, one bound for each kind of key on the one list, the key handed in for the three that differ
+   within a kind: a place within the thing (x and z within KITREACH of its middle, y from just under what it stands on to a tile
+   over it), a size above 0 and at most KITSIZE (a cylinder's end, rt or rb, may close to 0), an angle within a full turn either
+   way (an arc, how much of a ring, above 0), a stretch above 0 and at most 4. Each answers null, or why not. A colour is
+   #rrggbb, checked beside it. A key the list gains is held by its kind's bound the day it is added; a key of a kind with no
+   bound here is refused with a sentence until one is written (closed by default), and a size this file's fit does not count
+   (kitReach) is a red in test/engine.smoke.js, grep "THE ONE LIST OF WHAT A PART MAY SAY". */
+const KITBOUND=Object.freeze({
+  place:(k,v)=>k==="y"?(v<-0.05||v>1?"outside the thing":null):(Math.abs(v)>KITREACH?"past "+KITREACH+" from the thing's middle":null),
+  size:(k,v)=>k==="rt"||k==="rb"?(v>=0&&v<=KITSIZE?null:"where a radius is 0 to "+KITSIZE):(v>0&&v<=KITSIZE?null:"where a size is above 0 and at most "+KITSIZE),
+  angle:(k,v)=>k==="arc"?(v>0&&v<=Math.PI*2?null:"where an arc is above 0 and at most a full turn"):(Math.abs(v)>Math.PI*2?"past a full turn":null),
+  stretch:(k,v)=>v>0&&v<=4?null:"where a stretch is above 0 and at most 4"});
 /* WHERE THINGS STAND IN EACH KIND, in the piece's own frame before it is turned to the room: each level a floor (y, the top
    of what they stand on), the clear height over it (h), its width (w) and depth (d) about z, and how far it comes out
    with its drawer when open (pull). `bare`: nothing to open, so its things always show. Measured off engine/shapes.js:
@@ -486,19 +499,15 @@ function kitThingWarn(s){if(KITSAID.has(s)||KITSAID.size>200)return;KITSAID.add(
 function kitPartBad(p){const plain=!!p&&typeof p==="object"&&!Array.isArray(p)&&[Object.prototype,null].includes(Object.getPrototypeOf(p));
   if(!plain)return "a part is not a part";
   const KEYS=kitKeys().say;
-  const ex=Object.keys(p).find(k=>!KEYS.includes(k));if(ex!==undefined)return "a part says "+JSON.stringify(ex.slice(0,20))+", which a part has not";
+  const ex=Object.keys(p).find(k=>!KEYS.includes(k));
+  if(ex!==undefined)return Object.prototype.hasOwnProperty.call(PARTKEYS,ex)&&PARTKEYS[ex]==="glass"?"a part says "+JSON.stringify(ex)+", which makes the part glass, and nothing a place keeps is glass":"a part says "+JSON.stringify(ex.slice(0,20))+", which a part has not";
   if(!KITPRIM.includes(p.s))return "a part is a "+JSON.stringify(String(p.s).slice(0,20))+", and the engine draws "+KITPRIM.join(", ");
   if(typeof p.c!=="string"||!KITHEX.test(p.c))return "a part's colour is "+JSON.stringify(String(p.c).slice(0,20))+", not #rrggbb";
-  for(const k of KEYS){if(k==="s"||k==="c"||p[k]===undefined)continue;const v=p[k];
-    if(kitKeys().colours.includes(k)){if(typeof v!=="string"||!KITHEX.test(v))return "a part's "+k+" is "+JSON.stringify(String(v).slice(0,20))+", not #rrggbb";continue;}
+  for(const k of KEYS){if(k==="s"||k==="c"||p[k]===undefined)continue;const v=p[k],kind=PARTKEYS[k];
+    if(kind==="colour"){if(typeof v!=="string"||!KITHEX.test(v))return "a part's "+k+" is "+JSON.stringify(String(v).slice(0,20))+", not #rrggbb";continue;}
+    if(!Object.prototype.hasOwnProperty.call(KITBOUND,kind))return "a part says "+JSON.stringify(k)+", which the engine's one list calls a "+JSON.stringify(String(kind).slice(0,20))+", and a kitchen holds no bound for that kind";
     if(typeof v!=="number"||!isFinite(v))return "a part's "+k+" is not a number";
-    if((k==="x"||k==="z")&&Math.abs(v)>KITREACH)return "a part's "+k+" is "+v+", past "+KITREACH+" from the thing's middle";
-    if(k==="y"&&(v<-0.05||v>1))return "a part's y is "+v+", outside the thing";
-    if(["w","h","d","r","t"].includes(k)&&!(v>0&&v<=KITSIZE))return "a part's "+k+" is "+v+", where a size is above 0 and at most "+KITSIZE;
-    if((k==="rt"||k==="rb")&&!(v>=0&&v<=KITSIZE))return "a part's "+k+" is "+v+", where a radius is 0 to "+KITSIZE;
-    if(k==="arc"&&!(v>0&&v<=Math.PI*2))return "a part's arc is "+v+", where an arc is above 0 and at most a full turn";
-    if(["rx","ry","rz"].includes(k)&&Math.abs(v)>Math.PI*2)return "a part's "+k+" is "+v+", past a full turn";
-    if(["sx","sy","sz"].includes(k)&&!(v>0&&v<=4))return "a part's "+k+" is "+v+", where a stretch is above 0 and at most 4";}
+    const why=KITBOUND[kind](k,v);if(why)return "a part's "+k+" is "+v+", "+why;}
   return null;}
 /* A PLACE'S THINGS AS THE WORLD ANSWERS THEM NOW, each checked whole: {list, bad}, bad true when anything was refused */
 function kitThingsOf(id,i){const K=KITWALL[id],p=K&&K.places[i],out={list:[],bad:false};
@@ -537,7 +546,9 @@ function kitThingsFromList(K,r,at,out,cap){cap=cap||KITTHINGS;
   if(K.tools&&out.list.some(t=>t.date)){const t0=kitDayNum(kitToday()),near=t=>!!t.date&&kitDayNum(t.date)-t0<=KITSOON;
     out.list=out.list.map((t,k)=>({t,k})).sort((a,b)=>{const na=near(a.t),nb=near(b.t);if(na!==nb)return na?-1:1;return na?kitDayNum(a.t.date)-kitDayNum(b.t.date)||a.k-b.k:a.k-b.k;}).map(x=>x.t);}
   return out;}
-/* HOW FAR ONE PART REACHES, from its middle, along x, y and z: generous for a turned part, which may reach any way */
+/* HOW FAR ONE PART REACHES, from its middle, along x, y and z: generous for a turned part, which may reach any way. Every size
+   on the engine's one list must be counted here, or a thing made smaller to fit where it stands still sticks out of it:
+   test/engine.smoke.js measures each key of the list against what the engine draws (grep "THE REACH A PART IS FITTED BY") */
 function kitReach(p){const sx=p.sx||1,sy=p.sy||1,sz=p.sz||1,s=p.s;
   let a,b,c;
   if(s==="box"){a=(p.w||0.1)/2;b=(p.h||0.1)/2;c=(p.d||0.1)/2;}

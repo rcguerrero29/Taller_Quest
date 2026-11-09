@@ -3095,15 +3095,18 @@ function findChromium() {
 
   /* ---- THE ONE LIST OF WHAT A PART MAY SAY, AND A PART SHADED INTO A SECOND COLOUR ----
      engine/engine3d.js, grep "THE ONE LIST OF WHAT A PART MAY SAY" and "A SECOND COLOUR"; engine/kitchen-room.js, grep "WHAT A
-     THING'S PART MAY SAY". Every reader of parts takes what it takes from one list in the engine. What a person would notice:
-     a thing the kitchen refuses although its part says nothing the engine cannot draw, or takes although its part is glass,
-     says what no part says, or names a colour that is not one; a thing made smaller to fit where it stands whose turns,
-     stretches or colours changed with its size; and a part that names a second colour drawn in one, shaded the wrong way up,
-     along its own axis instead of as it stands, with either end outside the player's colour theme, or drawn with a material
-     the time of day does not tint. Every key is read off the engine's own list as it stands, so a key the list gains is asked
-     here without this block changing. On a page of its own: a made-up kitchen of the template's seven places, whose counter is
-     handed one thing at a time. Red first on the engine before the list and before the second colour, in a copy of the tree
-     outside the repository. */
+     THING'S PART MAY SAY" and "HOW FAR A THING'S PART MAY GO". Every reader of parts takes what it takes from one list in the
+     engine. What a person would notice: a thing the kitchen refuses although its part says nothing the engine cannot draw, or
+     takes although its part is glass, says what no part says, names a colour that is not one, or carries a key past what its
+     kind may be (each key once past each end); a part the kitchen takes that stands out past the reach it is fitted by, so a
+     thing made smaller to fit a shelf still sticks out of it (each key alone and all of them at once, on every primitive); a
+     thing made smaller to fit where it stands whose turns, stretches or colours changed with its size; and a part that names a
+     second colour drawn in one, shaded the wrong way up, along its own axis instead of as it stands, with either end outside
+     the player's colour theme, drawn with a material the time of day does not tint, or built with no corner to read. Every key
+     is read off the engine's own list as it stands, so a key the list gains is asked here without this block changing. On a
+     page of its own: a made-up kitchen of the template's seven places, whose counter is handed one thing at a time. Red first
+     on the engine before the list and before the second colour, and on the kitchen before its bounds by kind, in a copy of the
+     tree outside the repository. */
   {
     const OL = [], say = s => OL.push(s);
     const needK = await page.evaluate(() => typeof KITCHEN !== 'object');
@@ -3114,16 +3117,18 @@ function findChromium() {
     await op.goto('file://' + file);
     try {
       if (!await until(op, () => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, 15000)) throw 'the page never had a kitchen to lay, so nothing was asked';
-      /* a good value for each kind of key, inside every range the kitchen holds a part to */
+      /* a good value for each kind of key, inside every range the kitchen holds a part to; one past each end of every range of
+         its kind; and one far out but inside them, for the reach */
       const GOOD = { shape: 'box', place: 0.1, size: 0.04, angle: 0.3, stretch: 1.2, colour: '#3060A0', glass: 0.5 };
+      const PAST = { place: [5, -5], size: [5, -1], angle: [10, -10], stretch: [10, -1] }, FAR = { place: 0.3, size: 0.5, angle: 1.2, stretch: 2.5 };
       const L = await op.evaluate(() => typeof PARTKEYS === 'object' && PARTKEYS ? { list: Object.assign({}, PARTKEYS), frozen: Object.isFrozen(PARTKEYS) } : null);
-      if (!L) say('the engine keeps no one list of what a part may say, so the kitchen, and every world that scales its parts into its own units or lets them out, keeps a list of its own, and a key added to one is refused by the next');
+      if (!L) say('the engine keeps no one list of what a part may say, so the kitchen keeps a list of its own, and a key the engine learns to draw is refused there');
       else {
         const keys = Object.keys(L.list), unknown = keys.filter(k => !Object.prototype.hasOwnProperty.call(GOOD, L.list[k]));
         if (!L.frozen) say('the one list of what a part may say is not frozen, so any script can change it for every reader of parts at once');
         if (unknown.length) say('the one list calls ' + unknown.map(k => k + ' a ' + JSON.stringify(String(L.list[k]))).join(', ') + ', which is no kind of key a reader of parts knows');
         /* 1 · THE KITCHEN TAKES every key of the list but glass, and nothing that is not on it */
-        const K = await op.evaluate(([GOOD]) => {
+        const K = await op.evaluate(([GOOD, PAST]) => {
           const ID = '__kit_partkeys', R = ['##########', '#' + KITCOL.repeat(4) + '#####', '#........#', '#........#', '##########'];
           WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 10, H: 5 };
           window.__pk = {};
@@ -3134,9 +3139,11 @@ function findChromium() {
           const ask = part => { window.__pk.p3 = [{ id: 'one', n: 1, name: 'One', parts: [part] }]; const r = kitThingsOf(ID, 2); delete window.__pk.p3; return r.bad ? 'refused' : r.list.length === 1 ? 'taken' : 'neither'; };
           return { ID, laid, got: Object.keys(PARTKEYS).map(k => [k, PARTKEYS[k], ask(Object.assign({}, base, { [k]: GOOD[PARTKEYS[k]] }))]),
             stranger: ask(Object.assign({}, base, { zz: 0.1 })),
+            /* each key once past each end of what its kind may be */
+            past: Object.keys(PARTKEYS).filter(k => PAST[PARTKEYS[k]]).flatMap(k => PAST[PARTKEYS[k]].map(v => [k, PARTKEYS[k], v, ask(Object.assign({}, base, { [k]: v }))])),
             /* each colour key but the part's own (which the block above holds) named with a word where a colour goes */
             notColour: Object.keys(PARTKEYS).filter(k => PARTKEYS[k] === 'colour' && k !== 'c').map(k => [k, ask(Object.assign({}, base, { [k]: 'red' }))]) };
-        }, [GOOD]);
+        }, [GOOD, PAST]);
         if (K.laid) throw 'the made-up kitchen was refused: ' + K.laid;
         K.got.forEach(([k, kind, got]) => {
           if (kind === 'glass') { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ', which makes the part glass, and nothing a place keeps is glass'); }
@@ -3144,6 +3151,8 @@ function findChromium() {
         });
         if (K.stranger !== 'refused') say('the kitchen ' + (K.stranger === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says zz, which is on no list of what a part may say');
         K.notColour.forEach(([k, got]) => { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part\'s ' + k + ' is the word "red", where a colour is #rrggbb'); });
+        K.past.forEach(([k, kind, v, got]) => { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part\'s ' + k + ' is ' + v + ', which no ' + kind + ' of a thing\'s part may be, so the part would stand out of where the thing is kept'); });
+        if (!K.past.length) say('the one list names no place, size, angle or stretch, so nothing past what a key may be could be asked');
         /* 2 · MADE SMALLER TO FIT: a thing too big for the counter, whose one part says every key of the list but glass. Its sizes
            shrink together, by one number under 1; what it is turned and stretched by, and its colours, stay as they were; where it
            stands is worked out again and its yaw turned to the room, so those two are not compared */
@@ -3168,7 +3177,34 @@ function findChromium() {
             if (q[k] !== S.part[k]) say('a thing made smaller to fit the counter has its ' + k + ' changed too (' + JSON.stringify(S.part[k]) + ' → ' + JSON.stringify(q[k]) + '), which is a' + (L.list[k] === 'angle' ? 'n' : '') + ' ' + L.list[k] + ' and not a size: only its sizes are made smaller');
           });
         }
-        console.log('  COUNT-ONLY: the one list of what a part may say: ' + keys.length + ' keys (' + keys.map(k => k + ' ' + L.list[k]).join(', ') + '); the kitchen asked to take a thing whose part says each of them, and one that says what no part says' + (S.none ? '' : '; a thing too big for the counter made smaller by its sizes alone'));
+        /* 2b · THE REACH A PART IS FITTED BY: the kitchen makes a thing smaller until the reach of its parts (kitReach) fits where it
+           stands, so every corner the engine draws for a part it takes must lie within that reach of the part's middle: each key of
+           the list but shape, colour and glass, alone and far out but inside what its kind may be, and all of them at once, on
+           every primitive the kitchen takes. A size the reach does not count is a thing that sticks out of its shelf. */
+        const R = await op.evaluate(([FAR]) => {
+          if (typeof THREE === 'undefined' || typeof t3BakeParts !== 'function') return { none: true };
+          const keys = Object.keys(PARTKEYS).filter(k => FAR[PARTKEYS[k]] !== undefined), out = [];
+          let asked = 0;
+          KITPRIM.forEach(s => {
+            const all = { s, c: '#C04020' }; keys.forEach(k => { all[k] = FAR[PARTKEYS[k]]; });
+            [...keys.map(k => [k, { s, c: '#C04020', [k]: FAR[PARTKEYS[k]] }]), ['every key at once', all]].forEach(([what, p]) => {
+              if (kitPartBad(p)) return;
+              asked++;
+              const r = kitReach(p), b = t3BakeParts([p], h => h), mid = [p.x || 0, p.y || 0, p.z || 0];
+              let worst = null;
+              for (let i = 0; i < b.pos.length; i++) { const ax = i % 3, over = Math.abs(b.pos[i] - mid[ax]) - r[ax]; if (over > 1e-6 && (!worst || over > worst.over)) worst = { ax, over, at: Math.abs(b.pos[i] - mid[ax]), reach: r[ax] }; }
+              if (worst) out.push({ s, what, v: what === 'every key at once' ? null : p[what], worst });
+            });
+          });
+          return { out, asked };
+        }, [FAR]);
+        if (R.none) console.log('  COUNT-ONLY: this shell loads no 3D library, so the reach a part is fitted by was not measured against what is drawn');
+        else {
+          if (!R.asked) say('the kitchen took none of the parts asked about its reach, so whether a thing it takes fits where it stands could not be asked');
+          const WORD = { box: 'box', sph: 'sphere', cyl: 'cylinder', cone: 'cone', torus: 'ring' };
+          R.out.forEach(({ s, what, v, worst }) => say('a ' + (WORD[s] || s) + ' the kitchen takes, ' + (v === null ? 'with every key of the list at once' : 'whose ' + what + ' is ' + v) + ', is drawn ' + worst.at.toFixed(3) + ' from its middle along ' + 'xyz'[worst.ax] + ', where the kitchen fits it as reaching ' + worst.reach.toFixed(3) + ': what it makes a thing smaller by (kitReach) does not count ' + (v === null ? 'every key' : what) + ', so the thing sticks out of where it is kept'));
+        }
+        console.log('  COUNT-ONLY: the one list of what a part may say: ' + keys.length + ' keys (' + keys.map(k => k + ' ' + L.list[k]).join(', ') + '); the kitchen asked to take a thing whose part says each of them, one that says what no part says, and each key past each end of what its kind may be (' + K.past.length + ')' + (S.none ? '' : '; a thing too big for the counter made smaller by its sizes alone') + (R.none ? '' : '; ' + R.asked + ' parts the kitchen takes measured against the reach it fits them by'));
       }
       /* 3 · A PART SHADED INTO A SECOND COLOUR, read off the bytes the engine draws (t3BakeParts, the name tests call, and the
          mesh t3MeshOf hands the scene): every corner the mix of the two colours for its own height as the part stands, its
@@ -3203,11 +3239,13 @@ function findChromium() {
       if (SC.none) console.log('  COUNT-ONLY: this shell loads no 3D library, so a part shaded into a second colour was not built here');
       else {
         SC.out.forEach(r => {
+          if (!r.n) { say(r.what + ', ' + r.how + ', was built with no corner at all, so whether it shades from its colour to its second could not be read'); return; }
           if (r.worst <= 1e-6) return;
           if (r.low === r.high) say(r.what + ', ' + r.how + ', is drawn in one colour, ' + r.low + ' from its foot to its top, where it was asked to shade from ' + r.wantHigh + ' at its top to ' + r.wantLow + ' at its foot');
           else say(r.what + ', ' + r.how + ', is not shaded evenly by its height as it stands: its lowest corner is ' + r.low + ' and its highest ' + r.high + ', where ' + r.wantLow + ' and ' + r.wantHigh + ' were asked, and one corner is ' + r.worst.toFixed(3) + ' off the mix for its height');
         });
-        if (SC.off) say('the mesh the scene is handed for a part with a second colour carries other colours than the engine\'s own bake through the player\'s colour theme: ' + SC.off + ' of ' + SC.of + ' values differ');
+        if (!SC.of) say('the mesh the scene is handed for a part with a second colour has no corner at all, so its colours could not be read');
+        else if (SC.off) say('the mesh the scene is handed for a part with a second colour carries other colours than the engine\'s own bake through the player\'s colour theme: ' + SC.off + ' of ' + SC.of + ' values differ');
         if (SC.mats !== 1 || !SC.tinted) say('a part with a second colour is drawn ' + (SC.mats !== 1 ? 'with ' + SC.mats + ' materials' : 'with a material the time of day does not tint') + ', so night does not fall on its two colours alike');
         if (SC.uneven) say('a part with no second colour is not its one colour on every corner: ' + SC.uneven + ' values differ');
         console.log('  COUNT-ONLY: a part shaded into a second colour: ' + SC.out.length / 2 + ' parts (' + SC.out.filter((r, i) => i % 2 === 0).map(r => r.what + ', ' + r.n + ' corners').join('; ') + '), each read corner by corner against the mix for its height, as asked and through a colour theme; the mesh the scene is handed; and a part with no second colour');
