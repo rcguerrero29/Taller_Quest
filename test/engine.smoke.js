@@ -8000,17 +8000,19 @@ function findChromium() {
       }
 
       /* c · THE LEFT HALF, AND THE GAME STANDING STILL. At 1280×800, 1440×900 and 1920×1080 (in a window and in the game's
-             full screen) the map's box is the left half of the screen, top to bottom, and the street is wholly in the right
-             half, drawn, and lightly dimmed (it keeps 60% of its brightness or more); at 1024×768 and on a phone the map is
-             the box in the middle. At each, somebody is set walking and the map is opened with its button while the step is
-             under way: nobody moves while it is open (every person there, the animals, the critters, the tram and you), and
-             when it closes the step is finished. The player's own step under way stops while the map is open and finishes
-             after. With the map open the window goes from 1280×800 to 1024×768 and back, each size finding its own layout and
-             the street drawn; then a tap on the street closes the map. After every close the game is back where it was just
-             before that opening. The layouts are
-             named for this game's plan; another game's map is asked only that a left half has the street wholly beside it.
+             full screen) the map's box is the left half of the screen, top to bottom, its plan drawn across that half, and the
+             street is wholly in the right half, drawn, and lightly dimmed (it keeps 60% of its brightness or more); at 1024×768
+             and on a phone the map is the box in the middle. At each, somebody is set walking and the map is opened with its
+             button while the step is under way: nobody moves while it is open (every person there, the animals, the critters,
+             the tram and you), and when it closes the step is finished. The player's own step under way stops while the map is
+             open and finishes after. With the map open the window goes from 1280×800 to 1024×768 and back, each size finding
+             its own layout, its plan across the half and the street drawn; then a tap on the street closes the map. After
+             every close the game is back where it was just before that opening. The layouts are named for this game's plan;
+             another game's map is asked only that a left half has its plan in it and the street wholly beside it.
              Written red on mq-v253: the map was a box in the middle at every size, everybody walked on behind it, and so did
-             the player's own step. */
+             the player's own step. The plan's place in the half was planted against: a full-screen rule for the street's
+             pictures that also reached the plan, inside the street's view, drew the paper from 511 to 1375 px across a half
+             that ends at 960. */
       {
         const { ctx, p } = await pageAt(1280, 800, false, 'the map was asked whether it takes the left half with the game standing still beside it');
         if (!await begin(p)) MP.push('the game did not start, so where the map opens and whether the game stands still beside it were not asked — nothing to measure is not a pass');
@@ -8039,6 +8041,10 @@ function findChromium() {
           const isHalf = m => m.box[0] <= 0.5 && m.box[1] <= 0.5 && Math.abs(m.box[2] - m.W / 2) <= 1 && m.box[3] >= m.H - 0.5;
           const isMiddle = m => Math.abs((m.box[0] + m.box[2]) / 2 - m.W / 2) <= 1 && m.box[3] - m.box[1] < m.H - 1;
           const inRight = (s, m) => !!s && s[0] >= m.W / 2 - 0.5 && s[2] <= m.W + 0.5 && s[1] >= -0.5 && s[3] <= m.H + 0.5;
+          /* and the plan lies across the half it takes: where its paper is drawn (planAt), not only where its box is. A pack's
+             own window is its own to place */
+          const planIn = async (m, where) => { const a = await p.evaluate(() => { const q = __mqMap.planAt(); return q.plan && !q.own ? [q.ox, q.ox + q.cw * q.kx] : null; });
+            if (a && (a[0] < m.box[0] - 0.5 || a[1] > m.box[2] + 0.5)) MP.push(where + ' the map takes the left half and its plan does not lie in it: the paper runs from ' + Math.round(a[0]) + ' to ' + Math.round(a[1]) + ' px across, where the half ends at ' + Math.round(m.box[2]) + ' px'); };
           const say = a => a.slice(0, 4).join(', ') + (a.length > 4 ? ' and ' + (a.length - 4) + ' more' : '');
           const RUNS = [[1280, 800, 'a laptop, 1280×800', 'half'], [1440, 900, 'a laptop, 1440×900', 'half'], [1920, 1080, 'a large screen, 1920×1080', 'half'],
             [1920, 1080, 'full screen, 1920×1080', 'half', true], [1024, 768, 'a tablet held sideways, 1024×768', 'middle'], [390, 844, 'a phone, 390×844', 'middle']];
@@ -8065,6 +8071,7 @@ function findChromium() {
                 else if (seen0 && seen.mean < 0.6 * seen0.mean) MP.push('On ' + size + ', the street beside the map is darkened, not lightly dimmed: it keeps ' + Math.round(100 * seen.mean / seen0.mean) + '% of its brightness'); }
             } else if (own24 && want === 'middle' && !isMiddle(m)) MP.push('On ' + size + ', the map is not the box in the middle of the screen: its box is ' + m.box.map(v => Math.round(v)).join(',') + ' on a screen ' + m.W + '×' + m.H);
             else if (!own24 && isHalf(m) && !inRight(s, m)) MP.push('On ' + size + ', the map takes the left half and the street is not wholly in the right half beside it: it is at ' + (s ? s.map(v => Math.round(v)).join(',') : 'nowhere'));
+            if (isHalf(m)) await planIn(m, 'On ' + size + ',');
             /* while the map is open nothing moves: read again after more than a person's step takes */
             await p.waitForTimeout(700);
             const t1 = await p.evaluate(movers), went = moved(t0, t1);
@@ -8105,7 +8112,7 @@ function findChromium() {
               const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
               const ok = want === 'half' ? isHalf(m) : isMiddle(m);
               if (own24 && !ok) MP.push('With the map open, the window changed to ' + size + ' and the map did not follow: its box is ' + m.box.map(v => Math.round(v)).join(',') + (want === 'half' ? ', where it takes the left half' : ', where it is the box in the middle'));
-              if (want === 'half' && isHalf(m)) { const seen = inRight(s, m) ? await look(p, s) : null;
+              if (want === 'half' && isHalf(m)) { const seen = inRight(s, m) ? await look(p, s) : null; await planIn(m, 'With the map open, the window changed to ' + size + ' and');
                 if (!drawn(seen)) MP.push('With the map open, the window changed to ' + size + ' and the street beside the map is not drawn: ' + (seen ? Math.round(100 * seen.other) + '% of it differs from its one colour' : 'it is not in the right half')); }
             }
             /* a tap on the street closes the map, and the game comes back where it was */
