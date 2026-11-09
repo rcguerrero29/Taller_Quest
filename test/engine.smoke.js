@@ -7813,6 +7813,34 @@ function findChromium() {
                 if (!el || !(el === note || note.contains(el))) bad.push(!el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase()); }); });
             out.under = [...new Set(bad)]; out.said = note.textContent.trim(); } }
         return out; };
+      /* the line's words photographed three times: as they are, with Close's shadow taken away, and with the words taken away.
+         Read in the photographs: how far the shadow moves any of their pixels, and in their upper half and their lower half the
+         best contrast a pixel of the words has with what is behind that same pixel (so Close, which is the same in all three,
+         is never read as the words) */
+      const wordsRead = async (p, r) => {
+        const v = await p.evaluate(() => [innerWidth, innerHeight]);
+        const clip = { x: Math.max(0, Math.floor(r[0])), y: Math.max(0, Math.floor(r[1])) }; clip.width = Math.min(Math.ceil(r[2]), v[0]) - clip.x; clip.height = Math.min(Math.ceil(r[3]), v[1]) - clip.y;
+        if (clip.width < 4 || clip.height < 4) return { ink: 0, shadow: 0, upper: 1, lower: 1 };   /* off the screen: no pixel of it to read */
+        const as = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapClose').style.boxShadow = 'none'; }); await rafs(p, 1);
+        const noShadow = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapClose').style.boxShadow = ''; document.getElementById('mapNote').style.color = 'transparent'; }); await rafs(p, 1);
+        const noWords = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapNote').style.color = ''; }); await rafs(p, 1);
+        return decode.evaluate(async ([A, B, C]) => {
+          const px = async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+            const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+            return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; };
+          const a = await px(A), b = await px(B), c = await px(C);
+          const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, L = (d, i) => 0.2126 * lin(d[i]) + 0.7152 * lin(d[i + 1]) + 0.0722 * lin(d[i + 2]);
+          let shadow = 0, ink = 0; const best = [1, 1];
+          for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const i = (y * a.w + x) * 4;
+            shadow = Math.max(shadow, Math.abs(a.d[i] - b.d[i]), Math.abs(a.d[i + 1] - b.d[i + 1]), Math.abs(a.d[i + 2] - b.d[i + 2]));
+            if (Math.abs(a.d[i] - c.d[i]) + Math.abs(a.d[i + 1] - c.d[i + 1]) + Math.abs(a.d[i + 2] - c.d[i + 2]) < 9) continue;   /* no word on this pixel */
+            ink++; const la = L(a.d, i), lc = L(c.d, i), k = (Math.max(la, lc) + 0.05) / (Math.min(la, lc) + 0.05), half = y < a.h / 2 ? 0 : 1;
+            if (k > best[half]) best[half] = k; }
+          return { shadow, ink, upper: best[0], lower: best[1] }; }, [as, noShadow, noWords].map(q => q.toString('base64')));
+      };
       /* what the screen shows in a rectangle: how bright it is on average, and whether it is a picture or one flat colour */
       const look = async (p, r) => {
         const v = await p.evaluate(() => [innerWidth, innerHeight]);
@@ -7831,8 +7859,21 @@ function findChromium() {
              edge at or above the inside of the box's lower edge, wherever the box scrolls and wherever it does not. The rule
              that pins every panel's Close to the foot of its box counts on 18 px of padding, and the map's box has 16.
              Written red on mq-v253: Close hung 1.6 to 2.4 px below the box in 54 of the 60 openings.
-         On one page and in one round of openings, the map opened with its button each time: every size, each language,
-         the edge arrow off and on */
+         d · ON A TABLET HELD SIDEWAYS AND ON LAPTOPS, AS THE MAP OPENS, THE LINE UNDER THE PLAN THAT SAYS HOW TO CHOOSE A
+             DESTINATION IS WHOLLY CLEAR OF CLOSE AND OF THE SOFT SHADOW CLOSE CASTS UPWARD, and its words read at 4.5:1 or
+             more in the screen's own pixels, in each language, on the light box and the dark one, the edge arrow off and on.
+             Its words are photographed as they are, with Close's shadow taken away and with the words taken away: the shadow
+             may move none of their pixels by more than 4 levels in 255, and in their upper half and their lower half the best
+             contrast a pixel of the words has with what is behind that same pixel is 4.5:1 or more (Close, the same in all
+             three photographs, is never read as the words). Written red on mq-v253: at 1280×800 the shadow faded the words to
+             3.3:1 and 2.1:1, on a tablet held sideways and at 1280×720 Close covered them.
+         e · ON A SHORT PHONE HELD UPRIGHT, AS THE MAP OPENS, THAT LINE IS IN VIEW AND CLEAR OF CLOSE, in each language, the
+             edge arrow off and on: its words wholly below the top of the box and above Close's top edge, and a finger on them
+             lands on them. And on a phone with room to spare the plan keeps the whole width of its box. Written red on
+             mq-v253: at 390×560 the words lay under Close with the arrow on, and in Spanish with it off too.
+         d and e are asked of this game's own shell, as sections 8 and 16 ask that line. All three on one page and in one round
+         of openings, the map opened with its button each time: every size, each language, the edge arrow off and on, the
+         light box and the dark one */
       {
         const SIZES24 = [[1280, 800, 'a laptop, 1280×800', 'line'], [1440, 900, 'a laptop, 1440×900', 'line'], [1920, 1080, 'a large screen, 1920×1080', 'line'],
           [1280, 720, 'a laptop, 1280×720', 'line'], [1024, 768, 'a tablet held sideways, 1024×768', 'line'], [768, 1024, 'a tablet, 768×1024', ''],
@@ -7845,9 +7886,10 @@ function findChromium() {
           await p.evaluate(() => { if (typeof CAMS !== 'undefined' && CAMS.includes('top')) camSet('top'); });
           const langs = await langsOf(p); let opened = 0, read = 0, lowest = null;
           const hung = [], lineUnder = [], shaded = [], faint = [], unseen = [], shrunk = [], none = [];
-          for (const scheme of ['light']) {
+          for (const scheme of ['light', 'dark']) {
             await p.emulateMedia({ colorScheme: scheme }); await rafs(p);
             for (const [w, h, size, kind] of SIZES24) {
+              if (scheme === 'dark' && !/line/.test(kind)) continue;
               await p.setViewportSize({ width: w, height: h }); await rafs(p);
               for (const L of langs) {
                 await setLang(p, L);
@@ -7860,6 +7902,25 @@ function findChromium() {
                   /* a */
                   if (!m.close) none.push(where + ': there is no Close in the box');
                   else if (m.close[3] > m.inner + 0.5) hung.push(where + ': ' + (m.close[3] - m.inner).toFixed(1) + ' px' + (m.scrolls ? '' : ', where the box does not scroll'));
+                  /* d */
+                  if (own24 && /line/.test(kind)) {
+                    if (!m.words || !m.close) none.push(where + ': the line under the plan or Close could not be found');
+                    else {
+                      if (m.words[3] > m.close[1] + 0.5 || m.under.length) lineUnder.push(where + ': its words reach ' + Math.max(0, m.words[3] - m.close[1]).toFixed(1) + ' px under Close\'s top edge' + (m.under.length ? ', and a finger on them lands on ' + m.under.join(', ') : ''));
+                      const q = await wordsRead(p, m.words); read++;
+                      if (!q.ink) none.push(where + ': no pixel of the line\'s words could be found on the screen');
+                      else { const k = Math.min(q.upper, q.lower); if (!lowest || k < lowest.k) lowest = { k, where };
+                        if (q.shadow > 4) shaded.push(where + ': the shadow moves their pixels by up to ' + q.shadow + ' levels in 255');
+                        if (k < 4.5) faint.push(where + ': ' + q.upper.toFixed(2) + ':1 in their upper half and ' + q.lower.toFixed(2) + ':1 in their lower half'); } } }
+                  /* e */
+                  if (own24 && /phone/.test(kind)) {
+                    if (!m.words || !m.close) none.push(where + ': the line under the plan or Close could not be found');
+                    else { const why = [];
+                      if (m.words[1] < Math.max(m.top, 0) - 0.5) why.push('its words start above the top of the box');
+                      if (m.words[3] > m.close[1] + 0.5) why.push('its words reach ' + (m.words[3] - m.close[1]).toFixed(1) + ' px under Close\'s top edge');
+                      if (m.under.length) why.push('a finger on them lands on ' + m.under.join(', '));
+                      if (why.length) unseen.push(where + ': ' + why.join('; ') + ' (“' + m.said + '”)'); } }
+                  if (own24 && /room/.test(kind) && m.plan && !m.plan.own && m.plan.paperW < m.plan.w - 0.5) shrunk.push(where + ': the plan is ' + m.plan.paperW.toFixed(1) + ' px wide in a box ' + m.plan.w.toFixed(1) + ' px wide');
                   await mapShut(p);
                 }
               }
@@ -7868,8 +7929,13 @@ function findChromium() {
           await p.emulateMedia({ colorScheme: 'light' }); await p.evaluate(() => bearSet(false));
           const list = a => a.slice(0, 4).join('; ') + (a.length > 4 ? '; and ' + (a.length - 4) + ' more' : '');
           if (hung.length) MP.push('The map\'s Close bar hangs below the bottom of its box, so its rounded corners are cut off: on ' + list(hung));
+          if (lineUnder.length) MP.push('As the map opens, the line under the plan that says how to choose a destination is under Close: on ' + list(lineUnder));
+          if (shaded.length) MP.push('As the map opens, the line under the plan that says how to choose a destination lies in the soft shadow Close casts upward: on ' + list(shaded));
+          if (faint.length) MP.push('As the map opens, the line under the plan that says how to choose a destination reads under the 4.5:1 small words need: on ' + list(faint));
+          if (unseen.length) MP.push('On a short phone, as the map opens, I can\'t see the line that says how to choose a destination: on ' + list(unseen));
+          if (shrunk.length) MP.push('On a phone with room to spare, the plan is drawn smaller than its box, where the line under it already had room: on ' + list(shrunk));
           if (none.length) MP.push('The foot of the map\'s box could not be measured: on ' + list(none) + ' — nothing to measure is not a pass');
-          MN.push('COUNT-ONLY: the map was opened ' + opened + ' time(s) to measure the foot of its box');
+          MN.push('COUNT-ONLY: the map was opened ' + opened + ' time(s) to measure the foot of its box' + (read ? ', and the line\'s words were photographed ' + read + ' time(s), the weakest reading ' + lowest.k.toFixed(2) + ':1 (' + lowest.where + ')' : ''));
         }
         await ctx.close();
       }

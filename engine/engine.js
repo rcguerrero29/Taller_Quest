@@ -7430,7 +7430,7 @@ function mapArrowBtn(){
   b.style.color=on?"var(--accent-ink,#FFFFFF)":"inherit";
   hint.textContent=t.arrowHint||(es?"Nomás sale cuando ya tienes destino.":"Only shows once you've got a destination.");
   mapArrowHint();
-  mapAtTop(()=>{mapHeadFit();});}
+  mapAtTop(()=>{mapHeadFit();mapLineFit();});}
 /* ---- AND UNDER IT, WHEN THE ARROW SHOWS (2026-11-07) ----
    Switched on with nowhere chosen, the arrow has nothing to point at, so pressing the switch seemed to do nothing. A
    line under the switch says why: the arrow shows only once you have a destination. It is shown while the switch is on
@@ -7477,16 +7477,45 @@ function mapHeadFit(){
   const y0=cv.getBoundingClientRect().top;hint.style.display="";
   const cap=parseFloat(getComputedStyle(cv).maxHeight),room2=y1-y0;
   if(room2>0&&isFinite(cap))cv.style.maxHeight=Math.max(0,cap-room2)+"px";}
+/* ---- AND THE LINE UNDER THE PLAN OPENS CLEAR OF CLOSE (2026-11-08) ----
+   The line that says how to choose a destination sits just above Close, which rides the foot of the box and casts a soft
+   shadow upward over whatever scrolls under it. On a laptop that shadow faded the line's words to 3.3:1, on a tablet held
+   sideways Close covered half of it, and on a short phone held upright, with the edge arrow on (in Spanish with it off too),
+   it lay under Close. So as the map opens, and again whenever the window changes size or the edge arrow is switched while it
+   is open, wherever the line would open under Close the plan is drawn smaller by just the room the line needs: clear of
+   Close's shadow on a tablet or a laptop, and clear of Close itself on a phone held upright, where the shadow may still lie
+   on the line. How far the shadow reaches is read from Close's own shadow, so a shell that casts another decides by its own.
+   A phone held sideways is left as it was: there the line opens below the foot of the box, a scroll away, and bringing it up
+   would take a third of the plan. Where the line already has its room nothing changes. The line is measured as the map
+   says it with nothing chosen, as it opens; choosing a destination moves nothing. */
+const MAPPHONE=600;   /* a phone: the screen's shorter side is under this many CSS px. Every tablet and laptop is wider */
+function mapLineFit(){
+  const ov=$("mapov"),n=$("mapNote"),c=$("mapClose"),cv=$("mapcv");if(!ov||ov.hidden||!n||!c||!cv)return;
+  const r=cv.getBoundingClientRect();if(!r.height)return;
+  const W=innerWidth,H=innerHeight,phone=Math.min(W,H)<MAPPHONE;
+  if(phone&&W>H)return;
+  const cr=c.getBoundingClientRect();if(!cr.height)return;
+  const keep=mapDest,was=n.textContent;mapDest=null;mapNoteSet();
+  const rg=document.createRange();rg.selectNodeContents(n);
+  const rs=[...rg.getClientRects()].filter(q=>q.height>0),foot=rs.length&&n.textContent.trim()?Math.max(...rs.map(q=>q.bottom)):null;
+  mapDest=keep;n.textContent=was;mapArrowHint();
+  const need=foot===null?0:Math.ceil(foot-(cr.top-(phone?0:mapShadowReach(c))));
+  if(need>0)cv.style.maxHeight=Math.max(0,r.height-need)+"px";}
+function mapShadowReach(c){   /* how far above Close its shadow reaches: from the shadow's own edge (its offset less its spread), by its blur */
+  let reach=0;String(getComputedStyle(c).boxShadow||"").split(/,(?![^(]*\))/).forEach(s=>{if(/\binset\b/.test(s))return;
+    const v=(s.replace(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]+/gi,"").match(/-?[\d.]+px/g)||[]).map(parseFloat);
+    if(v.length>=2)reach=Math.max(reach,(v[3]||0)-v[1]+(v[2]||0));});
+  return Math.max(0,reach);}
 /* The box opened where it was last left: once a laptop or a phone held sideways had scrolled down to "Somewhere to go",
    every later opening put the switch, and the ◉ of every place at the top of the plan, above the box's top edge, under
    a caption saying "◉ you are here". It opens at its top now, every time, whatever in it scrolls. Set once it is shown:
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
-  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();});
+  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});
   [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});
   if(document.body.classList.contains("maphalf"))mapStreet();}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();});mapStreet();}});
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});mapStreet();}});
 /* ---- THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT (2026-11-08) ----
    On a laptop the map was a box in the middle of a darkened screen while the world went on behind it. Now, on a screen
    shaped like a laptop's or wider, the map takes the left half of the screen from top to bottom wherever that draws the plan
