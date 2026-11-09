@@ -253,10 +253,11 @@ function t3Reuse(key){
    T3.tintables, tc and t3Note from outside and nothing else; reach for anything more and the gate
    says it cannot load the builder. Cut by these comments, never by line number. */
 /* THE ONE LIST OF WHAT A PART MAY SAY: every key the builder below reads off a part, and what kind of thing it is. Until this
-   list each reader of parts kept its own copy: the kitchen kept the keys a thing's part may say and the lengths it makes
-   smaller to fit a shelf (engine/kitchen-room.js), and a world that exports its parts, or keeps them in its own units and
-   scales them, kept the fields it lets out and the lengths it scales. A key added to one was refused by the next. Each reads
-   this list now and takes from it exactly what it took before:
+   list each reader of parts kept its own copy, and a key added to one was refused by the next. In this repository the readers
+   are the kitchen (engine/kitchen-room.js: the keys a thing's part may say, how far each may go by its kind, and the sizes it
+   makes smaller to fit a shelf) and the shape gate (test/prims.js and test/lib/parts.js: the keys a part is written with, which
+   of them as text, and the twins); each reads this list and keeps none of its own, and any other code that reads parts should
+   do the same:
      shape    s                 the primitive t3Prim builds: box, sph, cyl, cone or torus
      place    x y z             where its middle stands, in tile units, y up from the floor and the tile's centre at (0,0)
      size     w h d r rt rb t   a box's width, height and depth; a radius, and a cylinder's at its top and its bottom; a
@@ -267,8 +268,9 @@ function t3Reuse(key){
               cb                a second colour, #rrggbb: the part shades from c at its highest point to cb at its lowest
                                 (engine/engine3d.js, grep "A SECOND COLOUR")
      glass    a                 under 1 it is glass: a second, see-through mesh
-   A length is a place or a size. A key that is not here draws nothing (a marker a world keeps on a part for itself).
-   test/prims.js fails when the builder reads a key this list does not name, or this list names one it never reads. */
+   A length is a place or a size. A key that is not here changes nothing the builder draws (a marker a world keeps on a part
+   for itself), but a kitchen refuses a thing whose part carries one. test/prims.js fails when the builder reads a key this list
+   does not name, when this list names one it never reads, and when a key is not drawn as its kind says. */
 const PARTKEYS=Object.freeze({s:"shape",x:"place",y:"place",z:"place",w:"size",h:"size",d:"size",r:"size",rt:"size",rb:"size",t:"size",
   arc:"angle",rx:"angle",ry:"angle",rz:"angle",sx:"stretch",sy:"stretch",sz:"stretch",c:"colour",cb:"colour",a:"glass"});
 const meshGeo={};
@@ -286,10 +288,11 @@ const t3Prim=p=>{const s=p.s||"box",n=v=>v===undefined?"":+v;
    here and from nowhere else (the bake below calls it once a corner). It is handed the part's own colour at its top and its
    second colour at its foot, both as the theme gave them (THREE.Color), how far up the part the corner stands (k: 0 at the
    part's lowest point, 1 at its highest), and WHERE THE THING STANDS (`at`: {world, x, y}, the room and the tile, or null
-   for a thing that stands nowhere, like a moving car); it writes the corner's colour into `out` and hands it back. Today it
-   reads the two colours and k alone, so `at` changes nothing and every thing looks as it did: it is the one place a later
-   light of the room where a thing stands would come in, without a pack's parts written again. test/prims.js plants a
-   stand-in for that light here, in memory, and holds this to being the only place the mix is worked out. */
+   for a thing that stands nowhere, like the trolley, built once and moved); it writes the corner's colour into `out` and
+   hands it back. Today it reads the two colours and k alone, so `at` changes nothing and every thing looks as it did: it is
+   the one place a later light of the room where a thing stands would come in, without a pack's parts written again.
+   test/prims.js plants a stand-in for that light here, in memory, holds this to being the only place the mix is worked out,
+   and holds today's body to reading nothing of where the thing stands. */
 function t3CornerMix(top,foot,k,at,out){out[0]=foot.r+(top.r-foot.r)*k;out[1]=foot.g+(top.g-foot.g)*k;out[2]=foot.b+(top.b-foot.b)*k;return out;}
 /* THE BAKE, with a name a test can call (#316): a list of parts in, the merged vertices out — positions,
    normals and one colour per vertex — plus how tall the thing stands and how far it reaches. `tint` turns
@@ -328,11 +331,12 @@ const t3BakeParts=(list,tint,at)=>{tint=tint||tc;
     c.set(tint(p.c||"#888888"));
     /* A SECOND COLOUR (`cb`): the part shades evenly from its own colour at its highest point to cb at its lowest, by height as
        it stands, after its turns, so a leaning part shades by how it leans and not along its own axis. Each corner takes the mix
-       for its own height from the one place that mixes them (t3CornerMix, told where the thing stands), once, as the shape is
-       built, and the face between corners is blended as it is drawn:
-       nothing more is done while the game runs, and no triangle is added. Both colours go through the same theme (`tint`), and
-       the time of day tints the one material both are drawn with, so both alike. A part without cb takes its one colour on
-       every corner, exactly as it always did; one whose cb three.js cannot read shades from its colour to the same colour. */
+       for its own height from the one place that mixes them (t3CornerMix, told where the thing stands), each time the shape is
+       built, and the face between corners is blended as it is drawn: no triangle is added, and nothing more is done while it
+       stands (a shape built again, as a kitchen's column is on every frame of a door's swing, mixes its corners again). Both
+       colours go through the same theme (`tint`), and the time of day tints the one material both are drawn with, so both
+       alike. A part without cb takes its one colour on every corner, exactly as it always did; one whose cb three.js cannot
+       read shades from its colour to the same colour. */
     let lo=0,span=0;
     if(p.cb){cb.copy(c).set(tint(p.cb));lo=Infinity;let hi=-Infinity;for(let i=1;i<pa.length;i+=3){if(pa[i]<lo)lo=pa[i];if(pa[i]>hi)hi=pa[i];}span=hi-lo;}
     for(let i=0;i<pa.length;i+=3){pos.push(pa[i],pa[i+1],pa[i+2]);nor.push(na[i],na[i+1],na[i+2]);
@@ -346,8 +350,9 @@ const t3BakeParts=(list,tint,at)=>{tint=tint||tc;
 const t3MeshOf=(parts,tag,at)=>{
   /* the top and the reach of the WHOLE thing, solid and glass together: each bake's, folded in the order
      they are baked with the same strict comparisons the vertex loop uses, so the answer is the one a
-     single loop over every vertex would give. `at`, where the thing stands ({world, x, y}, or nothing for a
-     thing that stands nowhere), goes to the bake for the one place a corner's two colours are mixed. */
+     single loop over every vertex would give. `at`, where the thing stands ({world, x, y}, or null for a thing
+     that stands nowhere), goes to the bake for the one place a corner's two colours are mixed; every call of this in
+     the file says which, and test/prims.js holds each of them to it. */
   let top=-Infinity,sx0=Infinity,sx1=-Infinity,sz0=Infinity,sz1=-Infinity;
   const bake=list=>{const b=t3BakeParts(list,tc,at);
     if(b.top>top)top=b.top;
@@ -1021,10 +1026,11 @@ function t3Trolley(){ /* the tram on the line; it is never a wall — you may st
        with the body's parts — skirt, panels, band, glazing, roof and its lip, the pole — in the same tile
        units, +x the direction of travel, y up from the road. The WHEELS and the DRIVER stay the engine's
        whatever the pack says: a merged mesh has one userData and cannot spin a part, and the suite counts
-       both nouns. Baked once for travel toward +x; the body flips with the direction each frame (below). */
+       both nouns. Baked once for travel toward +x; the body flips with the direction each frame (below). It moves, so it
+       is handed null for where it stands. */
     const pm=(typeof tileView==="function")&&tileView("prop:tram","mesh");let mbody=null;
     if(pm){let parts=null;try{parts=typeof pm==="function"?pm({len:TRO_LEN,h:H,fl:FL,cab:CAB}):pm;}catch(e){t3Note("mesh prop:tram",e);}
-      if(Array.isArray(parts)&&parts.length){try{mbody=t3MeshOf(parts,{tram:true,mesh:true,body:true});}catch(e){t3Note("mesh prop:tram",e);}}}
+      if(Array.isArray(parts)&&parts.length){try{mbody=t3MeshOf(parts,{tram:true,mesh:true,body:true},null);}catch(e){t3Note("mesh prop:tram",e);}}}
     const wm=new THREE.MeshLambertMaterial({color:new THREE.Color("#2B2B31")});
     const win=new THREE.MeshLambertMaterial({color:new THREE.Color("#D8E6F0")});
     /* ---- ONE CAR, CARS TIMES — a train of trolleys is trolleys (the owner, 2026-09-22) ----

@@ -15,14 +15,18 @@
                                   and leaves t3Prim, t3MeshOf, t3BakeParts, meshGeo and PARTKEYS on window
      loadBuilder(src, label, three)
                                 → a factory; each call to .fresh() is a builder with its OWN shape cache:
-                                  { t3Prim, t3MeshOf, t3BakeParts, meshGeo, PARTKEYS, notes, T3, tc }.
-                                  PARTKEYS is the builder's one list of what a part may say (undefined in
-                                  an engine from before it). `three` is the text of the three.js to build
-                                  on, the working tree's when left out
-     harvest(src, file, keys, kinds)
-                                → every literal part written in a pack's art.js or engine/shapes.js
+                                  { t3Prim, t3MeshOf, t3BakeParts, t3CornerMix, meshGeo, PARTKEYS, notes, T3, tc }.
+                                  PARTKEYS is the builder's one list of what a part may say, and t3CornerMix
+                                  the one place a corner's two colours are mixed (each undefined in an engine
+                                  from before it). `three` is the text of the three.js to build on, the
+                                  working tree's when left out
+     harvest(src, file, list, kinds, shape)
+                                → every literal part written in a pack's art.js or engine/shapes.js, read with
+                                  the builder's own list of what a part may say (its kinds say which keys are
+                                  written as text), the primitives it knows and the keys its shape is built from
      kindsOf(code)              → the primitives a builder knows, read out of its code (box, and every
                                   s==="…" it tests for)
+     shapeKeysOf(code)          → the keys a part's shape is built from: every p.<key> its t3Prim reads
      partsOf(mesh, T3)          → a built mesh as plain bytes and numbers, ready to compare: its vertices,
                                   and what it is drawn WITH (its whole material as toJSON writes it, whether
                                   T3.tintables holds it, its tag), the same for each pane of glass on it
@@ -174,14 +178,22 @@ function partsOf(m, T3) {
 /* ---- the harvest: every part written out as an object literal ----
    A part is an object literal whose keys are all part keys and which says what it is: an `s:` naming a
    primitive, or a box's size. A value the file computes (a variable, a call, `i*0.2`) is not literal.
-   Size fields (the cache key) must be literal or the part escapes the harvest and is counted as escaped;
-   a computed place or colour is left at the builder's default, because the shape is still the shape. */
-const SHAPES = ['box', 'cyl', 'sph', 'cone', 'torus'];   /* today's; the gate reads its list out of the builder with kindsOf */
+   Which keys a part may say, and which of them are written as text, the harvest is told by the builder's own
+   one list of what a part may say (PARTKEYS: a key of kind shape or colour is text, every other a number); it
+   keeps no list of its own, so a key the list gains is read as written the day it is added. The keys the shape is
+   built from (what t3Prim reads, shapeKeysOf) must be literal or the part escapes the harvest and is counted as
+   escaped; any other computed key, where it stands, how it turns, a colour, is left at the builder's default,
+   because the shape is still the shape. */
 const kindsOf = code => [...new Set(['box', ...[...String(code).matchAll(/\bs\s*===\s*"(\w+)"/g)].map(m => m[1])])];
-const PART_KEYS = ['s', 'x', 'y', 'z', 'w', 'h', 'd', 'r', 'rt', 'rb', 't', 'arc', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'c', 'a'];
-const SIZE_KEYS = ['s', 'w', 'h', 'd', 'r', 'rt', 'rb', 't', 'arc'];
-/* where it stands, how it turns, what colour and how see-through: the shape is the same shape without them */
-const PLACE_KEYS = ['x', 'y', 'z', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'c', 'a'];
+/* the kinds of key whose value is written as text: a primitive's name and a colour */
+const TEXT_KINDS = ['shape', 'colour'];
+/* the keys a part's shape is built from, read out of the builder: every p.<key> in t3Prim's own body (null when there is none) */
+function shapeKeysOf(code) {
+  code = String(code);
+  const at = code.indexOf('const t3Prim='), arrow = at < 0 ? -1 : code.indexOf('=>', at), open = arrow < 0 ? -1 : code.indexOf('{', arrow);
+  const span = open < 0 ? null : objectSpans(code).find(([a]) => a === open);
+  return span ? [...new Set([...code.slice(open, span[1]).matchAll(/\bp\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]))] : null;
+}
 
 /* braces in code only: strings, template literals, comments and regular expressions are stepped over */
 function objectSpans(src) {
@@ -266,12 +278,13 @@ function lineFinder(src) {
   return at => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= at) lo = mid; else hi = mid - 1; } return lo + 1; };
 }
 
-/* keys: the part keys to accept, PART_KEYS unless the caller read more out of the builder (a key added
-   tomorrow, like arc0, is then harvested too). Any key that is not a place is treated as a size.
-   kinds: the primitives a part may name, SHAPES unless the caller read them out of the builder (kindsOf),
-   so a primitive the builder learns tomorrow is harvested too instead of dropping out without a word. */
-function harvest(src, file, keys, kinds) {
-  keys = keys || PART_KEYS; kinds = kinds || SHAPES;
+/* list: the part keys to accept and the kind of each, {key: kind}: the builder's one list, and any key the builder reads that
+   the list leaves out, of no kind (a number). kinds: the primitives a part may name, read out of the builder (kindsOf), so
+   a primitive the builder learns tomorrow is harvested too instead of dropping out without a word. shape: the keys the
+   shape is built from, read out of the builder (shapeKeysOf). All three are the caller's to read; none has a default. */
+function harvest(src, file, list, kinds, shape) {
+  if (!list || typeof list !== 'object' || !Array.isArray(kinds) || !Array.isArray(shape)) throw new Error('the harvest was not handed the builder\'s one list of what a part may say, the primitives it knows and the keys its shape is built from, and it keeps no list of its own to read parts with.');
+  const keys = Object.keys(list), text = k => TEXT_KINDS.includes(list[k]);
   const parts = [], escaped = [], lineOf = lineFinder(src);
   for (const [a, z] of objectSpans(src)) {
     const inner = src.slice(a + 1, z);
@@ -301,10 +314,10 @@ function harvest(src, file, keys, kinds) {
     const part = {}, computed = [];
     for (const [k, v] of fields) {
       const c = constant(v);
-      if (c.ok && (k === 's' || k === 'c' ? typeof c.v === 'string' : typeof c.v === 'number')) part[k] = c.v;
+      if (c.ok && (text(k) ? typeof c.v === 'string' : typeof c.v === 'number')) part[k] = c.v;
       else computed.push(k);
     }
-    const sizeComputed = computed.filter(k => !PLACE_KEYS.includes(k));
+    const sizeComputed = computed.filter(k => shape.includes(k));
     if (sizeComputed.length) { escaped.push({ ...where, why: 'its ' + sizeComputed.join(', ') + ' ' + (sizeComputed.length > 1 ? 'are' : 'is') + ' computed' }); continue; }
     parts.push({ ...where, part, computed });
   }
@@ -322,4 +335,4 @@ function shapeSources(root) {
   return out;
 }
 
-module.exports = { BEGIN, END, cutBuilder, pageScript, loadBuilder, partsOf, harvest, kindsOf, objectSpans, constant, shapeSources, threeText, THEME_TC, MATERIAL_FIELDS, SHAPES, PART_KEYS, SIZE_KEYS, PLACE_KEYS, ROOT };
+module.exports = { BEGIN, END, cutBuilder, pageScript, loadBuilder, partsOf, harvest, kindsOf, shapeKeysOf, objectSpans, constant, shapeSources, threeText, THEME_TC, MATERIAL_FIELDS, TEXT_KINDS, ROOT };
