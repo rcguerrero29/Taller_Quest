@@ -230,7 +230,7 @@ function whoAt(id,x,y){const w=WORLDS[id];if(!w)return null;
   return (w.npcs||[]).find(n=>n.x===x&&n.y===y)||null;}
 function wanderUpdate(dt){
   const w=CW();if(!w||!$("card").hidden||!$("reader").hidden)return;
-  const now=performance.now();
+  const now=wNow();
   w.npcs.forEach(n=>{
     if(n.mv){
       n.mt=Math.min(1,(n.mt||0)+dt/WANDER_MS);
@@ -293,7 +293,7 @@ function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy f
      (the owner's ask: a dog chasing another character — play, never a flight). Its clock is the
      loop's, the one the romp set it by, not the trade's; and it comes BEFORE the trade's window, which
      is left exactly as its own guard reads it (test/smoke.js, grep `the job-icon window`). */
-  if(n.laughUntil>performance.now()){ctx.font="10px serif";ctx.textAlign="center";
+  if(n.laughUntil>wNow()){ctx.font="10px serif";ctx.textAlign="center";
     ctx.fillText("😄",sx+25,sy+1);ctx.textAlign="start";return;}
   const acts=(typeof NPCACT!=="undefined"&&NPCACT[n.npc])||DEFACT;
   const nw=Date.now(),ph=((nw/1000)+n.x*7.3+n.y*13.7)%13;
@@ -3233,8 +3233,8 @@ function dogUpdate(dt,now){
   DOG.dx=d[0];DOG.dy=d[1];if(d[0])DOG.face=d[0];
   DOG.x+=d[0];DOG.y+=d[1];DOG.moving=true;DOG.mt=0;
   DOG.next=now+600+Math.random()*1800;
-  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&Math.random()<0.35&&Date.now()-lastBump>2500){
-    lastBump=Date.now();const L=T().dog;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().dog;toast(L[Math.floor(Math.random()*L.length)],1800);}
 }
 function drawDog(g,sx,sy){
   const cx=sx+16,wob=DOG.moving?Math.sin(Date.now()/90)*0.8:0;
@@ -3285,8 +3285,8 @@ function catUpdate(dt,now){
   CAT.dx=d[0];CAT.dy=d[1];if(d[0])CAT.face=d[0];
   CAT.x+=d[0];CAT.y+=d[1];CAT.moving=true;CAT.mt=0;
   CAT.next=now+900+Math.random()*2600;
-  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&Math.random()<0.3&&Date.now()-lastBump>2500){
-    lastBump=Date.now();const L=T().cat;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&Math.random()<0.3&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().cat;toast(L[Math.floor(Math.random()*L.length)],1800);}
 }
 function drawCat(g,sx,sy){
   const cx=sx+16,sw=Math.sin(Date.now()/300);
@@ -3369,8 +3369,8 @@ function pigUpdate(dt,now){
   PIG.dx=d[0];PIG.dy=d[1];if(d[0])PIG.face=d[0];
   PIG.x+=d[0];PIG.y+=d[1];PIG.moving=true;PIG.mt=0;
   PIG.next=now+300+Math.random()*1200;
-  if(Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1&&Math.random()<0.25&&Date.now()-lastBump>3000){
-    lastBump=Date.now();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
+  if(Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1&&Math.random()<0.25&&wDate()-lastBump>3000){
+    lastBump=wDate();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
 }
 function drawPigeon(g,sx,sy){
   const R=bodyRide("pigeon",PIG);
@@ -3390,8 +3390,8 @@ const LORO=aniXY("loro",{x:17,y:5,next:0});
 function loroTick(now){
   if(world!==AW("loro"))return;
   if(now<LORO.next)return;LORO.next=now+2000;
-  if(Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2&&Math.random()<0.45&&Date.now()-lastBump>2600){
-    lastBump=Date.now();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
+  if(Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2&&Math.random()<0.45&&wDate()-lastBump>2600){
+    lastBump=wDate();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
 }
 function drawLoro(g,sx,sy){
   const bob=bodyRide("loro",LORO).nod;
@@ -3489,7 +3489,7 @@ let LEASH=null; /* {cr,w,x,y} — the dog on the leash and where home is */
 let PARK={f:0,t:0,h:0,d:0}; /* the park session's little memories: fetches, treats, howls, holes */
 const FETCH_ODDS=[1,1,1,1,0,0,0];
 const FED_ODDS=[1,1,1,1,1,1,0]; /* food-driven: a recent treat buys a 6-of-7 cycle */
-const dogFed=cr=>!!cr.fedT&&performance.now()-cr.fedT<240000; /* ~4 min of motivation */
+const dogFed=cr=>!!cr.fedT&&wNow()-cr.fedT<240000; /* ~4 min of motivation */
 function fetchRoll(cr){ /* a fresh shuffled 7-cycle per dog — streaks stay dog-like */
   if(!cr.fseq||cr.fi>=7){cr.fseq=(dogFed(cr)?FED_ODDS:FETCH_ODDS).slice();
     for(let i=6;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cr.fseq[i],cr.fseq[j]]=[cr.fseq[j],cr.fseq[i]];}
@@ -3542,7 +3542,7 @@ function dogSpotNear(tx,ty,taken){
   return null;
 }
 function dogsFollow(fromW,fromX,fromY){
-  const now=performance.now(),taken=[];
+  const now=wNow(),taken=[];
   CRIT.forEach(c=>{
     if(!isDog(c)||c.world!==fromW)return;
     if(c.holdT>now||c.stayT>now)return;      /* told to sit, lie down or stay: he holds, and you leave without him */
@@ -3618,7 +3618,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
   const tk=cr.task;
   if(tk.wait&&now<tk.wait)return; /* a job may pause (a song, a bowl being set down), and a pause is not a step */
   tk.steps=(tk.steps||0)+1;
-  if(tk.steps>80){cr.task=null;if(BALL&&BALL.dog===cr&&BALL.phase!=="carried")BALL.until=Date.now()+4000;return;}
+  if(tk.steps>80){cr.task=null;if(BALL&&BALL.dog===cr&&BALL.phase!=="carried")BALL.until=wDate()+4000;return;}
   if(tk.type==="fetch"){
     if(tk.phase==="go"&&!BALL){cr.task=null;return;}
     const tgt=tk.phase==="go"?[BALL.tx,BALL.ty]:[px,py];
@@ -3630,7 +3630,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
       const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(Math.random()*L.length)],2600);
       return;}
     if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
-      if(BALL&&BALL.phase!=="carried")BALL.until=Date.now()+4000;else BALL=null;}
+      if(BALL&&BALL.phase!=="carried")BALL.until=wDate()+4000;else BALL=null;}
     return;}
   if(tk.type==="come"){
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
@@ -3873,7 +3873,7 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
 const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},pigeon:{peck:2.2}};
 /* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
-   this instant, read off his state and two clocks — nw, performance.now(), for how long a whim lasts (layT, howlT…), and
+   this instant, read off his state and two clocks — nw, the world's own clock (wNow), for how long a whim lasts (layT, howlT…), and
    t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
    read nothing else about his pose, bodyRide reads it for what he wears, and a body in another camera will read the
    same answer instead of deciding it a third time. Lifted out of the three painters with nothing changed.
@@ -3883,7 +3883,7 @@ const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},p
      wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
      face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
 const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6]}; /* ms a swing and px: calm, then happy */
-function dogPose(cr,nw,t){if(nw===undefined)nw=performance.now();if(t===undefined)t=Date.now();
+function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.now();
   const K=POSEPX[cr.kind]||{},W=DOGWAG[cr.kind]||DOGWAG.beagle,gp=gearPose(cr),lay=cr.layT>nw,howl=cr.howlT>nw,happy=cr.happyT>nw;
   return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love:cr.loveT>nw,
     drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):0,wag:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
@@ -4063,11 +4063,11 @@ function ballUpdate(dt,now){
       if(dog&&dog.world===world&&!dog.task){
         if(fetchRoll(dog)){dog.task={type:"fetch",phase:"go"};dog.sit=false;dog.layT=0;dog.next=0;}
         else{dog.sit=true;dog.face=Math.sign(BALL.tx-dog.x)||dog.face;dog.next=now+2600;
-          BALL.until=Date.now()+6000;
+          BALL.until=wDate()+6000;
           const L=T().fetchNo||[];if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);}}
-      else BALL.until=Date.now()+6000;}
+      else BALL.until=wDate()+6000;}
     else{BALL.fx=BALL.sx+(BALL.tx-BALL.sx)*BALL.t;BALL.fy=BALL.sy+(BALL.ty-BALL.sy)*BALL.t;}}
-  else if(BALL.phase==="ground"&&BALL.until&&Date.now()>BALL.until)BALL=null;
+  else if(BALL.phase==="ground"&&BALL.until&&wDate()>BALL.until)BALL=null;
   else if(BALL.phase==="carried"&&BALL.dog){BALL.fx=BALL.dog.fx+0.28*BALL.dog.face;BALL.fy=BALL.dog.fy-0.12;}
 }
 function drawLeash(cr,camX,camY){ /* blue, like his collar — canon */
@@ -4676,7 +4676,7 @@ function tryStep(){
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
-    if(F[ch]&&Date.now()-lastBump>1800){lastBump=Date.now();
+    if(F[ch]&&wDate()-lastBump>1800){lastBump=wDate();
       toast(F[ch][Math.floor(Math.random()*F[ch].length)],2000);}
     return;
   }
@@ -5080,6 +5080,19 @@ function buildAudit(){const out=[];if(typeof BUILDER==="undefined"||!BUILDER)ret
     if(!ok)out.push("BUILDER.name is neither a word nor {en,es} words, so the drone keeps the engine's own name");}
   return out;}
 let last=0;
+/* ---- THE GAME'S OWN CLOCK STANDS STILL WITH IT (2026-11-08) ----
+   Stopping what moves behind the map was half of it. The world times its waits on a clock: how long a ball lies on the
+   ground before it goes, how long a person stands before the next step, when an animal next moves, how long a dog stays
+   happy or lies down. That clock was the wall clock, and it ran on behind the map, so a ball on the ground when the map
+   opened was gone the moment it closed, and a person who was waiting set off at once. The world keeps its own clock now:
+   the wall clock less every moment the world stood still behind the map. The loop hands it to the updates it pauses, and
+   every timer those updates keep is set and read on it, wherever it is set: wNow() for the performance clock, wDate() for
+   Date.now(). Left on the wall clock, as they were: what is only drawn (a wag, a bob, a lamp's glow, a sign's sway, which
+   keep no state); what the player's own input waits on (a door's opening, the drone); and three fades the 3D camera reads
+   off the wall clock itself (the petals, the marks animals leave on the ground, the leash), so that the two cameras agree. */
+let wStill=0,wStillAt=0;   /* ms the world has stood still behind the map, in all; and the frame it stopped at, while it stands */
+function wNow(){return (wStillAt||performance.now())-wStill;}
+function wDate(){return Date.now()-(performance.now()-wNow());}
 function loop(ts){
   /* ASK FOR THE NEXT FRAME FIRST. It used to be the last statement of this function, which meant
      the game only kept running when nothing went wrong: measured, one frame that threw ticked once
@@ -5099,9 +5112,11 @@ function loop(ts){
   /* THE MAP STOPS THE GAME (2026-11-08). While the map is open the world stands still, at every size: nobody walks, no animal
      or critter moves, the tram waits where it is, nothing falls, and a step of the player's own already under way stops where
      it is, so it can no longer carry the player through a door or onto the tram's platform behind the map. Everything
-     picks up where it stopped when the map closes, and the music plays on. Every other panel keeps the world thinking
-     behind it, as below. */
+     picks up where it stopped when the map closes, and the music plays on; the world's clock stands still with it (grep
+     "THE GAME'S OWN CLOCK"). Every other panel keeps the world thinking behind it, as below. */
   const still=mapStill();
+  if(still&&!wStillAt)wStillAt=ts;else if(!still&&wStillAt){wStill+=ts-wStillAt;wStillAt=0;}
+  const wts=ts-wStill;   /* the world's own clock, above */
   if(still){}
   else if(moving){
     mt+=dt/240;bob+=dt/70;
@@ -5116,7 +5131,7 @@ function loop(ts){
   if(!still){
   petalMomentTick(dt);
   troTick(dt);
-  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);dogThingsUpdate(dt,ts);wanderUpdate(dt);fredCheck();}
+  dogUpdate(dt,wts);catUpdate(dt,wts);pigUpdate(dt,wts);loroTick(wts);critUpdate(dt,wts);ballUpdate(dt,wts);dogThingsUpdate(dt,wts);wanderUpdate(dt);fredCheck();}
   /* The world keeps thinking behind a panel — the dog walks, the trolley comes, petals fall — so
      nothing jumps when you put the paper down. It is not DRAWN, though: measured at 215 frames in
      six seconds with a document covering the screen, every one of them at full device resolution
@@ -5937,34 +5952,34 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
 $("treat").addEventListener("click",()=>{
   if(petTarget==="fred"){
     treats++;save();
-    toast(T().fredHeart,1200);DOG.sit=true;DOG.next=performance.now()+2600;
+    toast(T().fredHeart,1200);DOG.sit=true;DOG.next=wNow()+2600;
     if(fredQ===0&&treats>=3){fredQ=1;save();setTimeout(()=>toast(T().fredUnlock,3800),1400);
       setTimeout(()=>toast(T().carePackToast,3600),1600);}
     else if(fredQ===1){fredQuestStart();}
     return;
   }
-  if(petTarget==="cat"){CAT.sit=true;CAT.next=performance.now()+3200;
+  if(petTarget==="cat"){CAT.sit=true;CAT.next=wNow()+3200;
     const L=T().cat;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
-  else if(petTarget==="pig"){PIG.peck=true;PIG.next=performance.now()+2200;
+  else if(petTarget==="pig"){PIG.peck=true;PIG.next=wNow()+2200;
     const L=T().pigeon;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
   else if(petTarget==="loro"){
     const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(DOGK.has(petTarget)){ /* a treat: the tail achieves liftoff, and he's FUELED */
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=performance.now()+3200;g2.happyT=performance.now()+2200;g2.layT=0;
-      g2.fedT=performance.now();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
+    if(g2){g2.sit=true;g2.next=wNow()+3200;g2.happyT=wNow()+2200;g2.layT=0;
+      g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
       if(world===PL.park)PARK.t++;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
     toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}
   else if(petTarget==="gato"){
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=performance.now()+3200;}
+    if(g2){g2.sit=true;g2.next=wNow()+3200;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?eggLines(g2.egg,g2.name):T().gato;
     toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.moving=false;g2.next=performance.now()+2600;} /* it pauses for you */
+    if(g2){g2.sit=true;g2.moving=false;g2.next=wNow()+2600;} /* it pauses for you */
     const L=petTarget==="butterfly"?T().mariposa:T().colibri;
     toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
 });
@@ -8442,8 +8457,8 @@ if($("aleRnd")){$("aleRnd").addEventListener("click",()=>alePress(true));$("aleN
 $("love").addEventListener("click",()=>{ /* a button to tell him you love him (asked for) */
   if(!DOGK.has(petTarget)||!petCrit)return;
   const c=petCrit;
-  c.loveT=performance.now()+2800;c.happyT=performance.now()+2800;
-  c.sit=true;c.layT=0;c.next=performance.now()+3000;
+  c.loveT=wNow()+2800;c.happyT=wNow()+2800;
+  c.sit=true;c.layT=0;c.next=wNow()+3000;
   try{musChirp();}catch(e){}
   const L=T().loveLines||[];if(L.length)toast("💗 "+L[Math.floor(Math.random()*L.length)],3200);
 });
@@ -8514,7 +8529,7 @@ function dogCmd(kind){
   if(kind==="follow"){c.follow=!c.follow;c.stayT=0;c.holdT=0;
     toast("🐶 "+(c.follow?T().followOn:T().followOff),2400);return;}
   const p=(kind==="come"?0.7:0.5)+0.1*Math.min(4,reps)+(dogFed(c)?0.25:0);
-  const now=performance.now();
+  const now=wNow();
   if(Math.random()>=p){const L=T().cmdNo||[];
     if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);return;}
   tr[kind]=reps+1;parkPersist();

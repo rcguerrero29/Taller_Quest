@@ -8140,6 +8140,58 @@ function findChromium() {
         }
         await ctx.close();
       }
+
+      /* f · THE GAME'S CLOCK STANDS STILL TOO. Stopping what moves is half of it: the world times its waits, how long a ball
+             lies on the ground before it goes, how long a person stands before the next step. A ball is put on the ground
+             where you stand with 1.2 s of its life left, and the map is opened for 2.5 s: when it closes the ball is still
+             there, and it goes once its 1.2 s have run. A person who wanders, seen to step on their own first, is set to wait
+             1.5 s, and the map is opened for 2.5 s: when it closes they stand where they stood, they still stand 0.8 s later,
+             and they set off within 4.5 s. Each on a page of its own whose map has not been opened before, where the world's
+             clock and the wall clock still agree, so the times are set from here. Written red on mq-v253, where the ball went
+             and the person walked on while the map was open, and on this change's first build, where both went the moment
+             the map closed: the world stood still, its clock did not. */
+      {
+        const fresh = async why => { const q = await pageAt(1280, 800, false, why);
+          if (!await begin(q.p)) { MP.push('the game did not start, so ' + why + ' — nothing to measure is not a pass'); await q.ctx.close(); return null; }
+          await q.p.evaluate(MAPHELP()); return q; };
+        const openFor = async (p, ms) => { if (!await mapOpen(p)) return false; await p.waitForTimeout(ms); await mapShut(p); return true; };
+        /* the ball */
+        { const q = await fresh('whether a ball on the ground keeps its time behind the map was not asked');
+          if (q) { const { ctx, p } = q;
+            await p.evaluate(() => { BALL = { world, sx: px, sy: py, fx: px, fy: py, tx: px, ty: py, t: 1, phase: 'ground', dog: null, until: Date.now() + 1200 }; });
+            if (!await openFor(p, 2500)) MP.push('the map button could not be pressed, so whether a ball on the ground keeps its time behind the map was not asked');
+            else if (!await p.evaluate(() => !!BALL && BALL.phase === 'ground')) MP.push('I put a ball on the ground with 1.2 s of its life left, opened the map for 2.5 s and closed it, and the ball was gone: its time ran out behind the map — while the map is open the game\'s clock stands still too');
+            else if (!await until(p, () => !BALL, null, 3000)) MP.push('I put a ball on the ground with 1.2 s of its life left and opened the map for 2.5 s; after it closed the ball was still there 3 s later — the clock that stood still behind the map did not start again');
+            await ctx.close(); } }
+        /* a person who wanders: where you stand if anybody here does, or the first place where somebody does */
+        { const q = await fresh('whether a waiting person keeps their wait behind the map was not asked');
+          if (q) { const { ctx, p } = q;
+            const there = await p.evaluate(() => { const has = id => (WORLDS[id].npcs || []).some(n => wanders(n));
+              const pl = has(world) ? { id: world } : __mqMap.placesNow().find(q => has(q.id)); if (!pl) return false;
+              if (pl.id !== world) { world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; moving = false; held = null; setWorldTag(); }
+              return true; });
+            /* seen to step on their own first: a person with nowhere to go would stand whatever the clock did */
+            const i = !there ? -2 : await p.evaluate(() => new Promise(res => { const ppl = WORLDS[world].npcs.map((n, k) => [n, k]).filter(([n]) => wanders(n) && Math.abs(n.x - px) + Math.abs(n.y - py) >= 2);
+              ppl.forEach(([n]) => { if (!n.mv) n.wnext = 0; });
+              let k = 0; const f = () => { const w = ppl.find(([n]) => n.mv); if (w) return res(w[1]); if (++k > 300) return res(-1); requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+            if (i === -2) MN.push('COUNT-ONLY: nobody in this game wanders, so whether a waiting person keeps their wait behind the map was not asked');
+            else if (i < 0) MN.push('COUNT-ONLY: nobody who wanders here took a step of their own, so whether a waiting person keeps their wait behind the map was not asked');
+            else {
+              const name = await p.evaluate(i => { const n = WORLDS[world].npcs[i]; return (typeof npcName === 'function' && npcName(n.npc)) || n.npc || 'somebody'; }, i);
+              await until(p, i => !WORLDS[world].npcs[i].mv, i, 3000);
+              const at0 = await p.evaluate(i => { const n = WORLDS[world].npcs[i]; n.wnext = performance.now() + 1500; return [n.x, n.y]; }, i);
+              if (!await openFor(p, 2500)) MP.push('the map button could not be pressed, so whether a waiting person keeps their wait behind the map was not asked');
+              else {
+                const at1 = await p.evaluate(i => { const n = WORLDS[world].npcs[i]; return [n.x, n.y, !!n.mv]; }, i);
+                const stood = await p.evaluate(i => new Promise(res => { const n = WORLDS[world].npcs[i], t0 = performance.now();
+                  const f = () => { if (n.mv) return res(false); if (performance.now() - t0 > 800) return res(true); requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
+                if (at1[0] !== at0[0] || at1[1] !== at0[1]) MP.push('I set ' + name + ' to wait 1.5 s before the next step and opened the map for 2.5 s, and they walked on behind it, from ' + at0.join(',') + ' to ' + at1.slice(0, 2).join(','));
+                else if (at1[2] || !stood) MP.push('I set ' + name + ' to wait 1.5 s before the next step, opened the map for 2.5 s and closed it, and they set off at once: their wait ran out behind the map — while the map is open the game\'s clock stands still too');
+                else if (!await until(p, i => !!WORLDS[world].npcs[i].mv, i, 4500)) MP.push('I set ' + name + ' to wait 1.5 s before the next step and opened the map for 2.5 s; after it closed they had not set off 5 s later — the clock that stood still behind the map did not start again');
+              }
+            }
+            await ctx.close(); } }
+      }
       await decode.close();
     }
     /* end of 24 */
