@@ -7490,17 +7490,21 @@ function mapHeadFit(){
    says it with nothing chosen, as it opens; choosing a destination moves nothing. */
 const MAPPHONE=600;   /* a phone: the screen's shorter side is under this many CSS px. Every tablet and laptop is wider */
 function mapLineFit(){
-  const ov=$("mapov"),n=$("mapNote"),c=$("mapClose"),cv=$("mapcv");if(!ov||ov.hidden||!n||!c||!cv)return;
-  const r=cv.getBoundingClientRect();if(!r.height)return;
+  const cv=$("mapcv");if(!cv)return;
+  const r=cv.getBoundingClientRect();if(!r.height)return;   /* a plan the box does not show: a window of a pack's own asks mapLineNeed itself */
+  const need=mapLineNeed();if(need>0)cv.style.maxHeight=Math.max(0,r.height-need)+"px";}
+/* how many px the plan must give up for the line to open clear (0 where it has its room, and on a phone held sideways),
+   read where the line is now: the map open, its box at its top */
+function mapLineNeed(){
+  const ov=$("mapov"),n=$("mapNote"),c=$("mapClose");if(!ov||ov.hidden||!n||!c)return 0;
   const W=innerWidth,H=innerHeight,phone=Math.min(W,H)<MAPPHONE;
-  if(phone&&W>H)return;
-  const cr=c.getBoundingClientRect();if(!cr.height)return;
+  if(phone&&W>H)return 0;
+  const cr=c.getBoundingClientRect();if(!cr.height)return 0;
   const keep=mapDest,was=n.textContent;mapDest=null;mapNoteSet();
   const rg=document.createRange();rg.selectNodeContents(n);
   const rs=[...rg.getClientRects()].filter(q=>q.height>0),foot=rs.length&&n.textContent.trim()?Math.max(...rs.map(q=>q.bottom)):null;
   mapDest=keep;n.textContent=was;mapArrowHint();
-  const need=foot===null?0:Math.ceil(foot-(cr.top-(phone?0:mapShadowReach(c))));
-  if(need>0)cv.style.maxHeight=Math.max(0,r.height-need)+"px";}
+  return foot===null?0:Math.max(0,Math.ceil(foot-(cr.top-(phone?0:mapShadowReach(c)))));}
 function mapShadowReach(c){   /* how far above Close its shadow reaches: from the shadow's own edge (its offset less its spread), by its blur */
   let reach=0;String(getComputedStyle(c).boxShadow||"").split(/,(?![^(]*\))/).forEach(s=>{if(/\binset\b/.test(s))return;
     const v=(s.replace(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]+/gi,"").match(/-?[\d.]+px/g)||[]).map(parseFloat);
@@ -7523,9 +7527,11 @@ window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){map
    (the loop: grep "THE MAP STOPS THE GAME"); everywhere else (a tablet held sideways, squarer screens, phones) the box stays
    in the middle. The choice is measured, not guessed: the plan is drawn as wide as the box's content and no taller than the
    shell lets it be, so its size in each layout is the smaller of those two fits, read from the box and from the plan's own
-   height cap as the shell lays each layout out. A shell that gives the half other proportions decides by its own. The
-   overlay is marked `half` and the page `maphalf`; what moves where is the shell's to say. Measured as the map opens and
-   whenever the window changes size while it is open, so a window resized or a tablet turned follows at once. */
+   height cap as the shell lays each layout out. A shell that gives the half other proportions decides by its own, and a pack
+   that shows the plan through a window of its own, laid out after this runs, says how big it would draw it in a box that
+   wide with a plan that tall (PLANSCALE(width, height): screen px per px of the plan's canvas). The overlay is marked `half`
+   and the page `maphalf`; what moves where is the shell's to say. Measured as the map opens and whenever the window changes
+   size while it is open, so a window resized or a tablet turned follows at once. */
 function mapPlace(){
   const ov=$("mapov"),cv=$("mapcv"),box=ov&&ov.querySelector(".box");if(!ov)return;
   let half=false;
@@ -7533,7 +7539,7 @@ function mapPlace(){
     const keep=cv.style.maxHeight;cv.style.maxHeight="";
     const fit=()=>{const bs=getComputedStyle(box),w=box.clientWidth-(parseFloat(bs.paddingLeft)||0)-(parseFloat(bs.paddingRight)||0);
       const cap=parseFloat(getComputedStyle(cv).maxHeight),h=cap>0?cap:Infinity;
-      return Math.min(w/cv.width,h/cv.height);};
+      return typeof PLANSCALE==="function"?+PLANSCALE(w,h)||0:Math.min(w/cv.width,h/cv.height);};
     ov.classList.remove("half");const k0=fit();
     ov.classList.add("half");const k1=fit();
     cv.style.maxHeight=keep;half=k1>0&&k1>=k0;}

@@ -7871,7 +7871,8 @@ function findChromium() {
              edge arrow off and on: its words wholly below the top of the box and above Close's top edge, and a finger on them
              lands on them. And on a phone with room to spare the plan keeps the whole width of its box. Written red on
              mq-v253: at 390×560 the words lay under Close with the arrow on, and in Spanish with it off too.
-         d and e are asked of this game's own shell, as sections 8 and 16 ask that line. All three on one page and in one round
+         d is asked of this game's own shell, as sections 8 and 16 ask that line, and e of every shell: the rule is the engine's,
+         and a window of a pack's own follows it. All three on one page and in one round
          of openings, the map opened with its button each time: every size, each language, the edge arrow off and on, the
          light box and the dark one */
       {
@@ -7913,7 +7914,7 @@ function findChromium() {
                         if (q.shadow > 4) shaded.push(where + ': the shadow moves their pixels by up to ' + q.shadow + ' levels in 255');
                         if (k < 4.5) faint.push(where + ': ' + q.upper.toFixed(2) + ':1 in their upper half and ' + q.lower.toFixed(2) + ':1 in their lower half'); } } }
                   /* e */
-                  if (own24 && /phone/.test(kind)) {
+                  if (/phone/.test(kind)) {
                     if (!m.words || !m.close) none.push(where + ': the line under the plan or Close could not be found');
                     else { const why = [];
                       if (m.words[1] < Math.max(m.top, 0) - 0.5) why.push('its words start above the top of the box');
@@ -8005,7 +8006,8 @@ function findChromium() {
              under way: nobody moves while it is open (every person there, the animals, the critters, the tram and you), and
              when it closes the step is finished. The player's own step under way stops while the map is open and finishes
              after. With the map open the window goes from 1280×800 to 1024×768 and back, each size finding its own layout and
-             the street drawn; then a tap on the street closes the map, and the game is back where it was. The layouts are
+             the street drawn; then a tap on the street closes the map. After every close the game is back where it was just
+             before that opening. The layouts are
              named for this game's plan; another game's map is asked only that a left half has the street wholly beside it.
              Written red on mq-v253: the map was a box in the middle at every size, everybody walked on behind it, and so did
              the player's own step. */
@@ -8049,7 +8051,7 @@ function findChromium() {
               ppl.forEach(n => { if (!n.mv) n.wnext = 0; });
               let k = 0; const f = () => { const n = ppl.find(q => q.mv && q.mt > 0 && q.mt < 0.6);
                 if (n) { document.getElementById('mapbtn').click(); return res({ who: (typeof npcName === 'function' && npcName(n.npc)) || n.npc, i: WORLDS[world].npcs.indexOf(n) }); }
-                if (++k > 150) { document.getElementById('mapbtn').click(); return res({ never: true }); } requestAnimationFrame(f); };
+                if (++k > 400) { document.getElementById('mapbtn').click(); return res({ never: true }); } requestAnimationFrame(f); };
               requestAnimationFrame(f); })) : null;
             if (!go && !await mapOpen(p)) { MP.push('the map button could not be pressed (' + size + '), so where the map opens was not asked'); continue; }
             if (!await until(p, () => !document.getElementById('mapov').hidden, null, 2000)) { MP.push('the map did not open (' + size + ')'); continue; }
@@ -8070,6 +8072,8 @@ function findChromium() {
             else if (go) { stillAsked++; walkers++;
               if (went.length) MP.push('On ' + size + ', I opened the map while ' + go.who + ' was walking in ' + walkIn + ', and the world kept moving behind it: ' + say(went) + ' moved — while the map is open the game stands still'); }
             await mapShut(p);
+            const s2 = await p.evaluate(streetAt);
+            if (s0 && s2 && s2.some((v, i) => Math.abs(v - s0[i]) > 1)) MP.push('On ' + size + ', I closed the map and the game did not come back where it was: the street is at ' + s2.map(v => Math.round(v)).join(',') + ', where it was at ' + s0.map(v => Math.round(v)).join(',') + ' before the map opened');
             if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 6000)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
           }
           if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
