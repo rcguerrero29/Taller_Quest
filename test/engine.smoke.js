@@ -6449,16 +6449,27 @@ function findChromium() {
         await p.goto('file://' + file); await boot(p); return { ctx, p }; };
       const destNow = p => p.evaluate(() => mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null);
       const same = (a, b) => !!a && !!b && a.w === b.w && a.x === b.x && a.y === b.y;
-      /* a point on the paper, in its canvas pixels, put under a finger: scrolled to if it is under something else */
+      /* a point on the paper, in its canvas pixels, put under a finger: scrolled to if it is under something else. A finger
+         presses a rect, not a point: the browser hands a tap to the topmost thing anywhere in the rect round its point, so
+         with a finger the point counts as in reach as it stands only where that whole rect lies on the plan, read at the
+         rect's corners, the middles of its sides and its centre. The taps here set no radius, and the browser then gives a
+         touch 1 px each way; FINGER is twice that, a stated margin. A mouse presses its point, as before. Anything else is
+         scrolled to the middle of the box first, as a person would, and a point still not clear there is a red line; the
+         tap that follows is asked exactly what it was asked before. Changed on 2026-11-08: a goal moved Close 2 px up the
+         box, and a point this check chose on the paper at 844×390, 0.13 px above Close's edge, read as on the plan while
+         the finger's rect reached Close, so the tap closed the map. */
+      const FINGER = 2;
+      let fingerPx = 0;
       const reach = async (p, cx, cy, margin) => {
         for (let k = 0; k < 2; k++) {
-          const g = await p.evaluate(([cx, cy, margin]) => {
+          const g = await p.evaluate(([cx, cy, margin, F]) => {
             const a = __mqMap.planAt(); if (!a.plan || a.own) return a;
-            const x = margin ? margin[0] : a.ox + cx * a.kx, y = margin ? a.oy + margin[1] * a.ky : a.oy + cy * a.ky, el = document.elementFromPoint(x, y), plan = document.getElementById('mapcv');
-            if (el === plan) return { x, y, ok: true };
+            const x = margin ? margin[0] : a.ox + cx * a.kx, y = margin ? a.oy + margin[1] * a.ky : a.oy + cy * a.ky, plan = document.getElementById('mapcv');
+            const el = [[0, 0], [-F, -F], [0, -F], [F, -F], [-F, 0], [F, 0], [-F, F], [0, F], [F, F]].map(([dx, dy]) => document.elementFromPoint(x + dx, y + dy)).find(e => e !== plan);
+            if (el === undefined) return { x, y, ok: true };
             const box = document.getElementById('mapov').querySelector('.box') || document.getElementById('mapov');
             box.scrollTop += y - (a.vt + a.vb) / 2;
-            return { x, y, ok: false, on: !el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase() }; }, [cx, cy, margin || null]);
+            return { x, y, ok: false, on: !el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase() }; }, [cx, cy, margin || null, fingerPx]);
           if (!g.plan && g.plan !== undefined) return g;
           if (g.ok || g.own) return g;
           if (k) return g;
@@ -6468,7 +6479,7 @@ function findChromium() {
       const hit = async (p, how, g) => { if (how === 'tap') await p.touchscreen.tap(g.x, g.y); else await p.mouse.click(g.x, g.y); await rafs(p, 1); };
       let asked = 0, ownPlan = '', noMargin = [];
       for (const touch of [false, true]) {
-        const { ctx, p } = await pageT(390, 844, touch), how = touch ? 'tap' : 'click';
+        const { ctx, p } = await pageT(390, 844, touch), how = touch ? 'tap' : 'click'; fingerPx = touch ? FINGER : 0;
         if (!await begin(p)) { MP.push('the game did not start, so a ' + how + ' on the map\'s markers was not asked about — nothing to measure is not a pass'); await ctx.close(); continue; }
         if (await p.evaluate(() => typeof markKinds === 'function' && !markKinds().length)) { await ctx.close(); break; }   /* a game that marks nobody has nothing to click (the gauge, El Horno) */
         await p.evaluate(MAPHELP());
