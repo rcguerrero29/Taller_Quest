@@ -136,16 +136,20 @@ arch over a door, the bones on a pan de muerto, the handle of a cup. The engine'
 
 `cb` (2026-11-08) shades a part evenly from its own colour at its highest point to `cb` at its
 lowest, by height as the part stands, after its turns: a leaning part shades by how it leans, not
-along its own axis. It is worked out once, as the shape is built, so it costs nothing while the game
-runs, and it adds no triangle. Both colours go through the player's colour theme, and the time of day
+along its own axis. It is worked out as the shape is built, one more pass over the part's corners, and
+adds no triangle; nothing more is done while the thing stands, but a shape built again pays that pass
+again (a kitchen's column is built again on every frame of a door's swing, and when a thing is put or
+taken). Both colours go through the player's colour theme, and the time of day
 tints them alike, because they are drawn with one material. A foot in shade or a toasted underside is
 one part with a `cb`, not a second part. A part without `cb` is built exactly as before.
 
 **Every key a part may say is in one list** in the engine, with what kind of thing each is (shape,
 place, size, angle, stretch, colour, glass): `PARTKEYS`, in `engine/engine3d.js` (grep `THE ONE LIST
-OF WHAT A PART MAY SAY`). Anything that reads parts takes its keys from there: the kitchen's check of a
-thing's parts, what it makes smaller to fit a shelf, and whatever a world writes to scale its parts
-into its own units or to send them somewhere else. A key that is not on it draws nothing.
+OF WHAT A PART MAY SAY`). Anything that reads parts takes its keys from there and keeps no list of its
+own: in this repository, the kitchen's check of a thing's parts (each key held by its kind's bound),
+what it makes smaller to fit a shelf, and the shape gate's harvest; code a world writes that reads parts
+should do the same. A key that is not on it changes nothing the engine draws (a marker a world keeps on
+a part for itself), but a kitchen refuses a thing whose part carries one.
 
 ### What the engine already has a shape for — and the ONE line you write to take it
 

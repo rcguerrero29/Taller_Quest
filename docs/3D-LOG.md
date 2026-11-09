@@ -1231,14 +1231,14 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   and "−" at 1 leaves 1, nothing glows after the room is left, and two things with one date list in name order.
 
 ### 2026-11-08 · one list of what a part may say, and a part shaded into a second colour
-- **Goal served:** a part can shade into a second colour by its height, at no cost while the game runs; and every reader of
-  parts takes its keys from one list, so a key added once is taken everywhere instead of being refused by the next copy.
+- **Goal served:** a part can shade into a second colour by its height, worked out as its shape is built; and every reader
+  of parts takes its keys from one list, so a key added once is taken everywhere instead of being refused by the next copy.
 - **Shipped, the list:** `PARTKEYS`, frozen, inside the shape builder's sentinels in `engine/engine3d.js` (grep `THE ONE LIST
   OF WHAT A PART MAY SAY`): 21 keys, each with its kind (shape, place, size, angle, stretch, colour, glass). The kitchen reads
   from it, on the first part it checks, the keys a thing's part may say (every one but glass, in the order it always
-  checked them) and the keys it makes smaller to fit a shelf (the sizes); a world that scales or sends out its parts does
-  the same. `test/prims.js` holds the list to the builder: frozen, every kind one a reader knows, and exactly the keys the
-  builder reads, no more and no fewer.
+  checked them) and the keys it makes smaller to fit a shelf (the sizes). In this repository the kitchen and the shape gate
+  take their keys from it, and no other code here keeps a list of part keys. `test/prims.js` holds the list to the builder:
+  frozen, every kind one a reader knows, and exactly the keys the builder reads, no more and no fewer.
 - **Shipped, the colour:** `cb` on a part. In `t3BakeParts` each corner takes the mix of `c` and `cb` for its own height as
   the part stands, after its turns: `c` at the part's highest point, `cb` at its lowest, so a leaning part shades by how it
   leans and not along its own axis. Both through the colour theme (`tc`), both under the one material the time of day
@@ -1253,11 +1253,12 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   leaning far over and a ring stood on its edge, read corner by corner against the mix for each corner's height, as asked and
   through a colour theme (36, 240, 120 and 504 corners); the mesh the scene is handed carries the bake's colours, on one
   tinted material. Red first on the engine before: the list missing, and each of the four drawn in one colour, in both
-  themes. Fourteen plants in a copy outside the repository, each red in its own sentence: shaded upside down, along a part's
-  own axis, outside the theme, dropped by the mesh, a material the time of day never reaches, a plain part shaded anyway, the
-  kitchen taking a word for a colour, glass, a key on no list, dropping a size from what it takes or from what it shrinks,
-  shrinking an angle, and the list left open.
-- **Cost:** no triangle and no draw call. The bake reads a part's corners once more only when the part names `cb`.
+  themes. Thirteen plants in a copy outside the repository, each red in its own sentence, and the copy unplanted green:
+  shaded upside down, along a part's own axis, outside the theme, dropped by the mesh, a material the time of day never
+  reaches, a plain part shaded anyway, the kitchen taking a word for a colour, glass, a key on no list, dropping a size from
+  what it takes or from what it shrinks, shrinking an angle, and the list left open.
+- **Cost:** no triangle and no draw call. The bake reads a part's corners once more only when the part names `cb`, each time
+  the shape is built: once for most things, and on every frame of a door's swing for a kitchen column's things.
 - **Not done:** nothing in Meridian draws with `cb` yet, so its look is as it was. No direction other than height; no blend
   across a part's width; no colour per face.
 
@@ -1285,8 +1286,9 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   three.js changes this along with every other colour. No seam on any face: the colour is linear in height, and height is
   linear across any flat triangle.
 - **How far the mesh hash reaches:** every object under the world's group. One colour planted one step off in a copy was seen
-  in the stove's drip bowl (one world, one object), and not in the trolley's skirt, because the trolley is built every frame
-  and hung on the scene rather than the world's group, nor in the ofrenda's cloth while the clock was held out of season.
+  in the stove's drip bowl (one world, one object), and not in the trolley's skirt, because the trolley hangs on the scene
+  rather than the world's group (it is built once per page load, again only when a line has another number of cars, and
+  only moved each frame), nor in the ofrenda's cloth while the clock was held out of season.
   The lane then ran the hash in season as well (the ofrenda standing, 1,724 meshes, the same as before); the trolley stays
   outside it, unchanged by construction (no part in this repository names `cb`, and a part without one takes the path it
   always took). Walk `T3.scene` too before the hash is used as a gate.
@@ -1294,3 +1296,41 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   half of the sky at every height. True of the sky, not of the floor; withdrawn before it ran.
 - **Not measured:** a closed cabinet with a shelf above, a lamp, the light from an open door; neither the engine nor the
   simulation models them.
+
+### 2026-11-09 · the review of the one list and the second colour: what the gate and the kitchen held, and what they did not
+- **Why:** four reviewers read the pull request, and others tried to refute what they found. Two findings stood: the shape gate
+  left every part written with a second colour out of every comparison, and the kitchen took any key the list gained as any
+  number. Five more were real: three were shown red here before they were fixed, and two were sentences that were not true.
+  The small ones were taken with them.
+- **Fixed, the shape gate** (`test/prims.js`, `test/lib/parts.js`): the harvest takes its keys, and which of them are written as
+  text, from the one list, and the keys a shape is built from out of `t3Prim`; its own lists are gone, and the gate asks it to
+  read a part written with each key. Each key is held to its kind by what the builder draws when that key alone changes (grep
+  `WHAT KIND EACH KEY IS`), never by the list being checked. The keys the builder reads come from a Proxy over the parts it
+  builds as well as from every `p.<key>`. The one place is asked of a part of every primitive, a leaning one and a pane of
+  glass, in six places, standing nowhere among them; today's body may read nothing of where a thing stands; the stand-in light
+  must reach the solid and the glass; and every call of `t3MeshOf` in the engine must say where its thing stands. The trolley,
+  which moves, says `null`.
+- **Fixed, the kitchen** (`engine/kitchen-room.js`, grep `HOW FAR A THING'S PART MAY GO`): one bound for each kind of key; a key
+  the list gains is held by its kind's bound, and a key of a kind with no bound is refused in a sentence. A glass part is told
+  it would be glass. The engine suite asks each key past each end of its kind's bound, measures every part the kitchen takes
+  against the reach it is fitted by (grep `THE REACH A PART IS FITTED BY`), and is red on a shaded part built with no corner.
+- **Fixed, the words:** the list's readers in this repository are the kitchen and the shape gate, and no other code here keeps a
+  list of part keys; the trolley is built once per page load and only moved each frame; the first entry's plants are
+  thirteen, not fourteen (the fourteenth was the copy left unplanted); a shape built again pays the extra pass again; a key
+  not on the list changes nothing drawn, but a kitchen refuses its thing.
+- **Measured, red first** (each green on the pull request's head before this round, red now, in a copy outside the repository):
+  a written part given a second colour under an engine change that draws every second colour upside down ("one of the 131
+  cylinders the games draw would look different … The first is content/meridian/art.js:995"); a colour called a size, an arc
+  called a size, a torus's tube called an angle; a key read by destructuring, and one read as `p?.sw`; a second mix for cones,
+  and one for a thing that stands nowhere; today's mix reading the world or the row; the glass baked without being told where;
+  the tile's mesh built without saying where it stands. In the kitchen, with a size the list gains (`wt`): a thing whose part's
+  `wt` is 5 or -1 was taken and is refused now, and a box whose `wt` is 0.5, drawn 0.250 from its middle where the kitchen fits
+  it as reaching 0.050, is red, as it should be until the fit counts it. Eighteen plants of the engine suite's block and
+  sixteen new ones in the gate's self-test, each red in its own sentence; unplanted, both green.
+- **Measured, nothing else moved:** the gate builds 482 distinct parts as before (206 escaped, 21 twins each). The kitchen's check
+  of one part, over today's keys and thirty values each, answers 630 of 660 parts word for word as before; the other thirty
+  carry glass. Every object under the scene's group in every public world, hashed again, is the same as on the engine before
+  the list: Meridian's 15 worlds (1,398 meshes as it boots, 1,476 with every district open, 1,724 in season with the ofrenda
+  standing) and El Horno's 38.
+- **Not done:** the gate reads the engine's calls of `t3MeshOf` as text (a call in a comment is skipped by a simple rule); the
+  fit (`kitReach`) still names each primitive's sizes, and that it counts every size is held by the suite, not by the code.

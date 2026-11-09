@@ -593,14 +593,15 @@ helper, and the person who hits it will be reading their content files, not `san
   table's: one name, one part); read by the suite, never by the bake.
 - **Registered 2026-11-08 — the one list of what a part may say (`PARTKEYS`), and a part's second colour `cb`.** In
   `engine/engine3d.js` (grep `THE ONE LIST OF WHAT A PART MAY SAY`), frozen: every key a part may carry and what kind of
-  thing it is: `s` shape; `x y z` place; `w h d r rt rb t` size; `arc rx ry rz` angle; `sx sy sz` stretch; `c cb`
-  colour; `a` glass. A length is a place or a size. The kitchen takes from it the keys a thing's part may say (every one
-  but glass) and the keys it makes smaller to fit a shelf (the sizes), in place of the two lists it kept; whatever else
-  reads parts takes its keys from it the same way, and `test/prims.js` holds it to exactly the keys the shape builder
-  reads. `cb` (`#rrggbb`): the part shades evenly from `c` at its highest point to `cb` at its lowest, by height as it
-  stands after its turns, worked out once as it is built; both through the colour theme, one material for the time of
-  day. It is a colour, not a size: nothing makes it smaller or scales it. A part without it, and every world that writes
-  none, is built exactly as before. `cb` collides with nothing already here.
+  thing it is: `s` shape; `x y z` place; `w h d r rt rb t` size; `arc rx ry rz` angle; `sx sy sz` stretch; `c cb` colour;
+  `a` glass. A length is a place or a size. The kitchen takes from it the keys a thing's part may say (every one but
+  glass), how far each may go (one bound for each kind) and the keys it makes smaller to fit a shelf (the sizes), in place
+  of the two lists it kept; the shape gate's harvest takes its keys and which of them are text from it too, and whatever
+  else reads parts should do the same. `test/prims.js` holds it to exactly the keys the shape builder reads, and each key
+  to being drawn as its kind says. `cb` (`#rrggbb`): the part shades evenly from `c` at its highest point to `cb` at its
+  lowest, by height as it stands after its turns, worked out once as it is built; both through the colour theme, one
+  material for the time of day. It is a colour, not a size: the kitchen never makes it smaller. A part without it, and
+  every world that writes none, is built exactly as before. `cb` collides with nothing already here.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 
