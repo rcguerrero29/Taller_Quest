@@ -7874,7 +7874,7 @@ function findChromium() {
          d is asked of this game's own shell, as sections 8 and 16 ask that line, and e of every shell: the rule is the engine's,
          and a window of a pack's own follows it. All three on one page and in one round
          of openings, the map opened with its button each time: every size, each language, the edge arrow off and on, the
-         light box and the dark one */
+         light box everywhere and the dark one where the line's words are read */
       {
         const SIZES24 = [[1280, 800, 'a laptop, 1280×800', 'line'], [1440, 900, 'a laptop, 1440×900', 'line'], [1920, 1080, 'a large screen, 1920×1080', 'line'],
           [1280, 720, 'a laptop, 1280×720', 'line'], [1024, 768, 'a tablet held sideways, 1024×768', 'line'], [768, 1024, 'a tablet, 768×1024', ''],
@@ -7887,7 +7887,7 @@ function findChromium() {
           await p.evaluate(() => { if (typeof CAMS !== 'undefined' && CAMS.includes('top')) camSet('top'); });
           const langs = await langsOf(p); let opened = 0, read = 0, lowest = null;
           const hung = [], lineUnder = [], shaded = [], faint = [], unseen = [], shrunk = [], none = [];
-          for (const scheme of ['light', 'dark']) {
+          for (const scheme of own24 ? ['light', 'dark'] : ['light']) {   /* the dark box is for d's photographs alone */
             await p.emulateMedia({ colorScheme: scheme }); await rafs(p);
             for (const [w, h, size, kind] of SIZES24) {
               if (scheme === 'dark' && !/line/.test(kind)) continue;
