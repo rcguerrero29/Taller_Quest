@@ -141,7 +141,10 @@ adds no triangle; nothing more is done while the thing stands, but a shape built
 again (a kitchen's column is built again on every frame of a door's swing, and when a thing is put or
 taken). Both colours go through the player's colour theme, and the time of day
 tints them alike, because they are drawn with one material. A foot in shade or a toasted underside is
-one part with a `cb`, not a second part. A part without `cb` is built exactly as before.
+one part with a `cb`, not a second part. A part without `cb` is built exactly as before. A part that
+imitates light (a second colour standing for shade, a colour chosen as shade or shine, a shadow or a
+shine drawn as a part) is added to the list in `docs/3D-LOG.md` (grep `## Parts that imitate light`),
+so a later upgrade of the engine's light knows what to revisit.
 
 **Every key a part may say is in one list** in the engine, with what kind of thing each is (shape,
 place, size, angle, stretch, colour, glass): `PARTKEYS`, in `engine/engine3d.js` (grep `THE ONE LIST
