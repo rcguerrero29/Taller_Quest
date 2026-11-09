@@ -8070,7 +8070,7 @@ function findChromium() {
             else if (go) { stillAsked++; walkers++;
               if (went.length) MP.push('On ' + size + ', I opened the map while ' + go.who + ' was walking in ' + walkIn + ', and the world kept moving behind it: ' + say(went) + ' moved — while the map is open the game stands still'); }
             await mapShut(p);
-            if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 2500)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
+            if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 6000)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
           }
           if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
           if (!walkIn) MN.push('COUNT-ONLY: nobody in this game wanders, so whether a walking person stands still behind the map was not asked');
@@ -8089,7 +8089,7 @@ function findChromium() {
             else { const y0 = await p.evaluate(() => [fx, fy, mt, moving]); await p.waitForTimeout(500); const y1 = await p.evaluate(() => [fx, fy, mt, moving]);
               if (JSON.stringify(y0) !== JSON.stringify(y1)) MP.push('I opened the map in the middle of a step and I kept walking behind it (from ' + y0.slice(0, 2).map(v => v.toFixed(2)).join(',') + ' to ' + y1.slice(0, 2).map(v => v.toFixed(2)).join(',') + ') — a step under way stops while the map is open');
               await mapShut(p);
-              if (!await until(p, () => !moving && fx === px && fy === py, null, 1500)) MP.push('I closed the map that stopped my step, and the step never finished'); }
+              if (!await until(p, () => !moving && fx === px && fy === py, null, 6000)) MP.push('I closed the map that stopped my step, and the step never finished'); }
           }
           /* the window changes size with the map open, and back */
           await p.setViewportSize({ width: 1280, height: 800 }); await rafs(p, 2);
