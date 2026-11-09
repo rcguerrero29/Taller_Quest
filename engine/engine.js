@@ -7512,7 +7512,7 @@ function mapLineFit(){
    read where the line is now: the map open, its box at its top */
 function mapLineNeed(){
   const ov=$("mapov"),n=$("mapNote"),c=$("mapClose");if(!ov||ov.hidden||!n||!c)return 0;
-  const W=innerWidth,H=innerHeight,phone=Math.min(W,H)<MAPPHONE;
+  const W=innerWidth,H=innerHeight,phone=Math.min(screen.width||W,screen.height||H)<MAPPHONE;   /* the screen's, not the window's: a laptop's window can be short */
   if(phone&&W>H)return 0;
   const cr=c.getBoundingClientRect();if(!cr.height)return 0;
   const keep=mapDest,was=n.textContent;mapDest=null;mapNoteSet();
@@ -7534,7 +7534,15 @@ function mapShown(){
   mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});
   [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});
   if(document.body.classList.contains("maphalf"))mapStreet();}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});mapStreet();}});
+/* The window changing size keeps the player's own scroll of the box. By the time it says so the browser has laid the box out
+   again in the layout it had, and where that layout now holds everything (the left half, going to a size that will take the
+   box) the scroll is already gone; so the box's last scroll is kept as the player left it, and handed back after the fits,
+   as far as the new layout lets it go. */
+let mapBoxTop=0;
+{const b=$("mapov")&&$("mapov").querySelector(".box");if(b)b.addEventListener("scroll",()=>{mapBoxTop=b.scrollTop;},{passive:true});}
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){const keep=mapBoxTop,box=ov.querySelector(".box");
+  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});mapStreet();
+  if(box&&keep>box.scrollTop)box.scrollTop=keep;}});
 /* ---- THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT (2026-11-08) ----
    On a laptop the map was a box in the middle of a darkened screen while the world went on behind it. Now, on a screen
    shaped like a laptop's or wider, the map takes the left half of the screen from top to bottom wherever that draws the plan
@@ -7547,18 +7555,38 @@ window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){map
    wide with a plan that tall (PLANSCALE(width, height): screen px per px of the plan's canvas). The overlay is marked `half`
    and the page `maphalf`; what moves where is the shell's to say. Measured as the map opens and whenever the window changes
    size while it is open, so a window resized or a tablet turned follows at once. */
+/* AND ONE WINDOW, ONE LAYOUT (2026-11-09). The box's width is read without a scrollbar: whether one shows (classic scrollbars,
+   as on Windows) depends on what the box holds at that instant, and as the map opens its head is not yet fitted, so the same
+   window chose the box as the map opened and the left half once it said it had changed size. A pack's PLANSCALE that throws,
+   or answers anything but a positive number, gives way to the engine's own scale, and the engine says so once. And only a
+   screen shaped like a laptop's or wider takes the left half (MAPHALFSHAPE): phones, tablets held sideways and screens
+   squarer than about 3 by 2 keep the box whatever a pack's scale says, as the plan's own measure already gives this game. */
+const MAPHALFSHAPE=1.45;   /* width to height: 1280x800 is 1.6 and 3 by 2 is 1.5; 1024x768 and 1600x1200 are 1.33 */
+let mapPageY=null;         /* the page's scroll as the left half took it, handed back when the half goes (the column narrows) */
 function mapPlace(){
   const ov=$("mapov"),cv=$("mapcv"),box=ov&&ov.querySelector(".box");if(!ov)return;
   let half=false;
-  if(!ov.hidden&&cv&&box&&cv.width&&cv.height){
+  if(!ov.hidden&&cv&&box&&cv.width&&cv.height&&innerWidth>=MAPHALFSHAPE*innerHeight){
     const keep=cv.style.maxHeight;cv.style.maxHeight="";
-    const fit=()=>{const bs=getComputedStyle(box),w=box.clientWidth-(parseFloat(bs.paddingLeft)||0)-(parseFloat(bs.paddingRight)||0);
+    const own=(w,h)=>Math.min(w/cv.width,h/cv.height);
+    const fit=()=>{const bs=getComputedStyle(box),n=v=>parseFloat(v)||0;
+      const w=box.offsetWidth-n(bs.borderLeftWidth)-n(bs.borderRightWidth)-n(bs.paddingLeft)-n(bs.paddingRight);
       const cap=parseFloat(getComputedStyle(cv).maxHeight),h=cap>0?cap:Infinity;
-      return typeof PLANSCALE==="function"?+PLANSCALE(w,h)||0:Math.min(w/cv.width,h/cv.height);};
+      return mapScale(w,h,own);};
     ov.classList.remove("half");const k0=fit();
     ov.classList.add("half");const k1=fit();
     cv.style.maxHeight=keep;half=k1>0&&k1>=k0;}
-  ov.classList.toggle("half",half);document.body.classList.toggle("maphalf",half);}
+  const was=document.body.classList.contains("maphalf");
+  if(half&&!was)mapPageY=scrollY;
+  ov.classList.toggle("half",half);document.body.classList.toggle("maphalf",half);
+  if(!half&&was)mapPageBack();}
+function mapScale(w,h,own){
+  if(typeof PLANSCALE!=="function")return own(w,h);
+  let k;try{k=PLANSCALE(w,h);}catch(e){k=e;}
+  if(typeof k==="number"&&isFinite(k)&&k>0)return k;
+  if(!mapScale.told){mapScale.told=true;mqwarn("pack","PLANSCALE answered "+(k instanceof Error?"with an error ("+k.message+")":typeof k==="string"?JSON.stringify(k):String(k))+"; the engine's own scale is used instead",false);}
+  return own(w,h);}
+function mapPageBack(){if(mapPageY===null)return;const y=mapPageY;mapPageY=null;scrollTo(scrollX,y);}
 /* The street beside the map is laid out again at its column's width and drawn once: a world under a panel is not drawn by
    the loop, and laying a canvas out clears it. */
 function mapStreet(){sizeCanvas();if(!$("world").hidden)try{draw();}catch(e){}}
@@ -7566,7 +7594,7 @@ function mapStill(){const ov=$("mapov");return !!ov&&!ov.hidden;}
 /* and when the map closes, by Close, Escape, a tap beside it or anything else that hides it, the game goes back where it was */
 if($("mapov"))new MutationObserver(()=>{const ov=$("mapov");
   if(!ov.hidden||!(ov.classList.contains("half")||document.body.classList.contains("maphalf")))return;
-  ov.classList.remove("half");document.body.classList.remove("maphalf");sizeCanvas();}).observe($("mapov"),{attributes:true,attributeFilter:["hidden"]});
+  ov.classList.remove("half");document.body.classList.remove("maphalf");sizeCanvas();mapPageBack();}).observe($("mapov"),{attributes:true,attributeFilter:["hidden"]});
 /* ---- AND IT IS MEASURED WITH THE BOX AT ITS TOP (2026-11-08) ----
    The room the plan gives the edge arrow's line was read with the box still holding the scroll it was left with. Scrolled to
    its foot (on a tablet held sideways that is how "Somewhere to go" is reached), the browser's scroll anchoring held the plan
