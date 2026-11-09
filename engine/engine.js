@@ -5096,7 +5096,14 @@ function loop(ts){
   /* the street bearing follows the camera's own swing, so it is a frame job, not an event job.
      It writes to the DOM only when the pill actually moved — see bearingUI. */
   if(typeof bearingUI==="function")bearingUI();
-  if(moving){
+  /* THE MAP STOPS THE GAME (2026-11-08). While the map is open the world stands still, at every size: nobody walks, no animal
+     or critter moves, the tram waits where it is, nothing falls, and a step of the player's own already under way stops where
+     it is, so it can no longer carry the player through a door or onto the tram's platform behind the map. Everything
+     picks up where it stopped when the map closes, and the music plays on. Every other panel keeps the world thinking
+     behind it, as below. */
+  const still=mapStill();
+  if(still){}
+  else if(moving){
     mt+=dt/240;bob+=dt/70;
     if(mt>=1){moving=false;fx=px;fy=py;petalDrop(world,px,py,HEROFEET);
       if(tryPortal(ts)){}
@@ -5106,9 +5113,10 @@ function loop(ts){
     else{const[dx,dy]=DIRS[dir];fx=px-dx*(1-mt);fy=py-dy*(1-mt);}
   }else if(DRONE.on||DRONE.want)droneTick(dt);   /* the keys fly the drone: no door and no step for the hero while they do (#271) */
   else if(!tryPortal(ts))tryStep(); /* standing on a door whose cooldown just ran out: go through */
+  if(!still){
   petalMomentTick(dt);
   troTick(dt);
-  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);dogThingsUpdate(dt,ts);wanderUpdate(dt);fredCheck();
+  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);dogThingsUpdate(dt,ts);wanderUpdate(dt);fredCheck();}
   /* The world keeps thinking behind a panel — the dog walks, the trolley comes, petals fall — so
      nothing jumps when you put the paper down. It is not DRAWN, though: measured at 215 frames in
      six seconds with a document covering the screen, every one of them at full device resolution
@@ -7475,9 +7483,40 @@ function mapHeadFit(){
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
-  mapAtTop(()=>{mapNoteHold();mapHeadFit();});
-  [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapNoteHold();mapHeadFit();});}});
+  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();});
+  [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});
+  if(document.body.classList.contains("maphalf"))mapStreet();}
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();});mapStreet();}});
+/* ---- THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT (2026-11-08) ----
+   On a laptop the map was a box in the middle of a darkened screen while the world went on behind it. Now, on a screen
+   shaped like a laptop's or wider, the map takes the left half of the screen from top to bottom wherever that draws the plan
+   at least as big as the box in the middle does, and the game shows in the right half, lightly dimmed and standing still
+   (the loop: grep "THE MAP STOPS THE GAME"); everywhere else (a tablet held sideways, squarer screens, phones) the box stays
+   in the middle. The choice is measured, not guessed: the plan is drawn as wide as the box's content and no taller than the
+   shell lets it be, so its size in each layout is the smaller of those two fits, read from the box and from the plan's own
+   height cap as the shell lays each layout out. A shell that gives the half other proportions decides by its own. The
+   overlay is marked `half` and the page `maphalf`; what moves where is the shell's to say. Measured as the map opens and
+   whenever the window changes size while it is open, so a window resized or a tablet turned follows at once. */
+function mapPlace(){
+  const ov=$("mapov"),cv=$("mapcv"),box=ov&&ov.querySelector(".box");if(!ov)return;
+  let half=false;
+  if(!ov.hidden&&cv&&box&&cv.width&&cv.height){
+    const keep=cv.style.maxHeight;cv.style.maxHeight="";
+    const fit=()=>{const bs=getComputedStyle(box),w=box.clientWidth-(parseFloat(bs.paddingLeft)||0)-(parseFloat(bs.paddingRight)||0);
+      const cap=parseFloat(getComputedStyle(cv).maxHeight),h=cap>0?cap:Infinity;
+      return Math.min(w/cv.width,h/cv.height);};
+    ov.classList.remove("half");const k0=fit();
+    ov.classList.add("half");const k1=fit();
+    cv.style.maxHeight=keep;half=k1>0&&k1>=k0;}
+  ov.classList.toggle("half",half);document.body.classList.toggle("maphalf",half);}
+/* The street beside the map is laid out again at its column's width and drawn once: a world under a panel is not drawn by
+   the loop, and laying a canvas out clears it. */
+function mapStreet(){sizeCanvas();if(!$("world").hidden)try{draw();}catch(e){}}
+function mapStill(){const ov=$("mapov");return !!ov&&!ov.hidden;}
+/* and when the map closes, by Close, Escape, a tap beside it or anything else that hides it, the game goes back where it was */
+if($("mapov"))new MutationObserver(()=>{const ov=$("mapov");
+  if(!ov.hidden||!(ov.classList.contains("half")||document.body.classList.contains("maphalf")))return;
+  ov.classList.remove("half");document.body.classList.remove("maphalf");sizeCanvas();}).observe($("mapov"),{attributes:true,attributeFilter:["hidden"]});
 /* ---- AND IT IS MEASURED WITH THE BOX AT ITS TOP (2026-11-08) ----
    The room the plan gives the edge arrow's line was read with the box still holding the scroll it was left with. Scrolled to
    its foot (on a tablet held sideways that is how "Somewhere to go" is reached), the browser's scroll anchoring held the plan

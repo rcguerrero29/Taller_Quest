@@ -7813,6 +7813,18 @@ function findChromium() {
                 if (!el || !(el === note || note.contains(el))) bad.push(!el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase()); }); });
             out.under = [...new Set(bad)]; out.said = note.textContent.trim(); } }
         return out; };
+      /* what the screen shows in a rectangle: how bright it is on average, and whether it is a picture or one flat colour */
+      const look = async (p, r) => {
+        const v = await p.evaluate(() => [innerWidth, innerHeight]);
+        const x = Math.max(0, Math.floor(r[0])), y = Math.max(0, Math.floor(r[1])), w = Math.min(Math.ceil(r[2]), v[0]) - x, h = Math.min(Math.ceil(r[3]), v[1]) - y;
+        if (w < 8 || h < 8) return null;
+        const png = await p.screenshot({ clip: { x, y, width: w, height: h } });
+        return decode.evaluate(async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+          const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data, bins = new Map(); let sum = 0, n = 0;
+          for (let i = 0; i < d.length; i += 4) { n++; sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; const k = (d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+          return { mean: sum / n, other: 1 - Math.max(...bins.values()) / n, kinds: bins.size }; }, png.toString('base64')); };
+      const drawn = q => !!q && q.other >= 0.2 && q.kinds >= 8;   /* a street, not the one colour a cleared view shows */
       const toArrow = async (p, on) => { if (!await mapOpen(p)) return false; const sw = await findSwitch(p); if (sw && sw.on !== on) await press(p); await mapShut(p); return true; };
 
       /* a · CLOSE SITS WHOLLY INSIDE THE MAP'S BOX, at ten sizes, in each language, with the edge arrow off and on: its lower
@@ -7920,6 +7932,126 @@ function findChromium() {
         await ctx.close();
       }
 
+      /* c · THE LEFT HALF, AND THE GAME STANDING STILL. At 1280×800, 1440×900 and 1920×1080 (in a window and in the game's
+             full screen) the map's box is the left half of the screen, top to bottom, and the street is wholly in the right
+             half, drawn, and lightly dimmed (it keeps 60% of its brightness or more); at 1024×768 and on a phone the map is
+             the box in the middle. At each, somebody is set walking and the map is opened with its button while the step is
+             under way: nobody moves while it is open (every person there, the animals, the critters, the tram and you), and
+             when it closes the step is finished. The player's own step under way stops while the map is open and finishes
+             after. With the map open the window goes from 1280×800 to 1024×768 and back, each size finding its own layout and
+             the street drawn; then a tap on the street closes the map, and the game is back where it was. The layouts are
+             named for this game's plan; another game's map is asked only that a left half has the street wholly beside it.
+             Written red on mq-v253: the map was a box in the middle at every size, everybody walked on behind it, and so did
+             the player's own step. */
+      {
+        const { ctx, p } = await pageAt(1280, 800, false, 'the map was asked whether it takes the left half with the game standing still beside it');
+        if (!await begin(p)) MP.push('the game did not start, so where the map opens and whether the game stands still beside it were not asked — nothing to measure is not a pass');
+        else {
+          /* where a person walks: the world the player is in if anybody there wanders, or else the first world where somebody does,
+             the player put where a door into it lands (placesNow, as sections 17 to 21 put the player) */
+          await p.evaluate(MAPHELP());
+          const walkIn = await p.evaluate(() => { const has = id => (WORLDS[id].npcs || []).some(n => wanders(n));
+            const pl = has(world) ? { id: world } : __mqMap.placesNow().find(q => has(q.id)); if (!pl) return null;
+            if (pl.id !== world) { world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; moving = false; held = null; setWorldTag(); }
+            return (T().locs || {})[world] || world; });
+          /* everything in the world that moves, read at once: every person here, the animals, the critters, the tram, and you */
+          const movers = () => { const o = {}, w = WORLDS[world];
+            (w.npcs || []).forEach(n => { o[(typeof npcName === 'function' && npcName(n.npc)) || n.npc || 'somebody'] = [n.fx, n.fy, n.mt]; });
+            o.you = [fx, fy, mt, moving];
+            [['the dog', typeof DOG !== 'undefined' && DOG], ['the cat', typeof CAT !== 'undefined' && CAT], ['the pigeon', typeof PIG !== 'undefined' && PIG]].forEach(([k, a]) => { if (a) o[k] = [a.fx, a.fy, a.mt]; });
+            if (typeof LORO !== 'undefined' && LORO) o['the parrot'] = [LORO.x, LORO.y];
+            if (typeof CRIT !== 'undefined') CRIT.forEach((c, i) => { o['a ' + c.kind + ' (' + i + ')'] = [c.fx, c.fy]; });
+            if (typeof TRO !== 'undefined' && TRO) o['the tram'] = [TRO.x, TRO.state, TRO.t];
+            return JSON.parse(JSON.stringify(o)); };
+          const moved = (a, b) => Object.keys(a).filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+          /* the street the screen shows: whichever of the game's views is showing */
+          const streetAt = () => { const c = ['cv3', 'cv'].map(id => document.getElementById(id)).find(e => e && !e.hidden && e.getClientRects().length && e.getBoundingClientRect().width > 0);
+            if (!c) return null; const r = c.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+          const layoutNow = () => { const b = (document.querySelector('#mapov .box') || document.getElementById('mapov')).getBoundingClientRect(); return { W: innerWidth, H: innerHeight, box: [b.left, b.top, b.right, b.bottom] }; };
+          const isHalf = m => m.box[0] <= 0.5 && m.box[1] <= 0.5 && Math.abs(m.box[2] - m.W / 2) <= 1 && m.box[3] >= m.H - 0.5;
+          const isMiddle = m => Math.abs((m.box[0] + m.box[2]) / 2 - m.W / 2) <= 1 && m.box[3] - m.box[1] < m.H - 1;
+          const inRight = (s, m) => !!s && s[0] >= m.W / 2 - 0.5 && s[2] <= m.W + 0.5 && s[1] >= -0.5 && s[3] <= m.H + 0.5;
+          const say = a => a.slice(0, 4).join(', ') + (a.length > 4 ? ' and ' + (a.length - 4) + ' more' : '');
+          const RUNS = [[1280, 800, 'a laptop, 1280×800', 'half'], [1440, 900, 'a laptop, 1440×900', 'half'], [1920, 1080, 'a large screen, 1920×1080', 'half'],
+            [1920, 1080, 'full screen, 1920×1080', 'half', true], [1024, 768, 'a tablet held sideways, 1024×768', 'middle'], [390, 844, 'a phone, 390×844', 'middle']];
+          let wasFull = false, stillAsked = 0, walkers = 0;
+          for (const [w, h, size, want, full] of RUNS) {
+            await sizeTo(p, w, h, full, wasFull); wasFull = !!full;
+            const s0 = await p.evaluate(streetAt), seen0 = s0 ? await look(p, s0) : null;
+            /* a person set walking, and the map opened with its button while the step is under way */
+            const go = walkIn ? await p.evaluate(() => new Promise(res => { const ppl = (WORLDS[world].npcs || []).filter(n => wanders(n));
+              ppl.forEach(n => { if (!n.mv) n.wnext = 0; });
+              let k = 0; const f = () => { const n = ppl.find(q => q.mv && q.mt > 0 && q.mt < 0.6);
+                if (n) { document.getElementById('mapbtn').click(); return res({ who: (typeof npcName === 'function' && npcName(n.npc)) || n.npc, i: WORLDS[world].npcs.indexOf(n) }); }
+                if (++k > 150) { document.getElementById('mapbtn').click(); return res({ never: true }); } requestAnimationFrame(f); };
+              requestAnimationFrame(f); })) : null;
+            if (!go && !await mapOpen(p)) { MP.push('the map button could not be pressed (' + size + '), so where the map opens was not asked'); continue; }
+            if (!await until(p, () => !document.getElementById('mapov').hidden, null, 2000)) { MP.push('the map did not open (' + size + ')'); continue; }
+            const t0 = await p.evaluate(movers); await rafs(p, 2);
+            const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+            if (own24 && want === 'half') {
+              if (!isHalf(m)) MP.push('On ' + size + ', the map does not take the left half of the screen: its box is ' + m.box.map(v => Math.round(v)).join(',') + ' on a screen ' + m.W + '×' + m.H + ' — on a screen shaped like a laptop\'s the map takes the left half, top to bottom');
+              else if (!inRight(s, m)) MP.push('On ' + size + ', the map takes the left half and the street is not wholly in the right half: it is at ' + (s ? s.map(v => Math.round(v)).join(',') : 'nowhere') + ', so I am not in view beside the map');
+              else { const seen = await look(p, s);
+                if (!drawn(seen)) MP.push('On ' + size + ', the map takes the left half and the street beside it is not drawn: ' + (seen ? Math.round(100 * seen.other) + '% of it differs from its one colour' : 'nothing to read'));
+                else if (seen0 && seen.mean < 0.6 * seen0.mean) MP.push('On ' + size + ', the street beside the map is darkened, not lightly dimmed: it keeps ' + Math.round(100 * seen.mean / seen0.mean) + '% of its brightness'); }
+            } else if (own24 && want === 'middle' && !isMiddle(m)) MP.push('On ' + size + ', the map is not the box in the middle of the screen: its box is ' + m.box.map(v => Math.round(v)).join(',') + ' on a screen ' + m.W + '×' + m.H);
+            else if (!own24 && isHalf(m) && !inRight(s, m)) MP.push('On ' + size + ', the map takes the left half and the street is not wholly in the right half beside it: it is at ' + (s ? s.map(v => Math.round(v)).join(',') : 'nowhere'));
+            /* while the map is open nothing moves: read again after more than a person's step takes */
+            await p.waitForTimeout(700);
+            const t1 = await p.evaluate(movers), went = moved(t0, t1);
+            if (go && go.never) MP.push('On ' + size + ', nobody in ' + walkIn + ' started walking, so whether the world stands still behind the map was not asked — nothing to measure is not a pass');
+            else if (go) { stillAsked++; walkers++;
+              if (went.length) MP.push('On ' + size + ', I opened the map while ' + go.who + ' was walking in ' + walkIn + ', and the world kept moving behind it: ' + say(went) + ' moved — while the map is open the game stands still'); }
+            await mapShut(p);
+            if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 2500)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
+          }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (!walkIn) MN.push('COUNT-ONLY: nobody in this game wanders, so whether a walking person stands still behind the map was not asked');
+          /* the player's own step under way */
+          await p.setViewportSize({ width: 1280, height: 800 }); await rafs(p, 2);
+          const key = await p.evaluate(() => { const K = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }, w = CW();
+            for (const k of Object.keys(K)) { const [dx, dy] = DIRS[worldDir(K[k])], x = px + dx, y = py + dy;
+              if (x < 0 || y < 0 || x >= w.W || y >= w.H || isSolid(x, y) || DOORSET.has(w.rows[y][x]) || ((TILES[w.rows[y][x]] || {}).kind === 'transit')) continue; return k; }
+            return null; });
+          if (!key) MN.push('COUNT-ONLY: the player had no free step where the check stood, so a step under way was not asked to stop behind the map');
+          else {
+            await p.mouse.move(2, 2); await p.keyboard.down(key);
+            const stepping = await until(p, () => moving, null, 1500);
+            await p.evaluate(() => document.getElementById('mapbtn').click()); await p.keyboard.up(key);
+            if (!stepping) MP.push('the player did not take a step when ' + key + ' was pressed, so a step under way was not asked to stop behind the map — nothing to measure is not a pass');
+            else { const y0 = await p.evaluate(() => [fx, fy, mt, moving]); await p.waitForTimeout(500); const y1 = await p.evaluate(() => [fx, fy, mt, moving]);
+              if (JSON.stringify(y0) !== JSON.stringify(y1)) MP.push('I opened the map in the middle of a step and I kept walking behind it (from ' + y0.slice(0, 2).map(v => v.toFixed(2)).join(',') + ' to ' + y1.slice(0, 2).map(v => v.toFixed(2)).join(',') + ') — a step under way stops while the map is open');
+              await mapShut(p);
+              if (!await until(p, () => !moving && fx === px && fy === py, null, 1500)) MP.push('I closed the map that stopped my step, and the step never finished'); }
+          }
+          /* the window changes size with the map open, and back */
+          await p.setViewportSize({ width: 1280, height: 800 }); await rafs(p, 2);
+          const home = await p.evaluate(() => { const v = document.getElementById('vp').getBoundingClientRect(); return [v.left, v.top, v.right, v.bottom]; });
+          if (!await mapOpen(p)) MP.push('the map button could not be pressed, so the window did not change size with the map open');
+          else {
+            for (const [w, h, size, want] of [[1024, 768, 'a tablet held sideways, 1024×768', 'middle'], [1280, 800, 'a laptop, 1280×800', 'half']]) {
+              await p.setViewportSize({ width: w, height: h }); await rafs(p, 3);
+              const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+              const ok = want === 'half' ? isHalf(m) : isMiddle(m);
+              if (own24 && !ok) MP.push('With the map open, the window changed to ' + size + ' and the map did not follow: its box is ' + m.box.map(v => Math.round(v)).join(',') + (want === 'half' ? ', where it takes the left half' : ', where it is the box in the middle'));
+              if (want === 'half' && isHalf(m)) { const seen = inRight(s, m) ? await look(p, s) : null;
+                if (!drawn(seen)) MP.push('With the map open, the window changed to ' + size + ' and the street beside the map is not drawn: ' + (seen ? Math.round(100 * seen.other) + '% of it differs from its one colour' : 'it is not in the right half')); }
+            }
+            /* a tap on the street closes the map, and the game comes back where it was */
+            const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+            if (isHalf(m) && inRight(s, m)) {
+              await p.mouse.click((s[0] + s[2]) / 2, (s[1] + s[3]) / 2);
+              if (!await until(p, () => document.getElementById('mapov').hidden, null, 2000)) { MP.push('I tapped the street beside the map and the map did not close — a tap beside the map closes it'); await mapShut(p); }
+              await rafs(p, 3);
+              const back = await p.evaluate(() => { const v = document.getElementById('vp').getBoundingClientRect(); return [v.left, v.top, v.right, v.bottom]; });
+              if (back.some((v, i) => Math.abs(v - home[i]) > 1)) MP.push('I closed the map and the game did not come back where it was: the street is at ' + back.map(v => Math.round(v)).join(',') + ', where it was at ' + home.map(v => Math.round(v)).join(',') + ' before the map opened');
+            } else await mapShut(p);
+          }
+          MN.push('COUNT-ONLY: the map was opened beside a walking person ' + walkers + ' time(s)' + (walkIn ? ' (in ' + walkIn + ')' : '') + ', at ' + RUNS.length + ' sizes');
+        }
+        await ctx.close();
+      }
       await decode.close();
     }
     /* end of 24 */
