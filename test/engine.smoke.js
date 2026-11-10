@@ -12087,7 +12087,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          and names a word the engine also keeps as the same kind of thing (a sentence, a list, a group of words, or a
          function the engine calls). The engine's own words: both languages, the same kind in each and the kind the engine
          reads them as, every one read by the engine, kept once, never copied or listed, asked for only after a world's own
-         (uiDef(…) after ||), and never in front of a word this world names: the game gives each word as the world's words
+         (uiDef(…) as the fallback, after ||, ?? or w ? w :), named nowhere but its definition, the laying and uiDef, and
+         never in front of a word this world names: the game gives each word as the world's words
          file says it, after boot, after the words are put in place anew, after each language is picked, and after the
          screens are opened.
          Where this world names none of a word, the engine's own in the player's language stands in, and the engine's Spanish
@@ -12301,13 +12302,28 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       reads.forEach(r => { const t = r.pat ? { test: false, region: null } : testOf(r.s, r.e); r.test = t.test; if (t.region) (regionsOf[r.k] = regionsOf[r.k] || []).push(t.region); });
       reads.forEach(r => { r.guarded = r.test || (!r.pat && empty(r.e)) || (regionsOf[r.k] || []).some(([a, b]) => a <= r.s && r.e <= b) ||
         (() => { const nt = r.into >= 0 ? r.into : r.pat ? -1 : into(r.s, r.e); return nt >= 0 && guardedName(nt, r.pat ? r.from : nt, 0); })(); });
-      /* the engine's own list is read word by word and only ever second: uiDef(…) stands after ||, and nothing but the laying
-         (uiLay) lists or copies UIDEF or what uiDef(…) hands back, since a copy of them written over a world's words stands in front */
-      const bodies = {}; for (let j = 0; j < tok.length; j++) if (I(j, 'function') && id(j + 1) && P(j + 2, '(')) { const c = mate(j + 2); if (c > 0 && P(c + 1, '{')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 1, mate(c + 1)]); }
+      /* the engine's own list is read word by word and only ever second: uiDef(…) stands as the fallback (after ||, after ??, or
+         after w ? w :), the list itself (UIDEF) is named nowhere but its definition, the laying (uiLay) and uiDef, and nothing but
+         the laying lists or copies UIDEF or what uiDef(…) hands back, since a copy of them written over a world's words stands in front */
+      const bodies = {}; for (let j = 0; j < tok.length; j++) {
+        if (I(j, 'function') && id(j + 1) && P(j + 2, '(')) { const c = mate(j + 2); if (c > 0 && P(c + 1, '{')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 1, mate(c + 1)]); }
+        /* and an arrow bound to a name, as uiDef is: const f = (…) => { … }, or => an expression to the end of its statement */
+        if ((I(j, 'const') || I(j, 'let')) && id(j + 1) && P(j + 2, '=') && P(j + 3, '(')) { const c = mate(j + 3);
+          if (c > 0 && P(c + 1, '=>')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 2, P(c + 2, '{') ? mate(c + 2) : exprEnd(c + 2)]); } }
       const within = (j, f) => (bodies[f] || []).some(([a, b]) => a <= j && j <= b);
-      for (let j = 0; j < tok.length; j++) { const call = I(j, 'uiDef') && P(j + 1, '(') && !P(j - 1, '.');
-        if (call && !P(j - 1, '||')) unseen.push([tok[j].line, 'asks its own words first (uiDef(…) where it is not the fallback after ||), so its word stands in front of the one a world names']);
-        if ((call || (I(j, 'UIDEF') && !P(j - 1, '.'))) && !within(j, 'uiLay')) { const o = enclosing(j), fn = o > 2 && P(o - 2, '.') && id(o - 1) ? tok[o - 3].v + '.' + tok[o - 1].v : '';
+      /* w ? w : uiDef(…) hands on the world's word where it is there, and the engine's only where it is not */
+      const elseOfSame = j => { if (!P(j - 1, ':')) return false; let q = -1;
+        for (let m = j - 2, d = 0; m >= 0; m--) { const v = pv(m);
+          if (v === ')' || v === ']' || v === '}') d++; else if (v === '(' || v === '[' || v === '{') { if (!d) break; d--; }
+          else if (!d && v === '?') { q = m; break; } else if (!d && (v === ';' || v === ',')) break; }
+        const n = j - q - 2; if (q < 0 || n < 1) return false;
+        for (let i = 0; i < n; i++) { const a = tok[q + 1 + i], b = tok[q - n + i]; if (!a || !b || a.t !== b.t || a.v !== b.v) return false; }
+        return true; };
+      for (let j = 0; j < tok.length; j++) { const call = I(j, 'uiDef') && P(j + 1, '(') && !P(j - 1, '.'), list = I(j, 'UIDEF') && !P(j - 1, '.');
+        if (call && !P(j - 1, '||') && !P(j - 1, '??') && !elseOfSame(j)) unseen.push([tok[j].line, 'asks its own words first (uiDef(…) where it is not the fallback, after ||, after ?? or after w ? w :), so its word stands in front of the one a world names']);
+        if (list && !(I(j - 1, 'const') && P(j + 1, '=')) && !within(j, 'uiLay') && !within(j, 'uiDef'))
+          unseen.push([tok[j].line, 'names its own list of words (UIDEF) outside its definition, the laying and uiDef(…), where nothing keeps its words second to the ones a world names']);
+        else if ((call || list) && !within(j, 'uiLay')) { const o = enclosing(j), fn = o > 2 && P(o - 2, '.') && id(o - 1) ? tok[o - 3].v + '.' + tok[o - 1].v : '';
           if (P(j - 1, '...') || I(j - 1, 'in') || I(j - 1, 'of') || /^Object\.(keys|values|entries|assign|getOwnPropertyNames)$|^JSON\.stringify$/.test(fn))
             unseen.push([tok[j].line, 'lists or copies its own words (' + tok[j].v + ') outside the laying, and its words copied over a world\'s stand in front of them']); } }
       /* EITHER: a read asked what kind of thing it is (typeof w, or typeof a name it goes into), where the engine takes a function or a sentence */
