@@ -12536,7 +12536,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const reportRead = async L => { const e0 = wErr.length;
         const r = await wp.evaluate(() => { document.getElementById('gear').click(); document.getElementById('openExp').click(); document.getElementById('exTabRep').click();
           const v = document.getElementById('exArea').value; document.getElementById('exClose').click(); const Lb = T().repL || {};
-          return { v, n: dlog.length, rs: [...new Set(dlog.map(e => e.result))], head: '**' + Lb.verdict + ':** ' }; }).catch(e => ({ threw: e.message }));
+          return { v, n: dlog.length, rs: [...new Set(dlog.map(e => e.result))], head: '**' + Lb.verdict + ':** ', why: '**' + Lb.why + ':** ' + Lb.advanced, okw: Lb.ok,
+            reason: dlog.some(e => e.why || e.result === 'ok') }; }).catch(e => ({ threw: e.message }));
         if (wErr.length > e0 || r.threw) { WD.push('in ' + LN[L] + ', with ' + (r.n || 'a') + ' call(s) in the log, opening the Export panel\'s Report tab threw "' + (wErr[e0] || r.threw) + '"'); return null; }
         if (!r.n) { WN.push('COUNT-ONLY: in ' + LN[L] + ' no call was in the log, so the Report tab was read empty'); return null; }
         const v = r.v, sum = (v.split('\n').find(l => /^\*\*[^*].*\*\*$/.test(l)) || '');
@@ -12547,8 +12548,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const verdicts = v.split('\n').filter(l => l.startsWith(r.head)), coded = verdicts.filter(l => { const w = l.slice(r.head.length).replace(/( — \*|  \().*$/, '').trim(); return !w || r.rs.includes(w); });
         if (coded.length) WD.push('in ' + LN[L] + ', the Report tab says a call\'s verdict by its code name: "' + coded[0] + '"');
         if (!verdicts.length) WD.push('in ' + LN[L] + ', the Report tab with ' + r.n + ' call(s) in the log has no verdict line');
+        /* the words that a call was right and the quest goes on stand only under a solid call: never under a partly right one or a miss */
+        if (typeof r.okw === 'string' && r.okw.trim()) v.split('\n').forEach((l, i, ls) => { if (l.startsWith(r.head) && !l.slice(r.head.length).startsWith(r.okw) && ls[i + 1] === r.why)
+          WD.push('in ' + LN[L] + ', the Report tab says "' + r.why + '" under "' + l + '", a call that was not a solid one'); });
         if (shipped) { const w = {}; for (const k of ['verdict', 'why', 'foot', 'ok', 'mid', 'bad']) w[k] = (await want(L, 'repL.' + k)).v;
-          [['verdict', '**' + w.verdict + ':** '], ['why', '**' + w.why + ':** '], ['foot', '*' + w.foot + '*']].forEach(([k, x]) => { if (w[k] && !v.includes(x)) WD.push('in ' + LN[L] + ', the Report tab never says ' + JSON.stringify(x.trim()) + ', where its word for ' + k + ' is "' + w[k] + '"'); });
+          /* the Why line is there wherever a call gave a reason, or was a solid one */
+          [['verdict', '**' + w.verdict + ':** '], r.reason ? ['why', '**' + w.why + ':** '] : null, ['foot', '*' + w.foot + '*']].filter(Boolean).forEach(([k, x]) => { if (w[k] && !v.includes(x)) WD.push('in ' + LN[L] + ', the Report tab never says ' + JSON.stringify(x.trim()) + ', where its word for ' + k + ' is "' + w[k] + '"'); });
           r.rs.forEach(x => { const k = x === 'ok' || x === 'mid' ? x : 'bad'; if (w.verdict && w[k] && !v.includes('**' + w.verdict + ':** ' + w[k])) WD.push('in ' + LN[L] + ', the Report tab says no call\'s verdict as "' + w[k] + '", the word for a call logged as ' + x); }); }
         return { sum: sum.replace(/\d+/g, '#'), rs: r.rs }; };   /* the words, not the counts: the log grows between the two languages */
       await wp.click('.classes button[data-c="architect"]', { timeout: 4000 }).catch(() => wp.evaluate(() => document.querySelector('.classes button').click()));

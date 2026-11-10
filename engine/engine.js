@@ -7023,7 +7023,12 @@ function decisionReport(){
       out.push("**"+L.verdict+":** "+(L[last.result==="ok"||last.result==="mid"?last.result:"bad"]||last.result)
         +(last.concept?" — *"+last.concept+"*":"")
         +(n>1?"  ("+n+" "+L.attempts+")":""));
-      out.push("**"+L.why+":** "+(last.why||L.advanced),"");
+      /* why: the call's own reason, or, for a solid call that gave none (a choice that leads on to the next question), the word
+         that it was right and the quest goes on. A call that was not a solid one and gave no reason has no Why line: the word
+         that it was right used to stand under a miss (a world whose answers keep no reason) */
+      const why=last.why||(last.result==="ok"?L.advanced:"");
+      if(why)out.push("**"+L.why+":** "+why);
+      out.push("");
       rows.forEach(r=>{if(r.concept&&seen.indexOf(r.concept)<0)seen.push(r.concept);});
     });
   });
