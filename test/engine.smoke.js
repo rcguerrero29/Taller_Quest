@@ -8393,12 +8393,18 @@ function findChromium() {
                the same after the map has stood open 1.2 s as before it opened;
              - a ball on the ground, that person's wait and a bowl the dog program keeps, each with 1.5 s left, still have it
                after 2.5 s of the map open, read the instant the map opens and the instant it closes;
-             - after it closes none of them goes while more than a frame of its time is left, and each goes within 5 s.
+             - after it closes none of them goes while more than a frame of its time is left, and each goes within 5 s;
+             - and the things that only fade or come off: a petal on the ground, a hole the dog dug and the dog on its leash,
+               each with 1.5 s left and put out before the map has opened on the page (where the two clocks still agree), are
+               still drawn in the frame after 2.5 s of the map open, and each goes once its time is up, not before. Read as the
+               game draws them, since each painter keeps its own: in the camera the game opens in beside the left half (the
+               3D camera keeps what it drew on its meshes) and in the top camera beside the box (watched as it paints).
              Written red on mq-v253 (the ball went and the person walked on behind the map) and on this branch: before the world
              had a clock of its own (the ball went and the person set off as the map closed). Planted against: the loop handing
              the wall clock back to the dog program (the bowl went with its time left), the clock stopping beside the half
              alone (all three went on beside the box), a person's wait set on the wall clock (each wait longer by the time the
-             map had stood open), and a clock that never starts again (nothing went). */
+             map had stood open), and a clock that never starts again (nothing went). The things that fade were written red on
+             this branch at mq-v255, where the petal, the hole and the leash were each gone in the frame the map closed. */
       {
         for (const [w, h, where] of [[1280, 800, 'beside the left half, 1280×800'], [1024, 768, 'beside the box, 1024×768']]) {
           const { ctx, p } = await pageAt(w, h, false, 'the game\'s clock was asked whether it stands still behind the map');
@@ -8427,6 +8433,61 @@ function findChromium() {
             const f = () => { if (n.mv) went = true; else if (went) { Math.random = r; return res(n.wnext - __clk.W()); }
               if (++k > 300) { Math.random = r; return res(null); } requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
           const life0 = await ballLife(); await p.evaluate(() => { BALL = null; }); const wait0 = await waitLife();
+          /* the things that fade: a petal on the ground, a hole the dog dug on your own tile and the first dog brought to your
+             side, sitting, on its leash; anything else this world had of the first two is put aside while they are asked */
+          const fon = await p.evaluate(top => {
+            if (top && typeof camSet === 'function' && CAMS.includes('top') && camMode !== 'top') camSet('top');
+            const F = window.__fadeKit = { kept: [], drew: { petal: false, leash: false, marks: [] }, cur: null };
+            if (typeof PETALS !== 'undefined' && typeof PETAL_MS === 'number') {
+              F.kept = PETALS.filter(q => q.w === world); for (let k = PETALS.length - 1; k >= 0; k--) if (PETALS[k].w === world) PETALS.splice(k, 1);
+              F.petal = { w: world, x: px, y: py, t: __clk.WD() - PETAL_MS + 1500, s: 7 }; PETALS.push(F.petal); }
+            if (typeof DECALS !== 'undefined') { F.mark = { world, x: px, y: py, kind: 'hole', until: __clk.WD() + 1500 }; DECALS.push(F.mark); }
+            const dog = typeof CRIT !== 'undefined' && typeof isDog === 'function' ? CRIT.find(isDog) : null;
+            if (dog) { F.dog = dog; F.was = { world: dog.world, x: dog.x, y: dog.y, fx: dog.fx, fy: dog.fy, next: dog.next, sit: dog.sit, task: dog.task, follow: dog.follow, leashT: dog.leashT };
+              Object.assign(dog, { world, x: px, y: py, fx: px, fy: py, next: __clk.W() + 60000, sit: true, task: null, follow: false, leashT: __clk.W() + 1500 }); }
+            /* a flat camera, watched as it paints: what each frame drew, kept once the frame is done */
+            const dr = draw, pt = petalTrail, ps = petalShape, dl = drawLeash, dd = drawDecal; let inTrail = false;
+            draw = function () { F.cur = { petal: false, leash: false, marks: [] }; try { return dr.apply(this, arguments); } finally { F.drew = F.cur; F.cur = null; } };
+            petalTrail = function () { inTrail = true; try { return pt.apply(this, arguments); } finally { inTrail = false; } };
+            petalShape = function () { if (inTrail && F.cur) F.cur.petal = true; return ps.apply(this, arguments); };
+            drawLeash = function (cr) { if (cr === F.dog && F.cur) F.cur.leash = true; return dl.apply(this, arguments); };
+            drawDecal = function (g, sx, sy, dc) { if (F.cur) F.cur.marks.push(dc); return dd.apply(this, arguments); };
+            F.undo = () => { draw = dr; petalTrail = pt; petalShape = ps; drawLeash = dl; drawDecal = dd; };
+            window.__fade = () => { const in3d = camMode === '3d' && typeof T3 !== 'undefined' && !!T3.scene && !T3.fail;
+              const petal = in3d ? (T3.petals || []).some(m => m.visible) : F.drew.petal,
+                mark = !!F.mark && (in3d ? (T3.decals || []).some(m => m.visible && m.userData && m.userData.x === F.mark.x && m.userData.y === F.mark.y) : F.drew.marks.includes(F.mark)),
+                leash = in3d ? !!(T3.leashLn && T3.leashLn.visible) : F.drew.leash;
+              return { petal: !F.petal ? null : petal ? F.petal.t + PETAL_MS - __clk.WD() : 'gone', mark: !F.mark ? null : mark ? F.mark.until - __clk.WD() : 'gone',
+                leash: !F.dog ? null : leash ? F.dog.leashT - __clk.W() : 'gone' }; };
+            return { cam: camMode === '3d' ? 'in the 3D camera' : 'in the ' + camMode + ' camera', petal: !!F.petal, mark: !!F.mark, dog: !!F.dog }; }, w < 1280);
+          await rafs(p, 3);
+          /* drawn, then held 2.5 s: read the instant the map opens, and in the frame after it closes */
+          const fb = await p.evaluate(() => { const l = __fade(); document.getElementById('mapbtn').click(); return l; });
+          await p.waitForTimeout(2500);
+          const fa = await p.evaluate(() => new Promise(res => { const c = document.getElementById('mapClose'); if (c) c.click(); else document.getElementById('mapov').hidden = true;
+            requestAnimationFrame(() => res(__fade())); }));
+          const fe = await p.evaluate(after => new Promise(res => { const gone = {}, t0 = performance.now(); let prev = after, w0 = __clk.W(), gap = 0;
+            const f = () => { const cur = __fade(), w1 = __clk.W(); gap = Math.max(gap, w1 - w0); w0 = w1;
+              for (const k of ['petal', 'mark', 'leash']) if (!(k in gone) && typeof prev[k] === 'number' && typeof cur[k] !== 'number') gone[k] = prev[k];
+              prev = cur;
+              if (['petal', 'mark', 'leash'].every(k => k in gone || typeof cur[k] !== 'number') || performance.now() - t0 > 5000) return res({ gone, gap });
+              requestAnimationFrame(f); }; requestAnimationFrame(f); }), fa);
+          await p.evaluate(() => { const F = __fadeKit; F.undo();
+            if (F.petal) { const k = PETALS.indexOf(F.petal); if (k >= 0) PETALS.splice(k, 1); F.kept.forEach(q => PETALS.push(q)); }
+            if (F.mark) { const k = DECALS.indexOf(F.mark); if (k >= 0) DECALS.splice(k, 1); }
+            if (F.dog) Object.assign(F.dog, F.was); });
+          { const named = { petal: 'the petal on the ground', mark: 'the hole the dog dug', leash: 'the dog\'s leash' }, moved = [], late = [];
+            const put = [fon.petal && 'a petal on the ground', fon.mark && 'a hole the dog dug', fon.dog && 'the dog on its leash'].filter(Boolean);
+            if (!fon.dog) MN.push('COUNT-ONLY: this game has no dog, so whether the leash stands still behind the map was not asked (' + where + ')');
+            for (const k of ['petal', 'mark', 'leash']) {
+              if (fb[k] === null) continue;
+              if (typeof fb[k] !== 'number') { MP.push(named[k] + ', put out with 1.5 s left, was not drawn before the map opened (' + where + ', ' + fon.cam + '), so whether it stands still behind the map was not asked — nothing to measure is not a pass'); continue; }
+              if (typeof fa[k] !== 'number') moved.push(named[k] + ' was gone as it closed, with ' + (fb[k] / 1000).toFixed(1) + ' s left as it opened');
+              else if (Math.abs(fa[k] - fb[k]) > 300) moved.push(named[k] + (fa[k] < 0 ? ' was ' + (-fa[k] / 1000).toFixed(1) + ' s past its time as it closed' : ' had ' + (fa[k] / 1000).toFixed(1) + ' s left as it closed') + ', where it had ' + (fb[k] / 1000).toFixed(1) + ' s left as it opened');
+              else if (k in fe.gone && fe.gone[k] > fe.gap + 100) late.push(named[k] + ' went with ' + (fe.gone[k] / 1000).toFixed(1) + ' s of its time left');
+              else if (!(k in fe.gone)) late.push(named[k] + ' was still there 5 s after the map closed with ' + (fa[k] / 1000).toFixed(1) + ' s left — the clock that stood still behind the map did not start again'); }
+            if (moved.length) MP.push('I opened the map for 2.5 s with ' + put.join(', ').replace(/, ([^,]*)$/, ' and $1') + ', each with 1.5 s left (' + where + ', ' + fon.cam + '): ' + moved.join('; ') + ' — they moved on behind the map, where the game stands still');
+            if (late.length) MP.push('After the map closed (' + where + ', ' + fon.cam + '): ' + late.join('; ')); }
           if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so whether the game\'s clock stands still behind it was not asked'); await ctx.close(); continue; }
           await p.waitForTimeout(1200); await mapShut(p);
           const life1 = await ballLife(), wait1 = await waitLife();

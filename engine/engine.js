@@ -1142,7 +1142,7 @@ function drawIso(){
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
     ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);paint(-TS/2,-TS/2);ctx.restore();};
   petalTrail(world,null,lay);
-  const decs=decalsNow(Date.now());
+  const decs=decalsNow();
   decs.forEach(({dc,a})=>{if(DECALFLAT[dc.kind])lay(dc.x,dc.y,(sx,sy)=>drawDecal(ctx,sx,sy,dc,a));});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
@@ -2371,10 +2371,10 @@ function petalDrop(wid,x,y,feet){ /* the owner wanted the trail on the bridge on
     else if(f.pc>0){f.pc--;deck=true;}
   }
   if(!carry&&!deck)return;
-  PETALS.push({w:wid,x,y,t:Date.now(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
+  PETALS.push({w:wid,x,y,t:wDate(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
 function petalTrail(wid,toScreen,lay){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera's 32-px terms (top, front);
   or, for a camera whose ground is not that square, lay(x,y,paint), which puts paint(sx,sy) onto the tile's own ground (iso, #284) */
-  if(!PETALS.length)return;const now=Date.now(),P=petalPal();
+  if(!PETALS.length)return;const now=wDate(),P=petalPal();
   lay=lay||((x,y,paint)=>{const[sx,sy]=toScreen(x,y);paint(sx,sy);});
   PETALS.forEach(pt=>{if(pt.w!==wid)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
     lay(pt.x,pt.y,(sx,sy)=>{let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
@@ -2994,7 +2994,7 @@ function drawDecor(camX,camY){DECOS.forEach(d=>{if(d.world!==world)return;
    t3Decals); the other thing is a little pile drawn in profile, so it STANDS, and iso and 3D draw it
    where they draw feet, the way they draw the ball. DECALFLAT says which is which. */
 const DECALS=[],DECALFLAT={hole:true};
-function decalsNow(nw){
+function decalsNow(){const nw=wDate();   /* the world's clock (THE GAME'S OWN CLOCK STANDS STILL WITH IT): a mark keeps its time behind the map */
   for(let i=DECALS.length-1;i>=0;i--)if(DECALS[i].until<nw)DECALS.splice(i,1);
   return DECALS.filter(dc=>dc.world===world).map(dc=>({dc,a:Math.min(1,(dc.until-nw)/1500)}));}
 function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top camera's 32-px terms */
@@ -3009,7 +3009,7 @@ function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top 
   else if(dc.kind==="poop"){g.fillStyle="#5A4630";g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
   g.globalAlpha=1;}
 function drawDecals(camX,camY){ /* the top and front cameras: on the ground, under everybody */
-  decalsNow(Date.now()).forEach(({dc,a})=>{
+  decalsNow().forEach(({dc,a})=>{
     const sx=dc.x*TS-camX,sy=dc.y*TS-camY;
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
     drawDecal(ctx,sx,sy,dc,a);});}
@@ -3140,7 +3140,7 @@ function drawFront(){
   doorMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawDoorMark(ctx,sx,sy,14,d.mark)));
   readMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawReadMark(ctx,sx,sy,14)));
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
-  CRIT.forEach(cr=>{if(cr.leashT>performance.now()&&cr.world===world)drawLeash(cr,camX,camY);});
+  CRIT.forEach(cr=>{if(cr.leashT>wNow()&&cr.world===world)drawLeash(cr,camX,camY);});
   trees.forEach(([sx,sy])=>{ /* canopy pass, shared shape with top-down */
     const sw=Math.sin(Date.now()/900+sx)*1.2,cxT=sx+16+sw,cyT=sy+6;
     ctx.fillStyle=tc("#4E8A58");
@@ -3241,7 +3241,7 @@ function draw(){
   drawPerson(ctx,fx*TS-camX,fy*TS-camY,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true});
   doorMarks().forEach(d=>drawDoorMark(ctx,d.x*TS-camX,d.y*TS-camY,0,d.mark)); /* the top camera draws its own people — the marker too */
   readMarks().forEach(d=>drawReadMark(ctx,d.x*TS-camX,d.y*TS-camY,0));
-  CRIT.forEach(cr=>{if(cr.leashT>performance.now()&&cr.world===world)drawLeash(cr,camX,camY);});
+  CRIT.forEach(cr=>{if(cr.leashT>wNow()&&cr.world===world)drawLeash(cr,camX,camY);});
   drawAmbient(w,camX,camY);
   drawDaylight(w,camX,camY);
   drawWindows(w,camX,camY);
@@ -4074,8 +4074,8 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare nod to the puppy phase */
     if(park)PARK.d++;
     const hx=cr.x,hy=cr.y,hw=cr.world;
-    setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:Date.now()+34000}),1400);}
-  else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:Date.now()+45000});cr.next=now+3000;}
+    setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:wDate()+34000}),1400);}
+  else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:wDate()+45000});cr.next=now+3000;}
 }
 /* ---------- more to do away from the park ----------
    Asked for on 2026-09-29: more to keep the dog busy — his own stick, other dog things, a romp after
@@ -5210,8 +5210,10 @@ let last=0;
    the wall clock less every moment the world stood still behind the map. The loop hands it to the updates it pauses, and
    every timer those updates keep is set and read on it, wherever it is set: wNow() for the performance clock, wDate() for
    Date.now(). Left on the wall clock, as they were: what is only drawn (a wag, a bob, a lamp's glow, a sign's sway, which
-   keep no state); what the player's own input waits on (a door's opening, the drone); and three fades the 3D camera reads
-   off the wall clock itself (the petals, the marks animals leave on the ground, the leash), so that the two cameras agree. */
+   keep no state), and what the player's own input waits on (a door's opening, the drone). The petals, the marks animals
+   leave on the ground and the leash went onto it on 2026-11-10, in every camera (engine3d.js reads it too), so none of
+   them fades or comes off behind the map. One timer of theirs is still the wall clock's: a dug hole lands 1.4 s into the
+   dig by a setTimeout (dogWhim); the time it then keeps is the world's. */
 let wStill=0,wStillAt=0;   /* ms the world has stood still behind the map, in all; and the frame it stopped at, while it stands */
 function wNow(){return (wStillAt||performance.now())-wStill;}
 function wDate(){return Date.now()-(performance.now()-wNow());}
@@ -8547,7 +8549,7 @@ $("leash").addEventListener("click",()=>{
   setTimeout(()=>{
     world=PL.park;px=fx=PL.parkIn[0];py=fy=PL.parkIn[1];dir=PL.parkIn[2];held=null;
     c.world=PL.park;c.x=PL.parkDog[0];c.y=PL.parkDog[1];c.fx=c.x;c.fy=c.y;c.home=PL.parkDogHome.slice();c.follow=true;c.task=null;c.sit=false;
-    c.leashT=performance.now()+6500; /* the leash shows for the bridge crossing, then he's loose */
+    c.leashT=wNow()+6500; /* the leash shows for the bridge crossing, then he's loose (on the world's clock) */
     if(BALL)BALL=null;
     warpT=performance.now()+450;portalT=performance.now()+900;portalHold=world+":"+px+","+py;
     save();setWorldTag();hud();checkTalk();
