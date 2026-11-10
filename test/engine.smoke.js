@@ -12902,12 +12902,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           an apron on the person in the preview; every outfit word but the apron is drawn exactly as on the page without the
           list; the apron stays on whichever way he faces and mid-stride, turned aside with at least about half of what it
           shows facing you, and from behind at least a band across his back; nothing it paints falls outside the card the 3D
-          camera bakes (paint out there is thrown away, so the room would show it cut off); and in the 3D room, drawn there
-          first rather than waited for (the renderer is made by the first frame drawn in 3D), the person you steer is drawn
-          on screen in it. THE PAGE WITHOUT THE LIST IS THE WITNESS for the 3D camera: where it drew the person you steer in
-          3D on this machine, this page must too, or turning the apron on took the camera away, and the card it bakes is then
-          read off the page without the list, so the apron is still held inside it; only where that page could not draw in
-          3D either is the 3D room said and not asked;
+          camera bakes (paint out there is thrown away, so the room would show it cut off); and in the 3D room, once Begin has
+          shown the world, the person you steer is in an apron ON THE PHONE'S SCREEN. The room is drawn first rather than
+          waited for (the renderer is made by the first frame drawn in 3D) and the apron counted in the frame it renders; a
+          renderer renders whether anybody can see its canvas or not, so the apron is then counted again in pictures of the
+          screen itself, where he stands, drawn as the game draws him, and he stands at least 8 CSS px wide there (he is
+          played at about 14 to 20). THE PAGE WITHOUT THE LIST IS THE WITNESS for the 3D camera: where it drew the
+          person you steer in 3D on this machine, this page must too, or turning the apron on took the camera away, and the
+          card it bakes is then read off the page without the list, so the apron is still held inside it; only where that
+          page could not draw in 3D either is the 3D room said and not asked;
        3. a world that writes the list wrong (the word "apron" where the list goes, ["Apron"] in capitals, an object) turns
           nothing on and says so once at boot, in one critical line of the game's log, of kind outfit, that names
           OUTFITTAKE, and logs nothing else new; a list in a file loaded after engine/boot.js is never seen; and a world that
@@ -13157,16 +13160,25 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (w === 'apron') return;
             if (n || a.length !== b.length || !a.length) say(0, 'turning the apron on changed how a person whose look says "' + w + '" is drawn, in ' + n + ' of ' + a.length + ' pictures of him: it turns on the apron and nothing else'); }); }
         else say(1, 'this world turns the apron on itself, so the other outfit words could not be held against a world that does not');
-        /* in the 3D room, at a phone's size, on screen */
+        /* IN THE 3D ROOM, ON THE PHONE'S SCREEN. The room is drawn here first, as every 3D check in this file draws it (the
+           renderer is made by the first frame drawn in 3D, and on a busy machine the game's own loop may not have drawn one
+           yet), and read off the renderer: whether the person you steer is in its frame, how much of him the apron changes
+           there, and where he stands in it. A renderer draws that frame whether anybody can see its canvas or not: hidden,
+           covered, taken off the page or never shown after Begin, it still renders, at a size of its own, and its pixels read
+           the same. So the frame says nothing about the screen. The screen is asked in pictures of it, taken where he stands,
+           with him drawn in his everyday clothes and then in the apron by the engine's own 3D drawing (here first, so a picture
+           never waits on a busy machine's next frame, and then by the game's own loop wherever it runs, which draws the same),
+           so they show whatever the page hides, covers or shrinks the room by: Begin shows the world; he stands at least 8 CSS
+           px wide there, where an apron can be seen at all; and in those pictures the apron changes at least 15 in 100 of the
+           pixels he covers, and more than twice what two pictures with nothing changed differ by */
         const go = await ap.evaluate(() => typeof T3 !== 'undefined' && !!window.THREE && (typeof CAMS === 'undefined' || CAMS.includes('3d')));
         if (!go) no3d('this shell has no 3D camera', 'the apron was looked at in the creator and by the person painter only');
         else {
-          await ap.click('#begin'); await until(ap, () => !document.getElementById('world').hidden, null, 2400);
-          const room = await ap.evaluate(() => { const A = window.__apron;
+          await ap.click('#begin');
+          const began = await until(ap, () => !document.getElementById('world').hidden, null, 2400) || await ap.evaluate(() => !document.getElementById('world').hidden);   /* read once more: the wait is paced by frames */
+          const room = !began ? null : await ap.evaluate(() => { const A = window.__apron;
             document.querySelectorAll('.settings').forEach(q => { q.hidden = true; });
             camSet('3d'); sizeCanvas(); T3.turn = null; dir = 'down'; moving = false; held = null;
-            /* drawn here first, as every 3D check in this file does: the renderer is made by the first frame drawn in 3D, and on
-               a busy machine the game's own loop may not have drawn one yet */
             if (!draw3d() || T3.fail) return { cannot: true };
             const c3 = T3.renderer.domElement; if (!c3.width) return { none: 'the 3D canvas has no size' };
             const dp = drawPerson, keep = look.outfit;
@@ -13178,17 +13190,48 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const none = shot(); drawPerson = dp;
               look.outfit = 'casual'; const a = shot(), a2 = shot(); look.outfit = 'apron'; const b = shot();
               if (!none || !a || !a2 || !b) return { none: 'the 3D camera did not draw the room' };
-              let foot = 0, noise = 0, moved = 0, x0 = 1e9, x1 = -1;
-              for (let i = 0, p = 0; i < a.length; i += 4, p++) { if (ne(none, a, i)) { foot++; const x = p % c3.width; if (x < x0) x0 = x; if (x > x1) x1 = x; }
+              let foot = 0, noise = 0, moved = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+              for (let i = 0, p = 0; i < a.length; i += 4, p++) { if (ne(none, a, i)) { foot++; const x = p % c3.width, y = (p / c3.width) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
                 if (ne(a, a2, i)) noise++; if (ne(a, b, i)) moved++; }
-              return { foot, noise, moved, wide: x1 >= x0 ? x1 - x0 + 1 : 0, W: c3.width, css: c3.getBoundingClientRect().width };
+              /* where he stands on the screen: his box in the frame, put where the page puts the canvas (scrolled into view as
+                 the preview is, and scaled as its object-fit scales it), and what is on top there, for a red to name */
+              c3.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              const r = c3.getBoundingClientRect(), st = getComputedStyle(c3), sx = r.width / c3.width, sy = r.height / c3.height;
+              const k = { contain: Math.min(sx, sy), cover: Math.max(sx, sy), none: 1, 'scale-down': Math.min(1, sx, sy) }[st.objectFit];
+              const kx = k === undefined ? sx : k, ky = k === undefined ? sy : k, ox = r.left + (r.width - c3.width * kx) / 2, oy = r.top + (r.height - c3.height * ky) / 2;
+              const on = { x0: ox + x0 * kx, x1: ox + (x1 + 1) * kx, y0: oy + y0 * ky, y1: oy + (y1 + 1) * ky }, top = document.elementFromPoint((on.x0 + on.x1) / 2, (on.y0 + on.y1) / 2);
+              let op = 1; for (let e = c3; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+              return { foot, noise, moved, wide: x1 >= x0 ? x1 - x0 + 1 : 0, kx, ky, on, box: [r.width, r.height], screen: [innerWidth, innerHeight],
+                top: top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') : 'nothing', vis: st.visibility, op };
             } finally { drawPerson = dp; look.outfit = keep; } }); });
-          if (room.cannot) no3d('the 3D camera cannot draw the room on this page (it fell back to the flat one)', 'the apron was not looked at in the 3D room');
+          if (!began) say(0, 'on a phone the world is still hidden 2.4 seconds after Begin, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
+          else if (room.cannot) no3d('the 3D camera cannot draw the room on this page (it fell back to the flat one)', 'the apron was not looked at in the 3D room');
           else if (room.none) say(0, 'in the 3D room ' + room.none + ', so the apron was not looked at there, which is not a pass');
           else if (room.noise) say(0, 'the 3D room cannot be measured: two frames with nothing changed differ by ' + room.noise + ' pixels');
-          else if (!room.foot) say(0, 'the person you steer is not on screen in the 3D room, so the apron was not looked at there, which is not a pass');
-          else if (room.moved < room.foot * 0.15) say(0, 'in the 3D room, on a phone, the person you steer in an apron changes ' + room.moved + ' of the ' + room.foot + ' pixels he covers on screen: he is still in his everyday clothes');
-          else say(1, 'in the 3D room on a phone the person you steer stands ' + Math.round(room.wide * room.css / room.W) + ' CSS px wide, and the apron changes ' + room.moved + ' of the ' + room.foot + ' pixels he covers on screen');
+          else if (!room.foot) say(0, 'the person you steer is not in the frame the 3D room is drawn in, so the apron was not looked at there, which is not a pass');
+          else if (room.moved < room.foot * 0.15) say(0, 'in the 3D room, on a phone, the person you steer in an apron changes ' + room.moved + ' of the ' + room.foot + ' pixels he covers in the frame the renderer draws: he is still in his everyday clothes');
+          else {
+            /* on the screen: his box with 2 px of the room round it, cut to the screen */
+            const css = Math.round(room.wide * room.kx), o = room.on, [vw, vh] = room.screen, box = room.box.map(Math.round).join(' by ');
+            const x = Math.max(0, Math.floor(o.x0) - 2), y = Math.max(0, Math.floor(o.y0) - 2), w = Math.min(vw, Math.ceil(o.x1) + 2) - x, h = Math.min(vh, Math.ceil(o.y1) + 2) - y;
+            if (!(room.box[0] >= 1 && room.box[1] >= 1)) say(0, 'on a phone the 3D canvas is ' + box + ' px on the page, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
+            else if (css < 8) say(0, 'in the 3D room on a phone the person you steer stands ' + css + ' CSS px wide on the screen, too small for an apron to be seen on him, so it was not looked at there, which is not a pass');
+            else if (w < 1 || h < 1) say(0, 'in the 3D room on a phone the person you steer stands off the screen, at ' + Math.round(o.x0) + ', ' + Math.round(o.y0) + ' on a screen ' + vw + ' by ' + vh + ', so the apron was not looked at there, which is not a pass');
+            else {
+              const pic = async outfit => { await ap.evaluate(k => { look.outfit = k; draw3d(); }, outfit); await rafs(ap, 2); return (await ap.screenshot({ clip: { x, y, width: w, height: h } })).toString('base64'); };
+              const pics = [await pic('casual'), await pic('casual'), await pic('apron')];   /* it ends in the apron he chose */
+              const seen = await ap.evaluate(async pics => { const px = [];
+                for (const b64 of pics) { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+                  const img = await createImageBitmap(new Blob([u8], { type: 'image/png' })), c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+                  const g = c.getContext('2d'); g.drawImage(img, 0, 0); px.push(g.getImageData(0, 0, c.width, c.height).data); }
+                const n = (a, b) => { let k = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) k++; return k; };
+                return { noise: n(px[0], px[1]), moved: n(px[0], px[2]) }; }, pics);
+              const his = Math.round(room.foot * room.kx * room.ky), calm = seen.noise ? 'two pictures with nothing changed differ by ' + seen.noise : 'two pictures with nothing changed are alike';
+              if (seen.moved < his * 0.15 || seen.moved <= 2 * seen.noise) say(0, 'on a phone the 3D room does not show the apron on the screen: in pictures of the screen where the person you steer stands, choosing Apron changes ' + seen.moved + ' of the about ' + his + ' pixels he covers (' + calm + '), where the frame the renderer draws changes ' + room.moved + ' of ' + room.foot +
+                '. On top at his middle: ' + room.top + '; the 3D canvas is ' + box + ' px on the page, visibility ' + room.vis + ', opacity ' + +room.op.toFixed(2));
+              else say(1, 'in the 3D room on a phone the person you steer stands ' + css + ' CSS px wide on the screen, and in pictures of the screen where he stands the apron changes ' + seen.moved + ' of the about ' + his + ' pixels he covers (' + calm + ')');
+            }
+          }
         }
       } catch (e) { if (e !== 0) say(0, 'the check could not drive the page that turns the apron on to the end, so it measured nothing past: ' + String(e && e.message || e).split('\n')[0]); }
       if (apErr.length) say(0, 'the page that turns the apron on threw: ' + apErr[0].split('\n')[0]);

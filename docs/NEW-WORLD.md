@@ -371,7 +371,7 @@ chat sets somebody down) asks the engine's `shutToPeople` instead. Say nothing a
 declare a letter, make sure it is not the only way anywhere: `test/engine.smoke.js` (grep `pets-only`) declares it on
 a page of its own and fails if the player is cut off from a tile he could reach with it open.
 
-**`TROLLEYAT` — the one optional seam with a boot audit of its own, so it is worth its own paragraph.**
+**`TROLLEYAT` — an optional seam with a boot audit of its own (as `OUTFITTAKE` is, §7), so it is worth its own paragraph.**
 One entry per line: `{world, row, from, to, stops}`. `stops` is a **list of platform tiles — the tile
 a person stands on to be served — beside the rails, never on them**, and it is a list rather than a
 number because two different readers need it: *is this tile a stop* (the travel panel opens there)
