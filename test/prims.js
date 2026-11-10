@@ -24,6 +24,20 @@
      5. It prints how many parts it collected and fails below a floor, because a harvest of zero passes
         every comparison there is. The primitives it expects are read out of the builder (kindsOf), and
         it fails when the harvest holds none of one, so a primitive learnt tomorrow is not skipped.
+     5½. THE ONE LIST: the builder keeps one list of what a part may say (PARTKEYS, grep `THE ONE LIST OF WHAT A PART
+        MAY SAY`), which every other reader of parts takes its own keys from; without it the gate stops, because it reads
+        parts with it. It must be frozen, call every key a kind a reader knows, and name exactly the keys the builder reads
+        (every `p.<key>` in its lines, and every key it asks of a part while it builds one, through a Proxy), no more and no
+        fewer; and each key must be drawn as its kind says, read off what the builder draws when that key alone changes
+        (WHAT KIND EACH KEY IS, below), never off the list itself. The harvest reads its keys and which of them are text
+        from the list (and is asked, key by key, to read a part written with each), and a colour key is twinned with a colour.
+     5¾. THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED: every corner of a part with a second colour takes its colour from
+        t3CornerMix, which is told where the thing stands; today it uses the part's own two colours alone and reads nothing of
+        where. Asked of a part of every primitive the builder knows, one leaning, and a pane of glass, through the mesh the scene
+        is handed, with t3CornerMix's body rewritten in memory: as it is, they come out the same in six places (two worlds, two
+        columns, two rows, null and nothing); a stand-in for a room's light given only here shades the solid and the glass
+        differently at x 2 and at x 5; and a sentinel body reaches every corner in all six, so nothing else works out a mix.
+        And every call of t3MeshOf in engine/engine3d.js says where the thing it builds stands (a place, or null).
      6. It reads .github/workflows/ci.yml and fails when CI no longer runs this file's self-test and then
         its --ci comparison, exactly, in one step a red can fail, because a gate nobody runs protects
         nothing. Which commit CI compares with is decided here (--ci), not in ci.yml, so the self-test
@@ -34,7 +48,8 @@
    text for its literal parts, and its `turned` only to check that the gate turns a part the way it does
    (a change there is a red that asks for the gate's copy to follow, not a comparison with the base);
    the 138 parts written with a computed size; everything in engine3d.js outside the builder's sentinels
-   (lights, camera, t3Build, how a tile is placed); and the browser. Those are the smoke suites' job.
+   (lights, camera, t3Build, how a tile is placed), but for each call of t3MeshOf, read as text for whether it says where
+   the thing stands; and the browser. Those are the smoke suites' job.
 
    Run:  node test/prims.js                      compare the working tree with origin/main
          node test/prims.js <base-ref>           … with another commit (CI passes the pull request's base)
@@ -125,13 +140,65 @@ const phrase = (d, their) => {
 const TAG = { mesh: true, gate: 'the shape gate' };
 const build = (B, list) => P.partsOf(B.t3MeshOf(list, TAG), B.T3);
 
-/* a twin differing only in key k */
-function twin(p, k, kinds) {
+/* a twin differing only in key k; a colour key (the one list's kind `colour`) is twinned with another colour */
+function twin(p, k, kinds, colours) {
   const q = { ...p };
   if (k === 's') q.s = kinds[(kinds.indexOf(kind(p)) + 1) % kinds.length];
-  else if (k === 'c') q.c = p.c === '#123456' ? '#654321' : '#123456';
+  else if (colours.has(k)) q[k] = p[k] === '#123456' ? '#654321' : '#123456';
   else q[k] = typeof p[k] === 'number' ? +(p[k] * 1.25 + 0.05).toFixed(6) : 0.37;
   return q;
+}
+
+/* ---- WHAT KIND EACH KEY IS, read off what the builder draws, never off the list being checked ----
+   Every reader of parts goes by the one list's kind for a key: the kitchen makes a size smaller to fit a shelf and takes a colour
+   only as #rrggbb, the harvest reads a colour as text. So each key of the list is asked the way its kind is, alone on a part of a
+   primitive with nothing else set, each part through a builder of its own (its bake with the colours as asked, or for glass its
+   mesh), and what comes out must be what that kind does:
+     shape    each primitive's name: each builds corners of its own
+     colour   two colours: the colours change, and the corners neither move nor turn
+     glass    0.5: the part is drawn as a pane of glass apart from the solid
+     place    0, then 0.1: every corner moves 0.1 along one axis, and nothing else changes
+     stretch  1, then 2: on every primitive, one coordinate of every corner doubles and the other two stay
+     size     0.2, 0.4, 0.6: the corners move evenly with it, not all alike, and it is no stretch
+     angle    0.2, 0.4, 0.6: the corners move, and not evenly (it turns a part, or bends a ring)
+   A key the list calls the wrong kind (a colour called a size, an arc called a size) is drawn as it is, and is red here. */
+/* the kinds of key a reader of parts knows, each with the values it is asked with (a shape, with each primitive's name) */
+const ASKED = { shape: null, colour: ['#123456', '#654321'], glass: [0.5], place: [0, 0.1], stretch: [1, 2], size: [0.2, 0.4, 0.6], angle: [0.2, 0.4, 0.6] };
+/* what a reader does with a key of each kind, for the sentence when a key is not drawn as its kind says */
+const BY_KIND = { shape: 'the kitchen takes only the primitives it knows', place: 'the kitchen works out again where each part stands',
+  size: 'the kitchen makes every size smaller to fit a shelf', angle: 'the kitchen keeps an angle as it is when it fits a thing',
+  stretch: 'the kitchen keeps a stretch as it is when it fits a thing', colour: 'the kitchen takes a colour only as #rrggbb, and the harvest reads it as text',
+  glass: 'the kitchen refuses glass' };
+function kindsDrawn(B, LIST, kinds) {
+  const fails = [], E = 1e-5, a_ = w => /^[aeiou]/.test(w) ? 'an ' + w : 'a ' + w;
+  const bake = p => { try { const r = B.fresh().t3BakeParts([p], h => h); return { pos: r.pos, nor: r.nor, col: r.col }; } catch (e) { return null; } };
+  const eq = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
+  const same = (x, y) => !!x && !!y && eq(x.pos, y.pos) && eq(x.nor, y.nor) && eq(x.col, y.col);
+  Object.keys(LIST).forEach(k => {
+    const kind = LIST[k]; if (!Object.prototype.hasOwnProperty.call(ASKED, kind)) return;   /* a kind no reader knows is a red of its own */
+    const A = ASKED[kind], no = why => fails.push('the one list of what a part may say calls `' + k + '` ' + a_(kind) + ', but the builder does not draw it as one: ' + why + '; and every reader of parts goes by the list (' + BY_KIND[kind] + ').');
+    if (kind === 'shape') { const b = kinds.map(s => bake({ [k]: s })); if (b.some((x, i) => !x || b.some((y, j) => j < i && same(x, y)))) no('the primitives named in it (' + kinds.join(', ') + ') do not each build corners of their own'); return; }
+    if (kind === 'glass') { let m = null; try { m = B.fresh().t3MeshOf([{ s: 'box', [k]: A[0] }], { gate: 'a kind' }, null); } catch (e) { /* said below */ }
+      if (!m || m.geometry.attributes.position.count !== 0 || m.children.length !== 1) no('a box whose ' + k + ' is ' + A[0] + ' is not drawn as a pane of glass apart from the solid'); return; }
+    const s = kinds.find(t => { const x = bake({ s: t, [k]: A[0] }), y = bake({ s: t, [k]: A[1] }); return x && y && !same(x, y); });
+    if (!s) { no('a part whose ' + k + ' alone goes from ' + JSON.stringify(A[0]) + ' to ' + JSON.stringify(A[1]) + ' is drawn the same on every primitive'); return; }
+    const x = bake({ s, [k]: A[0] }), y = bake({ s, [k]: A[1] }), n = x.pos.length / 3, P = nameOf(s)[0];
+    if (kind === 'colour') { if (!eq(x.pos, y.pos) || !eq(x.nor, y.nor)) no('a ' + P + ' whose ' + k + ' goes from one colour to another moves or turns, where a colour changes only how it is coloured'); return; }
+    if (kind === 'place') {
+      const moved = [0, 1, 2].some(ax => x.pos.every((v, i) => Math.abs(y.pos[i] - v - (i % 3 === ax ? A[1] - A[0] : 0)) <= E));
+      if (!moved || !eq(x.nor, y.nor) || !eq(x.col, y.col)) no('a ' + P + ' whose ' + k + ' alone goes from ' + A[0] + ' to ' + A[1] + ' does not just move ' + (A[1] - A[0]) + ' along one axis'); return; }
+    const stretches = kinds.every(t => { const u = bake({ s: t, [k]: 1 }), v = bake({ s: t, [k]: 2 });
+      return !!u && !!v && u.pos.length === v.pos.length && [0, 1, 2].some(ax => u.pos.every((w, i) => Math.abs(v.pos[i] - (i % 3 === ax ? 2 * w : w)) <= E)); });
+    if (kind === 'stretch') { if (!stretches) no('going from 1 to 2 it does not stretch every primitive along one axis, the other two left as they were'); return; }
+    if (stretches) { no('going from 1 to 2 it stretches every primitive along one axis, the other two left as they were, as a stretch does'); return; }
+    const z = bake({ s, [k]: A[2] });
+    const even = !!z && z.pos.length === x.pos.length && x.pos.every((v, i) => Math.abs((z.pos[i] - y.pos[i]) - (y.pos[i] - v)) <= E);
+    const alike = [0, 1, 2].every(o => { const d0 = y.pos[o] - x.pos[o]; for (let v = 1; v < n; v++) if (Math.abs(y.pos[3 * v + o] - x.pos[3 * v + o] - d0) > E) return false; return true; });
+    if (kind === 'size' && !even) no('as it goes 0.2, 0.4 and 0.6 a ' + P + '\'s corners do not move evenly with it, as they would with a length: it turns the part or bends it');
+    else if (kind === 'size' && alike) no('as it goes 0.2, 0.4 and 0.6 every corner of a ' + P + ' moves alike, as when a part is moved, where a size changes its shape');
+    else if (kind === 'angle' && even) no('as it goes 0.2, 0.4 and 0.6 a ' + P + '\'s corners move evenly with it, as they do with a length, where an angle turns a part or bends a ring');
+  });
+  return fails;
 }
 
 /* ---- the gate itself: inputs in, sentences out. --selftest calls this with planted inputs ---- */
@@ -161,16 +228,64 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
   const tOld = threeOld || P.threeText(), tNew = threeNew || P.threeText();
   info.push('three.js: ' + (threeOldLabel || oldLabel + ':vendor/three.min.js') + ' for ' + oldLabel + ', the working tree\'s for the working tree' + (tOld === tNew ? ' (the same file)' : ' (they differ, so a library change shows here)'));
 
-  /* the keys the builder actually reads: a key added tomorrow (arc0, seg) is harvested and twinned without anybody editing this file */
-  const reads = [...new Set([...NEW.code.matchAll(/\bp\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]))];
-  const keys = [...new Set([...P.PART_KEYS, ...reads])];
-  /* and the primitives it knows, read the same way: a primitive added tomorrow is harvested and must be drawn */
+  /* the primitives the builder knows, read out of its code: a primitive added tomorrow is harvested and must be drawn */
   const kinds = P.kindsOf(NEW.code);
+  /* the keys the builder reads off a part, two ways: every `p.<key>` written in its lines, and every key it asks of a part while
+     it builds one of each primitive, plain, with a second colour and as glass, each part a Proxy that writes down what it is
+     asked for, so a key read by destructuring, as `p?.k` or as `p["k"]` is seen as well. A key added tomorrow (arc0, seg) is
+     harvested and twinned without anybody editing this file. */
+  const asked = new Set();
+  {
+    const spy = o => new Proxy(o, { get: (t, k, r) => { if (typeof k === 'string') asked.add(k); return Reflect.get(t, k, r); },
+      has: (t, k) => { if (typeof k === 'string') asked.add(k); return Reflect.has(t, k); } });
+    try { NEW.fresh().t3MeshOf(kinds.flatMap(s => [{ s }, { s, c: '#C08040', cb: '#402010' }, { s, a: 0.5 }]).map(spy), TAG, null); }
+    catch (e) { fails.push('the working tree\'s builder throws when it builds one part of each primitive, plain, with a second colour and as glass: ' + String(e.message || e).slice(0, 140)); return { fails, info }; }
+  }
+  const reads = [...new Set([...[...NEW.code.matchAll(/\bp\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]), ...asked])];
+  /* ---- THE ONE LIST OF WHAT A PART MAY SAY and the builder agree ----
+     engine/engine3d.js keeps one list of every key a part may carry and what kind of thing each is (grep `THE ONE LIST OF WHAT A
+     PART MAY SAY`), and every other reader of parts takes its own from it: in this repository the kitchen (which keys a thing's
+     part may say, how far each may go, which it makes smaller to fit) and this gate (which keys it harvests as written, which
+     of them as text, and twins). So the list must name exactly what the builder reads: a key the builder reads and the list
+     leaves out is refused by those readers, and a key the list names and the builder never reads is a promise that changes
+     nothing. Every kind must be one a reader knows how to treat, and every key drawn as its kind says (kindsDrawn, above).
+     Without the list the gate cannot read a part at all, so it stops there. */
+  /* the kinds a reader of parts knows (ASKED, above), and a value of a key's kind for the gate to write when it asks about it */
+  const KINDS = Object.keys(ASKED), sample = kind => kind === 'shape' ? 'sph' : ASKED[kind][ASKED[kind].length - 1];
+  const LIST = probe.PARTKEYS;
+  if (!LIST || typeof LIST !== 'object') { fails.push('the shape builder in engine/engine3d.js has no one list of what a part may say (`PARTKEYS`, grep `THE ONE LIST OF WHAT A PART MAY SAY`), so every reader of parts keeps a list of its own, and a key added to one of them is refused by the others; the gate reads parts with that list, so it stops here.'); return { fails, info }; }
+  const listed = Object.keys(LIST);
+  if (!Object.isFrozen(LIST)) fails.push('the one list of what a part may say is not frozen, so any script can add a key to it, or change one, for every reader of parts at once.');
+  listed.filter(k => !KINDS.includes(LIST[k])).forEach(k => fails.push('the one list of what a part may say calls `' + k + '` a ' + JSON.stringify(String(LIST[k]).slice(0, 30)) + ', which is none of the kinds a reader of parts knows how to treat (' + KINDS.join(', ') + ').'));
+  reads.filter(k => !listed.includes(k)).forEach(k => fails.push('the shape builder reads `' + k + '` off a part, which the one list of what a part may say does not name, so a kitchen refuses a thing whose part carries it.'));
+  listed.filter(k => !reads.includes(k)).forEach(k => fails.push('the one list of what a part may say names `' + k + '`, which the shape builder never reads, so a part that carries it is drawn as if it did not.'));
+  fails.push(...kindsDrawn(NEW, LIST, kinds));
+  /* what the harvest and the twins read parts with: the list's keys and kinds, and any key the builder reads that the list
+     leaves out (a red above), of no kind, so a part carrying it is still built */
+  const list = Object.assign(Object.create(null), LIST); reads.forEach(k => { if (!listed.includes(k)) list[k] = undefined; });
+  const keys = Object.keys(list), colours = new Set(keys.filter(k => list[k] === 'colour')), shape = P.shapeKeysOf(NEW.code);
+  if (!shape) { fails.push('the gate cannot find t3Prim in the shape builder in engine/engine3d.js, so it cannot tell which of a part\'s keys its shape is built from and which only say where it stands, how it is turned or its colour.'); return { fails, info }; }
+  /* every key of the list, written on a part as a literal of its kind, is read by the harvest as it is written: a key it took for
+     computed (a colour read as a number, say) would drop every part the games write with that key out of every comparison below,
+     and the OK would still be printed */
+  {
+    const lit = o => '{' + Object.keys(o).map(k => k + ':' + (typeof o[k] === 'string' ? JSON.stringify(o[k]) : String(o[k]))).join(',') + '}';
+    const off = listed.filter(k => KINDS.includes(LIST[k])).filter(k => {
+      const o = Object.assign({ s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF' }, { [k]: sample(LIST[k]) });
+      let h; try { h = P.harvest('const PROBE=[' + lit(o) + '];\n', 'the gate\'s own probe', list, kinds, shape); } catch (e) { h = { parts: [], escaped: [{ why: String(e.message || e).slice(0, 100) }] }; }
+      const got = h.parts.length === 1 ? h.parts[0] : null;
+      if (got && JSON.stringify(got.part) === JSON.stringify(o)) return false;
+      fails.push('a part written with ' + k + ':' + (typeof o[k] === 'string' ? JSON.stringify(o[k]) : o[k]) + ' is not read by the gate as it is written (' +
+        (got ? 'it comes back as ' + JSON.stringify(got.part) : h.escaped.length ? h.escaped[0].why : 'it is not collected at all') + '), so a part the games write with a `' + k + '` is never compared as the games draw it, and the gate would still say every literal part came out byte for byte.');
+      return true;
+    });
+    if (!off.length) info.push('the harvest reads a part written with each of the list\'s ' + listed.length + ' keys as it is written');
+  }
 
   /* ---- the harvest ---- */
   const seen = new Map(), perFile = {}; let escaped = 0;
   for (const { file, text } of sources) {
-    const h = P.harvest(text, file, keys, kinds);
+    const h = P.harvest(text, file, list, kinds, shape);
     perFile[file] = h.parts.length; escaped += h.escaped.length;
     h.parts.forEach(x => { const id = JSON.stringify(x.part); if (!seen.has(id)) seen.set(id, x); });
   }
@@ -254,6 +369,85 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
     if (off.length) fails.push('t3BakeParts — the name tests call — gives different bytes from the mesh the engine draws for ' + said(off.length) + ' parts, so a test reading it would be checking something players never see. The first is ' + where(off[0]) + '.');
   }
 
+  /* ---- THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED (engine/engine3d.js, grep the same words) ----
+     Every corner of a part with a second colour takes its colour from t3CornerMix, which is told where the thing stands, so a later
+     light of the room has one place to come in; today it uses the part's own two colours alone. Asked of a part of every primitive
+     the builder knows (kindsOf), one more leaning far over, and a pane of glass, through the mesh the scene is handed (t3MeshOf), the
+     solid and the glass, in six places (two worlds, two columns, two rows, and standing nowhere, as null and as nothing at all), with
+     the one place's body rewritten here, in memory, never on disk:
+       today       the engine's own body reads nothing of where the thing stands (its fourth argument), and the parts come out byte
+                   for byte the same in all six places;
+       a light     a stand-in for a room's light, given only in this gate (half as bright at x 5): the solid and the glass each come
+                   out differently at x 2 and at x 5, so the one place is told where the thing stands and the bake and the mesh hand
+                   it on, to every part;
+       a sentinel  a body that answers one colour: every corner of every part in all six places takes it, so nothing else works out
+                   a mix, for any primitive, for glass, or for a thing that stands nowhere. */
+  {
+    const NAME = 'function t3CornerMix(', at0 = engineNew.indexOf(NAME), again = at0 < 0 ? -1 : engineNew.indexOf(NAME, at0 + 1);
+    const open = at0 < 0 ? -1 : engineNew.indexOf('{', at0), body = open < 0 ? null : P.objectSpans(engineNew).find(([a]) => a === open);
+    if (again >= 0) fails.push('the shape builder in engine/engine3d.js writes the one place a corner\'s two colours are mixed twice (`function t3CornerMix(` twice, grep `THE ONE PLACE A CORNER\'S TWO COLOURS ARE MIXED`): the later silently replaces the earlier, so which mix is drawn turns on the order of the lines, and a later light of the room could be written into the one that never runs.');
+    else if (at0 < 0 || !body || typeof probe.t3CornerMix !== 'function') fails.push('the shape builder in engine/engine3d.js has no one place that works out a corner\'s mix of a part\'s two colours, told where the thing stands (`function t3CornerMix(`, grep `THE ONE PLACE A CORNER\'S TWO COLOURS ARE MIXED`), so a later light of the room would have to be written into every place that mixes them.');
+    else {
+      const withBody = b => engineNew.slice(0, open) + '{' + b + '}' + engineNew.slice(body[1] + 1);
+      const STAND = 'const d=at&&at.x===5?0.5:1;out[0]=(foot.r+(top.r-foot.r)*k)*d;out[1]=(foot.g+(top.g-foot.g)*k)*d;out[2]=(foot.b+(top.b-foot.b)*k)*d;return out;';
+      const SENT = 'out[0]=0.25;out[1]=0.5;out[2]=0.75;return out;', S3 = [0.25, 0.5, 0.75].map(Math.fround);
+      const SHADED = [...kinds.map((s, i) => ({ s, x: -0.4 + 0.2 * i, y: 0.3, c: '#F0C040', cb: '#402010' })),
+        { s: 'cyl', y: 0.3, r: 0.05, h: 0.6, rz: 1.2, ry: 0.4, c: '#80C0F0', cb: '#102030' },
+        { s: 'box', x: 0.3, y: 0.2, w: 0.1, h: 0.4, d: 0.1, c: '#C0E0F0', cb: '#204060', a: 0.5 }];
+      const N = SHADED.length + ' parts (one of each primitive, one leaning, a pane of glass)';
+      const PLACES = [[{ world: 'the gate', x: 2, y: 3 }, 'at x 2'], [{ world: 'another world', x: 2, y: 3 }, 'in another world'], [{ world: 'the gate', x: 5, y: 3 }, 'at x 5'],
+        [{ world: 'the gate', x: 2, y: 7 }, 'on another row'], [null, 'standing nowhere (null)'], [undefined, 'told nothing of where they stand']];
+      const colours = (B, where) => { const m = B.t3MeshOf(SHADED, TAG, where); return [m, ...m.children].map(o => o.geometry.attributes.color.array); };
+      const alike = (a, b) => a.length === b.length && a.every((x, i) => x.length === b[i].length && x.every((v, j) => v === b[i][j]));
+      const params = engineNew.slice(engineNew.indexOf('(', at0) + 1, engineNew.indexOf(')', at0)).split(',').map(x => x.trim()), atName = params[3];
+      if (atName && /^[A-Za-z_$][\w$]*$/.test(atName) && new RegExp('(^|[^\\w$.])' + atName.replace(/\$/g, '\\$') + '(?![\\w$])').test(engineNew.slice(open + 1, body[1])))
+        fails.push('today\'s mix of a part\'s two colours reads where the thing stands (`' + atName + '`, in the body of t3CornerMix), where today it is to use the part\'s own two colours alone, so things would come out differently from one place to another.');
+      let L, Z;
+      try { const T = NEW.fresh(), here = colours(T, PLACES[0][0]), off = PLACES.slice(1).find(([w]) => !alike(here, colours(T, w)));
+        if (off) fails.push('today\'s mix of a part\'s two colours changes with where the thing stands: the same ' + N + ' come out differently at x 2 and ' + off[1] + ', so things would no longer look as they do.'); }
+      catch (e) { fails.push('the one place could not be asked on the working tree\'s builder: ' + String(e.message || e).slice(0, 140)); }
+      try { L = P.loadBuilder(withBody(STAND), 'engine/engine3d.js with a stand-in for a room\'s light', threeNew, 'vendor/three.min.js').fresh(); Z = P.loadBuilder(withBody(SENT), 'engine/engine3d.js with a sentinel mix', threeNew, 'vendor/three.min.js').fresh(); }
+      catch (e) { fails.push('the one place, rewritten in memory for a stand-in light, no longer loads: ' + String(e.message || e).slice(0, 140)); }
+      if (L) {
+        const x2 = colours(L, PLACES[0][0]), x5 = colours(L, PLACES[2][0]), still = x2.map((c, i) => alike([c], [x5[i]]));
+        if (still.some(Boolean)) fails.push('a stand-in for a room\'s light, given only in this gate, shades ' + (still.every(Boolean) ? 'the same ' + N : still[0] ? 'the solid parts' : 'the pane of glass') + ' the same at x 2 and at x 5: the one place that mixes a corner\'s two colours is not told where the thing stands, or the bake or the mesh does not hand it on' + (still.every(Boolean) ? '' : ' to every part') + '.');
+      }
+      if (Z) {
+        let n = 0, off = 0, first = null;
+        PLACES.forEach(([w, how]) => colours(Z, w).forEach(a => { for (let i = 0; i < a.length; i += 3) { n++; if (a[i] !== S3[0] || a[i + 1] !== S3[1] || a[i + 2] !== S3[2]) { off++; first = first || how; } } }));
+        if (!n) fails.push('the ' + N + ' with a second colour built no corner at all, so whether the one place mixes them could not be asked.');
+        else if (off) fails.push(off + ' of the ' + n + ' corners of ' + N + ' with a second colour, built in six places, took their colour from somewhere other than the one place that mixes them (t3CornerMix), the first ' + first + ': a second place works out the mix, and a later light given there would miss them.');
+        else info.push('the one place a corner\'s two colours are mixed: today it reads nothing of where a thing stands and is the same in six places; a stand-in light given only here shades the solid and the glass differently; a sentinel reached all ' + n + ' corners of ' + N + ' in all six');
+      }
+    }
+  }
+  /* ---- EVERY CALL SAYS WHERE THE THING IT BUILDS STANDS ----
+     Each call of t3MeshOf in engine/engine3d.js (the tile's mesh, the bridge, the ofrenda, the trolley, a kitchen's column built
+     again) hands it a third argument: the place ({world, x, y}), or null for a thing that stands nowhere. A call that hands none
+     would be lit, once a light of the room comes in at the one place, as if it stood nowhere, and nothing drawn today would show
+     it. Read as text, outside the builder too: the one thing this gate reads there. */
+  {
+    const spans = new Map(P.objectSpans(engineNew)), calls = [], call = /(^|[^\w$.])t3MeshOf\s*\(/g;
+    let m;
+    while ((m = call.exec(engineNew))) {
+      const i = m.index + m[1].length, before = engineNew.slice(0, i);
+      if (before.lastIndexOf('/*') > before.lastIndexOf('*/') || before.slice(before.lastIndexOf('\n') + 1).includes('//')) continue;   /* written in a comment */
+      let args = 1, depth = 0, empty = true;
+      for (let j = engineNew.indexOf('(', i) + 1; j < engineNew.length; j++) {
+        const ch = engineNew[j];
+        if (ch === '{' && spans.has(j)) { j = spans.get(j); empty = false; continue; }
+        if (ch === '(' || ch === '[') depth++;
+        else if (ch === ')' || ch === ']') { if (!depth) break; depth--; }
+        else if (ch === ',' && !depth) args++;
+        if (!/\s/.test(ch)) empty = false;
+      }
+      calls.push({ line: before.split('\n').length, args: empty ? 0 : args });
+    }
+    if (!calls.length) fails.push('the gate found no call of t3MeshOf in engine/engine3d.js, so whether the engine says where each thing it builds stands could not be asked.');
+    calls.filter(c => c.args < 3).forEach(c => fails.push('engine/engine3d.js:' + c.line + ' builds a mesh without saying where the thing stands (t3MeshOf with ' + said(c.args) + ' argument' + (c.args === 1 ? '' : 's') + '; hand it the place, or null for a thing that stands nowhere), so a later light of the room would light it as if it stood nowhere.'));
+    if (calls.length && calls.every(c => c.args >= 3)) info.push('every one of the ' + calls.length + ' calls of t3MeshOf in engine/engine3d.js says where the thing it builds stands');
+  }
+
   /* ---- the collision pass: one builder, one cache, the whole harvest and every part's twins ---- */
   const shared = NEW.fresh(), crossed = [], forgot = {};
   let twins = 0;
@@ -264,7 +458,7 @@ function gate({ engineNew, engineOld, oldLabel, sources, threeNew, threeOld, thr
        blame every key, x and c among them, which are not in the cache key at all (Beto, #316 recheck) */
     if (s.error || differs(s, b).length) { crossed.push(x); continue; }
     for (const k of keys) {
-      const q = twin(x.part, k, kinds);
+      const q = twin(x.part, k, kinds, colours);
       const one = builtOn('the working tree', shared, [q]), two = builtOn('the working tree', NEW.fresh(), [q]);
       if (one.error || two.error) continue;
       twins++;
@@ -455,9 +649,9 @@ function selftest() {
     { name: 'a cache key that forgot rb (a cone-shaped pot and a straight one share a shape)', neu: e => plant(e, 'p.rt,p.rb,', 'p.rt,'), want: /differ only in rb came out the same/ },
     { name: 'parts turned in another order, XYZ', neu: e => plant(e, '"YXZ"', '"XYZ"'), want: /would look different/ },
     { name: 'the default grey one shade lighter', neu: e => plant(e, '"#888888"', '"#898989"'), want: /colours changed/ },
-    { name: 'the mesh drawn with a tint t3BakeParts is not given', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list,h=>h==="#888888"?"#898989":tc(h))'), want: /t3BakeParts — the name tests call — gives different bytes/ },
-    { name: 'the mesh drops the theme (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default is the identity', neu: e => plant(plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)'), 'tint=tint||tc;', 'tint=tint||(h=>h);'), want: /their colours changed/ },
-    { name: 'the mesh forgets to pass tc (t3BakeParts(list,tc) → t3BakeParts(list)) and the bake\'s default keeps the theme — GREEN, which is why the default is tc', neu: e => plant(e, 't3BakeParts(list,tc)', 't3BakeParts(list)') },
+    { name: 'the mesh drawn with a tint t3BakeParts is not given', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,h=>h==="#888888"?"#898989":tc(h),at)'), want: /t3BakeParts — the name tests call — gives different bytes/ },
+    { name: 'the mesh drops the theme (t3BakeParts(list,tc,at) → t3BakeParts(list,undefined,at)) and the bake\'s default is the identity', neu: e => plant(plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,undefined,at)'), 'tint=tint||tc;', 'tint=tint||(h=>h);'), want: /their colours changed/ },
+    { name: 'the mesh forgets to pass tc (t3BakeParts(list,tc,at) → t3BakeParts(list,undefined,at)) and the bake\'s default keeps the theme — GREEN, which is why the default is tc', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,undefined,at)') },
     { name: 'the default grey one step redder in one channel (#888888 → #898888), which a theme that folds neighbours would hide', neu: e => plant(e, 'p.c||"#888888"', 'p.c||"#898888"'), want: /colours changed/ },
     { name: 'a wireframe left on the solid material', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,wireframe:true})'), want: /material \(wireframe undefined → true\)/ },
     { name: 'an emissive glow on the solid material (night does not dim it)', neu: e => plant(e, 'MeshLambertMaterial({vertexColors:true})', 'MeshLambertMaterial({vertexColors:true,emissive:0x333333})'), want: /material \(emissive 0 → 3355443\)/ },
@@ -480,6 +674,32 @@ function selftest() {
     { name: 'the boundary comments taken out', neu: e => plant(plant(e, P.BEGIN, 'shape builder start'), P.END, 'shape builder stop'), want: /no boundary around the shape builder/ },
     { name: 'a builder that reaches outside its boundary', neu: e => plant(e, 'const meshGeo={};', 'const meshGeo={};const someWorld=CW();'), want: /failed as it loaded/ },
     { name: 't3BakeParts gone under another name', neu: e => e.split('t3BakeParts').join('t3Bake2'), want: /has no t3BakeParts/ },
+    { name: 'the one list of what a part may say taken out of the builder', neu: e => plant(e, 'const PARTKEYS=', 'const PARTKEYS_GONE='), want: /has no one list of what a part may say/ },
+    { name: 'the one place a corner\'s two colours are mixed gone under another name', neu: e => e.split('t3CornerMix').join('t3Blend'), want: /has no one place that works out a corner's mix/ },
+    { name: 'the one place written twice, the later one the one that runs', neu: e => plant(e, 'function t3CornerMix(', 'function t3CornerMix(top,foot,k,at,out){out[0]=top.r;out[1]=top.g;out[2]=top.b;return out;}\nfunction t3CornerMix('), want: /writes the one place a corner's two colours are mixed twice/ },
+    { name: 'a second mix in the bake for cones alone', neu: e => plant(e, 'else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);', 'else if(p.s==="cone"){const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);'), want: /took their colour from somewhere other than the one place that mixes them \(t3CornerMix\), the first at x 2/ },
+    { name: 'a second mix in the bake for a thing that stands nowhere (the trolley\'s path)', neu: e => plant(e, 'else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);', 'else if(!at){const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);'), want: /took their colour from somewhere other than the one place that mixes them \(t3CornerMix\), the first standing nowhere/ },
+    { name: 'the glass baked without being told where the thing stands', neu: e => plant(plant(e, 'const bake=list=>{const b=t3BakeParts(list,tc,at);', 'const bake=(list,g)=>{const b=t3BakeParts(list,tc,g?null:at);'), 'new THREE.Mesh(bake(byA[a]),gm)', 'new THREE.Mesh(bake(byA[a],1),gm)'), want: /shades the pane of glass the same at x 2 and at x 5/ },
+    { name: 'today\'s mix reading the world a thing stands in', neu: e => plant(e, 'out[0]=foot.r+(top.r-foot.r)*k;', 'out[0]=(foot.r+(top.r-foot.r)*k)*(at&&at.world!=="the gate"?0.9:1);'), want: /come out differently at x 2 and in another world/ },
+    { name: 'today\'s mix reading the row a thing stands on', neu: e => plant(e, 'out[0]=foot.r+(top.r-foot.r)*k;', 'out[0]=(foot.r+(top.r-foot.r)*k)*(at&&at.y===3?0.9:1);'), want: /come out differently at x 2 and on another row/ },
+    { name: 'today\'s mix reading where a thing stands without changing a colour', neu: e => plant(e, 'out[0]=foot.r+(top.r-foot.r)*k;', 'out[0]=foot.r+(top.r-foot.r)*k*(at&&at.world==="a world nobody plays"?0.9:1);'), want: /reads where the thing stands \(`at`, in the body of t3CornerMix\)/ },
+    { name: 'the tile\'s mesh built without saying where it stands', neu: e => plant(e, 't3MeshOf(parts,{mesh:true,g:gch,x,y},{world,x,y})', 't3MeshOf(parts,{mesh:true,g:gch,x,y})'), want: /engine\/engine3d\.js:\d+ builds a mesh without saying where the thing stands \(t3MeshOf with 2 arguments/ },
+    { name: 'a written part given a second colour (the soil of a planter), and the two colours drawn upside down', neu: e => plant(e, 't3CornerMix(c,cb,', 't3CornerMix(cb,c,'), src: s => plantFile(s, 'content/meridian/art.js', '{s:"cyl",x:0,y:0.006,z:0,r:0.13,h:0.012,c:"#5A4632"}', '{s:"cyl",x:0,y:0.006,z:0,r:0.13,h:0.012,c:"#5A4632",cb:"#2A1E14"}'), want: /cylinders the games draw would look different from the unplanted engine: their colours changed\. The first is content\/meridian\/art\.js:\d+ \{s:"cyl",x:0,y:0\.006,z:0,r:0\.13,h:0\.012,c:"#5A4632",cb:"#2A1E14"\}/ },
+    { name: 'the mix worked out in the bake again, beside the one place', neu: e => plant(e, 'else{t3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix);col.push(mix[0],mix[1],mix[2]);}', 'else{const k=span>0?(pa[i+1]-lo)/span:1;col.push(cb.r+(c.r-cb.r)*k,cb.g+(c.g-cb.g)*k,cb.b+(c.b-cb.b)*k);}'), want: /took their colour from somewhere other than the one place/ },
+    { name: 'the bake not telling the one place where the thing stands', neu: e => plant(e, 't3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,at,mix)', 't3CornerMix(c,cb,span>0?(pa[i+1]-lo)/span:1,null,mix)'), want: /shades the same \d+ parts \([^)]*\) the same at x 2 and at x 5/ },
+    { name: 'the mesh not handing on where the thing stands', neu: e => plant(e, 't3BakeParts(list,tc,at)', 't3BakeParts(list,tc)'), want: /shades the same \d+ parts \([^)]*\) the same at x 2 and at x 5/ },
+    { name: 'today\'s mix reading where the thing stands', neu: e => plant(e, 'out[0]=foot.r+(top.r-foot.r)*k;', 'out[0]=(foot.r+(top.r-foot.r)*k)*(at&&at.x>3?0.9:1);'), want: /today's mix of a part's two colours changes with where the thing stands/ },
+    { name: 'the one list left open to change (not frozen)', neu: e => plant(e, 'const PARTKEYS=Object.freeze({', 'const PARTKEYS=({'), want: /is not frozen/ },
+    { name: 'the builder reading a key the one list does not name (p.sw)', neu: e => plant(e, 'sc.set(p.sx||1,', 'sc.set(p.sx||p.sw||1,'), want: /reads `sw` off a part, which the one list of what a part may say does not name/ },
+    { name: 'the builder reading a key the one list does not name by destructuring (a cylinder\'s seg), which no `p.<key>` shows', neu: e => plant(e, 'else if(s==="cyl")g=new THREE.CylinderGeometry(p.rt!==undefined?p.rt:(p.r||0.1),p.rb!==undefined?p.rb:(p.r||0.1),p.h||0.1,10);', 'else if(s==="cyl"){const {seg}=p;g=new THREE.CylinderGeometry(p.rt!==undefined?p.rt:(p.r||0.1),p.rb!==undefined?p.rb:(p.r||0.1),p.h||0.1,seg||10);}'), want: /reads `seg` off a part, which the one list of what a part may say does not name/ },
+    { name: 'the builder reading a key the one list does not name as p?.sw', neu: e => plant(e, 'sc.set(p.sx||1,', 'sc.set(p.sx||p?.sw||1,'), want: /reads `sw` off a part/ },
+    { name: 'a colour called a size on the one list (cb)', neu: e => plant(e, 'cb:"colour"', 'cb:"size"'), want: /calls `cb` a size, but the builder does not draw it as one/ },
+    { name: 'an arc called a size on the one list', neu: e => plant(e, 'arc:"angle"', 'arc:"size"'), want: /calls `arc` a size, but the builder does not draw it as one: as it goes 0\.2, 0\.4 and 0\.6 a torus's corners do not move evenly/ },
+    { name: 'a size called an angle on the one list (t, a torus\'s tube)', neu: e => plant(e, ',t:"size",', ',t:"angle",'), want: /calls `t` an angle, but the builder does not draw it as one/ },
+    { name: 'a stretch called a size on the one list (sx)', neu: e => plant(e, 'sx:"stretch"', 'sx:"size"'), want: /calls `sx` a size, but the builder does not draw it as one: going from 1 to 2 it stretches every primitive/ },
+    { name: 'a place called a size on the one list (y)', neu: e => plant(e, 'y:"place"', 'y:"size"'), want: /calls `y` a size, but the builder does not draw it as one: as it goes 0\.2, 0\.4 and 0\.6 every corner of a box moves alike/ },
+    { name: 'the one list naming a key the builder never reads (q)', neu: e => plant(e, 'a:"glass"});', 'a:"glass",q:"size"});'), want: /names `q`, which the shape builder never reads/ },
+    { name: 'a key of a kind no reader of parts knows ("see-through")', neu: e => plant(e, 'a:"glass"});', 'a:"see-through"});'), want: /calls `a` a "see-through", which is none of the kinds/ },
     { name: 'the shape library\'s turn mirrored (engine/shapes.js `turned`, one sign)', src: s => plantFile(s, 'engine/shapes.js', 'x:p.x*cr+p.z*sr,z:-p.x*sr+p.z*cr', 'x:p.x*cr-p.z*sr,z:p.x*sr+p.z*cr'), want: /`turned` no longer turns a part the way this gate turns it/ },
     { name: 'nothing to harvest', src: s => s.map(x => ({ ...x, text: '' })), want: /found no parts at all/ },
     { name: 'the shape library not read', src: s => s.filter(x => x.file !== 'engine/shapes.js'), want: /engine\/shapes\.js was not read at all/ },

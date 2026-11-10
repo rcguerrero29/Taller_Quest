@@ -3093,6 +3093,169 @@ function findChromium() {
     fails.push(...TH.map(m => 'the things in a place and the hand (sprint 5): ' + m));
   }
 
+  /* ---- THE ONE LIST OF WHAT A PART MAY SAY, AND A PART SHADED INTO A SECOND COLOUR ----
+     engine/engine3d.js, grep "THE ONE LIST OF WHAT A PART MAY SAY" and "A SECOND COLOUR"; engine/kitchen-room.js, grep "WHAT A
+     THING'S PART MAY SAY" and "HOW FAR A THING'S PART MAY GO". Every reader of parts takes what it takes from one list in the
+     engine. What a person would notice: a thing the kitchen refuses although its part says nothing the engine cannot draw, or
+     takes although its part is glass, says what no part says, names a colour that is not one, or carries a key past what its
+     kind may be (each key once past each end); a part the kitchen takes that stands out past the reach it is fitted by, so a
+     thing made smaller to fit a shelf still sticks out of it (each key alone and all of them at once, on every primitive); a
+     thing made smaller to fit where it stands whose turns, stretches or colours changed with its size; and a part that names a
+     second colour drawn in one, shaded the wrong way up, along its own axis instead of as it stands, with either end outside
+     the player's colour theme, drawn with a material the time of day does not tint, or built with no corner to read. Every key
+     is read off the engine's own list as it stands, so a key the list gains is asked here without this block changing. On a
+     page of its own: a made-up kitchen of the template's seven places, whose counter is handed one thing at a time. Red first
+     on the engine before the list and before the second colour, and on the kitchen before its bounds by kind, in a copy of the
+     tree outside the repository. */
+  {
+    const OL = [], say = s => OL.push(s);
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object');
+    const op = await browser.newPage({ viewport: { width: 640, height: 480 }, reducedMotion: 'reduce' }), oErr = [];
+    op.on('pageerror', e => oErr.push(e.message));
+    await op.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await op.addInitScript({ content: 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();' });
+    await op.goto('file://' + file);
+    try {
+      if (!await until(op, () => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, 15000)) throw 'the page never had a kitchen to lay, so nothing was asked';
+      /* a good value for each kind of key, inside every range the kitchen holds a part to; one past each end of every range of
+         its kind; and one far out but inside them, for the reach */
+      const GOOD = { shape: 'box', place: 0.1, size: 0.04, angle: 0.3, stretch: 1.2, colour: '#3060A0', glass: 0.5 };
+      const PAST = { place: [5, -5], size: [5, -1], angle: [10, -10], stretch: [10, -1] }, FAR = { place: 0.3, size: 0.5, angle: 1.2, stretch: 2.5 };
+      const L = await op.evaluate(() => typeof PARTKEYS === 'object' && PARTKEYS ? { list: Object.assign({}, PARTKEYS), frozen: Object.isFrozen(PARTKEYS) } : null);
+      if (!L) say('the engine keeps no one list of what a part may say, so the kitchen keeps a list of its own, and a key the engine learns to draw is refused there');
+      else {
+        const keys = Object.keys(L.list), unknown = keys.filter(k => !Object.prototype.hasOwnProperty.call(GOOD, L.list[k]));
+        if (!L.frozen) say('the one list of what a part may say is not frozen, so any script can change it for every reader of parts at once');
+        if (unknown.length) say('the one list calls ' + unknown.map(k => k + ' a ' + JSON.stringify(String(L.list[k]))).join(', ') + ', which is no kind of key a reader of parts knows');
+        /* 1 · THE KITCHEN TAKES every key of the list but glass, and nothing that is not on it */
+        const K = await op.evaluate(([GOOD, PAST]) => {
+          const ID = '__kit_partkeys', R = ['##########', '#' + KITCOL.repeat(4) + '#####', '#........#', '#........#', '##########'];
+          WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 10, H: 5 };
+          window.__pk = {};
+          const places = KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+          const laid = kitchenLay(ID, { wall: [[1, 1], [2, 1], [3, 1], [4, 1]], places, things: pl => window.__pk[pl.id] || [], keep: () => {} });
+          if (laid !== null) return { laid };
+          const base = { s: 'box', y: 0.02, w: 0.04, h: 0.04, d: 0.04, c: '#C04020' };
+          const ask = part => { window.__pk.p3 = [{ id: 'one', n: 1, name: 'One', parts: [part] }]; const r = kitThingsOf(ID, 2); delete window.__pk.p3; return r.bad ? 'refused' : r.list.length === 1 ? 'taken' : 'neither'; };
+          return { ID, laid, got: Object.keys(PARTKEYS).map(k => [k, PARTKEYS[k], ask(Object.assign({}, base, { [k]: GOOD[PARTKEYS[k]] }))]),
+            stranger: ask(Object.assign({}, base, { zz: 0.1 })),
+            /* each key once past each end of what its kind may be */
+            past: Object.keys(PARTKEYS).filter(k => PAST[PARTKEYS[k]]).flatMap(k => PAST[PARTKEYS[k]].map(v => [k, PARTKEYS[k], v, ask(Object.assign({}, base, { [k]: v }))])),
+            /* each colour key but the part's own (which the block above holds) named with a word where a colour goes */
+            notColour: Object.keys(PARTKEYS).filter(k => PARTKEYS[k] === 'colour' && k !== 'c').map(k => [k, ask(Object.assign({}, base, { [k]: 'red' }))]) };
+        }, [GOOD, PAST]);
+        if (K.laid) throw 'the made-up kitchen was refused: ' + K.laid;
+        K.got.forEach(([k, kind, got]) => {
+          if (kind === 'glass') { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ', which makes the part glass, and nothing a place keeps is glass'); }
+          else if (got !== 'taken') say('the kitchen ' + (got === 'refused' ? 'refuses' : 'neither takes nor refuses') + ' a thing whose part says ' + k + ' (a ' + kind + ' on the one list of what a part may say), so the engine draws that part everywhere but in a kitchen');
+        });
+        if (K.stranger !== 'refused') say('the kitchen ' + (K.stranger === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part says zz, which is on no list of what a part may say');
+        K.notColour.forEach(([k, got]) => { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part\'s ' + k + ' is the word "red", where a colour is #rrggbb'); });
+        K.past.forEach(([k, kind, v, got]) => { if (got !== 'refused') say('the kitchen ' + (got === 'taken' ? 'takes' : 'neither takes nor refuses') + ' a thing whose part\'s ' + k + ' is ' + v + ', which no ' + kind + ' of a thing\'s part may be, so the part would stand out of where the thing is kept'); });
+        if (!K.past.length) say('the one list names no place, size, angle or stretch, so nothing past what a key may be could be asked');
+        /* 2 · MADE SMALLER TO FIT: a thing too big for the counter, whose one part says every key of the list but glass. Its sizes
+           shrink together, by one number under 1; what it is turned and stretched by, and its colours, stay as they were; where it
+           stands is worked out again and its yaw turned to the room, so those two are not compared */
+        const S = await op.evaluate(([ID, GOOD]) => {
+          if (typeof SHAPES !== 'object' || !SHAPES || typeof SHAPES.kitchenColumn !== 'function') return { none: true };
+          const part = { s: 'box', x: 0.02, y: 0, z: 0.01, w: 0.4, h: 0.6, d: 0.2, r: 0.2, rt: 0.2, rb: 0.1, t: 0.03, arc: 1, rx: 0.2, ry: 0.3, rz: 0.1, sx: 1.1, sy: 0.9, sz: 1.2, c: '#C04020' };
+          Object.keys(PARTKEYS).forEach(k => { if (part[k] === undefined && PARTKEYS[k] !== 'glass') part[k] = GOOD[PARTKEYS[k]]; });
+          window.__pk.p3 = [{ id: 'big', n: 1, name: 'Big', parts: [part] }];
+          const w0 = world; let got;
+          try { world = ID; const K = KITWALL[ID], c = K.cols[K.places[2].col]; got = kitColumnParts({ x: c.x, y: c.y }).filter(q => q.thing && q.place === 2); }
+          finally { world = w0; delete window.__pk.p3; }
+          return { part, got };
+        }, [K.ID, GOOD]);
+        if (S.none) console.log('  COUNT-ONLY: this shell builds no kitchen shapes, so what a thing is made smaller by was not asked in 3D; what the kitchen takes was');
+        else if (S.got.length !== 1) say('a thing of one part too big for the counter stands there as ' + S.got.length + ' parts, where it is 1');
+        else {
+          const q = S.got[0], sizes = keys.filter(k => L.list[k] === 'size' && typeof S.part[k] === 'number'), by = sizes.map(k => q[k] / S.part[k]);
+          if (!sizes.length) say('the one list names no size, so nothing a thing is made smaller by could be asked');
+          else if (!(by[0] < 1)) say('a thing too big for the counter was not made smaller: its ' + sizes[0] + ' is ' + q[sizes[0]] + ', as it was given');
+          else if (by.some(f => Math.abs(f - by[0]) > 1e-9)) say('a thing made smaller to fit the counter changed shape: its sizes were made smaller by different amounts (' + sizes.map((k, i) => k + ' ×' + by[i].toFixed(4)).join(', ') + '), where every size shrinks together');
+          keys.filter(k => ['angle', 'stretch', 'colour', 'shape'].includes(L.list[k]) && k !== 'ry').forEach(k => {
+            if (q[k] !== S.part[k]) say('a thing made smaller to fit the counter has its ' + k + ' changed too (' + JSON.stringify(S.part[k]) + ' → ' + JSON.stringify(q[k]) + '), which is a' + (L.list[k] === 'angle' ? 'n' : '') + ' ' + L.list[k] + ' and not a size: only its sizes are made smaller');
+          });
+        }
+        /* 2b · THE REACH A PART IS FITTED BY: the kitchen makes a thing smaller until the reach of its parts (kitReach) fits where it
+           stands, so every corner the engine draws for a part it takes must lie within that reach of the part's middle: each key of
+           the list but shape, colour and glass, alone and far out but inside what its kind may be, and all of them at once, on
+           every primitive the kitchen takes. A size the reach does not count is a thing that sticks out of its shelf. */
+        const R = await op.evaluate(([FAR]) => {
+          if (typeof THREE === 'undefined' || typeof t3BakeParts !== 'function') return { none: true };
+          const keys = Object.keys(PARTKEYS).filter(k => FAR[PARTKEYS[k]] !== undefined), out = [];
+          let asked = 0;
+          KITPRIM.forEach(s => {
+            const all = { s, c: '#C04020' }; keys.forEach(k => { all[k] = FAR[PARTKEYS[k]]; });
+            [...keys.map(k => [k, { s, c: '#C04020', [k]: FAR[PARTKEYS[k]] }]), ['every key at once', all]].forEach(([what, p]) => {
+              if (kitPartBad(p)) return;
+              asked++;
+              const r = kitReach(p), b = t3BakeParts([p], h => h), mid = [p.x || 0, p.y || 0, p.z || 0];
+              let worst = null;
+              for (let i = 0; i < b.pos.length; i++) { const ax = i % 3, over = Math.abs(b.pos[i] - mid[ax]) - r[ax]; if (over > 1e-6 && (!worst || over > worst.over)) worst = { ax, over, at: Math.abs(b.pos[i] - mid[ax]), reach: r[ax] }; }
+              if (worst) out.push({ s, what, v: what === 'every key at once' ? null : p[what], worst });
+            });
+          });
+          return { out, asked };
+        }, [FAR]);
+        if (R.none) console.log('  COUNT-ONLY: this shell loads no 3D library, so the reach a part is fitted by was not measured against what is drawn');
+        else {
+          if (!R.asked) say('the kitchen took none of the parts asked about its reach, so whether a thing it takes fits where it stands could not be asked');
+          const WORD = { box: 'box', sph: 'sphere', cyl: 'cylinder', cone: 'cone', torus: 'ring' };
+          R.out.forEach(({ s, what, v, worst }) => say('a ' + (WORD[s] || s) + ' the kitchen takes, ' + (v === null ? 'with every key of the list at once' : 'whose ' + what + ' is ' + v) + ', is drawn ' + worst.at.toFixed(3) + ' from its middle along ' + 'xyz'[worst.ax] + ', where the kitchen fits it as reaching ' + worst.reach.toFixed(3) + ': what it makes a thing smaller by (kitReach) does not count ' + (v === null ? 'every key' : what) + ', so the thing sticks out of where it is kept'));
+        }
+        console.log('  COUNT-ONLY: the one list of what a part may say: ' + keys.length + ' keys (' + keys.map(k => k + ' ' + L.list[k]).join(', ') + '); the kitchen asked to take a thing whose part says each of them, one that says what no part says, and each key past each end of what its kind may be (' + K.past.length + ')' + (S.none ? '' : '; a thing too big for the counter made smaller by its sizes alone') + (R.none ? '' : '; ' + R.asked + ' parts the kitchen takes measured against the reach it fits them by'));
+      }
+      /* 3 · A PART SHADED INTO A SECOND COLOUR, read off the bytes the engine draws (t3BakeParts, the name tests call, and the
+         mesh t3MeshOf hands the scene): every corner the mix of the two colours for its own height as the part stands, its
+         colour at its highest corner and the second at its lowest, through the player's colour theme as well; four parts, one
+         leaning far over, so a shading along a part's own axis shows; the mesh drawn with the one material the time of day
+         tints; and a part with no second colour its one colour on every corner. Asked whether or not the list above exists. */
+      const SC = await op.evaluate(() => {
+        if (typeof THREE === 'undefined' || typeof t3BakeParts !== 'function' || typeof t3MeshOf !== 'function') return { none: true };
+        const C = new THREE.Color(), rgb = h => { C.set(h); return [C.r, C.g, C.b]; }, hex = (r, g, b) => '#' + C.setRGB(r, g, b).getHexString();
+        const THEME = h => '#' + (parseInt(h.slice(1), 16) ^ 0x5a5a5a).toString(16).padStart(6, '0');   /* a colour theme that moves every colour, both ends */
+        const PARTS = [['a box', { s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF', cb: '#000000' }],
+          ['a sphere', { s: 'sph', y: 0.3, r: 0.2, c: '#F0C040', cb: '#402010' }],
+          ['a cylinder leaning far over', { s: 'cyl', y: 0.3, r: 0.05, h: 0.6, rz: 1.2, ry: 0.4, c: '#80C0F0', cb: '#102030' }],
+          ['a ring stood on its edge', { s: 'torus', y: 0.3, r: 0.2, t: 0.04, c: '#E0E0E0', cb: '#202020' }]];
+        const out = [];
+        for (const [what, p] of PARTS) for (const [how, tint] of [['as asked', h => h], ['through a colour theme', THEME]]) {
+          const b = t3BakeParts([p], tint), n = b.pos.length / 3; let lo = Infinity, hi = -Infinity, vlo = 0, vhi = 0;
+          for (let v = 0; v < n; v++) { const y = b.pos[3 * v + 1]; if (y < lo) { lo = y; vlo = v; } if (y > hi) { hi = y; vhi = v; } }
+          const top = rgb(tint(p.c)), bot = rgb(tint(p.cb)); let worst = 0;
+          for (let v = 0; v < n; v++) { const k = (b.pos[3 * v + 1] - lo) / (hi - lo); for (let ch = 0; ch < 3; ch++) worst = Math.max(worst, Math.abs(b.col[3 * v + ch] - (bot[ch] + (top[ch] - bot[ch]) * k))); }
+          out.push({ what, how, n, worst, low: hex(b.col[3 * vlo], b.col[3 * vlo + 1], b.col[3 * vlo + 2]), high: hex(b.col[3 * vhi], b.col[3 * vhi + 1], b.col[3 * vhi + 2]), wantLow: tint(p.cb), wantHigh: tint(p.c) });
+        }
+        /* the same box, as the scene is handed it */
+        const p = PARTS[0][1], m = t3MeshOf([p], { probe: 'a second colour' }), col = m.geometry.attributes.color.array, b = t3BakeParts([p], tc);
+        let off = 0; for (let i = 0; i < col.length; i++) if (col[i] !== Math.fround(b.col[i])) off++;
+        const mats = m.children.length + 1, tinted = T3.tintables.includes(m.material);
+        const at = T3.tintables.indexOf(m.material); if (at >= 0) T3.tintables.splice(at, 1); m.geometry.dispose(); m.material.dispose();   /* the scene's list left as it was */
+        /* and a part with no second colour */
+        const one = t3BakeParts([{ s: 'box', y: 0.3, w: 0.2, h: 0.6, d: 0.2, c: '#FFFFFF' }], h => h); let uneven = 0; for (let i = 0; i < one.col.length; i++) if (one.col[i] !== 1) uneven++;
+        return { out, off, of: col.length, mats, tinted, uneven };
+      });
+      if (SC.none) console.log('  COUNT-ONLY: this shell loads no 3D library, so a part shaded into a second colour was not built here');
+      else {
+        SC.out.forEach(r => {
+          if (!r.n) { say(r.what + ', ' + r.how + ', was built with no corner at all, so whether it shades from its colour to its second could not be read'); return; }
+          if (r.worst <= 1e-6) return;
+          if (r.low === r.high) say(r.what + ', ' + r.how + ', is drawn in one colour, ' + r.low + ' from its foot to its top, where it was asked to shade from ' + r.wantHigh + ' at its top to ' + r.wantLow + ' at its foot');
+          else say(r.what + ', ' + r.how + ', is not shaded evenly by its height as it stands: its lowest corner is ' + r.low + ' and its highest ' + r.high + ', where ' + r.wantLow + ' and ' + r.wantHigh + ' were asked, and one corner is ' + r.worst.toFixed(3) + ' off the mix for its height');
+        });
+        if (!SC.of) say('the mesh the scene is handed for a part with a second colour has no corner at all, so its colours could not be read');
+        else if (SC.off) say('the mesh the scene is handed for a part with a second colour carries other colours than the engine\'s own bake through the player\'s colour theme: ' + SC.off + ' of ' + SC.of + ' values differ');
+        if (SC.mats !== 1 || !SC.tinted) say('a part with a second colour is drawn ' + (SC.mats !== 1 ? 'with ' + SC.mats + ' materials' : 'with a material the time of day does not tint') + ', so night does not fall on its two colours alike');
+        if (SC.uneven) say('a part with no second colour is not its one colour on every corner: ' + SC.uneven + ' values differ');
+        console.log('  COUNT-ONLY: a part shaded into a second colour: ' + SC.out.length / 2 + ' parts (' + SC.out.filter((r, i) => i % 2 === 0).map(r => r.what + ', ' + r.n + ' corners').join('; ') + '), each read corner by corner against the mix for its height, as asked and through a colour theme; the mesh the scene is handed; and a part with no second colour');
+      }
+    } catch (e) { if (typeof e === 'string') say(e); else say('the list could not be asked to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n')[0]); }
+    oErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await op.close();
+    fails.push(...OL.map(m => 'the one list of what a part may say: ' + m));
+  }
+
   /* ---- THE KITCHEN'S FOUR FIXES (sprint 6 of the 3D kitchen) ----
      engine/kitchen-room.js, grep "WHERE THE READER STANDS", "kitClose", "A PIECE ADDED HOLDS THINGS" and "AN EMPTY PLACE"; his confirmed
      goals of 2026-10-31 (the four changes to the test kitchen, and the empty line). What a person would notice: a kitchen place's
@@ -12648,6 +12811,785 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     } catch (e) { if (e !== 0) SF.push('the check could not drive the game to the end, so it measured nothing: ' + String(e && e.message || e).split('\n')[0]); }
     await sctx.close();
     fails.push(...SF.map(m => 'saved look (#301): ' + m));
+  }
+
+  /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
+     The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
+     worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
+     walking out of a home that is also the park threw, the Export panel's Report tab threw once a call was in the log,
+     the theme editor, stakes and a new character threw, and a map with no words of its own spoke English in Spanish.
+     The engine keeps words of its own now, in English and Spanish (UIDEF, beside T() in engine/engine.js), laid word by
+     word beneath the world's, inside a group of words as well, and a world's own word always comes first.
+     1 · THE LIST. Every word the engine reads off T() is found in its source, in every file of engine/ (the reader below:
+         T().w, T()[…], a function that hands back T() or a group of its words, as saveWords() hands back T().save, a name
+         bound to any of them in the block that binds it, and the words a pattern takes, as const {w} = T() does). In each
+         language this world has, each word is named by the world, by the engine, or listed here: under the thing it is for
+         (a world without that thing never asks for it), as read only to decide whether to say anything (and only where
+         every read of it does just that), or as a word the engine still keeps in English where it reads it. Anything else
+         is a word a screen asks for that nobody gives: a red. A world that names some of a thing's words names all of them,
+         and names a word the engine also keeps as the same kind of thing (a sentence, a list, a group of words, or a
+         function the engine calls). The engine's own words: both languages, the same kind in each and the kind the engine
+         reads them as, every one read by the engine, kept once, never copied or listed, asked for only after a world's own
+         (uiDef(…) as the fallback, after ||, ?? or w ? w :), named nowhere but its definition, the laying and uiDef, and
+         never in front of a word this world names: the game gives each word as the world's words
+         file says it, after boot, after the words are put in place anew, after each language is picked, and after the
+         screens are opened.
+         Where this world names none of a word, the engine's own in the player's language stands in, and the engine's Spanish
+         is never its English, but for the Talk button's mark, which reads the same in both.
+     2 · THE SCREENS, in each language this world has, read as a person reads them (no "undefined", nothing blank where
+         words go, no page error, this world's own word where its file names one and the engine's in that language where it
+         does not, and Spanish that is not the English), on words put in place anew after the game starts:
+         the Talk button beside every person; the map's own words, and the line under it in each of this world's places; a
+         quest's card and a call made on it; the Report tab with that call in the log, and again once a solid call is in it
+         too, every verdict said by its word; a Trolley Pass link opened with nothing kept and with a game kept; a door out
+         of a home that is also the park (laid here where the world has none) or out of the park by its own door; the Pass
+         and Multiplayer panels, every section heading Settings draws, its themes each by a name of its own, the theme
+         editor and a copy of the theme in use, stakes, the text lab, a new character and a word from them; saves that fail
+         and work again, in turn, each step said as the engine this branch grew from says it; the map's words where the engine
+         cannot lay its own beneath a world's; and starting over. */
+  {
+    const WD = [], WN = [];
+    /* 1 · THE LIST — the reader. Tokens first (nothing from inside a comment, a string or a regex, and a template read as its
+       text joined to its expressions), then, scope by scope, the names bound to T(), to a group of its words or to a function
+       that hands either back, so a name declared again inside a nested block, or taken as a parameter, is not read as T()'s.
+       A read is GUARDED where it only decides whether anything is said, sits inside what such a test of the same word
+       protects, falls back on nothing (w || ""), or goes into a name every use of which is guarded so. Measured against a full
+       parse of every file in engine/ (2026-11-09): the same 291 names read off T() in engine/engine.js and the same 9 in
+       engine/kitchen-room.js, name for name, and the same again with a checker's planted faults applied (words taken by a
+       pattern, a 3D toast that reads T()). Whether a name read is a word, or a list's or a sentence's own, is told in the
+       page, below. What it calls guarded was read by hand at every read of the words read only to decide whether to say
+       anything. */
+    const wordsTok = src => {
+      const tok = [], tmpl = [], n = src.length; let i = 0, line = 1, depth = 0;
+      const isId = c => /[A-Za-z0-9_$]/.test(c);
+      const regexOk = () => { const p = tok[tok.length - 1]; if (!p) return true; if (p.t === 's') return false;
+        if (p.t === 'id') return /^(return|typeof|case|do|else|in|of|new|delete|void|throw|instanceof|yield|await)$/.test(p.v);
+        return !/^[)\]}]$/.test(p.v); };
+      /* a template is read as ( 'text' + ( expression ) + 'text' ), so its brackets pair up like the code around it */
+      const text = j => { const a = j;
+        while (j < n && src[j] !== '`' && !(src[j] === '$' && src[j + 1] === '{')) { if (src[j] === '\\') j++; else if (src[j] === '\n') line++; j++; }
+        tok.push({ t: 's', q: '`', v: src.slice(a, j), line });
+        if (src[j] === '$') { tok.push({ t: 'p', v: '+', line }, { t: 'p', v: '(', line }); tmpl.push(depth); return j + 2; }
+        tok.push({ t: 'p', v: ')', line }); return j + 1; };
+      while (i < n) {
+        const c = src[i], c2 = src[i + 1];
+        if (c === '\n') { line++; i++; continue; }
+        if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+        if (c === '/' && c2 === '*') { const e = src.indexOf('*/', i + 2), s = src.slice(i, e < 0 ? n : e + 2); line += (s.match(/\n/g) || []).length; i = e < 0 ? n : e + 2; continue; }
+        if (c === '/' && c2 === '/') { const e = src.indexOf('\n', i); i = e < 0 ? n : e; continue; }
+        if (c === '"' || c === "'") { let j = i + 1; while (j < n && src[j] !== c) { if (src[j] === '\\') j++; if (src[j] === '\n') line++; j++; } tok.push({ t: 's', q: c, v: src.slice(i + 1, j), line }); i = j + 1; continue; }
+        if (c === '`') { tok.push({ t: 'p', v: '(', line }); i = text(i + 1); continue; }
+        if (c === '}' && tmpl.length && tmpl[tmpl.length - 1] === depth) { tmpl.pop(); tok.push({ t: 'p', v: ')', line }, { t: 'p', v: '+', line }); i = text(i + 1); continue; }
+        if (c === '/' && regexOk()) { let j = i + 1, cls = false;
+          while (j < n && (cls || src[j] !== '/')) { if (src[j] === '\\') j++; else if (src[j] === '[') cls = true; else if (src[j] === ']') cls = false; else if (src[j] === '\n') break; j++; }
+          j++; while (j < n && /[a-z]/.test(src[j])) j++; tok.push({ t: 's', q: '/', v: '', line }); i = j; continue; }
+        if (isId(c)) { let j = i; while (j < n && isId(src[j])) j++; tok.push({ t: 'id', v: src.slice(i, j), line }); i = j; continue; }
+        const three = src.slice(i, i + 3), two = src.slice(i, i + 2);
+        if (three === '...' || three === '===' || three === '!==' || three === '**=' || three === '||=' || three === '&&=' || three === '??=') {
+          tok.push({ t: 'p', v: three === '===' ? '==' : three === '!==' ? '!=' : three, line }); i += 3; continue; }
+        if (/^(=>|==|!=|<=|>=|\|\||&&|\?\?|\+=|-=|\*=|%=|&=|\|=|\^=|\+\+|--)$/.test(two)) { tok.push({ t: 'p', v: two, line }); i += 2; continue; }
+        if (c === '{') depth++; if (c === '}') depth--;
+        tok.push({ t: 'p', v: c, line }); i++;
+      }
+      return tok; };
+    /* the functions that hand back T() or a group of its words and take nothing (saveWords() is T().save) */
+    const wordsFns = (tok, fns) => {
+      const P = (j, v) => !!tok[j] && tok[j].t === 'p' && tok[j].v === v, id = j => !!tok[j] && tok[j].t === 'id', I = (j, v) => id(j) && tok[j].v === v;
+      /* what an expression at j hands back: T() (null), a group of its words (the group's name), or neither (undefined) */
+      const gives = j => { while (P(j, '(')) j++;
+        if (!I(j, 'T') || !P(j + 1, '(') || !P(j + 2, ')') || P(j - 1, '.')) return undefined;
+        if (!P(j + 3, '.')) return P(j + 3, '[') ? undefined : null;
+        return id(j + 4) && !P(j + 5, '(') && !P(j + 5, '.') && !P(j + 5, '[') ? tok[j + 4].v : undefined; };
+      for (let j = 0; j < tok.length; j++) { let name = null, at = -1;
+        if (I(j, 'function') && id(j + 1) && P(j + 2, '(') && P(j + 3, ')') && P(j + 4, '{')) { name = tok[j + 1].v;
+          for (let m = j + 5, d = 1; m < tok.length && d > 0; m++) { if (P(m, '{')) d++; else if (P(m, '}')) d--; else if (I(m, 'return')) { at = m + 1; break; } } }
+        else if ((I(j, 'const') || I(j, 'let')) && id(j + 1) && P(j + 2, '=') && P(j + 3, '(') && P(j + 4, ')') && P(j + 5, '=>') && !P(j + 6, '{')) { name = tok[j + 1].v; at = j + 6; }
+        if (name && at > 0) { const g = gives(at); if (g !== undefined) fns[name] = g; } } };
+    /* every word read off T(): T().w, T().g.w, T()[…], saveWords().w, (T().g||{}).w, w read off a name bound to any of them in
+       the block that binds it, and the words a pattern takes (const {w} = T()), each with where it starts and ends */
+    const wordsOf = (tok, fns) => {
+      const reads = [], computed = [], fallbacks = [], unseen = [], listed = [];
+      const P = (j, v) => !!tok[j] && tok[j].t === 'p' && tok[j].v === v, pv = j => tok[j] && tok[j].t === 'p' ? tok[j].v : (tok[j] && tok[j].v === 'return' ? 'return' : null);
+      const id = j => !!tok[j] && tok[j].t === 'id', I = (j, v) => id(j) && tok[j].v === v, str = j => !!tok[j] && tok[j].t === 's';
+      const OPEN = { '(': ')', '[': ']', '{': '}' }, SHUT = { ')': '(', ']': '[', '}': '{' };
+      const mate = j => { const o = pv(j), c = OPEN[o] || SHUT[o], step = OPEN[o] ? 1 : -1; let d = 0; if (!c) return -1;
+        for (let m = j; m >= 0 && m < tok.length; m += step) { if (P(m, o)) d++; else if (P(m, c)) { if (!--d) return m; } } return -1; };
+      const scopes = [{ names: {} }];
+      const look = name => { for (let s = scopes.length - 1; s >= 0; s--) if (name in scopes[s].names) return scopes[s].names[name]; return null; };
+      const bind = (name, b) => { scopes[scopes.length - 1].names[name] = b; };
+      const hide = (params, m) => { scopes.push({ names: Object.fromEntries(params.map(p => [p, null])) }); return m; };
+      const ends = [];   /* [scope, last token] of each arrow whose body is an expression */
+      /* a source of words at j: T() or a function that hands back T() or a group of it ({ g, e }: the group, the source's last token) */
+      const src = j => {
+        if (P(j - 1, '.')) return null;
+        if (I(j, 'T') && P(j + 1, '(') && P(j + 2, ')')) return { g: null, e: j + 2 };
+        if (id(j) && Object.prototype.hasOwnProperty.call(fns, tok[j].v) && P(j + 1, '(') && P(j + 2, ')')) return { g: fns[tok[j].v], e: j + 2 };
+        if (!P(j, '(')) return null;   /* (T()), (T().g), (T()||{}), (T().g||{}) */
+        const s = src(j + 1); if (!s) return null; let e = s.e, g = s.g, inner = s.inner || null;
+        if (g === null && P(e + 1, '.') && id(e + 2) && !P(e + 3, '(') && !P(e + 3, '[') && !P(e + 3, '.')) { g = tok[e + 2].v; inner = { k: g, s: j + 1, e: e + 2 }; e += 2; }
+        if ((P(e + 1, '||') || P(e + 1, '??')) && P(e + 2, '{') && P(e + 3, '}')) e += 3;
+        return P(e + 1, ')') ? { g, e: e + 1, inner } : null; };
+      /* where an expression starting at k ends (its last token), and a statement */
+      const exprEnd = k => { let d = 0, m = k; for (; m < tok.length; m++) { const v = pv(m);
+        if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') { if (!d) break; d--; } else if (!d && (v === ',' || v === ';')) break; } return m - 1; };
+      const stmtEnd = k => { let d = 0, m = k; for (; m < tok.length; m++) { const v = pv(m);
+        if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') { if (!d) return m - 1; d--; } else if (!d && v === ';') return m; } return m - 1; };
+      /* the bracket a token sits directly in, when it is a ( — and the end of the block a token sits in */
+      const enclosing = j => { let d = 0; for (let m = j - 1; m >= 0; m--) { const v = pv(m);
+        if (v === ')' || v === ']' || v === '}') d++; else if (v === '(' || v === '[' || v === '{') { if (!d) return v === '(' ? m : -1; d--; } } return -1; };
+      const blockEnd = j => { let d = 0; for (let m = j - 1; m >= 0; m--) { if (P(m, '}')) d++; else if (P(m, '{')) { if (!d) return mate(m); d--; } } return tok.length - 1; };
+      const colonOf = q => { let d = 0, n = 0; for (let m = q + 1; m < tok.length; m++) { const v = pv(m);
+        if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') { if (!d) return -1; d--; }
+        else if (!d && v === '?') n++; else if (!d && v === ':') { if (!n) return m; n--; } else if (!d && (v === ',' || v === ';')) return -1; } return -1; };
+      const word = (k, s, e, extra) => { const r = Object.assign({ k, line: tok[s].line, s, e, pat: false, from: -1, into: -1, called: P(e + 1, '(') }, extra || {}); reads.push(r); return r; };
+      /* a wording written beside a read: w || "…", w ?? "…", w || `…`, w || (test ? "…" : "…") */
+      const fb = (k, e) => { const o = e + 1; if (!P(o, '||') && !P(o, '??')) return;
+        if (str(o + 1) && tok[o + 1].q !== '/' && tok[o + 1].q !== '`' && !P(o + 2, '.') && !P(o + 2, '[')) { fallbacks.push([k, tok[e].line, [tok[o + 1].v]]); return; }
+        if (!P(o + 1, '(')) return;
+        if (str(o + 2) && tok[o + 2].q === '`') { fallbacks.push([k, tok[e].line, [tok[o + 2].v]]); return; }
+        const c = mate(o + 1); let q = -1; for (let m = o + 2, d = 0; m < c; m++) { const v = pv(m);
+          if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') d--; else if (!d && v === '?') { q = m; break; } }
+        if (q > 0 && str(q + 1) && tok[q + 1].q !== '/' && P(q + 2, ':') && str(q + 3) && tok[q + 3].q !== '/' && q + 3 === c - 1) fallbacks.push([k, tok[e].line, [tok[q + 1].v, tok[q + 3].v]]); };
+      /* a source or a bound name used whole: spread, for…in, or handed to a copy or a listing */
+      const whole = (g, s, e) => { if (P(e + 1, '.') || P(e + 1, '[')) return;
+        const o = enclosing(s), fn = o > 2 && P(o - 2, '.') && id(o - 1) ? tok[o - 3].v + '.' + tok[o - 1].v : '', inFor = o > 0 && I(o - 1, 'for');
+        if (P(s - 1, '...') || (inFor && (I(s - 1, 'in') || I(s - 1, 'of'))) || /^Object\.(keys|values|entries|assign|getOwnPropertyNames)$|^JSON\.stringify$/.test(fn))
+          listed.push({ g: g || '', line: tok[s].line }); };
+      /* what is read off a source or a name bound to one, whose last token is k: .w, .w.x, […] (a key worked out in play) */
+      const readOff = (g, s, k) => {
+        if (P(k + 1, '.') && id(k + 2)) { const w = tok[k + 2].v, key = g ? g + '.' + w : w; word(key, s, k + 2); fb(key, k + 2);
+          if (!g && P(k + 3, '.') && id(k + 4)) { const k2 = w + '.' + tok[k + 4].v; word(k2, s, k + 4); fb(k2, k + 4); return k + 4; }
+          if (!g && P(k + 3, '[')) computed.push([w, str(k + 4) && P(k + 5, '+') ? tok[k + 4].v : '', tok[s].line]);
+          if (!g) whole(w, s, k + 2);
+          return k + 2; }
+        if (P(k + 1, '[')) { computed.push([g, str(k + 2) && P(k + 3, '+') ? tok[k + 2].v : '', tok[s].line]); return k + 1; }
+        whole(g, s, k); return k; };
+      /* what a name is bound to by the expression at k: T() or a group of its words, or nothing */
+      const bindOf = k => { const x = src(k);
+        if (x) { let e = x.e, g = x.g;
+          if (g === null && P(e + 1, '.') && id(e + 2) && !P(e + 3, '(') && !P(e + 3, '[') && !P(e + 3, '.')) { g = tok[e + 2].v; e += 2; }
+          return P(e + 1, '.') || P(e + 1, '[') || P(e + 1, '(') ? null : { g }; }
+        if (!id(k) || P(k - 1, '.')) return null; const b = look(tok[k].v); if (!b) return null;
+        if (!P(k + 1, '.') && !P(k + 1, '[') && !P(k + 1, '(')) return b;   /* another name for the same */
+        if (b.g === null && P(k + 1, '.') && id(k + 2) && !P(k + 3, '(') && !P(k + 3, '[') && !P(k + 3, '.')) return { g: tok[k + 2].v };
+        return null; };
+      /* the names a parameter list declares, between the brackets o and c */
+      const params = (o, c) => { const ps = []; for (let q = o + 1; q < c; q++) if (id(q) && (P(q - 1, '(') || P(q - 1, ',') || P(q - 1, '{') || P(q - 1, '[') || P(q - 1, '...')) && !P(q + 1, ':')) ps.push(tok[q].v); return ps; };
+      for (let j = 0; j < tok.length; j++) {
+        while (ends.length && ends[ends.length - 1][1] < j) scopes.length = ends.pop()[0];
+        if (P(j, '{')) { scopes.push({ names: {} }); continue; }
+        if (P(j, '}')) { if (scopes.length > 1) scopes.pop(); continue; }
+        if (I(j, 'const') || I(j, 'let') || I(j, 'var')) { let k = j + 1;
+          for (;;) {
+            if (P(k, '{')) {   /* a pattern: const { a, b: c } = source */
+              const c = mate(k); if (c < 0) break; const names = [];
+              for (let m = k + 1, d = 0; m < c; m++) { const v = pv(m); if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') d--;
+                else if (!d && id(m) && (P(m - 1, '{') || P(m - 1, ','))) names.push([tok[m].v, P(m + 1, ':') && id(m + 2) ? m + 2 : m]); }
+              let s = -1, g = null;
+              if (P(c + 1, '=')) { const x = src(c + 2); if (x && !P(x.e + 1, '.') && !P(x.e + 1, '[')) { s = c + 2; g = x.g; } else { const b = bindOf(c + 2); if (b) { s = c + 2; g = b.g; } } }
+              names.forEach(([key, local]) => { if (s >= 0) { word(g ? g + '.' + key : key, s, local, { pat: true, from: local, into: local, line: tok[local].line }); bind(tok[local].v, g ? null : { g: key }); } else bind(tok[local].v, null); });
+              k = c + 1; }
+            else if (id(k)) { bind(tok[k].v, P(k + 1, '=') ? bindOf(k + 2) : null); k++; }
+            else break;
+            let d = 0, m = k; for (; m < tok.length; m++) { const v = pv(m); if (v === '(' || v === '[' || v === '{') d++; else if (v === ')' || v === ']' || v === '}') { if (!d) break; d--; } else if (!d && (v === ',' || v === ';')) break; }
+            if (!P(m, ',')) break; k = m + 1; }
+          continue; }
+        if (I(j, 'function')) { let m = j + 1; if (id(m)) m++;
+          if (P(m, '(')) { const c = mate(m); if (c > 0 && P(c + 1, '{')) j = hide(params(m, c), c + 1); }
+          continue; }
+        if (I(j, 'catch') && P(j + 1, '(')) { const c = mate(j + 1); if (c > 0 && P(c + 1, '{')) j = hide(params(j + 1, c), c + 1); continue; }
+        if (P(j, '=>')) { const ps = id(j - 1) ? [tok[j - 1].v] : P(j - 1, ')') ? params(mate(j - 1), j - 1) : [];
+          if (P(j + 1, '{')) j = hide(ps, j + 1);
+          else if (ps.length) { scopes.push({ names: Object.fromEntries(ps.map(p => [p, null])) }); ends.push([scopes.length - 1, exprEnd(j + 1)]); }
+          continue; }
+        const x = src(j);
+        if (x) { if (x.inner) word(x.inner.k, x.inner.s, x.inner.e); readOff(x.g, j, x.e); j = x.e; continue; }
+        if (id(j) && !P(j - 1, '.')) { const b = look(tok[j].v); if (b) readOff(b.g, j, j); }
+      }
+      /* GUARDED: a read that only decides whether anything is said (if (w), w ? … : …, w && …, if (!w) return), what such a test
+         protects, a read that falls back on nothing (w || ""), and a name every use of which is guarded so */
+      const testOf = (s, e) => { let a = s, b = P(e + 1, '(') ? mate(e + 1) : e;
+        if (I(a - 1, 'typeof')) { a--; if ((P(b + 1, '==') || P(b + 1, '!=')) && str(b + 2)) b += 2; }   /* typeof w === "function" */
+        const neg = P(a - 1, '!'); while (P(a - 1, '!')) a--;
+        const o = enclosing(a), c = o >= 0 ? mate(o) : -1;
+        if (o >= 0 && (I(o - 1, 'if') || I(o - 1, 'while')) && (o === a - 1 || P(a - 1, '&&') || P(a - 1, '||')) && (c === b + 1 || P(b + 1, '&&') || P(b + 1, '||'))) {
+          const r0 = c + 1, r1 = P(r0, '{') ? mate(r0) : stmtEnd(r0);
+          if (neg && I(r0, 'return')) return { test: true, region: [r1 + 1, blockEnd(o)] };
+          return { test: true, region: [r0, r1] }; }
+        if (P(b + 1, '?')) { const col = colonOf(b + 1); return { test: true, region: [b + 2, col > 0 ? col - 1 : exprEnd(b + 2)] }; }
+        if (P(b + 1, '&&')) return { test: true, region: [b + 2, exprEnd(b + 2)] };
+        return { test: false, region: null }; };
+      const empty = e => (P(e + 1, '||') || P(e + 1, '??')) && ((str(e + 2) && (tok[e + 2].q === '"' || tok[e + 2].q === "'") && tok[e + 2].v === '') ||
+        (P(e + 2, '{') && P(e + 3, '}')) || (P(e + 2, '[') && P(e + 3, ']')));   /* w || "", w || {}, w || [] */
+      /* the name a read goes into: const x = w, through brackets and the branches of a test (const x = c ? w : "") */
+      const into = (s, e) => { let a = s, b = P(e + 1, '(') ? mate(e + 1) : e;
+        for (let n = 0; n < 8; n++) {
+          if (P(a - 1, '(') && P(b + 1, ')')) { a--; b++; continue; }
+          if (P(a - 1, '?') || P(a - 1, ':')) { let q = a - 1;
+            if (P(q, ':')) { for (let m = q - 1, d = 0, t = 0; m >= 0; m--) { const v = pv(m);
+                if (v === ')' || v === ']' || v === '}') d++; else if (v === '(' || v === '[' || v === '{') { if (!d) { q = -1; break; } d--; }
+                else if (!d && v === ':') t++; else if (!d && v === '?') { if (!t) { q = m; break; } t--; } } }
+            if (q < 0) break;
+            let c = q - 1; for (let d = 0; c >= 0; c--) { const v = pv(c);
+              if (v === ')' || v === ']' || v === '}') d++; else if (v === '(' || v === '[' || v === '{') { if (!d) break; d--; }
+              else if (!d && (v === '=' || v === ',' || v === ';' || v === 'return' || v === '?' || v === ':')) break; }
+            a = c + 1; b = Math.max(b, exprEnd(q + 1)); continue; }
+          break; }
+        return P(a - 1, '=') && id(a - 2) && (I(a - 3, 'const') || I(a - 3, 'let') || I(a - 3, 'var') || P(a - 3, ',')) &&
+          (P(b + 1, ';') || P(b + 1, ',') || P(b + 1, ')') || P(b + 1, '}')) ? a - 2 : -1; };
+      const usesOf = (nt, from) => { const name = tok[nt].v, end = blockEnd(nt), out = [];
+        for (let m = Math.max(nt, from) + 1; m <= end; m++) if (I(m, name) && !P(m - 1, '.') && !P(m + 1, ':')) out.push(m); return out; };
+      const guardedName = (nt, from, depth) => { const us = usesOf(nt, from), regs = us.map(m => testOf(m, m)).filter(t => t.test).map(t => t.region);
+        return us.every(m => testOf(m, m).test || empty(m) || regs.some(([a, b]) => a <= m && m <= b) || (depth < 2 && (n2 => n2 >= 0 && guardedName(n2, n2, depth + 1))(into(m, m)))); };
+      const regionsOf = {};
+      reads.forEach(r => { const t = r.pat ? { test: false, region: null } : testOf(r.s, r.e); r.test = t.test; if (t.region) (regionsOf[r.k] = regionsOf[r.k] || []).push(t.region); });
+      reads.forEach(r => { r.guarded = r.test || (!r.pat && empty(r.e)) || (regionsOf[r.k] || []).some(([a, b]) => a <= r.s && r.e <= b) ||
+        (() => { const nt = r.into >= 0 ? r.into : r.pat ? -1 : into(r.s, r.e); return nt >= 0 && guardedName(nt, r.pat ? r.from : nt, 0); })(); });
+      /* the engine's own list is read word by word and only ever second: uiDef(…) stands as the fallback (after ||, after ??, or
+         after w ? w :), the list itself (UIDEF) is named nowhere but its definition, the laying (uiLay) and uiDef, and nothing but
+         the laying lists or copies UIDEF or what uiDef(…) hands back, since a copy of them written over a world's words stands in front */
+      const bodies = {}; for (let j = 0; j < tok.length; j++) {
+        if (I(j, 'function') && id(j + 1) && P(j + 2, '(')) { const c = mate(j + 2); if (c > 0 && P(c + 1, '{')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 1, mate(c + 1)]); }
+        /* and an arrow bound to a name, as uiDef is: const f = (…) => { … }, or => an expression to the end of its statement */
+        if ((I(j, 'const') || I(j, 'let')) && id(j + 1) && P(j + 2, '=') && P(j + 3, '(')) { const c = mate(j + 3);
+          if (c > 0 && P(c + 1, '=>')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 2, P(c + 2, '{') ? mate(c + 2) : exprEnd(c + 2)]); } }
+      const within = (j, f) => (bodies[f] || []).some(([a, b]) => a <= j && j <= b);
+      /* w ? w : uiDef(…) hands on the world's word where it is there, and the engine's only where it is not */
+      const elseOfSame = j => { if (!P(j - 1, ':')) return false; let q = -1;
+        for (let m = j - 2, d = 0; m >= 0; m--) { const v = pv(m);
+          if (v === ')' || v === ']' || v === '}') d++; else if (v === '(' || v === '[' || v === '{') { if (!d) break; d--; }
+          else if (!d && v === '?') { q = m; break; } else if (!d && (v === ';' || v === ',')) break; }
+        const n = j - q - 2; if (q < 0 || n < 1) return false;
+        for (let i = 0; i < n; i++) { const a = tok[q + 1 + i], b = tok[q - n + i]; if (!a || !b || a.t !== b.t || a.v !== b.v) return false; }
+        return true; };
+      for (let j = 0; j < tok.length; j++) { const call = I(j, 'uiDef') && P(j + 1, '(') && !P(j - 1, '.'), list = I(j, 'UIDEF') && !P(j - 1, '.');
+        if (call && !P(j - 1, '||') && !P(j - 1, '??') && !elseOfSame(j)) unseen.push([tok[j].line, 'asks its own words first (uiDef(…) where it is not the fallback, after ||, after ?? or after w ? w :), so its word stands in front of the one a world names']);
+        if (list && !(I(j - 1, 'const') && P(j + 1, '=')) && !within(j, 'uiLay') && !within(j, 'uiDef'))
+          unseen.push([tok[j].line, 'names its own list of words (UIDEF) outside its definition, the laying and uiDef(…), where nothing keeps its words second to the ones a world names']);
+        else if ((call || list) && !within(j, 'uiLay')) { const o = enclosing(j), fn = o > 2 && P(o - 2, '.') && id(o - 1) ? tok[o - 3].v + '.' + tok[o - 1].v : '';
+          if (P(j - 1, '...') || I(j - 1, 'in') || I(j - 1, 'of') || /^Object\.(keys|values|entries|assign|getOwnPropertyNames)$|^JSON\.stringify$/.test(fn))
+            unseen.push([tok[j].line, 'lists or copies its own words (' + tok[j].v + ') outside the laying, and its words copied over a world\'s stand in front of them']); } }
+      /* EITHER: a read asked what kind of thing it is (typeof w, or typeof a name it goes into), where the engine takes a function or a sentence */
+      reads.forEach(r => { const nt = r.into >= 0 ? r.into : r.pat ? -1 : into(r.s, r.e);
+        r.either = I(r.s - 1, 'typeof') || (nt >= 0 && usesOf(nt, r.pat ? r.from : nt).some(m => I(m - 1, 'typeof'))); });
+      return { reads: reads.map(r => ({ k: r.k, line: r.line, called: r.called, guarded: r.guarded, either: r.either })), computed, fallbacks, unseen, listed };
+    };
+    /* every file of engine/ is read, so a file that starts speaking to the player is read the day it does */
+    const R = [], comp = [], fallbacks = [], unseen = [], listed = [], efiles = [], toks = {}, fns = {};
+    try { fs.readdirSync(path.join(root, 'engine')).filter(f => f.endsWith('.js')).sort().forEach(f => efiles.push(f)); } catch (e) {}
+    efiles.forEach(f => { try { toks[f] = wordsTok(fs.readFileSync(path.join(root, 'engine', f), 'utf8')); wordsFns(toks[f], fns); } catch (e) { WD.push('the check could not read engine/' + f); } });
+    efiles.forEach(f => { if (!toks[f]) return; const r = wordsOf(toks[f], fns);
+      R.push(...r.reads.map(x => Object.assign({ f }, x))); r.computed.forEach(([g, pre, l]) => comp.push({ g, pre, at: f + ':' + l }));
+      r.fallbacks.forEach(([k, l, vs]) => fallbacks.push([k, f + ':' + l, vs])); r.listed.forEach(x => listed.push(Object.assign({ f }, x)));
+      r.unseen.forEach(([l, why]) => WD.push('the engine ' + why + ' (engine/' + f + ':' + l + ')')); });
+    /* a name read off a list or a sentence is that thing's own (its length, a method it calls), not a word */
+    const METHOD = new Set('concat map forEach filter find findIndex some every slice split join indexOf includes call apply bind toString reduce push sort replace trim'.split(' '));
+    /* what each word is for, where a world without that thing never asks for it */
+    const FOR = {
+      'the office dog and his care pack': 'dog treatLb fredHeart fredUnlock carePackToast careHint carePack careEvents fredDoneToast retryNoteFred',
+      'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone',
+      'the cat': 'cat petCat', 'the pigeon': 'pigeon petPig', 'the parrot': 'loro petLoro', 'the street cat': 'gato petGato',
+      'the butterflies and the hummingbird': 'mariposa colibri petFly petColi',
+      'the barber\'s chair': 'chairTitle chairDone chairAfter',
+      'the wardrobe': 'wdTitle wdNote wdBandana wdCollar wdCape wdUnlockToast',
+      'the endings': 'endGo endStay endScore endGrade goTitle goScore endStayToast weekTwoToast nextEnd',
+      'the trolley and its stops': 'troCome troRide pass pass.title pass.note pass.here pass.soon pass.close',
+      'the building site': 'growthUp',
+      'the Day of the Dead': 'lbPaint aleYou petalLines',
+      'the kitchen': 'closetTitle closetDone closetAfter kitEmptyLine kitFull ktMonths kbAgainKinds kbAgainYesKinds',
+    };
+    /* read only to decide whether to say anything: excused only where every read of the word does just that */
+    const OPTIONAL = new Set('tut1 tut2 retryNote waitingAt chat chairHint wdHint plan.tap plan.chosen plan.none save.back'.split(' '));
+    const ENGLISH = new Set('youLb kitOpen closet'.split(' '));   /* the engine still says these in English where it reads them */
+    const forOf = {}; Object.entries(FOR).forEach(([th, ws]) => ws.split(' ').forEach(w => { forOf[w] = th; }));
+    const LN = { en: 'English', es: 'Spanish' };
+    const KN = { function: 'a function', list: 'a list', group: 'a group of words', string: 'a sentence', number: 'a number', boolean: 'a yes-or-no' };
+    const bad = s => /undefined|\bnull\b|\bNaN\b|\[object |=>/.test(String(s));
+    const wctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const wp = await wctx.newPage(), wErr = [], errNamed = new Set();
+    wp.on('pageerror', e => wErr.push(String(e.message).split('\n')[0]));
+    /* a step that reads the page's errors names every one raised while it ran: the first, or none. One no step named is a red at the end */
+    const threw = e0 => { for (let i = e0; i < wErr.length; i++) errNamed.add(i); return wErr.length > e0 ? wErr[e0] : null; };
+    await wp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    try {
+      await wp.goto('file://' + file); await boot(wp);
+      const parents = [...new Set(R.filter(r => r.k.includes('.')).map(r => r.k.slice(0, r.k.lastIndexOf('.'))))];
+      const above = await wp.evaluate(ps => { const kind = v => v === undefined || v === null ? null : Array.isArray(v) ? 'list' : typeof v === 'object' ? 'group' : typeof v;
+        const own = (o, p) => p.split('.').reduce((a, k) => a && typeof a === 'object' && Object.prototype.hasOwnProperty.call(a, k) ? a[k] : undefined, o);
+        const D = typeof UIDEF === 'object' && UIDEF ? UIDEF : {};
+        return Object.fromEntries(ps.map(p => [p, [...new Set(['en', 'es'].reduce((a, L) => a.concat([kind(own(UI[L], p)), kind(own(D[L], p))]), []).filter(Boolean))]])); }, parents);
+      const isWord = r => { const i = r.k.lastIndexOf('.'); if (i < 0) return true; const up = above[r.k.slice(0, i)] || [], last = r.k.slice(i + 1);
+        if (up.includes('group')) return true; if (up.length) return false; return !(last === 'length' || (r.called && METHOD.has(last))); };
+      const read = {}, at = {};
+      R.filter(isWord).forEach(r => { (read[r.k] = read[r.k] || []).push(r.f + ':' + r.line); (at[r.k] = at[r.k] || []).push(r); });
+      /* the reader's preconditions: the reads this block exists for, and a list that size, or it would pass anything */
+      if (!efiles.includes('engine.js')) WD.push('the check found no engine/engine.js to read');
+      ['talkPre', 'tpFoundTx', 'tpReplace', 'parkSum', 'repSum', 'repL.side', 'repL.call', 'plan.any', 'plan.ride', 'save.back'].forEach(k => {
+        if (!read[k]) WD.push('the check\'s reader no longer finds the engine reading "' + k + '", so the list it makes is not the engine\'s list'); });
+      if (Object.keys(read).length < 200) WD.push('the check\'s reader found only ' + Object.keys(read).length + ' words read off T() in the engine, where there are about 290, so it is not reading the engine');
+      const called = Object.keys(at).filter(k => at[k].some(r => r.called && !r.guarded));
+      const either = Object.keys(at).filter(k => at[k].some(r => r.either));
+      const groups = [...new Set(Object.keys(read).filter(k => k.includes('.')).map(k => k.split('.')[0]))];
+      /* the world's own words and the engine's, as the page holds them: own words only, so a word laid beneath is not counted as the world's */
+      const W = await wp.evaluate(([ks, called, either, groups, SAME]) => {
+        const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
+        const names = (o, k) => { const p = k.split('.'); if (p.length === 1) return own(o, k) && o[k] !== undefined; return own(o, p[0]) && own(o[p[0]], p[1]) && o[p[0]][p[1]] !== undefined; };
+        const val = (o, k) => { const p = k.split('.'); return p.length > 1 ? (o[p[0]] || {})[p[1]] : o[k]; };
+        const D = typeof UIDEF === 'object' && UIDEF ? UIDEF : null, langs = Object.keys(UI).filter(L => L === 'en' || L === 'es');
+        const kind = v => Array.isArray(v) ? 'list' : typeof v === 'function' ? 'function of ' + v.length : typeof v;
+        const base = v => Array.isArray(v) ? 'list' : typeof v === 'function' ? 'function' : v && typeof v === 'object' ? 'group' : typeof v;
+        const flat = d => Object.keys(d).reduce((a, k) => a.concat(d[k] && typeof d[k] === 'object' && !Array.isArray(d[k]) ? Object.keys(d[k]).map(w => k + '.' + w) : [k]), []);
+        const show = v => v === undefined ? 'nothing' : typeof v === 'function' ? 'a function' : JSON.stringify(v);
+        const out = { langs, hasDef: !!D, key: SK('lang'), world: {}, def: {}, defKeys: {}, shape: {}, kinds: [], calls: [], sameAsEn: [] };
+        langs.forEach(L => { out.world[L] = ks.filter(k => names(UI[L], k)); out.def[L] = D && D[L] ? ks.filter(k => names(D[L], k)) : [];
+          const d = D && D[L]; out.defKeys[L] = d ? flat(d) : [];
+          out.shape[L] = {}; if (d) out.defKeys[L].forEach(k => { out.shape[L][k] = kind(val(d, k)); });
+          /* a world's own word is the kind of thing the engine's own is (a sentence where the engine keeps a sentence, a function
+             where it keeps one), unless the engine asks which it is before it uses it */
+          const off = (k, w, e) => !(either.includes(k) && [w, e].every(x => x === 'function' || x === 'string'));
+          if (d) { out.defKeys[L].forEach(k => { const w = base(val(UI[L], k)), e = base(val(d, k)); if (names(UI[L], k) && w !== e && off(k, w, e)) out.kinds.push([L, k, w, e]); });
+            Object.keys(d).forEach(k => { const w = base(UI[L][k]), e = base(d[k]); if (names(UI[L], k) && w !== e && off(k, w, e) && !out.kinds.some(x => x[0] === L && x[1] === k)) out.kinds.push([L, k, w, e]); }); }
+          /* and every word is the kind of thing the engine reads it as: a function where it calls it with nothing asking first, a group
+             of words where it reads words under it — the world's own word and the engine's alike */
+          called.forEach(k => { [['this world', UI[L]], ['the engine', d]].forEach(([who, o]) => { if (o && names(o, k) && typeof val(o, k) !== 'function' && !out.kinds.some(x => x[0] === L && x[1] === k)) out.calls.push([L, who, k, base(val(o, k)), 'a function']); }); });
+          groups.forEach(g => { [['this world', UI[L]], ['the engine', d]].forEach(([who, o]) => { if (o && names(o, g) && base(o[g]) !== 'group' && !out.kinds.some(x => x[0] === L && x[1] === g)) out.calls.push([L, who, g, base(o[g]), 'a group of words']); }); });
+          });
+        /* and where it names none, the engine's own word in the player's language stands in, read again after the words are put in place anew */
+        window.__wordsStand = () => { const off = [];
+          langs.forEach(L => { const d = D && D[L]; if (!d) return; const keep = lang; lang = L; const t = T();
+            flat(d).forEach(k => { if (names(UI[L], k)) return; const p = k.split('.'), got = p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k], want = val(d, k);
+              if (got !== want) off.push([L, k, show(got), show(want)]); });
+            lang = keep; T(); });
+          return off; };
+        out.stand = window.__wordsStand();
+        /* the engine's Spanish is not its English: each of its words reads otherwise in the two, but for a mark that is the same in both */
+        if (D && D.en && D.es) { const say = v => { if (typeof v !== 'function') return typeof v === 'string' ? v : JSON.stringify(v);
+            try { const s = v(...Array.from({ length: v.length }, (_, i) => i === 0 ? 'hearts' : 2)); return typeof s === 'string' ? s : null; } catch (e) { return null; } };
+          flat(D.en).forEach(k => { if (SAME.includes(k) || !flat(D.es).includes(k)) return; const a = say(val(D.en, k)), b = say(val(D.es, k)); if (a !== null && a === b) out.sameAsEn.push([k, a]); }); }
+        return out; }, [Object.keys(read), called, either, groups, ['talkPre']]);
+      if (!W.hasDef) WD.push('the engine keeps no words of its own (UIDEF in engine/engine.js), so any word a world leaves out comes out as nothing');
+      W.kinds.forEach(([L, k, w, e]) => WD.push('in ' + LN[L] + ' this world names "' + k + '" as ' + (KN[w] || w) + ', where the engine\'s own "' + k + '" is ' + (KN[e] || e) +
+        (e === 'function' ? ' that the engine calls, so the screen that says it throws' : ', and the engine reads it as that, so the screen that says it shows it wrong')));
+      W.calls.forEach(([L, who, k, w, as]) => WD.push('in ' + LN[L] + (who === 'the engine' ? ' the engine\'s own "' + k + '" is ' : ' this world names "' + k + '" as ') + (KN[w] || w) + ', where the engine reads it as ' + as + ' (engine/' + read[k][0] + '), so the screen that says it ' + (as === 'a function' ? 'throws' : 'shows it wrong')));
+      /* one sentence a language, however many words are off */
+      const standSay = (off, when) => W.langs.forEach(L => { const o = off.filter(x => x[0] === L); if (!o.length) return;
+        WD.push('in ' + LN[L] + when + ', where this world names no word of its own, the game gives another than the engine\'s for ' + o.length + ' word(s): ' +
+          o.slice(0, 4).map(([, k, got, want]) => '"' + k + '" gives ' + got + ', where the engine\'s own is ' + want).join('; ') + (o.length > 4 ? '; and ' + (o.length - 4) + ' more' : '')); });
+      standSay(W.stand, '');
+      W.sameAsEn.forEach(([k, s]) => WD.push('the engine\'s Spanish for "' + k + '" is its English, ' + JSON.stringify(s) + ', so a Spanish player of a world that names none reads English there'));
+      /* A WORLD'S OWN WORD COMES FIRST, held against the world's own words file as it ships: the file the page itself loaded
+         (whatever else its script tag says), read outside the page, so nothing the page wrote over the world's words can stand
+         in for them. Every word the engine also keeps reaches the game as the file says it, after boot, after the words are put
+         in place anew, after each language is picked, and after that language's screens were opened. */
+      /* the words file is the script this page loaded that declares UI (const UI = …), whatever its name */
+      const wordsAt = (await wp.evaluate(() => [...document.scripts].map(s => s.src).filter(u => u.startsWith('file://'))))
+        .filter(u => { try { return /^[ \t]*(?:const|let|var)[ \t]+UI[ \t]*=/m.test(fs.readFileSync(decodeURIComponent(new URL(u).pathname), 'utf8')); } catch (e) { return false; } });
+      const shipped = (() => { if (wordsAt.length !== 1) return null; try { const f = decodeURIComponent(new URL(wordsAt[0]).pathname);
+        const vm = require('vm'), box = { console, art: () => null, logKind: () => [], logCrit: () => [] }; vm.createContext(box);
+        vm.runInContext(fs.readFileSync(f, 'utf8') + '\n;this.__UI = UI;', box); return box.__UI; } catch (e) { return null; } })();
+      const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
+      if (!wordsAt.length) WD.push('this shell loads no file that declares its words (const UI = …), so nothing here can tell this world\'s own words from the engine\'s, and no screen is held to them');
+      else if (!shipped) WD.push('this shell loads its words from ' + wordsAt.map(u => path.relative(root, decodeURIComponent(new URL(u).pathname))).join(' and ') + ', and the check could not read ' + (wordsAt.length > 1 ? 'which one is the world\'s' : 'it') + ' outside the page, so nothing here can tell this world\'s own words from the engine\'s');
+      const ownIn = (o, k) => { const p = k.split('.'); return !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, p[0]) && (p.length === 1 || (!!o[p[0]] && typeof o[p[0]] === 'object' && Object.prototype.hasOwnProperty.call(o[p[0]], p[1]))); };
+      const fileVal = (L, k) => { const p = k.split('.'); return p.length > 1 ? shipped[L][p[0]][p[1]] : shipped[L][k]; };
+      const fileCheck = async when => { if (!shipped || !W.hasDef) return 0; let n = 0;
+        for (const L of W.langs) { const ks = [...new Set((W.defKeys.en || []).concat(W.defKeys.es || []))].filter(k => ownIn(shipped[L], k)); n += ks.length; if (!ks.length) continue;
+          const got = await wp.evaluate(([L, ks]) => { const keep = lang; lang = L; const t = T(), out = {};
+            const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
+            ks.forEach(k => { const p = k.split('.'); out[k] = sig(p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k]); }); lang = keep; T(); return out; }, [L, ks]);
+          const off = ks.filter(k => got[k] !== sig(fileVal(L, k)));
+          if (off.length) WD.push('in ' + LN[L] + when + ', the game gives another word than this world\'s own words file for ' + off.length + ' word(s) the engine also keeps: ' +
+            off.slice(0, 3).map(k => '"' + k + '" is ' + String(got[k]).slice(0, 60) + ', where the file says ' + sig(fileVal(L, k)).slice(0, 60)).join('; ') + (off.length > 3 ? '; and ' + (off.length - 3) + ' more' : '')); }
+        return n; };
+      if (!(await fileCheck('')) && shipped) WN.push('COUNT-ONLY: this world names none of the engine\'s own words, so none of them could stand in front of one');
+      /* and each screen below is held against the same words: what it shows holds this world's own word where its file names one, and the
+         engine's own in the player's language where it does not, so a read that asks the engine first, or in the wrong language, is a red */
+      const want = async (L, k, args) => { const o = shipped && shipped[L], mine = ownIn(o, k);
+        let v = mine ? fileVal(L, k) : await wp.evaluate(([L, k, args]) => { const p = k.split('.'), d = (typeof UIDEF === 'object' && UIDEF && UIDEF[L]) || {}, v = p.length > 1 ? (d[p[0]] || {})[p[1]] : d[k];
+          try { return typeof v === 'function' ? v(...args) : v; } catch (e) { return null; } }, [L, k, args || []]);
+        if (mine && typeof v === 'function') { try { v = v(...(args || [])); } catch (e) { v = null; } }
+        return { v: typeof v === 'string' && v.trim() ? v : null, blank: typeof v === 'string' && !v.trim(), mine }; };
+      /* a screen with no word to hold it to is a red, but for a word left blank on purpose and a place's name (a place the engine
+         builds names itself in the page, and the engine keeps no names of places) */
+      const holds = async (L, what, text, k, args) => { if (!shipped || text === null || text === undefined) return; const w = await want(L, k, args);
+        if (!w.v) { if (!w.blank && !k.startsWith('locs.')) WD.push('in ' + LN[L] + ', ' + what + ' could not be held to a word: ' + (w.mine ? 'this world\'s own "' + k + '" said nothing when it was said outside the page' : 'neither this world nor the engine names "' + k + '"')); return; }
+        if (!String(text).includes(w.v)) WD.push('in ' + LN[L] + ', ' + what + ' reads "' + String(text).replace(/\s+/g, ' ').trim().slice(0, 120) + '", where ' + (w.mine ? 'this world\'s own word for it' : 'the engine\'s own word for it, in ' + LN[L] + ',') + ' is "' + w.v.slice(0, 120) + '"'); };
+      if (W.hasDef) {
+        ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
+          (W.defKeys[L] || []).forEach(k => { if (!(W.defKeys[O] || []).includes(k)) WD.push('the engine keeps "' + k + '" in ' + LN[L] + ' and not in ' + LN[O]);
+            else if (L === 'en' && W.shape.en[k] !== W.shape.es[k]) WD.push('the engine\'s "' + k + '" is a ' + W.shape.en[k] + ' in English and a ' + W.shape.es[k] + ' in Spanish'); }); });
+        /* ONE COPY OF EACH WORD: a word the engine keeps is not given a second wording beside a read of it (x||"word", x||"",
+           or x||(es?"palabra":"word")); the fallback, where one is wanted, is the engine's own word, read from its list,
+           or the two drift apart the day one of them is changed */
+        { const kept = new Set(W.defKeys.en || []);
+          fallbacks.filter(([k]) => kept.has(k)).forEach(([k, where, vs]) =>
+            WD.push('the engine reads "' + k + '" with a wording of its own written beside it ("' + vs.join('" / "') + '") at engine/' + where + ', where its own list already holds that word')); }
+        /* a copy or a listing of words (…T(), Object.keys(T().g), JSON.stringify) holds only the world's own words, never the
+           engine's laid beneath them, so none is made of T() or of a group of words the engine keeps */
+        listed.filter(x => x.g === '' || (W.defKeys.en || []).some(k => k === x.g || k.startsWith(x.g + '.'))).forEach(x =>
+          WD.push('the engine copies or lists its words for "' + (x.g || 'all of them') + '" at engine/' + x.f + ':' + x.line + ', and a copy or a list holds only this world\'s own words, never the engine\'s laid beneath them'));
+        /* every word the engine keeps is a word it reads: by name, under a group or a prefix it reads by a key worked out in play,
+           or in a group it reads whole and hands on (the save warnings' words go to the warning that way) */
+        (W.defKeys.en || []).forEach(k => { const g = k.split('.')[0];
+          const whole = !!read[g] && !Object.keys(read).some(r => r.startsWith(g + '.'));
+          const byName = !!read[k], byGroup = k.includes('.') && (whole || comp.some(c => c.g === g)), byPrefix = comp.some(c => c.g === null && c.pre && k.startsWith(c.pre));
+          if (!byName && !byGroup && !byPrefix) WD.push('the engine keeps a word nobody reads: "' + k + '"'); });
+      }
+      const counts = {};
+      W.langs.forEach(L => { const mine = new Set(W.world[L]), eng = new Set(W.def[L]), c = counts[L] = { world: 0, engine: 0, for: 0, optional: 0, english: 0 }, none = [];
+        Object.keys(read).sort().forEach(k => { const open = at[k].filter(r => !r.guarded);
+          if (mine.has(k)) c.world++; else if (eng.has(k)) c.engine++; else if (forOf[k]) c.for++; else if (ENGLISH.has(k)) c.english++;
+          else if (OPTIONAL.has(k) && !open.length) c.optional++;
+          else if (open.length) none.push(k + ' (' + open.map(r => r.f + ':' + r.line).join(', ') + (OPTIONAL.has(k) ? ', read there without first asking whether it is there' : '') + ')'); });
+        if (none.length) WD.push('in ' + LN[L] + ' the engine asks for ' + none.length + ' word(s) this world does not name and the engine has none of its own for — a screen that shows one shows nothing, or throws: ' + none.join(', '));
+        /* a world that names some of a thing's words names all of them */
+        Object.entries(FOR).forEach(([th, ws]) => { const all = ws.split(' ').filter(w => read[w]), have = all.filter(w => mine.has(w));
+          if (have.length && have.length < all.length) WD.push('in ' + LN[L] + ' this world names words for ' + th + ' but not ' + all.filter(w => !mine.has(w)).join(', ')); }); });
+      WN.push('COUNT-ONLY: the engine reads ' + Object.keys(read).length + ' words off T() in ' + efiles.length + ' file(s) (' + Object.keys(forOf).length + ' listed for a thing a world may not have, ' + OPTIONAL.size + ' read only to decide whether to say anything, ' + ENGLISH.size + ' still said in English where they are read); ' +
+        W.langs.map(L => 'in ' + LN[L] + ' this world names ' + counts[L].world + ' and the engine ' + counts[L].engine + ' more').join('; '));
+
+      /* 2 · THE SCREENS */
+      const twice = {};   /* what a screen says, by language, to set Spanish beside English at the end */
+      const ticker = () => wp.evaluate(() => { const t = document.getElementById('ticker'), d = t && t.lastElementChild; return d ? d.textContent : null; });
+      const said = async (label, act, L, k, args) => { const e0 = wErr.length; await wp.evaluate(() => { const t = document.getElementById('ticker'); if (t) { t.textContent = ''; } tickerLines.length = 0; });
+        await wp.evaluate(act); await wp.waitForTimeout(60); const s = await ticker(), all = await wp.evaluate(() => tickerLines.join(' | '));
+        if (threw(e0)) WD.push('in ' + LN[L] + ', ' + label + ' threw "' + wErr[e0] + '"');
+        else if (s === null || !s.trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' says ' + (s === null ? 'nothing at all' : '"' + s + '"'));
+        else { (twice[label] = twice[label] || {})[L] = s; if (k) await holds(L, label, all, k, args); } };
+      const panel = async (label, open, ids, close, L, keys) => { const e0 = wErr.length; await wp.evaluate(open).catch(e => wErr.push(String(e.message)));
+        const got = await wp.evaluate(ids => ids.map(i => { const el = document.getElementById(i); return [i, el ? (el.placeholder !== undefined && el.tagName === 'INPUT' ? el.placeholder : el.textContent) : null]; }), ids);
+        if (threw(e0)) WD.push('in ' + LN[L] + ', opening ' + label + ' threw "' + wErr[e0] + '"');
+        got.forEach(([i, s]) => { if (s === null) return; if (!String(s).trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where its words go (#' + i + ')'); });
+        (twice[label] = twice[label] || {})[L] = got.map(x => x[1]).filter(x => x !== null).join(' | ');
+        for (const [i, s] of got) if (keys && keys[i] && s !== null) await holds(L, label + ' (#' + i + ')', s, keys[i]);
+        await wp.evaluate(close).catch(() => {}); };
+      /* a quest's card, opened beside the first person who holds one, and a call made on it: "open" makes the call that leaves
+         the quest open, so the next language has it too; "ok" makes the solid call */
+      const cardCall = async (L, want) => {
+        const q = await wp.evaluate(() => { for (const wid of Object.keys(WORLDS)) for (const n of WORLDS[wid].npcs) { if (pendingAt(n) === undefined) continue;
+          for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) { world = wid; const x = n.x + dx, y = n.y + dy; if (isSolid(x, y)) continue;
+            px = fx = x; py = fy = y; dir = d; moving = false; held = null; checkTalk(); document.getElementById('talk').click();
+            if (document.getElementById('card').hidden) return { who: shortName(n.npc), none: 'no card opened' };
+            return { who: shortName(n.npc), tag: document.getElementById('qtag').textContent, cdx: document.getElementById('cdxLb').textContent }; } }
+          return null; });
+        if (q && !q.none) (twice['the heading of ' + q.who + '\'s quest card'] = twice['the heading of ' + q.who + '\'s quest card'] || {})[L] = q.tag;
+        if (!q || q.none) { WN.push('COUNT-ONLY: in ' + LN[L] + ' nobody in this world has a quest left, so no ' + (want === 'ok' ? 'solid call was made' : 'quest card was read') + (q && q.none ? ' (' + q.who + ': ' + q.none + ')' : '')); return null; }
+        const e0 = wErr.length;
+        if (bad(q.tag) || !q.tag.trim()) WD.push('in ' + LN[L] + ', ' + q.who + '\'s quest card is headed "' + q.tag + '"');
+        await holds(L, q.who + '\'s quest card, at its head,', q.tag, 'quest'); await holds(L, q.who + '\'s quest card, over the box that says what the question is about,', q.cdx, 'codexLb');
+        if (bad(q.cdx) || !q.cdx.trim()) WD.push('in ' + LN[L] + ', ' + q.who + '\'s quest card shows ' + (q.cdx.trim() ? '"' + q.cdx + '"' : 'nothing') + ' over the box that says what the question is about');
+        /* the solid call may sit a question further on: a choice that leads on is taken until a question has one */
+        let c = null;
+        for (let step = 0; step < 5; step++) {
+          c = await wp.evaluate(want => { const ch = curQ.nodes[node].ch || [], ok = ch.find(c => c.out && c.out.r === 'ok'), on = ch.find(c => c.next && !c.out);
+            const pick = want === 'ok' ? ok : (ch.find(c => c.out && c.out.r !== 'ok') || ch[0]);
+            const c = pick || ch[0] || {}; return { node, okT: ok ? ok.t : null, onT: on ? on.t : null, pickT: c.t, pickR: c.out ? c.out.r : null }; }, want);
+          if (want !== 'ok' || c.okT || !c.onT) break;
+          await wp.evaluate(t => { const b = [...document.querySelectorAll('#choices button')].find(b => b.textContent === t); if (b) b.click(); }, c.onT);
+          await until(wp, n => node !== n && document.querySelector('#choices button:not([disabled])'), c.node, 3000); }
+        q.solid = want === 'ok' && !!c.okT;
+        await wp.evaluate(t => { const b = [...document.querySelectorAll('#choices button')].find(b => b.textContent === t) || document.querySelector('#choices button'); if (b) b.click(); }, c.pickT);
+        await until(wp, () => !document.getElementById('verdict').hidden, null, 2000);
+        const v = await wp.evaluate(() => ({ h: (document.querySelector('#verdict h2') || {}).textContent || '', next: document.getElementById('next').textContent }));
+        if (threw(e0)) WD.push('in ' + LN[L] + ', making a call on ' + q.who + '\'s quest threw "' + wErr[e0] + '"');
+        if (bad(v.h) || !v.h.trim()) WD.push('in ' + LN[L] + ', after a ' + (q.solid ? 'solid ' : '') + 'call on ' + q.who + '\'s quest the card says "' + v.h + '"');
+        else if (c.pickR) await holds(L, 'after a ' + (c.pickR === 'ok' ? 'solid ' : '') + 'call on ' + q.who + '\'s quest, the card\'s heading', v.h, c.pickR === 'ok' ? 'okH' : c.pickR === 'mid' ? 'midH' : 'badH');
+        if (bad(v.next) || !v.next.trim()) WD.push('in ' + LN[L] + ', the button that closes ' + q.who + '\'s quest card reads "' + v.next + '"');
+        await wp.evaluate(() => document.getElementById('next').click()); await until(wp, () => document.getElementById('card').hidden, null, 2000);
+        if (want === 'ok' && !q.solid) WN.push('COUNT-ONLY: in ' + LN[L] + ' ' + q.who + '\'s quest card had no solid call to make, so another was made');
+        return q; };
+      /* the Report tab: every line, and each call's verdict said by its label, never by its code name */
+      const reportRead = async L => { const e0 = wErr.length;
+        const r = await wp.evaluate(() => { document.getElementById('gear').click(); document.getElementById('openExp').click(); document.getElementById('exTabRep').click();
+          const v = document.getElementById('exArea').value; document.getElementById('exClose').click(); const Lb = T().repL || {};
+          return { v, n: dlog.length, rs: [...new Set(dlog.map(e => e.result))], head: '**' + Lb.verdict + ':** ', why: '**' + Lb.why + ':** ' + Lb.advanced, okw: Lb.ok,
+            reason: dlog.some(e => e.why || e.result === 'ok') }; }).catch(e => ({ threw: e.message }));
+        if (threw(e0) || r.threw) { WD.push('in ' + LN[L] + ', with ' + (r.n || 'a') + ' call(s) in the log, opening the Export panel\'s Report tab threw "' + (wErr[e0] || r.threw) + '"'); return null; }
+        if (!r.n) { WN.push('COUNT-ONLY: in ' + LN[L] + ' no call was in the log, so the Report tab was read empty'); return null; }
+        const v = r.v, sum = (v.split('\n').find(l => /^\*\*[^*].*\*\*$/.test(l)) || '');
+        if (bad(v)) WD.push('in ' + LN[L] + ', the Report tab with a call in the log says "' + v.split('\n').find(l => bad(l)) + '"');
+        if (!sum.replace(/\*/g, '').trim()) WD.push('in ' + LN[L] + ', the Report tab with a call in the log has no summary line');
+        const blank = v.split('\n').filter(l => /\*\*\s*:?\s*\*\*/.test(l) || /^#+\s*$/.test(l) || /^-\s*$/.test(l));
+        if (blank.length) WD.push('in ' + LN[L] + ', the Report tab has ' + blank.length + ' line(s) with nothing where a word goes: "' + blank[0] + '"');
+        const verdicts = v.split('\n').filter(l => l.startsWith(r.head)), coded = verdicts.filter(l => { const w = l.slice(r.head.length).replace(/( — \*|  \().*$/, '').trim(); return !w || r.rs.includes(w); });
+        if (coded.length) WD.push('in ' + LN[L] + ', the Report tab says a call\'s verdict by its code name: "' + coded[0] + '"');
+        if (!verdicts.length) WD.push('in ' + LN[L] + ', the Report tab with ' + r.n + ' call(s) in the log has no verdict line');
+        /* the words that a call was right and the quest goes on stand only under a solid call: never under a partly right one or a miss */
+        if (typeof r.okw === 'string' && r.okw.trim()) v.split('\n').forEach((l, i, ls) => { if (l.startsWith(r.head) && !l.slice(r.head.length).startsWith(r.okw) && ls[i + 1] === r.why)
+          WD.push('in ' + LN[L] + ', the Report tab says "' + r.why + '" under "' + l + '", a call that was not a solid one'); });
+        if (shipped) { const w = {}; for (const k of ['verdict', 'why', 'foot', 'ok', 'mid', 'bad']) w[k] = (await want(L, 'repL.' + k)).v;
+          /* the Why line is there wherever a call gave a reason, or was a solid one */
+          [['verdict', '**' + w.verdict + ':** '], r.reason ? ['why', '**' + w.why + ':** '] : null, ['foot', '*' + w.foot + '*']].filter(Boolean).forEach(([k, x]) => { if (w[k] && !v.includes(x)) WD.push('in ' + LN[L] + ', the Report tab never says ' + JSON.stringify(x.trim()) + ', where its word for ' + k + ' is "' + w[k] + '"'); });
+          r.rs.forEach(x => { const k = x === 'ok' || x === 'mid' ? x : 'bad'; if (w.verdict && w[k] && !v.includes('**' + w.verdict + ':** ' + w[k])) WD.push('in ' + LN[L] + ', the Report tab says no call\'s verdict as "' + w[k] + '", the word for a call logged as ' + x); }); }
+        return { sum: sum.replace(/\d+/g, '#'), rs: r.rs }; };   /* the words, not the counts: the log grows between the two languages */
+      await wp.click('.classes button[data-c="architect"]', { timeout: 4000 }).catch(() => wp.evaluate(() => document.querySelector('.classes button').click()));
+      await wp.evaluate(() => { const n = document.getElementById('heroname'); if (n && !n.value) n.value = 'Ana'; });
+      await wp.click('#begin', { timeout: 4000 }).catch(() => wp.evaluate(() => document.getElementById('begin').click()));
+      if (!await until(wp, () => !document.getElementById('world').hidden, null, 4000)) throw new Error('the game did not start from its creator');
+      await wp.evaluate(() => { wanderUpdate = function () {}; document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); });
+      /* the welcome the game says by itself a few seconds in is said before any screen is read, so it is never read as what a screen said */
+      await until(wp, () => !T().tut2 || tickerLines.includes(T().tut2), null, 6000);
+      /* each language's words put in place anew once the game has started, as new objects with new groups, the way a world that
+         builds its words late would: T() lays the engine's beneath them again, and every screen below reads the new ones */
+      await wp.evaluate(() => { const copy = o => { const n = {}; Object.keys(o).forEach(k => { const v = o[k]; n[k] = v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : v; }); return n; };
+        Object.keys(UI).forEach(L => { if (UI[L] && typeof UI[L] === 'object') UI[L] = copy(UI[L]); }); });
+      standSay(await wp.evaluate(() => window.__wordsStand()), ', once the words are put in place anew after the game has started');
+      await fileCheck(', once the words are put in place anew after the game has started');
+      const mapWords = {}, report = {}, saveNow = {};
+      /* saves failing and working again, in turn, as on a device out of room, and what the game says at each step: run here in
+         each language, and on the engine this branch grew from below, the same steps in the same order */
+      const saveRun = () => { const real = Storage.prototype.setItem; let failing = () => false;
+        Storage.prototype.setItem = function (k, v) { if (failing(k)) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); };
+        const said = f => { const t = document.getElementById('ticker'); if (t) t.textContent = ''; tickerLines.length = 0; try { f(); } catch (e) {} return tickerLines.join(' | '); }, out = {};
+        const fails = k => { storeToldAt = 0; failing = x => x === SK(k); }, works = () => { failing = () => false; };
+        try { storeBad = false;
+          fails('dlog'); out.log = said(() => mqStore(SK('dlog'), JSON.stringify(dlog))); works(); out.logThenSave = said(() => save());
+          fails('1'); out.warned = said(() => save()); works(); out.back = said(() => save());
+          fails('1'); out.warned2 = said(() => save()); out.room = said(() => mqStore(SK('room'), JSON.stringify({ v: 1, a: roomAns }), true)); works(); out.back2 = said(() => save());
+          fails('1'); out.warned3 = said(() => save()); works(); out.setting = said(() => mqStore(SK('theme'), themeName)); out.back3 = said(() => save());
+        } finally { Storage.prototype.setItem = real; }
+        return out; };
+      /* the door out of a home that is also the park, laid once: a one-room place beside home, a door into it on a free
+         tile of home and a door back, as a world built from a starter would have; where home is not the park, the park's own door */
+      const door = await wp.evaluate(() => {
+        if (!PL.park || !WORLDS[PL.park]) return { none: 'this world has no park' };
+        const w = WORLDS[PL.park], free = (x, y) => x > 0 && y > 0 && x < w.W - 1 && y < w.H - 1 && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(PL.park, x, y);
+        const D4 = [[1, 0, 'ArrowRight'], [-1, 0, 'ArrowLeft'], [0, 1, 'ArrowDown'], [0, -1, 'ArrowUp']];
+        if (PL.home === PL.park) {
+          for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++) for (const [dx, dy, key] of D4) {
+            if (!free(x, y) || !free(x + dx, y + dy)) continue;
+            const Y = 'probe-words-yard', rows = ['#####', '#...#', '#...#', '#####'];
+            WORLDS[Y] = { rows: rows.slice(), rows0: rows.slice(), grid: rows.map(r => r.split('')), npcs: [], W: 5, H: 4 };
+            Object.keys(UI).forEach(lg => { const t = UI[lg]; if (!t) return; t.locs = t.locs || {}; t.arrive = t.arrive || {}; t.locs[Y] = lg === 'es' ? 'el patio' : 'the yard'; t.arrive[Y] = ''; });
+            (PORTALSAT[PL.park] = PORTALSAT[PL.park] || {})[(x + dx) + ',' + (y + dy)] = { to: Y, x: 2, y: 1, dir: 'down' };
+            return { from: [x, y], key, laid: true }; }
+          return { none: 'home is the park and has no two free tiles side by side for a door' }; }
+        for (const d of portalsOf(PL.park)) for (const [dx, dy, key] of D4) { const x = d.x - dx, y = d.y - dy; if (free(x, y)) return { from: [x, y], key, laid: false }; }
+        return { none: 'the park has no door with a free tile beside it' }; });
+      for (const L of W.langs) {
+        await wp.evaluate(L => { document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
+        await fileCheck(', once ' + (L === 'es' ? 'Español' : 'English') + ' is picked in Settings');
+        /* the Talk button beside every person */
+        const talk = await wp.evaluate(() => { const out = [], keep = [world, px, py, dir];
+          for (const wid of Object.keys(WORLDS)) for (const n of WORLDS[wid].npcs) for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) {
+            world = wid; const x = n.x + dx, y = n.y + dy; if (isSolid(x, y)) continue;
+            px = fx = x; py = fy = y; dir = d; moving = false; held = null; checkTalk();
+            /* the button is for whoever the engine picks (the one faced, else one with a quest), not always the one stood beside */
+            const b = document.getElementById('talk'), who = talkPick(); out.push([who ? (shortName(who.npc) || who.npc) : '', b.hidden ? null : b.textContent]); break; }
+          [world, px, py, dir] = keep; fx = px; fy = py; checkTalk(); return out; });
+        if (!talk.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' nobody stands in this world, so no Talk button was read');
+        talk.forEach(([nm, s]) => { if (s !== null && (bad(s) || !s.includes(nm))) WD.push('in ' + LN[L] + ', beside ' + nm + ' the Talk button reads "' + s + '"'); });
+        for (const [nm, s] of talk) if (s !== null) await holds(L, 'beside ' + nm + ', the Talk button', s, 'talkPre');
+        /* the map's own words, while somebody still has something to say */
+        mapWords[L] = await wp.evaluate(() => { const b = document.getElementById('mapbtn'); if (!b) return null; b.click(); if (document.getElementById('mapov').hidden) return null;
+          const tx = i => { const e = document.getElementById(i); return e ? e.textContent : null; }, tog = document.getElementById('mapLegTog');
+          const o = { mapAny: tx('mapAny'), mapArrowName: tx('mapArrowName'), mapArrowState: tx('mapArrowState'), mapArrowHint: tx('mapArrowHint'), key: tog ? tog.getAttribute('aria-label') : null };
+          window.__arrowOn = (document.getElementById('mapArrow') || { getAttribute: () => null }).getAttribute('aria-checked') === 'true';
+          document.querySelectorAll('#mapLeg [data-kind]').forEach(r => { o['kind ' + r.dataset.kind] = r.textContent; });
+          document.getElementById('mapClose').click(); return o; });
+        if (mapWords[L]) Object.entries(mapWords[L]).forEach(([k, s]) => { if (s !== null && (!String(s).trim() || bad(s))) WD.push('in ' + LN[L] + ', the map shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where ' + k + ' goes'); });
+        if (mapWords[L]) { const m = mapWords[L], on = await wp.evaluate(() => window.__arrowOn);
+          await holds(L, 'the map\'s button for somewhere to go', m.mapAny, 'plan.any'); await holds(L, 'the switch for the map\'s arrow', m.mapArrowName, 'plan.arrow');
+          await holds(L, 'the state of the map\'s arrow', m.mapArrowState, on ? 'plan.arrowOn' : 'plan.arrowOff'); await holds(L, 'the line under the arrow\'s switch', m.mapArrowHint, 'plan.arrowHint');
+          await holds(L, 'the name of the map\'s key', m.key, 'plan.key');
+          for (const k of Object.keys(m).filter(k => k.startsWith('kind '))) await holds(L, 'the map\'s key, for ' + k.slice(5) + ',', m[k], 'plan.' + k.slice(5)); }
+        /* the line under the map, opened from each of this world's places in turn: where you stand, and what you can do */
+        { const e0 = wErr.length;
+          const notes = await wp.evaluate(() => { const out = [], keep = [world, px, py, dir], b = document.getElementById('mapbtn'); if (!b) return out;
+            for (const wid of Object.keys(WORLDS)) { const w = WORLDS[wid]; let at = null; if (wid === 'probe-words-yard') continue;   /* the place this check lays, not the world's */
+              for (let y = 1; y < w.H - 1 && !at; y++) for (let x = 1; x < w.W - 1 && !at; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !portalAt(wid, x, y)) at = [x, y];
+              if (!at) continue; world = wid; px = fx = at[0]; py = fy = at[1]; moving = false; held = null;
+              b.click(); if (document.getElementById('mapov').hidden) continue;
+              out.push([wid, (document.getElementById('mapNote') || {}).textContent || '']); document.getElementById('mapClose').click(); }
+            [world, px, py, dir] = keep; fx = px; fy = py; checkTalk(); return out; });
+          if (threw(e0)) WD.push('in ' + LN[L] + ', opening the map from each place in turn threw "' + wErr[e0] + '"');
+          if (!notes.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' no map opened, so the line under it was not read');
+          notes.forEach(([wid, s]) => { if (!s.trim() || bad(s) || s.split('  ·  ').some(p => !p.trim())) WD.push('in ' + LN[L] + ', opened from ' + wid + ' the line under the map reads "' + s + '"'); });
+          for (const [wid, s] of notes) await holds(L, 'opened from ' + wid + ', the line under the map', s, 'locs.' + wid); }
+        /* a quest's card, and a call made on it that leaves the quest open */
+        await cardCall(L, 'open');
+        /* the Report tab, with that call in the log */
+        { const r = await reportRead(L); if (r) report[L] = r.sum; }
+        /* the Trolley Pass: its panel, and the link it copies, opened on a device with nothing kept and on one with a game kept */
+        await panel('the Trolley Pass panel', () => { window.__copied = null; try { Object.defineProperty(navigator, 'clipboard', { value: { writeText: v => { window.__copied = v; return Promise.resolve(); } }, configurable: true }); } catch (e) {}
+          document.getElementById('gear').click(); document.getElementById('openTp').click(); document.getElementById('tpCopy').click(); },
+          ['tpTitle', 'tpNote', 'tpShare', 'tpCopy'], () => document.getElementById('tpClose').click(), L, { tpTitle: 'tpTitle', tpNote: 'tpNote', tpShare: 'tpShare', tpCopy: 'tpCopy' });
+        const url = await wp.evaluate(() => window.__copied);
+        if (!url) WD.push('in ' + LN[L] + ', pressing Copy link on the Trolley Pass panel copied nothing');
+        else for (const kept of [false, true]) {
+          const c2 = kept ? wctx : await browser.newContext({ viewport: { width: 390, height: 844 } });
+          if (!kept) await c2.addInitScript(([k, L]) => { try { localStorage.setItem(k, L); } catch (e) {} }, [W.key, L]);
+          const p2 = await c2.newPage(), e2 = []; p2.on('pageerror', e => e2.push(String(e.message).split('\n')[0]));
+          await p2.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+          await p2.goto(url); await boot(p2);
+          const card = await p2.evaluate(() => { const c = document.getElementById('tpFound'), r = c.getBoundingClientRect();
+            return { shown: !c.hidden && r.width > 0 && r.height > 0, text: c.innerText, blank: ['tpFoundLb', 'tpFoundTx', 'tpBoard', 'tpSkip'].filter(i => !(document.getElementById(i) || {}).textContent),
+              parts: Object.fromEntries(['tpFoundLb', 'tpBoard', 'tpSkip'].map(i => [i, (document.getElementById(i) || {}).textContent || null])) }; });
+          const how = 'a Trolley Pass link opened on a device with ' + (kept ? 'a game kept' : 'nothing kept');
+          if (e2.length) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + e2[0] + '"' + (card.shown ? '' : ', and no card showed'));
+          else if (!card.shown) WD.push('in ' + LN[L] + ', ' + how + ' shows no card');
+          else if (bad(card.text) || card.blank.length) WD.push('in ' + LN[L] + ', ' + how + ' shows "' + card.text.replace(/\s+/g, ' ').trim() + '"' + (card.blank.length ? ', with nothing where its words go (#' + card.blank.join(', #') + ')' : ''));
+          else { (report['pass' + kept] = report['pass' + kept] || {})[L] = card.text.replace(/\d+/g, '#');
+            for (const k of ['tpFoundLb', 'tpBoard', 'tpSkip']) await holds(L, how + ', the card it shows (#' + k + ')', card.parts[k], k); }
+          await p2.close(); if (!kept) await c2.close(); }
+        /* walking out of the park by a door */
+        if (door.none) WN.push('COUNT-ONLY: in ' + LN[L] + ' ' + door.none + ', so nobody walked out of one');
+        else { const e0 = wErr.length;
+          await wp.evaluate(d => { world = PL.park; px = fx = d.from[0]; py = fy = d.from[1]; moving = false; held = null; warpT = 0; portalT = 0; warpPend = null; portalHold = '';
+            document.getElementById('parkCard').hidden = true; if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }, door);
+          await wp.keyboard.down(door.key);
+          const out = await until(wp, () => world !== PL.park && !warpPend, null, 5000); await wp.keyboard.up(door.key); await wp.waitForTimeout(80);
+          const pk = await wp.evaluate(() => { const c = document.getElementById('parkCard'); return { shown: !c.hidden, text: c.innerText }; });
+          const how = (door.laid ? 'walking out of a home that is also the park, by a door' : 'walking out of the park by its door');
+          if (threw(e0)) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + wErr[e0] + '"');
+          else if (!out) WD.push('in ' + LN[L] + ', ' + how + ' never left the park in 5 s, so the card it brings was not read');
+          else if (!pk.shown) WD.push('in ' + LN[L] + ', ' + how + ' brings no card summing up the visit, where the park always brings one');
+          else if (bad(pk.text) || pk.text.split('\n').filter(l => l.trim()).length < 3) WD.push('in ' + LN[L] + ', ' + how + ', the card summing up the visit reads "' + pk.text.replace(/\s+/g, ' ').trim() + '"');
+          else { (twice['the card summing up a visit to the park'] = twice['the card summing up a visit to the park'] || {})[L] = pk.text.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+            for (const k of ['parkTitle', 'parkLove', 'parkClose']) await holds(L, how + ', the card summing up the visit', pk.text, k); }
+          await wp.evaluate(() => { document.getElementById('parkCard').hidden = true; world = PL.home; px = fx = PL.spawn[0]; py = fy = PL.spawn[1]; warpPend = null; checkTalk(); }); }
+        /* the rest of what the engine says for itself: Settings, every section heading it draws, its panels, and what they say back */
+        { const e0 = wErr.length;
+          const heads = await wp.evaluate(() => { document.getElementById('gear').click();
+            const o = [...document.querySelectorAll('#settings summary')].filter(s => !s.closest('[hidden]'))
+              .map(s => { const e = s.querySelector('[id]') || s; return [e.id || 'a section', s.textContent, (e.id || '').replace(/^drw/, '').replace(/Lb$/, '')]; });
+            document.getElementById('closeSet').click(); return o; });
+          if (threw(e0)) WD.push('in ' + LN[L] + ', opening Settings threw "' + wErr[e0] + '"');
+          heads.forEach(([i, s, code]) => { if (!s.trim() || bad(s)) WD.push('in ' + LN[L] + ', Settings heads a section with ' + (s.trim() ? '"' + s + '"' : 'nothing') + ' (#' + i + ')');
+            else if (code && s.trim() === code) WD.push('in ' + LN[L] + ', Settings heads a section with its code name, "' + s.trim() + '" (#' + i + ')'); });
+          if (!heads.length) WD.push('in ' + LN[L] + ', Settings draws no section heading at all');
+          (twice['Settings\' section headings'] = twice['Settings\' section headings'] || {})[L] = heads.map(x => x[1]).join(' | ');
+          for (const [i, s, code] of heads) if (code) await holds(L, 'Settings\' section heading (#' + i + ')', s, 'drw' + code); }
+        /* its themes, each by a name of its own: a button with no words on it, or two that read the same, is a red */
+        { const th = await wp.evaluate(() => { document.getElementById('gear').click();
+            const bs = [...document.querySelectorAll('#themeRow button,#thCustom')].filter(b => !b.closest('[hidden]'));
+            window.__themes = bs.map(b => [b.dataset.th || (b.id === 'thCustom' ? 'custom' : ''), b.textContent]);
+            const blank = [...document.querySelectorAll('#seasonRow button')].filter(b => !b.closest('[hidden]') && (!b.textContent.trim() || /undefined/.test(b.textContent))).map(b => 'the season ' + (b.dataset.sn || ''));
+            document.getElementById('closeSet').click(); window.__seasonBlank = blank; return bs.map(b => b.textContent); });
+          const sb = await wp.evaluate(() => window.__seasonBlank);
+          if (sb.length) WD.push('in ' + LN[L] + ', Settings has ' + sb.length + ' button(s) with no words on them (' + sb.join(', ') + ')');
+          th.forEach((s, i) => { if (!s.trim() || bad(s)) WD.push('in ' + LN[L] + ', Settings has a theme button reading ' + (s.trim() ? '"' + s + '"' : 'nothing'));
+            else { const nm = s.replace(/^[^\p{L}\p{N}]+/u, '').trim(), j = th.findIndex(x => x.replace(/^[^\p{L}\p{N}]+/u, '').trim() === nm);
+              if (j < i) WD.push('in ' + LN[L] + ', Settings names two themes "' + nm + '", so a player cannot tell them apart'); } });
+          (twice['Settings\' themes'] = twice['Settings\' themes'] || {})[L] = th.join(' | ');
+          for (const [k, x] of await wp.evaluate(() => window.__themes)) if (k) await holds(L, 'Settings\' button for the theme ' + k, x, 'themes.' + k); }
+        { const h = await wp.evaluate(() => document.getElementById('ctlHint').textContent); if (!h.trim() || bad(h)) WD.push('in ' + LN[L] + ', the line that says how to walk reads "' + h + '"'); }
+        await panel('the Multiplayer panel', () => { document.getElementById('gear').click(); document.getElementById('openMp').click(); }, ['mpTitle', 'mpNote'], () => document.getElementById('mpClose').click(), L, { mpTitle: 'mpTitle', mpNote: 'mpNote' });
+        await said('a text search that finds nothing', () => { document.getElementById('openLab').click(); document.getElementById('tlSearch').value = 'zq' + 'xw' + 'vq'; document.getElementById('tlFind').click(); document.getElementById('tlClose').click(); }, L, 'tlNoHit');
+        await said('switching admin mode on', () => { document.getElementById('admOn').click(); }, L, 'admToast');
+        await said('switching the hearts on', () => { document.getElementById('stkHearts').click(); }, L, 'stkToast', ['hearts']);
+        await said('switching the hearts off', () => { document.getElementById('stkNone').click(); }, L, 'stkToast', ['none']);
+        await panel('the theme editor', () => { document.getElementById('teOpen').click(); }, ['teName'], () => {}, L, { teName: 'teNamePh' });
+        /* a copy of a theme, made by pressing the theme editor's button for it as a player does (the theme in use where the row has
+           a button for it, else the row's first): a press that throws or makes no copy is a red, and so is a row with no button */
+        { const e0 = wErr.length;
+          const cp = await wp.evaluate(() => { const row = document.getElementById('teClone'); if (!row) return { none: 'row' }; if (PALS.length >= 8) return { none: 'full' };
+            const b = row.querySelector('button[data-cl="meridian"]') || row.querySelector('button'); if (!b) return { none: 'button' };
+            const th = document.querySelector('#themeRow button[data-th="' + (b.dataset.cl || 'meridian') + '"]'), n = PALS.length; b.click();
+            return { b: b.textContent, made: PALS.length > n, name: PALS.length > n ? PALS[PALS.length - 1].n : null, theme: th ? th.textContent : null }; });
+          await wp.waitForTimeout(60);
+          if (cp.none === 'row') WN.push('COUNT-ONLY: in ' + LN[L] + ' this shell\'s theme editor has no row of themes to copy, so no copy was made');
+          else if (cp.none === 'full') WN.push('COUNT-ONLY: in ' + LN[L] + ' the wardrobe of themes was full, so no copy was made');
+          else if (cp.none === 'button') WD.push('in ' + LN[L] + ', the theme editor\'s row of themes to copy has no button in it');
+          else { const t = threw(e0);
+            if (t) WD.push('in ' + LN[L] + ', pressing the theme editor\'s ' + cp.b + ' button, which copies a theme, threw "' + t + '"');
+            if (!cp.made) WD.push('in ' + LN[L] + ', pressing the theme editor\'s ' + cp.b + ' button, which copies a theme, made no copy');
+            else if (cp.theme !== null) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}\p{P}]+/u, '').trim();   /* its mark left off, its punctuation kept */
+              if (!nm || bad(cp.name) || nm !== th) WD.push('in ' + LN[L] + ', a copy of the theme Settings calls "' + cp.theme + '" is named "' + cp.name + '"'); } } }
+        await said('closing the theme editor', () => { document.getElementById('teClose').click(); }, L, 'teSaved');
+        await panel('the new-character card', () => { const w = CW(); for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++)
+          if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !(x === px && y === py) && !portalAt(world, x, y)) { window.__nm = [x, y]; npcAt(x, y); return; } },
+          ['nmTitle', 'nmLb', 'nmOk', 'nmCancel'], () => {}, L, { nmTitle: 'nmTitle', nmLb: 'nmLb', nmOk: 'nmOk', nmCancel: 'nmCancel' });
+        await said('making the new character', () => { document.getElementById('nmName').value = 'Pim' + (lang === 'es' ? 'a' : 'o'); document.getElementById('nmOk').click(); }, L, 'npcMade', [L === 'es' ? 'Pima' : 'Pimo']);
+        await said('a word from the new character', () => { const [x, y] = window.__nm || [0, 0], k = (CW().npcs.find(n => n.x === x && n.y === y) || {}).npc; if (!k) return;
+          for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) if (!isSolid(x + dx, y + dy)) { px = fx = x + dx; py = fy = y + dy; dir = d; break; }
+          checkTalk(); document.getElementById('talk').click(); }, L);
+        await wp.evaluate(() => { document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); document.getElementById('admOff').click(); });
+        /* saves that fail and work again, in turn: the warning held to its word here, and every step kept to set beside the
+           engine this branch grew from, below */
+        { const e0 = wErr.length; saveNow[L] = await wp.evaluate(saveRun).catch(e => { wErr.push(String(e.message).split('\n')[0]); return null; });
+          if (threw(e0)) WD.push('in ' + LN[L] + ', saves failing and working again in turn threw "' + wErr[e0] + '"');
+          const warn = saveNow[L] ? saveNow[L].warned : '';
+          if (!warn.trim() || bad(warn)) WD.push('in ' + LN[L] + ', a save that fails because the device is out of room says ' + (warn.trim() ? '"' + warn + '"' : 'nothing'));
+          else { (twice['a save that fails because the device is out of room'] = twice['a save that fails because the device is out of room'] || {})[L] = warn;
+            await holds(L, 'a save that fails because the device is out of room', warn, 'save.full'); } }
+        await fileCheck(', after the screens above were opened in ' + LN[L]);
+      }
+      /* THE SAVE LINES, SET BESIDE THE ENGINE THIS BRANCH GREW FROM. The line for a save that works again is a world's own
+         (save.back) or none: the engine keeps none of its own, so a world that names none says nothing when a save works again,
+         after only the play log failed or after a warning, as it always has. And at every step the game says what the engine
+         this branch grew from says there: every file of engine/ at the commit this branch grew from (git merge-base with
+         origin/main), read from git the way the check of a returning player's edge arrow reads it, and this same shell opened
+         on it in a context of its own, in the same run. A warning is set beside it only where this world's own words file
+         names the warning; where it names none the engine's own stands in, in the player's language, which is this change,
+         and the warning is held to that word above */
+      { const STEP = { log: 'when only the play log cannot be kept', logThenSave: 'when only the play log could not be kept and a save then works',
+          warned: 'when a save fails because the device is out of room', back: 'when a save that failed, and was warned of, works again',
+          warned2: 'when the save fails again', room: 'when the room\'s answers are kept while the save still fails', back2: 'when the save works again after the room\'s answers were kept',
+          warned3: 'when the save fails once more', setting: 'when a setting is kept after the save failed', back3: 'when the save works again after a setting was kept' };
+        const q = s => s ? '"' + s + '"' : 'nothing', files = {}; let at = null;
+        try { const { execFileSync } = require('child_process'), git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+          at = git('merge-base', 'origin/main', 'HEAD').trim().slice(0, 40);
+          git('ls-tree', '--name-only', at, 'engine/').split('\n').filter(f => /\.js$/.test(f)).forEach(f => { files[f] = git('show', at + ':' + f); }); } catch (e) { at = null; }
+        if (!at || !Object.keys(files).length) WD.push('the engine this branch grew from cannot be read here (no git, or no origin/main), so what the game says when a save fails and works again was not set beside what it said before — that is not a pass');
+        else if (W.langs.some(L => saveNow[L])) {
+          const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } }), bp = await bctx.newPage(), bErr = [], eng = require('url').pathToFileURL(path.join(root, 'engine')).href + '/';
+          bp.on('pageerror', e => bErr.push(String(e.message).split('\n')[0]));
+          await bp.route('**', r => { const u = r.request().url();
+            if (u.startsWith(eng)) { const f = 'engine/' + decodeURIComponent(u.slice(eng.length).split(/[?#]/)[0]);
+              return files[f] === undefined ? r.fulfill({ status: 404, body: '' }) : r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: files[f] }); }
+            return u.startsWith('file://') ? r.continue() : r.abort(); });
+          try { await bp.goto('file://' + file); await boot(bp);
+            for (const L of W.langs) { const now = saveNow[L]; if (!now) continue; const b0 = bErr.length;
+              await bp.evaluate(L => { document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
+              const then = await bp.evaluate(saveRun);
+              if (bErr.length > b0) { WD.push('in ' + LN[L] + ', the engine this branch grew from (' + at.slice(0, 7) + ') threw "' + bErr[b0] + '" while saves failed and worked again, so what this one says there was not set beside it'); continue; }
+              const ownWarn = shipped && shipped[L] ? ownIn(shipped[L], 'save.full') : W.world[L].includes('save.full');   /* as the world's words file names it */
+              Object.keys(STEP).forEach(k => { if (/^warned/.test(k) && !ownWarn) return;
+                if (now[k] !== then[k]) WD.push('in ' + LN[L] + ', ' + STEP[k] + ', the game says ' + q(now[k]) + ', where the engine this branch grew from (' + at.slice(0, 7) + ') says ' + q(then[k])); }); } }
+          catch (e) { WD.push('this shell did not open on the engine this branch grew from (' + at.slice(0, 7) + '), so what the game says when a save fails and works again was not set beside it: ' + String(e && e.message || e).split('\n')[0]); }
+          await bctx.close(); } }
+      /* a solid call, in the last language, then the Report tab again in each language: its verdicts read for every kind of call */
+      { const L = W.langs[W.langs.length - 1];
+        if (L) { await cardCall(L, 'ok'); await wp.waitForTimeout(80);
+          for (const L2 of W.langs) { await wp.evaluate(L => { document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L2);
+            const r = await reportRead(L2); if (r) { report[L2] = r.sum; if (!r.rs.includes('ok')) WN.push('COUNT-ONLY: in ' + LN[L2] + ' no solid call was in the log, so the Report\'s word for one was not read'); } } } }
+      /* words the engine cannot lay its own beneath (a language's words frozen, say): where the engine keeps a stand-in for a read,
+         as it does for the map's own words, the stand-in speaks the player's language, so the map reads as it does otherwise */
+      if (W.langs.includes('es') && mapWords.es) { const e0 = wErr.length;
+        const fz = await wp.evaluate(() => { const keep = UI.es, own = {}; Object.keys(keep).forEach(k => { own[k] = keep[k]; }); const was = lang;
+          document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); UI.es = Object.freeze(own); lang = 'es'; let o = null;
+          try { const b = document.getElementById('mapbtn'); if (b) { b.click(); if (!document.getElementById('mapov').hidden) { const tx = i => { const e = document.getElementById(i); return e ? e.textContent : null; }, tog = document.getElementById('mapLegTog');
+            o = { mapAny: tx('mapAny'), mapArrowName: tx('mapArrowName'), mapArrowState: tx('mapArrowState'), mapArrowHint: tx('mapArrowHint'), key: tog ? tog.getAttribute('aria-label') : null }; document.getElementById('mapClose').click(); } } }
+          finally { UI.es = keep; lang = was; T(); }
+          return o; });
+        /* and the game's own log says so, so a builder whose world comes out with its words missing has something to go on */
+        if (!(await wp.evaluate(() => mqLog.some(e => e.kind === 'words')))) WD.push('in Spanish, with words the engine cannot lay its own beneath, nothing in the game\'s own log says so, so a builder whose world shows nothing where a word goes has nothing to go on');
+        if (threw(e0)) WD.push('in Spanish, with words the engine cannot lay its own beneath, opening the map threw "' + wErr[e0] + '"');
+        else if (fz) Object.keys(fz).forEach(k => { if (fz[k] !== null && mapWords.es[k] !== undefined && fz[k] !== mapWords.es[k]) WD.push('in Spanish, with words the engine cannot lay its own beneath, the map says "' + fz[k] + '" where ' + k + ' goes, where it says "' + mapWords.es[k] + '" otherwise'); }); }
+      /* starting over, last, since it wipes the game: Settings' button asks to be pressed again, then the game says it has started over */
+      for (const L of W.langs) { const e0 = wErr.length;
+        const so = await wp.evaluate(L => { document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); document.getElementById(L === 'es' ? 'optEs' : 'optEn').click();
+          const b = document.getElementById('replay'); if (!b) return null; document.getElementById('gear').click(); b.click(); const arm = b.textContent;
+          const t = document.getElementById('ticker'); if (t) t.textContent = ''; tickerLines.length = 0; b.click(); return { arm, said: tickerLines[tickerLines.length - 1] || '' }; }, L);
+        if (!so) { WN.push('COUNT-ONLY: in ' + LN[L] + ' this world has no start-over button, so starting over was not read'); continue; }
+        if (threw(e0)) WD.push('in ' + LN[L] + ', starting over threw "' + wErr[e0] + '"');
+        else if (!so.said.trim() || bad(so.said)) WD.push('in ' + LN[L] + ', starting over says ' + (so.said.trim() ? '"' + so.said + '"' : 'nothing'));
+        else { (twice['starting over'] = twice['starting over'] || {})[L] = so.said; await holds(L, 'starting over', so.said, 'replayToast', ['Ana']); }
+        if (!so.arm.trim() || bad(so.arm)) WD.push('in ' + LN[L] + ', the start-over button, pressed once, reads "' + so.arm + '"');
+        else { (twice['the start-over button, pressed once'] = twice['the start-over button, pressed once'] || {})[L] = so.arm; await holds(L, 'the start-over button, pressed once', so.arm, 'replayArm'); } }
+      /* the engine's words in this world's language: what each screen read here says in Spanish is not what it says in English */
+      if (W.langs.length === 2) {
+        Object.entries(twice).forEach(([what, by]) => { if (by.en && by.es && by.en === by.es) WD.push('in Spanish ' + what + ' says what it says in English: "' + by.es.slice(0, 160) + '"'); });
+        if (mapWords.en && mapWords.es) Object.keys(mapWords.es).forEach(k => { const s = mapWords.es[k]; if (s && s === mapWords.en[k]) WD.push('in Spanish the map still says "' + s + '" where ' + k + ' goes, as it does in English'); });
+        if (report.en && report.es && report.en === report.es) WD.push('in Spanish the Report tab\'s summary is the English one: "' + report.es + '"');
+        [false, true].forEach(k => { const R = report['pass' + k]; if (R && R.en && R.es && R.en === R.es) WD.push('in Spanish a Trolley Pass link\'s card is the English one: "' + R.es.replace(/\s+/g, ' ').trim() + '"'); });
+      }
+    } catch (e) { WD.push('the check could not drive the game to the end, so it measured nothing past: ' + String(e && e.message || e).split('\n')[0]); }
+    { const un = wErr.filter((_, i) => !errNamed.has(i));
+      if (un.length) WD.push('the page threw ' + un.length + ' time(s) where no step above says it did, first "' + un[0] + '"'); }
+    await wctx.close();
+    fails.push(...new Set(WN), ...new Set(WD.map(m => 'the engine\'s own words: ' + m)));   /* a sentence once, however often a screen was read */
   }
 
   await page.setViewportSize({ width: 480, height: 900 });
