@@ -606,8 +606,8 @@ helper, and the person who hits it will be reading their content files, not `san
   every world that writes none, is built exactly as before. `cb` collides with nothing already here.
 - **Registered 2026-11-10 — `OUTFITTAKE`, the outfits a world turns on, and the outfit word `apron`.** A list of outfit
   words, `const OUTFITTAKE=["apron"];`, in a pack file the page loads before `engine/boot.js`. Read once, as the engine
-  loads, as `CAMERAS` is: a list declared in a file loaded after `engine/boot.js` is never seen, and it is the world's own
-  `const`, read by its bare name, never a property of `window`. Rule 2 passes: every word is a garment's, in a game about
+  loads, as `CAMERAS` is: a list declared in a file loaded after `engine/boot.js` is never seen, and nothing says so; and it is the world's own
+  `const`, read by its bare name (a `const` is never a property of `window`). Rule 2 passes: every word is a garment's, in a game about
   anything with people in it. The outfit words the engine draws: `formal` for every world (darker trousers, a collar and a
   tie); `apron` on request, only in a world whose list names it (a strap round the neck, a bib, a skirt over the top of the
   legs, and a waistband whose tapes go round and are tied at the back); every other word, the everyday clothes. **Saying

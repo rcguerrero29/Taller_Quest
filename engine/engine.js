@@ -4486,7 +4486,7 @@ function outfitAudit(){if(typeof OUTFITTAKE==="undefined")return [];
    waistband whose tapes go round the body and are tied in a bow at the back; and a strap from the bib's top corners up round
    the back of the neck. Drawn the strap first, so the bib covers where it is sewn on, then the skirt and the bib, and the
    band last, across the join; the head, drawn after, covers where the strap goes round. It is tied on over the clothes, so it comes
-   after the shirt and before the arms, which hang over the tapes at the sides. From behind (facing up) the bib and the skirt
+   after the shirt and before the arms, which swing beside it as he walks. From behind (facing up) the bib and the skirt
    are on the far side: what shows is the band across the back and the bow. Light cloth, so it reads against every shirt
    the creator offers and over the dark trousers at a phone's size, with the side away from the light a shade darker and
    the chin's shadow across the top of the bib; all of it inside the 3D camera's card, so nothing is cut off there. Named for

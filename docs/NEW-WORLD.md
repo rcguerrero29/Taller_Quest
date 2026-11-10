@@ -688,7 +688,7 @@ else in `BUILDER` is read, and the engine says so at boot if you write anything 
 
 **One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file
-loaded after `engine/boot.js` is never seen. It is a list, not a word: `"apron"` on its own, `["Apron"]`
+loaded after `engine/boot.js` is never seen, and nothing says so. It is a list, not a word: `"apron"` on its own, `["Apron"]`
 in capitals or an object turns nothing on, and the engine says so once at boot, in one line of the browser's console:
 `CRIT outfit: OUTFITTAKE is "apron", not a list of outfit words such as ["apron"], so this world turns no outfit on`,
 or `CRIT outfit: OUTFITTAKE names "Apron": not an outfit this engine draws (casual, formal, apron), so nothing is turned on for it`.
