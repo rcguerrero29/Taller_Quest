@@ -12087,7 +12087,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          and names a word the engine also keeps as the same kind of thing (a sentence, a list, a group of words, or a
          function the engine calls). The engine's own words: both languages, the same kind in each and the kind the engine
          reads them as, every one read by the engine, kept once, never copied or listed, and never in front of a word this
-         world names.
+         world names: the game gives each word as the world's words file says it, after boot, after the words are put in
+         place anew, after each language is picked, and after the screens are opened.
          Where this world names none of a word, the engine's own in the player's language stands in, and the engine's Spanish
          is never its English, but for the Talk button's mark, which reads the same in both.
      2 · THE SCREENS, in each language this world has, read as a person reads them (no "undefined", nothing blank where
@@ -12365,7 +12366,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const base = v => Array.isArray(v) ? 'list' : typeof v === 'function' ? 'function' : v && typeof v === 'object' ? 'group' : typeof v;
         const flat = d => Object.keys(d).reduce((a, k) => a.concat(d[k] && typeof d[k] === 'object' && !Array.isArray(d[k]) ? Object.keys(d[k]).map(w => k + '.' + w) : [k]), []);
         const show = v => v === undefined ? 'nothing' : typeof v === 'function' ? 'a function' : JSON.stringify(v);
-        const out = { langs, hasDef: !!D, key: SK('lang'), world: {}, def: {}, defKeys: {}, shape: {}, kinds: [], calls: [], sameAsEn: [], first: [] };
+        const out = { langs, hasDef: !!D, key: SK('lang'), world: {}, def: {}, defKeys: {}, shape: {}, kinds: [], calls: [], sameAsEn: [] };
         langs.forEach(L => { out.world[L] = ks.filter(k => names(UI[L], k)); out.def[L] = D && D[L] ? ks.filter(k => names(D[L], k)) : [];
           const d = D && D[L]; out.defKeys[L] = d ? flat(d) : [];
           out.shape[L] = {}; if (d) out.defKeys[L].forEach(k => { out.shape[L][k] = kind(val(d, k)); });
@@ -12378,12 +12379,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
              of words where it reads words under it — the world's own word and the engine's alike */
           called.forEach(k => { [['this world', UI[L]], ['the engine', d]].forEach(([who, o]) => { if (o && names(o, k) && typeof val(o, k) !== 'function' && !out.kinds.some(x => x[0] === L && x[1] === k)) out.calls.push([L, who, k, base(val(o, k)), 'a function']); }); });
           groups.forEach(g => { [['this world', UI[L]], ['the engine', d]].forEach(([who, o]) => { if (o && names(o, g) && base(o[g]) !== 'group' && !out.kinds.some(x => x[0] === L && x[1] === g)) out.calls.push([L, who, g, base(o[g]), 'a group of words']); }); });
-          /* a world's own word comes first: T() gives this world's word for every word it names that the engine also names */
-          if (d) { const keep = lang; lang = L; const t = T();
-            out.defKeys[L].forEach(k => { const p = k.split('.'); if (!names(UI[L], k)) return;
-              const mine = p.length > 1 ? UI[L][p[0]][p[1]] : UI[L][k], got = p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k];
-              if (got !== mine) out.first.push(L + ' ' + k); });
-            lang = keep; T(); }
           });
         /* and where it names none, the engine's own word in the player's language stands in, read again after the words are put in place anew */
         window.__wordsStand = () => { const off = [];
@@ -12408,23 +12403,29 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           o.slice(0, 4).map(([, k, got, want]) => '"' + k + '" gives ' + got + ', where the engine\'s own is ' + want).join('; ') + (o.length > 4 ? '; and ' + (o.length - 4) + ' more' : '')); });
       standSay(W.stand, '');
       W.sameAsEn.forEach(([k, s]) => WD.push('the engine\'s Spanish for "' + k + '" is its English, ' + JSON.stringify(s) + ', so a Spanish player of a world that names none reads English there'));
-      /* a world's own word comes first, read against the world's own words file as it ships, so nothing the page wrote over the
-         world's words can stand in for them: every word the engine also keeps must reach the screen as the file says it */
-      const shipped = (() => { try { const h = fs.readFileSync(file, 'utf8'), m = /<script src="([^"]*strings\.js)"><\/script>/.exec(h); if (!m) return null;
+      /* A WORLD'S OWN WORD COMES FIRST, held against the world's own words file as it ships: the file the page itself loaded
+         (whatever else its script tag says), read outside the page, so nothing the page wrote over the world's words can stand
+         in for them. Every word the engine also keeps reaches the game as the file says it, after boot, after the words are put
+         in place anew, after each language is picked, and after that language's screens were opened. */
+      const wordsAt = await wp.evaluate(() => [...document.scripts].map(s => s.src).filter(u => /strings\.js([?#]|$)/.test(u)));
+      const shipped = (() => { if (wordsAt.length !== 1) return null; try { const f = decodeURIComponent(new URL(wordsAt[0]).pathname);
         const vm = require('vm'), box = { console, art: () => null, logKind: () => [], logCrit: () => [] }; vm.createContext(box);
-        vm.runInContext(fs.readFileSync(path.resolve(path.dirname(file), m[1]), 'utf8') + '\n;this.__UI = UI;', box); return box.__UI; } catch (e) { return null; } })();
+        vm.runInContext(fs.readFileSync(f, 'utf8') + '\n;this.__UI = UI;', box); return box.__UI; } catch (e) { return null; } })();
       const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
-      if (!shipped) WN.push('COUNT-ONLY: this shell\'s words file could not be read outside the page, so a world\'s own word was checked against the page alone');
-      else if (W.hasDef) for (const L of W.langs) {
-        const ks = [...new Set((W.defKeys.en || []).concat(W.defKeys.es || []))].filter(k => { const p = k.split('.'), o = shipped[L];
-          return !!o && (p.length === 1 ? Object.prototype.hasOwnProperty.call(o, k) : !!o[p[0]] && Object.prototype.hasOwnProperty.call(o[p[0]], p[1])); });
-        const got = await wp.evaluate(([L, ks]) => { const keep = lang; lang = L; const t = T(), out = {};
-          const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
-          ks.forEach(k => { const p = k.split('.'); out[k] = sig(p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k]); }); lang = keep; T(); return out; }, [L, ks]);
-        ks.forEach(k => { const p = k.split('.'), want = sig(p.length > 1 ? shipped[L][p[0]][p[1]] : shipped[L][k]);
-          if (got[k] !== want) WD.push('in ' + LN[L] + ' the game gives ' + String(got[k]).slice(0, 60) + ' for "' + k + '", where this world\'s own words say ' + want.slice(0, 60)); });
-        if (!ks.length && L === W.langs[0]) WN.push('COUNT-ONLY: this world names none of the engine\'s own words, so none of them could stand in front of one'); }
-      W.first.forEach(x => WD.push('in ' + LN[x.split(' ')[0]] + ' the engine\'s word for "' + x.split(' ')[1] + '" stands in front of the word this world names for it'));
+      if (!wordsAt.length) WN.push('COUNT-ONLY: this shell loads no words file of its own (no strings.js), so a world\'s own word was checked against the page alone');
+      else if (!shipped) WD.push('this shell loads its words from ' + wordsAt.map(u => path.relative(root, decodeURIComponent(new URL(u).pathname))).join(' and ') + ', and the check could not read ' + (wordsAt.length > 1 ? 'which one is the world\'s' : 'it') + ' outside the page, so nothing here can tell this world\'s own words from the engine\'s');
+      const ownIn = (o, k) => { const p = k.split('.'); return !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, p[0]) && (p.length === 1 || (!!o[p[0]] && typeof o[p[0]] === 'object' && Object.prototype.hasOwnProperty.call(o[p[0]], p[1]))); };
+      const fileVal = (L, k) => { const p = k.split('.'); return p.length > 1 ? shipped[L][p[0]][p[1]] : shipped[L][k]; };
+      const fileCheck = async when => { if (!shipped || !W.hasDef) return 0; let n = 0;
+        for (const L of W.langs) { const ks = [...new Set((W.defKeys.en || []).concat(W.defKeys.es || []))].filter(k => ownIn(shipped[L], k)); n += ks.length; if (!ks.length) continue;
+          const got = await wp.evaluate(([L, ks]) => { const keep = lang; lang = L; const t = T(), out = {};
+            const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
+            ks.forEach(k => { const p = k.split('.'); out[k] = sig(p.length > 1 ? (t[p[0]] || {})[p[1]] : t[k]); }); lang = keep; T(); return out; }, [L, ks]);
+          const off = ks.filter(k => got[k] !== sig(fileVal(L, k)));
+          if (off.length) WD.push('in ' + LN[L] + when + ', the game gives another word than this world\'s own words file for ' + off.length + ' word(s) the engine also keeps: ' +
+            off.slice(0, 3).map(k => '"' + k + '" is ' + String(got[k]).slice(0, 60) + ', where the file says ' + sig(fileVal(L, k)).slice(0, 60)).join('; ') + (off.length > 3 ? '; and ' + (off.length - 3) + ' more' : '')); }
+        return n; };
+      if (!(await fileCheck('')) && shipped) WN.push('COUNT-ONLY: this world names none of the engine\'s own words, so none of them could stand in front of one');
       if (W.hasDef) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
           (W.defKeys[L] || []).forEach(k => { if (!(W.defKeys[O] || []).includes(k)) WD.push('the engine keeps "' + k + '" in ' + LN[L] + ' and not in ' + LN[O]);
@@ -12532,6 +12533,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       await wp.evaluate(() => { const copy = o => { const n = {}; Object.keys(o).forEach(k => { const v = o[k]; n[k] = v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : v; }); return n; };
         Object.keys(UI).forEach(L => { if (UI[L] && typeof UI[L] === 'object') UI[L] = copy(UI[L]); }); });
       standSay(await wp.evaluate(() => window.__wordsStand()), ', once the words are put in place anew after the game has started');
+      await fileCheck(', once the words are put in place anew after the game has started');
       const mapWords = {}, report = {}, back = {};
       /* the door out of a home that is also the park, laid once: a one-room place beside home, a door into it on a free
          tile of home and a door back, as a world built from a starter would have; where home is not the park, the park's own door */
@@ -12552,6 +12554,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         return { none: 'the park has no door with a free tile beside it' }; });
       for (const L of W.langs) {
         await wp.evaluate(L => { document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
+        await fileCheck(', once ' + (L === 'es' ? 'Español' : 'English') + ' is picked in Settings');
         /* the Talk button beside every person */
         const talk = await wp.evaluate(() => { const out = [], keep = [world, px, py, dir];
           for (const wid of Object.keys(WORLDS)) for (const n of WORLDS[wid].npcs) for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) {
@@ -12681,6 +12684,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!sv.ok.trim() || bad(sv.ok)) WD.push('in ' + LN[L] + ', a save that works again after one that failed says ' + (sv.ok.trim() ? '"' + sv.ok + '"' : 'nothing') + ', so the warning is the last word the player has');
           else back[L] = sv.ok;
           }
+        await fileCheck(', after the screens above were opened in ' + LN[L]);
       }
       /* a solid call, in the last language, then the Report tab again in each language: its verdicts read for every kind of call */
       { const L = W.langs[W.langs.length - 1];
