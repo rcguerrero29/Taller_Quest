@@ -4350,7 +4350,9 @@ const CANDIDATES = [
        and not the same words in the two languages. The shared suite asks the map to show them where they are named
        (test/engine.smoke.js, 16). Red on mq-v251, which had no such line. */
     {
-      const w = await page.evaluate(() => ['en', 'es'].map(L => { const pl = ((typeof UI !== 'undefined' && UI[L]) || {}).plan || {}; return { L, hint: pl.arrowHint, name: pl.arrow }; }));
+      /* Meridian's own words, never the engine's laid beneath them, which would answer for a line Meridian dropped */
+      const w = await page.evaluate(() => ['en', 'es'].map(L => { const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
+        const pl = own(own(typeof UI !== 'undefined' ? UI : null, L), 'plan'); return { L, hint: own(pl, 'arrowHint'), name: own(pl, 'arrow') }; }));
       w.forEach(({ L, hint, name }) => { const inL = L === 'es' ? 'in Spanish' : 'in English';
         if (typeof hint !== 'string' || !hint.trim()) fails.push('Meridian names no words ' + inL + ' for the line under the edge arrow\'s switch that says it shows only once you have a destination, so a player ' + inL + ' gets the engine\'s own');
         else if (hint === name) fails.push('Meridian\'s line under the edge arrow\'s switch ' + inL + ' is the switch\'s own name, “' + hint + '”'); });
