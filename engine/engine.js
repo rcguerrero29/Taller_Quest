@@ -4481,7 +4481,7 @@ function outfitAudit(){if(typeof OUTFITTAKE==="undefined")return [];
   if(!Array.isArray(OUTFITTAKE))return ["OUTFITTAKE is "+say(OUTFITTAKE)+", not a list of outfit words such as [\"apron\"], so this world turns no outfit on"];
   const bad=OUTFITTAKE.filter(o=>!draws.includes(o));
   return bad.length?["OUTFITTAKE names "+bad.slice(0,3).map(say).join(", ")+(bad.length>3?" and more":"")+": "+(bad.length>1?"not outfits":"not an outfit")+" this engine draws ("+draws.join(", ")+"), so nothing is turned on for "+(bad.length>1?"them":"it")]:[];}
-/* THE APRON, drawn the way it is made and put on (.claude/skills/how-its-made): a bib over the chest and a skirt that hangs
+/* THE APRON A PERSON WEARS, drawn the way it is made and put on (.claude/skills/how-its-made): a bib over the chest and a skirt that hangs
    from the waist over the top of the legs, each cut and hemmed (the darker edge is the sprite's own line), sewn to a
    waistband whose tapes go round the body and are tied in a bow at the back; and a strap from the bib's top corners up round
    the back of the neck. Drawn the strap first, so the bib covers where it is sewn on, then the skirt and the bib, and the

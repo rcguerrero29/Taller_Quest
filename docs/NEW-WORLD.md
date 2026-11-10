@@ -686,10 +686,13 @@ stays exactly where he stood, and nothing about a flight is ever saved. It is a 
 is off until a pack asks for it, and Meridian does not. `name:{en:"…",es:"…"}` renames it; nothing
 else in `BUILDER` is read, and the engine says so at boot if you write anything else.
 
-**One line turns on the apron** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
+**One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file
 loaded after `engine/boot.js` is never seen. It is a list, not a word: `"apron"` on its own, `["Apron"]`
-in capitals or an object turns nothing on, and the engine says so once at boot in the game's log. Then
+in capitals or an object turns nothing on, and the engine says so once at boot, in one line of the browser's console:
+`CRIT outfit: OUTFITTAKE is "apron", not a list of outfit words such as ["apron"], so this world turns no outfit on`,
+or `CRIT outfit: OUTFITTAKE names "Apron": not an outfit this engine draws (casual, formal, apron), so nothing is turned on for it`.
+The same line is kept in the game's log, of kind `outfit`. Read your console the first time. Then
 offer the word in your creator's outfits in each language, `outfits:[["casual","None"],["apron","Apron"]]`:
 None is the everyday clothes, and Apron puts an apron on the person, in the creator's preview and in
 every camera. A world that says nothing draws every outfit word but `formal` as the everyday clothes,

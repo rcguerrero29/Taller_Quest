@@ -65,7 +65,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `moveTo` `remove` `paint` `paintAll` `compact`), with `gaps` (sprint 5) — registered below |
 | Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store` `gaps` `things` `keep`; a place's `kind` `row` `col` `name` `full` `finish` `id`; a thing's `id` `n` `name` `parts` `stand` `pic`; **closed**: any other key refuses the layout whole, and a thing off its list is refused whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
-| Outfit | a look's `outfit`; pack `OUTFITTAKE`; `engine/engine.js`, grep `THE OUTFITS A WORLD TURNS ON` | `formal` for every world · `apron` on request, only where the world's `OUTFITTAKE` names it · every other word the everyday clothes; a list written wrong turns nothing on and is a line in the log — registered below |
+| Outfit | a look's `outfit`; pack `OUTFITTAKE`; `engine/engine.js`, grep `THE OUTFITS A WORLD TURNS ON` | `formal` for every world · `apron` on request, only where the world's `OUTFITTAKE` names it · every other word the everyday clothes; a list written wrong turns nothing on and is told once at boot, `CRIT outfit: …` in the console — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -367,6 +367,7 @@ helper, and the person who hits it will be reading their content files, not `san
 | walkability | **three overlapping tags** — `SOLID`, `stand`, `standsUp`, plus `kind:"door"` duplicating `DOORSET` | `engine.js:1359–1360`, `:4882` |
 | `wall` | **two scopes**: the tile `kind` (never a facade) and a swag's `mount` (the face of any upright solid, `wall` or `facade`, not a window somebody works in) | `engine/engine.js`, grep `const upright` |
 | `hold` | **three**: a tram's waiting state, a door's timing, the walls a taped string's record says hold it up | `engine/engine.js`, grep `TRO.state="hold"` · `DOORMS` · `function fiestaTaped` |
+| `apron` | **two**: the 3D camera's dim frame laid past the map's edge (`userData.apron`), and since 2026-11-10 the outfit word a world turns on with `OUTFITTAKE`, the apron a person wears | `engine/engine3d.js`, grep `THE APRON. Past the edge` · `engine/engine.js`, grep `THE OUTFITS A WORLD TURNS ON` |
 | `box` | **three spellings of one geometry** — `m.box \|\| m.kind==="furniture" \|\| m.kind==="appliance"`, and the only one named for the geometry is the flag. `furniture` and `appliance` are Meridian's nouns for the same box and no renderer can tell them apart | `engine3d.js:241` |
 
 ---
@@ -613,10 +614,20 @@ helper, and the person who hits it will be reading their content files, not `san
   nothing is every person exactly as before**, whatever outfit word reaches the world: a save keeps any word of up to
   eight letters and a Trolley Pass carries it, so the drawing is gated by the world's list and never by the word alone. A
   list written wrong (a word where the list goes, `["Apron"]` in capitals, an object) turns nothing on, and the engine
-  says so once at boot, a critical line in the log, kind `outfit` (`outfitAudit`). The drawings a world may turn on are
-  one list, `OUTFITOWN`, beside it. `test/engine.smoke.js` (grep `THE APRON IS DRAWN ONLY`) holds all of it. **Not**
-  decided: an outfit a world draws for itself, and a second drawing to turn on; each would be a word on `OUTFITOWN`, never
-  a second list. `apron` collides with nothing already here.
+  says so once at boot (`outfitAudit`), in one line of the browser's console, where the world's author reads it:
+  `CRIT outfit: OUTFITTAKE is "apron", not a list of outfit words such as ["apron"], so this world turns no outfit on`,
+  or, for a word it has no drawing for,
+  `CRIT outfit: OUTFITTAKE names "Apron": not an outfit this engine draws (casual, formal, apron), so nothing is turned on for it`.
+  The same line is kept in the game's log, critical, of kind `outfit`. The drawings a world may turn on are one list,
+  `OUTFITOWN`, beside it. `test/engine.smoke.js` (grep `THE APRON IS DRAWN ONLY`) asks the page what a player or a
+  world's author would notice: that a world without the list draws every outfit word but `formal` as the everyday
+  clothes, the apron among them, and `formal`, the control, otherwise; that the apron is drawn in a world that turns it
+  on, in the creator's preview, by the person painter whichever way he faces, inside the card the 3D camera bakes and in
+  the 3D room; that a list written wrong turns nothing on and is told in that one line; that a list loaded after
+  `engine/boot.js` draws no apron; and that a world saying nothing and one whose list is written right log the same
+  lines. It does not ask that `OUTFITOWN` is the only list. **Not** decided: an outfit a world draws for itself, and a
+  second drawing to turn on; each would be a word on `OUTFITOWN`, never a second list. `apron` already had a job, the
+  3D camera's dim frame past the map's edge: see *Collisions* above.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 
