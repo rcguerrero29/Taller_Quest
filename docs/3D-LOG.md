@@ -64,6 +64,203 @@ against it is measured against the wrong thing. — *Chema, 2026-09-09*
 
 ---
 
+## Parts that imitate light
+
+*Every 3D part in this repository whose colour or shape stands for light the engine does not make: a colour chosen as shade
+or shine, a shadow or a shine drawn as a part, or a second colour (`cb`) that stands for shade. The engine lights every part
+with one sun and one ambient; when it learns more (a room's own light, a bounce off a floor, shadows), these are the parts to
+revisit, because each would then count its light twice. Read from the source and its own comments, not from pixels, on
+2026-11-09; a part added later that imitates light is added here.*
+
+Counted: 156 parts (93 certain or likely, 63 possible): 112 colour chosen as shade or shine, 28 shine drawn as a part, 16
+shadow drawn as a part.
+
+### Certain or likely
+
+| thing | the part | stands for | kind | how sure | where |
+|---|---|---|---|---|---|
+| bakery tray (p, v, c) | panL #5E5853 front lip (196); the back lip in pan #3E3A37 (197) | a lit front lip, a back lip in shadow | colour chosen as shade or shine | certain | `content/horno/art.js:196` |
+| brick oven (h) | ember #E08A3C strip under the door | firelight under the door | shine drawn as a part | certain | `content/horno/art.js:254` |
+| marigold head (meshMarigold): bed, petal mound, tree garland, altar arch, cart lid | COLLAR #1B3521, a flattened sphere r*1.24 at sy 0.16 under the florets | the dark round and between heads that the light cannot make | shadow drawn as a part | certain | `content/meridian/art.js:680` |
+| marigold bed (b) | foliage masses: LEAF3 #2E5A38 above 0.3, LEAF2 #3E7C4F low on the outside, LEAF #27492F inside; plus the top layer of LEAF3/LEAF between rows (735) | dark on top between the heads, sunlit low on the outside | colour chosen as shade or shine | certain | `content/meridian/art.js:733` |
+| loose petal mound (✿) | 'damp' discs #3A1C0A at y 0.005 under the banks | the shadow of the heap on the ground | shadow drawn as a part | likely | `content/meridian/art.js:765` |
+| loose petal mound (✿) | petal colour P[1+...] stepped by distance from the crown, and the strays at the foot in P[1..3] (782) | dark at the foot, lit at the crown | colour chosen as shade or shine | likely | `content/meridian/art.js:777` |
+| bookcase (S), Meridian's, and the cleaning company's shelf (1966) | BACK #3F2E1E | the dark inside the case | colour chosen as shade or shine | likely | `content/meridian/art.js:804` |
+| bookcase (S), Meridian's, and the cleaning company's shelf (1968) | the three lower boards DARK #5A4530; the top board WOOD #8A6F4D | boards in the shade of the board above | colour chosen as shade or shine | likely | `content/meridian/art.js:806` |
+| bolillo on the bakery rack | crustD box behind the split | shade behind the split | colour chosen as shade or shine | likely | `content/meridian/art.js:869` |
+| bakery rack pans | panL #5A5552 front lip | a lit lip | colour chosen as shade or shine | likely | `content/meridian/art.js:909` |
+| grass tuft (g), Meridian's | blades facing the light in #A6DB8C, the rest #5E9E66 | blades lit by the sun | colour chosen as shade or shine | certain | `content/meridian/art.js:1000` |
+| doghouse (9), Meridian's | DOOR #3E2F1E arched door | the dark inside | colour chosen as shade or shine | likely | `content/meridian/art.js:1023` |
+| jacaranda (J) | skirt ring in G3 #33663F | shade under the canopy | colour chosen as shade or shine | certain | `content/meridian/art.js:1126` |
+| jacaranda (J) | crown rings alternating G1/G2 (1127-1128) | the middle steps of the canopy's painted depth | colour chosen as shade or shine | likely | `content/meridian/art.js:1127` |
+| jacaranda (J) | crest in G2 #86C48E | sun on the top of the canopy | colour chosen as shade or shine | certain | `content/meridian/art.js:1129` |
+| altar table (mesa de altar) | PLEAT #DCCBB0 on every other pleat (1297) | shade in the folds | colour chosen as shade or shine | certain | `content/meridian/art.js:1301` |
+| desk (D), Meridian's | UNDER #3A2E26 underside slab | shade under the top | colour chosen as shade or shine | certain | `content/meridian/art.js:1433` |
+| desk (D), Meridian's | EDGE #C4A878 front edge strip | a lit edge | shine drawn as a part | certain | `content/meridian/art.js:1434` |
+| desk (D), Meridian's | UNDER strip over each drawer face | shadow in the seam | shadow drawn as a part | likely | `content/meridian/art.js:1436` |
+| rolling tool chest (8) | SEAM #5E1810 under each drawer face | shadow under each drawer | shadow drawn as a part | likely | `content/meridian/art.js:1517` |
+| tire stack (0) | top tire TOPT #3A3A41 over two TYRE #26262B | the top tire lit, the lower two in its shade | colour chosen as shade or shine | certain | `content/meridian/art.js:1535` |
+| the Caprice (6) | SKIRT #4A1A1A below the waist (1564) and UNDER #1A1D22 under-body (1563) | shade toward the foot and under the car | colour chosen as shade or shine | certain | `content/meridian/art.js:1564` |
+| the Caprice (6) | SHOULDER #A8524A strip along the top of the flank (1566) and the hood slab in SHOULDER (1570) | light along the shoulder and on the bonnet | shine drawn as a part | certain | `content/meridian/art.js:1566` |
+| the Caprice (6) | SHUT #3A1414 line under the roof | a dark line under the roof's edge | shadow drawn as a part | likely | `content/meridian/art.js:1568` |
+| the Caprice (6) | ROOF #C0705E | a lit roof | colour chosen as shade or shine | certain | `content/meridian/art.js:1569` |
+| car on the lift (7) | SKIRT #24406A (1602) and UNDER #1A1D22 under-body (1601) | shade toward the foot and under the car | colour chosen as shade or shine | certain | `content/meridian/art.js:1602` |
+| car on the lift (7) | SHOULDER #6E92C4 strip | a lit shoulder | shine drawn as a part | certain | `content/meridian/art.js:1604` |
+| car on the lift (7) | SHUT #1B2F4E line under the roof | a dark line under the roof's edge | shadow drawn as a part | likely | `content/meridian/art.js:1606` |
+| car on the lift (7) | ROOF #8FB0DC | a lit roof | colour chosen as shade or shine | certain | `content/meridian/art.js:1607` |
+| the street's shapes: picket fence F, glass rail ◺, crate H, grocer's counter I, bridge, trolley | every colour in that section, a step paler than its picture | colour chosen for today's light | colour chosen as shade or shine | likely | `content/meridian/art.js:1616` |
+| petal crest at the fence's foot and on the bridge (meshPetalCrest) | #5A2E12 flat box under the petals | the shadow under the drift | shadow drawn as a part | likely | `content/meridian/art.js:1627` |
+| picket fence (F), Meridian's | POST #6B4F2E, the post body (constant at 1646), in the rails' own hex | depth: the post in the same behind-value as the rails, darker than the pickets in front of it | colour chosen as shade or shine | likely | `content/meridian/art.js:1656` |
+| picket fence (F), Meridian's | CAPC #B08E5E slab on each post | a lit cut top | shine drawn as a part | certain | `content/meridian/art.js:1657` |
+| picket fence (F), Meridian's | RAIL #6B4F2E behind the pickets (colour at 1646) | depth: the rails in the pickets' shade | colour chosen as shade or shine | likely | `content/meridian/art.js:1660` |
+| glass rail round the well (◺), Meridian's | CAPL #8E98A3 strip on the dark cap rail | where the key light lands | shine drawn as a part | certain | `content/meridian/art.js:1691` |
+| produce crate (H), Meridian's | SLATL #8A6A42 rim | a lit rim | colour chosen as shade or shine | certain | `content/meridian/art.js:1716` |
+| produce crate (H), Meridian's | MOUTH #3A2A18, with the slats darkened (SLAT #7A5B36, 1712) | the dark inside the crate | colour chosen as shade or shine | likely | `content/meridian/art.js:1717` |
+| chiles in the crate | a darker cone (GRND #2F6B27 or REDD #7A1E18) 0.016 under each chile | shade on the underside | colour chosen as shade or shine | certain | `content/meridian/art.js:1732` |
+| bananas in the crate | YELD #B8962A cylinder 0.015 under each lit YEL length (1747), and the same pair on the loose fingers (1752-1753) | shade on the underside | colour chosen as shade or shine | certain | `content/meridian/art.js:1748` |
+| grocer's counter (I) | TOPL #C9A46E thin slab on the top | a lit top face | shine drawn as a part | certain | `content/meridian/art.js:1771` |
+| bridge (prop:bridge) | stringer #5A4330 under each open side | the dark under the deck's edge | colour chosen as shade or shine | likely | `content/meridian/art.js:1793` |
+| palm chair (⊔) | value ladder: LEG #54321B legs and stretchers (1857-1858, 1864-1865), FRAME #6E5334 (1859), RAIL #7E5F38 (1862), YOKE #8A6B3F (1863) | dark at the foot, rising to a lit top | colour chosen as shade or shine | likely | `content/meridian/art.js:1855` |
+| filing cabinet (▯) | PLINTH #23272C | shade at the floor | colour chosen as shade or shine | likely | `content/meridian/art.js:1879` |
+| filing cabinet (▯) | REVEAL #2E3339 over each drawer | shadow in the reveal | shadow drawn as a part | likely | `content/meridian/art.js:1886` |
+| deck oven (▣) | MOUTH #17181C behind the open door | the dark inside the oven | colour chosen as shade or shine | likely | `content/meridian/art.js:1913` |
+| deck oven (▣) | EMBER #C8601E at the back of the open mouth; GLOW #E8A24A slit on each shut door (1918) | light from inside the oven | shine drawn as a part | likely | `content/meridian/art.js:1914` |
+| tram stop shelter (Y) | ROOFT #4A4F57 slab on the roof | a lit top | shine drawn as a part | likely | `content/meridian/art.js:2006` |
+| tram stop shelter (Y) | REDD #8E2A20 strip under each name-board | shade on the board's lower edge | colour chosen as shade or shine | likely | `content/meridian/art.js:2012` |
+| tram stop shelter (Y) | SEATL #A5865A strip on the bench's front edge | a lit edge | shine drawn as a part | certain | `content/meridian/art.js:2014` |
+| tram stop shelter (Y) | SEATD #4A3520 slab under the seat | shade under the seat | shadow drawn as a part | certain | `content/meridian/art.js:2015` |
+| drafting table (A), Meridian's | UNDER #6B5230 under the board | shade under the board | colour chosen as shade or shine | certain | `content/meridian/art.js:2060` |
+| drafting table (A), Meridian's | RAIL #C4A06A pencil rail | a lit edge | colour chosen as shade or shine | certain | `content/meridian/art.js:2061` |
+| range (V), Meridian's | NOSE #6E7A86 strips on the deck's front edge (2110) and the riser's top (2128) | lit edges | shine drawn as a part | certain | `content/meridian/art.js:2110` |
+| range (V), Meridian's | drip bowl #6A727C | the bowl catching the light | colour chosen as shade or shine | certain | `content/meridian/art.js:2120` |
+| range (V), Meridian's | well DARK #23272C in each bowl | shade in the hollow | colour chosen as shade or shine | likely | `content/meridian/art.js:2121` |
+| barricade (G) | LIT #F08A4B strip on the board's top edge | where the key light lands | shine drawn as a part | certain | `content/meridian/art.js:2161` |
+| dog bed (○) | DARK #4E3A5C torus at the seam of cushion and bolster | shadow in the inside corner | shadow drawn as a part | certain | `content/meridian/art.js:2182` |
+| dog bed (○) | BOLSTL #8E6E9E torus on the bolster's top | where the light lands | shine drawn as a part | certain | `content/meridian/art.js:2184` |
+| moving carton (□) | FLAP #D8B589 outer flaps on CARD #C8A277 walls | a lit top | colour chosen as shade or shine | likely | `content/meridian/art.js:2209` |
+| tamale cart (ʘ) | BODY #8A6F4D front board and deck (2253-2254) over BODYD #6E5638 body (2252) | a lit front and deck over a shaded body | colour chosen as shade or shine | certain | `content/meridian/art.js:2253` |
+| tamale cart (ʘ) | POTL #B0B4BC band round the pot | where the light lands | shine drawn as a part | certain | `content/meridian/art.js:2257` |
+| casita roof (casaShell, every casa face) | CASA_TEJAD #71382A sheathing under the barrel tiles | the dark of the gaps between barrels | colour chosen as shade or shine | likely | `content/meridian/art.js:2668` |
+| casita window (▩) | #4A3220 opening relief | the recess in shadow | colour chosen as shade or shine | certain | `content/meridian/art.js:2698` |
+| casita window (▩) | #C8DCEE patch on each pane | sky reflected in the glass | shine drawn as a part | certain | `content/meridian/art.js:2702` |
+| casita window (▩) and barbería shopfront (◫, 2754) | #4A3220 slab under the sill | the sill's shadow on the wall | shadow drawn as a part | certain | `content/meridian/art.js:2715` |
+| barbería shopfront (◫) | #4A3220 opening | the recess in shadow | colour chosen as shade or shine | likely | `content/meridian/art.js:2743` |
+| kitchen finishes | `flat` colour of each finish (121-124) | colour chosen for today's light | colour chosen as shade or shine | likely | `engine/kitchen.js:42` |
+| kitchen pieces painted white, violet or grey: the carcass sides and top, the door frames and sunk panels, the drawer fronts, the open shelf, and the fridge's and freezer's enamel | FINISHES: the body, front and goods colours of white, violet and grey (122-124) | colour chosen for today's light | colour chosen as shade or shine | likely | `engine/kitchen.js:122` |
+| tree (J), the engine's | crown masses in L3 #3E7448: [0,0.90,0,0.33] and [-0.08,0.99,0.28,0.26] (160) | shade under the crown | colour chosen as shade or shine | certain | `engine/shapes.js:161` |
+| desk (D), the engine's | UNDER #3A2E26 slab under the top | shade under the desk top | colour chosen as shade or shine | certain | `engine/shapes.js:178` |
+| desk (D), the engine's | EDGE #C4A878 strip along the top's front edge | a lit front edge | shine drawn as a part | certain | `engine/shapes.js:179` |
+| desk (D), the engine's | UNDER strip over each drawer face (y dy+0.062) | shadow in the seam between drawers | shadow drawn as a part | likely | `engine/shapes.js:182` |
+| produce crate (H), the engine's | DARK #5C411F floor of the crate | shade inside an open crate | colour chosen as shade or shine | likely | `engine/shapes.js:251` |
+| bookcase (S), the engine's | SP spine colours | colour chosen for today's light | colour chosen as shade or shine | likely | `engine/shapes.js:272` |
+| bookcase (S), the engine's | BACK #3F2E1E back panel | the dark inside the case | colour chosen as shade or shine | likely | `engine/shapes.js:277` |
+| bookcase (S), the engine's | PLINTH #2E241A, set back | shadow at the floor | colour chosen as shade or shine | likely | `engine/shapes.js:278` |
+| fridge (W) and freezer (▉), the engine's | PLINTH #2F343A, set back (fridge 312, freezer 763) | shade at the floor | colour chosen as shade or shine | likely | `engine/shapes.js:312` |
+| stove (V), the engine's | LIP #B9BEC4 strips along the deck's front and sides (365-367) | a lit edge | shine drawn as a part | likely | `engine/shapes.js:365` |
+| stove (V), the engine's | drip bowl BOWL #6A727C | the bowl catching the light | colour chosen as shade or shine | certain | `engine/shapes.js:370` |
+| stove (V), the engine's | well DARK #23272C in each bowl | shade in the hollow | colour chosen as shade or shine | likely | `engine/shapes.js:371` |
+| stove (V), the engine's | LIP strip on the riser's top | a lit top | shine drawn as a part | certain | `engine/shapes.js:376` |
+| café counter (K), the engine's | TOE #2F343A toe-kick, set back | shade at the floor | colour chosen as shade or shine | likely | `engine/shapes.js:401` |
+| doghouse (9), the engine's | DOOR #3E2F1E arched opening (526-527) | the dark inside | colour chosen as shade or shine | likely | `engine/shapes.js:526` |
+| agility tunnel (4) | staves coloured by shade(th) (583): #4473BC, #2E5FA8 or #234A86 by how far each faces up | lit top, shaded belly | colour chosen as shade or shine | certain | `engine/shapes.js:587` |
+| agility tunnel (4) | LINER #141220 near-black lining | the dark inside the bore | colour chosen as shade or shine | likely | `engine/shapes.js:588` |
+| marigold planter (b), the engine's | COLLAR #1B3521, a flattened sphere under each head and wider than it | the dark under and between heads | shadow drawn as a part | likely | `engine/shapes.js:645` |
+| grass tuft (g), the engine's | blades facing the light in #9CD486, the rest #5FA86A | blades lit by the sun | colour chosen as shade or shine | certain | `engine/shapes.js:661` |
+| kitchen carcass (upper and lower cupboards, drawers, wardrobe) | INSIDE #3B342C floor (720) and back (722) | shade inside a cabinet | colour chosen as shade or shine | certain | `engine/shapes.js:720` |
+| cupboard doors (upper and lower cupboards, wardrobe) | sunk panel PANEL=dim(FR,0.85) (730) | the sunk panel in shade | colour chosen as shade or shine | likely | `engine/shapes.js:732` |
+| drawer boxes (freezer, drawers) | box floor: #8796A6 in the freezer (762), #6A5E4C in the drawers (799) | shade on a drawer's floor | colour chosen as shade or shine | certain | `engine/shapes.js:745` |
+| lower cupboard (⬓), drawers (☷, 797), wardrobe (⎕, 850) | KICK #2A2520 kick, set back (constant at 717) | shade at the floor | colour chosen as shade or shine | certain | `engine/shapes.js:788` |
+| wall shelf (⊤) | back #2E2A33 | the dark behind the planks | colour chosen as shade or shine | likely | `engine/shapes.js:811` |
+| worktop (━) | EDGE #CFCBD8 strip along the slab's front | a lit front edge | shine drawn as a part | likely | `engine/shapes.js:824` |
+
+### Possibly light (to be decided at the upgrade)
+
+| thing | the part | stands for | kind | how sure | where |
+|---|---|---|---|---|---|
+| wall (s), the gauge pack's | side #5A5C63 under a top #6E7078 | darker sides | colour chosen as shade or shine | possible | `content/gauge/art.js:11` |
+| bench and desk boxes (b, d) | side colours #75593A and #66513C under tops #8A6A44 and #7A6248 (12-13) | darker sides | colour chosen as shade or shine | possible | `content/gauge/art.js:12` |
+| plain rounds on the tray | doughD #DCCDA9 disc under each round | possibly shade at the foot | colour chosen as shade or shine | possible | `content/horno/art.js:137` |
+| brick oven (h) | brickL #B45F42 capping course | possibly a lit top | colour chosen as shade or shine | possible | `content/horno/art.js:250` |
+| brick oven (h) | the door frame (251) and the handle (255) in ironL #564C46, round a door in iron #3A3330 (252) | possibly a lit frame and handle | colour chosen as shade or shine | possible | `content/horno/art.js:251` |
+| flour bin (f) and dough on the bench (m) | sackD #B9A57C roll of the folded top (279); doughD seam on the lump (316) | possibly shade in a fold | colour chosen as shade or shine | possible | `content/horno/art.js:279` |
+| marigold bed (b) | LIP #CFC7B9 on a #B9B0A2 curb | possibly a lit top edge | colour chosen as shade or shine | possible | `content/meridian/art.js:728` |
+| marigold bed (b) | SOIL #2F2216 | the dark between heads | colour chosen as shade or shine | possible | `content/meridian/art.js:730` |
+| marigold bed (b) | HUES, the packet's mix: four hue steps between neighbouring heads | colour chosen for today's light | colour chosen as shade or shine | possible | `content/meridian/art.js:737` |
+| potted plant (P), Meridian's, and the pot on a casita window's sill | RIM #C97A52 (constant at 789) over POT #B4633F; the sill pot's rim #C9754A (2727) over its clay (PC, 2724) | possibly a lit top edge | colour chosen as shade or shine | possible | `content/meridian/art.js:790` |
+| bakery rack frame | frameL #7C5A3A top side rails and runners (903, 907) | possibly lit tops | colour chosen as shade or shine | possible | `content/meridian/art.js:903` |
+| ofrenda (prop:ofrenda) | a thin paler slab on each tier's top: #7B4BA8 on #5A2E7A (1158), #F2870F on #E2620F (1159), #7BD3F7 on #2FA5A0 (1160) | possibly lit tops | colour chosen as shade or shine | possible | `content/meridian/art.js:1158` |
+| ofrenda (prop:ofrenda) | veladoras: #FFF3C0 disc and #FFC300 flame cone on each (1166-1167); copal 'lit' #E2620F (1176) | candle and ember light | shine drawn as a part | possible | `content/meridian/art.js:1166` |
+| round table (T), Meridian's | RIM #C9CDD2, a disc of radius 0.055 laid in the middle of each #FFFFFF plate (constant at 1186) | possibly the shade in the plate's dip | colour chosen as shade or shine | possible | `content/meridian/art.js:1191` |
+| altar table (mesa de altar) | LEG #4A2E19 legs and rails (1285-1289, constant at 1278), under a PLANK #5E3B20 | possibly the shade under the plank | colour chosen as shade or shine | possible | `content/meridian/art.js:1285` |
+| desk (D), Meridian's, and the engine's copy (shapes.js:187) | SCREEN #7FB3D5 | a lit screen | shine drawn as a part | possible | `content/meridian/art.js:1441` |
+| café counter (K), Meridian's | NOSE #C9CFD6 nosing over a #AAB4C0 top | possibly a lit edge | colour chosen as shade or shine | possible | `content/meridian/art.js:1469` |
+| café counter (K), Meridian's | LIGHT #E0662B on the espresso machine | a lamp, on | shine drawn as a part | possible | `content/meridian/art.js:1481` |
+| fridge (W), Meridian's | PLINTH #2F343A (1495); DOOR #BCC4CC on a #AEB6BE carcass (1497-1498) | shade at the floor; a value step chosen for today's light | colour chosen as shade or shine | possible | `content/meridian/art.js:1495` |
+| fridge (W), Meridian's | SEAM #5A6068 | shadow in a set-back seam | shadow drawn as a part | possible | `content/meridian/art.js:1499` |
+| the Caprice (6) and the car on the lift (7, 1605) | GLASS #BFD3E0 band | the sky's shine on glass | colour chosen as shade or shine | possible | `content/meridian/art.js:1567` |
+| picket fence (F), Meridian's | TIP #B99464 picket points over PICK | possibly lit points | colour chosen as shade or shine | possible | `content/meridian/art.js:1664` |
+| grocer's counter (I) | KICK #7A5B38 plinth, set back | possibly shade at the floor | colour chosen as shade or shine | possible | `content/meridian/art.js:1768` |
+| grocer's counter (I) | JOIN #5E4527 plank joins | possibly shadow in the joins | shadow drawn as a part | possible | `content/meridian/art.js:1772` |
+| grocer's scale | #E8EBEE lip over a #D3D7DC pan | possibly a lit lip | colour chosen as shade or shine | possible | `content/meridian/art.js:1777` |
+| bridge (prop:bridge) | nosing #B08E5E along the top edge | possibly a lit edge | shine drawn as a part | possible | `content/meridian/art.js:1794` |
+| trolley (prop:tram) | drip lip in SKIRT under the roof's overhang | possibly shade under the roof edge | colour chosen as shade or shine | possible | `content/meridian/art.js:1814` |
+| trolley (prop:tram) | GLASS #D8E6F0: six lights a side (1819) and a windscreen at each end (1820), constant at 1808 | the sky's shine on glass | colour chosen as shade or shine | possible | `content/meridian/art.js:1819` |
+| trolley (prop:tram) | LAMP #FFE9A8 headlamps | a lamp's light | shine drawn as a part | possible | `content/meridian/art.js:1821` |
+| filing cabinet (▯) | TRAY #5A626C, the open drawer's box (constant at 1877), on a #6E7883 body | possibly the inside of the open drawer in shade | colour chosen as shade or shine | possible | `content/meridian/art.js:1882` |
+| filing cabinet (▯) | FRONT #98A3AE drawer fronts on a #6E7883 body | a value step chosen for today's light | colour chosen as shade or shine | possible | `content/meridian/art.js:1885` |
+| deck oven (▣) | PILOT #D0402F (1911); PLINTH #1E2126 (1904) | a lamp, on; possibly shade at the floor | colour chosen as shade or shine | possible | `content/meridian/art.js:1911` |
+| bucket on the cleaning shelf | BUCKETD #B8902E rim on a #E0B45C bucket | possibly shade | colour chosen as shade or shine | possible | `content/meridian/art.js:1978` |
+| tram stop (Y), its bench | LEG #6E5334 leg frames and back uprights (2016-2017, constant at 2001), under a SEAT #8A6B3F | the darker step of a painted value ladder: legs below, seat above | colour chosen as shade or shine | possible | `content/meridian/art.js:2016` |
+| drafting table (A), Meridian's | FOOT #5E4830, darker than LEG #7A6040 | possibly shade at the foot | colour chosen as shade or shine | possible | `content/meridian/art.js:2055` |
+| range (V), Meridian's | DOOR #5E6874 on STEEL #4A5058 (2102); opaque GLASS #1B1E22 window (2103); fascia DARK under the lip (2105); #1B1E22 burner-cap centres (2125) | a value step for today's light; the dark inside the oven; shade under the overhang; shade in a hole | colour chosen as shade or shine | possible | `content/meridian/art.js:2102` |
+| range (V), Meridian's | EMBER behind the window (2104), #2E86C8 flame rings (2126), ORANGE pilot (2129) | light given off | shine drawn as a part | possible | `content/meridian/art.js:2104` |
+| stock pot on the range | POTL #CCD2D8 lid over a #B9BEC4 pot | possibly a lit top | colour chosen as shade or shine | possible | `content/meridian/art.js:2131` |
+| barricade (G) | LEGC #C25A1E legs and BRACE #A8481A (2159), darker than the board | possibly shade low down | colour chosen as shade or shine | possible | `content/meridian/art.js:2157` |
+| dog bed (○) | DARK base disc (2180); CRUSH #6B4E7C crushed front (2185) | possibly shade at the foot and in the dip | colour chosen as shade or shine | possible | `content/meridian/art.js:2180` |
+| moving carton (□) | SEAM #8A6A45 inner flaps | possibly shade in the gap between the flaps | colour chosen as shade or shine | possible | `content/meridian/art.js:2207` |
+| tamale cart (ʘ) | POTL domed lid | possibly a lit top | colour chosen as shade or shine | possible | `content/meridian/art.js:2259` |
+| casita window (▩) | #A9C6E0 panes, 'the two lights' | the sky reflected in the glass, across the whole pane | colour chosen as shade or shine | possible | `content/meridian/art.js:2701` |
+| barbería shopfront (◫) | #7FA3C4 pane | the dim room seen through the glass | colour chosen as shade or shine | possible | `content/meridian/art.js:2745` |
+| barbería shopfront (◫) | #E6EEF4 mirror | possibly a reflection | colour chosen as shade or shine | possible | `content/meridian/art.js:2747` |
+| casita blank wall (▨) | #F2E0AE lamp globe | a lamp's light | shine drawn as a part | possible | `content/meridian/art.js:2787` |
+| potted plant (P), the engine's | RIM #C97A52 ring (constant at 132) over a C.pot #B06A3C pot | possibly a lit top edge | colour chosen as shade or shine | possible | `engine/shapes.js:134` |
+| round table (T), the engine's | WELL #C9CDD2, a disc of radius 0.05 in each #FFFFFF plate (constant at 209) | possibly the shade in the plate's dip | colour chosen as shade or shine | possible | `engine/shapes.js:225` |
+| bookcase (S), the engine's | the leaning book in dim(fam,0.92) | possibly the tilted book in shade | colour chosen as shade or shine | possible | `engine/shapes.js:290` |
+| fridge (W) and freezer (▉), the engine's | DOOR #BCC4CC doors on a #AEB6BE carcass (311, 314-315); the freezer's FRONT #C6D0DB drawer fronts on a #A9B6C3 carcass (762, 772) | a value step chosen for today's light: the face a step lighter than the box it hangs on | colour chosen as shade or shine | possible | `engine/shapes.js:314` |
+| fridge (W) and freezer (▉), the engine's | SEAM #5A6068 between doors (316) and in each drawer gap (769) | shadow in a set-back seam | shadow drawn as a part | possible | `engine/shapes.js:316` |
+| stove (V), the engine's | DOOR #4A5058, the oven door on a #3A3F46 body (357); GLASS #1B1E22, its window at a 0.55 (358) | a value step for today's light; the dark inside the oven seen through the window | colour chosen as shade or shine | possible | `engine/shapes.js:357` |
+| stove (V), the engine's | EMBER #C8601E behind the oven window (359), FLAME #2E86C8 ring on the lit burner (374), PILOT #E0662B (377) | light given off by the oven, a flame and a pilot lamp | shine drawn as a part | possible | `engine/shapes.js:359` |
+| stove (V), the engine's | fascia DARK #23272C under the lip | shade under the deck's overhang | colour chosen as shade or shine | possible | `engine/shapes.js:360` |
+| café counter (K), the engine's | NOSE #C9CFD6 nosing over a #9AA4B0 top | possibly a lit edge | colour chosen as shade or shine | possible | `engine/shapes.js:404` |
+| café counter (K), the engine's | LIGHT #E0662B on the espresso machine | an indicator lamp, on | shine drawn as a part | possible | `engine/shapes.js:417` |
+| well rail (◺), the engine's | TOPC #8F6440 handrail and newel caps (479, 511) | possibly lit tops | colour chosen as shade or shine | possible | `engine/shapes.js:479` |
+| agility tunnel (4) | RIB #5C86C6 wire ribs (589) and HOOP #6C93D0 mouth hoops (590), constants at 582 | possibly raised ribs and hoops catching the light | colour chosen as shade or shine | possible | `engine/shapes.js:589` |
+| weave poles (5) | RAILD #5E636B feet and pole sockets (606, 608) | possibly shade at the foot | colour chosen as shade or shine | possible | `engine/shapes.js:606` |
+| marigold planter (b), the engine's | LIP #CFC7B9 on a #B9B0A2 curb | possibly a lit top edge | colour chosen as shade or shine | possible | `engine/shapes.js:634` |
+| marigold planter (b), the engine's | foliage mound LEAF #27492F with LEAF2 #3E7C4F | the dark under the heads | colour chosen as shade or shine | possible | `engine/shapes.js:641` |
+| marigold planter (b), the engine's | crown P[k+2], paler, on each head | possibly a lit top | colour chosen as shade or shine | possible | `engine/shapes.js:647` |
+| wardrobe (⎕) | cornice in C.deskTop over a C.desk carcass | possibly a lit top | colour chosen as shade or shine | possible | `engine/shapes.js:852` |
+
+### Drawn by the engine itself, not by a pack's parts
+
+| thing | the part | stands for | kind | how sure | where |
+|---|---|---|---|---|---|
+| every person, and every robot (drawRobot, 4297): the card the 3D billboard wears (engine-drawn) | rgba(0,0,0,.2) ellipse at the feet | a contact shadow | shadow drawn as a part | certain | `engine/engine.js:4340` |
+| the ground beside every solid (engine-drawn, not a part) | CONTACT SHADOW gradient baked into the ground texture (411-421) | occlusion where a wall meets the floor | shadow drawn as a part | certain | `engine/engine3d.js:406` |
+| the ground under every mesh tile (engine-drawn) | THE PAD radial gradient (428-431) | a contact shadow under each object | shadow drawn as a part | certain | `engine/engine3d.js:429` |
+| every wall and lintel box (engine-drawn) | side colour shadeHex(baseOf(g),-0.22) | darker sides | colour chosen as shade or shine | likely | `engine/engine3d.js:527` |
+| every door (engine-drawn) | pale #FFE9A8 plane on the floor, breathing (t3Glow, 1716) | light spilling out of a door | shine drawn as a part | certain | `engine/engine3d.js:556` |
+| sunken stair treads in a well (engine-drawn) | unlit riser colour t3Mix(#B4AC9C,#4E4A46) by depth | each step darker going down | colour chosen as shade or shine | certain | `engine/engine3d.js:610` |
+| stairwell shaft walls (engine-drawn) | unlit ramp t3Mix(#B9AF9B,#4A443D) | light falling in at the lip | colour chosen as shade or shine | certain | `engine/engine3d.js:658` |
+| window pane behind a sweet on a sill (engine-drawn sprite) | drawSillLit pane | a lit window | shine drawn as a part | likely | `engine/engine3d.js:939` |
+| window sill ledge (engine-drawn sprite) | drawSillLedge: #F7F2E2 lit top, #8A7F66 underside, a shadow strip on the wall (engine/engine.js:1704-1708) | a lit top, a dark underside, a cast shadow | shadow drawn as a part | certain | `engine/engine3d.js:974` |
+| the builder's drone (engine-drawn) | #FFE9A8 ring of four lit corners on its tile | its lamp's light on the ground | shine drawn as a part | certain | `engine/engine3d.js:1701` |
+| the builder's drone (engine-drawn) | radial shadow plane under it | its shadow | shadow drawn as a part | certain | `engine/engine3d.js:1705` |
+
+Left out: tests and drawings that are not the game's parts.
+
+---
+
 ## The log
 
 ### 2026-09-08 · #134 — the picture looked blurry
@@ -1229,3 +1426,108 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   piece, 544 at a laptop's size and 149 at a phone's, against 0 and 1 for the hairline; the check asks 200 and 60. Also held now: an own
   item's name is counted in characters (21 emoji), has no direction control (U+202A to 202E, 2066 to 2069, 200E, 200F), a count stops at 99
   and "−" at 1 leaves 1, nothing glows after the room is left, and two things with one date list in name order.
+
+### 2026-11-08 · one list of what a part may say, and a part shaded into a second colour
+- **Goal served:** a part can shade into a second colour by its height, worked out as its shape is built; and every reader
+  of parts takes its keys from one list, so a key added once is taken everywhere instead of being refused by the next copy.
+- **Shipped, the list:** `PARTKEYS`, frozen, inside the shape builder's sentinels in `engine/engine3d.js` (grep `THE ONE LIST
+  OF WHAT A PART MAY SAY`): 21 keys, each with its kind (shape, place, size, angle, stretch, colour, glass). The kitchen reads
+  from it, on the first part it checks, the keys a thing's part may say (every one but glass, in the order it always
+  checked them) and the keys it makes smaller to fit a shelf (the sizes). In this repository the kitchen and the shape gate
+  take their keys from it, and no other code here keeps a list of part keys. `test/prims.js` holds the list to the builder:
+  frozen, every kind one a reader knows, and exactly the keys the builder reads, no more and no fewer.
+- **Shipped, the colour:** `cb` on a part. In `t3BakeParts` each corner takes the mix of `c` and `cb` for its own height as
+  the part stands, after its turns: `c` at the part's highest point, `cb` at its lowest, so a leaning part shades by how it
+  leans and not along its own axis. Both through the colour theme (`tc`), both under the one material the time of day
+  tints. A part without `cb` takes its one colour on every corner, as before; one whose `cb` cannot be read shades to its own.
+- **Measured, nothing else moved:** the shape gate builds all 482 distinct literal parts, facing all four doors, byte for byte
+  as before, with 21 twins each in one cache. Every object under the scene's group in every world, hashed (geometry bytes,
+  material, the pixels of every canvas it is painted with, place, turn, tag), is the same on the engine before the list and
+  after both changes: Meridian's 15 worlds (1,398 meshes as it boots, 1,476 with every district open) and El Horno's (38),
+  the clock and the dice held still; the control (one engine twice) was the same, and one colour planted one step off in a
+  copy was seen, in the one world and the one object that carry it.
+- **Measured, the colour:** `test/engine.smoke.js`, grep `THE ONE LIST OF WHAT A PART MAY SAY`: a box, a sphere, a cylinder
+  leaning far over and a ring stood on its edge, read corner by corner against the mix for each corner's height, as asked and
+  through a colour theme (36, 240, 120 and 504 corners); the mesh the scene is handed carries the bake's colours, on one
+  tinted material. Red first on the engine before: the list missing, and each of the four drawn in one colour, in both
+  themes. Thirteen plants in a copy outside the repository, each red in its own sentence, and the copy unplanted green:
+  shaded upside down, along a part's own axis, outside the theme, dropped by the mesh, a material the time of day never
+  reaches, a plain part shaded anyway, the kitchen taking a word for a colour, glass, a key on no list, dropping a size from
+  what it takes or from what it shrinks, shrinking an angle, and the list left open.
+- **Cost:** no triangle and no draw call. The bake reads a part's corners once more only when the part names `cb`, each time
+  the shape is built: once for most things, and on every frame of a door's swing for a kitchen column's things.
+- **Not done:** nothing in Meridian draws with `cb` yet, so its look is as it was. No direction other than height; no blend
+  across a part's width; no colour per face.
+
+### 2026-11-08 · review: a second colour under the engine's one light, and how far the mesh hash reaches (Chema)
+- **Decided the same day:** a part's second colour stays the thing's own colour, as built, for now. A shade that follows the
+  light of where a thing stands is left to a later change, and the engine keeps the one place it would come in
+  (`t3CornerMix`, grep `THE ONE PLACE A CORNER'S TWO COLOURS ARE MIXED`): told where the thing stands, it reads only the
+  part's own two colours today, so nothing on screen changed.
+- **Measured, the second colour under the engine's light:** the sun and the ambient give every flat face one value, so `cb`
+  is the only thing in a scene that changes with height. On a sphere it equals a sky-and-ground light to four decimals over
+  240 corners, through the engine's own bake; a squashed sphere is within 0.10, a box's sides 0.50 off, a flared wall 0.71 off.
+- **Measured, what real light would do:** a one-bounce overcast sky, 12,000 rays a point. The whole height gradient comes from
+  the light bounced off what a thing stands on, which the engine does not model:
+
+  | What it stands on | A straight side 4.5 tall: mid-height / foot | A wall flaring from 5 to 8 over 6.5: mid-height / foot |
+  |---|---|---|
+  | pale (albedo 0.8) | 4% / 16% darker | 9% / 34% darker |
+  | mid (albedo 0.4) | 3% / 10% | 8% / 26% |
+  | black (albedo 0) | no change (±1.5%) | no change (±1.5%) |
+
+  A straight ramp is right at the foot and a few points heavy mid-face. Judge it on the rows the game draws, where a side two
+  to twelve rows tall is read by its mean, never on a close-up. One colour carried wherever a thing is put suits one floor:
+  on a darker one it is too strong.
+- **Even, in the hex a pack writes,** because the vendored three.js is r149 in its legacy colour mode; a move to colour-managed
+  three.js changes this along with every other colour. No seam on any face: the colour is linear in height, and height is
+  linear across any flat triangle.
+- **How far the mesh hash reaches:** every object under the world's group. One colour planted one step off in a copy was seen
+  in the stove's drip bowl (one world, one object), and not in the trolley's skirt, because the trolley hangs on the scene
+  rather than the world's group (it is built once per page load, again only when a line has another number of cars, and
+  only moved each frame), nor in the ofrenda's cloth while the clock was held out of season.
+  The lane then ran the hash in season as well (the ofrenda standing, 1,724 meshes, the same as before); the trolley stays
+  outside it, unchanged by construction (no part in this repository names `cb`, and a part without one takes the path it
+  always took). Walk `T3.scene` too before the hash is used as a gate.
+- **Rejected:** the shade on a short foot part instead of a ramp up the side, on the belief that a straight side sees the same
+  half of the sky at every height. True of the sky, not of the floor; withdrawn before it ran.
+- **Not measured:** a closed cabinet with a shelf above, a lamp, the light from an open door; neither the engine nor the
+  simulation models them.
+
+### 2026-11-09 · the review of the one list and the second colour: what the gate and the kitchen held, and what they did not
+- **Why:** four reviewers read the pull request, and others tried to refute what they found. Two findings stood: the shape gate
+  left every part written with a second colour out of every comparison, and the kitchen took any key the list gained as any
+  number. Five more were real: three were shown red here before they were fixed, and two were sentences that were not true.
+  The small ones were taken with them.
+- **Fixed, the shape gate** (`test/prims.js`, `test/lib/parts.js`): the harvest takes its keys, and which of them are written as
+  text, from the one list, and the keys a shape is built from out of `t3Prim`; its own lists are gone, and the gate asks it to
+  read a part written with each key. Each key is held to its kind by what the builder draws when that key alone changes (grep
+  `WHAT KIND EACH KEY IS`), never by the list being checked. The keys the builder reads come from a Proxy over the parts it
+  builds as well as from every `p.<key>`. The one place is asked of a part of every primitive, a leaning one and a pane of
+  glass, in six places, standing nowhere among them; today's body may read nothing of where a thing stands; the stand-in light
+  must reach the solid and the glass; and every call of `t3MeshOf` in the engine must say where its thing stands. The trolley,
+  which moves, says `null`.
+- **Fixed, the kitchen** (`engine/kitchen-room.js`, grep `HOW FAR A THING'S PART MAY GO`): one bound for each kind of key; a key
+  the list gains is held by its kind's bound, and a key of a kind with no bound is refused in a sentence. A glass part is told
+  it would be glass. The engine suite asks each key past each end of its kind's bound, measures every part the kitchen takes
+  against the reach it is fitted by (grep `THE REACH A PART IS FITTED BY`), and is red on a shaded part built with no corner.
+- **Fixed, the words:** the list's readers in this repository are the kitchen and the shape gate, and no other code here keeps a
+  list of part keys; the trolley is built once per page load and only moved each frame; the first entry's plants are
+  thirteen, not fourteen (the fourteenth was the copy left unplanted); a shape built again pays the extra pass again; a key
+  not on the list changes nothing drawn, but a kitchen refuses its thing.
+- **Measured, red first** (each green on the pull request's head before this round, red now, in a copy outside the repository):
+  a written part given a second colour under an engine change that draws every second colour upside down ("one of the 131
+  cylinders the games draw would look different … The first is content/meridian/art.js:995"); a colour called a size, an arc
+  called a size, a torus's tube called an angle; a key read by destructuring, and one read as `p?.sw`; a second mix for cones,
+  and one for a thing that stands nowhere; today's mix reading the world or the row; the glass baked without being told where;
+  the tile's mesh built without saying where it stands. In the kitchen, with a size the list gains (`wt`): a thing whose part's
+  `wt` is 5 or -1 was taken and is refused now, and a box whose `wt` is 0.5, drawn 0.250 from its middle where the kitchen fits
+  it as reaching 0.050, is red, as it should be until the fit counts it. Eighteen plants of the engine suite's block and
+  sixteen new ones in the gate's self-test, each red in its own sentence; unplanted, both green.
+- **Measured, nothing else moved:** the gate builds 482 distinct parts as before (206 escaped, 21 twins each). The kitchen's check
+  of one part, over today's keys and thirty values each, answers 630 of 660 parts word for word as before; the other thirty
+  carry glass. Every object under the scene's group in every public world, hashed again, is the same as on the engine before
+  the list: Meridian's 15 worlds (1,398 meshes as it boots, 1,476 with every district open, 1,724 in season with the ofrenda
+  standing) and El Horno's 38.
+- **Not done:** the gate reads the engine's calls of `t3MeshOf` as text (a call in a comment is skipped by a simple rule); the
+  fit (`kitReach`) still names each primitive's sizes, and that it counts every size is held by the suite, not by the code.
