@@ -8285,14 +8285,15 @@ function findChromium() {
             if (typeof after[k] !== 'number') held.push(named[k] + ' was gone as it closed, with ' + (before[k] / 1000).toFixed(1) + ' s left as it opened');
             else if (Math.abs(after[k] - before[k]) > 300) held.push(named[k] + (after[k] < 0 ? ' was ' + (-after[k] / 1000).toFixed(1) + ' s past its time as it closed' : ' had ' + (after[k] / 1000).toFixed(1) + ' s left as it closed') + ', where it had ' + (before[k] / 1000).toFixed(1) + ' s left as it opened'); }
           if (held.length) MP.push('I opened the map for 2.5 s with a ball on the ground, a dog\'s bowl of water' + (i >= 0 ? ' and ' + person + ' waiting' : '') + ', each with 1.5 s left (' + where + '): ' + held.join('; ') + ' — while the map is open the game\'s clock stands still too');
-          /* and after it closes: each goes once its time is up, not before (a frame's grace), and within 5 s */
-          const end = await p.evaluate(i => new Promise(res => { const gone = {}, t0 = performance.now(); let prev = __left(i), w0 = __clk.W(), gap = 0;
+          /* and after it closes: each goes once its time is up, not before (a frame's grace), and within 5 s. Read from what each
+             had left as the map closed, so one that goes in the frame before this reading starts is still seen to go */
+          const end = await p.evaluate(([i, after]) => new Promise(res => { const gone = {}, t0 = performance.now(); let prev = after, w0 = __clk.W(), gap = 0;
             const f = () => { const cur = __left(i), w1 = __clk.W(); gap = Math.max(gap, w1 - w0); w0 = w1;
               /* gone, or for the person, a wait that ran out and was set anew (somebody beside them, or nowhere to step) */
               for (const k of ['ball', 'bowl', 'person']) if (!(k in gone) && typeof prev[k] === 'number' && (typeof cur[k] !== 'number' || (k === 'person' && cur[k] > prev[k] + 100))) gone[k] = prev[k];
               prev = cur;
               if (['ball', 'bowl', 'person'].every(k => k in gone || typeof cur[k] !== 'number') || performance.now() - t0 > 5000) return res({ gone, gap, left: cur });
-              requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
+              requestAnimationFrame(f); }; requestAnimationFrame(f); }), [i, after]);
           for (const k of ['ball', 'bowl', 'person']) { if (typeof after[k] !== 'number') continue;
             if (k in end.gone && end.gone[k] > end.gap + 100) early.push(named[k] + ' went with ' + (end.gone[k] / 1000).toFixed(1) + ' s of its time left');
             else if (!(k in end.gone)) early.push(named[k] + ' was still there 5 s after the map closed with ' + (after[k] / 1000).toFixed(1) + ' s left — the clock that stood still behind the map did not start again'); }
