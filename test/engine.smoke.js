@@ -12820,6 +12820,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             o = { mapAny: tx('mapAny'), mapArrowName: tx('mapArrowName'), mapArrowState: tx('mapArrowState'), mapArrowHint: tx('mapArrowHint'), key: tog ? tog.getAttribute('aria-label') : null }; document.getElementById('mapClose').click(); } } }
           finally { UI.es = keep; lang = was; T(); }
           return o; });
+        /* and the game's own log says so, so a builder whose world comes out with its words missing has something to go on */
+        if (!(await wp.evaluate(() => mqLog.some(e => e.kind === 'words')))) WD.push('in Spanish, with words the engine cannot lay its own beneath, nothing in the game\'s own log says so, so a builder whose world shows nothing where a word goes has nothing to go on');
         if (threw(e0)) WD.push('in Spanish, with words the engine cannot lay its own beneath, opening the map threw "' + wErr[e0] + '"');
         else if (fz) Object.keys(fz).forEach(k => { if (fz[k] !== null && mapWords.es[k] !== undefined && fz[k] !== mapWords.es[k]) WD.push('in Spanish, with words the engine cannot lay its own beneath, the map says "' + fz[k] + '" where ' + k + ' goes, where it says "' + mapWords.es[k] + '" otherwise'); }); }
       /* starting over, last, since it wipes the game: Settings' button asks to be pressed again, then the game says it has started over */

@@ -813,7 +813,8 @@ const UIDEF={
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
-  try{Object.setPrototypeOf(o,d);}catch(e){return;}
+  try{Object.setPrototypeOf(o,d);}catch(e){   /* frozen, sealed or closed to new words: say so, or the words a world leaves out vanish silently */
+    mqwarn("words","the "+L+" words cannot take the engine's own beneath them (frozen, sealed or closed to new words), so a word they leave out comes out as nothing");return;}
   Object.keys(d).forEach(k=>{const g=d[k],w=Object.prototype.hasOwnProperty.call(o,k)?o[k]:null;
     if(uiPlain(g)&&uiPlain(w))try{Object.setPrototypeOf(w,g);}catch(e){}});});}
 const T=()=>{const o=UI[lang];if(o!==UIAT){uiLay();UIAT=o;}return o;};
