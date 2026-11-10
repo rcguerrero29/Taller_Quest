@@ -4464,10 +4464,23 @@ function shirtPattern(g,lk,x,y,w,h){const f=Object.prototype.hasOwnProperty.call
    exactly as before, whatever outfit word reaches it. And one does reach it: a save keeps any outfit word of up to eight
    letters and a Trolley Pass carries it, and only another player's look is held to the words this world's creator offers
    (peerLook). So the drawing is gated here, by the world's own list, never by the outfit word alone. A name the engine has
-   no drawing for is dropped, as CAMERAS drops a camera it does not know. Read once, as the pack loads; a word from a save
-   is only ever compared with it, never looked up (test/engine.smoke.js, grep "THE APRON IS DRAWN ONLY"). */
+   no drawing for is dropped, as CAMERAS drops a camera it does not know. Read once, as engine.js loads, as CAMERAS is: the
+   list goes in a pack file the page loads before engine/boot.js, and one declared in a file loaded after it is never seen.
+   It is the world's own `const`, a name of the page's that `window` does not carry, so it is read by its bare name. A list
+   written wrong (a word where a list goes, a word in capitals) turns nothing on and says so once at boot (outfitAudit). A
+   word from a save is only ever compared with it, never looked up (test/engine.smoke.js, grep "THE APRON IS DRAWN ONLY"). */
 const OUTFITOWN=["apron"];   /* the drawings a world turns on; `formal` is every world's, and not one of them */
 const OUTFITON=new Set(typeof OUTFITTAKE!=="undefined"&&Array.isArray(OUTFITTAKE)?OUTFITOWN.filter(o=>OUTFITTAKE.includes(o)):[]);
+/* what a world may say in OUTFITTAKE, checked at boot as BUILDER is (buildAudit): a list written wrong turns nothing on, and
+   whoever wrote it would see no apron and have no way to find out why. Only a world that declares the list is asked, and it
+   is told once, in one line. The words the engine draws: its everyday clothes' own word, every world's `formal`, and the
+   drawings a world turns on; any other word is drawn as the everyday clothes, so naming it turns nothing on. */
+function outfitAudit(){if(typeof OUTFITTAKE==="undefined")return [];
+  const draws=[saveLook(null).outfit,"formal"].concat(OUTFITOWN),
+    say=v=>typeof v==="string"?JSON.stringify(v.slice(0,24)):v===null?"null":Array.isArray(v)?"a list":typeof v==="object"?"an object":typeof v==="function"?"a function":String(v);
+  if(!Array.isArray(OUTFITTAKE))return ["OUTFITTAKE is "+say(OUTFITTAKE)+", not a list of outfit words such as [\"apron\"], so this world turns no outfit on"];
+  const bad=OUTFITTAKE.filter(o=>!draws.includes(o));
+  return bad.length?["OUTFITTAKE names "+bad.slice(0,3).map(say).join(", ")+(bad.length>3?" and more":"")+": "+(bad.length>1?"not outfits":"not an outfit")+" this engine draws ("+draws.join(", ")+"), so nothing is turned on for "+(bad.length>1?"them":"it")]:[];}
 /* THE APRON, drawn the way it is made and put on (.claude/skills/how-its-made): a bib over the chest and a skirt that hangs
    from the waist over the top of the legs, each cut and hemmed (the darker edge is the sprite's own line), sewn to a
    waistband whose tapes go round the body and are tied in a bow at the back; and a strap from the bib's top corners up round
@@ -4476,10 +4489,16 @@ const OUTFITON=new Set(typeof OUTFITTAKE!=="undefined"&&Array.isArray(OUTFITTAKE
    after the shirt and before the arms, which hang over the tapes at the sides. From behind (facing up) the bib and the skirt
    are on the far side: what shows is the band across the back and the bow. Light cloth, so it reads against every shirt
    the creator offers and over the dark trousers at a phone's size, with the side away from the light a shade darker and
-   the chin's shadow across the top of the bib; all of it inside the 3D camera's card, so nothing is cut off there. */
-function drawApron(g,x,y,d){
+   the chin's shadow across the top of the bib; all of it inside the 3D camera's card, so nothing is cut off there. Named for
+   the person painter it belongs to: a world's own `const` of the same name would stop engine.js from loading at all, and a
+   world that paints an apron of its own as a prop would far sooner give its painter the shorter name. */
+function drawPersonApron(g,x,y,d){
   const cloth="#EFE9DC",shade="#D3C8B3",hem="rgba(15,12,20,.4)",turn="rgba(96,78,52,.16)";
-  const band=()=>{g.fillStyle=cloth;g.fillRect(x+9.1,y+16.5,13.8,1.2);g.strokeStyle=hem;g.lineWidth=.5;g.strokeRect(x+9.1,y+16.5,13.8,1.2);};
+  /* the band across the skirt's top, and past it the tapes going round him: thinner and in shade, as a tape turning away from
+     you is. Drawn the band's full length in its own cloth, the ends ran across the shirt's sides, which stand for his arms
+     while he is still, and read as a bar held at the waist */
+  const band=()=>{g.fillStyle=shade;g.fillRect(x+9.1,y+16.8,1.5,0.6);g.fillRect(x+21.4,y+16.8,1.5,0.6);
+    g.fillStyle=cloth;g.fillRect(x+10.4,y+16.5,11.2,1.2);g.strokeStyle=hem;g.lineWidth=.5;g.strokeRect(x+10.4,y+16.5,11.2,1.2);};
   g.save();g.lineJoin="round";g.lineCap="round";
   if(d==="up"){band();g.strokeStyle=hem;g.lineWidth=.5;
     [[14.5,-0.35],[17.5,0.35]].forEach(([bx,r])=>{g.fillStyle=cloth;g.beginPath();g.ellipse(x+bx,y+16.9,1.8,1.15,r,0,7);g.fill();g.stroke();});
@@ -4503,7 +4522,7 @@ function drawPerson(g,sx,sy,lk,o){
   g.beginPath();g.roundRect(sx+9,sy+9+bh,14,13,4);g.fill();
   shirtPattern(g,lk,sx+9,sy+9+bh,14,13); /* stripes, dots, a flourish — the fashion options (#82), plain by default */
   g.strokeStyle="rgba(15,12,20,.35)";g.lineWidth=.8;g.stroke();
-  if(lk.outfit==="apron"&&OUTFITON.has("apron"))drawApron(g,sx,sy+bh,d); /* only where the world turned it on (THE OUTFITS A WORLD TURNS ON) */
+  if(lk.outfit==="apron"&&OUTFITON.has("apron"))drawPersonApron(g,sx,sy+bh,d); /* only where the world turned it on (THE OUTFITS A WORLD TURNS ON) */
   if(o.moving){ /* wave-1 walk cycle: arms swing opposite the legs */
     g.fillStyle=lk.shirt;
     g.beginPath();g.roundRect(sx+6.6,sy+11.5+bh+b*0.9,2.6,6.5,1.3);g.fill();
@@ -9185,6 +9204,7 @@ wanderInit();
 arrivalsOnRails().forEach(function(m){mqwarn("arrival",m,true);});
 troAudit().forEach(function(m){mqwarn("trolley",m,true);});
 buildAudit().forEach(function(m){mqwarn("builder",m,true);});
+outfitAudit().forEach(function(m){mqwarn("outfit",m,true);});
 if(buildOK())droneRow();
 const SV=loadSave();
 if(SV&&SV.n){$("continueBtn").hidden=false;

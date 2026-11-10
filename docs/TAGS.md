@@ -65,6 +65,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Kitchen kinds and rows | `engine/kitchen.js` `KITCHEN` | 7 kinds, **closed and only ever added to**; 3 rows (`upper` `counter` `lower`) and `tall`; 3 fullnesses (`room` `almost` `full`, 2026-10-30); 4 finishes (`wood` `white` `violet` `grey`, 2026-10-30, **only ever added to**), `unfinished` (`counter`), `most` (40) and the rules (`add` `move` `canMove` `moveTo` `remove` `paint` `paintAll` `compact`), with `gaps` (sprint 5) — registered below |
 | Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store` `gaps` `things` `keep`; a place's `kind` `row` `col` `name` `full` `finish` `id`; a thing's `id` `n` `name` `parts` `stand` `pic`; **closed**: any other key refuses the layout whole, and a thing off its list is refused whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
+| Outfit | a look's `outfit`; pack `OUTFITTAKE`; `engine/engine.js`, grep `THE OUTFITS A WORLD TURNS ON` | `formal` for every world · `apron` on request, only where the world's `OUTFITTAKE` names it · every other word the everyday clothes; a list written wrong turns nothing on and is a line in the log — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -602,6 +603,20 @@ helper, and the person who hits it will be reading their content files, not `san
   lowest, by height as it stands after its turns, worked out once as it is built; both through the colour theme, one
   material for the time of day. It is a colour, not a size: the kitchen never makes it smaller. A part without it, and
   every world that writes none, is built exactly as before. `cb` collides with nothing already here.
+- **Registered 2026-11-10 — `OUTFITTAKE`, the outfits a world turns on, and the outfit word `apron`.** A list of outfit
+  words, `const OUTFITTAKE=["apron"];`, in a pack file the page loads before `engine/boot.js`. Read once, as the engine
+  loads, as `CAMERAS` is: a list declared in a file loaded after `engine/boot.js` is never seen, and it is the world's own
+  `const`, read by its bare name, never a property of `window`. Rule 2 passes: every word is a garment's, in a game about
+  anything with people in it. The outfit words the engine draws: `formal` for every world (darker trousers, a collar and a
+  tie); `apron` on request, only in a world whose list names it (a strap round the neck, a bib, a skirt over the top of the
+  legs, and a waistband whose tapes go round and are tied at the back); every other word, the everyday clothes. **Saying
+  nothing is every person exactly as before**, whatever outfit word reaches the world: a save keeps any word of up to
+  eight letters and a Trolley Pass carries it, so the drawing is gated by the world's list and never by the word alone. A
+  list written wrong (a word where the list goes, `["Apron"]` in capitals, an object) turns nothing on, and the engine
+  says so once at boot, a critical line in the log, kind `outfit` (`outfitAudit`). The drawings a world may turn on are
+  one list, `OUTFITOWN`, beside it. `test/engine.smoke.js` (grep `THE APRON IS DRAWN ONLY`) holds all of it. **Not**
+  decided: an outfit a world draws for itself, and a second drawing to turn on; each would be a word on `OUTFITOWN`, never
+  a second list. `apron` collides with nothing already here.
 - **A named `tmpl`.** `"01"`–`"07"` are bare numbers with no registry.
 - `STAKES.mode:"budget"` is a declared tag with **no implementation** (`config.js:45`).
 
