@@ -12100,8 +12100,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          too, every verdict said by its word; a Trolley Pass link opened with nothing kept and with a game kept; a door out
          of a home that is also the park (laid here where the world has none) or out of the park by its own door; the Pass
          and Multiplayer panels, every section heading Settings draws, its themes each by a name of its own, the theme
-         editor and a copy of the theme in use, stakes, the text lab, a new character and a word from them; a save that
-         fails, then works again; the map's words where the engine cannot lay its own beneath a world's; and starting over. */
+         editor and a copy of the theme in use, stakes, the text lab, a new character and a word from them; saves that fail
+         and work again, in turn, each step said as the engine this branch grew from says it; the map's words where the engine
+         cannot lay its own beneath a world's; and starting over. */
   {
     const WD = [], WN = [];
     /* 1 · THE LIST — the reader. Tokens first (nothing from inside a comment, a string or a regex, and a template read as its
@@ -12339,7 +12340,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       'the kitchen': 'closetTitle closetDone closetAfter kitEmptyLine kitFull ktMonths kbAgainKinds kbAgainYesKinds',
     };
     /* read only to decide whether to say anything: excused only where every read of the word does just that */
-    const OPTIONAL = new Set('tut1 tut2 retryNote waitingAt chat chairHint wdHint plan.tap plan.chosen plan.none'.split(' '));
+    const OPTIONAL = new Set('tut1 tut2 retryNote waitingAt chat chairHint wdHint plan.tap plan.chosen plan.none save.back'.split(' '));
     const ENGLISH = new Set('youLb kitOpen closet'.split(' '));   /* the engine still says these in English where it reads them */
     const forOf = {}; Object.entries(FOR).forEach(([th, ws]) => ws.split(' ').forEach(w => { forOf[w] = th; }));
     const LN = { en: 'English', es: 'Spanish' };
@@ -12563,7 +12564,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         Object.keys(UI).forEach(L => { if (UI[L] && typeof UI[L] === 'object') UI[L] = copy(UI[L]); }); });
       standSay(await wp.evaluate(() => window.__wordsStand()), ', once the words are put in place anew after the game has started');
       await fileCheck(', once the words are put in place anew after the game has started');
-      const mapWords = {}, report = {}, back = {};
+      const mapWords = {}, report = {}, saveNow = {};
+      /* saves failing and working again, in turn, as on a device out of room, and what the game says at each step: run here in
+         each language, and on the engine this branch grew from below, the same steps in the same order */
+      const saveRun = () => { const real = Storage.prototype.setItem; let failing = () => false;
+        Storage.prototype.setItem = function (k, v) { if (failing(k)) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); };
+        const said = f => { const t = document.getElementById('ticker'); if (t) t.textContent = ''; tickerLines.length = 0; try { f(); } catch (e) {} return tickerLines.join(' | '); }, out = {};
+        const fails = k => { storeToldAt = 0; failing = x => x === SK(k); }, works = () => { failing = () => false; };
+        try { storeBad = false;
+          fails('dlog'); out.log = said(() => mqStore(SK('dlog'), JSON.stringify(dlog))); works(); out.logThenSave = said(() => save());
+          fails('1'); out.warned = said(() => save()); works(); out.back = said(() => save());
+          fails('1'); out.warned2 = said(() => save()); out.room = said(() => mqStore(SK('room'), JSON.stringify({ v: 1, a: roomAns }), true)); works(); out.back2 = said(() => save());
+          fails('1'); out.warned3 = said(() => save()); works(); out.setting = said(() => mqStore(SK('theme'), themeName)); out.back3 = said(() => save());
+        } finally { Storage.prototype.setItem = real; }
+        return out; };
       /* the door out of a home that is also the park, laid once: a one-room place beside home, a door into it on a free
          tile of home and a door back, as a world built from a starter would have; where home is not the park, the park's own door */
       const door = await wp.evaluate(() => {
@@ -12697,7 +12711,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         await panel('the theme editor', () => { document.getElementById('teOpen').click(); }, ['teName'], () => {}, L, { teName: 'teNamePh' });
         { const cp = await wp.evaluate(() => { const b = document.querySelector('#teClone button[data-cl="meridian"]'), th = document.querySelector('#themeRow button[data-th="meridian"]');
             if (!b || !th || PALS.length >= 8) return null; const n = PALS.length; b.click(); return PALS.length > n ? { name: PALS[PALS.length - 1].n, theme: th.textContent } : null; });
-          if (cp) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+          if (cp) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}\p{P}]+/u, '').trim();   /* its mark left off, its punctuation kept */
             if (!nm || bad(cp.name) || nm !== th) WD.push('in ' + LN[L] + ', a copy of the theme Settings calls "' + cp.theme + '" is named "' + cp.name + '"'); } }
         await said('closing the theme editor', () => { document.getElementById('teClose').click(); }, L, 'teSaved');
         await panel('the new-character card', () => { const w = CW(); for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++)
@@ -12708,21 +12722,50 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) if (!isSolid(x + dx, y + dy)) { px = fx = x + dx; py = fy = y + dy; dir = d; break; }
           checkTalk(); document.getElementById('talk').click(); }, L);
         await wp.evaluate(() => { document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); document.getElementById('admOff').click(); });
-        /* a save that fails, as on a device out of room, and the next one, which works: the warning, then the word that it is saving again */
-        { const e0 = wErr.length;
-          const sv = await wp.evaluate(() => { const real = Storage.prototype.setItem; let fail = true;
-            Storage.prototype.setItem = function (k, v) { if (fail) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); };
-            const t = document.getElementById('ticker'); if (t) t.textContent = ''; tickerLines.length = 0; storeToldAt = 0; let warn = '', ok = '';
-            try { try { save(); } catch (e) {} warn = tickerLines[tickerLines.length - 1] || ''; tickerLines.length = 0; fail = false;
-              try { save(); } catch (e) {} ok = tickerLines[tickerLines.length - 1] || ''; } finally { Storage.prototype.setItem = real; }
-            return { warn, ok }; });
-          if (wErr.length > e0) WD.push('in ' + LN[L] + ', a save that failed, then worked, threw "' + wErr[e0] + '"');
-          if (!sv.warn.trim() || bad(sv.warn)) WD.push('in ' + LN[L] + ', a save that fails because the device is out of room says ' + (sv.warn.trim() ? '"' + sv.warn + '"' : 'nothing'));
-          if (!sv.ok.trim() || bad(sv.ok)) WD.push('in ' + LN[L] + ', a save that works again after one that failed says ' + (sv.ok.trim() ? '"' + sv.ok + '"' : 'nothing') + ', so the warning is the last word the player has');
-          else back[L] = sv.ok;
-          await holds(L, 'a save that fails because the device is out of room', sv.warn, 'save.full'); await holds(L, 'a save that works again after one that failed', sv.ok, 'save.back'); }
+        /* saves that fail and work again, in turn: the warning held to its word here, and every step kept to set beside the
+           engine this branch grew from, below */
+        { const e0 = wErr.length; saveNow[L] = await wp.evaluate(saveRun).catch(e => { wErr.push(String(e.message).split('\n')[0]); return null; });
+          if (wErr.length > e0) WD.push('in ' + LN[L] + ', saves failing and working again in turn threw "' + wErr[e0] + '"');
+          const warn = saveNow[L] ? saveNow[L].warned : '';
+          if (!warn.trim() || bad(warn)) WD.push('in ' + LN[L] + ', a save that fails because the device is out of room says ' + (warn.trim() ? '"' + warn + '"' : 'nothing'));
+          else { (twice['a save that fails because the device is out of room'] = twice['a save that fails because the device is out of room'] || {})[L] = warn;
+            await holds(L, 'a save that fails because the device is out of room', warn, 'save.full'); } }
         await fileCheck(', after the screens above were opened in ' + LN[L]);
       }
+      /* THE SAVE LINES, SET BESIDE THE ENGINE THIS BRANCH GREW FROM. The line for a save that works again is a world's own
+         (save.back) or none: the engine keeps none of its own, so a world that names none says nothing when a save works again,
+         after only the play log failed or after a warning, as it always has. And at every step the game says what the engine
+         this branch grew from says there: every file of engine/ at the commit this branch grew from (git merge-base with
+         origin/main), read from git the way the check of a returning player's edge arrow reads it, and this same shell opened
+         on it in a context of its own, in the same run. A warning is set beside it only where this world's own words file
+         names the warning; where it names none the engine's own stands in, in the player's language, which is this change,
+         and the warning is held to that word above */
+      { const STEP = { log: 'when only the play log cannot be kept', logThenSave: 'when only the play log could not be kept and a save then works',
+          warned: 'when a save fails because the device is out of room', back: 'when a save that failed, and was warned of, works again',
+          warned2: 'when the save fails again', room: 'when the room\'s answers are kept while the save still fails', back2: 'when the save works again after the room\'s answers were kept',
+          warned3: 'when the save fails once more', setting: 'when a setting is kept after the save failed', back3: 'when the save works again after a setting was kept' };
+        const q = s => s ? '"' + s + '"' : 'nothing', files = {}; let at = null;
+        try { const { execFileSync } = require('child_process'), git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+          at = git('merge-base', 'origin/main', 'HEAD').trim().slice(0, 40);
+          git('ls-tree', '--name-only', at, 'engine/').split('\n').filter(f => /\.js$/.test(f)).forEach(f => { files[f] = git('show', at + ':' + f); }); } catch (e) { at = null; }
+        if (!at || !Object.keys(files).length) WD.push('the engine this branch grew from cannot be read here (no git, or no origin/main), so what the game says when a save fails and works again was not set beside what it said before — that is not a pass');
+        else if (W.langs.some(L => saveNow[L])) {
+          const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } }), bp = await bctx.newPage(), bErr = [], eng = require('url').pathToFileURL(path.join(root, 'engine')).href + '/';
+          bp.on('pageerror', e => bErr.push(String(e.message).split('\n')[0]));
+          await bp.route('**', r => { const u = r.request().url();
+            if (u.startsWith(eng)) { const f = 'engine/' + decodeURIComponent(u.slice(eng.length).split(/[?#]/)[0]);
+              return files[f] === undefined ? r.fulfill({ status: 404, body: '' }) : r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: files[f] }); }
+            return u.startsWith('file://') ? r.continue() : r.abort(); });
+          try { await bp.goto('file://' + file); await boot(bp);
+            for (const L of W.langs) { const now = saveNow[L]; if (!now) continue; const b0 = bErr.length;
+              await bp.evaluate(L => { document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
+              const then = await bp.evaluate(saveRun);
+              if (bErr.length > b0) { WD.push('in ' + LN[L] + ', the engine this branch grew from (' + at.slice(0, 7) + ') threw "' + bErr[b0] + '" while saves failed and worked again, so what this one says there was not set beside it'); continue; }
+              const ownWarn = W.world[L].includes('save.full');
+              Object.keys(STEP).forEach(k => { if (/^warned/.test(k) && !ownWarn) return;
+                if (now[k] !== then[k]) WD.push('in ' + LN[L] + ', ' + STEP[k] + ', the game says ' + q(now[k]) + ', where the engine this branch grew from (' + at.slice(0, 7) + ') says ' + q(then[k])); }); } }
+          catch (e) { WD.push('this shell did not open on the engine this branch grew from (' + at.slice(0, 7) + '), so what the game says when a save fails and works again was not set beside it: ' + String(e && e.message || e).split('\n')[0]); }
+          await bctx.close(); } }
       /* a solid call, in the last language, then the Report tab again in each language: its verdicts read for every kind of call */
       { const L = W.langs[W.langs.length - 1];
         if (L) { await cardCall(L, 'ok'); await wp.waitForTimeout(80);
@@ -12756,7 +12799,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (mapWords.en && mapWords.es) Object.keys(mapWords.es).forEach(k => { const s = mapWords.es[k]; if (s && s === mapWords.en[k]) WD.push('in Spanish the map still says "' + s + '" where ' + k + ' goes, as it does in English'); });
         if (report.en && report.es && report.en === report.es) WD.push('in Spanish the Report tab\'s summary is the English one: "' + report.es + '"');
         [false, true].forEach(k => { const R = report['pass' + k]; if (R && R.en && R.es && R.en === R.es) WD.push('in Spanish a Trolley Pass link\'s card is the English one: "' + R.es.replace(/\s+/g, ' ').trim() + '"'); });
-        if (back.en && back.es && back.en === back.es) WD.push('in Spanish a save that works again says what it says in English: "' + back.es + '"');
       }
     } catch (e) { WD.push('the check could not drive the game to the end, so it measured nothing past: ' + String(e && e.message || e).split('\n')[0]); }
     await wctx.close();

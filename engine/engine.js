@@ -713,7 +713,8 @@ const GN=()=>typeof GAMENAME==="string"?GAMENAME:"";
    shared between two languages, is left as it is (the first language to reach it keeps it), and a group a world sets
    after the game has started is its own, whole.
    NOT HERE: a word a world names only for a thing it has (its dogs, its chair, its endings, its tram), a word read only to
-   decide whether to say anything (a world that names none says nothing there), a world's own story and names, and the
+   decide whether to say anything (a world that names none says nothing there: the line for a save that works again,
+   save.back, is one, so a world without it stays quiet then, as it always has), a world's own story and names, and the
    kitchen's words, which the kitchen keeps in its own code. test/engine.smoke.js (grep "A WORLD'S OWN WORD COMES FIRST")
    lists every word the engine reads and holds each one to one of those. Before boot the save warnings still use
    SAVE_FALLBACK, above: T() cannot run that early. */
@@ -761,7 +762,7 @@ const UIDEF={
   plan:{work:"has work for you",host:"has a question about this room",read:"something to read",key:"what the marks mean",
     any:"Somewhere to go",ride:"take the tram",arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off",
     arrowHint:"Only shows once you've got a destination."},
-  save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked,back:"Saving again — what you do now is being saved."},
+  save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked},
   zoomIn:"Zoom in",zoomOut:"Zoom out"},
  es:{
   talkPre:"💬 ",
@@ -807,8 +808,7 @@ const UIDEF={
     any:"Un lugar adonde ir",ride:"toma el tranvía",arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
     arrowHint:"Nomás sale cuando ya tienes destino."},
   save:{full:"Este dispositivo ya no tiene espacio — lo que hagas ahora no se está guardando.",
-    blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso.",
-    back:"Ya se está guardando otra vez — lo que hagas ahora sí se guarda."},
+    blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso."},
   zoomIn:"Acercar",zoomOut:"Alejar"}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
@@ -6656,7 +6656,7 @@ function meridianVars(mode){ /* read the built-in palette out of the stylesheet 
    was called "Classic 2", the engine's name, because the world names its theme's button and no palette. */
 function palName(name){const t=T(),own=(o,k)=>!!o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,k),mine=g=>own(t,g)&&own(t[g],name);
   if(mine("palNames")&&t.palNames[name])return t.palNames[name];
-  if(mine("themes")){const s=String(t.themes[name]).replace(/^[^\p{L}\p{N}]+/u,"").trim();if(s)return s;}
+  if(mine("themes")){const s=String(t.themes[name]).replace(/^[^\p{L}\p{N}\p{P}]+/u,"").trim();if(s)return s;}   /* its mark left off, its punctuation kept */
   return (t.palNames||{})[name]||name;}
 function cloneTheme(name){ /* clone = save-as-new palette in the wardrobe */
   if(PALS.length>=8){toast(T().palFull,2400);return;}
@@ -7018,8 +7018,8 @@ function decisionReport(){
       const rows=g.nodes[nk],last=rows[rows.length-1],n=rows.length;
       if(nk!=="-")out.push("**"+L.question+":** "+nk);
       if(last.pick)out.push("**"+L.call+":** "+last.pick);
-      /* a call is said by the card's own word for it, a solid call, a partly right one or a miss, whatever its world logged it as
-         (a world's wrong answer may be logged as "no", and the Report printed "no") */
+      /* a call is said in the Report's own words for a solid call, a partly right one or a miss, as the card sorts it into those
+         same three, whatever its world logged it as (a world's wrong answer may be logged as "no", and the Report printed "no") */
       out.push("**"+L.verdict+":** "+(L[last.result==="ok"||last.result==="mid"?last.result:"bad"]||last.result)
         +(last.concept?" — *"+last.concept+"*":"")
         +(n>1?"  ("+n+" "+L.attempts+")":""));
