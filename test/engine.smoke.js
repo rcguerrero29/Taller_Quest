@@ -12422,12 +12422,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          (whatever else its script tag says), read outside the page, so nothing the page wrote over the world's words can stand
          in for them. Every word the engine also keeps reaches the game as the file says it, after boot, after the words are put
          in place anew, after each language is picked, and after that language's screens were opened. */
-      const wordsAt = await wp.evaluate(() => [...document.scripts].map(s => s.src).filter(u => /strings\.js([?#]|$)/.test(u)));
+      /* the words file is the script this page loaded that declares UI (const UI = …), whatever its name */
+      const wordsAt = (await wp.evaluate(() => [...document.scripts].map(s => s.src).filter(u => u.startsWith('file://'))))
+        .filter(u => { try { return /^[ \t]*(?:const|let|var)[ \t]+UI[ \t]*=/m.test(fs.readFileSync(decodeURIComponent(new URL(u).pathname), 'utf8')); } catch (e) { return false; } });
       const shipped = (() => { if (wordsAt.length !== 1) return null; try { const f = decodeURIComponent(new URL(wordsAt[0]).pathname);
         const vm = require('vm'), box = { console, art: () => null, logKind: () => [], logCrit: () => [] }; vm.createContext(box);
         vm.runInContext(fs.readFileSync(f, 'utf8') + '\n;this.__UI = UI;', box); return box.__UI; } catch (e) { return null; } })();
       const sig = v => typeof v === 'function' ? 'a function: ' + v.toString() : JSON.stringify(v);
-      if (!wordsAt.length) WN.push('COUNT-ONLY: this shell loads no words file of its own (no strings.js), so a world\'s own word was checked against the page alone');
+      if (!wordsAt.length) WD.push('this shell loads no file that declares its words (const UI = …), so nothing here can tell this world\'s own words from the engine\'s, and no screen is held to them');
       else if (!shipped) WD.push('this shell loads its words from ' + wordsAt.map(u => path.relative(root, decodeURIComponent(new URL(u).pathname))).join(' and ') + ', and the check could not read ' + (wordsAt.length > 1 ? 'which one is the world\'s' : 'it') + ' outside the page, so nothing here can tell this world\'s own words from the engine\'s');
       const ownIn = (o, k) => { const p = k.split('.'); return !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, p[0]) && (p.length === 1 || (!!o[p[0]] && typeof o[p[0]] === 'object' && Object.prototype.hasOwnProperty.call(o[p[0]], p[1]))); };
       const fileVal = (L, k) => { const p = k.split('.'); return p.length > 1 ? shipped[L][p[0]][p[1]] : shipped[L][k]; };
@@ -12447,8 +12449,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         let v = mine ? fileVal(L, k) : await wp.evaluate(([L, k, args]) => { const p = k.split('.'), d = (typeof UIDEF === 'object' && UIDEF && UIDEF[L]) || {}, v = p.length > 1 ? (d[p[0]] || {})[p[1]] : d[k];
           try { return typeof v === 'function' ? v(...args) : v; } catch (e) { return null; } }, [L, k, args || []]);
         if (mine && typeof v === 'function') { try { v = v(...(args || [])); } catch (e) { v = null; } }
-        return { v: typeof v === 'string' && v.trim() ? v : null, mine }; };
-      const holds = async (L, what, text, k, args) => { if (!shipped || text === null || text === undefined) return; const w = await want(L, k, args); if (!w.v) return;
+        return { v: typeof v === 'string' && v.trim() ? v : null, blank: typeof v === 'string' && !v.trim(), mine }; };
+      /* a screen with no word to hold it to is a red, but for a word left blank on purpose and a place's name (a place the engine
+         builds names itself in the page, and the engine keeps no names of places) */
+      const holds = async (L, what, text, k, args) => { if (!shipped || text === null || text === undefined) return; const w = await want(L, k, args);
+        if (!w.v) { if (!w.blank && !k.startsWith('locs.')) WD.push('in ' + LN[L] + ', ' + what + ' could not be held to a word: ' + (w.mine ? 'this world\'s own "' + k + '" said nothing when it was said outside the page' : 'neither this world nor the engine names "' + k + '"')); return; }
         if (!String(text).includes(w.v)) WD.push('in ' + LN[L] + ', ' + what + ' reads "' + String(text).replace(/\s+/g, ' ').trim().slice(0, 120) + '", where ' + (w.mine ? 'this world\'s own word for it' : 'the engine\'s own word for it, in ' + LN[L] + ',') + ' is "' + w.v.slice(0, 120) + '"'); };
       if (W.hasDef) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
