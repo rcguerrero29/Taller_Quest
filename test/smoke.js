@@ -1182,10 +1182,12 @@ const CANDIDATES = [
     out.card = !document.getElementById('parkCard').hidden;
     out.starHome = star.world === 'st' && star.follow === false;
     document.getElementById('pkClose').click();
-    // strings in both languages
+    // strings in both languages, each Meridian's own: the engine keeps words of its own beneath a world's now, and a word
+    // read through them would answer for one Meridian dropped, so each is asked for as Meridian's own property
+    const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k) && !!o[k];
     out.langOk = !!(['leashLb', 'parkArrive', 'parkTitle', 'parkSum', 'parkLove', 'parkTeaser',
       'adoptLb', 'adoptAsk', 'adoptDone', 'bandLb', 'parkFull', 'loveLb', 'loveLines']
-      .every(k => UI.en[k] && UI.es[k]) && UI.en.locs.pk && UI.es.locs.pk && UI.en.arrive.pk && UI.es.arrive.pk);
+      .every(k => own(UI.en, k) && own(UI.es, k)) && own(UI.en.locs, 'pk') && own(UI.es.locs, 'pk') && own(UI.en.arrive, 'pk') && own(UI.es.arrive, 'pk'));
     // cleanup so this section leaves no park residue for reruns
     localStorage.removeItem('mqpark');
     return out;
@@ -1221,8 +1223,9 @@ const CANDIDATES = [
         dogKinds,
         triggers: Object.entries(typeof EGGS !== 'undefined' ? EGGS : {}).flatMap(([k, e]) => (e.triggers || []).map(t => [k, t])),
         cast: [...new Set(['en', 'es'].flatMap(l => Object.values((typeof NPCN !== 'undefined' && NPCN[l]) || {}).map(n => String(n).split(' ·')[0].trim())))],
-        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => [k, typeof UI.en[k], typeof UI.es[k],
-          Array.isArray(UI.en[k]) ? UI.en[k].length : -1, Array.isArray(UI.es[k]) ? UI.es[k].length : -1])
+        /* Meridian's own words, never the engine's laid beneath them */
+        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => { const w = L => Object.prototype.hasOwnProperty.call(UI[L], k) ? UI[L][k] : undefined;
+          return [k, typeof w('en'), typeof w('es'), Array.isArray(w('en')) ? w('en').length : -1, Array.isArray(w('es')) ? w('es').length : -1]; })
       };
     });
     const star = decl.stars[0] || null;
@@ -3992,9 +3995,9 @@ const CANDIDATES = [
       ['openExp', 'openLab', 'openTp', 'openMp', 'replay', 'closeSet'].forEach(k => {
         const el = document.getElementById(k);
         if (el && el.closest('details.drawer')) problems.push(k + ' was buried in a drawer — it is an action, not a setting'); });
-      // both languages name every drawer
+      // both languages name every drawer, as Meridian's own words (the engine's own beneath them would answer for a dropped one)
       ids.forEach(id => { const k = 'drw' + id.slice(3);
-        if (!UI.en[k] || !UI.es[k]) problems.push('drawer ' + id + ' has no label in both languages'); });
+        if (![UI.en, UI.es].every(o => Object.prototype.hasOwnProperty.call(o, k) && o[k])) problems.push('drawer ' + id + ' has no label in both languages'); });
       return problems;
     });
     fails.push(...dr);
