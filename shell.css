@@ -381,10 +381,29 @@
      stamp. His conditional is the argument and it is right: the map STOPS THE GAME, and a thing
      that stops the game has to be worth stopping for. It gets its own width now — nearly the whole
      phone, and a real panel on a desktop. */
-  #mapov .box{width:min(94vw,860px); max-width:none; padding:16px;}
+  #mapov .box{--mappad:16px; width:min(94vw,860px); max-width:none; padding:var(--mappad);}
   #mapov #mapcv{max-height:70svh; object-fit:contain;}
   .settings .box>.close{position:sticky; bottom:-18px; z-index:2; margin-bottom:0;
     box-shadow:0 -14px 16px -8px var(--surface);}
+  /* AND THE MAP'S CLOSE RIDES THE MAP'S OWN FOOT (2026-11-08). The rule above pins every panel's Close by the 18 px of padding
+     every other box has; the map's box has 16, so its Close hung 2 px past the box and its rounded corners were cut off
+     wherever the box scrolls. The map's padding is said once, above, and its Close rides exactly that. No other panel moves. */
+  #mapov .box>.close{bottom:calc(0px - var(--mappad));}
+  /* THE MAP ON THE LEFT HALF OF A WIDE SCREEN (2026-11-08). Where the engine finds the left half draws the plan at least as big
+     as the box in the middle does (a screen shaped like a laptop's or wider), it marks the overlay `half` and the page
+     `maphalf`. The box is then the left half of the screen from top to bottom, and the plan leaves 170 px of the screen's
+     height to the lines and the buttons under it. The game, which stands still while the map is open, shows in the right
+     half, lightly dimmed: its column moves there (narrowed only where the right half is narrower than it), and in the game's
+     full screen its picture does. A tap on the game is a tap on the overlay, so it closes the map, as a tap beside the box
+     always has. */
+  #mapov.half{background:rgba(15,12,22,.22); justify-content:flex-start; align-items:stretch;}
+  #mapov.half .box{width:50%; max-height:none; border-radius:0; border-width:0 1px 0 0;}
+  #mapov.half #mapcv{max-height:calc(100svh - 170px);}
+  body.maphalf .wrap{max-width:min(560px, calc(50% - 56px)); margin-left:calc(75% - min(296px, 25% - 12px)); margin-right:0;}
+  /* the street's own two pictures, by name: the map's overlay lives inside the street's view, and a rule for every canvas
+     there would move the plan too; nor is the full screen's height for its pictures the plan's */
+  body.maphalf .viewport.fs > #cv, body.maphalf .viewport.fs > #cv3{width:50%; margin-left:50%;}
+  #mapov.half #mapcv{height:auto !important;}
   .settings h3{font-family:'Unbounded',sans-serif; font-size:.9rem; margin:0 0 12px;}
   /* Rosa, finding 6. These were one line whose items shared the space equally, were never allowed
      to be narrower than their own text, and were never allowed to wrap — so in Spanish on a 1440px

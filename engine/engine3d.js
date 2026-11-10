@@ -1194,7 +1194,7 @@ function t3PetalTex(){ /* one white petal with alpha, tinted per drop by the mat
   if(T3.petalTex)return T3.petalTex;const c=document.createElement("canvas");c.width=16;c.height=20;const g=c.getContext("2d");
   petalShape(g,8,19,0,4,"#FFFFFF","rgba(0,0,0,.35)");const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;return T3.petalTex=t;}
 function t3Petals(){
-  T3.petals=T3.petals||[];const L=(typeof PETALS!=="undefined")?PETALS:[],now=Date.now(),bands=(typeof petalPal==="function")?petalPal():BRIDGE_BANDS;
+  T3.petals=T3.petals||[];const L=(typeof PETALS!=="undefined")?PETALS:[],now=typeof wDate==="function"?wDate():Date.now(),bands=(typeof petalPal==="function")?petalPal():BRIDGE_BANDS;
   let i=0;
   L.forEach(pt=>{if(pt.w!==world)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
     let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
@@ -1221,7 +1221,7 @@ function t3DecalTex(kind){
   return T3.decalTex[kind]=t3Tex(c,true);}
 function t3Decals(){
   T3.decals=T3.decals||[];const w=CW();let i=0;
-  decalsNow(Date.now()).forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
+  decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])return;
     let p=T3.decals[i];
     if(!p){p=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshLambertMaterial({transparent:true,depthWrite:false}));
       p.rotation.x=-Math.PI/2;T3.decals[i]=p;T3.scene.add(p);}
@@ -1276,7 +1276,7 @@ function t3Actors(){
   const w=CW();
   /* the other thing the dog leaves stands, like the ball, painted by the flat cameras' own painter (#267) — first
      in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
-  decalsNow(Date.now()).forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
+  decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
   w.npcs.forEach(n=>list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,f:(g)=>{
     drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     /* the SAME painter the flat cameras use, smaller and closer because this sprite has six pixels
@@ -1718,7 +1718,7 @@ function t3Glow(){ /* the light under every door breathes — same clock as the 
   T3.glows.forEach(m=>{m.opacity=a;});
 }
 function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
-  const dog=CRIT.find(c=>c.leashT>performance.now()&&c.world===world);
+  const now=typeof wNow==="function"?wNow():performance.now(),dog=CRIT.find(c=>c.leashT>now&&c.world===world);   /* the world's clock, as the flat cameras read it */
   if(!dog){if(T3.leashLn)T3.leashLn.visible=false;return;}
   if(!T3.leashLn){
     const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);

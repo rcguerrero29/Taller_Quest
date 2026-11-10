@@ -6612,16 +6612,27 @@ function findChromium() {
         await p.goto('file://' + file); await boot(p); return { ctx, p }; };
       const destNow = p => p.evaluate(() => mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null);
       const same = (a, b) => !!a && !!b && a.w === b.w && a.x === b.x && a.y === b.y;
-      /* a point on the paper, in its canvas pixels, put under a finger: scrolled to if it is under something else */
+      /* a point on the paper, in its canvas pixels, put under a finger: scrolled to if it is under something else. A finger
+         presses a rect, not a point: the browser hands a tap to the topmost thing anywhere in the rect round its point, so
+         with a finger the point counts as in reach as it stands only where that whole rect lies on the plan, read at the
+         rect's corners, the middles of its sides and its centre. The taps here set no radius, and the browser then gives a
+         touch 1 px each way; FINGER is twice that, a stated margin. A mouse presses its point, as before. Anything else is
+         scrolled to the middle of the box first, as a person would, and a point still not clear there is a red line; the
+         tap that follows is asked exactly what it was asked before. Changed on 2026-11-08: a goal moved Close 2 px up the
+         box, and a point this check chose on the paper at 844×390, 0.13 px above Close's edge, read as on the plan while
+         the finger's rect reached Close, so the tap closed the map. */
+      const FINGER = 2;
+      let fingerPx = 0;
       const reach = async (p, cx, cy, margin) => {
         for (let k = 0; k < 2; k++) {
-          const g = await p.evaluate(([cx, cy, margin]) => {
+          const g = await p.evaluate(([cx, cy, margin, F]) => {
             const a = __mqMap.planAt(); if (!a.plan || a.own) return a;
-            const x = margin ? margin[0] : a.ox + cx * a.kx, y = margin ? a.oy + margin[1] * a.ky : a.oy + cy * a.ky, el = document.elementFromPoint(x, y), plan = document.getElementById('mapcv');
-            if (el === plan) return { x, y, ok: true };
+            const x = margin ? margin[0] : a.ox + cx * a.kx, y = margin ? a.oy + margin[1] * a.ky : a.oy + cy * a.ky, plan = document.getElementById('mapcv');
+            const el = [[0, 0], [-F, -F], [0, -F], [F, -F], [-F, 0], [F, 0], [-F, F], [0, F], [F, F]].map(([dx, dy]) => document.elementFromPoint(x + dx, y + dy)).find(e => e !== plan);
+            if (el === undefined) return { x, y, ok: true };
             const box = document.getElementById('mapov').querySelector('.box') || document.getElementById('mapov');
             box.scrollTop += y - (a.vt + a.vb) / 2;
-            return { x, y, ok: false, on: !el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase() }; }, [cx, cy, margin || null]);
+            return { x, y, ok: false, on: !el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase() }; }, [cx, cy, margin || null, fingerPx]);
           if (!g.plan && g.plan !== undefined) return g;
           if (g.ok || g.own) return g;
           if (k) return g;
@@ -6631,7 +6642,7 @@ function findChromium() {
       const hit = async (p, how, g) => { if (how === 'tap') await p.touchscreen.tap(g.x, g.y); else await p.mouse.click(g.x, g.y); await rafs(p, 1); };
       let asked = 0, ownPlan = '', noMargin = [];
       for (const touch of [false, true]) {
-        const { ctx, p } = await pageT(390, 844, touch), how = touch ? 'tap' : 'click';
+        const { ctx, p } = await pageT(390, 844, touch), how = touch ? 'tap' : 'click'; fingerPx = touch ? FINGER : 0;
         if (!await begin(p)) { MP.push('the game did not start, so a ' + how + ' on the map\'s markers was not asked about — nothing to measure is not a pass'); await ctx.close(); continue; }
         if (await p.evaluate(() => typeof markKinds === 'function' && !markKinds().length)) { await ctx.close(); break; }   /* a game that marks nobody has nothing to click (the gauge, El Horno) */
         await p.evaluate(MAPHELP());
@@ -7942,6 +7953,636 @@ function findChromium() {
       }
       await ctx.close();
     }
+
+    /* 24 · THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT, AND THE FOOT OF ITS BOX.
+            On a screen shaped like a laptop's or wider the map takes the left half of the screen from top to bottom, wherever
+            that draws the plan at least as big as the box in the middle draws it, and the game shows in the right half,
+            lightly dimmed and standing still, with the player in view; a tap on it closes the map, as a tap beside the box
+            always has. Everywhere else (a tablet held sideways, squarer screens and phones) the map keeps the box in the
+            middle. While the map is open, at every size, nothing in the world moves, the player's own step under way
+            included, and everything picks up where it stopped when the map closes. And the foot of the map's box: Close inside
+            it, the plan as it first opened whatever scroll the box was left with, and the line under the plan clear of Close.
+            Each part below says what it asks of the screen and what it was written red on. */
+    {
+      const own24 = path.relative(root, file) === 'index.html';
+      const decode = await browser.newPage();   /* a photograph is read on a blank page of its own, as section 15 reads one */
+      await decode.setContent('<!doctype html><title>read</title>');
+      /* the box, Close, the plan and the line's words, where the screen shows them now. The line's words start at its first
+         letter: the pin before them is a picture. A finger is put on each line of them, at both ends and the middle */
+      const footNow = () => {
+        const ov = document.getElementById('mapov'), box = ov.querySelector('.box') || ov, bb = box.getBoundingClientRect();
+        const R = e => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? [r.left, r.top, r.right, r.bottom] : null; };
+        const out = { box: [bb.left, bb.top, bb.right, bb.bottom], top: bb.top + box.clientTop, inner: bb.top + box.clientTop + box.clientHeight, scrolls: box.scrollHeight > box.clientHeight + 1,
+          close: R(document.getElementById('mapClose')), W: innerWidth, H: innerHeight };
+        const area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+        const plan = [...ov.querySelectorAll('canvas')].filter(c => c.width && c.height && c.getClientRects().length && c.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0] || null;
+        if (plan) { const r = plan.getBoundingClientRect(), k = Math.min(r.width / plan.width, r.height / plan.height);
+          out.plan = { own: plan !== document.getElementById('mapcv'), w: r.width, h: r.height, paperW: plan.width * k, paperH: plan.height * k }; }
+        const note = document.getElementById('mapNote'), tn = note && note.textContent.trim() ? [...note.childNodes].find(n => n.nodeType === 3 && /[\p{L}\p{N}]/u.test(n.textContent)) : null;
+        if (tn) { const rg = document.createRange(); rg.setStart(tn, tn.textContent.search(/[\p{L}\p{N}]/u)); rg.setEnd(tn, tn.textContent.length);
+          const rs = [...rg.getClientRects()].filter(q => q.width > 0 && q.height > 0);
+          if (rs.length) { out.words = [Math.min(...rs.map(q => q.left)), Math.min(...rs.map(q => q.top)), Math.max(...rs.map(q => q.right)), Math.max(...rs.map(q => q.bottom))];
+            const bad = []; rs.forEach(q => { const y = (q.top + q.bottom) / 2;
+              [q.left + Math.min(4, q.width / 3), (q.left + q.right) / 2, q.right - Math.min(4, q.width / 3)].forEach(x => { const el = document.elementFromPoint(x, y);
+                if (!el || !(el === note || note.contains(el))) bad.push(!el ? 'nothing' : el.id ? '#' + el.id : el.tagName.toLowerCase()); }); });
+            out.under = [...new Set(bad)]; out.said = note.textContent.trim(); } }
+        return out; };
+      /* the line's words photographed three times: as they are, with Close's shadow taken away, and with the words taken away.
+         Read in the photographs: how far the shadow moves any of their pixels, and in their upper half and their lower half the
+         best contrast a pixel of the words has with what is behind that same pixel (so Close, which is the same in all three,
+         is never read as the words) */
+      const wordsRead = async (p, r) => {
+        const v = await p.evaluate(() => [innerWidth, innerHeight]);
+        const clip = { x: Math.max(0, Math.floor(r[0])), y: Math.max(0, Math.floor(r[1])) }; clip.width = Math.min(Math.ceil(r[2]), v[0]) - clip.x; clip.height = Math.min(Math.ceil(r[3]), v[1]) - clip.y;
+        if (clip.width < 4 || clip.height < 4) return { ink: 0, shadow: 0, upper: 1, lower: 1 };   /* off the screen: no pixel of it to read */
+        const as = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapClose').style.boxShadow = 'none'; }); await rafs(p, 1);
+        const noShadow = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapClose').style.boxShadow = ''; document.getElementById('mapNote').style.color = 'transparent'; }); await rafs(p, 1);
+        const noWords = await p.screenshot({ clip });
+        await p.evaluate(() => { document.getElementById('mapNote').style.color = ''; }); await rafs(p, 1);
+        return decode.evaluate(async ([A, B, C]) => {
+          const px = async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+            const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+            return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; };
+          const a = await px(A), b = await px(B), c = await px(C);
+          const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, L = (d, i) => 0.2126 * lin(d[i]) + 0.7152 * lin(d[i + 1]) + 0.0722 * lin(d[i + 2]);
+          let shadow = 0, ink = 0; const best = [1, 1];
+          for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const i = (y * a.w + x) * 4;
+            shadow = Math.max(shadow, Math.abs(a.d[i] - b.d[i]), Math.abs(a.d[i + 1] - b.d[i + 1]), Math.abs(a.d[i + 2] - b.d[i + 2]));
+            if (Math.abs(a.d[i] - c.d[i]) + Math.abs(a.d[i + 1] - c.d[i + 1]) + Math.abs(a.d[i + 2] - c.d[i + 2]) < 9) continue;   /* no word on this pixel */
+            ink++; const la = L(a.d, i), lc = L(c.d, i), k = (Math.max(la, lc) + 0.05) / (Math.min(la, lc) + 0.05), half = y < a.h / 2 ? 0 : 1;
+            if (k > best[half]) best[half] = k; }
+          return { shadow, ink, upper: best[0], lower: best[1] }; }, [as, noShadow, noWords].map(q => q.toString('base64')));
+      };
+      /* what the screen shows in a rectangle: how bright it is on average, and whether it is a picture or one flat colour */
+      const look = async (p, r) => {
+        const v = await p.evaluate(() => [innerWidth, innerHeight]);
+        const x = Math.max(0, Math.floor(r[0])), y = Math.max(0, Math.floor(r[1])), w = Math.min(Math.ceil(r[2]), v[0]) - x, h = Math.min(Math.ceil(r[3]), v[1]) - y;
+        if (w < 8 || h < 8) return null;
+        const png = await p.screenshot({ clip: { x, y, width: w, height: h } });
+        return decode.evaluate(async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+          const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data, bins = new Map(); let sum = 0, n = 0;
+          for (let i = 0; i < d.length; i += 4) { n++; sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; const k = (d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+          return { mean: sum / n, other: 1 - Math.max(...bins.values()) / n, kinds: bins.size }; }, png.toString('base64')); };
+      const drawn = q => !!q && q.other >= 0.2 && q.kinds >= 8;   /* a street, not the one colour a cleared view shows */
+      const toArrow = async (p, on) => { if (!await mapOpen(p)) return false; const sw = await findSwitch(p); if (sw && sw.on !== on) await press(p); await mapShut(p); return true; };
+
+      /* a · CLOSE SITS WHOLLY INSIDE THE MAP'S BOX, at ten sizes, in each language, with the edge arrow off and on: its lower
+             edge at or above the inside of the box's lower edge, wherever the box scrolls and wherever it does not. The rule
+             that pins every panel's Close to the foot of its box counts on 18 px of padding, and the map's box has 16.
+             Written red on mq-v253: Close hung 1.6 to 2.4 px below the box in 54 of the 60 openings.
+         d · ON A TABLET HELD SIDEWAYS AND ON LAPTOPS, AS THE MAP OPENS, THE LINE UNDER THE PLAN THAT SAYS HOW TO CHOOSE A
+             DESTINATION IS WHOLLY CLEAR OF CLOSE AND OF THE SOFT SHADOW CLOSE CASTS UPWARD, and its words read at 4.5:1 or
+             more in the screen's own pixels, in each language, on the light box and the dark one, the edge arrow off and on.
+             Its words are photographed as they are, with Close's shadow taken away and with the words taken away: the shadow
+             may move none of their pixels by more than 4 levels in 255, and in their upper half and their lower half the best
+             contrast a pixel of the words has with what is behind that same pixel is 4.5:1 or more (Close, the same in all
+             three photographs, is never read as the words). Written red on mq-v253: at 1280×800 the shadow faded the words to
+             3.3:1 and 2.1:1, on a tablet held sideways and at 1280×720 Close covered them.
+         e · ON A SHORT PHONE HELD UPRIGHT, AS THE MAP OPENS, THAT LINE IS IN VIEW AND CLEAR OF CLOSE, in each language, the
+             edge arrow off and on: its words wholly below the top of the box and above Close's top edge, and a finger on them
+             lands on them. And on a phone with room to spare the plan keeps the whole width of its box. Written red on
+             mq-v253: at 390×560 the words lay under Close with the arrow on, and in Spanish with it off too.
+         d is asked of this game's own shell, as sections 8 and 16 ask that line, and e of every shell: the rule is the engine's,
+         and a window of a pack's own follows it. All three on one page and in one round
+         of openings, the map opened with its button each time: every size, each language, the edge arrow off and on, the
+         light box everywhere and the dark one where the line's words are read */
+      {
+        const SIZES24 = [[1280, 800, 'a laptop, 1280×800', 'line'], [1440, 900, 'a laptop, 1440×900', 'line'], [1920, 1080, 'a large screen, 1920×1080', 'line'],
+          [1280, 720, 'a laptop, 1280×720', 'line'], [1024, 768, 'a tablet held sideways, 1024×768', 'line'], [768, 1024, 'a tablet, 768×1024', ''],
+          [844, 390, 'a phone held sideways, 844×390', ''], [390, 844, 'a phone, 390×844', 'room'], [390, 560, 'a short phone, 390×560', 'phone'], [360, 640, 'a short phone, 360×640', 'phone room']];
+        const { ctx, p } = await page2(1280, 800);
+        if (!await begin(p)) MP.push('the game did not start, so the foot of the map\'s box was not measured — nothing to measure is not a pass');
+        else {
+          /* the flat camera behind the map, which draws the street cheaply between openings: the box does not depend on it. The
+             edge arrow is left on or off as a player leaves it (the switch's own press is sections 5, 15 and 16's, and b's) */
+          await p.evaluate(() => { if (typeof CAMS !== 'undefined' && CAMS.includes('top')) camSet('top'); });
+          const langs = await langsOf(p); let opened = 0, read = 0, lowest = null;
+          const hung = [], lineUnder = [], shaded = [], faint = [], unseen = [], shrunk = [], none = [];
+          for (const scheme of own24 ? ['light', 'dark'] : ['light']) {   /* the dark box is for d's photographs alone */
+            await p.emulateMedia({ colorScheme: scheme }); await rafs(p);
+            for (const [w, h, size, kind] of SIZES24) {
+              if (scheme === 'dark' && !/line/.test(kind)) continue;
+              await p.setViewportSize({ width: w, height: h }); await rafs(p);
+              for (const L of langs) {
+                await setLang(p, L);
+                for (const on of [false, true]) {
+                  await p.evaluate(on => bearSet(on), on);
+                  const where = size + ', ' + inLang(L) + ', the edge arrow ' + (on ? 'on' : 'off') + (scheme === 'dark' ? ', on the dark box' : '');
+                  if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the foot of its box was not measured'); continue; }
+                  await rafs(p, 2); opened++;
+                  const m = await p.evaluate(footNow);
+                  /* a */
+                  if (!m.close) none.push(where + ': there is no Close in the box');
+                  else if (m.close[3] > m.inner + 0.5) hung.push(where + ': ' + (m.close[3] - m.inner).toFixed(1) + ' px' + (m.scrolls ? '' : ', where the box does not scroll'));
+                  /* d */
+                  if (own24 && /line/.test(kind)) {
+                    if (!m.words || !m.close) none.push(where + ': the line under the plan or Close could not be found');
+                    else {
+                      if (m.words[3] > m.close[1] + 0.5 || m.under.length) lineUnder.push(where + ': its words reach ' + Math.max(0, m.words[3] - m.close[1]).toFixed(1) + ' px under Close\'s top edge' + (m.under.length ? ', and a finger on them lands on ' + m.under.join(', ') : ''));
+                      const q = await wordsRead(p, m.words); read++;
+                      if (!q.ink) none.push(where + ': no pixel of the line\'s words could be found on the screen');
+                      else { const k = Math.min(q.upper, q.lower); if (!lowest || k < lowest.k) lowest = { k, where };
+                        if (q.shadow > 4) shaded.push(where + ': the shadow moves their pixels by up to ' + q.shadow + ' levels in 255');
+                        if (k < 4.5) faint.push(where + ': ' + q.upper.toFixed(2) + ':1 in their upper half and ' + q.lower.toFixed(2) + ':1 in their lower half'); } } }
+                  /* e */
+                  if (/phone/.test(kind)) {
+                    if (!m.words || !m.close) none.push(where + ': the line under the plan or Close could not be found');
+                    else { const why = [];
+                      if (m.words[1] < Math.max(m.top, 0) - 0.5) why.push('its words start above the top of the box');
+                      if (m.words[3] > m.close[1] + 0.5) why.push('its words reach ' + (m.words[3] - m.close[1]).toFixed(1) + ' px under Close\'s top edge');
+                      if (m.under.length) why.push('a finger on them lands on ' + m.under.join(', '));
+                      if (why.length) unseen.push(where + ': ' + why.join('; ') + ' (“' + m.said + '”)'); } }
+                  if (own24 && /room/.test(kind) && m.plan && !m.plan.own && m.plan.paperW < m.plan.w - 0.5) shrunk.push(where + ': the plan is ' + m.plan.paperW.toFixed(1) + ' px wide in a box ' + m.plan.w.toFixed(1) + ' px wide');
+                  await mapShut(p);
+                }
+              }
+            }
+          }
+          await p.emulateMedia({ colorScheme: 'light' }); await p.evaluate(() => bearSet(false));
+          const list = a => a.slice(0, 4).join('; ') + (a.length > 4 ? '; and ' + (a.length - 4) + ' more' : '');
+          if (hung.length) MP.push('The map\'s Close bar hangs below the bottom of its box, so its rounded corners are cut off: on ' + list(hung));
+          if (lineUnder.length) MP.push('As the map opens, the line under the plan that says how to choose a destination is under Close: on ' + list(lineUnder));
+          if (shaded.length) MP.push('As the map opens, the line under the plan that says how to choose a destination lies in the soft shadow Close casts upward: on ' + list(shaded));
+          if (faint.length) MP.push('As the map opens, the line under the plan that says how to choose a destination reads under the 4.5:1 small words need: on ' + list(faint));
+          if (unseen.length) MP.push('On a short phone, as the map opens, I can\'t see the line that says how to choose a destination: on ' + list(unseen));
+          if (shrunk.length) MP.push('On a phone with room to spare, the plan is drawn smaller than its box, where the line under it already had room: on ' + list(shrunk));
+          if (none.length) MP.push('The foot of the map\'s box could not be measured: on ' + list(none) + ' — nothing to measure is not a pass');
+          /* and no other panel's Close moves: Settings', where its box scrolls, still rides the inside of its box's lower edge */
+          { let st = null;
+            for (const hh of [560, 480, 400]) { await p.setViewportSize({ width: 390, height: hh }); await rafs(p);
+              st = await p.evaluate(() => { const s = document.getElementById('settings'); if (!s) return null; const was = s.hidden; s.hidden = false;
+                const box = s.querySelector('.box'), c = s.querySelector('.box>.close'), b = box && box.getBoundingClientRect(), r = c && c.getBoundingClientRect();
+                const out = box && c && r.height ? { scrolls: box.scrollHeight > box.clientHeight + 1, inner: b.top + box.clientTop + box.clientHeight, foot: r.bottom } : null;
+                s.hidden = was; return out; });
+              if (!st || st.scrolls) break; }
+            if (!st) MN.push('COUNT-ONLY: this game has no Settings panel with a Close, so whether another panel\'s Close moved was not asked');
+            else if (!st.scrolls) MN.push('COUNT-ONLY: the Settings box does not scroll at 390×400 or taller, so where its Close rides was not measured');
+            else if (Math.abs(st.foot - st.inner) > 0.5) MP.push('Settings\' Close moved: its lower edge is ' + (st.inner - st.foot).toFixed(1) + ' px ' + (st.foot < st.inner ? 'above' : 'below') + ' the inside of its box\'s lower edge, where it rode that edge — only the map\'s own Close moves'); }
+          MN.push('COUNT-ONLY: the map was opened ' + opened + ' time(s) to measure the foot of its box' + (read ? ', and the line\'s words were photographed ' + read + ' time(s), the weakest reading ' + lowest.k.toFixed(2) + ':1 (' + lowest.where + ')' : ''));
+        }
+        await ctx.close();
+      }
+
+      /* e2 · A LAPTOP WINDOW UNDER 600 PX TALL IS NOT A PHONE. A phone is told by its screen, not by its window: a laptop's
+              window can be short (its browser's bars, tools docked below it, its scaling), and there the line under the plan
+              still opens clear of Close and of its shadow. At 1366×560 on a 1366×768 screen, in each language, the edge arrow
+              off and on, the line's words are clear of Close and the shadow moves none of their pixels, as part d reads them;
+              and a phone held sideways, 844×390 on its own screen, is left as it was, its plan at the shell's own height cap.
+              Written red on this branch at 6643f5b: the window's shorter side alone made 1366×560 a phone held sideways, and
+              the line opened 46.5 px under Close. */
+      if (own24) {
+        const short = await browser.newContext({ viewport: { width: 1366, height: 560 }, screen: { width: 1366, height: 768 } }), p = await short.newPage();
+        p.on('pageerror', e => MP.push('the page threw while a short laptop window was asked about: ' + String(e.message).split('\n')[0]));
+        await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+        await p.goto('file://' + file); await boot(p);
+        if (!await begin(p)) MP.push('the game did not start, so the line under the plan in a short laptop window was not asked about — nothing to measure is not a pass');
+        else { const bad = [];
+          for (const L of await langsOf(p)) { await setLang(p, L);
+            for (const on of [false, true]) { await p.evaluate(on => bearSet(on), on);
+              const where = '1366×560 on a 1366×768 screen, ' + inLang(L) + ', the edge arrow ' + (on ? 'on' : 'off');
+              if (!await mapOpen(p)) { bad.push(where + ': the map button could not be pressed'); continue; }
+              await rafs(p, 2); const m = await p.evaluate(footNow);
+              if (!m.words || !m.close) bad.push(where + ': the line under the plan or Close could not be found');
+              else if (m.words[3] > m.close[1] + 0.5 || m.under.length) bad.push(where + ': its words reach ' + Math.max(0, m.words[3] - m.close[1]).toFixed(1) + ' px under Close\'s top edge');
+              else { const q = await wordsRead(p, m.words); if (!q.ink) bad.push(where + ': no pixel of its words could be found on the screen'); else if (q.shadow > 4) bad.push(where + ': Close\'s shadow moves their pixels by up to ' + q.shadow + ' levels in 255'); }
+              await mapShut(p); } }
+          await p.evaluate(() => bearSet(false));
+          if (bad.length) MP.push('In a laptop window under 600 px tall, as the map opens, the line under the plan that says how to choose a destination is not clear of Close: ' + bad.slice(0, 4).join('; ') + (bad.length > 4 ? '; and ' + (bad.length - 4) + ' more' : '') + ' — a short laptop window is not a phone'); }
+        await short.close();
+        const side = await browser.newContext({ viewport: { width: 844, height: 390 }, screen: { width: 844, height: 390 }, hasTouch: true }), q = await side.newPage();
+        q.on('pageerror', e => MP.push('the page threw while a phone held sideways was asked about: ' + String(e.message).split('\n')[0]));
+        await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+        await q.goto('file://' + file); await boot(q);
+        if (!await begin(q) || !await mapOpen(q)) MP.push('the map did not open on a phone held sideways, so whether it is left as it was was not asked — nothing to measure is not a pass');
+        else { await rafs(q, 2);
+          const k = await q.evaluate(() => { const cv = document.getElementById('mapcv'), was = cv.style.maxHeight; cv.style.maxHeight = ''; const cap = parseFloat(getComputedStyle(cv).maxHeight); cv.style.maxHeight = was; return { h: cv.getBoundingClientRect().height, cap }; });
+          if (k.h < k.cap - 0.5) MP.push('On a phone held sideways, 844×390 on its own screen, the edge arrow off, the plan is drawn ' + k.h.toFixed(1) + ' px tall where the shell lets it be ' + k.cap.toFixed(1) + ': a phone held sideways is left as it was, the line under the plan a scroll away');
+          await mapShut(q); }
+        await side.close();
+      }
+
+      /* b · WITH THE EDGE ARROW ON, THE MAP REOPENS AS IT FIRST OPENED, whatever scroll its box was left with: on a tablet and
+             a phone held sideways, in each language, the box is scrolled to its foot with the wheel, the map closed with Close
+             and opened again, and the plan is the height it had the first time. And once at each size, with the box at its
+             foot, the window changes size with the map open: the plan is the height a fresh opening at the new size gives it,
+             and the box keeps the scroll a person left it with; once of them from the left half (1280×800) to the box (1024×768).
+             The switch is read on each time: a press that did not take would ask all of it with the arrow off. Written red on
+             mq-v253: the plan came back 28.4 px taller (509.2 then 537.6 px, and 244.6 then 273 px), and grew the same way when
+             the window changed size; and on this branch at 6643f5b, from the left half to the box the box was put back at its
+             top. */
+      {
+        const { ctx, p } = await page2(1024, 768);
+        if (!await begin(p)) MP.push('the game did not start, so whether the map reopens as it first opened was not asked — nothing to measure is not a pass');
+        else {
+          const langs = await langsOf(p);
+          const planH = () => { const ov = document.getElementById('mapov'), area = c => { const r = c.getBoundingClientRect(); return r.width * r.height; };
+            const c = [...ov.querySelectorAll('canvas')].filter(q => q.width && q.height && q.getClientRects().length && q.getBoundingClientRect().width > 40).sort((a, b) => area(b) - area(a))[0];
+            return c ? +c.getBoundingClientRect().height.toFixed(1) : null; };
+          const boxAt = () => { const b = document.querySelector('#mapov .box'), r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, s: b.scrollTop, max: b.scrollHeight - b.clientHeight }; };
+          const still = () => p.evaluate(() => new Promise(res => { const b = document.querySelector('#mapov .box'); let last = -1, same = 0, k = 0;
+            const f = () => { const s = b.scrollTop; same = s === last ? same + 1 : 0; last = s; if (same >= 3 || ++k > 90) res(s); else requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+          /* to the foot of the box with the wheel, as a person scrolls it */
+          const toFoot = async () => { let a = await p.evaluate(boxAt);
+            for (let k = 0; k < 12 && a.s < a.max - 1; k++) { await p.mouse.move(a.x, a.y); await p.mouse.wheel(0, 200); await still(); a = await p.evaluate(boxAt); }
+            return a; };
+          let asked = 0;
+          if (!await toArrow(p, true)) MP.push('the map button could not be pressed, so the edge arrow was not switched on to reopen the map');
+          else for (const [w, h, size, w2, h2] of [[1024, 768, 'a tablet held sideways, 1024×768', 1000, 740], [844, 390, 'a phone held sideways, 844×390', 860, 400], [1280, 800, 'a laptop, 1280×800, on the left half', 1024, 768]]) {
+            await p.setViewportSize({ width: w, height: h }); await rafs(p);
+            for (const L of langs) {
+              await setLang(p, L);
+              const where = size + ', ' + inLang(L) + ', with the edge arrow on';
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so the map was not reopened'); continue; }
+              await rafs(p, 2); const sw0 = await findSwitch(p);
+              if (!sw0 || !sw0.on) { MP.push('On ' + where + ', the edge arrow\'s switch was ' + (sw0 ? 'off' : 'not found') + ' when the map opened, so whether the map reopens as it first opened was asked with the arrow off — nothing to measure is not a pass'); await mapShut(p); continue; }
+              const h0 = await p.evaluate(planH), a = await toFoot();
+              if (h0 === null) { MP.push('I opened the map (' + where + ') and the box shows no plan to measure — nothing to measure is not a pass'); await mapShut(p); continue; }
+              if (a.max < 1) { MN.push('COUNT-ONLY: the map\'s box does not scroll (' + where + '), so it was not reopened from its foot'); await mapShut(p); continue; }
+              const c = await p.evaluate(() => { const r = document.getElementById('mapClose').getBoundingClientRect(); return r.width ? [r.left + r.width / 2, r.top + r.height / 2] : null; });
+              if (c) await p.mouse.click(c[0], c[1]);
+              if (!await until(p, () => document.getElementById('mapov').hidden, null, 2000)) { MP.push('Close did not close the map (' + where + ')'); await mapShut(p); continue; }
+              await rafs(p, 2);
+              if (!await mapOpen(p)) { MP.push('the map button could not be pressed a second time (' + where + ')'); continue; }
+              await rafs(p, 2); const h1 = await p.evaluate(planH); asked++;
+              if (Math.abs(h1 - h0) > 0.5) MP.push('On ' + where + ', I scrolled the map to the bottom (' + Math.round(a.s) + ' px), closed it with Close and opened it again, and the plan came back ' + Math.abs(h1 - h0).toFixed(1) + ' px ' + (h1 > h0 ? 'taller' : 'shorter') + ' than the first time (' + h0 + ' then ' + h1 + ' px) — every opening looks like the first');
+              await mapShut(p);
+            }
+            /* and the window changes size once with the box at its foot (in the language the game is in) */
+            const where = size + ', with the edge arrow on';
+            if (!await mapOpen(p)) continue;
+            await rafs(p, 2); const a = await toFoot();
+            await p.setViewportSize({ width: w2, height: h2 }); await rafs(p, 3);
+            const hA = await p.evaluate(planH), sA = await p.evaluate(() => document.querySelector('#mapov .box').scrollTop);
+            await mapShut(p); await mapOpen(p); await rafs(p, 2); const hB = await p.evaluate(planH); await mapShut(p); asked++;
+            if (hA === null || hB === null) MP.push('the box showed no plan after the window changed size (' + where + ') — nothing to measure is not a pass');
+            else if (Math.abs(hA - hB) > 0.5) MP.push('On ' + where + ', I scrolled the map to the bottom and the window changed to ' + w2 + '×' + h2 + ' with the map open: the plan became ' + hA + ' px tall, where the map opened afresh at that size draws it ' + hB + ' px');
+            if (a.s > 1 && sA < 1) MP.push('On ' + where + ', the window changed size with the map scrolled to its foot, and the box was put back at its top: the scroll a person left it with is theirs');
+          }
+          await toArrow(p, false);
+          MN.push('COUNT-ONLY: the map was reopened from the foot of its box, or the window changed size there, ' + asked + ' time(s)');
+        }
+        await ctx.close();
+      }
+
+      /* c · THE LEFT HALF, AND THE GAME STANDING STILL. At 1280×800, 1440×900 and 1920×1080 (in a window and in the game's
+             full screen) the map's box is the left half of the screen, top to bottom, its plan drawn across that half, and the
+             street is wholly in the right half, drawn, and lightly dimmed (it keeps 60% of its brightness or more); at 1024×768
+             and on a phone the map is the box in the middle. At each, somebody is set walking and the map is opened with its
+             button while the step is under way: nobody moves while it is open (every person there, the animals, the critters,
+             the tram and you), and when it closes the step is finished. The player's own step under way stops while the map is
+             open and finishes after. With the map open the window goes from 1280×800 to 1024×768 and back, each size finding
+             its own layout, its plan across the half and the street drawn; then a tap on the street closes the map. After
+             every close the game is back where it was just before that opening. The layouts are named for this game's plan;
+             another game's map is asked only that a left half has its plan in it and the street wholly beside it.
+             At each laptop-shaped size the plan is measured in both layouts, and the map takes the one that draws it bigger,
+             the left half on a tie; screens squarer than 3 by 2 (1366×1024, 1600×1200) keep the box; the street beside the half
+             is dimmed, keeping at most 90% of its brightness; and at 1100×640, with the page scrolled down by the player, the
+             page comes back scrolled where it was. Written red on mq-v253: the map was a box in the middle at every size,
+             everybody walked on behind it, and so did the player's own step. Planted against on this branch: a fixed width
+             for the half (1366×1024 and 1600×1200 took it), a street not dimmed at all. Red at 6643f5b: the page came back
+             scrolled to its top. The plan's place in the half was planted against: a full-screen rule for the street's
+             pictures that also reached the plan, inside the street's view, drew the paper from 511 to 1375 px across a half
+             that ends at 960. */
+      {
+        const { ctx, p } = await pageAt(1280, 800, false, 'the map was asked whether it takes the left half with the game standing still beside it');
+        if (!await begin(p)) MP.push('the game did not start, so where the map opens and whether the game stands still beside it were not asked — nothing to measure is not a pass');
+        else {
+          /* where a person walks: the world the player is in if anybody there wanders, or else the first world where somebody does,
+             the player put where a door into it lands (placesNow, as sections 17 to 21 put the player) */
+          await p.evaluate(MAPHELP());
+          const walkIn = await p.evaluate(() => { const has = id => (WORLDS[id].npcs || []).some(n => wanders(n));
+            const pl = has(world) ? { id: world } : __mqMap.placesNow().find(q => has(q.id)); if (!pl) return null;
+            if (pl.id !== world) { world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; moving = false; held = null; setWorldTag(); }
+            return (T().locs || {})[world] || world; });
+          /* everything in the world that moves, read at once: every person here, the animals, the critters, the tram, and you */
+          const movers = () => { const o = {}, w = WORLDS[world];
+            (w.npcs || []).forEach(n => { o[(typeof npcName === 'function' && npcName(n.npc)) || n.npc || 'somebody'] = [n.fx, n.fy, n.mt]; });
+            o.you = [fx, fy, mt, moving];
+            [['the dog', typeof DOG !== 'undefined' && DOG], ['the cat', typeof CAT !== 'undefined' && CAT], ['the pigeon', typeof PIG !== 'undefined' && PIG]].forEach(([k, a]) => { if (a) o[k] = [a.fx, a.fy, a.mt]; });
+            if (typeof LORO !== 'undefined' && LORO) o['the parrot'] = [LORO.x, LORO.y];
+            if (typeof CRIT !== 'undefined') CRIT.forEach((c, i) => { o['a ' + c.kind + ' (' + i + ')'] = [c.fx, c.fy]; });
+            if (typeof TRO !== 'undefined' && TRO) o['the tram'] = [TRO.x, TRO.state, TRO.t];
+            return JSON.parse(JSON.stringify(o)); };
+          const moved = (a, b) => Object.keys(a).filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+          /* the street the screen shows: whichever of the game's views is showing */
+          const streetAt = () => { const c = ['cv3', 'cv'].map(id => document.getElementById(id)).find(e => e && !e.hidden && e.getClientRects().length && e.getBoundingClientRect().width > 0);
+            if (!c) return null; const r = c.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+          const layoutNow = () => { const b = (document.querySelector('#mapov .box') || document.getElementById('mapov')).getBoundingClientRect(); return { W: innerWidth, H: innerHeight, box: [b.left, b.top, b.right, b.bottom] }; };
+          /* the plan's paper, as tall as each layout draws it before the line's fit (the engine's plan; a pack's own window is
+             its own to measure), the layout put back as it was */
+          const bothPlans = () => { const ov = document.getElementById('mapov'), cv = document.getElementById('mapcv'), b = document.body;
+            if (!cv || !cv.width || !cv.height || !cv.getClientRects().length) return null;
+            const keep = cv.style.maxHeight, half = ov.classList.contains('half'), mh = b.classList.contains('maphalf');
+            const paper = () => { const r = cv.getBoundingClientRect(); return r.width ? cv.height * Math.min(r.width / cv.width, r.height / cv.height) : 0; };
+            cv.style.maxHeight = ''; ov.classList.remove('half'); b.classList.remove('maphalf'); const box = paper();
+            ov.classList.add('half'); b.classList.add('maphalf'); const h = paper();
+            ov.classList.toggle('half', half); b.classList.toggle('maphalf', mh); cv.style.maxHeight = keep; return { half: h, box }; };
+          const isHalf = m => m.box[0] <= 0.5 && m.box[1] <= 0.5 && Math.abs(m.box[2] - m.W / 2) <= 1 && m.box[3] >= m.H - 0.5;
+          const isMiddle = m => Math.abs((m.box[0] + m.box[2]) / 2 - m.W / 2) <= 1 && m.box[3] - m.box[1] < m.H - 1;
+          const inRight = (s, m) => !!s && s[0] >= m.W / 2 - 0.5 && s[2] <= m.W + 0.5 && s[1] >= -0.5 && s[3] <= m.H + 0.5;
+          /* and the plan lies across the half it takes: where its paper is drawn (planAt), not only where its box is. A pack's
+             own window is its own to place */
+          const planIn = async (m, where) => { const a = await p.evaluate(() => { const q = __mqMap.planAt(); return q.plan && !q.own ? [q.ox, q.ox + q.cw * q.kx] : null; });
+            if (a && (a[0] < m.box[0] - 0.5 || a[1] > m.box[2] + 0.5)) MP.push(where + ' the map takes the left half and its plan does not lie in it: the paper runs from ' + Math.round(a[0]) + ' to ' + Math.round(a[1]) + ' px across, where the half ends at ' + Math.round(m.box[2]) + ' px'); };
+          const say = a => a.slice(0, 4).join(', ') + (a.length > 4 ? ' and ' + (a.length - 4) + ' more' : '');
+          const RUNS = [[1280, 800, 'a laptop, 1280×800', 'half'], [1440, 900, 'a laptop, 1440×900', 'half'], [1920, 1080, 'a large screen, 1920×1080', 'half'],
+            [1920, 1080, 'full screen, 1920×1080', 'half', true], [1024, 768, 'a tablet held sideways, 1024×768', 'middle'], [390, 844, 'a phone, 390×844', 'middle'],
+            [1366, 1024, 'a large tablet held sideways, 1366×1024', 'middle'], [1600, 1200, 'a squarer monitor, 1600×1200', 'middle']];
+          let wasFull = false, stillAsked = 0, walkers = 0;
+          for (const [w, h, size, want, full] of RUNS) {
+            await sizeTo(p, w, h, full, wasFull); wasFull = !!full;
+            const s0 = await p.evaluate(streetAt), seen0 = s0 ? await look(p, s0) : null;
+            /* a person set walking, and the map opened with its button while the step is under way */
+            const go = walkIn ? await p.evaluate(() => new Promise(res => { const ppl = (WORLDS[world].npcs || []).filter(n => wanders(n));
+              ppl.forEach(n => { if (!n.mv) n.wnext = 0; });
+              let k = 0; const f = () => { const n = ppl.find(q => q.mv && q.mt > 0 && q.mt < 0.6);
+                if (n) { document.getElementById('mapbtn').click(); return res({ who: (typeof npcName === 'function' && npcName(n.npc)) || n.npc, i: WORLDS[world].npcs.indexOf(n) }); }
+                if (++k > 400) { document.getElementById('mapbtn').click(); return res({ never: true }); } requestAnimationFrame(f); };
+              requestAnimationFrame(f); })) : null;
+            if (!go && !await mapOpen(p)) { MP.push('the map button could not be pressed (' + size + '), so where the map opens was not asked'); continue; }
+            if (!await until(p, () => !document.getElementById('mapov').hidden, null, 2000)) { MP.push('the map did not open (' + size + ')'); continue; }
+            const t0 = await p.evaluate(movers); await rafs(p, 2);
+            const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+            if (own24 && want === 'half') {
+              if (!isHalf(m)) MP.push('On ' + size + ', the map does not take the left half of the screen: its box is ' + m.box.map(v => Math.round(v)).join(',') + ' on a screen ' + m.W + '×' + m.H + ' — on a screen shaped like a laptop\'s the map takes the left half, top to bottom');
+              else if (!inRight(s, m)) MP.push('On ' + size + ', the map takes the left half and the street is not wholly in the right half: it is at ' + (s ? s.map(v => Math.round(v)).join(',') : 'nowhere') + ', so I am not in view beside the map');
+              else { const seen = await look(p, s);
+                if (!drawn(seen)) MP.push('On ' + size + ', the map takes the left half and the street beside it is not drawn: ' + (seen ? Math.round(100 * seen.other) + '% of it differs from its one colour' : 'nothing to read'));
+                else if (seen0 && seen.mean < 0.6 * seen0.mean) MP.push('On ' + size + ', the street beside the map is darkened, not lightly dimmed: it keeps ' + Math.round(100 * seen.mean / seen0.mean) + '% of its brightness');
+                else if (seen0 && seen.mean > 0.9 * seen0.mean) MP.push('On ' + size + ', the street beside the map is not dimmed: it keeps ' + Math.round(100 * seen.mean / seen0.mean) + '% of its brightness — beside the map the game is lightly dimmed, to show it stands still'); }
+            } else if (want === 'middle' && !isMiddle(m)) MP.push('On ' + size + ', the map is not the box in the middle of the screen: its box is ' + m.box.map(v => Math.round(v)).join(',') + ' on a screen ' + m.W + '×' + m.H);
+            else if (!own24 && isHalf(m) && !inRight(s, m)) MP.push('On ' + size + ', the map takes the left half and the street is not wholly in the right half beside it: it is at ' + (s ? s.map(v => Math.round(v)).join(',') : 'nowhere'));
+            if (isHalf(m)) await planIn(m, 'On ' + size + ',');
+            if (want === 'half') { const both = await p.evaluate(bothPlans);
+              if (both && (both.half >= both.box - 0.5) !== isHalf(m)) MP.push('On ' + size + ', the left half would draw the plan ' + both.half.toFixed(1) + ' px tall and the box ' + both.box.toFixed(1) + ' px, and the map took ' + (isHalf(m) ? 'the left half' : 'the box') + ' — on a screen shaped like a laptop\'s the map takes the left half wherever it draws the plan at least as big'); }
+            /* while the map is open nothing moves: read again after more than a person's step takes */
+            await p.waitForTimeout(700);
+            const t1 = await p.evaluate(movers), went = moved(t0, t1);
+            if (go && go.never) MP.push('On ' + size + ', nobody in ' + walkIn + ' started walking, so whether the world stands still behind the map was not asked — nothing to measure is not a pass');
+            else if (go) { stillAsked++; walkers++;
+              if (went.length) MP.push('On ' + size + ', I opened the map while ' + go.who + ' was walking in ' + walkIn + ', and the world kept moving behind it: ' + say(went) + ' moved — while the map is open the game stands still'); }
+            await mapShut(p);
+            const s2 = await p.evaluate(streetAt);
+            if (s0 && s2 && s2.some((v, i) => Math.abs(v - s0[i]) > 1)) MP.push('On ' + size + ', I closed the map and the game did not come back where it was: the street is at ' + s2.map(v => Math.round(v)).join(',') + ', where it was at ' + s0.map(v => Math.round(v)).join(',') + ' before the map opened');
+            if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 6000)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
+          }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          /* where the half narrows the game's column, the page the player scrolled comes back where it was */
+          { await p.setViewportSize({ width: 1100, height: 640 }); await rafs(p, 2);
+            const y0 = await p.evaluate(() => { scrollTo(0, document.scrollingElement.scrollHeight); return scrollY; });
+            if (y0 < 1) MN.push('COUNT-ONLY: at 1100×640 the page does not scroll, so whether the map keeps the player\'s scroll of it was not asked');
+            else if (await mapOpen(p)) { await rafs(p, 2); const halfThere = await p.evaluate(() => document.body.classList.contains('maphalf')); await mapShut(p);
+              const y1 = await p.evaluate(() => scrollY);
+              if (Math.abs(y1 - y0) > 1) MP.push('At 1100×640, with the page scrolled ' + Math.round(y0) + ' px down, I opened the map' + (halfThere ? ' (in the left half)' : '') + ' and closed it, and the page came back scrolled ' + Math.round(y1) + ' px — the game comes back where it was'); }
+            await p.evaluate(() => scrollTo(0, 0)); }
+          if (!walkIn) MN.push('COUNT-ONLY: nobody in this game wanders, so whether a walking person stands still behind the map was not asked');
+          /* the player's own step under way */
+          await p.setViewportSize({ width: 1280, height: 800 }); await rafs(p, 2);
+          const key = await p.evaluate(() => { const K = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }, w = CW();
+            for (const k of Object.keys(K)) { const [dx, dy] = DIRS[worldDir(K[k])], x = px + dx, y = py + dy;
+              if (x < 0 || y < 0 || x >= w.W || y >= w.H || isSolid(x, y) || DOORSET.has(w.rows[y][x]) || ((TILES[w.rows[y][x]] || {}).kind === 'transit')) continue; return k; }
+            return null; });
+          if (!key) MN.push('COUNT-ONLY: the player had no free step where the check stood, so a step under way was not asked to stop behind the map');
+          else {
+            await p.mouse.move(2, 2); await p.keyboard.down(key);
+            const stepping = await until(p, () => moving, null, 1500);
+            await p.evaluate(() => document.getElementById('mapbtn').click()); await p.keyboard.up(key);
+            if (!stepping) MP.push('the player did not take a step when ' + key + ' was pressed, so a step under way was not asked to stop behind the map — nothing to measure is not a pass');
+            else { const y0 = await p.evaluate(() => [fx, fy, mt, moving]); await p.waitForTimeout(500); const y1 = await p.evaluate(() => [fx, fy, mt, moving]);
+              if (JSON.stringify(y0) !== JSON.stringify(y1)) MP.push('I opened the map in the middle of a step and I kept walking behind it (from ' + y0.slice(0, 2).map(v => v.toFixed(2)).join(',') + ' to ' + y1.slice(0, 2).map(v => v.toFixed(2)).join(',') + ') — a step under way stops while the map is open');
+              await mapShut(p);
+              if (!await until(p, () => !moving && fx === px && fy === py, null, 6000)) MP.push('I closed the map that stopped my step, and the step never finished'); }
+          }
+          /* the window changes size with the map open, and back */
+          await p.setViewportSize({ width: 1280, height: 800 }); await rafs(p, 2);
+          const home = await p.evaluate(() => { const v = document.getElementById('vp').getBoundingClientRect(); return [v.left, v.top, v.right, v.bottom]; });
+          if (!await mapOpen(p)) MP.push('the map button could not be pressed, so the window did not change size with the map open');
+          else {
+            for (const [w, h, size, want] of [[1024, 768, 'a tablet held sideways, 1024×768', 'middle'], [1280, 800, 'a laptop, 1280×800', 'half']]) {
+              await p.setViewportSize({ width: w, height: h }); await rafs(p, 3);
+              const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+              const ok = want === 'half' ? isHalf(m) : isMiddle(m);
+              if (own24 && !ok) MP.push('With the map open, the window changed to ' + size + ' and the map did not follow: its box is ' + m.box.map(v => Math.round(v)).join(',') + (want === 'half' ? ', where it takes the left half' : ', where it is the box in the middle'));
+              if (want === 'half' && isHalf(m)) { const seen = inRight(s, m) ? await look(p, s) : null; await planIn(m, 'With the map open, the window changed to ' + size + ' and');
+                if (!drawn(seen)) MP.push('With the map open, the window changed to ' + size + ' and the street beside the map is not drawn: ' + (seen ? Math.round(100 * seen.other) + '% of it differs from its one colour' : 'it is not in the right half')); }
+            }
+            /* a tap on the street closes the map, and the game comes back where it was */
+            const m = await p.evaluate(layoutNow), s = await p.evaluate(streetAt);
+            if (isHalf(m) && inRight(s, m)) {
+              await p.mouse.click((s[0] + s[2]) / 2, (s[1] + s[3]) / 2);
+              if (!await until(p, () => document.getElementById('mapov').hidden, null, 2000)) { MP.push('I tapped the street beside the map and the map did not close — a tap beside the map closes it'); await mapShut(p); }
+              await rafs(p, 3);
+              const back = await p.evaluate(() => { const v = document.getElementById('vp').getBoundingClientRect(); return [v.left, v.top, v.right, v.bottom]; });
+              if (back.some((v, i) => Math.abs(v - home[i]) > 1)) MP.push('I closed the map and the game did not come back where it was: the street is at ' + back.map(v => Math.round(v)).join(',') + ', where it was at ' + home.map(v => Math.round(v)).join(',') + ' before the map opened');
+            } else await mapShut(p);
+          }
+          MN.push('COUNT-ONLY: the map was opened beside a walking person ' + walkers + ' time(s)' + (walkIn ? ' (in ' + walkIn + ')' : '') + ', at ' + RUNS.length + ' sizes');
+        }
+        await ctx.close();
+      }
+
+      /* f · THE GAME'S CLOCK STANDS STILL TOO. Stopping what moves is half of it: the world times its waits, how long a ball
+             lies on the ground before it goes, how long a person stands before the next step, how long a dog's bowl of water
+             stays out. Everything here is read on the world's own clock where the game keeps one (wNow, wDate), and on the wall
+             clock where it does not (where the two are the same), so how fast a machine draws frames never enters an answer.
+             On a page of its own beside the left half (1280×800) and beside the box (1024×768):
+             - the time the game itself gives a ball as it lands, and a person as their step ends (their chance held still), is
+               the same after the map has stood open 1.2 s as before it opened;
+             - a ball on the ground, that person's wait and a bowl the dog program keeps, each with 1.5 s left, still have it
+               after 2.5 s of the map open, read the instant the map opens and the instant it closes;
+             - after it closes none of them goes while more than a frame of its time is left, and each goes within 5 s;
+             - and the things that only fade or come off: a petal on the ground, a hole the dog dug and the dog on its leash,
+               each with 1.5 s left and put out before the map has opened on the page (where the two clocks still agree), are
+               still drawn in the frame after 2.5 s of the map open, and each goes once its time is up, not before. Read as the
+               game draws them, since each painter keeps its own: in the camera the game opens in beside the left half (the
+               3D camera keeps what it drew on its meshes) and in the top camera beside the box (watched as it paints).
+             Written red on mq-v253 (the ball went and the person walked on behind the map) and on this branch: before the world
+             had a clock of its own (the ball went and the person set off as the map closed). Planted against: the loop handing
+             the wall clock back to the dog program (the bowl went with its time left), the clock stopping beside the half
+             alone (all three went on beside the box), a person's wait set on the wall clock (each wait longer by the time the
+             map had stood open), and a clock that never starts again (nothing went). The things that fade were written red on
+             this branch at mq-v255, where the petal, the hole and the leash were each gone in the frame the map closed. */
+      {
+        for (const [w, h, where] of [[1280, 800, 'beside the left half, 1280×800'], [1024, 768, 'beside the box, 1024×768']]) {
+          const { ctx, p } = await pageAt(w, h, false, 'the game\'s clock was asked whether it stands still behind the map');
+          if (!await begin(p)) { MP.push('the game did not start (' + where + '), so whether the game\'s clock stands still behind the map was not asked — nothing to measure is not a pass'); await ctx.close(); continue; }
+          await p.evaluate(MAPHELP());
+          await p.evaluate(() => { window.__clk = { W: () => typeof wNow === 'function' ? wNow() : performance.now(), WD: () => typeof wDate === 'function' ? wDate() : Date.now() };
+            window.__left = i => { const n = i >= 0 ? WORLDS[world].npcs[i] : null;
+              return { ball: BALL && BALL.phase === 'ground' && BALL.until ? BALL.until - __clk.WD() : null, bowl: window.__bowl && DOGTHINGS.includes(__bowl) ? __bowl.until - __clk.W() : null,
+                person: n ? (n.mv ? 'gone' : n.wnext - __clk.W()) : null }; }; });
+          /* a person who wanders, where you stand if anybody here does, or the first place where somebody does; seen to step on
+             their own first, since a person with nowhere to go would stand whatever the clock did */
+          const i = await p.evaluate(() => new Promise(res => { const has = id => (WORLDS[id].npcs || []).some(n => wanders(n));
+            const pl = has(world) ? { id: world } : __mqMap.placesNow().find(q => has(q.id)); if (!pl) return res(-2);
+            if (pl.id !== world) { world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; moving = false; held = null; setWorldTag(); }
+            const ppl = WORLDS[world].npcs.map((n, k) => [n, k]).filter(([n]) => wanders(n) && Math.abs(n.x - px) + Math.abs(n.y - py) >= 2);
+            ppl.forEach(([n]) => { if (!n.mv) n.wnext = 0; });
+            let k = 0; const f = () => { const q = ppl.find(([n]) => n.mv); if (q) return res(q[1]); if (++k > 300) return res(-1); requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+          if (i === -2) MN.push('COUNT-ONLY: nobody in this game wanders, so whether a waiting person keeps their wait behind the map was not asked (' + where + ')');
+          else if (i === -1) MN.push('COUNT-ONLY: nobody who wanders here took a step of their own, so whether a waiting person keeps their wait behind the map was not asked (' + where + ')');
+          const person = i >= 0 ? await p.evaluate(i => { const n = WORLDS[world].npcs[i]; return (typeof npcName === 'function' && npcName(n.npc)) || n.npc || 'somebody'; }, i) : '';
+          if (i >= 0) await until(p, i => !WORLDS[world].npcs[i].mv, i, 3000);
+          /* the time the game gives a ball as it lands a tile away, and the person as their next step ends, read in the frame after */
+          const ballLife = () => p.evaluate(() => new Promise(res => { BALL = { world, sx: px, sy: py, fx: px, fy: py, tx: px + 1, ty: py, t: 0, phase: 'fly', dog: null };
+            let k = 0; const f = () => { if (BALL && BALL.phase === 'ground' && BALL.until) return res(BALL.until - __clk.WD()); if (!BALL || ++k > 300) return res(null); requestAnimationFrame(f); }; requestAnimationFrame(f); }));
+          const waitLife = () => i < 0 ? null : p.evaluate(i => new Promise(res => { const n = WORLDS[world].npcs[i], r = Math.random; Math.random = () => 0.5; n.wnext = 0; let k = 0, went = false;
+            const f = () => { if (n.mv) went = true; else if (went) { Math.random = r; return res(n.wnext - __clk.W()); }
+              if (++k > 300) { Math.random = r; return res(null); } requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
+          const life0 = await ballLife(); await p.evaluate(() => { BALL = null; }); const wait0 = await waitLife();
+          /* the things that fade: a petal on the ground, a hole the dog dug on your own tile and the first dog brought to your
+             side, sitting, on its leash; anything else this world had of the first two is put aside while they are asked */
+          const fon = await p.evaluate(top => {
+            if (top && typeof camSet === 'function' && CAMS.includes('top') && camMode !== 'top') camSet('top');
+            const F = window.__fadeKit = { kept: [], drew: { petal: false, leash: false, marks: [] }, cur: null };
+            if (typeof PETALS !== 'undefined' && typeof PETAL_MS === 'number') {
+              F.kept = PETALS.filter(q => q.w === world); for (let k = PETALS.length - 1; k >= 0; k--) if (PETALS[k].w === world) PETALS.splice(k, 1);
+              F.petal = { w: world, x: px, y: py, t: __clk.WD() - PETAL_MS + 1500, s: 7 }; PETALS.push(F.petal); }
+            if (typeof DECALS !== 'undefined') { F.mark = { world, x: px, y: py, kind: 'hole', until: __clk.WD() + 1500 }; DECALS.push(F.mark); }
+            const dog = typeof CRIT !== 'undefined' && typeof isDog === 'function' ? CRIT.find(isDog) : null;
+            if (dog) { F.dog = dog; F.was = { world: dog.world, x: dog.x, y: dog.y, fx: dog.fx, fy: dog.fy, next: dog.next, sit: dog.sit, task: dog.task, follow: dog.follow, leashT: dog.leashT };
+              Object.assign(dog, { world, x: px, y: py, fx: px, fy: py, next: __clk.W() + 60000, sit: true, task: null, follow: false, leashT: __clk.W() + 1500 }); }
+            /* a flat camera, watched as it paints: what each frame drew, kept once the frame is done */
+            const dr = draw, pt = petalTrail, ps = petalShape, dl = drawLeash, dd = drawDecal; let inTrail = false;
+            draw = function () { F.cur = { petal: false, leash: false, marks: [] }; try { return dr.apply(this, arguments); } finally { F.drew = F.cur; F.cur = null; } };
+            petalTrail = function () { inTrail = true; try { return pt.apply(this, arguments); } finally { inTrail = false; } };
+            petalShape = function () { if (inTrail && F.cur) F.cur.petal = true; return ps.apply(this, arguments); };
+            drawLeash = function (cr) { if (cr === F.dog && F.cur) F.cur.leash = true; return dl.apply(this, arguments); };
+            drawDecal = function (g, sx, sy, dc) { if (F.cur) F.cur.marks.push(dc); return dd.apply(this, arguments); };
+            F.undo = () => { draw = dr; petalTrail = pt; petalShape = ps; drawLeash = dl; drawDecal = dd; };
+            window.__fade = () => { const in3d = camMode === '3d' && typeof T3 !== 'undefined' && !!T3.scene && !T3.fail;
+              const petal = in3d ? (T3.petals || []).some(m => m.visible) : F.drew.petal,
+                mark = !!F.mark && (in3d ? (T3.decals || []).some(m => m.visible && m.userData && m.userData.x === F.mark.x && m.userData.y === F.mark.y) : F.drew.marks.includes(F.mark)),
+                leash = in3d ? !!(T3.leashLn && T3.leashLn.visible) : F.drew.leash;
+              return { petal: !F.petal ? null : petal ? F.petal.t + PETAL_MS - __clk.WD() : 'gone', mark: !F.mark ? null : mark ? F.mark.until - __clk.WD() : 'gone',
+                leash: !F.dog ? null : leash ? F.dog.leashT - __clk.W() : 'gone' }; };
+            return { cam: camMode === '3d' ? 'in the 3D camera' : 'in the ' + camMode + ' camera', petal: !!F.petal, mark: !!F.mark, dog: !!F.dog }; }, w < 1280);
+          await rafs(p, 3);
+          /* drawn, then held 2.5 s: read the instant the map opens, and in the frame after it closes */
+          const fb = await p.evaluate(() => { const l = __fade(); document.getElementById('mapbtn').click(); return l; });
+          await p.waitForTimeout(2500);
+          const fa = await p.evaluate(() => new Promise(res => { const c = document.getElementById('mapClose'); if (c) c.click(); else document.getElementById('mapov').hidden = true;
+            requestAnimationFrame(() => res(__fade())); }));
+          const fe = await p.evaluate(after => new Promise(res => { const gone = {}, t0 = performance.now(); let prev = after, w0 = __clk.W(), gap = 0;
+            const f = () => { const cur = __fade(), w1 = __clk.W(); gap = Math.max(gap, w1 - w0); w0 = w1;
+              for (const k of ['petal', 'mark', 'leash']) if (!(k in gone) && typeof prev[k] === 'number' && typeof cur[k] !== 'number') gone[k] = prev[k];
+              prev = cur;
+              if (['petal', 'mark', 'leash'].every(k => k in gone || typeof cur[k] !== 'number') || performance.now() - t0 > 5000) return res({ gone, gap });
+              requestAnimationFrame(f); }; requestAnimationFrame(f); }), fa);
+          await p.evaluate(() => { const F = __fadeKit; F.undo();
+            if (F.petal) { const k = PETALS.indexOf(F.petal); if (k >= 0) PETALS.splice(k, 1); F.kept.forEach(q => PETALS.push(q)); }
+            if (F.mark) { const k = DECALS.indexOf(F.mark); if (k >= 0) DECALS.splice(k, 1); }
+            if (F.dog) Object.assign(F.dog, F.was); });
+          { const named = { petal: 'the petal on the ground', mark: 'the hole the dog dug', leash: 'the dog\'s leash' }, moved = [], late = [];
+            const put = [fon.petal && 'a petal on the ground', fon.mark && 'a hole the dog dug', fon.dog && 'the dog on its leash'].filter(Boolean);
+            if (!fon.dog) MN.push('COUNT-ONLY: this game has no dog, so whether the leash stands still behind the map was not asked (' + where + ')');
+            for (const k of ['petal', 'mark', 'leash']) {
+              if (fb[k] === null) continue;
+              if (typeof fb[k] !== 'number') { MP.push(named[k] + ', put out with 1.5 s left, was not drawn before the map opened (' + where + ', ' + fon.cam + '), so whether it stands still behind the map was not asked — nothing to measure is not a pass'); continue; }
+              if (typeof fa[k] !== 'number') moved.push(named[k] + ' was gone as it closed, with ' + (fb[k] / 1000).toFixed(1) + ' s left as it opened');
+              else if (Math.abs(fa[k] - fb[k]) > 300) moved.push(named[k] + (fa[k] < 0 ? ' was ' + (-fa[k] / 1000).toFixed(1) + ' s past its time as it closed' : ' had ' + (fa[k] / 1000).toFixed(1) + ' s left as it closed') + ', where it had ' + (fb[k] / 1000).toFixed(1) + ' s left as it opened');
+              else if (k in fe.gone && fe.gone[k] > fe.gap + 100) late.push(named[k] + ' went with ' + (fe.gone[k] / 1000).toFixed(1) + ' s of its time left');
+              else if (!(k in fe.gone)) late.push(named[k] + ' was still there 5 s after the map closed with ' + (fa[k] / 1000).toFixed(1) + ' s left — the clock that stood still behind the map did not start again'); }
+            if (moved.length) MP.push('I opened the map for 2.5 s with ' + put.join(', ').replace(/, ([^,]*)$/, ' and $1') + ', each with 1.5 s left (' + where + ', ' + fon.cam + '): ' + moved.join('; ') + ' — they moved on behind the map, where the game stands still');
+            if (late.length) MP.push('After the map closed (' + where + ', ' + fon.cam + '): ' + late.join('; ')); }
+          if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so whether the game\'s clock stands still behind it was not asked'); await ctx.close(); continue; }
+          await p.waitForTimeout(1200); await mapShut(p);
+          const life1 = await ballLife(), wait1 = await waitLife();
+          if (life0 === null || life1 === null) MP.push('A ball thrown a tile away never landed (' + where + '), so the time the game gives it was not read — nothing to measure is not a pass');
+          else if (Math.abs(life1 - life0) > 300) MP.push('A ball that landed after the map had stood open 1.2 s was given ' + ((life1 - life0) / 1000).toFixed(1) + ' s more on the ground than one that landed before it opened (' + where + ') — the game set its time on the wall clock, which ran on behind the map');
+          if (i >= 0 && (wait0 === null || wait1 === null)) MN.push('COUNT-ONLY: ' + person + ' took no further step (' + where + '), so the wait the game gives after a step was not read');
+          else if (i >= 0 && Math.abs(wait1 - wait0) > 300) MP.push('After the map had stood open 1.2 s, the game gave ' + person + ' a wait ' + ((wait1 - wait0) / 1000).toFixed(1) + ' s longer before the next step than the same wait before it opened (' + where + ') — the game set the wait on the wall clock, which ran on behind the map');
+          /* the hold: a ball on the ground, the person waiting and a bowl, each with 1.5 s left; read the instant the map opens
+             and the instant it closes, both in the page, so nothing between the reading and the map's own click is counted */
+          const before = await p.evaluate(i => { BALL = BALL || { world, sx: px, sy: py, fx: px + 1, fy: py, tx: px + 1, ty: py, t: 1, phase: 'ground', dog: null };
+            BALL.phase = 'ground'; BALL.until = __clk.WD() + 1500;
+            window.__bowl = { kind: 'bowl', world, fx: px + 1, fy: py + 1, phase: 'ground', until: __clk.W() + 1500 }; DOGTHINGS.push(__bowl);
+            if (i >= 0) WORLDS[world].npcs[i].wnext = __clk.W() + 1500;
+            const l = __left(i); document.getElementById('mapbtn').click(); return l; }, i);
+          await p.waitForTimeout(2500);
+          const after = await p.evaluate(i => { const c = document.getElementById('mapClose'); if (c) c.click(); else document.getElementById('mapov').hidden = true; return __left(i); }, i);
+          const named = { ball: 'the ball on the ground', bowl: 'the dog\'s bowl of water', person: person + '\'s wait' }, held = [], early = [];
+          for (const k of ['ball', 'bowl', 'person']) { if (typeof before[k] !== 'number') continue;
+            if (typeof after[k] !== 'number') held.push(named[k] + ' was gone as it closed, with ' + (before[k] / 1000).toFixed(1) + ' s left as it opened');
+            else if (Math.abs(after[k] - before[k]) > 300) held.push(named[k] + (after[k] < 0 ? ' was ' + (-after[k] / 1000).toFixed(1) + ' s past its time as it closed' : ' had ' + (after[k] / 1000).toFixed(1) + ' s left as it closed') + ', where it had ' + (before[k] / 1000).toFixed(1) + ' s left as it opened'); }
+          if (held.length) MP.push('I opened the map for 2.5 s with a ball on the ground, a dog\'s bowl of water' + (i >= 0 ? ' and ' + person + ' waiting' : '') + ', each with 1.5 s left (' + where + '): ' + held.join('; ') + ' — while the map is open the game\'s clock stands still too');
+          /* and after it closes: each goes once its time is up, not before (a frame's grace), and within 5 s. Read from what each
+             had left as the map closed, so one that goes in the frame before this reading starts is still seen to go */
+          const end = await p.evaluate(([i, after]) => new Promise(res => { const gone = {}, t0 = performance.now(); let prev = after, w0 = __clk.W(), gap = 0;
+            const f = () => { const cur = __left(i), w1 = __clk.W(); gap = Math.max(gap, w1 - w0); w0 = w1;
+              /* gone, or for the person, a wait that ran out and was set anew (somebody beside them, or nowhere to step) */
+              for (const k of ['ball', 'bowl', 'person']) if (!(k in gone) && typeof prev[k] === 'number' && (typeof cur[k] !== 'number' || (k === 'person' && cur[k] > prev[k] + 100))) gone[k] = prev[k];
+              prev = cur;
+              if (['ball', 'bowl', 'person'].every(k => k in gone || typeof cur[k] !== 'number') || performance.now() - t0 > 5000) return res({ gone, gap, left: cur });
+              requestAnimationFrame(f); }; requestAnimationFrame(f); }), [i, after]);
+          for (const k of ['ball', 'bowl', 'person']) { if (typeof after[k] !== 'number') continue;
+            if (k in end.gone && end.gone[k] > end.gap + 100) early.push(named[k] + ' went with ' + (end.gone[k] / 1000).toFixed(1) + ' s of its time left');
+            else if (!(k in end.gone)) early.push(named[k] + ' was still there 5 s after the map closed with ' + (after[k] / 1000).toFixed(1) + ' s left — the clock that stood still behind the map did not start again'); }
+          if (early.length) MP.push('After the map closed (' + where + '): ' + early.join('; '));
+          await ctx.close();
+        }
+      }
+
+      /* g · ONE WINDOW, ONE LAYOUT, AND A PACK'S ANSWER CANNOT BREAK IT. With scrollbars that take room (a second browser that
+             shows them, as Windows does), at 1180 to 1240 px wide and 800 tall, the edge arrow off and on, the map as it opens
+             and the map after the window says it changed size, at the same size, take the same layout. A pack's PLANSCALE that
+             throws, or answers NaN, 0 or a string, leaves the layout the engine's own (as with no PLANSCALE), the overlay and the
+             page agreeing, the page unbroken, and the fault said once in the engine's log. And a pack's scale that ignores what
+             it is asked, or stops at a cap, never puts a phone held upright, a tablet held sideways or a screen squarer than
+             3 by 2 in the left half. Written red on this branch at 6643f5b: a width that opened as the box turned into the left
+             half once the window said it changed size; a throwing PLANSCALE stopped the opening halfway, NaN and 0 put a
+             laptop in the box; a scale of 1 put a phone held upright in a 195 px left half. */
+      if (own24) {
+        const b2 = await chromium.launch({ executablePath: exe, ignoreDefaultArgs: ['--hide-scrollbars'] });
+        try {
+          const c2 = await b2.newContext({ viewport: { width: 1180, height: 800 } }); c2.on('page', watchPolicy); const p = await c2.newPage();
+          p.on('pageerror', e => MP.push('the page threw while the map was opened with scrollbars that take room: ' + String(e.message).split('\n')[0]));
+          await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+          await p.goto('file://' + file); await boot(p);
+          if (!await begin(p)) MP.push('the game did not start with scrollbars that take room, so whether one window gets one layout was not asked — nothing to measure is not a pass');
+          else { const differ = [];
+            for (const on of [false, true]) { await p.evaluate(on => bearSet(on), on);
+              for (let w = 1180; w <= 1240; w += 4) { await p.setViewportSize({ width: w, height: 800 }); await rafs(p);
+                if (!await mapOpen(p)) continue; await rafs(p, 2);
+                const a = await p.evaluate(() => document.getElementById('mapov').classList.contains('half'));
+                await p.evaluate(() => window.dispatchEvent(new Event('resize'))); await rafs(p, 2);
+                const b = await p.evaluate(() => document.getElementById('mapov').classList.contains('half'));
+                if (a !== b) differ.push(w + '×800, the edge arrow ' + (on ? 'on' : 'off') + ', opened as ' + (a ? 'the left half' : 'the box') + ' and then took ' + (b ? 'the left half' : 'the box'));
+                await mapShut(p); } }
+            if (differ.length) MP.push('With scrollbars that take room, one window gave the map two layouts, one as it opened and the other once the window said it had changed size, without changing: at ' + differ.slice(0, 3).join('; ') + (differ.length > 3 ? '; and ' + (differ.length - 3) + ' more' : '') + ' — the window\'s size alone decides the layout'); }
+          await c2.close();
+        } finally { await b2.close(); }
+        const { ctx, p } = await pageAt(1280, 800, false, 'a pack\'s PLANSCALE was made to answer badly');
+        if (!await begin(p)) MP.push('the game did not start, so a pack\'s bad PLANSCALE was not asked about — nothing to measure is not a pass');
+        else {
+          const state = () => p.evaluate(() => ({ half: document.getElementById('mapov').classList.contains('half'), page: document.body.classList.contains('maphalf') }));
+          const once = async set => { await p.evaluate(set); let s = null; if (await mapOpen(p)) { await rafs(p, 2); s = await state(); await mapShut(p); } await p.evaluate(() => { delete window.PLANSCALE; }); return s; };
+          await mapOpen(p); await rafs(p, 2); const own = await state(); await mapShut(p);
+          const bad = [];
+          for (const [name, set] of [['that throws', () => { window.PLANSCALE = () => { throw new Error('its window is not laid out yet'); }; }], ['that answers NaN', () => { window.PLANSCALE = () => NaN; }],
+            ['that answers 0', () => { window.PLANSCALE = () => 0; }], ['that answers a string', () => { window.PLANSCALE = w => String(w); }]]) {
+            const s = await once(set);
+            if (!s) bad.push('with a PLANSCALE ' + name + ' the map did not open');
+            else if (s.half !== s.page) bad.push('with a PLANSCALE ' + name + ' the overlay ' + (s.half ? 'took' : 'left') + ' the left half and the page did not follow');
+            else if (s.half !== own.half) bad.push('with a PLANSCALE ' + name + ' the map took ' + (s.half ? 'the left half' : 'the box') + ', where the engine\'s own scale takes ' + (own.half ? 'the left half' : 'the box')); }
+          const said = await p.evaluate(() => (typeof mqLog !== 'undefined' ? mqLog : []).filter(e => /PLANSCALE/.test(e.msg)).map(e => e.n));
+          if (said.length !== 1 || said[0] !== 1) bad.push('the engine\'s log said so ' + said.reduce((a, b) => a + b, 0) + ' time(s) in ' + said.length + ' line(s), where once is enough');
+          if (bad.length) MP.push('A pack\'s PLANSCALE that answers badly (at 1280×800): ' + bad.join('; ') + ' — a bad answer falls back to the engine\'s own scale');
+          const wrong = [];
+          for (const [w, h, size] of [[390, 844, 'a phone held upright, 390×844'], [1024, 768, 'a tablet held sideways, 1024×768'], [1600, 1200, 'a squarer monitor, 1600×1200']])
+            for (const [name, set] of [['that answers 1 whatever it is asked', () => { window.PLANSCALE = () => 1; }], ['that stops at 1.5', () => { window.PLANSCALE = (w, h) => Math.min(1.5, w / 300, h / 298); }]]) {
+              await p.setViewportSize({ width: w, height: h }); await rafs(p);
+              const s = await once(set); if (s && s.half) wrong.push('a pack scale ' + name + ' put ' + size + ' in the left half'); }
+          if (wrong.length) MP.push(wrong.join('; ') + ' — a phone, a tablet held sideways and any screen squarer than 3 by 2 keep the box');
+        }
+        await ctx.close();
+      }
+      await decode.close();
+    }
+    /* end of 24 */
 
     Object.keys(own).forEach(L => { const o = own[L], both = [...o.on].filter(w => o.off.has(w));
       if (both.length) MP.push('the edge arrow\'s switch says “' + both[0] + '” both on and off (' + inLang(L) + '), so its words do not tell a player which it is');

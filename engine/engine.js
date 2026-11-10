@@ -230,7 +230,7 @@ function whoAt(id,x,y){const w=WORLDS[id];if(!w)return null;
   return (w.npcs||[]).find(n=>n.x===x&&n.y===y)||null;}
 function wanderUpdate(dt){
   const w=CW();if(!w||!$("card").hidden||!$("reader").hidden)return;
-  const now=performance.now();
+  const now=wNow();
   w.npcs.forEach(n=>{
     if(n.mv){
       n.mt=Math.min(1,(n.mt||0)+dt/WANDER_MS);
@@ -293,7 +293,7 @@ function drawEmote(n,sx,sy){ /* shared by every camera — townsfolk stay busy f
      (the owner's ask: a dog chasing another character — play, never a flight). Its clock is the
      loop's, the one the romp set it by, not the trade's; and it comes BEFORE the trade's window, which
      is left exactly as its own guard reads it (test/smoke.js, grep `the job-icon window`). */
-  if(n.laughUntil>performance.now()){ctx.font="10px serif";ctx.textAlign="center";
+  if(n.laughUntil>wNow()){ctx.font="10px serif";ctx.textAlign="center";
     ctx.fillText("😄",sx+25,sy+1);ctx.textAlign="start";return;}
   const acts=(typeof NPCACT!=="undefined"&&NPCACT[n.npc])||DEFACT;
   const nw=Date.now(),ph=((nw/1000)+n.x*7.3+n.y*13.7)%13;
@@ -1142,7 +1142,7 @@ function drawIso(){
     if(cx<-ISW||cx>VW+ISW||cy<-ISH-24||cy>VH+ISH+24)return;
     ctx.save();ctx.transform(ISW/2/TS,ISH/2/TS,-ISW/2/TS,ISH/2/TS,cx,cy);paint(-TS/2,-TS/2);ctx.restore();};
   petalTrail(world,null,lay);
-  const decs=decalsNow(Date.now());
+  const decs=decalsNow();
   decs.forEach(({dc,a})=>{if(DECALFLAT[dc.kind])lay(dc.x,dc.y,(sx,sy)=>drawDecal(ctx,sx,sy,dc,a));});
   /* depth pass: blocks + actors, painter's order */
   const R=[];
@@ -2371,10 +2371,10 @@ function petalDrop(wid,x,y,feet){ /* the owner wanted the trail on the bridge on
     else if(f.pc>0){f.pc--;deck=true;}
   }
   if(!carry&&!deck)return;
-  PETALS.push({w:wid,x,y,t:Date.now(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
+  PETALS.push({w:wid,x,y,t:wDate(),s:((x*37+y*101+PETALS.length*13)|0)});if(PETALS.length>PETAL_N)PETALS.shift();}
 function petalTrail(wid,toScreen,lay){ /* toScreen(x,y) → [sx,sy] of the tile's top-left in this camera's 32-px terms (top, front);
   or, for a camera whose ground is not that square, lay(x,y,paint), which puts paint(sx,sy) onto the tile's own ground (iso, #284) */
-  if(!PETALS.length)return;const now=Date.now(),P=petalPal();
+  if(!PETALS.length)return;const now=wDate(),P=petalPal();
   lay=lay||((x,y,paint)=>{const[sx,sy]=toScreen(x,y);paint(sx,sy);});
   PETALS.forEach(pt=>{if(pt.w!==wid)return;const age=(now-pt.t)/PETAL_MS;if(age>=1)return;
     lay(pt.x,pt.y,(sx,sy)=>{let sd=pt.s;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
@@ -2994,7 +2994,7 @@ function drawDecor(camX,camY){DECOS.forEach(d=>{if(d.world!==world)return;
    t3Decals); the other thing is a little pile drawn in profile, so it STANDS, and iso and 3D draw it
    where they draw feet, the way they draw the ball. DECALFLAT says which is which. */
 const DECALS=[],DECALFLAT={hole:true};
-function decalsNow(nw){
+function decalsNow(){const nw=wDate();   /* the world's clock (THE GAME'S OWN CLOCK STANDS STILL WITH IT): a mark keeps its time behind the map */
   for(let i=DECALS.length-1;i>=0;i--)if(DECALS[i].until<nw)DECALS.splice(i,1);
   return DECALS.filter(dc=>dc.world===world).map(dc=>({dc,a:Math.min(1,(dc.until-nw)/1500)}));}
 function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top camera's 32-px terms */
@@ -3009,7 +3009,7 @@ function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top 
   else if(dc.kind==="poop"){g.fillStyle="#5A4630";g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
   g.globalAlpha=1;}
 function drawDecals(camX,camY){ /* the top and front cameras: on the ground, under everybody */
-  decalsNow(Date.now()).forEach(({dc,a})=>{
+  decalsNow().forEach(({dc,a})=>{
     const sx=dc.x*TS-camX,sy=dc.y*TS-camY;
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
     drawDecal(ctx,sx,sy,dc,a);});}
@@ -3140,7 +3140,7 @@ function drawFront(){
   doorMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawDoorMark(ctx,sx,sy,14,d.mark)));
   readMarks().forEach(d=>act(d.x,d.y,(sx,sy)=>drawReadMark(ctx,sx,sy,14)));
   R.sort((a,b)=>a.d-b.d).forEach(r=>r.f());
-  CRIT.forEach(cr=>{if(cr.leashT>performance.now()&&cr.world===world)drawLeash(cr,camX,camY);});
+  CRIT.forEach(cr=>{if(cr.leashT>wNow()&&cr.world===world)drawLeash(cr,camX,camY);});
   trees.forEach(([sx,sy])=>{ /* canopy pass, shared shape with top-down */
     const sw=Math.sin(Date.now()/900+sx)*1.2,cxT=sx+16+sw,cyT=sy+6;
     ctx.fillStyle=tc("#4E8A58");
@@ -3241,7 +3241,7 @@ function draw(){
   drawPerson(ctx,fx*TS-camX,fy*TS-camY,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true});
   doorMarks().forEach(d=>drawDoorMark(ctx,d.x*TS-camX,d.y*TS-camY,0,d.mark)); /* the top camera draws its own people — the marker too */
   readMarks().forEach(d=>drawReadMark(ctx,d.x*TS-camX,d.y*TS-camY,0));
-  CRIT.forEach(cr=>{if(cr.leashT>performance.now()&&cr.world===world)drawLeash(cr,camX,camY);});
+  CRIT.forEach(cr=>{if(cr.leashT>wNow()&&cr.world===world)drawLeash(cr,camX,camY);});
   drawAmbient(w,camX,camY);
   drawDaylight(w,camX,camY);
   drawWindows(w,camX,camY);
@@ -3355,8 +3355,8 @@ function dogUpdate(dt,now){
   DOG.dx=d[0];DOG.dy=d[1];if(d[0])DOG.face=d[0];
   DOG.x+=d[0];DOG.y+=d[1];DOG.moving=true;DOG.mt=0;
   DOG.next=now+600+Math.random()*1800;
-  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&Math.random()<0.35&&Date.now()-lastBump>2500){
-    lastBump=Date.now();const L=T().dog;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().dog;toast(L[Math.floor(Math.random()*L.length)],1800);}
 }
 function drawDog(g,sx,sy){
   const cx=sx+16,wob=DOG.moving?Math.sin(Date.now()/90)*0.8:0;
@@ -3407,8 +3407,8 @@ function catUpdate(dt,now){
   CAT.dx=d[0];CAT.dy=d[1];if(d[0])CAT.face=d[0];
   CAT.x+=d[0];CAT.y+=d[1];CAT.moving=true;CAT.mt=0;
   CAT.next=now+900+Math.random()*2600;
-  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&Math.random()<0.3&&Date.now()-lastBump>2500){
-    lastBump=Date.now();const L=T().cat;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&Math.random()<0.3&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().cat;toast(L[Math.floor(Math.random()*L.length)],1800);}
 }
 function drawCat(g,sx,sy){
   const cx=sx+16,sw=Math.sin(Date.now()/300);
@@ -3491,8 +3491,8 @@ function pigUpdate(dt,now){
   PIG.dx=d[0];PIG.dy=d[1];if(d[0])PIG.face=d[0];
   PIG.x+=d[0];PIG.y+=d[1];PIG.moving=true;PIG.mt=0;
   PIG.next=now+300+Math.random()*1200;
-  if(Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1&&Math.random()<0.25&&Date.now()-lastBump>3000){
-    lastBump=Date.now();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
+  if(Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1&&Math.random()<0.25&&wDate()-lastBump>3000){
+    lastBump=wDate();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
 }
 function drawPigeon(g,sx,sy){
   const R=bodyRide("pigeon",PIG);
@@ -3512,8 +3512,8 @@ const LORO=aniXY("loro",{x:17,y:5,next:0});
 function loroTick(now){
   if(world!==AW("loro"))return;
   if(now<LORO.next)return;LORO.next=now+2000;
-  if(Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2&&Math.random()<0.45&&Date.now()-lastBump>2600){
-    lastBump=Date.now();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
+  if(Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2&&Math.random()<0.45&&wDate()-lastBump>2600){
+    lastBump=wDate();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
 }
 function drawLoro(g,sx,sy){
   const bob=bodyRide("loro",LORO).nod;
@@ -3611,7 +3611,7 @@ let LEASH=null; /* {cr,w,x,y} — the dog on the leash and where home is */
 let PARK={f:0,t:0,h:0,d:0}; /* the park session's little memories: fetches, treats, howls, holes */
 const FETCH_ODDS=[1,1,1,1,0,0,0];
 const FED_ODDS=[1,1,1,1,1,1,0]; /* food-driven: a recent treat buys a 6-of-7 cycle */
-const dogFed=cr=>!!cr.fedT&&performance.now()-cr.fedT<240000; /* ~4 min of motivation */
+const dogFed=cr=>!!cr.fedT&&wNow()-cr.fedT<240000; /* ~4 min of motivation */
 function fetchRoll(cr){ /* a fresh shuffled 7-cycle per dog — streaks stay dog-like */
   if(!cr.fseq||cr.fi>=7){cr.fseq=(dogFed(cr)?FED_ODDS:FETCH_ODDS).slice();
     for(let i=6;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cr.fseq[i],cr.fseq[j]]=[cr.fseq[j],cr.fseq[i]];}
@@ -3664,7 +3664,7 @@ function dogSpotNear(tx,ty,taken){
   return null;
 }
 function dogsFollow(fromW,fromX,fromY){
-  const now=performance.now(),taken=[];
+  const now=wNow(),taken=[];
   CRIT.forEach(c=>{
     if(!isDog(c)||c.world!==fromW)return;
     if(c.holdT>now||c.stayT>now)return;      /* told to sit, lie down or stay: he holds, and you leave without him */
@@ -3740,7 +3740,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
   const tk=cr.task;
   if(tk.wait&&now<tk.wait)return; /* a job may pause (a song, a bowl being set down), and a pause is not a step */
   tk.steps=(tk.steps||0)+1;
-  if(tk.steps>80){cr.task=null;if(BALL&&BALL.dog===cr&&BALL.phase!=="carried")BALL.until=Date.now()+4000;return;}
+  if(tk.steps>80){cr.task=null;if(BALL&&BALL.dog===cr&&BALL.phase!=="carried")BALL.until=wDate()+4000;return;}
   if(tk.type==="fetch"){
     if(tk.phase==="go"&&!BALL){cr.task=null;return;}
     const tgt=tk.phase==="go"?[BALL.tx,BALL.ty]:[px,py];
@@ -3752,7 +3752,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
       const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(Math.random()*L.length)],2600);
       return;}
     if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
-      if(BALL&&BALL.phase!=="carried")BALL.until=Date.now()+4000;else BALL=null;}
+      if(BALL&&BALL.phase!=="carried")BALL.until=wDate()+4000;else BALL=null;}
     return;}
   if(tk.type==="come"){
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
@@ -3995,7 +3995,7 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
 const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},pigeon:{peck:2.2}};
 /* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
-   this instant, read off his state and two clocks — nw, performance.now(), for how long a whim lasts (layT, howlT…), and
+   this instant, read off his state and two clocks — nw, the world's own clock (wNow), for how long a whim lasts (layT, howlT…), and
    t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
    read nothing else about his pose, bodyRide reads it for what he wears, and a body in another camera will read the
    same answer instead of deciding it a third time. Lifted out of the three painters with nothing changed.
@@ -4005,7 +4005,7 @@ const POSEPX={beagle:{lay:3,howl:-3},lab:{lay:3,howl:-3},chi:{lay:2,howl:-2.5},p
      wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
      face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
 const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6]}; /* ms a swing and px: calm, then happy */
-function dogPose(cr,nw,t){if(nw===undefined)nw=performance.now();if(t===undefined)t=Date.now();
+function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.now();
   const K=POSEPX[cr.kind]||{},W=DOGWAG[cr.kind]||DOGWAG.beagle,gp=gearPose(cr),lay=cr.layT>nw,howl=cr.howlT>nw,happy=cr.happyT>nw;
   return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love:cr.loveT>nw,
     drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):0,wag:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
@@ -4074,8 +4074,8 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   else if(r<0.97){cr.digT=now+1700;cr.next=now+2400; /* the rare nod to the puppy phase */
     if(park)PARK.d++;
     const hx=cr.x,hy=cr.y,hw=cr.world;
-    setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:Date.now()+34000}),1400);}
-  else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:Date.now()+45000});cr.next=now+3000;}
+    setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:wDate()+34000}),1400);}
+  else{DECALS.push({world:cr.world,x:cr.x,y:cr.y,kind:"poop",until:wDate()+45000});cr.next=now+3000;}
 }
 /* ---------- more to do away from the park ----------
    Asked for on 2026-09-29: more to keep the dog busy — his own stick, other dog things, a romp after
@@ -4185,11 +4185,11 @@ function ballUpdate(dt,now){
       if(dog&&dog.world===world&&!dog.task){
         if(fetchRoll(dog)){dog.task={type:"fetch",phase:"go"};dog.sit=false;dog.layT=0;dog.next=0;}
         else{dog.sit=true;dog.face=Math.sign(BALL.tx-dog.x)||dog.face;dog.next=now+2600;
-          BALL.until=Date.now()+6000;
+          BALL.until=wDate()+6000;
           const L=T().fetchNo||[];if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);}}
-      else BALL.until=Date.now()+6000;}
+      else BALL.until=wDate()+6000;}
     else{BALL.fx=BALL.sx+(BALL.tx-BALL.sx)*BALL.t;BALL.fy=BALL.sy+(BALL.ty-BALL.sy)*BALL.t;}}
-  else if(BALL.phase==="ground"&&BALL.until&&Date.now()>BALL.until)BALL=null;
+  else if(BALL.phase==="ground"&&BALL.until&&wDate()>BALL.until)BALL=null;
   else if(BALL.phase==="carried"&&BALL.dog){BALL.fx=BALL.dog.fx+0.28*BALL.dog.face;BALL.fy=BALL.dog.fy-0.12;}
 }
 function drawLeash(cr,camX,camY){ /* blue, like his collar — canon */
@@ -4798,7 +4798,7 @@ function tryStep(){
     const w=CW();
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
-    if(F[ch]&&Date.now()-lastBump>1800){lastBump=Date.now();
+    if(F[ch]&&wDate()-lastBump>1800){lastBump=wDate();
       toast(F[ch][Math.floor(Math.random()*F[ch].length)],2000);}
     return;
   }
@@ -5202,6 +5202,21 @@ function buildAudit(){const out=[];if(typeof BUILDER==="undefined"||!BUILDER)ret
     if(!ok)out.push("BUILDER.name is neither a word nor {en,es} words, so the drone keeps the engine's own name");}
   return out;}
 let last=0;
+/* ---- THE GAME'S OWN CLOCK STANDS STILL WITH IT (2026-11-08) ----
+   Stopping what moves behind the map was half of it. The world times its waits on a clock: how long a ball lies on the
+   ground before it goes, how long a person stands before the next step, when an animal next moves, how long a dog stays
+   happy or lies down. That clock was the wall clock, and it ran on behind the map, so a ball on the ground when the map
+   opened was gone the moment it closed, and a person who was waiting set off at once. The world keeps its own clock now:
+   the wall clock less every moment the world stood still behind the map. The loop hands it to the updates it pauses, and
+   every timer those updates keep is set and read on it, wherever it is set: wNow() for the performance clock, wDate() for
+   Date.now(). Left on the wall clock, as they were: what is only drawn (a wag, a bob, a lamp's glow, a sign's sway, which
+   keep no state), and what the player's own input waits on (a door's opening, the drone). The petals, the marks animals
+   leave on the ground and the leash went onto it on 2026-11-10, in every camera (engine3d.js reads it too), so none of
+   them fades or comes off behind the map. One timer of theirs is still the wall clock's: a dug hole lands 1.4 s into the
+   dig by a setTimeout (dogWhim); the time it then keeps is the world's. */
+let wStill=0,wStillAt=0;   /* ms the world has stood still behind the map, in all; and the frame it stopped at, while it stands */
+function wNow(){return (wStillAt||performance.now())-wStill;}
+function wDate(){return Date.now()-(performance.now()-wNow());}
 function loop(ts){
   /* ASK FOR THE NEXT FRAME FIRST. It used to be the last statement of this function, which meant
      the game only kept running when nothing went wrong: measured, one frame that threw ticked once
@@ -5218,7 +5233,16 @@ function loop(ts){
   /* the street bearing follows the camera's own swing, so it is a frame job, not an event job.
      It writes to the DOM only when the pill actually moved — see bearingUI. */
   if(typeof bearingUI==="function")bearingUI();
-  if(moving){
+  /* THE MAP STOPS THE GAME (2026-11-08). While the map is open the world stands still, at every size: nobody walks, no animal
+     or critter moves, the tram waits where it is, nothing falls, and a step of the player's own already under way stops where
+     it is, so it can no longer carry the player through a door or onto the tram's platform behind the map. Everything
+     picks up where it stopped when the map closes, and the music plays on; the world's clock stands still with it (grep
+     "THE GAME'S OWN CLOCK"). Every other panel keeps the world thinking behind it, as below. */
+  const still=mapStill();
+  if(still&&!wStillAt)wStillAt=ts;else if(!still&&wStillAt){wStill+=ts-wStillAt;wStillAt=0;}
+  const wts=ts-wStill;   /* the world's own clock, above */
+  if(still){}
+  else if(moving){
     mt+=dt/240;bob+=dt/70;
     if(mt>=1){moving=false;fx=px;fy=py;petalDrop(world,px,py,HEROFEET);
       if(tryPortal(ts)){}
@@ -5228,9 +5252,10 @@ function loop(ts){
     else{const[dx,dy]=DIRS[dir];fx=px-dx*(1-mt);fy=py-dy*(1-mt);}
   }else if(DRONE.on||DRONE.want)droneTick(dt);   /* the keys fly the drone: no door and no step for the hero while they do (#271) */
   else if(!tryPortal(ts))tryStep(); /* standing on a door whose cooldown just ran out: go through */
+  if(!still){
   petalMomentTick(dt);
   troTick(dt);
-  dogUpdate(dt,ts);catUpdate(dt,ts);pigUpdate(dt,ts);loroTick(ts);critUpdate(dt,ts);ballUpdate(dt,ts);dogThingsUpdate(dt,ts);wanderUpdate(dt);fredCheck();
+  dogUpdate(dt,wts);catUpdate(dt,wts);pigUpdate(dt,wts);loroTick(wts);critUpdate(dt,wts);ballUpdate(dt,wts);dogThingsUpdate(dt,wts);wanderUpdate(dt);fredCheck();}
   /* The world keeps thinking behind a panel — the dog walks, the trolley comes, petals fall — so
      nothing jumps when you put the paper down. It is not DRAWN, though: measured at 215 frames in
      six seconds with a document covering the screen, every one of them at full device resolution
@@ -6051,34 +6076,34 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
 $("treat").addEventListener("click",()=>{
   if(petTarget==="fred"){
     treats++;save();
-    toast(T().fredHeart,1200);DOG.sit=true;DOG.next=performance.now()+2600;
+    toast(T().fredHeart,1200);DOG.sit=true;DOG.next=wNow()+2600;
     if(fredQ===0&&treats>=3){fredQ=1;save();setTimeout(()=>toast(T().fredUnlock,3800),1400);
       setTimeout(()=>toast(T().carePackToast,3600),1600);}
     else if(fredQ===1){fredQuestStart();}
     return;
   }
-  if(petTarget==="cat"){CAT.sit=true;CAT.next=performance.now()+3200;
+  if(petTarget==="cat"){CAT.sit=true;CAT.next=wNow()+3200;
     const L=T().cat;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
-  else if(petTarget==="pig"){PIG.peck=true;PIG.next=performance.now()+2200;
+  else if(petTarget==="pig"){PIG.peck=true;PIG.next=wNow()+2200;
     const L=T().pigeon;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
   else if(petTarget==="loro"){
     const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(DOGK.has(petTarget)){ /* a treat: the tail achieves liftoff, and he's FUELED */
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=performance.now()+3200;g2.happyT=performance.now()+2200;g2.layT=0;
-      g2.fedT=performance.now();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
+    if(g2){g2.sit=true;g2.next=wNow()+3200;g2.happyT=wNow()+2200;g2.layT=0;
+      g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
       if(world===PL.park)PARK.t++;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
     toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}
   else if(petTarget==="gato"){
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=performance.now()+3200;}
+    if(g2){g2.sit=true;g2.next=wNow()+3200;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?eggLines(g2.egg,g2.name):T().gato;
     toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.moving=false;g2.next=performance.now()+2600;} /* it pauses for you */
+    if(g2){g2.sit=true;g2.moving=false;g2.next=wNow()+2600;} /* it pauses for you */
     const L=petTarget==="butterfly"?T().mariposa:T().colibri;
     toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
 });
@@ -7558,7 +7583,7 @@ function mapArrowBtn(){
   b.style.color=on?"var(--accent-ink,#FFFFFF)":"inherit";
   hint.textContent=t.arrowHint||uiDef("plan","arrowHint");
   mapArrowHint();
-  mapHeadFit();}
+  mapAtTop(()=>{mapHeadFit();mapLineFit();});}
 /* ---- AND UNDER IT, WHEN THE ARROW SHOWS (2026-11-07) ----
    Switched on with nowhere chosen, the arrow has nothing to point at, so pressing the switch seemed to do nothing. A
    line under the switch says why: the arrow shows only once you have a destination. It is shown while the switch is on
@@ -7605,16 +7630,121 @@ function mapHeadFit(){
   const y0=cv.getBoundingClientRect().top;hint.style.display="";
   const cap=parseFloat(getComputedStyle(cv).maxHeight),room2=y1-y0;
   if(room2>0&&isFinite(cap))cv.style.maxHeight=Math.max(0,cap-room2)+"px";}
+/* ---- AND THE LINE UNDER THE PLAN OPENS CLEAR OF CLOSE (2026-11-08) ----
+   The line that says how to choose a destination sits just above Close, which rides the foot of the box and casts a soft
+   shadow upward over whatever scrolls under it. On a laptop that shadow faded the line's words to 3.3:1, on a tablet held
+   sideways Close covered half of it, and on a short phone held upright, with the edge arrow on (in Spanish with it off too),
+   it lay under Close. So as the map opens, and again whenever the window changes size or the edge arrow is switched while it
+   is open, wherever the line would open under Close the plan is drawn smaller by just the room the line needs: clear of
+   Close's shadow on a tablet or a laptop, and clear of Close itself on a phone held upright, where the shadow may still lie
+   on the line. How far the shadow reaches is read from Close's own shadow, so a shell that casts another decides by its own.
+   A phone held sideways is left as it was: there the line opens below the foot of the box, a scroll away, and bringing it up
+   would take a third of the plan. Where the line already has its room nothing changes. The line is measured as the map
+   says it with nothing chosen, as it opens; choosing a destination moves nothing. */
+const MAPPHONE=600;   /* a phone: the screen's shorter side is under this many CSS px. Every tablet and laptop is wider */
+function mapLineFit(){
+  const cv=$("mapcv");if(!cv)return;
+  const r=cv.getBoundingClientRect();if(!r.height)return;   /* a plan the box does not show: a window of a pack's own asks mapLineNeed itself */
+  const need=mapLineNeed();if(need>0)cv.style.maxHeight=Math.max(0,r.height-need)+"px";}
+/* how many px the plan must give up for the line to open clear (0 where it has its room, and on a phone held sideways),
+   read where the line is now: the map open, its box at its top */
+function mapLineNeed(){
+  const ov=$("mapov"),n=$("mapNote"),c=$("mapClose");if(!ov||ov.hidden||!n||!c)return 0;
+  const W=innerWidth,H=innerHeight,phone=Math.min(screen.width||W,screen.height||H)<MAPPHONE;   /* the screen's, not the window's: a laptop's window can be short */
+  if(phone&&W>H)return 0;
+  const cr=c.getBoundingClientRect();if(!cr.height)return 0;
+  const keep=mapDest,was=n.textContent;mapDest=null;mapNoteSet();
+  const rg=document.createRange();rg.selectNodeContents(n);
+  const rs=[...rg.getClientRects()].filter(q=>q.height>0),foot=rs.length&&n.textContent.trim()?Math.max(...rs.map(q=>q.bottom)):null;
+  mapDest=keep;n.textContent=was;mapArrowHint();
+  return foot===null?0:Math.max(0,Math.ceil(foot-(cr.top-(phone?0:mapShadowReach(c)))));}
+function mapShadowReach(c){   /* how far above Close its shadow reaches: from the shadow's own edge (its offset less its spread), by its blur */
+  let reach=0;String(getComputedStyle(c).boxShadow||"").split(/,(?![^(]*\))/).forEach(s=>{if(/\binset\b/.test(s))return;
+    const v=(s.replace(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]+/gi,"").match(/-?[\d.]+px/g)||[]).map(parseFloat);
+    if(v.length>=2)reach=Math.max(reach,(v[3]||0)-v[1]+(v[2]||0));});
+  return Math.max(0,reach);}
 /* The box opened where it was last left: once a laptop or a phone held sideways had scrolled down to "Somewhere to go",
    every later opening put the switch, and the ◉ of every place at the top of the plan, above the box's top edge, under
    a caption saying "◉ you are here". It opens at its top now, every time, whatever in it scrolls. Set once it is shown:
    a hidden box keeps the scroll it had, and has none to set. */
 function mapShown(){
   const ov=$("mapov");if(!ov||ov.hidden)return;
-  mapNoteHold();
-  mapHeadFit();
-  [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});}
-window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){mapNoteHold();mapHeadFit();}});
+  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});
+  [ov,...ov.querySelectorAll("*")].forEach(e=>{if(e.scrollTop)e.scrollTop=0;});
+  if(document.body.classList.contains("maphalf"))mapStreet();}
+/* The window changing size keeps the player's own scroll of the box. By the time it says so the browser has laid the box out
+   again in the layout it had, and where that layout now holds everything (the left half, going to a size that will take the
+   box) the scroll is already gone; so the box's last scroll is kept as the player left it, and handed back after the fits,
+   as far as the new layout lets it go. */
+let mapBoxTop=0;
+{const b=$("mapov")&&$("mapov").querySelector(".box");if(b)b.addEventListener("scroll",()=>{mapBoxTop=b.scrollTop;},{passive:true});}
+window.addEventListener("resize",()=>{const ov=$("mapov");if(ov&&!ov.hidden){const keep=mapBoxTop,box=ov.querySelector(".box");
+  mapAtTop(()=>{mapPlace();mapNoteHold();mapHeadFit();mapLineFit();});mapStreet();
+  if(box&&keep>box.scrollTop)box.scrollTop=keep;}});
+/* ---- THE MAP ON THE LEFT HALF OF A WIDE SCREEN, THE GAME STANDING STILL BESIDE IT (2026-11-08) ----
+   On a laptop the map was a box in the middle of a darkened screen while the world went on behind it. Now, on a screen
+   shaped like a laptop's or wider, the map takes the left half of the screen from top to bottom wherever that draws the plan
+   at least as big as the box in the middle does, and the game shows in the right half, lightly dimmed and standing still
+   (the loop: grep "THE MAP STOPS THE GAME"); everywhere else (a tablet held sideways, squarer screens, phones) the box stays
+   in the middle. The choice is measured, not guessed: the plan is drawn as wide as the box's content and no taller than the
+   shell lets it be, so its size in each layout is the smaller of those two fits, read from the box and from the plan's own
+   height cap as the shell lays each layout out. A shell that gives the half other proportions decides by its own, and a pack
+   that shows the plan through a window of its own, laid out after this runs, says how big it would draw it in a box that
+   wide with a plan that tall (PLANSCALE(width, height): screen px per px of the plan's canvas). The overlay is marked `half`
+   and the page `maphalf`; what moves where is the shell's to say. Measured as the map opens and whenever the window changes
+   size while it is open, so a window resized or a tablet turned follows at once. */
+/* AND ONE WINDOW, ONE LAYOUT (2026-11-09). The box's width is read without a scrollbar: whether one shows (classic scrollbars,
+   as on Windows) depends on what the box holds at that instant, and as the map opens its head is not yet fitted, so the same
+   window chose the box as the map opened and the left half once it said it had changed size. A pack's PLANSCALE that throws,
+   or answers anything but a positive number, gives way to the engine's own scale, and the engine says so once. And only a
+   screen shaped like a laptop's or wider takes the left half (MAPHALFSHAPE): phones, tablets held sideways and screens
+   squarer than about 3 by 2 keep the box whatever a pack's scale says, as the plan's own measure already gives this game. */
+const MAPHALFSHAPE=1.45;   /* width to height: 1280x800 is 1.6 and 3 by 2 is 1.5; 1024x768 and 1600x1200 are 1.33 */
+let mapPageY=null;         /* the page's scroll as the left half took it, handed back when the half goes (the column narrows) */
+function mapPlace(){
+  const ov=$("mapov"),cv=$("mapcv"),box=ov&&ov.querySelector(".box");if(!ov)return;
+  let half=false;
+  if(!ov.hidden&&cv&&box&&cv.width&&cv.height&&innerWidth>=MAPHALFSHAPE*innerHeight){
+    const keep=cv.style.maxHeight;cv.style.maxHeight="";
+    const own=(w,h)=>Math.min(w/cv.width,h/cv.height);
+    const fit=()=>{const bs=getComputedStyle(box),n=v=>parseFloat(v)||0;
+      const w=box.offsetWidth-n(bs.borderLeftWidth)-n(bs.borderRightWidth)-n(bs.paddingLeft)-n(bs.paddingRight);
+      const cap=parseFloat(getComputedStyle(cv).maxHeight),h=cap>0?cap:Infinity;
+      return mapScale(w,h,own);};
+    ov.classList.remove("half");const k0=fit();
+    ov.classList.add("half");const k1=fit();
+    cv.style.maxHeight=keep;half=k1>0&&k1>=k0;}
+  const was=document.body.classList.contains("maphalf");
+  if(half&&!was)mapPageY=scrollY;
+  ov.classList.toggle("half",half);document.body.classList.toggle("maphalf",half);
+  if(!half&&was)mapPageBack();}
+function mapScale(w,h,own){
+  if(typeof PLANSCALE!=="function")return own(w,h);
+  let k;try{k=PLANSCALE(w,h);}catch(e){k=e;}
+  if(typeof k==="number"&&isFinite(k)&&k>0)return k;
+  if(!mapScale.told){mapScale.told=true;mqwarn("pack","PLANSCALE answered "+(k instanceof Error?"with an error ("+k.message+")":typeof k==="string"?JSON.stringify(k):String(k))+"; the engine's own scale is used instead",false);}
+  return own(w,h);}
+function mapPageBack(){if(mapPageY===null)return;const y=mapPageY;mapPageY=null;scrollTo(scrollX,y);}
+/* The street beside the map is laid out again at its column's width and drawn once: a world under a panel is not drawn by
+   the loop, and laying a canvas out clears it. */
+function mapStreet(){sizeCanvas();if(!$("world").hidden)try{draw();}catch(e){}}
+function mapStill(){const ov=$("mapov");return !!ov&&!ov.hidden;}
+/* and when the map closes, by Close, Escape, a tap beside it or anything else that hides it, the game goes back where it was */
+if($("mapov"))new MutationObserver(()=>{const ov=$("mapov");
+  if(!ov.hidden||!(ov.classList.contains("half")||document.body.classList.contains("maphalf")))return;
+  ov.classList.remove("half");document.body.classList.remove("maphalf");sizeCanvas();mapPageBack();}).observe($("mapov"),{attributes:true,attributeFilter:["hidden"]});
+/* ---- AND IT IS MEASURED WITH THE BOX AT ITS TOP (2026-11-08) ----
+   The room the plan gives the edge arrow's line was read with the box still holding the scroll it was left with. Scrolled to
+   its foot (on a tablet held sideways that is how "Somewhere to go" is reached), the browser's scroll anchoring held the plan
+   still while the line was hidden for the reading, so the reading found no room, and the next opening, or the window
+   changing size with the box scrolled down, gave the plan its 28 px back. So the box is measured at its top, with the
+   browser's anchoring off for the measuring alone, and is handed back the scroll it had: the player's own scrolling is left
+   as it is. */
+function mapAtTop(f){
+  const ov=$("mapov"),box=ov&&ov.querySelector(".box");if(!box){f();return;}
+  const st=box.scrollTop,oa=box.style.overflowAnchor;
+  box.style.overflowAnchor="none";if(st)box.scrollTop=0;
+  try{f();}finally{if(st)box.scrollTop=st;box.style.overflowAnchor=oa;}}
 let bearLast="",bearPos="";
 function bearingUI(){
   const vp=$("vp");if(!vp)return;
@@ -8419,7 +8549,7 @@ $("leash").addEventListener("click",()=>{
   setTimeout(()=>{
     world=PL.park;px=fx=PL.parkIn[0];py=fy=PL.parkIn[1];dir=PL.parkIn[2];held=null;
     c.world=PL.park;c.x=PL.parkDog[0];c.y=PL.parkDog[1];c.fx=c.x;c.fy=c.y;c.home=PL.parkDogHome.slice();c.follow=true;c.task=null;c.sit=false;
-    c.leashT=performance.now()+6500; /* the leash shows for the bridge crossing, then he's loose */
+    c.leashT=wNow()+6500; /* the leash shows for the bridge crossing, then he's loose (on the world's clock) */
     if(BALL)BALL=null;
     warpT=performance.now()+450;portalT=performance.now()+900;portalHold=world+":"+px+","+py;
     save();setWorldTag();hud();checkTalk();
@@ -8493,8 +8623,8 @@ if($("aleRnd")){$("aleRnd").addEventListener("click",()=>alePress(true));$("aleN
 $("love").addEventListener("click",()=>{ /* a button to tell him you love him (asked for) */
   if(!DOGK.has(petTarget)||!petCrit)return;
   const c=petCrit;
-  c.loveT=performance.now()+2800;c.happyT=performance.now()+2800;
-  c.sit=true;c.layT=0;c.next=performance.now()+3000;
+  c.loveT=wNow()+2800;c.happyT=wNow()+2800;
+  c.sit=true;c.layT=0;c.next=wNow()+3000;
   try{musChirp();}catch(e){}
   const L=T().loveLines||[];if(L.length)toast("💗 "+L[Math.floor(Math.random()*L.length)],3200);
 });
@@ -8565,7 +8695,7 @@ function dogCmd(kind){
   if(kind==="follow"){c.follow=!c.follow;c.stayT=0;c.holdT=0;
     toast("🐶 "+(c.follow?T().followOn:T().followOff),2400);return;}
   const p=(kind==="come"?0.7:0.5)+0.1*Math.min(4,reps)+(dogFed(c)?0.25:0);
-  const now=performance.now();
+  const now=wNow();
   if(Math.random()>=p){const L=T().cmdNo||[];
     if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);return;}
   tr[kind]=reps+1;parkPersist();
