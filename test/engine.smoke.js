@@ -12347,8 +12347,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const KN = { function: 'a function', list: 'a list', group: 'a group of words', string: 'a sentence', number: 'a number', boolean: 'a yes-or-no' };
     const bad = s => /undefined|\bnull\b|\bNaN\b|\[object |=>/.test(String(s));
     const wctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const wp = await wctx.newPage(), wErr = [];
+    const wp = await wctx.newPage(), wErr = [], errNamed = new Set();
     wp.on('pageerror', e => wErr.push(String(e.message).split('\n')[0]));
+    /* a step that reads the page's errors names every one raised while it ran: the first, or none. One no step named is a red at the end */
+    const threw = e0 => { for (let i = e0; i < wErr.length; i++) errNamed.add(i); return wErr.length > e0 ? wErr[e0] : null; };
     await wp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
     try {
       await wp.goto('file://' + file); await boot(wp);
@@ -12487,12 +12489,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const ticker = () => wp.evaluate(() => { const t = document.getElementById('ticker'), d = t && t.lastElementChild; return d ? d.textContent : null; });
       const said = async (label, act, L, k, args) => { const e0 = wErr.length; await wp.evaluate(() => { const t = document.getElementById('ticker'); if (t) { t.textContent = ''; } tickerLines.length = 0; });
         await wp.evaluate(act); await wp.waitForTimeout(60); const s = await ticker(), all = await wp.evaluate(() => tickerLines.join(' | '));
-        if (wErr.length > e0) WD.push('in ' + LN[L] + ', ' + label + ' threw "' + wErr[e0] + '"');
+        if (threw(e0)) WD.push('in ' + LN[L] + ', ' + label + ' threw "' + wErr[e0] + '"');
         else if (s === null || !s.trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' says ' + (s === null ? 'nothing at all' : '"' + s + '"'));
         else { (twice[label] = twice[label] || {})[L] = s; if (k) await holds(L, label, all, k, args); } };
       const panel = async (label, open, ids, close, L, keys) => { const e0 = wErr.length; await wp.evaluate(open).catch(e => wErr.push(String(e.message)));
         const got = await wp.evaluate(ids => ids.map(i => { const el = document.getElementById(i); return [i, el ? (el.placeholder !== undefined && el.tagName === 'INPUT' ? el.placeholder : el.textContent) : null]; }), ids);
-        if (wErr.length > e0) WD.push('in ' + LN[L] + ', opening ' + label + ' threw "' + wErr[e0] + '"');
+        if (threw(e0)) WD.push('in ' + LN[L] + ', opening ' + label + ' threw "' + wErr[e0] + '"');
         got.forEach(([i, s]) => { if (s === null) return; if (!String(s).trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where its words go (#' + i + ')'); });
         (twice[label] = twice[label] || {})[L] = got.map(x => x[1]).filter(x => x !== null).join(' | ');
         for (const [i, s] of got) if (keys && keys[i] && s !== null) await holds(L, label + ' (#' + i + ')', s, keys[i]);
@@ -12525,7 +12527,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         await wp.evaluate(t => { const b = [...document.querySelectorAll('#choices button')].find(b => b.textContent === t) || document.querySelector('#choices button'); if (b) b.click(); }, c.pickT);
         await until(wp, () => !document.getElementById('verdict').hidden, null, 2000);
         const v = await wp.evaluate(() => ({ h: (document.querySelector('#verdict h2') || {}).textContent || '', next: document.getElementById('next').textContent }));
-        if (wErr.length > e0) WD.push('in ' + LN[L] + ', making a call on ' + q.who + '\'s quest threw "' + wErr[e0] + '"');
+        if (threw(e0)) WD.push('in ' + LN[L] + ', making a call on ' + q.who + '\'s quest threw "' + wErr[e0] + '"');
         if (bad(v.h) || !v.h.trim()) WD.push('in ' + LN[L] + ', after a ' + (q.solid ? 'solid ' : '') + 'call on ' + q.who + '\'s quest the card says "' + v.h + '"');
         else if (c.pickR) await holds(L, 'after a ' + (c.pickR === 'ok' ? 'solid ' : '') + 'call on ' + q.who + '\'s quest, the card\'s heading', v.h, c.pickR === 'ok' ? 'okH' : c.pickR === 'mid' ? 'midH' : 'badH');
         if (bad(v.next) || !v.next.trim()) WD.push('in ' + LN[L] + ', the button that closes ' + q.who + '\'s quest card reads "' + v.next + '"');
@@ -12538,7 +12540,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const v = document.getElementById('exArea').value; document.getElementById('exClose').click(); const Lb = T().repL || {};
           return { v, n: dlog.length, rs: [...new Set(dlog.map(e => e.result))], head: '**' + Lb.verdict + ':** ', why: '**' + Lb.why + ':** ' + Lb.advanced, okw: Lb.ok,
             reason: dlog.some(e => e.why || e.result === 'ok') }; }).catch(e => ({ threw: e.message }));
-        if (wErr.length > e0 || r.threw) { WD.push('in ' + LN[L] + ', with ' + (r.n || 'a') + ' call(s) in the log, opening the Export panel\'s Report tab threw "' + (wErr[e0] || r.threw) + '"'); return null; }
+        if (threw(e0) || r.threw) { WD.push('in ' + LN[L] + ', with ' + (r.n || 'a') + ' call(s) in the log, opening the Export panel\'s Report tab threw "' + (wErr[e0] || r.threw) + '"'); return null; }
         if (!r.n) { WN.push('COUNT-ONLY: in ' + LN[L] + ' no call was in the log, so the Report tab was read empty'); return null; }
         const v = r.v, sum = (v.split('\n').find(l => /^\*\*[^*].*\*\*$/.test(l)) || '');
         if (bad(v)) WD.push('in ' + LN[L] + ', the Report tab with a call in the log says "' + v.split('\n').find(l => bad(l)) + '"');
@@ -12636,7 +12638,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               b.click(); if (document.getElementById('mapov').hidden) continue;
               out.push([wid, (document.getElementById('mapNote') || {}).textContent || '']); document.getElementById('mapClose').click(); }
             [world, px, py, dir] = keep; fx = px; fy = py; checkTalk(); return out; });
-          if (wErr.length > e0) WD.push('in ' + LN[L] + ', opening the map from each place in turn threw "' + wErr[e0] + '"');
+          if (threw(e0)) WD.push('in ' + LN[L] + ', opening the map from each place in turn threw "' + wErr[e0] + '"');
           if (!notes.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' no map opened, so the line under it was not read');
           notes.forEach(([wid, s]) => { if (!s.trim() || bad(s) || s.split('  ·  ').some(p => !p.trim())) WD.push('in ' + LN[L] + ', opened from ' + wid + ' the line under the map reads "' + s + '"'); });
           for (const [wid, s] of notes) await holds(L, 'opened from ' + wid + ', the line under the map', s, 'locs.' + wid); }
@@ -12675,7 +12677,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const out = await until(wp, () => world !== PL.park && !warpPend, null, 5000); await wp.keyboard.up(door.key); await wp.waitForTimeout(80);
           const pk = await wp.evaluate(() => { const c = document.getElementById('parkCard'); return { shown: !c.hidden, text: c.innerText }; });
           const how = (door.laid ? 'walking out of a home that is also the park, by a door' : 'walking out of the park by its door');
-          if (wErr.length > e0) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + wErr[e0] + '"');
+          if (threw(e0)) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + wErr[e0] + '"');
           else if (!out) WD.push('in ' + LN[L] + ', ' + how + ' never left the park in 5 s, so the card it brings was not read');
           else if (!pk.shown) WD.push('in ' + LN[L] + ', ' + how + ' brings no card summing up the visit, where the park always brings one');
           else if (bad(pk.text) || pk.text.split('\n').filter(l => l.trim()).length < 3) WD.push('in ' + LN[L] + ', ' + how + ', the card summing up the visit reads "' + pk.text.replace(/\s+/g, ' ').trim() + '"');
@@ -12688,7 +12690,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const o = [...document.querySelectorAll('#settings summary')].filter(s => !s.closest('[hidden]'))
               .map(s => { const e = s.querySelector('[id]') || s; return [e.id || 'a section', s.textContent, (e.id || '').replace(/^drw/, '').replace(/Lb$/, '')]; });
             document.getElementById('closeSet').click(); return o; });
-          if (wErr.length > e0) WD.push('in ' + LN[L] + ', opening Settings threw "' + wErr[e0] + '"');
+          if (threw(e0)) WD.push('in ' + LN[L] + ', opening Settings threw "' + wErr[e0] + '"');
           heads.forEach(([i, s, code]) => { if (!s.trim() || bad(s)) WD.push('in ' + LN[L] + ', Settings heads a section with ' + (s.trim() ? '"' + s + '"' : 'nothing') + ' (#' + i + ')');
             else if (code && s.trim() === code) WD.push('in ' + LN[L] + ', Settings heads a section with its code name, "' + s.trim() + '" (#' + i + ')'); });
           if (!heads.length) WD.push('in ' + LN[L] + ', Settings draws no section heading at all');
@@ -12714,10 +12716,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         await said('switching the hearts on', () => { document.getElementById('stkHearts').click(); }, L, 'stkToast', ['hearts']);
         await said('switching the hearts off', () => { document.getElementById('stkNone').click(); }, L, 'stkToast', ['none']);
         await panel('the theme editor', () => { document.getElementById('teOpen').click(); }, ['teName'], () => {}, L, { teName: 'teNamePh' });
-        { const cp = await wp.evaluate(() => { const b = document.querySelector('#teClone button[data-cl="meridian"]'), th = document.querySelector('#themeRow button[data-th="meridian"]');
-            if (!b || !th || PALS.length >= 8) return null; const n = PALS.length; b.click(); return PALS.length > n ? { name: PALS[PALS.length - 1].n, theme: th.textContent } : null; });
-          if (cp) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}\p{P}]+/u, '').trim();   /* its mark left off, its punctuation kept */
-            if (!nm || bad(cp.name) || nm !== th) WD.push('in ' + LN[L] + ', a copy of the theme Settings calls "' + cp.theme + '" is named "' + cp.name + '"'); } }
+        /* a copy of a theme, made by pressing the theme editor's button for it as a player does (the theme in use where the row has
+           a button for it, else the row's first): a press that throws or makes no copy is a red, and so is a row with no button */
+        { const e0 = wErr.length;
+          const cp = await wp.evaluate(() => { const row = document.getElementById('teClone'); if (!row) return { none: 'row' }; if (PALS.length >= 8) return { none: 'full' };
+            const b = row.querySelector('button[data-cl="meridian"]') || row.querySelector('button'); if (!b) return { none: 'button' };
+            const th = document.querySelector('#themeRow button[data-th="' + (b.dataset.cl || 'meridian') + '"]'), n = PALS.length; b.click();
+            return { b: b.textContent, made: PALS.length > n, name: PALS.length > n ? PALS[PALS.length - 1].n : null, theme: th ? th.textContent : null }; });
+          await wp.waitForTimeout(60);
+          if (cp.none === 'row') WN.push('COUNT-ONLY: in ' + LN[L] + ' this shell\'s theme editor has no row of themes to copy, so no copy was made');
+          else if (cp.none === 'full') WN.push('COUNT-ONLY: in ' + LN[L] + ' the wardrobe of themes was full, so no copy was made');
+          else if (cp.none === 'button') WD.push('in ' + LN[L] + ', the theme editor\'s row of themes to copy has no button in it');
+          else { const t = threw(e0);
+            if (t) WD.push('in ' + LN[L] + ', pressing the theme editor\'s ' + cp.b + ' button, which copies a theme, threw "' + t + '"');
+            if (!cp.made) WD.push('in ' + LN[L] + ', pressing the theme editor\'s ' + cp.b + ' button, which copies a theme, made no copy');
+            else if (cp.theme !== null) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}\p{P}]+/u, '').trim();   /* its mark left off, its punctuation kept */
+              if (!nm || bad(cp.name) || nm !== th) WD.push('in ' + LN[L] + ', a copy of the theme Settings calls "' + cp.theme + '" is named "' + cp.name + '"'); } } }
         await said('closing the theme editor', () => { document.getElementById('teClose').click(); }, L, 'teSaved');
         await panel('the new-character card', () => { const w = CW(); for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++)
           if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !(x === px && y === py) && !portalAt(world, x, y)) { window.__nm = [x, y]; npcAt(x, y); return; } },
@@ -12730,7 +12744,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         /* saves that fail and work again, in turn: the warning held to its word here, and every step kept to set beside the
            engine this branch grew from, below */
         { const e0 = wErr.length; saveNow[L] = await wp.evaluate(saveRun).catch(e => { wErr.push(String(e.message).split('\n')[0]); return null; });
-          if (wErr.length > e0) WD.push('in ' + LN[L] + ', saves failing and working again in turn threw "' + wErr[e0] + '"');
+          if (threw(e0)) WD.push('in ' + LN[L] + ', saves failing and working again in turn threw "' + wErr[e0] + '"');
           const warn = saveNow[L] ? saveNow[L].warned : '';
           if (!warn.trim() || bad(warn)) WD.push('in ' + LN[L] + ', a save that fails because the device is out of room says ' + (warn.trim() ? '"' + warn + '"' : 'nothing'));
           else { (twice['a save that fails because the device is out of room'] = twice['a save that fails because the device is out of room'] || {})[L] = warn;
@@ -12785,7 +12799,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             o = { mapAny: tx('mapAny'), mapArrowName: tx('mapArrowName'), mapArrowState: tx('mapArrowState'), mapArrowHint: tx('mapArrowHint'), key: tog ? tog.getAttribute('aria-label') : null }; document.getElementById('mapClose').click(); } } }
           finally { UI.es = keep; lang = was; T(); }
           return o; });
-        if (wErr.length > e0) WD.push('in Spanish, with words the engine cannot lay its own beneath, opening the map threw "' + wErr[e0] + '"');
+        if (threw(e0)) WD.push('in Spanish, with words the engine cannot lay its own beneath, opening the map threw "' + wErr[e0] + '"');
         else if (fz) Object.keys(fz).forEach(k => { if (fz[k] !== null && mapWords.es[k] !== undefined && fz[k] !== mapWords.es[k]) WD.push('in Spanish, with words the engine cannot lay its own beneath, the map says "' + fz[k] + '" where ' + k + ' goes, where it says "' + mapWords.es[k] + '" otherwise'); }); }
       /* starting over, last, since it wipes the game: Settings' button asks to be pressed again, then the game says it has started over */
       for (const L of W.langs) { const e0 = wErr.length;
@@ -12793,7 +12807,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const b = document.getElementById('replay'); if (!b) return null; document.getElementById('gear').click(); b.click(); const arm = b.textContent;
           const t = document.getElementById('ticker'); if (t) t.textContent = ''; tickerLines.length = 0; b.click(); return { arm, said: tickerLines[tickerLines.length - 1] || '' }; }, L);
         if (!so) { WN.push('COUNT-ONLY: in ' + LN[L] + ' this world has no start-over button, so starting over was not read'); continue; }
-        if (wErr.length > e0) WD.push('in ' + LN[L] + ', starting over threw "' + wErr[e0] + '"');
+        if (threw(e0)) WD.push('in ' + LN[L] + ', starting over threw "' + wErr[e0] + '"');
         else if (!so.said.trim() || bad(so.said)) WD.push('in ' + LN[L] + ', starting over says ' + (so.said.trim() ? '"' + so.said + '"' : 'nothing'));
         else { (twice['starting over'] = twice['starting over'] || {})[L] = so.said; await holds(L, 'starting over', so.said, 'replayToast', ['Ana']); }
         if (!so.arm.trim() || bad(so.arm)) WD.push('in ' + LN[L] + ', the start-over button, pressed once, reads "' + so.arm + '"');
@@ -12806,6 +12820,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         [false, true].forEach(k => { const R = report['pass' + k]; if (R && R.en && R.es && R.en === R.es) WD.push('in Spanish a Trolley Pass link\'s card is the English one: "' + R.es.replace(/\s+/g, ' ').trim() + '"'); });
       }
     } catch (e) { WD.push('the check could not drive the game to the end, so it measured nothing past: ' + String(e && e.message || e).split('\n')[0]); }
+    { const un = wErr.filter((_, i) => !errNamed.has(i));
+      if (un.length) WD.push('the page threw ' + un.length + ' time(s) where no step above says it did, first "' + un[0] + '"'); }
     await wctx.close();
     fails.push(...new Set(WN), ...new Set(WD.map(m => 'the engine\'s own words: ' + m)));   /* a sentence once, however often a screen was read */
   }
