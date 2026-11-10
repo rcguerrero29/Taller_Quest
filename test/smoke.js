@@ -253,6 +253,14 @@ const CANDIDATES = [
     ['flavor', 'locs', 'classes', 'chat', 'arrive', 'pass'].forEach(k => {
       if (keys(UI.en[k]) !== keys(UI.es[k])) problems.push('UI.' + k + ' subkeys differ');
     });
+    /* MERIDIAN NAMES EVERY WORD THE ENGINE KEEPS, but the zoom buttons' names, which it leaves to the engine. The engine's own
+       words lie beneath a world's, so a word dropped from Meridian's words file would come out as the engine's without a sound:
+       its verdict headings tidied away read the engine's "Solid call" for Meridian's own. Each is asked for as Meridian's own. */
+    { const LEFT = ['zoomIn', 'zoomOut'], D = typeof UIDEF === 'object' && UIDEF ? UIDEF : {}, own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
+      ['en', 'es'].forEach(L => { const d = D[L] || {}, inL = L === 'es' ? 'Spanish' : 'English';
+        Object.keys(d).filter(k => !LEFT.includes(k)).forEach(k => { const g = d[k];
+          if (g && typeof g === 'object' && !Array.isArray(g)) Object.keys(g).forEach(w => { if (!own(UI[L], k) || !own(UI[L][k], w)) problems.push('Meridian names no "' + k + '.' + w + '" of its own in ' + inL + ', so a player there reads the engine\'s own word for it'); });
+          else if (!own(UI[L], k)) problems.push('Meridian names no "' + k + '" of its own in ' + inL + ', so a player there reads the engine\'s own word for it'); }); }); }
     if (UI.en.careEvents('X').length !== UI.es.careEvents('X').length) problems.push('careEvents length differs');
     if (UI.en.styles.length !== UI.es.styles.length) problems.push('styles length differs');
     if (keys(NPCN.en) !== keys(NPCN.es)) problems.push('NPCN keys differ');
@@ -1182,10 +1190,12 @@ const CANDIDATES = [
     out.card = !document.getElementById('parkCard').hidden;
     out.starHome = star.world === 'st' && star.follow === false;
     document.getElementById('pkClose').click();
-    // strings in both languages
+    // strings in both languages, each Meridian's own: the engine keeps words of its own beneath a world's now, and a word
+    // read through them would answer for one Meridian dropped, so each is asked for as Meridian's own property
+    const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k) && !!o[k];
     out.langOk = !!(['leashLb', 'parkArrive', 'parkTitle', 'parkSum', 'parkLove', 'parkTeaser',
       'adoptLb', 'adoptAsk', 'adoptDone', 'bandLb', 'parkFull', 'loveLb', 'loveLines']
-      .every(k => UI.en[k] && UI.es[k]) && UI.en.locs.pk && UI.es.locs.pk && UI.en.arrive.pk && UI.es.arrive.pk);
+      .every(k => own(UI.en, k) && own(UI.es, k)) && own(UI.en.locs, 'pk') && own(UI.es.locs, 'pk') && own(UI.en.arrive, 'pk') && own(UI.es.arrive, 'pk'));
     // cleanup so this section leaves no park residue for reruns
     localStorage.removeItem('mqpark');
     return out;
@@ -1221,8 +1231,9 @@ const CANDIDATES = [
         dogKinds,
         triggers: Object.entries(typeof EGGS !== 'undefined' ? EGGS : {}).flatMap(([k, e]) => (e.triggers || []).map(t => [k, t])),
         cast: [...new Set(['en', 'es'].flatMap(l => Object.values((typeof NPCN !== 'undefined' && NPCN[l]) || {}).map(n => String(n).split(' ·')[0].trim())))],
-        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => [k, typeof UI.en[k], typeof UI.es[k],
-          Array.isArray(UI.en[k]) ? UI.en[k].length : -1, Array.isArray(UI.es[k]) ? UI.es[k].length : -1])
+        /* Meridian's own words, never the engine's laid beneath them */
+        words: ['renameStub', 'dogStubborn', 'dogCameRound', 'parkTeaser'].map(k => { const w = L => Object.prototype.hasOwnProperty.call(UI[L], k) ? UI[L][k] : undefined;
+          return [k, typeof w('en'), typeof w('es'), Array.isArray(w('en')) ? w('en').length : -1, Array.isArray(w('es')) ? w('es').length : -1]; })
       };
     });
     const star = decl.stars[0] || null;
@@ -3992,9 +4003,9 @@ const CANDIDATES = [
       ['openExp', 'openLab', 'openTp', 'openMp', 'replay', 'closeSet'].forEach(k => {
         const el = document.getElementById(k);
         if (el && el.closest('details.drawer')) problems.push(k + ' was buried in a drawer — it is an action, not a setting'); });
-      // both languages name every drawer
+      // both languages name every drawer, as Meridian's own words (the engine's own beneath them would answer for a dropped one)
       ids.forEach(id => { const k = 'drw' + id.slice(3);
-        if (!UI.en[k] || !UI.es[k]) problems.push('drawer ' + id + ' has no label in both languages'); });
+        if (![UI.en, UI.es].every(o => Object.prototype.hasOwnProperty.call(o, k) && o[k])) problems.push('drawer ' + id + ' has no label in both languages'); });
       return problems;
     });
     fails.push(...dr);
@@ -4339,7 +4350,9 @@ const CANDIDATES = [
        and not the same words in the two languages. The shared suite asks the map to show them where they are named
        (test/engine.smoke.js, 16). Red on mq-v251, which had no such line. */
     {
-      const w = await page.evaluate(() => ['en', 'es'].map(L => { const pl = ((typeof UI !== 'undefined' && UI[L]) || {}).plan || {}; return { L, hint: pl.arrowHint, name: pl.arrow }; }));
+      /* Meridian's own words, never the engine's laid beneath them, which would answer for a line Meridian dropped */
+      const w = await page.evaluate(() => ['en', 'es'].map(L => { const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
+        const pl = own(own(typeof UI !== 'undefined' ? UI : null, L), 'plan'); return { L, hint: own(pl, 'arrowHint'), name: own(pl, 'arrow') }; }));
       w.forEach(({ L, hint, name }) => { const inL = L === 'es' ? 'in Spanish' : 'in English';
         if (typeof hint !== 'string' || !hint.trim()) fails.push('Meridian names no words ' + inL + ' for the line under the edge arrow\'s switch that says it shows only once you have a destination, so a player ' + inL + ' gets the engine\'s own');
         else if (hint === name) fails.push('Meridian\'s line under the edge arrow\'s switch ' + inL + ' is the switch\'s own name, “' + hint + '”'); });
