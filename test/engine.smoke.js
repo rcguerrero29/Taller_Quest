@@ -12801,7 +12801,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               await bp.evaluate(L => { document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
               const then = await bp.evaluate(saveRun);
               if (bErr.length > b0) { WD.push('in ' + LN[L] + ', the engine this branch grew from (' + at.slice(0, 7) + ') threw "' + bErr[b0] + '" while saves failed and worked again, so what this one says there was not set beside it'); continue; }
-              const ownWarn = W.world[L].includes('save.full');
+              const ownWarn = shipped && shipped[L] ? ownIn(shipped[L], 'save.full') : W.world[L].includes('save.full');   /* as the world's words file names it */
               Object.keys(STEP).forEach(k => { if (/^warned/.test(k) && !ownWarn) return;
                 if (now[k] !== then[k]) WD.push('in ' + LN[L] + ', ' + STEP[k] + ', the game says ' + q(now[k]) + ', where the engine this branch grew from (' + at.slice(0, 7) + ') says ' + q(then[k])); }); } }
           catch (e) { WD.push('this shell did not open on the engine this branch grew from (' + at.slice(0, 7) + '), so what the game says when a save fails and works again was not set beside it: ' + String(e && e.message || e).split('\n')[0]); }
