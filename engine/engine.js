@@ -761,7 +761,7 @@ const UIDEF={
   plan:{work:"has work for you",host:"has a question about this room",read:"something to read",key:"what the marks mean",
     any:"Somewhere to go",ride:"take the tram",arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off",
     arrowHint:"Only shows once you've got a destination."},
-  save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked},
+  save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked,back:"Saving again — what you do now is being saved."},
   zoomIn:"Zoom in",zoomOut:"Zoom out"},
  es:{
   talkPre:"💬 ",
@@ -778,8 +778,8 @@ const UIDEF={
   tlOk:"Textos actualizados.",tlErr:"Ese JSON no se pudo leer — no cambió nada.",tlNoHit:"Sin coincidencias.",
   teSaved:"✨ Paleta guardada.",teFixed:"🪄 Contraste del texto ajustado.",teNamePh:"Nombre de la paleta",
   palFull:"Máximo ocho paletas — quita una.",
-  palNames:{meridian:"Clásico",forest:"Bosque",fairy:"Hada",sunset:"Atardecer"},
-  themes:{meridian:"🏛️ Clásico",forest:"🌿 Bosque",fairy:"🧚 Hada",sunset:"🌇 Atardecer",custom:"✨ Personalizado"},
+  palNames:{meridian:"Clásico",forest:"Bosque",fairy:"Hada",sunset:"Puesta de sol"},
+  themes:{meridian:"🏛️ Clásico",forest:"🌿 Bosque",fairy:"🧚 Hada",sunset:"🌇 Puesta de sol",custom:"✨ Personalizado"},
   replayArm:"⚠️ Toca otra vez para borrar todo",replayToast:n=>`Empezamos de cero, ${n}.`,updToast:"actualizado.",
   seasonAuto:"📅 Según el calendario",seasonOff:"Todo el año",
   drwCtl:"🎮 Controles",drwLook:"🎨 Imagen",drwSelf:"🪞 Tu look",drwSound:"🔊 Sonido",drwGame:"⚙️ Juego",
@@ -807,7 +807,8 @@ const UIDEF={
     any:"Un lugar adonde ir",ride:"toma el tranvía",arrow:"Flechita hacia tu destino",arrowOn:"Prendida",arrowOff:"Apagada",
     arrowHint:"Nomás sale cuando ya tienes destino."},
   save:{full:"Este dispositivo ya no tiene espacio — lo que hagas ahora no se está guardando.",
-    blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso."},
+    blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso.",
+    back:"Ya se está guardando otra vez — lo que hagas ahora sí se guarda."},
   zoomIn:"Acercar",zoomOut:"Alejar"}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
@@ -6650,11 +6651,18 @@ function meridianVars(mode){ /* read the built-in palette out of the stylesheet 
   if(prev)root.dataset.theme=prev;else delete root.dataset.theme;
   return o;
 }
+/* A COPY OF A THEME IS NAMED AFTER THE THEME AS THIS WORLD CALLS IT: its own name for the palette where it names one, else its
+   own words on the theme's button with the mark left off, and only else the engine's name for it. A copy of a world's "Dusk"
+   was called "Classic 2", the engine's name, because the world names its theme's button and no palette. */
+function palName(name){const t=T(),own=(o,k)=>!!o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,k),mine=g=>own(t,g)&&own(t[g],name);
+  if(mine("palNames")&&t.palNames[name])return t.palNames[name];
+  if(mine("themes")){const s=String(t.themes[name]).replace(/^[^\p{L}\p{N}]+/u,"").trim();if(s)return s;}
+  return (t.palNames||{})[name]||name;}
 function cloneTheme(name){ /* clone = save-as-new palette in the wardrobe */
   if(PALS.length>=8){toast(T().palFull,2400);return;}
   const src=name==="meridian"?{light:meridianVars("light"),dark:meridianVars("dark")}
     :JSON.parse(JSON.stringify(THEMES[name]));
-  PALS.push({n:(T().palNames[name]||name)+" "+(PALS.length+1),light:src.light,dark:src.dark});
+  PALS.push({n:palName(name)+" "+(PALS.length+1),light:src.light,dark:src.dark});
   palIdx=PALS.length-1;customTheme=PALS[palIdx];
   themeName="custom";saveCustom();applyTheme();teRender();
 }
@@ -7010,7 +7018,9 @@ function decisionReport(){
       const rows=g.nodes[nk],last=rows[rows.length-1],n=rows.length;
       if(nk!=="-")out.push("**"+L.question+":** "+nk);
       if(last.pick)out.push("**"+L.call+":** "+last.pick);
-      out.push("**"+L.verdict+":** "+(L[last.result]||last.result)
+      /* a call is said by the card's own word for it, a solid call, a partly right one or a miss, whatever its world logged it as
+         (a world's wrong answer may be logged as "no", and the Report printed "no") */
+      out.push("**"+L.verdict+":** "+(L[last.result==="ok"||last.result==="mid"?last.result:"bad"]||last.result)
         +(last.concept?" — *"+last.concept+"*":"")
         +(n>1?"  ("+n+" "+L.attempts+")":""));
       out.push("**"+L.why+":** "+(last.why||L.advanced),"");
