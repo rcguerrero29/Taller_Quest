@@ -13095,8 +13095,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!c0.labels.includes('None') || !c0.labels.includes('Apron')) { say(0, 'the creator of a world that offers None and Apron shows ' + JSON.stringify(c0.labels) + ', so neither could be pressed'); throw 0; }
         if (c0.pressed[c0.labels.indexOf('None')] !== 'true' || c0.outfit !== 'casual') say(0, 'in a world that offers None and Apron, None is not what the creator starts on (the look says "' + c0.outfit + '", the buttons ' + JSON.stringify(c0.pressed) + ')');
         if (!c0.d) { say(0, 'the creator has no preview, so the apron was not looked at there, which is not a pass'); throw 0; }
-        /* the preview as a person sees it on the phone, before its pixels count: some size, on screen, and under nothing
-           where the person is painted (its pixels are read from its own canvas, which CSS can hide without touching them) */
+        /* pictures of the phone's screen, compared as a person compares them: how many pixels differ between the first and
+           the second, with nothing changed between them, and between the first and the third, with the apron chosen */
+        const differ = pics => ap.evaluate(async pics => { const px = [];
+          for (const b64 of pics) { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+            const img = await createImageBitmap(new Blob([u8], { type: 'image/png' })), c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+            const g = c.getContext('2d'); g.drawImage(img, 0, 0); px.push(g.getImageData(0, 0, c.width, c.height).data); }
+          const n = (a, b) => { let k = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) k++; return k; };
+          return { noise: n(px[0], px[1]), moved: n(px[0], px[2]) }; }, pics);
+        /* what the page says about the preview on the phone, read before Apron is pressed: its size, where it stands, and what is
+           on top where the person is painted. It names the cause when the pictures of the screen below do not show the apron, and
+           decides nothing itself: CSS can hide, cover, filter or shrink the preview in more ways than such rules can list */
         const hid = await ap.evaluate(() => { const cv = document.getElementById('pv'); cv.scrollIntoView({ block: 'nearest', inline: 'nearest' });
           const r = cv.getBoundingClientRect(), st = getComputedStyle(cv);
           if (!(r.width >= 1 && r.height >= 1)) return 'it is ' + Math.round(r.width) + ' by ' + Math.round(r.height) + ' px on the page';
@@ -13111,7 +13120,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const X = r.left + (u + 0.5) / cv.width * r.width, Y = r.top + (v + 0.5) / cv.height * r.height, top = document.elementFromPoint(X, Y);
             if (top !== cv) return 'where the person is painted, at ' + Math.round(X) + ', ' + Math.round(Y) + ', it is under ' + (top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') + (top.className && typeof top.className === 'string' ? '.' + top.className.trim().split(/\s+/).join('.') : '') : 'nothing on the screen at all'); }
           return null; });
-        if (hid) say(0, 'on a phone the creator\'s preview does not show: ' + hid + ', so whatever its pixels say, nobody sees an apron there');
         /* None is the everyday clothes of the page without the list, pixel for pixel */
         if (plain) { const h0 = await ap.evaluate(d => window.__apron.hash(d), c0.d);
           const hp = await page.evaluate(lk => { const A = window.__apron, keep = { ...look }; try { return A.still(() => { look = { ...lk }; pvDraw(); return A.hash(A.pv()); }); } finally { look = keep; pvDraw(); } }, c0.look);
@@ -13125,7 +13133,26 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (Math.abs(c0.d[i] - c1.d[i]) + Math.abs(c0.d[i + 1] - c1.d[i + 1]) + Math.abs(c0.d[i + 2] - c1.d[i + 2]) + Math.abs(c0.d[i + 3] - c1.d[i + 3]) > 30) moved++; }
         if (!body) say(0, 'the creator\'s preview has nobody in it, so the apron was not looked at, which is not a pass');
         else if (moved < body * 0.15) say(0, 'in a world that turns the apron on, pressing Apron in the creator changes ' + moved + ' of the ' + body + ' pixels the person covers in the preview: he is still in his everyday clothes');
-        else if (!hid) say(1, 'pressing Apron in the creator changes ' + moved + ' of the ' + body + ' pixels the person covers in the preview, which shows on the phone');
+        else {
+          /* ON THE PHONE'S SCREEN. Its own pixels say what was painted, not what shows. So the screen is asked in pictures of it
+             where the preview stands (scrolled into view, as a person scrolls to it), the person drawn by the engine's own
+             painter in his everyday clothes twice and then in the apron. He stands at least 8 CSS px wide there, where an
+             apron can be seen at all, as the 3D room asks; and in them the apron changes at least 15 in 100 of the pixels he
+             covers there, and more than twice what two pictures with nothing changed differ by */
+          const pr = await ap.evaluate(() => { const cv = document.getElementById('pv'); cv.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const r = cv.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, cw: cv.width, ch: cv.height, vw: innerWidth, vh: innerHeight }; });
+          const x = Math.max(0, Math.floor(pr.l)), y = Math.max(0, Math.floor(pr.t)), w = Math.min(pr.vw, Math.ceil(pr.l + pr.w)) - x, h = Math.min(pr.vh, Math.ceil(pr.t + pr.h)) - y;
+          const his = Math.round(body * pr.w / pr.cw * pr.h / pr.ch), why = hid ? ' Read off the page: ' + hid + '.' : '';
+          let bx0 = 1e9, bx1 = -1; for (let i = 3, q = 0; i < c0.d.length; i += 4, q++) if (c0.d[i] > 40) { const bx = q % pr.cw; if (bx < bx0) bx0 = bx; if (bx > bx1) bx1 = bx; }
+          const css = bx1 >= bx0 ? Math.round((bx1 - bx0 + 1) * pr.w / pr.cw) : 0;   /* how wide he stands on the screen, as the 3D room asks it */
+          if (w < 1 || h < 1 || his < 1) say(0, 'on a phone the creator\'s preview is not on the screen: it is ' + Math.round(pr.w) + ' by ' + Math.round(pr.h) + ' px at ' + Math.round(pr.l) + ', ' + Math.round(pr.t) + ' on a screen ' + pr.vw + ' by ' + pr.vh + ', so whatever its pixels say, nobody sees an apron there.' + why);
+          else if (css < 8) say(0, 'on a phone the person in the creator\'s preview stands ' + css + ' CSS px wide on the screen, too small for an apron to be seen on him, so it was not looked at there, which is not a pass.' + why);
+          else {
+            const pic = async k => { await ap.evaluate(k => { look.outfit = k; pvDraw(); }, k); await rafs(ap, 2); return (await ap.screenshot({ clip: { x, y, width: w, height: h } })).toString('base64'); };
+            const seen = await differ([await pic('casual'), await pic('casual'), await pic('apron')]);   /* it ends in the apron he chose */
+            const calm = seen.noise ? 'two pictures with nothing changed differ by ' + seen.noise : 'two pictures with nothing changed are alike';
+            if (seen.moved < his * 0.15 || seen.moved <= 2 * seen.noise) say(0, 'on a phone the creator\'s preview does not show the apron on the screen: in pictures of the screen where it stands, choosing Apron changes ' + seen.moved + ' of the about ' + his + ' pixels the person covers there (' + calm + '), where its own pixels change ' + moved + ' of ' + body + '.' + why);
+            else say(1, 'pressing Apron in the creator changes ' + moved + ' of the ' + body + ' pixels the person covers in the preview, and in pictures of the phone\'s screen where it stands, with him ' + css + ' CSS px wide, ' + seen.moved + ' of the about ' + his + ' (' + calm + ')'); } }
         /* whichever way he faces and mid-stride: turned aside, at least about half of what it changes facing you in the same
            stride; from behind, at least a band one pixel tall across his back; and nothing of it outside the card: this page's,
            or where it has none, the card of the page without the list (only where neither has one is the cut-off not asked) */
@@ -13176,8 +13203,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         else {
           await ap.click('#begin');
           const began = await until(ap, () => !document.getElementById('world').hidden, null, 2400) || await ap.evaluate(() => !document.getElementById('world').hidden);   /* read once more: the wait is paced by frames */
-          const room = !began ? null : await ap.evaluate(() => { const A = window.__apron;
-            document.querySelectorAll('.settings').forEach(q => { q.hidden = true; });
+          const room = !began ? null : await ap.evaluate(() => { const A = window.__apron;   /* nothing on the page is closed or hidden by the check first: a panel over the room is in the pictures, as it is in front of him */
             camSet('3d'); sizeCanvas(); T3.turn = null; dir = 'down'; moving = false; held = null;
             if (!draw3d() || T3.fail) return { cannot: true };
             const c3 = T3.renderer.domElement; if (!c3.width) return { none: 'the 3D canvas has no size' };
@@ -13220,12 +13246,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             else {
               const pic = async outfit => { await ap.evaluate(k => { look.outfit = k; draw3d(); }, outfit); await rafs(ap, 2); return (await ap.screenshot({ clip: { x, y, width: w, height: h } })).toString('base64'); };
               const pics = [await pic('casual'), await pic('casual'), await pic('apron')];   /* it ends in the apron he chose */
-              const seen = await ap.evaluate(async pics => { const px = [];
-                for (const b64 of pics) { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
-                  const img = await createImageBitmap(new Blob([u8], { type: 'image/png' })), c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-                  const g = c.getContext('2d'); g.drawImage(img, 0, 0); px.push(g.getImageData(0, 0, c.width, c.height).data); }
-                const n = (a, b) => { let k = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) k++; return k; };
-                return { noise: n(px[0], px[1]), moved: n(px[0], px[2]) }; }, pics);
+              const seen = await differ(pics);
               const his = Math.round(room.foot * room.kx * room.ky), calm = seen.noise ? 'two pictures with nothing changed differ by ' + seen.noise : 'two pictures with nothing changed are alike';
               if (seen.moved < his * 0.15 || seen.moved <= 2 * seen.noise) say(0, 'on a phone the 3D room does not show the apron on the screen: in pictures of the screen where the person you steer stands, choosing Apron changes ' + seen.moved + ' of the about ' + his + ' pixels he covers (' + calm + '), where the frame the renderer draws changes ' + room.moved + ' of ' + room.foot +
                 '. On top at his middle: ' + room.top + '; the 3D canvas is ' + box + ' px on the page, visibility ' + room.vis + ', opacity ' + +room.op.toFixed(2));
