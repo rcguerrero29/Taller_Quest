@@ -12086,13 +12086,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
          is a word a screen asks for that nobody gives: a red. A world that names some of a thing's words names all of them,
          and names a word the engine also keeps as the same kind of thing (a sentence, a list, a group of words, or a
          function the engine calls). The engine's own words: both languages, the same kind in each and the kind the engine
-         reads them as, every one read by the engine, kept once, never copied or listed, and never in front of a word this
-         world names: the game gives each word as the world's words file says it, after boot, after the words are put in
-         place anew, after each language is picked, and after the screens are opened.
+         reads them as, every one read by the engine, kept once, never copied or listed, asked for only after a world's own
+         (uiDef(…) after ||), and never in front of a word this world names: the game gives each word as the world's words
+         file says it, after boot, after the words are put in place anew, after each language is picked, and after the
+         screens are opened.
          Where this world names none of a word, the engine's own in the player's language stands in, and the engine's Spanish
          is never its English, but for the Talk button's mark, which reads the same in both.
      2 · THE SCREENS, in each language this world has, read as a person reads them (no "undefined", nothing blank where
-         words go, no page error, and Spanish that is not the English), on words put in place anew after the game starts:
+         words go, no page error, this world's own word where its file names one and the engine's in that language where it
+         does not, and Spanish that is not the English), on words put in place anew after the game starts:
          the Talk button beside every person; the map's own words, and the line under it in each of this world's places; a
          quest's card and a call made on it; the Report tab with that call in the log, and again once a solid call is in it
          too, every verdict said by its word; a Trolley Pass link opened with nothing kept and with a game kept; a door out
@@ -12161,7 +12163,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* every word read off T(): T().w, T().g.w, T()[…], saveWords().w, (T().g||{}).w, w read off a name bound to any of them in
        the block that binds it, and the words a pattern takes (const {w} = T()), each with where it starts and ends */
     const wordsOf = (tok, fns) => {
-      const reads = [], computed = [], fallbacks = [], listed = [];
+      const reads = [], computed = [], fallbacks = [], unseen = [], listed = [];
       const P = (j, v) => !!tok[j] && tok[j].t === 'p' && tok[j].v === v, pv = j => tok[j] && tok[j].t === 'p' ? tok[j].v : (tok[j] && tok[j].v === 'return' ? 'return' : null);
       const id = j => !!tok[j] && tok[j].t === 'id', I = (j, v) => id(j) && tok[j].v === v, str = j => !!tok[j] && tok[j].t === 's';
       const OPEN = { '(': ')', '[': ']', '{': '}' }, SHUT = { ')': '(', ']': '[', '}': '{' };
@@ -12298,18 +12300,28 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       reads.forEach(r => { const t = r.pat ? { test: false, region: null } : testOf(r.s, r.e); r.test = t.test; if (t.region) (regionsOf[r.k] = regionsOf[r.k] || []).push(t.region); });
       reads.forEach(r => { r.guarded = r.test || (!r.pat && empty(r.e)) || (regionsOf[r.k] || []).some(([a, b]) => a <= r.s && r.e <= b) ||
         (() => { const nt = r.into >= 0 ? r.into : r.pat ? -1 : into(r.s, r.e); return nt >= 0 && guardedName(nt, r.pat ? r.from : nt, 0); })(); });
+      /* the engine's own list is read word by word and only ever second: uiDef(…) stands after ||, and nothing but the laying
+         (uiLay) lists or copies UIDEF or what uiDef(…) hands back, since a copy of them written over a world's words stands in front */
+      const bodies = {}; for (let j = 0; j < tok.length; j++) if (I(j, 'function') && id(j + 1) && P(j + 2, '(')) { const c = mate(j + 2); if (c > 0 && P(c + 1, '{')) (bodies[tok[j + 1].v] = bodies[tok[j + 1].v] || []).push([c + 1, mate(c + 1)]); }
+      const within = (j, f) => (bodies[f] || []).some(([a, b]) => a <= j && j <= b);
+      for (let j = 0; j < tok.length; j++) { const call = I(j, 'uiDef') && P(j + 1, '(') && !P(j - 1, '.');
+        if (call && !P(j - 1, '||')) unseen.push([tok[j].line, 'asks its own words first (uiDef(…) where it is not the fallback after ||), so its word stands in front of the one a world names']);
+        if ((call || (I(j, 'UIDEF') && !P(j - 1, '.'))) && !within(j, 'uiLay')) { const o = enclosing(j), fn = o > 2 && P(o - 2, '.') && id(o - 1) ? tok[o - 3].v + '.' + tok[o - 1].v : '';
+          if (P(j - 1, '...') || I(j - 1, 'in') || I(j - 1, 'of') || /^Object\.(keys|values|entries|assign|getOwnPropertyNames)$|^JSON\.stringify$/.test(fn))
+            unseen.push([tok[j].line, 'lists or copies its own words (' + tok[j].v + ') outside the laying, and its words copied over a world\'s stand in front of them']); } }
       /* EITHER: a read asked what kind of thing it is (typeof w, or typeof a name it goes into), where the engine takes a function or a sentence */
       reads.forEach(r => { const nt = r.into >= 0 ? r.into : r.pat ? -1 : into(r.s, r.e);
         r.either = I(r.s - 1, 'typeof') || (nt >= 0 && usesOf(nt, r.pat ? r.from : nt).some(m => I(m - 1, 'typeof'))); });
-      return { reads: reads.map(r => ({ k: r.k, line: r.line, called: r.called, guarded: r.guarded, either: r.either })), computed, fallbacks, listed };
+      return { reads: reads.map(r => ({ k: r.k, line: r.line, called: r.called, guarded: r.guarded, either: r.either })), computed, fallbacks, unseen, listed };
     };
     /* every file of engine/ is read, so a file that starts speaking to the player is read the day it does */
-    const R = [], comp = [], fallbacks = [], listed = [], efiles = [], toks = {}, fns = {};
+    const R = [], comp = [], fallbacks = [], unseen = [], listed = [], efiles = [], toks = {}, fns = {};
     try { fs.readdirSync(path.join(root, 'engine')).filter(f => f.endsWith('.js')).sort().forEach(f => efiles.push(f)); } catch (e) {}
     efiles.forEach(f => { try { toks[f] = wordsTok(fs.readFileSync(path.join(root, 'engine', f), 'utf8')); wordsFns(toks[f], fns); } catch (e) { WD.push('the check could not read engine/' + f); } });
     efiles.forEach(f => { if (!toks[f]) return; const r = wordsOf(toks[f], fns);
       R.push(...r.reads.map(x => Object.assign({ f }, x))); r.computed.forEach(([g, pre, l]) => comp.push({ g, pre, at: f + ':' + l }));
-      r.fallbacks.forEach(([k, l, vs]) => fallbacks.push([k, f + ':' + l, vs])); r.listed.forEach(x => listed.push(Object.assign({ f }, x))); });
+      r.fallbacks.forEach(([k, l, vs]) => fallbacks.push([k, f + ':' + l, vs])); r.listed.forEach(x => listed.push(Object.assign({ f }, x)));
+      r.unseen.forEach(([l, why]) => WD.push('the engine ' + why + ' (engine/' + f + ':' + l + ')')); });
     /* a name read off a list or a sentence is that thing's own (its length, a method it calls), not a word */
     const METHOD = new Set('concat map forEach filter find findIndex some every slice split join indexOf includes call apply bind toString reduce push sort replace trim'.split(' '));
     /* what each word is for, where a world without that thing never asks for it */
@@ -12426,6 +12438,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             off.slice(0, 3).map(k => '"' + k + '" is ' + String(got[k]).slice(0, 60) + ', where the file says ' + sig(fileVal(L, k)).slice(0, 60)).join('; ') + (off.length > 3 ? '; and ' + (off.length - 3) + ' more' : '')); }
         return n; };
       if (!(await fileCheck('')) && shipped) WN.push('COUNT-ONLY: this world names none of the engine\'s own words, so none of them could stand in front of one');
+      /* and each screen below is held against the same words: what it shows holds this world's own word where its file names one, and the
+         engine's own in the player's language where it does not, so a read that asks the engine first, or in the wrong language, is a red */
+      const want = async (L, k, args) => { const o = shipped && shipped[L], mine = ownIn(o, k);
+        let v = mine ? fileVal(L, k) : await wp.evaluate(([L, k, args]) => { const p = k.split('.'), d = (typeof UIDEF === 'object' && UIDEF && UIDEF[L]) || {}, v = p.length > 1 ? (d[p[0]] || {})[p[1]] : d[k];
+          try { return typeof v === 'function' ? v(...args) : v; } catch (e) { return null; } }, [L, k, args || []]);
+        if (mine && typeof v === 'function') { try { v = v(...(args || [])); } catch (e) { v = null; } }
+        return { v: typeof v === 'string' && v.trim() ? v : null, mine }; };
+      const holds = async (L, what, text, k, args) => { if (!shipped || text === null || text === undefined) return; const w = await want(L, k, args); if (!w.v) return;
+        if (!String(text).includes(w.v)) WD.push('in ' + LN[L] + ', ' + what + ' reads "' + String(text).replace(/\s+/g, ' ').trim().slice(0, 120) + '", where ' + (w.mine ? 'this world\'s own word for it' : 'the engine\'s own word for it, in ' + LN[L] + ',') + ' is "' + w.v.slice(0, 120) + '"'); };
       if (W.hasDef) {
         ['en', 'es'].forEach(L => { const O = L === 'en' ? 'es' : 'en';
           (W.defKeys[L] || []).forEach(k => { if (!(W.defKeys[O] || []).includes(k)) WD.push('the engine keeps "' + k + '" in ' + LN[L] + ' and not in ' + LN[O]);
@@ -12463,16 +12484,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* 2 · THE SCREENS */
       const twice = {};   /* what a screen says, by language, to set Spanish beside English at the end */
       const ticker = () => wp.evaluate(() => { const t = document.getElementById('ticker'), d = t && t.lastElementChild; return d ? d.textContent : null; });
-      const said = async (label, act, L) => { const e0 = wErr.length; await wp.evaluate(() => { const t = document.getElementById('ticker'); if (t) { t.textContent = ''; } tickerLines.length = 0; });
-        await wp.evaluate(act); await wp.waitForTimeout(60); const s = await ticker();
+      const said = async (label, act, L, k, args) => { const e0 = wErr.length; await wp.evaluate(() => { const t = document.getElementById('ticker'); if (t) { t.textContent = ''; } tickerLines.length = 0; });
+        await wp.evaluate(act); await wp.waitForTimeout(60); const s = await ticker(), all = await wp.evaluate(() => tickerLines.join(' | '));
         if (wErr.length > e0) WD.push('in ' + LN[L] + ', ' + label + ' threw "' + wErr[e0] + '"');
         else if (s === null || !s.trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' says ' + (s === null ? 'nothing at all' : '"' + s + '"'));
-        else (twice[label] = twice[label] || {})[L] = s; };
-      const panel = async (label, open, ids, close, L) => { const e0 = wErr.length; await wp.evaluate(open).catch(e => wErr.push(String(e.message)));
+        else { (twice[label] = twice[label] || {})[L] = s; if (k) await holds(L, label, all, k, args); } };
+      const panel = async (label, open, ids, close, L, keys) => { const e0 = wErr.length; await wp.evaluate(open).catch(e => wErr.push(String(e.message)));
         const got = await wp.evaluate(ids => ids.map(i => { const el = document.getElementById(i); return [i, el ? (el.placeholder !== undefined && el.tagName === 'INPUT' ? el.placeholder : el.textContent) : null]; }), ids);
         if (wErr.length > e0) WD.push('in ' + LN[L] + ', opening ' + label + ' threw "' + wErr[e0] + '"');
         got.forEach(([i, s]) => { if (s === null) return; if (!String(s).trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where its words go (#' + i + ')'); });
         (twice[label] = twice[label] || {})[L] = got.map(x => x[1]).filter(x => x !== null).join(' | ');
+        for (const [i, s] of got) if (keys && keys[i] && s !== null) await holds(L, label + ' (#' + i + ')', s, keys[i]);
         await wp.evaluate(close).catch(() => {}); };
       /* a quest's card, opened beside the first person who holds one, and a call made on it: "open" makes the call that leaves
          the quest open, so the next language has it too; "ok" makes the solid call */
@@ -12487,6 +12509,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!q || q.none) { WN.push('COUNT-ONLY: in ' + LN[L] + ' nobody in this world has a quest left, so no ' + (want === 'ok' ? 'solid call was made' : 'quest card was read') + (q && q.none ? ' (' + q.who + ': ' + q.none + ')' : '')); return null; }
         const e0 = wErr.length;
         if (bad(q.tag) || !q.tag.trim()) WD.push('in ' + LN[L] + ', ' + q.who + '\'s quest card is headed "' + q.tag + '"');
+        await holds(L, q.who + '\'s quest card, at its head,', q.tag, 'quest'); await holds(L, q.who + '\'s quest card, over the box that says what the question is about,', q.cdx, 'codexLb');
         if (bad(q.cdx) || !q.cdx.trim()) WD.push('in ' + LN[L] + ', ' + q.who + '\'s quest card shows ' + (q.cdx.trim() ? '"' + q.cdx + '"' : 'nothing') + ' over the box that says what the question is about');
         /* the solid call may sit a question further on: a choice that leads on is taken until a question has one */
         let c = null;
@@ -12503,6 +12526,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const v = await wp.evaluate(() => ({ h: (document.querySelector('#verdict h2') || {}).textContent || '', next: document.getElementById('next').textContent }));
         if (wErr.length > e0) WD.push('in ' + LN[L] + ', making a call on ' + q.who + '\'s quest threw "' + wErr[e0] + '"');
         if (bad(v.h) || !v.h.trim()) WD.push('in ' + LN[L] + ', after a ' + (q.solid ? 'solid ' : '') + 'call on ' + q.who + '\'s quest the card says "' + v.h + '"');
+        else if (c.pickR) await holds(L, 'after a ' + (c.pickR === 'ok' ? 'solid ' : '') + 'call on ' + q.who + '\'s quest, the card\'s heading', v.h, c.pickR === 'ok' ? 'okH' : c.pickR === 'mid' ? 'midH' : 'badH');
         if (bad(v.next) || !v.next.trim()) WD.push('in ' + LN[L] + ', the button that closes ' + q.who + '\'s quest card reads "' + v.next + '"');
         await wp.evaluate(() => document.getElementById('next').click()); await until(wp, () => document.getElementById('card').hidden, null, 2000);
         if (want === 'ok' && !q.solid) WN.push('COUNT-ONLY: in ' + LN[L] + ' ' + q.who + '\'s quest card had no solid call to make, so another was made');
@@ -12522,12 +12546,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const verdicts = v.split('\n').filter(l => l.startsWith(r.head)), coded = verdicts.filter(l => { const w = l.slice(r.head.length).replace(/( — \*|  \().*$/, '').trim(); return !w || r.rs.includes(w); });
         if (coded.length) WD.push('in ' + LN[L] + ', the Report tab says a call\'s verdict by its code name: "' + coded[0] + '"');
         if (!verdicts.length) WD.push('in ' + LN[L] + ', the Report tab with ' + r.n + ' call(s) in the log has no verdict line');
+        if (shipped) { const w = {}; for (const k of ['verdict', 'why', 'foot', 'ok', 'mid', 'bad']) w[k] = (await want(L, 'repL.' + k)).v;
+          [['verdict', '**' + w.verdict + ':** '], ['why', '**' + w.why + ':** '], ['foot', '*' + w.foot + '*']].forEach(([k, x]) => { if (w[k] && !v.includes(x)) WD.push('in ' + LN[L] + ', the Report tab never says ' + JSON.stringify(x.trim()) + ', where its word for ' + k + ' is "' + w[k] + '"'); });
+          r.rs.forEach(x => { const k = x === 'ok' || x === 'mid' ? x : 'bad'; if (w.verdict && w[k] && !v.includes('**' + w.verdict + ':** ' + w[k])) WD.push('in ' + LN[L] + ', the Report tab says no call\'s verdict as "' + w[k] + '", the word for a call logged as ' + x); }); }
         return { sum: sum.replace(/\d+/g, '#'), rs: r.rs }; };   /* the words, not the counts: the log grows between the two languages */
       await wp.click('.classes button[data-c="architect"]', { timeout: 4000 }).catch(() => wp.evaluate(() => document.querySelector('.classes button').click()));
       await wp.evaluate(() => { const n = document.getElementById('heroname'); if (n && !n.value) n.value = 'Ana'; });
       await wp.click('#begin', { timeout: 4000 }).catch(() => wp.evaluate(() => document.getElementById('begin').click()));
       if (!await until(wp, () => !document.getElementById('world').hidden, null, 4000)) throw new Error('the game did not start from its creator');
       await wp.evaluate(() => { wanderUpdate = function () {}; document.querySelectorAll('.settings').forEach(p => { p.hidden = true; }); });
+      /* the welcome the game says by itself a few seconds in is said before any screen is read, so it is never read as what a screen said */
+      await until(wp, () => !T().tut2 || tickerLines.includes(T().tut2), null, 6000);
       /* each language's words put in place anew once the game has started, as new objects with new groups, the way a world that
          builds its words late would: T() lays the engine's beneath them again, and every screen below reads the new ones */
       await wp.evaluate(() => { const copy = o => { const n = {}; Object.keys(o).forEach(k => { const v = o[k]; n[k] = v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : v; }); return n; };
@@ -12565,6 +12594,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           [world, px, py, dir] = keep; fx = px; fy = py; checkTalk(); return out; });
         if (!talk.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' nobody stands in this world, so no Talk button was read');
         talk.forEach(([nm, s]) => { if (s !== null && (bad(s) || !s.includes(nm))) WD.push('in ' + LN[L] + ', beside ' + nm + ' the Talk button reads "' + s + '"'); });
+        for (const [nm, s] of talk) if (s !== null) await holds(L, 'beside ' + nm + ', the Talk button', s, 'talkPre');
         /* the map's own words, while somebody still has something to say */
         mapWords[L] = await wp.evaluate(() => { const b = document.getElementById('mapbtn'); if (!b) return null; b.click(); if (document.getElementById('mapov').hidden) return null;
           const tx = i => { const e = document.getElementById(i); return e ? e.textContent : null; }, tog = document.getElementById('mapLegTog');
@@ -12573,6 +12603,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           document.querySelectorAll('#mapLeg [data-kind]').forEach(r => { o['kind ' + r.dataset.kind] = r.textContent; });
           document.getElementById('mapClose').click(); return o; });
         if (mapWords[L]) Object.entries(mapWords[L]).forEach(([k, s]) => { if (s !== null && (!String(s).trim() || bad(s))) WD.push('in ' + LN[L] + ', the map shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where ' + k + ' goes'); });
+        if (mapWords[L]) { const m = mapWords[L], on = await wp.evaluate(() => window.__arrowOn);
+          await holds(L, 'the map\'s button for somewhere to go', m.mapAny, 'plan.any'); await holds(L, 'the switch for the map\'s arrow', m.mapArrowName, 'plan.arrow');
+          await holds(L, 'the state of the map\'s arrow', m.mapArrowState, on ? 'plan.arrowOn' : 'plan.arrowOff'); await holds(L, 'the line under the arrow\'s switch', m.mapArrowHint, 'plan.arrowHint');
+          await holds(L, 'the name of the map\'s key', m.key, 'plan.key');
+          for (const k of Object.keys(m).filter(k => k.startsWith('kind '))) await holds(L, 'the map\'s key, for ' + k.slice(5) + ',', m[k], 'plan.' + k.slice(5)); }
         /* the line under the map, opened from each of this world's places in turn: where you stand, and what you can do */
         { const e0 = wErr.length;
           const notes = await wp.evaluate(() => { const out = [], keep = [world, px, py, dir], b = document.getElementById('mapbtn'); if (!b) return out;
@@ -12585,7 +12620,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (wErr.length > e0) WD.push('in ' + LN[L] + ', opening the map from each place in turn threw "' + wErr[e0] + '"');
           if (!notes.length) WN.push('COUNT-ONLY: in ' + LN[L] + ' no map opened, so the line under it was not read');
           notes.forEach(([wid, s]) => { if (!s.trim() || bad(s) || s.split('  ·  ').some(p => !p.trim())) WD.push('in ' + LN[L] + ', opened from ' + wid + ' the line under the map reads "' + s + '"'); });
-          }
+          for (const [wid, s] of notes) await holds(L, 'opened from ' + wid + ', the line under the map', s, 'locs.' + wid); }
         /* a quest's card, and a call made on it that leaves the quest open */
         await cardCall(L, 'open');
         /* the Report tab, with that call in the log */
@@ -12593,7 +12628,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         /* the Trolley Pass: its panel, and the link it copies, opened on a device with nothing kept and on one with a game kept */
         await panel('the Trolley Pass panel', () => { window.__copied = null; try { Object.defineProperty(navigator, 'clipboard', { value: { writeText: v => { window.__copied = v; return Promise.resolve(); } }, configurable: true }); } catch (e) {}
           document.getElementById('gear').click(); document.getElementById('openTp').click(); document.getElementById('tpCopy').click(); },
-          ['tpTitle', 'tpNote', 'tpShare', 'tpCopy'], () => document.getElementById('tpClose').click(), L);
+          ['tpTitle', 'tpNote', 'tpShare', 'tpCopy'], () => document.getElementById('tpClose').click(), L, { tpTitle: 'tpTitle', tpNote: 'tpNote', tpShare: 'tpShare', tpCopy: 'tpCopy' });
         const url = await wp.evaluate(() => window.__copied);
         if (!url) WD.push('in ' + LN[L] + ', pressing Copy link on the Trolley Pass panel copied nothing');
         else for (const kept of [false, true]) {
@@ -12609,7 +12644,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (e2.length) WD.push('in ' + LN[L] + ', ' + how + ' threw "' + e2[0] + '"' + (card.shown ? '' : ', and no card showed'));
           else if (!card.shown) WD.push('in ' + LN[L] + ', ' + how + ' shows no card');
           else if (bad(card.text) || card.blank.length) WD.push('in ' + LN[L] + ', ' + how + ' shows "' + card.text.replace(/\s+/g, ' ').trim() + '"' + (card.blank.length ? ', with nothing where its words go (#' + card.blank.join(', #') + ')' : ''));
-          else (report['pass' + kept] = report['pass' + kept] || {})[L] = card.text.replace(/\d+/g, '#');
+          else { (report['pass' + kept] = report['pass' + kept] || {})[L] = card.text.replace(/\d+/g, '#');
+            for (const k of ['tpFoundLb', 'tpBoard', 'tpSkip']) await holds(L, how + ', the card it shows (#' + k + ')', card.parts[k], k); }
           await p2.close(); if (!kept) await c2.close(); }
         /* walking out of the park by a door */
         if (door.none) WN.push('COUNT-ONLY: in ' + LN[L] + ' ' + door.none + ', so nobody walked out of one');
@@ -12624,7 +12660,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           else if (!out) WD.push('in ' + LN[L] + ', ' + how + ' never left the park in 5 s, so the card it brings was not read');
           else if (!pk.shown) WD.push('in ' + LN[L] + ', ' + how + ' brings no card summing up the visit, where the park always brings one');
           else if (bad(pk.text) || pk.text.split('\n').filter(l => l.trim()).length < 3) WD.push('in ' + LN[L] + ', ' + how + ', the card summing up the visit reads "' + pk.text.replace(/\s+/g, ' ').trim() + '"');
-          else (twice['the card summing up a visit to the park'] = twice['the card summing up a visit to the park'] || {})[L] = pk.text.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+          else { (twice['the card summing up a visit to the park'] = twice['the card summing up a visit to the park'] || {})[L] = pk.text.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+            for (const k of ['parkTitle', 'parkLove', 'parkClose']) await holds(L, how + ', the card summing up the visit', pk.text, k); }
           await wp.evaluate(() => { document.getElementById('parkCard').hidden = true; world = PL.home; px = fx = PL.spawn[0]; py = fy = PL.spawn[1]; warpPend = null; checkTalk(); }); }
         /* the rest of what the engine says for itself: Settings, every section heading it draws, its panels, and what they say back */
         { const e0 = wErr.length;
@@ -12637,7 +12674,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             else if (code && s.trim() === code) WD.push('in ' + LN[L] + ', Settings heads a section with its code name, "' + s.trim() + '" (#' + i + ')'); });
           if (!heads.length) WD.push('in ' + LN[L] + ', Settings draws no section heading at all');
           (twice['Settings\' section headings'] = twice['Settings\' section headings'] || {})[L] = heads.map(x => x[1]).join(' | ');
-          }
+          for (const [i, s, code] of heads) if (code) await holds(L, 'Settings\' section heading (#' + i + ')', s, 'drw' + code); }
         /* its themes, each by a name of its own: a button with no words on it, or two that read the same, is a red */
         { const th = await wp.evaluate(() => { document.getElementById('gear').click();
             const bs = [...document.querySelectorAll('#themeRow button,#thCustom')].filter(b => !b.closest('[hidden]'));
@@ -12650,23 +12687,23 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             else { const nm = s.replace(/^[^\p{L}\p{N}]+/u, '').trim(), j = th.findIndex(x => x.replace(/^[^\p{L}\p{N}]+/u, '').trim() === nm);
               if (j < i) WD.push('in ' + LN[L] + ', Settings names two themes "' + nm + '", so a player cannot tell them apart'); } });
           (twice['Settings\' themes'] = twice['Settings\' themes'] || {})[L] = th.join(' | ');
-          }
+          for (const [k, x] of await wp.evaluate(() => window.__themes)) if (k) await holds(L, 'Settings\' button for the theme ' + k, x, 'themes.' + k); }
         { const h = await wp.evaluate(() => document.getElementById('ctlHint').textContent); if (!h.trim() || bad(h)) WD.push('in ' + LN[L] + ', the line that says how to walk reads "' + h + '"'); }
-        await panel('the Multiplayer panel', () => { document.getElementById('gear').click(); document.getElementById('openMp').click(); }, ['mpTitle', 'mpNote'], () => document.getElementById('mpClose').click(), L);
-        await said('a text search that finds nothing', () => { document.getElementById('openLab').click(); document.getElementById('tlSearch').value = 'zq' + 'xw' + 'vq'; document.getElementById('tlFind').click(); document.getElementById('tlClose').click(); }, L);
-        await said('switching admin mode on', () => { document.getElementById('admOn').click(); }, L);
-        await said('switching the hearts on', () => { document.getElementById('stkHearts').click(); }, L);
-        await said('switching the hearts off', () => { document.getElementById('stkNone').click(); }, L);
-        await panel('the theme editor', () => { document.getElementById('teOpen').click(); }, ['teName'], () => {}, L);
+        await panel('the Multiplayer panel', () => { document.getElementById('gear').click(); document.getElementById('openMp').click(); }, ['mpTitle', 'mpNote'], () => document.getElementById('mpClose').click(), L, { mpTitle: 'mpTitle', mpNote: 'mpNote' });
+        await said('a text search that finds nothing', () => { document.getElementById('openLab').click(); document.getElementById('tlSearch').value = 'zq' + 'xw' + 'vq'; document.getElementById('tlFind').click(); document.getElementById('tlClose').click(); }, L, 'tlNoHit');
+        await said('switching admin mode on', () => { document.getElementById('admOn').click(); }, L, 'admToast');
+        await said('switching the hearts on', () => { document.getElementById('stkHearts').click(); }, L, 'stkToast', ['hearts']);
+        await said('switching the hearts off', () => { document.getElementById('stkNone').click(); }, L, 'stkToast', ['none']);
+        await panel('the theme editor', () => { document.getElementById('teOpen').click(); }, ['teName'], () => {}, L, { teName: 'teNamePh' });
         { const cp = await wp.evaluate(() => { const b = document.querySelector('#teClone button[data-cl="meridian"]'), th = document.querySelector('#themeRow button[data-th="meridian"]');
             if (!b || !th || PALS.length >= 8) return null; const n = PALS.length; b.click(); return PALS.length > n ? { name: PALS[PALS.length - 1].n, theme: th.textContent } : null; });
           if (cp) { const nm = String(cp.name).replace(/\s*\d+$/, '').trim(), th = String(cp.theme).replace(/^[^\p{L}\p{N}]+/u, '').trim();
             if (!nm || bad(cp.name) || nm !== th) WD.push('in ' + LN[L] + ', a copy of the theme Settings calls "' + cp.theme + '" is named "' + cp.name + '"'); } }
-        await said('closing the theme editor', () => { document.getElementById('teClose').click(); }, L);
+        await said('closing the theme editor', () => { document.getElementById('teClose').click(); }, L, 'teSaved');
         await panel('the new-character card', () => { const w = CW(); for (let y = 1; y < w.H - 1; y++) for (let x = 1; x < w.W - 1; x++)
           if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !(x === px && y === py) && !portalAt(world, x, y)) { window.__nm = [x, y]; npcAt(x, y); return; } },
-          ['nmTitle', 'nmLb', 'nmOk', 'nmCancel'], () => {}, L);
-        await said('making the new character', () => { document.getElementById('nmName').value = 'Pim' + (lang === 'es' ? 'a' : 'o'); document.getElementById('nmOk').click(); }, L);
+          ['nmTitle', 'nmLb', 'nmOk', 'nmCancel'], () => {}, L, { nmTitle: 'nmTitle', nmLb: 'nmLb', nmOk: 'nmOk', nmCancel: 'nmCancel' });
+        await said('making the new character', () => { document.getElementById('nmName').value = 'Pim' + (lang === 'es' ? 'a' : 'o'); document.getElementById('nmOk').click(); }, L, 'npcMade', [L === 'es' ? 'Pima' : 'Pimo']);
         await said('a word from the new character', () => { const [x, y] = window.__nm || [0, 0], k = (CW().npcs.find(n => n.x === x && n.y === y) || {}).npc; if (!k) return;
           for (const [dx, dy, d] of [[0, 1, 'up'], [1, 0, 'left'], [-1, 0, 'right'], [0, -1, 'down']]) if (!isSolid(x + dx, y + dy)) { px = fx = x + dx; py = fy = y + dy; dir = d; break; }
           checkTalk(); document.getElementById('talk').click(); }, L);
@@ -12683,7 +12720,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!sv.warn.trim() || bad(sv.warn)) WD.push('in ' + LN[L] + ', a save that fails because the device is out of room says ' + (sv.warn.trim() ? '"' + sv.warn + '"' : 'nothing'));
           if (!sv.ok.trim() || bad(sv.ok)) WD.push('in ' + LN[L] + ', a save that works again after one that failed says ' + (sv.ok.trim() ? '"' + sv.ok + '"' : 'nothing') + ', so the warning is the last word the player has');
           else back[L] = sv.ok;
-          }
+          await holds(L, 'a save that fails because the device is out of room', sv.warn, 'save.full'); await holds(L, 'a save that works again after one that failed', sv.ok, 'save.back'); }
         await fileCheck(', after the screens above were opened in ' + LN[L]);
       }
       /* a solid call, in the last language, then the Report tab again in each language: its verdicts read for every kind of call */
@@ -12710,9 +12747,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (!so) { WN.push('COUNT-ONLY: in ' + LN[L] + ' this world has no start-over button, so starting over was not read'); continue; }
         if (wErr.length > e0) WD.push('in ' + LN[L] + ', starting over threw "' + wErr[e0] + '"');
         else if (!so.said.trim() || bad(so.said)) WD.push('in ' + LN[L] + ', starting over says ' + (so.said.trim() ? '"' + so.said + '"' : 'nothing'));
-        else { (twice['starting over'] = twice['starting over'] || {})[L] = so.said; }
+        else { (twice['starting over'] = twice['starting over'] || {})[L] = so.said; await holds(L, 'starting over', so.said, 'replayToast', ['Ana']); }
         if (!so.arm.trim() || bad(so.arm)) WD.push('in ' + LN[L] + ', the start-over button, pressed once, reads "' + so.arm + '"');
-        else { (twice['the start-over button, pressed once'] = twice['the start-over button, pressed once'] || {})[L] = so.arm; } }
+        else { (twice['the start-over button, pressed once'] = twice['the start-over button, pressed once'] || {})[L] = so.arm; await holds(L, 'the start-over button, pressed once', so.arm, 'replayArm'); } }
       /* the engine's words in this world's language: what each screen read here says in Spanish is not what it says in English */
       if (W.langs.length === 2) {
         Object.entries(twice).forEach(([what, by]) => { if (by.en && by.es && by.en === by.es) WD.push('in Spanish ' + what + ' says what it says in English: "' + by.es.slice(0, 160) + '"'); });
