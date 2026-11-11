@@ -92,8 +92,9 @@
                otherwise. A refusal then may also say `gaps` (moveTo on a wall without them), `square` (a column off the
                wall), `taken` (no room there) or `room` (no square left). With gaps off, or left out, every rule is
                exactly as it was before gaps: My kitchen's packed wall.
-               SIDE WALLS (sprint 7 of the 3D kitchen: an L or a U along walls, never an island). On a wall with gaps, a
-               layout may name up to 2 side walls, `sides: [{squares, face}, …]`, and a place on one says `side`, that
+               SIDE WALLS (sprint 7 of the 3D kitchen, and 2026-11-11: an L, a U, or all four walls of a room, along walls,
+               never an island). On a wall with gaps, a layout may name up to 3 side walls (`SIDESMOST`), so a kitchen
+               may stand along every wall of a room, `sides: [{squares, face}, …]`, and a place on one says `side`, that
                wall's index in the list, with `col` counted along that wall's own squares from 0 (a place that names no
                `side` stands on the back wall, as every place did before). Each side wall has as many squares as
                its `squares` list holds. Every rule keeps a piece on its own wall: left and right step along it and stop
@@ -129,7 +130,7 @@ const KITCHEN = (function () {
      colsOf, cellOf, tallIn, sig, and addPiece's choice of column), worked on a copy of the places, never on what was
      handed in ---- */
   const own = (o, k) => o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
-  const SIDES = ['left', 'right', 'up', 'down'], COLS = 40, SIDESMOST = 2;
+  const SIDES = ['left', 'right', 'up', 'down'], COLS = 40, SIDESMOST = 3;   /* the side walls besides the back wall: three, so all four walls of a room (2026-11-11) */
   const no = (code, why) => ({ why, code });
   const said = v => '"' + String(v).slice(0, 30) + '"';
   /* the places a layout hands in, each copied: a list of plain objects, each of a kind on the list, in its own kind of

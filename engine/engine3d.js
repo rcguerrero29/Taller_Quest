@@ -1426,6 +1426,15 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
    t3Reshape: one tile's shape built again in the scene already standing — a kitchen place swinging open, a step at a time
    (engine.js, grep "THE KITCHEN LAYOUT") — its old mesh taken out and disposed, the new one where it stood, its material
    in the time of day's wash as every other. Nothing else in the scene is touched, so a room is never rebuilt for a door.
+   A PIECE BUILT AGAIN IN THE CAMERA'S WAY STAYS SEE-THROUGH (2026-11-11). The new mesh takes the old one's userData, and with it
+   the solid and the glass material t3Reveal hung there for the OLD piece: those go with the old piece, and the new one's are
+   made from its own material on the next frame, as any piece's are. It also takes the old one's place among the pieces in the
+   camera's way (T3.near, worked out again only when he moves or the camera turns), so while it stands there it is glass at
+   T3GHOST, as a tall object is, and once it does not it is solid in its own colour, in the time of day's wash. Measured before
+   this: a kitchen column between the camera and him went to glass, came back solid the moment its doors swung or the gold
+   frame at a corner was drawn round it, and stayed so until he stepped to another square; and a column built again after it
+   had been glass wore a material the time of day no longer reached. Only a kitchen builds a piece again (engine/kitchen-room.js),
+   so a world with none is untouched. Held by test/engine.smoke.js, grep "THE KITCHEN ALONG FOUR WALLS".
    t3Pick: what is under a point of the screen, by the 3D library's own ray test (THREE.Raycaster) from this frame's
    camera, against the room's solid pieces only — the people, the glass and the paper are pictures and are not asked. The
    nearest hit, or null. Read by the kitchen's tap, and by nothing in a world without one. */
@@ -1437,6 +1446,9 @@ function t3Reshape(x,y){if(!T3.group||!T3.scene)return false;
   let m;try{m=t3MeshOf(parts,old.userData,{world,x,y});}catch(e){t3Note("mesh "+old.userData.g,e);return false;}
   m.position.copy(old.position);m.t3Top=old.t3Top;
   const gone=[];old.traverse(o=>{if(o.material)gone.push(o.material);});
+  const u=old.userData;[].concat(u.solid3||[],u.glass3||[]).forEach(mt=>{if(gone.indexOf(mt)<0){mt.dispose();gone.push(mt);}});   /* the old piece's two, whichever it was not wearing */
+  delete u.solid3;delete u.glass3;
+  (T3.near||[]).forEach(q=>{if(q.o===old)q.o=m;});   /* in the camera's way where the old one was */
   T3.group.remove(old);t3Dispose(old);
   gone.forEach(mt=>{const i=T3.tintables.indexOf(mt);if(i>=0)T3.tintables.splice(i,1);});
   T3.group.add(m);return true;}

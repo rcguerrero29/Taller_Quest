@@ -48,7 +48,8 @@ document.addEventListener("fullscreenchange",()=>{docBesideV=null;});
      free    optional (2026-10-30): squares of the wall that hold no place yet, `[[x,y], …]`, in the order the wall grows
              into them: a column added past the wall's end stands on the first. Each holds `◧` in the map, and the wall and
              its free squares are at most 40 together. Nobody stands on one; in 3D it shows the fitter's tape on the floor.
-     sides   optional (sprint 7 of the 3D kitchen: an L or a U, along walls only): up to 2 side walls, `[{squares, face}]`,
+     sides   optional (sprint 7 of the 3D kitchen, and 2026-11-11: an L, a U, or all four walls of a room, along walls only): up
+             to 3 side walls (KITSIDES), so with its back wall a kitchen may stand along every wall of a room, `[{squares, face}]`,
              each its squares in order along it, `[[x,y], …]`, every one a `◧` in the map, and the way it faces the room,
              one of `north`, `south`, `east`, `west` (KITFACE). Only on a wall with gaps (below): every square of a side wall
              is a column that may stand empty, drawn with the fitter's tape. A piece on one is turned to face the room its
@@ -97,7 +98,7 @@ document.addEventListener("fullscreenchange",()=>{docBesideV=null;});
    is about the place in that row, and ends that place's page only, while a place stands in that row there (once none
    does, the builder having moved it, it ends every page of its column again). A world that declares no layout and lays
    no closet gets Read, and only Read, from the very same code. */
-const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420,KITSIDES=2;
+const KITCOLS=40,KITPLACES=120,KITNAME=30,KITSWING=420,KITSIDES=3;   /* KITSIDES: the side walls a kitchen may have besides its back wall (three from 2026-11-11, so all four walls of a room) */
 const KITFACE={north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};   /* the way a side wall faces the room, and the square in front of it (sprint 7) */
 const KITID=/^[A-Za-z0-9_-]{1,30}$/;   /* a place's id: the world's own name for it, carried through every change and never read by the engine */
 const KITUNSAFE=/[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/;   /* what may not be shown in a name: My kitchen's UNSAFE, the same characters */

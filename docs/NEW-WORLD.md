@@ -604,6 +604,11 @@ Two things this depends on, both easy to lose:
 Materials can be shared between pieces of one glyph, so the glass copy is made once **per piece** and
 kept beside the solid one. Edit a material in place and one tree will fog its whole row.
 
+A piece built again where it stands (a kitchen column whose doors swing, `t3Reshape`) is the same piece
+to this rule (2026-11-11): it takes the old one's place among the things in your way, and its glass is
+made from its own material, so it stays see-through while it is in your way and wears its own colour,
+in the time of day's light, once it is not.
+
 ### 3⅝ · How 3D samples a pixel grid — free, and easy to lose (#134, 2026-09-08)
 
 A new world inherits this from `engine/engine3d.js` and never sets it; it is written down because it
