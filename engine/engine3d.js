@@ -1322,21 +1322,24 @@ function bodyMake(skel,lk){
   const bone=(a,b)=>{const[,x,y,z]=skel.joints[b];return [Math.hypot(x,y,z),x/2,y/2,z/2];};   /* a limb part spans its joint to the next */
   /* legs: trousers to the ankle, a shoe flat under it, its sole at the ankle's rest height below the joint */
   ["l","r"].forEach(s=>{
-    let[L,x,y,z]=bone("upleg_"+s,"knee_"+s);part("upleg_"+s,cap(0.042,L-0.02),"trousers",trousers,x,y,z);
-    [L,x,y,z]=bone("knee_"+s,"ankle_"+s);part("knee_"+s,cap(0.036,L-0.02),"trousers",trousers,x,y,z);
+    let[L,x,y,z]=bone("upleg_"+s,"knee_"+s);part("upleg_"+s,cap(0.048,L-0.02),"trousers",trousers,x,y,z);
+    [L,x,y,z]=bone("knee_"+s,"ankle_"+s);part("knee_"+s,cap(0.041,L-0.02),"trousers",trousers,x,y,z);
     part("ankle_"+s,new THREE.BoxGeometry(0.06,0.04,0.12),"shoe","#2A2522",0,-0.015,0.025);
     /* arms: a sleeve to the elbow, the forearm in skin, a hand */
-    [L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);part("shoulder_"+s,cap(0.032,L-0.01),"shirt",lk.shirt,x,y,z);
-    [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(0.026,L-0.02),"skin",lk.skin,x,y,z);
+    [L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);part("shoulder_"+s,cap(0.036,L-0.01),"shirt",lk.shirt,x,y,z);
+    [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(0.029,L-0.02),"skin",lk.skin,x,y,z);
     part("wrist_"+s,new THREE.SphereGeometry(0.03,10,8),"skin",lk.skin,0,-0.02,0);});
   /* the body: hips in trousers, the torso in his shirt, a neck and a head with hair on it and two eyes that say which way he faces */
   part("hips",new THREE.SphereGeometry(1,14,10),"trousers",trousers,0,0.01,0,[0.1,0.06,0.07]);
   part("spine",cap(0.085,0.1),"shirt",lk.shirt,0,0.08,0,[1.15,1,0.8]);
   part("neck",cap(0.028,0.03),"skin",lk.skin,0,0.02,0);
-  part("head",new THREE.SphereGeometry(0.105,18,14),"skin",lk.skin,0,0.08,0);
-  part("head",new THREE.SphereGeometry(0.112,18,10,0,Math.PI*2,0,Math.PI*0.48),"hair",lk.hair,0,0.085,-0.012).rotation.x=-0.25;
-  [0.035,-0.035].forEach(ex=>part("head",new THREE.SphereGeometry(0.014,8,6),"eye","#1E1A22",ex,0.085,0.098));
+  part("head",new THREE.SphereGeometry(0.12,18,14),"skin",lk.skin,0,0.085,0);
+  part("head",new THREE.SphereGeometry(0.128,18,10,0,Math.PI*2,0,Math.PI*0.48),"hair",lk.hair,0,0.09,-0.012).rotation.x=-0.25;
+  [0.04,-0.04].forEach(ex=>part("head",new THREE.SphereGeometry(0.014,8,6),"eye","#1E1A22",ex,0.09,0.112));
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron"))part("spine",new THREE.BoxGeometry(0.15,0.24,0.012),"apron","#EFE9DC",0,0.0,0.075);
+  /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk */
+  const sh=new THREE.Mesh(new THREE.CircleGeometry(0.15,20),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(1,0.6,1);sh.userData={shadow:true};root.add(sh);
   root.userData.joints=J;root.userData.skel=skel;return root;}
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
 function t3BodyPose(B,phase,moving,groundAt){
@@ -1370,7 +1373,7 @@ function t3Body(){
   if(!T3.body){T3.body=bodyMake(bodySkeleton("person"),look);T3.body.userData.key=key;T3.scene.add(T3.body);}
   const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1];
   B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(T3PERSON/0.92);
-  B.traverse(o=>{if(o.isMesh)o.material.color.copy(o.userData.base).multiply(T3.tint);});
+  B.traverse(o=>{if(o.isMesh&&o.userData.base)o.material.color.copy(o.userData.base).multiply(T3.tint);});
   t3BodyPose(B,bob,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
   return true;}
 function t3Actors(){
