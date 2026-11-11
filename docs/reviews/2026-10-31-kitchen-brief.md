@@ -44,6 +44,8 @@ repository.
   `function kitCanHold` needs an id, and the add rule gives none.
 - **D. L- and U-shaped kitchens.** Pieces stand along a room's side walls as well as its back wall, each turned to face
   the room, with the corner where two walls meet handled. Along walls only: no island in the middle of the room.
+  *(Built in sprint 7 with two side walls at most; from 2026-11-11 up to three, so a kitchen may stand along all four
+  walls of a room: `docs/3D-LOG.md`, the entries of 2026-11-01 and 2026-11-11.)*
 - **Later:** more foods, a few at a time; the private cooking game taking the room, the builder and the things, its save
   read before anything writes to it; undo reaching a put; foods as bought, whole, and cut.
 

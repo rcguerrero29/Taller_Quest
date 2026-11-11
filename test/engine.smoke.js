@@ -3505,7 +3505,8 @@ function findChromium() {
      KEEPS THINGS HAS AN ID"; engine/shapes.js, `face`. His confirmed goals of 2026-10-31 (a thing in hand put in a piece just
      added; L- and U-shaped kitchens, along walls only) and 2026-11-01 (point 3: a tap on any empty square of the back wall or a
      side wall moves the piece picked there; the arrows still step one square, and at a wall's end a short line says to tap a
-     square along the wall). What a person would notice: a piece on a side wall that faces anywhere but the room; a tap on a
+     square along the wall). From 2026-11-11 a kitchen may have up to three side walls, so it may stand along all four walls of a
+     room (grep "THE KITCHEN ALONG FOUR WALLS" in test/engine.smoke.js); this block keeps one. What a person would notice: a piece on a side wall that faces anywhere but the room; a tap on a
      side wall's empty square that does nothing; an arrow that carries a piece round the corner onto another wall, or does
      nothing at a wall's end; a side wall's piece that cannot be opened, shut by its slot, hold a thing put in it, say it is
      empty, or keep its page inside the view in full screen; a bad side wall laid, or laid in part; and a kitchen kept with a
@@ -3576,7 +3577,9 @@ function findChromium() {
         window.__L = () => ({ wall: [[1, 1], [2, 1], [3, 1], [4, 1]], free: [[5, 1]], sides: [{ squares: [[6, 2], [6, 3], [6, 4]], face: 'west' }], places: places.map(p => Object.assign({}, p)), things: window.__things, keep: window.__keep, page: () => [{ p: 'inside' }], store: window.__store, gaps: true });
         /* each bad side wall refused whole, in one sentence, and no kitchen laid */
         const bad = [['side walls with gaps off', L => { L.gaps = false; L.places[5].side = 0; L.places[5].col = 0; L.places.push({ kind: 'drawers', row: 'lower', col: 1, side: 0 }, { kind: 'drawers', row: 'lower', col: 2, side: 0 }); }], ['a facing off the list', L => { L.sides[0].face = 'up'; }], ['a square that is not a kitchen column', L => { L.sides[0].squares.push([5, 5]); }],
-          ['a square the back wall names', L => { L.sides[0].squares.push([4, 1]); }], ['three side walls', L => { L.sides = [{ squares: [[6, 2]], face: 'west' }, { squares: [[6, 3]], face: 'west' }, { squares: [[6, 4]], face: 'west' }]; }, /at most 2/],
+          ['a square the back wall names', L => { L.sides[0].squares.push([4, 1]); }],
+          /* four side walls, refused for their number, which is checked before any wall's squares (this room has three squares off the back wall, so the fourth names one again) */
+          ['four side walls', L => { L.sides = [{ squares: [[6, 2]], face: 'west' }, { squares: [[6, 3]], face: 'west' }, { squares: [[6, 4]], face: 'west' }, { squares: [[6, 4]], face: 'west' }]; }, /at most 3/],
           ['a square both side walls name', L => { L.sides = [{ squares: [[6, 2], [6, 3]], face: 'west' }, { squares: [[6, 3], [6, 4]], face: 'west' }]; }], ['a square one side wall names twice', L => { L.sides[0].squares.push([6, 3]); }],
           ['more than 40 squares in all', L => { L.sides[0].squares = Array.from({ length: 36 }, () => [6, 2]); }, /at most 40/],
           ['a side wall with a key of its own', L => { L.sides[0].color = 'red'; }], ['a place on a side wall there is none of', L => { L.places[5].side = 1; }], ['a place past its side wall\'s squares', L => { L.places[5].side = 0; L.places[5].col = 3; }],
@@ -3683,6 +3686,179 @@ function findChromium() {
     sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
     await sp.close();
     fails.push(...SV.map(m => 'the kitchen along more than one wall (sprint 7): ' + m));
+  }
+
+  /* ---- THE KITCHEN ALONG FOUR WALLS, AND THE COLUMN IN THE CAMERA'S WAY SEEN THROUGH (2026-11-11) ----
+     engine/kitchen.js, `SIDESMOST` in "SIDE WALLS"; engine/kitchen-room.js, grep "THE SIDE WALLS" (`KITSIDES`); engine/engine3d.js,
+     grep "A PIECE BUILT AGAIN IN THE CAMERA'S WAY". A kitchen may stand along all four walls of a room: the back wall and up to three
+     side walls, the third the wall nearest the camera, and every other rule for a side wall is as it was. And a kitchen column between
+     the 3D camera and the person you steer is drawn see-through at T3GHOST, as a tall object is. Measured on the tree as it stood
+     (mq-v257): such a column went to glass when the room was built or he stepped behind it, came back solid the moment it was built
+     again where it stands (its doors swinging, the gold frame at a corner) until he stepped to another square, and a column built again
+     after it had been glass wore a colour the time of day no longer reached. What a person would notice, each in its own sentence: a
+     kitchen along four walls refused, or laid in part; a piece the builder taps onto the third side wall that does not go there, is not
+     kept there, stands elsewhere when the world lays what it kept, or does not face the room; a fourth side wall laid; the fridge on
+     the wall nearest the camera hiding him (solid, cut to a stub as a wall is, gone, moved, another shape, drawn before him, or not
+     found by a tap) as he arrives behind it, once it is opened, or once it is shut; that fridge see-through with nothing in the way; and,
+     after all of it, its colour no longer taking the time of day. On a page of its own: a made-up room of nine by eight with kitchen
+     columns along its four walls and its corners left floor, and the same room with none along its west wall (a kitchen along three
+     walls, which the engine laid before this change too, so the column in the camera's way is asked on the tree as it stood). And, in
+     node, the rules on a third side wall. COST: about two seconds on a shell with the 3D camera. Red first, on the tree as it stood and
+     with each fault planted in a copy of the tree outside the repository (docs/3D-LOG.md, 2026-11-11). */
+  {
+    const SW = [], say = s => SW.push(s), vm = require('vm'), t0 = Date.now();
+    /* 1 · THE RULES, in node: a third side wall is a wall like the other two */
+    let KIT = null;
+    try { KIT = vm.runInContext(fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;KITCHEN', vm.createContext({ Object, Array, Number, Math, Set, String }), { filename: 'engine/kitchen.js' }); }
+    catch (e) { say('engine/kitchen.js does not run on its own (' + String(e.message || e).slice(0, 120) + ')'); }
+    if (KIT) { const RU = KIT.rules, J = JSON.stringify;
+      const tpl = () => KIT.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+      const S3 = [{ squares: [[7, 2], [7, 3], [7, 4], [7, 5]], face: 'west' }, { squares: [[1, 2], [1, 3], [1, 4], [1, 5]], face: 'east' }, { squares: [[2, 6], [3, 6], [4, 6], [5, 6], [6, 6]], face: 'north' }];
+      const L0 = { wall: [[2, 1], [3, 1], [4, 1], [5, 1], [6, 1]], free: [], places: tpl(), gaps: true, sides: S3 };
+      const r = RU.moveTo(L0, 5, 3, 2);
+      if (!r || r.why || J(r.layout.places[5]) !== J({ kind: 'lower-cupboards', row: 'lower', col: 3, id: 'p6', side: 2 })) say('moveTo onto the third side wall\'s fourth square put the lower cupboards at ' + J(r && (r.why || r.layout.places[5])));
+      else {
+        const a = RU.move(r.layout, 5, 'right');
+        if (!a || a.why || a.layout.places[5].col !== 4 || a.layout.places[5].side !== 2) say('right along the third side wall carried the lower cupboards to ' + J(a && (a.why || a.layout.places[5])) + ', where it is that wall\'s last square');
+        else if (RU.canMove(a.layout, 5, 'right')) say('at the third side wall\'s last square a step right is offered, where it would carry the piece round the corner');
+      }
+      const four = RU.moveTo(L0, 0, 0, 3); if (!four.why || four.code !== 'square') say('a piece was put on a fourth side wall of a layout with three: ' + J(four.layout ? four.layout.places[0] : four));
+      /* an add goes round to the third side wall only when the back wall and the first two side walls have no room */
+      const full = { wall: [[2, 1]], free: [], gaps: true, sides: [{ squares: [[7, 2]], face: 'west' }, { squares: [[1, 2]], face: 'east' }, { squares: [[4, 6]], face: 'north' }],
+        places: [{ kind: 'fridge', row: 'tall', col: 0 }, { kind: 'fridge', row: 'tall', col: 0, side: 0 }, { kind: 'fridge', row: 'tall', col: 0, side: 1 }] };
+      const ad = RU.add(full, 'freezer'); if (!ad || ad.why || J(ad.layout.places[3]) !== J({ kind: 'freezer', row: 'tall', col: 0, side: 2 })) say('a freezer added to a kitchen whose back wall and first two side walls are full stands at ' + J(ad && (ad.why || ad.layout.places[3])) + ', where it is the third side wall\'s square');
+    }
+    /* 2 · ON A PAGE: the check, the builder's tap and what the world keeps; then, with the 3D camera, the column in its way */
+    const needK = await page.evaluate(() => typeof KITCHEN !== 'object'), kitSrc = 'window.KITCHEN=(function(){' + fs.readFileSync(path.join(root, 'engine', 'kitchen.js'), 'utf8') + '\n;return KITCHEN;})();';
+    const sp = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), sErr = [];
+    sp.on('pageerror', e => sErr.push(e.message));
+    await sp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+    if (needK) await sp.addInitScript({ content: kitSrc });
+    await sp.addInitScript(() => { window.BUILDER = {}; });
+    await sp.goto('file://' + file); await sp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await sp.waitForTimeout(150);
+    try {
+      const T0 = await sp.evaluate(() => {
+        const C = KITCOL, R4 = ['#########', '#.KKKKK.#', '#K.....K#', '#K.....K#', '#K.....K#', '#K.....K#', '#.KKKKK.#', '#########'].map(r => r.replace(/K/g, C));
+        const R3 = R4.map(r => r[0] + (r[1] === C ? '.' : r[1]) + r.slice(2));   /* the same room with no column along its west wall */
+        [['__kit_four', R4], ['__kit_near', R3]].forEach(([ID, R]) => { WORLDS[ID] = { rows: R.slice(), rows0: R.slice(), grid: R.map(r => r.split('')), npcs: [], W: 9, H: 8 }; });
+        const EAST = [[7, 2], [7, 3], [7, 4], [7, 5]], WEST = [[1, 2], [1, 3], [1, 4], [1, 5]], SOUTH = [[2, 6], [3, 6], [4, 6], [5, 6], [6, 6]], sq = Q => Q.map(q => q.slice());
+        const tpl = () => KITCHEN.template.map((t, k) => ({ kind: t.kind, row: t.row, col: t.col, id: 'p' + (k + 1) }));
+        window.__stored = []; const store = L => { window.__stored.push(JSON.parse(JSON.stringify(L))); }, page = () => [{ p: 'inside' }];
+        /* along four walls: the back wall to the north, then the east wall, the west wall, and the wall nearest the camera, to the south */
+        window.__L4 = () => ({ wall: sq([[2, 1], [3, 1], [4, 1], [5, 1], [6, 1]]), sides: [{ squares: sq(EAST), face: 'west' }, { squares: sq(WEST), face: 'east' }, { squares: sq(SOUTH), face: 'north' }], gaps: true, store, page,
+          places: tpl().concat([{ kind: 'drawers', row: 'lower', col: 0, side: 0, id: 'e1' }, { kind: 'lower-cupboards', row: 'lower', col: 1, side: 1, id: 'w1' }, { kind: 'fridge', row: 'tall', col: 1, side: 2, id: 's1' }]) });
+        /* along three: the same with no west wall, and a fridge on the wall nearest the camera */
+        window.__L3 = () => ({ wall: sq([[2, 1], [3, 1], [4, 1], [5, 1], [6, 1]]), sides: [{ squares: sq(EAST), face: 'west' }, { squares: sq(SOUTH), face: 'north' }], gaps: true, store, page,
+          places: tpl().concat([{ kind: 'fridge', row: 'tall', col: 2, side: 1, id: 'nf' }]) });
+        /* every other rule for a side wall, on a kitchen along four walls: each refused whole, in one sentence, and no kitchen laid */
+        const bad = [['a fourth side wall (the south wall named as two)', L => { L.sides[2].squares = sq(SOUTH.slice(0, 3)); L.sides.push({ squares: sq(SOUTH.slice(3)), face: 'north' }); }, /at most 3/],
+          ['three side walls with gaps off', L => { L.gaps = false; }, /gaps are off/], ['a third side wall facing off the list', L => { L.sides[2].face = 'up'; }, /a wall faces/],
+          ['a third side wall naming a square the first names', L => { L.sides[2].squares.push([7, 2]); }, /named by a wall already/],
+          ['more than 40 squares over three side walls', L => { L.sides[2].squares = Array.from({ length: 28 }, () => [2, 6]); }, /at most 40/],
+          ['a place past the third side wall\'s squares', L => { L.places.find(p => p.id === 's1').col = 5; }, /side wall 2 has squares 0 to 4/]];
+        const out = bad.map(([what, f, want]) => { const L = window.__L4(); f(L); let s; try { s = kitchenLay('__kit_four', L); } catch (e) { s = 'THREW ' + e.message; } return [what, s, !!KITWALL.__kit_four, String(want)]; });
+        const four = kitchenLay('__kit_four', window.__L4()), near = kitchenLay('__kit_near', window.__L3());
+        $('intro').hidden = true; heroName = 'Probe';
+        window.__go = (id, x, y, d, cam) => { world = id; px = fx = x; py = fy = y; dir = d; moving = false; held = null; enterWorld(false); camSet(cam); document.querySelectorAll('.settings').forEach(q => { q.hidden = true; }); checkTalk(); };
+        window.__stand = (x, y, d) => { px = fx = x; py = fy = y; dir = d; moving = false; held = null; checkTalk(); };
+        window.__go('__kit_four', 4, 4, 'down', 'top');
+        return { out, four, near, has3: typeof THREE === 'object' && typeof draw3d === 'function' && typeof t3Pick === 'function' && typeof SHAPES === 'object' && !!SHAPES && typeof SHAPES.kitchenColumn === 'function' };
+      });
+      T0.out.forEach(([what, s, laid, want]) => { if (typeof s !== 'string' || !s) say('a kitchen along four walls with ' + what + ' was laid');
+        else if (/^THREW /.test(s)) say('a kitchen along four walls with ' + what + ' threw in the check (' + s.slice(6, 80) + '), where it is refused in a sentence');
+        else if (laid) say('a kitchen along four walls with ' + what + ' was refused, and a kitchen still stands');
+        else if (!new RegExp(want.slice(1, -1)).test(s)) say('a kitchen along four walls with ' + what + ' is refused for another reason (' + s.slice(0, 90) + '), where its sentence says ' + want); });
+      /* the builder: the lower cupboards picked on the back wall, a tap on the third side wall's empty square (5,6) */
+      if (T0.four !== null) say('a kitchen along the back wall and three side walls, the third the wall nearest the camera, was refused (' + T0.four + '), so no piece could be tapped onto its third side wall');
+      else {
+        const tap = await sp.evaluate(() => { admin = true; applyAdmin(); window.__stored.length = 0; kitBuildPick(5);
+          const t = kitSquareAt({ object: { userData: { g: KITCOL, x: 5, y: 6 } } }), ok = t !== -1 && kitBuildPlace(t), K = KITWALL.__kit_four, p = K.places[5], c = K.cols[p.col], S = window.__stored[window.__stored.length - 1];
+          const said = $('kbSaid') ? $('kbSaid').textContent : ''; admin = false; applyAdmin();
+          return { t, ok, at: [c.x, c.y], side: p.side === undefined ? null : p.side, kept: S ? S.places[5] : null, walls: S && Array.isArray(S.sides) ? S.sides.length : 0, said }; });
+        if (String(tap.at) !== '5,6' || tap.side !== 2) say('a tap on the third side wall\'s empty square (5,6), with the lower cupboards picked, left them at (' + tap.at + ')' + (tap.said ? ', the builder saying ' + JSON.stringify(tap.said) : '') + ', where they stand on that square');
+        else {
+          if (!tap.kept || tap.kept.side !== 2 || tap.kept.col !== 3 || tap.walls !== 3) say('the world was handed the lower cupboards on the third side wall as ' + JSON.stringify(tap.kept) + ', in a layout of ' + tap.walls + ' side walls, where they are side wall 2, its column 3, of three');
+          /* it stays there: the world lays what it kept, as it does when the room opens again, and the piece stands where the tap put it, drawn there and facing the room */
+          const again = await sp.evaluate(() => { const S = window.__stored[window.__stored.length - 1]; if (!S) return { s: 'the world was handed nothing to keep' };
+            const s = kitchenLay('__kit_four', Object.assign(JSON.parse(JSON.stringify(S)), { gaps: true, store: () => {}, page: () => [{ p: 'inside' }] })), K = KITWALL.__kit_four;
+            if (s !== null) return { s };
+            const p = K.places[5], c = K.cols[p.col], ps = typeof SHAPES === 'object' && SHAPES && typeof SHAPES.kitchenColumn === 'function' ? kitColumnParts({ x: 5, y: 6 }).filter(q => q.place === 5) : null;
+            return { s, at: [c.x, c.y], side: p.side, n: ps ? ps.length : -1, ry: ps ? [...new Set(ps.filter(q => q.carcass).map(q => Math.round((q.ry || 0) * 1000)))] : null,
+              south: ps && ps.length ? Math.max(...ps.map(q => q.z)) : null, north: ps && ps.length ? Math.min(...ps.map(q => q.z)) : null }; });
+          if (again.s !== null) say('the kitchen the world kept, the lower cupboards on its third side wall, was refused when laid again: ' + again.s);
+          else {
+            if (String(again.at) !== '5,6' || again.side !== 2) say('laid again from what the world kept, the lower cupboards stand at (' + again.at + '), where the tap put them, on the third side wall at (5,6)');
+            if (again.n === 0) say('the lower cupboards on the third side wall are not drawn in their square');
+            else if (again.n > 0) {
+              if (String(again.ry) !== String(Math.round(Math.PI * 1000))) say('the lower cupboards on the third side wall, facing north into the room, have their carcass turned ' + again.ry + ' (thousandths of a radian), where it is ' + Math.round(Math.PI * 1000));
+              if (!(again.south > 0.45 && again.north > -0.2)) say('the lower cupboards on the third side wall do not stand with their back on the south wall (their parts run from z ' + again.north.toFixed(2) + ' to ' + again.south.toFixed(2) + ' in their square)'); }
+            else console.log('  COUNT-ONLY: this page builds no shapes, so the facing of the piece on the third side wall was not asked'); }
+        }
+      }
+      /* 3 · THE COLUMN IN THE CAMERA'S WAY, with the 3D camera as the room opens (south of him, north up) */
+      if (!T0.has3) console.log('  COUNT-ONLY: this shell has no 3D camera, so the column in the camera\'s way was not asked');
+      else if (T0.near !== null) say('the kitchen along the back wall, the east wall and the wall nearest the camera was refused: ' + T0.near);
+      else {
+        /* the column on square (x,y) as this frame of the 3D camera draws it */
+        const look = (x, y) => sp.evaluate(([x, y]) => { draw3d();
+          const o = T3.group.children.find(q => q.userData && q.userData.mesh && q.userData.x === x && q.userData.y === y); if (!o) return null;
+          const ms = Array.isArray(o.material) ? o.material : [o.material], hero = T3.pool.find(p => p.live && p.spr.userData.hero), pos = o.geometry.attributes.position.array;
+          let sig = 0; for (let k = 0; k < pos.length; k++) sig = (sig * 31 + Math.round(pos[k] * 1000)) % 1000000007;
+          return { shown: o.visible, stub: T3.group.children.some(q => q.userData && q.userData.stub && q.userData.x === x && q.userData.y === y && q.visible),
+            see: ms.every(m => m.transparent === true && Math.abs(m.opacity - T3GHOST) < 1e-9 && m.depthWrite === false), opacity: ms.map(m => m.opacity).join(), depth: ms.some(m => m.depthWrite !== false),
+            after: hero ? o.renderOrder > hero.spr.renderOrder : null, at: [o.position.x, o.position.y, o.position.z].join() + '|' + [o.scale.x, o.scale.y, o.scale.z].join(), sig: pos.length + ':' + sig,
+            lit: ms.every(m => T3.tintables.includes(m)), cam: [T3.cam.position.x, T3.cam.position.z], ghost: T3GHOST, open: kitNow ? KITWALL[world].places[kitNow.i].id : null }; }, [x, y]);
+        const seen = (N, when, what) => { if (!N) { say(when + ', ' + what + ' is not in the 3D picture at all'); return; }
+          if (N.stub) say(when + ', ' + what + ' between the camera and him is cut down to a stub, as a wall is, where it is drawn see-through, as a tree is');
+          else if (!N.shown) say(when + ', ' + what + ' between the camera and him is not drawn at all, where it is drawn see-through, as a tree is');
+          else if (!N.see) say(when + ', ' + what + ' between the camera and him is drawn solid (its opacity ' + N.opacity + (N.depth ? ', hiding what stands behind it' : '') + '), where it is see-through at ' + N.ghost + ', as a tree is');
+          else if (N.after !== true) say(when + ', ' + what + ' is see-through but drawn before him, so it hides him rather than being seen through'); };
+        await sp.evaluate(() => { window.__go('__kit_near', 4, 3, 'down', '3d'); T3.turn = null; T3.yaw = 0; });
+        const F = await look(4, 6);   /* three squares from it: nothing in the camera's way */
+        if (!F) throw 'the fridge on the wall nearest the camera, (4,6), is not in the 3D picture, so whether it hides him was not asked';
+        if (F.opacity !== '1' || !F.depth) say('three squares from the fridge on the wall nearest the camera, with nothing in the camera\'s way, the fridge is see-through (its opacity ' + F.opacity + '), where it is solid');
+        await sp.evaluate(() => window.__stand(4, 5, 'down'));
+        let N = await look(4, 6);
+        if (!N || !(N.cam[1] > 7 && Math.abs(N.cam[0] - 4.5) < 0.5) || N.after === null) throw 'standing at (4,5) he is not in the 3D picture with the camera south of him and the fridge between them (the camera at ' + (N && N.cam) + '), so whether it hides him was not asked';
+        seen(N, 'as he arrives behind it', 'the fridge on the wall nearest the camera');
+        if (N.at !== '4.5,0,6.5|1,1,1') say('the fridge in the camera\'s way stands at ' + N.at + ' (where it stands, then its size), where it stands in its own square as it was (4.5,0,6.5|1,1,1)');
+        if (N.sig !== F.sig) say('the fridge in the camera\'s way is not the shape it is with nothing in the way (corners ' + N.sig + ' against ' + F.sig + ')');
+        /* picked by a tap as before: the 3D library's ray, from this frame's camera through the point of the screen where the fridge's top shows (the room's own wall,
+           just behind it, covers its lower half from this camera), finds it, and the tap opens it */
+        const tp = await sp.evaluate(() => { const o = T3.group.children.find(q => q.userData && q.userData.mesh && q.userData.x === 4 && q.userData.y === 6), top = o.position.y + (o.t3Top || 1) - 0.03;
+          const v = new THREE.Vector3(4.5, top, 6.4).project(T3.cam), r = $('cv3').getBoundingClientRect(), cx = r.left + (v.x + 1) / 2 * r.width, cy = r.top + (1 - v.y) / 2 * r.height;
+          const h = t3Pick(cx, cy), u = h && h.object && h.object.userData, ok = kitTap(cx, cy);
+          return { on: cx > r.left && cx < r.right && cy > r.top && cy < r.bottom, hit: u ? [u.g === KITCOL, u.x, u.y].join() : null, ok, now: kitNow ? KITWALL[world].places[kitNow.i].id : null }; });
+        if (!tp.on) say('the fridge in the camera\'s way is off the screen, so a tap on it was not asked');
+        else { if (tp.hit !== 'true,4,6') say('a tap on the fridge in the camera\'s way finds ' + JSON.stringify(tp.hit) + ' (kitchen column, x, y), where it finds the fridge\'s own square (4,6), as before');
+          if (!tp.ok || tp.now !== 'nf') say('a tap on the fridge in the camera\'s way did not open it (it opened ' + JSON.stringify(tp.now) + '), where it opens as before'); }
+        if (tp.now !== 'nf') await sp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); $('read').click(); });   /* opened by the slot, so being built again is still asked */
+        N = await look(4, 6);
+        if (!N || N.open !== 'nf') say('the fridge on the wall nearest the camera could not be opened, so whether it hides him once it is was not asked');
+        else seen(N, 'once it is opened (its door swung, so its column was built again where it stands)', 'the fridge on the wall nearest the camera');
+        await sp.evaluate(() => { if (!$('reader').hidden) $('docClose').click(); });
+        seen(await look(4, 6), 'once it is shut again', 'the fridge on the wall nearest the camera');
+        /* the camera turned to the north: the fridge is behind him and solid, as ever; opened and shut there, after all of it, its colour still takes the time of day */
+        await sp.evaluate(() => { T3.turn = null; T3.yaw = Math.PI; });
+        N = await look(4, 6);
+        if (!N) say('with the camera turned to the north, the fridge on the wall nearest the camera is not in the 3D picture at all');
+        else if (N.opacity !== '1' || !N.depth) say('with the camera turned to the north, the fridge behind him is see-through (its opacity ' + N.opacity + '), where nothing is in the way and it is solid');
+        const op = await sp.evaluate(() => { $('read').click(); const o = kitNow ? KITWALL[world].places[kitNow.i].id : null; if (!$('reader').hidden) $('docClose').click(); return o; });
+        N = await look(4, 6);
+        if (op !== 'nf') say('with the camera turned to the north, the slot in front of the fridge did not open it (it opened ' + JSON.stringify(op) + '), so its colour once built again was not asked');
+        else if (!N) say('opened and shut with the camera turned to the north, the fridge on the wall nearest the camera is not in the 3D picture at all');
+        else if (!N.lit) say('the fridge on the wall nearest the camera, see-through while it was in the camera\'s way and opened and shut since, wears a colour the time of day no longer reaches: at dusk and at night it keeps the light it had');
+        /* and in the kitchen along four walls, the piece the tap put on its third side wall, as he stands behind it */
+        if (T0.four === null) {
+          await sp.evaluate(() => { window.__go('__kit_four', 5, 5, 'down', '3d'); T3.turn = null; T3.yaw = 0; });
+          seen(await look(5, 6), 'in the kitchen along four walls, as he stands behind it', 'the piece on its third side wall');
+        }
+      }
+      console.log('  COUNT-ONLY: the kitchen along four walls: the rules on a third side wall, ' + T0.out.length + ' bad kitchens along four walls each refused whole, the lower cupboards tapped onto the third side wall, kept and laid again there, facing the room; and ' + (T0.has3 ? 'the fridge in the 3D camera\'s way seen through as he arrives, found and opened by a tap, shut, solid with the camera turned, and its colour after' : 'no 3D camera in this shell, so nothing in its way') + ' (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
+    } catch (e) { if (typeof e === 'string') say(e); else say('the kitchen along four walls could not be driven to the end, so it measured nothing after: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' ')); }
+    sErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
+    await sp.close();
+    fails.push(...SW.map(m => 'the kitchen along four walls (2026-11-11): ' + m));
   }
 
   /* ---- A PARK DOG RUNS THE COURSE ITS OWN PARK LAYS DOWN, AND NO OTHER ----

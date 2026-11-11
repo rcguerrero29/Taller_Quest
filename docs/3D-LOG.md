@@ -1345,6 +1345,9 @@ to `engine/engine.js`, each a thing a world may ask for; Meridian declares no ki
 
 ### 2026-11-01 · sprint 7: a kitchen along more than one wall (an L or a U), and every place that keeps things given an id
 
+*(From 2026-11-11 a kitchen may have up to three side walls, so it may stand along all four walls of a room: that day's entry,
+below. What follows is sprint 7 as it was built, with two side walls at most.)*
+
 His confirmed goals of 2026-10-31 (a thing in hand put in a piece just added; L- and U-shaped kitchens, along walls only) and
 of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wall, the arrows, the line at a wall's end);
 `GAMEV` and `CACHE` mq-v246. Meridian declares no kitchen and none of this reaches it.
@@ -1356,9 +1359,9 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   handed; the same layout gets the same ids every time, so what is kept by them stays with them until the world keeps the layout
   again. A layout with no things (My kitchen's kind) is given none.
 - **Side walls** (`engine/kitchen.js`, `SIDE WALLS`; `engine/kitchen-room.js`, grep `THE SIDE WALLS`). On a wall with gaps a layout may
-  name up to two side walls, `sides: [{squares: [[x,y], …], face}]`, `face` one of north, south, east, west; a place on one says
+  name up to two side walls (three from 2026-11-11), `sides: [{squares: [[x,y], …], face}]`, `face` one of north, south, east, west; a place on one says
   `side`, its index, and `col` along that wall's own squares. The check refuses, whole and in one sentence, side walls with gaps
-  off, more than two, a key a side wall does not have, a facing off the list, no squares, a square off the map or not `◧` or named
+  off, more than two (more than three from 2026-11-11), a key a side wall does not have, a facing off the list, no squares, a square off the map or not `◧` or named
   by any wall already, more than 40 squares in all, a place on a side wall there is none of, or past its squares. Inside the
   engine a side wall's columns are numbered on past the back wall's, so everything that finds a place's square (Open, the tap,
   the swing, the things, the frame, the empty line, Close, full screen) works on them unchanged; what the rules and the world are
@@ -1531,3 +1534,53 @@ of 2026-11-01 (sprint 7: a tap on any empty square of the back wall or a side wa
   standing) and El Horno's 38.
 - **Not done:** the gate reads the engine's calls of `t3MeshOf` as text (a call in a comment is skipped by a simple rule); the
   fit (`kitReach`) still names each primitive's sizes, and that it counts every size is held by the suite, not by the code.
+
+### 2026-11-11 · a kitchen along all four walls of a room, and the column in the camera's way that stays see-through when it is built again
+
+A kitchen may stand along all four walls of a room: its back wall and three side walls, the third the wall nearest the
+camera. A column on that wall stands between the 3D camera and the person you steer whenever he works at it, so it is drawn
+see-through there, as a tree is. `GAMEV` and `CACHE` mq-v258. Meridian declares no kitchen and none of this reaches it.
+
+- **Three side walls** (`engine/kitchen-room.js`, `KITSIDES`, grep `THE SIDE WALLS`; `engine/kitchen.js`, `SIDESMOST` in `SIDE WALLS`).
+  Both limits go from two to three, and nothing else about a side wall changes: only with gaps on, each its squares in order
+  and the way it faces from the closed list, every square named once, the walls and the free squares at most 40 together,
+  along walls only, no island. The check counts the side walls before it reads a square of any, so a fourth is refused for
+  its number. The builder, the rules, the facing, the store and the swing already worked for any number of side walls
+  (sprint 7 numbers every side wall's columns on past the back wall's); the two numbers alone held them to two. A corner
+  between two side walls is on neither wall's list, as the corner beside the back wall is.
+- **Measured before the change**, in the engine test's own corner kitchen (`__s8_corner`, grep `AT A CORNER` in
+  `test/engine.smoke.js`) with the camera turned so a column stood between it and him, and in a kitchen along the south wall
+  with the camera as a room opens: a kitchen column in the camera's way was never cut down to a stub nor left solid when the
+  room was built or he stepped behind it. It went to glass at `T3GHOST` (0.68), writing no depth and drawn after the people,
+  by the rule a tree goes by (`t3Reveal`, `t3Near`: a mesh tile is not one of the wall-like pieces, and stands at least a tile
+  tall). But the moment it was built again where it stands (its doors swinging open or shut, the gold frame drawn round it at
+  a corner, the builder's pick, a thing put in it: `t3Reshape`), it came back solid, opacity 1, writing depth and drawn before
+  him, and stayed so until he stepped to another square. The camera's list of what is in its way (`T3.near`, worked out again
+  only when he moves or the camera turns) still held the old mesh; the new one took the old one's `userData`, so `t3Reveal`
+  dressed it in the old piece's solid material; and a second rebuild disposed that material and took it out of the time of
+  day's wash while the piece still wore it.
+- **Fixed** (`engine/engine3d.js`, grep `A PIECE BUILT AGAIN IN THE CAMERA'S WAY`). `t3Reshape` puts the new mesh in the old one's
+  place among the pieces in the camera's way and lets the old piece's solid and glass materials go with the old piece, so the
+  new piece's glass is made from its own material on the next frame, as any piece's is. `t3Reveal`, `t3Near`, `T3GHOST` and the
+  stub are untouched: a column in the camera's way is glass at 0.68 as a tree is, stays in its square, keeps its shape, and a
+  tap's ray finds it. Only the kitchen builds a piece again, so a world with none is untouched. The rule is in
+  `docs/NEW-WORLD.md` §3⅔.
+- **Measured, red first** (`test/engine.smoke.js`, grep `THE KITCHEN ALONG FOUR WALLS`). On the tree as it stood, with only the test
+  new, the block is red in eleven sentences, among them "a kitchen along the back wall and three side walls, the third the wall
+  nearest the camera, was refused (it has 3 side walls, and a kitchen has at most 2), so no piece could be tapped onto its
+  third side wall"; "moveTo onto the third side wall's fourth square put the lower cupboards at "there is no side wall "2" in a
+  layout with 2""; "once it is opened (its door swung, so its column was built again where it stands), the fridge on the wall
+  nearest the camera between the camera and him is drawn solid (its opacity 1, hiding what stands behind it), where it is
+  see-through at 0.68, as a tree is"; the same once it is shut again; and the fridge wearing "a colour the time of day no longer
+  reaches". As he arrives behind it, it was see-through then too, as measured. The sprint 7 block's refusal of three side walls
+  is now its refusal of four. Then seven faults, each planted in a copy of the tree outside the repository and each red in its
+  own sentence: the check's limit at two; the rules' limit at two ("a tap on the third side wall's empty square (5,6), with the
+  lower cupboards picked, left them at (4,1), the builder saying "there is no side wall "2" in a layout with 2""); the new piece
+  not put in the old one's place in the camera's way (solid once opened, and once shut); the old piece's two materials kept on
+  the new one (the colour); a kitchen column cut down to a stub as a wall is; a tap's ray that passes through a see-through
+  piece; and the glass drawn before the people. Unplanted, green.
+- **Not done.** No corner piece and no island, as before. Which wall is nearest the camera is the camera's, not the kitchen's:
+  the engine keeps no order among side walls, the camera turns, and a column on any wall is glass whenever it is in the way.
+  Seen from the camera as a room opens, the room's own wall behind a kitchen on the south wall (a `#` wall stands 1.10, the
+  kitchen 1.00) still covers the lower half of that kitchen: the wall is not in his way, so it is not cut down, and a tap there
+  finds the wall (the test taps the fridge's top). No phone measured.

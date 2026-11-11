@@ -869,7 +869,8 @@ const SHAPES=(function(){
      is: [{kind, open, finish}], open from 0 to 1 and the finish's name as every piece reads them (a place with no finish
      is handed none, so its piece is built exactly as before there were finishes). Each part says which place it belongs to (`place`, its
      index in `places`), as a door says it is a door, so the suite can tell the pieces apart in one square. `face` (sprint 7):
-     a column on a side wall of an L or a U is handed its wall's way, `north`, `south`, `east` or `west`, and every piece in
+     a column on a side wall (an L, a U, or, from 2026-11-11, a kitchen along all four walls: up to three side walls) is
+     handed its wall's way, `north`, `south`, `east` or `west`, and every piece in
      it is turned to face the room that way, its back on that wall; a back wall's column is handed none, and its pieces read
      the map as they always did. A kind the
      library has no piece for, or a page with no `KITCHEN`, builds nothing for that place. */
