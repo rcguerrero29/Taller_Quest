@@ -13383,13 +13383,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             camSet('3d'); sizeCanvas(); T3.turn = null; dir = 'down'; moving = false; held = null;
             if (!draw3d() || T3.fail) return { cannot: true };
             const c3 = T3.renderer.domElement; if (!c3.width) return { none: 'the 3D canvas has no size' };
-            const dp = drawPerson, keep = look.outfit;
+            /* IN A WORLD THAT TAKES THE JOINTED BODY he is his body up close, and no card: the frame without him holds the body
+               off as well as his card, or "the pixels he covers" would be whatever two frames of the same body differ by */
+            const dp = drawPerson, keep = look.outfit, kb = typeof t3Body === 'function' ? t3Body : null;
             const shot = () => { if (!draw3d() || T3.fail) return null; T3.renderer.render(T3.scene, T3.cam); const c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
               const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
             const ne = (a, b, i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30;
             return A.still(() => { try {
               drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero) return; return dp.apply(this, arguments); };
-              const none = shot(); drawPerson = dp;
+              if (kb) t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; };
+              const none = shot(); drawPerson = dp; if (kb) t3Body = kb;
               look.outfit = 'casual'; const a = shot(), a2 = shot(); look.outfit = 'apron'; const b = shot();
               if (!none || !a || !a2 || !b) return { none: 'the 3D camera did not draw the room' };
               let foot = 0, noise = 0, moved = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
@@ -13405,7 +13408,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               let op = 1; for (let e = c3; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
               return { foot, noise, moved, wide: x1 >= x0 ? x1 - x0 + 1 : 0, kx, ky, on, box: [r.width, r.height], screen: [innerWidth, innerHeight],
                 top: top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') : 'nothing', vis: st.visibility, op };
-            } finally { drawPerson = dp; look.outfit = keep; } }); });
+            } finally { drawPerson = dp; if (kb) t3Body = kb; look.outfit = keep; } }); });
           if (!began) say(0, 'on a phone the world is still hidden 2.4 seconds after Begin, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
           else if (room.cannot) no3d('the 3D camera cannot draw the room on this page (it fell back to the flat one)', 'the apron was not looked at in the 3D room');
           else if (room.none) say(0, 'in the 3D room ' + room.none + ', so the apron was not looked at there, which is not a pass');
