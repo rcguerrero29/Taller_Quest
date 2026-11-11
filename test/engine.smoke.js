@@ -13634,15 +13634,35 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (leg > 25) P.push('walking, his legs reach ' + Math.round(leg) + ' degrees from straight down, a run\'s stride, not a walk\'s'); }
             /* C · A WALL BETWEEN HIM AND THE CAMERA DOES NOT HIDE HIM, as it never hides his card: his parts painted one colour
                    for a frame, counted on the screen with no wall, then with a wall-sized block standing between him and the
-                   camera, taller than the line from the camera over his head. */
-            { const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden };
+                   camera, taller than the line from the camera over his head.
+                   AND THE STREET AROUND HIM STAYS: each of those two frames is drawn again from the same camera with his card
+                   standing in place of his body (the engine's own choice of card or body is held to the card for that frame), and
+                   outside a box round his outline, every pixel of the street the card's frame shows must show the same in the
+                   body's. Measured against the card's frame, not against "how much of the screen is one flat colour": a small
+                   room in a big dark screen is mostly one flat colour with nothing wrong (the gauge's 3D world, 1%).
+                   THE CLOCK READS NOON for these frames: after half past eight at night the engine's night tint darkens his
+                   paint below what is counted as his, and the check went red by the hour (found 2026-11-11, 20:30). */
+            { const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden }, kb = t3Body, RD = Date;
+              Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(12, 0, 0, 0)); };
+              Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
               const bases = []; B.traverse(o => { if (o.isMesh && o.userData.base) { bases.push([o, o.userData.base]); o.userData.base = new THREE.Color('#FF00FF'); } });
-              let wall = null, street = 1;
-              const count = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
-                gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); let n = 0, st = 0;
-                for (let i = 0; i < px.length; i += 4) if (px[i] > 120 && px[i + 2] > 120 && px[i + 1] < 70) n++;
-                  else if (Math.abs(px[i] - px[0]) + Math.abs(px[i + 1] - px[1]) + Math.abs(px[i + 2] - px[2]) > 30) st++;
-                street = Math.min(street, st / (W * H)); return n; };
+              let wall = null, kept = 1;
+              const grab = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
+                gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
+              const mine = (px, i) => px[i] > 120 && px[i + 2] > 120 && px[i + 1] < 70;
+              const near = (a, b, i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) <= 30;
+              const count = () => { const A = grab();
+                t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; };
+                let C; try { C = grab(); } finally { t3Body = kb; t3Body(); }
+                const { W, H } = A; let n = 0, x0 = W, x1 = -1, y0 = H, y1 = -1;
+                for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (mine(A.px, (y * W + x) * 4)) { n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+                const mw = x1 - x0 + 1, mh = y1 - y0 + 1, bx0 = x0 - mw, bx1 = x1 + mw, by0 = y0 - mh / 2, by1 = y1 + mh / 2;
+                let st = 0, same = 0;
+                for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (n && x >= bx0 && x <= bx1 && y >= by0 && y <= by1) continue;
+                  const i = (y * W + x) * 4;
+                  if (Math.abs(C.px[i] - C.px[0]) + Math.abs(C.px[i + 1] - C.px[1]) + Math.abs(C.px[i + 2] - C.px[2]) <= 30) continue;
+                  st++; if (near(A.px, C.px, i)) same++; }
+                if (st >= 50) kept = Math.min(kept, same / st); return n; };
               try { wEl.hidden = false; camSet('3d'); sizeCanvas();
                 const n0 = count(), c = T3.cam.position, b = B.position, dx = c.x - b.x, dz = c.z - b.z, dl = Math.hypot(dx, dz), t = 0.7;
                 const hgt = 1.0 + (c.y - 1.0) * t / dl + 0.2;
@@ -13651,8 +13671,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const n1 = count();
                 if (n0 < 50) P.push('with nothing between him and the camera, his body could not be found on the screen (' + n0 + ' pixels), so behind a wall was not asked');
                 else if (n1 < n0 * 0.6) P.push('with a wall between him and the camera his body is hidden: ' + n1 + ' of his ' + n0 + ' pixels show, where his card is never hidden by a wall');
-                if (street < 0.1) P.push('with his body up close, the street around him is gone from the screen: ' + Math.round(street * 100) + '% of it is anything but one flat colour');
-              } finally { if (wall) { T3.scene.remove(wall); wall.geometry.dispose(); wall.material.dispose(); }
+                if (kept < 0.9) P.push('with his body up close, the street around him is gone from the screen: away from him, ' + Math.round(kept * 100) + '% of what the camera shows round his card still shows round his body');
+              } finally { t3Body = kb; Date = RD; if (wall) { T3.scene.remove(wall); wall.geometry.dispose(); wall.material.dispose(); }
                 bases.forEach(([o, c]) => { o.userData.base = c; }); camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; } }
             /* far from the focus, and the edge, standing still */
             t3BodyPose(B, 0, false);
