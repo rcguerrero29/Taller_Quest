@@ -13646,7 +13646,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(12, 0, 0, 0)); };
               Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
               const bases = []; B.traverse(o => { if (o.isMesh && o.userData.base) { bases.push([o, o.userData.base]); o.userData.base = new THREE.Color('#FF00FF'); } });
-              let wall = null, kept = 1;
+              let wall = null, kept = 1, asked = 0;
               const grab = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
                 gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
               const mine = (px, i) => px[i] > 120 && px[i + 2] > 120 && px[i + 1] < 70;
@@ -13662,7 +13662,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const i = (y * W + x) * 4;
                   if (Math.abs(C.px[i] - C.px[0]) + Math.abs(C.px[i + 1] - C.px[1]) + Math.abs(C.px[i + 2] - C.px[2]) <= 30) continue;
                   st++; if (near(A.px, C.px, i)) same++; }
-                if (st >= 50) kept = Math.min(kept, same / st); return n; };
+                if (st >= 50) { asked++; kept = Math.min(kept, same / st); } return n; };
               try { wEl.hidden = false; camSet('3d'); sizeCanvas();
                 const n0 = count(), c = T3.cam.position, b = B.position, dx = c.x - b.x, dz = c.z - b.z, dl = Math.hypot(dx, dz), t = 0.7;
                 const hgt = 1.0 + (c.y - 1.0) * t / dl + 0.2;
@@ -13671,6 +13671,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const n1 = count();
                 if (n0 < 50) P.push('with nothing between him and the camera, his body could not be found on the screen (' + n0 + ' pixels), so behind a wall was not asked');
                 else if (n1 < n0 * 0.6) P.push('with a wall between him and the camera his body is hidden: ' + n1 + ' of his ' + n0 + ' pixels show, where his card is never hidden by a wall');
+                if (!asked) P.push('with his body up close, whether the street around him stays could not be asked: away from him, his card\'s frame shows fewer than 50 pixels of street, with a wall and without');
                 if (kept < 0.9) P.push('with his body up close, the street around him is gone from the screen: away from him, ' + Math.round(kept * 100) + '% of what the camera shows round his card still shows round his body');
               } finally { t3Body = kb; Date = RD; if (wall) { T3.scene.remove(wall); wall.geometry.dispose(); wall.material.dispose(); }
                 bases.forEach(([o, c]) => { o.userData.base = c; }); camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; } }
