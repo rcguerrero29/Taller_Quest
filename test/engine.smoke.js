@@ -13498,9 +13498,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
            swinging; far from the focus, the card back and the body gone; and standing still at the edge, no flicker
            between the two. Red on mq-v258, which had no body, in the second part.
        mq-v260, in the second part too, three things a person sees in the first picture: beside a drawn card his head is
-       the card's share of his height; walked along by distance a hundredth of a square at a time, a foot that is down
-       stays where it was put and the swing is a walk's; and a wall-sized block between him and the camera does not hide
-       him, while the street around him is still drawn. Red on mq-v259 in the head, the sliding foot and the wall. */
+       the card's share of his height; walked along at the game's speed and slowly, a person's pace of steps a second
+       (BODYSTEPS), always a foot on the ground and none in it, and the swing a walk's; and a wall-sized block between him and the camera does not hide
+       him, while the street around him is still drawn. Red on mq-v259 in the head and the wall, and on the first mq-v260 (pace by distance alone) in the steps a second. */
   {
     const BP = [], BN = [];
     const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
@@ -13602,27 +13602,34 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const his = (hd.max.y - hd.min.y) / (all.max.y - all.min.y);
               if (!(card > 0.2 && card < 0.8)) P.push('a drawn card of a person could not be measured: its head came out as ' + Math.round(card * 100) + '% of its height');
               else if (Math.abs(his / card - 1) > 0.1) P.push('beside the other people\'s cards his head is ' + (his < card ? 'small' : 'big') + ': ' + Math.round(his * 100) + '% of his height, where a card\'s head is ' + Math.round(card * 100) + '% of its own, so he reads as another style'); }
-            /* B · A FOOT THAT IS DOWN STAYS WHERE IT WAS PUT, and the swing is a walk's: he is walked 2.5 squares to the right in
-                   steps of a hundredth of a square, each step a frame of the 3D camera's body (t3Body), with no clock moving;
-                   while a sole is on the ground it may not move along it, each foot is set down and lifted, and his upper arms
-                   and his legs (hip to ankle) swing no wider than a walk's: 20 and 25 degrees from hanging straight down. */
-            { const x0 = fx, y0 = fy, soles = [], down = [false, false], from = [null, null], slip = [0, 0], plants = [0, 0], lifts = [0, 0];
-              let arm = 0, leg = 0;
+            /* B · A PERSON'S PACE, AT ANY SPEED, and the swing is a walk's: he is walked to the right, each frame of the 3D
+                   camera's body (t3Body) handed the distance covered and the time it took, with no clock moving — at the
+                   game's speed (a square a quarter second) for 2 seconds, and slowly (a square every 5 seconds) for 6. His
+                   steps are counted as a person counts them, a foot set down; at the game's speed no more than 5
+                   a second, slowly no fewer than 2; at every frame one foot or the other is on the ground and no
+                   foot goes into it; and his upper arms and his legs (hip to ankle) swing no wider than a walk's: 20 and 25
+                   degrees from hanging straight down. A foot may glide a little while it is down: that is the price of the
+                   pace, chosen over a flutter. */
+            { const x0 = fx, y0 = fy, lim = [2, 5];   /* a person's, held here and not read off the engine, so an engine that drops its limits cannot lower the bar */
+              let arm = 0, leg = 0, air = 0, sunk = 0;
               const ang = (a, b) => { const p = at(a), q = at(b); return Math.atan2(Math.abs(q.x - p.x), Math.abs(q.y - p.y)) * 180 / Math.PI; };
-              dir = 'right'; moving = true;
-              try {
-                for (let k = 0; k <= 250; k++) { fx = x0 + k * 0.01; fy = y0; t3Body();
-                  feet.forEach((f, i) => { f.updateWorldMatrix(true, false); const b = new THREE.Box3().setFromObject(f), c = b.getCenter(new THREE.Vector3());
-                    const isDown = b.min.y - B.position.y < 0.004;
-                    if (isDown && !down[i]) { from[i] = c; plants[i]++; }
-                    else if (isDown) slip[i] = Math.max(slip[i], Math.hypot(c.x - from[i].x, c.z - from[i].z));
-                    else if (down[i]) lifts[i]++;
-                    down[i] = isDown; });
+              const walk = (v, secs) => { const dt = 1 / 240, down = [false, false]; let steps = 0;
+                fx = x0; fy = y0; t3Body(dt);
+                for (let k = 1; k <= secs / dt; k++) { fx = x0 + k * v * dt; t3Body(dt);
+                  const h = feet.map(f => { f.updateWorldMatrix(true, false); return new THREE.Box3().setFromObject(f).min.y - B.position.y; });
+                  h.forEach((y, i) => { const isDown = y < 0.004; if (isDown && !down[i] && k > 1) steps++; down[i] = isDown; if (y < -0.01) sunk++; });
+                  if (Math.min(...h) >= 0.004) air++;
                   arm = Math.max(arm, ang('shoulder_l', 'elbow_l'), ang('shoulder_r', 'elbow_r'));
                   leg = Math.max(leg, ang('upleg_l', 'ankle_l'), ang('upleg_r', 'ankle_r')); }
-              } finally { fx = x0; fy = y0; dir = 'down'; moving = false; t3Body(); }
-              slip.forEach((v, i) => { if (v > 0.01) P.push('walking, his ' + (i ? 'right' : 'left') + ' foot slides ' + v.toFixed(2) + ' of a square along the ground while it is down, so he skates instead of stepping'); });
-              if (!plants.every(n => n >= 2) || !lifts.every(n => n >= 2)) P.push('walked 2.5 squares, his feet are not each set down and lifted again (set down ' + plants.join(' and ') + ' times, lifted ' + lifts.join(' and ') + '), so the walk does not keep pace with the ground he covers');
+                return steps / secs; };
+              dir = 'right'; moving = true;
+              let quick = 0, slow = 0;
+              try { quick = walk(4, 2); slow = walk(0.2, 6); }
+              finally { fx = x0; fy = y0; dir = 'down'; moving = false; t3Body(); }
+              if (quick > lim[1] + 0.5) P.push('walking at the game\'s speed, a square a quarter second, he takes ' + quick.toFixed(1) + ' steps a second, a flutter, where a person takes no more than ' + lim[1]);
+              if (slow < lim[0] - 0.5) P.push('walking slowly, a square every 5 seconds, he takes ' + slow.toFixed(1) + ' steps a second, where a person walking takes no fewer than ' + lim[0]);
+              if (air) P.push('walking along, both feet are off the ground at once in ' + air + ' frame(s), so he floats instead of walking');
+              if (sunk) P.push('walking along, a foot goes into the ground in ' + sunk + ' frame(s)');
               if (arm > 20) P.push('walking, his arms swing ' + Math.round(arm) + ' degrees from hanging straight down, a run\'s swing, not a walk\'s');
               if (leg > 25) P.push('walking, his legs reach ' + Math.round(leg) + ' degrees from straight down, a run\'s stride, not a walk\'s'); }
             /* C · A WALL BETWEEN HIM AND THE CAMERA DOES NOT HIDE HIM, as it never hides his card: his parts painted one colour
@@ -13657,7 +13664,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             away(0); const fromNear = [away(edge), away(edge), away(edge)];
             if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
             if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
-            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a foot that is down staying put as he walks, seen through a wall, and is his card again past ' + BODYNEAR + ' squares');
+            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, and is his card again past ' + BODYNEAR + ' squares');
           } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
           return { P, N }; }, [JOINTS, String(shows)]);
         R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));

@@ -1288,11 +1288,13 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
        leg reaches for a foot target in front of or behind its hip, lifted while it swings forward, and is bent at the knee by
        two-bone solving so the ankle lands on it, and the ankle turned back so the foot lies flat; the arms swing against the
        legs. Standing, everything rests. The ground is asked of the engine under each foot (stairLift), so a slope can come later.
-   mq-v260: his head is as large a share of his height as a card's (the skeleton's `head`), the walk's pace is the distance
-   he covers so a foot that is down stays put, and he is shown through walls as his card is (t3BodyThrough).
+   mq-v260: his head is as large a share of his height as a card's (the skeleton's `head`), the walk's pace follows his speed,
+   held between BODYSTEPS steps a second (a foot may glide a little), and he is shown through walls as his card is (t3BodyThrough).
    NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, and hair styles past a cap of hair. */
 const BODYNEAR=3;      /* squares from the camera's focus within which the person you steer is a body, not a card */
-const BODYHYST=0.5;    /* and he becomes the card again only past BODYNEAR + this, so standing at the edge never flickers */
+const BODYHYST=0.5;
+const BODYSTEPS=[2,5]; /* steps a second, fewest and most (mq-v260): his pace follows his speed but stays a person's, so a quick walk on
+                          short legs is a brisk step and the feet glide a little, never a flutter of twenty steps a second */    /* and he becomes the card again only past BODYNEAR + this, so standing at the edge never flickers */
 const SKELETONS={
   person:{
     joints:{   /* name: [parent, rest x, y, z] — a person of about 0.93 squares, as tall as his card draws him, and built as his card
@@ -1306,7 +1308,7 @@ const SKELETONS={
     legs:[["upleg_l","knee_l","ankle_l",0],["upleg_r","knee_r","ankle_r",Math.PI]],   /* hip, knee, ankle, and where in the cycle */
     arms:[["shoulder_l","elbow_l",Math.PI],["shoulder_r","elbow_r",0]],              /* each arm swings with the other side's leg */
     /* a walk's, not a run's (mq-v260): a foot reaches `stride` ahead of its hip and is set down there, and while it is down it
-       goes back exactly as far as he goes forward, so it stays where it was put; the arms swing `swing` radians at most */
+       goes back a stride's length each step (the steps a second held between BODYSTEPS); the arms swing `swing` radians at most */
     stride:0.09, lift:0.025, drop:0.022, swing:0.3}};
 const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
 /* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there */
@@ -1360,7 +1362,7 @@ function t3BodyPose(B,phase,moving,groundAt){
     const ps=phase+off,L1=-S.joints[kn][2],L2=-S.joints[an][2];
     const H=J[hp].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);   /* the hip, in the body's own frame */
     /* the foot swings forward while cos > 0, then is down for the other half, going back in step with the phase, which
-       moves with the distance he covers (t3Body): so a foot that is down stays where it was put */
+       follows his speed held between BODYSTEPS (t3Body): so a foot that is down stays put at a slow walk, glides a little at a quick one */
     const u=((ps%(2*Math.PI))+2*Math.PI)%(2*Math.PI),down=u>=Math.PI/2&&u<=Math.PI*1.5;
     const fz=moving?(down?S.stride*(1-2*(u-Math.PI/2)/Math.PI):S.stride*Math.sin(ps)):0,lift=moving&&!down?S.lift*Math.cos(ps):0;
     const w=new THREE.Vector3(H.x,0,fz).applyMatrix4(B.matrixWorld),g=(gnd(w.x,w.z)-B.position.y)/sc;
@@ -1374,7 +1376,7 @@ function t3BodyPose(B,phase,moving,groundAt){
   B.updateWorldMatrix(true,true);}
 /* each frame: is the person you steer a body here, and if he is, where he stands, which way he faces and how he steps.
    True when the body stands, so the card is not drawn as well (t3Actors) */
-function t3Body(){
+function t3Body(dt){
   if(!BODYON){T3.bodyOn=false;return false;}
   const[qx,qy]=focusXY(),d=Math.hypot(fx-qx,fy-qy);
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
@@ -1383,10 +1385,13 @@ function t3Body(){
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
   if(!T3.body){T3.body=bodyMake(bodySkeleton("person"),look);T3.body.userData.key=key;T3.scene.add(T3.body);}
   const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1],S=B.userData.skel,sc=T3PERSON/0.92;
-  /* THE WALK'S PACE IS THE DISTANCE HE COVERS (mq-v260), never the clock: a foot is down for half a cycle and goes back
-     2 strides in it, so a cycle is 4 strides of ground. A jump (a door, a warp) is not walked */
+  /* THE WALK'S PACE FOLLOWS HIS SPEED, HELD TO A PERSON'S (mq-v260): the distance he covered and the time it took are handed
+     in (dt, seconds, from draw3d), never read here. A cycle is 2 steps; the steps a second that would keep a planted foot
+     still (4 strides of ground a cycle) are held between BODYSTEPS, so at the game's speed a foot glides a little instead of
+     fluttering. A jump (a door, a warp) is not walked, and no time handed in is no step */
   const at=B.userData.at,go=at?Math.hypot(fx-at[0],fy-at[1]):0;B.userData.at=[fx,fy];
-  if(moving&&go<1)B.userData.phase=(B.userData.phase||0)+go*Math.PI/(2*S.stride*sc);
+  if(moving&&go>0&&go<1&&dt>0){const n=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
+    B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
   B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(sc);
   B.traverse(o=>{if(o.isMesh&&o.userData.base)o.material.color.copy(o.userData.base).multiply(T3.tint);});
   t3BodyPose(B,B.userData.phase||0,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
@@ -1549,7 +1554,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Glow();
     t3Reveal();
     t3Trolley();   /* the car first: the people ask where it stands (t3Actors, tramBetween) */
-    t3Body();      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
+    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
     t3Actors();
     t3DroneMarks();
     t3Petals();

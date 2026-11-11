@@ -1618,3 +1618,5 @@ see-through there, as a tree is. `GAMEV` and `CACHE` mq-v258. Meridian declares 
 - **Not done.** The pace is honest and fast: the game steps a square in a quarter second, and a stride a walk's angles allow on
   legs this short covers about a third of a square a cycle, so up close at full speed he takes about 23 steps a second. A
   calm walk at that speed needs the person to move slower up close, or longer legs than a card's; neither was asked here.
+- **Then, a natural pace** (the owner's decision: proportions kept, feet may glide): steps a second follow his speed, held between `BODYSTEPS` (2 and 5), from the distance and time handed to `t3Body`, never the clock inside the pose; standing, he rests as before.
+- **Measured, red first** on the first mq-v260: at the game's speed about 23 steps a second where 5 is the most; slowly, under 2; a foot always down and none in the ground. A copy with the limits removed is red in the upper sentence.
