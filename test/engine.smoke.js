@@ -13590,7 +13590,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             away(0); const fromNear = [away(edge), away(edge), away(edge)];
             if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
             if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
-            N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, feet on the ground standing and through a walk cycle swept in 48 steps, and is his card again past ' + BODYNEAR + ' squares');
+            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, feet on the ground standing and through a walk cycle swept in 48 steps, and is his card again past ' + BODYNEAR + ' squares');
           } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
           return { P, N }; }, [JOINTS, String(shows)]);
         R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
