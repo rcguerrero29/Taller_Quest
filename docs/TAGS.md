@@ -66,6 +66,7 @@ complaint: it is why nobody can write a validator, a form, or a document that sa
 | Kitchen layout | pack `KITCHENWALLS` (by room) or `kitchenLay(room, layout)`; `engine/engine.js`, grep `THE KITCHEN LAYOUT` | `wall` `free` `places` `page` `store` `gaps` `things` `keep`; a place's `kind` `row` `col` `name` `full` `finish` `id`; a thing's `id` `n` `name` `parts` `stand` `pic`; **closed**: any other key refuses the layout whole, and a thing off its list is refused whole — registered below |
 | Camera zoom | pack `CAMZOOM`; `engine/engine.js`, grep `THE CAMERA'S ZOOM` | `true` or `{min, max}`, each a number held to `0.4`–`2`; unset is no zoom — registered below |
 | Outfit | a look's `outfit`; pack `OUTFITTAKE`; `engine/engine.js`, grep `THE OUTFITS A WORLD TURNS ON` | `formal` for every world · `apron` on request, only where the world's `OUTFITTAKE` names it · every other word the everyday clothes; a list written wrong turns nothing on and is told once at boot, `CRIT outfit: …` in the console — registered below |
+| Body | pack `BODYTAKE`, `BODYREST`; `engine/engine3d.js`, grep `THE JOINTED BODY` (`SKELETONS`, `BODYNEAR`) | 1 skeleton, **only ever added to**: `person`, 19 joints (`hips spine chest neck head`, `shoulder elbow wrist` and `upleg knee ankle toe` each `_l` `_r`); turned on only where `BODYTAKE` names it; unset is the card — registered below |
 | Portal `mark` | `engine/engine.js:2919` | 1 named |
 | Chapter ids | `content/meridian/config.js:209–248` | 6 |
 | World ids | `content/meridian/maps.js:3` | 12 |
@@ -604,6 +605,14 @@ helper, and the person who hits it will be reading their content files, not `san
   lowest, by height as it stands after its turns, worked out once as it is built; both through the colour theme, one
   material for the time of day. It is a colour, not a size: the kitchen never makes it smaller. A part without it, and
   every world that writes none, is built exactly as before. `cb` collides with nothing already here.
+- **Registered 2026-11-11 — `BODYTAKE`, `BODYREST` and the skeleton `person`.** A list, `const BODYTAKE=["person"];`, in a
+  pack file the page loads before `engine/boot.js`, read once by its bare name as `OUTFITTAKE` is. Where it names `person`,
+  the person you steer, within `BODYNEAR` (3) squares of the 3D camera's focus, stands as a jointed body (`bodyMake`) on the
+  skeleton `SKELETONS.person`, and is his card again past `BODYNEAR` plus `BODYHYST` (half a square), so standing at the edge
+  never flickers. `BODYREST`, optional, moves a joint's rest place by hand: `{joint:[x,y,z]}`, squares from its parent, each
+  number under 1; anything else is ignored. The joint names are the skeleton's, and a skeleton is only ever added to.
+  Rule 2 passes: a body is a person's in any world. Saying nothing, or a list without `person`, is every person's card
+  exactly as before. `test/engine.smoke.js` (grep `THE PERSON YOU STEER STANDS AS A JOINTED BODY`) asks it.
 - **Registered 2026-11-10 — `OUTFITTAKE`, the outfits a world turns on, and the outfit word `apron`.** A list of outfit
   words, `const OUTFITTAKE=["apron"];`, in a pack file the page loads before `engine/boot.js`. Read once, as the engine
   loads, as `CAMERAS` is: a list declared in a file loaded after `engine/boot.js` is never seen, and nothing says so; and it is the world's own
