@@ -13485,6 +13485,122 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...AP, ...AN);
   }
 
+  /* ---- THE PERSON YOU STEER STANDS AS A JOINTED BODY, ONLY WHERE THE WORLD ASKS (mq-v259) ----
+     A world that names `person` in its own `BODYTAKE` list sees the person you steer, up close in the 3D camera, as a body of
+     rounded parts hung on a skeleton of named joints (engine/engine3d.js, grep "THE JOINTED BODY"); farther than BODYNEAR
+     squares from the camera's focus he is his card, as every other person is. Asked as a player would notice it, the walk
+     swept over a whole cycle by its phase (t3BodyPose), never by the clock:
+       1 · a world that says nothing (this one, unless it declares the list) draws his card in 3D, and no body;
+       2 · a page of this world with `const BODYTAKE=["person"];` in a pack file loaded before engine/boot.js, on a phone:
+           a body with every named joint and no card; his own skin, hair, shirt and trousers on the parts that wear them;
+           standing, both soles on the ground and level, side by side; through a walk cycle, no sole under the ground, both
+           feet level, at least one on the ground at every step, each lifting in turn, the knees bending and the arms
+           swinging; far from the focus, the card back and the body gone; and standing still at the edge, no flicker
+           between the two. Red on mq-v258, which had no body, in the second part. */
+  {
+    const BP = [], BN = [];
+    const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
+    const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'shoulder_l', 'elbow_l', 'wrist_l', 'shoulder_r', 'elbow_r', 'wrist_r',
+      'upleg_l', 'knee_l', 'ankle_l', 'toe_l', 'upleg_r', 'knee_r', 'ankle_r', 'toe_r'];
+    /* what the 3D camera shows of the person you steer this frame: his card, his body, and why not where it cannot draw */
+    const shows = () => { if (typeof T3 === 'undefined' || !window.THREE || (typeof CAMS !== 'undefined' && !CAMS.includes('3d'))) return { why: 'this shell has no 3D camera' };
+      const w = document.getElementById('world'), kw = { cam: camMode, hidden: w.hidden };
+      try { w.hidden = false; camSet('3d'); sizeCanvas();
+        if (!draw3d() || T3.fail) return { why: 'the 3D camera cannot draw on this page' };
+        const card = T3.pool.some(p => p.live && p.spr.visible && p.spr.userData.hero), b = T3.scene.getObjectByName('body');
+        return { card, body: !!(b && b.visible) };
+      } finally { camSet(kw.cam); sizeCanvas(); w.hidden = kw.hidden; } };
+    const on0 = await page.evaluate(() => typeof BODYTAKE === 'undefined' ? null : JSON.stringify(BODYTAKE));
+    /* ---- 1 · a world that says nothing ---- */
+    if (on0 !== null) say(1, 'this world declares BODYTAKE itself (' + on0 + '), so a world that says nothing was not asked here');
+    else { const s = await page.evaluate(`(${shows})()`);
+      if (s.why) say(1, s.why + ', so a world that says nothing was not asked in 3D');
+      else { if (!s.card) say(0, 'in a world that has not asked for the body, the person you steer has no card in the 3D camera');
+        if (s.body) say(0, 'in a world that has not asked for the body, the person you steer stands in 3D as a jointed body anyway'); } }
+    /* ---- 2 · a page that asks for it, as a world does, on a phone ---- */
+    const shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
+    const href = require('url').pathToFileURL(file).href, packAt = new URL('__bodytake.js', href).href;
+    if (!bootTag.test(shellHtml)) say(0, 'this shell loads no engine/boot.js, so the list could not be declared before the engine the way a world declares it');
+    else {
+      const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const bp = await bctx.newPage(), bErr = [];
+      bp.on('pageerror', e => bErr.push(e.message));
+      const doc = shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
+      await bctx.route('**', r => { const u = r.request().url();
+        if (u === href) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
+        if (u === packAt) return r.fulfill({ body: 'const BODYTAKE=["person"];\n', contentType: 'text/javascript; charset=utf-8' });
+        return u.startsWith('file://') ? r.continue() : r.abort(); });
+      try {
+        await bp.goto(href); await boot(bp);
+        const R = await bp.evaluate(([JOINTS, shows]) => { const P = [], N = []; const show = eval('(' + shows + ')');
+          const s0 = show(); if (s0.why) { N.push(s0.why + ', so the body was not asked for in 3D'); return { P, N }; }
+          const keep = { look: { ...look }, dir, moving, bob, fx, fy, px, py, fxy: focusXY };
+          try {
+            look = saveLook({ ...look, skin: '#C68E6A', hair: '#5A3A22', shirt: '#2F9E6E', outfit: 'casual' }); dir = 'down'; moving = false;
+            const s = show();
+            if (!s.body) { P.push('in a world that asks for the body, the person you steer, up close in the 3D camera, is still a flat card and no jointed body stands there'); return { P, N }; }
+            if (s.card) P.push('in a world that asks for the body, the person you steer is drawn twice up close: his card stands in the same place as his jointed body');
+            const B = T3.scene.getObjectByName('body'), V = new THREE.Vector3(), at = n => { const j = B.getObjectByName(n); j.updateWorldMatrix(true, false); return j.getWorldPosition(new THREE.Vector3()); };
+            const missing = JOINTS.filter(n => !B.getObjectByName(n));
+            if (missing.length) { P.push('his body has no joint named ' + missing.join(', ') + ', so it is not the skeleton a person is built on'); return { P, N }; }
+            /* his colours: each part says what it wears, and its colour is his */
+            const want = { skin: look.skin, hair: look.hair, shirt: look.shirt, trousers: '#2E3547' }, worn = {};
+            B.traverse(o => { if (o.isMesh && o.userData.wears) (worn[o.userData.wears] = worn[o.userData.wears] || []).push('#' + o.userData.base.getHexString()); });
+            Object.entries(want).forEach(([k, c]) => { const got = worn[k] || [];
+              if (!got.length) P.push('no part of his body wears his ' + k + ', so his ' + k + ' colour is lost up close');
+              else if (got.some(g => g.toLowerCase() !== c.toLowerCase())) P.push('his ' + k + ' is ' + [...new Set(got)].join(', ') + ' on his body, where his look says ' + c); });
+            /* the feet: the lowest point of each foot part against the ground under it, and whether it lies level */
+            const ground = 0, feet = ['l', 'r'].map(sd => B.getObjectByName('ankle_' + sd).children.find(o => o.isMesh && o.userData.wears === 'shoe'));
+            if (feet.some(f => !f)) { P.push('his body has no foot on one leg, so where he stands could not be measured'); return { P, N }; }
+            const sole = f => { f.updateWorldMatrix(true, false); return new THREE.Box3().setFromObject(f).min.y; };
+            const level = f => { const u = new THREE.Vector3(0, 1, 0).applyQuaternion(f.getWorldQuaternion(new THREE.Quaternion())); return u.y; };
+            const hipY = () => at('hips').y;
+            /* standing */
+            t3BodyPose(B, 0, false);
+            feet.forEach((f, i) => { const side = i ? 'right' : 'left', h = sole(f) - ground;
+              if (Math.abs(h) > 0.01) P.push('standing still, his ' + side + ' foot is ' + (h > 0 ? 'floating ' : 'sunk ') + Math.abs(h).toFixed(3) + ' of a square ' + (h > 0 ? 'above' : 'below') + ' the ground');
+              if (level(f) < 0.995) P.push('standing still, his ' + side + ' foot is tipped, not flat on the ground'); });
+            if (Math.abs(at('ankle_l').z - at('ankle_r').z) > 0.01) P.push('standing still, one foot is ahead of the other, as if he were caught mid-stride');
+            if (Math.abs(at('wrist_l').z - at('hips').z) > 0.04 || Math.abs(at('wrist_r').z - at('hips').z) > 0.04) P.push('standing still, his arms are not resting at his sides');
+            /* a walk cycle, swept by its phase */
+            const lift = [0, 0], zs = [[], []], wz = [], bends = [];
+            let below = 0, tipped = 0, flying = 0;
+            for (let k = 0; k < 48; k++) { const ph = k / 48 * Math.PI * 2; t3BodyPose(B, ph, true);
+              const h = feet.map(sole);
+              h.forEach((v, i) => { if (v < ground - 0.01) below++; lift[i] = Math.max(lift[i], v - ground); zs[i].push(at(i ? 'ankle_r' : 'ankle_l').z); });
+              if (feet.some(f => level(f) < 0.995)) tipped++;
+              if (Math.min(...h) > ground + 0.01) flying++;
+              wz.push(at('wrist_l').z);
+              const hp = at('upleg_l'), kn = at('knee_l'), an = at('ankle_l');
+              bends.push(hp.distanceTo(an) < hp.distanceTo(kn) + kn.distanceTo(an) - 0.005); }
+            if (below) P.push('walking, a foot goes into the ground ' + below + ' time(s) in a cycle of 48 steps');
+            if (tipped) P.push('walking, a foot is tipped instead of flat ' + tipped + ' time(s) in a cycle of 48 steps');
+            if (flying) P.push('walking, both feet are off the ground at once ' + flying + ' time(s) in a cycle of 48 steps, so he floats instead of walking');
+            lift.forEach((v, i) => { if (v < 0.02) P.push('walking, his ' + (i ? 'right' : 'left') + ' foot never leaves the ground, so it slides instead of stepping'); });
+            zs.forEach((z, i) => { if (Math.max(...z) - Math.min(...z) < 0.08) P.push('walking, his ' + (i ? 'right' : 'left') + ' leg does not swing'); });
+            if (Math.max(...wz) - Math.min(...wz) < 0.04) P.push('walking, his arms do not swing');
+            if (!bends.some(Boolean)) P.push('walking, his knees never bend: the legs are stiff poles');
+            /* far from the focus, and the edge, standing still */
+            t3BodyPose(B, 0, false);
+            const away = d => { focusXY = () => [fx + d, fy]; return show(); };
+            const far = away(BODYNEAR + 2);
+            if (!far.card) P.push('farther than ' + BODYNEAR + ' squares from where the camera looks, the person you steer has no card');
+            if (far.body) P.push('farther than ' + BODYNEAR + ' squares from where the camera looks, he is still a jointed body instead of his card');
+            const edge = BODYNEAR + 0.25, fromFar = [away(edge), away(edge), away(edge)];
+            away(0); const fromNear = [away(edge), away(edge), away(edge)];
+            if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
+            if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
+            N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, feet on the ground standing and through a walk cycle swept in 48 steps, and is his card again past ' + BODYNEAR + ' squares');
+          } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
+          return { P, N }; }, [JOINTS, String(shows)]);
+        R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
+        if (bErr.length) say(0, 'the page that asks for the body threw "' + bErr[0] + '"');
+      } catch (e) { say(0, 'the page that asks for the body could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+      await bctx.close();
+    }
+    fails.push(...BP, ...BN);
+  }
+
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
