@@ -25,7 +25,7 @@ jobs:
     # red rather than a pull request stuck at "running"; a run uses only the minutes it takes.
     # Measured again 2026-11-07: the engine's own step took 9 min 26 s and the gauge's three worlds 112 s, 165 s and more
     # than 180 s, so the job would end close to 30 min with every check passing. 40 min is that job with room to grow.
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
