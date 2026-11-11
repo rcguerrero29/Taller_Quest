@@ -13524,12 +13524,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* ---- 2 · a page that asks for it, as a world does, on a phone ---- */
     const shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
     const href = require('url').pathToFileURL(file).href, packAt = new URL('__bodytake.js', href).href;
+    /* A WORLD THAT DECLARES THE LIST ITSELF is asked as it stands: a second `const BODYTAKE` put before the engine would throw
+       "already declared" on its page. One whose own list does not name the person is not asked for the body here. */
+    let own = null; if (on0 !== null) { try { own = JSON.parse(on0); } catch (e) { own = String(on0); } }
     if (!bootTag.test(shellHtml)) say(0, 'this shell loads no engine/boot.js, so the list could not be declared before the engine the way a world declares it');
+    else if (on0 !== null && !(Array.isArray(own) && own.includes('person'))) say(1, 'this world\'s own BODYTAKE (' + on0 + ') does not name the person, so a world that asks for the body was not asked here');
     else {
       const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
       const bp = await bctx.newPage(), bErr = [];
       bp.on('pageerror', e => bErr.push(e.message));
-      const doc = shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
+      const doc = on0 !== null ? shellHtml : shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
       await bctx.route('**', r => { const u = r.request().url();
         if (u === href) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
         if (u === packAt) return r.fulfill({ body: 'const BODYTAKE=["person"];\n', contentType: 'text/javascript; charset=utf-8' });
