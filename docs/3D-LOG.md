@@ -1584,3 +1584,20 @@ see-through there, as a tree is. `GAMEV` and `CACHE` mq-v258. Meridian declares 
   Seen from the camera as a room opens, the room's own wall behind a kitchen on the south wall (a `#` wall stands 1.10, the
   kitchen 1.00) still covers the lower half of that kitchen: the wall is not in his way, so it is not cut down, and a tap there
   finds the wall (the test taps the fridge's top). No phone measured.
+
+### 2026-11-11 · the person you steer, up close, as a jointed body — first slice, only where a world asks
+- **Built** (`engine/engine3d.js`, grep `THE JOINTED BODY`). A world that names `person` in `BODYTAKE` sees the person it steers,
+  within `BODYNEAR` (3) squares of the camera's focus, as rounded parts in his own colours on a skeleton of 19 named joints
+  (`SKELETONS`, the one place they are kept; `BODYREST` moves one by hand). One maker, `bodyMake(skeleton, look)`, so a skinned
+  body can replace the parts later; one walk, `t3BodyPose(body, phase, moving)`, driven by the same `bob` the card walks by:
+  each leg reaches for a foot target, lifted while it swings, bent at the knee by two-bone solving onto the ground the engine
+  gives under it (`stairLift`), the ankle turned back so the foot lies flat; the arms swing against the legs; standing, all
+  rest. Past `BODYNEAR` plus half a square he is his card again. Everyone else keeps their card. `GAMEV` and `CACHE` mq-v259.
+  No world in this repository turns it on, so Meridian and the two small worlds are untouched.
+- **Measured, red first** (`test/engine.smoke.js`, grep `THE PERSON YOU STEER STANDS AS A JOINTED BODY`), against a page of the
+  world with the list added the way a world adds it.
+- **Not done.** Other people; a four-legged skeleton and a costume (the data is laid out for both); weights and skinning; hair
+  styles past a cap of hair; and the card's rule that a wall never hides the person you steer (#22) — the body stands in the
+  depth like any piece. The foot slides a little at full speed: the game steps a square in a quarter second, faster than a
+  stride this short can carry.
+

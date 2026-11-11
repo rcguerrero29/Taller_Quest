@@ -355,8 +355,8 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE` (the outfits a
-world turns on, a list: §7) — and a template part's `link`
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST` (the outfits a
+world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7) — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
@@ -690,6 +690,13 @@ the camera goes with it; a card names the tile under it; Escape flies it home. T
 stays exactly where he stood, and nothing about a flight is ever saved. It is a builder's tool, so it
 is off until a pack asks for it, and Meridian does not. `name:{en:"…",es:"…"}` renames it; nothing
 else in `BUILDER` is read, and the engine says so at boot if you write anything else.
+
+**One line stands the person you steer up as a jointed body** (mq-v259): `const BODYTAKE=["person"];` in a pack file the
+page loads before `engine/boot.js`. Within `BODYNEAR` (3) squares of the 3D camera's focus he is a body of rounded parts in his
+own colours on a skeleton of 19 named joints, his feet flat on the ground standing and walking; past `BODYNEAR` plus half a
+square he is his card again, and everyone else keeps theirs. To move a joint by hand, `const BODYREST={knee_l:[0,-0.19,0]};`
+(its rest place from its parent, in squares, three numbers each under 1; anything else is ignored). Saying nothing is the card,
+exactly as before. The skeleton, the maker and the walk are `engine/engine3d.js`, grep `THE JOINTED BODY`.
 
 **One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file
