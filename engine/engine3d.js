@@ -188,7 +188,7 @@ function t3Init(){
   T3.amb=new THREE.AmbientLight(0xffffff,DAY_AMB);
   T3.sun=new THREE.DirectionalLight(0xfff2dd,DAY_SUN);
   T3.sun.position.set(14,22,8);
-  T3.scene.add(T3.amb,T3.sun);
+  T3.scene.add(T3.amb,T3.sun);T3.amb.layers.enable(1);T3.sun.layers.enable(1);   /* and they light the body drawn through walls (t3BodyThrough) */
   T3.tint=new THREE.Color(0xffffff);
 }
 function t3Dispose(obj){
@@ -1288,21 +1288,26 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
        leg reaches for a foot target in front of or behind its hip, lifted while it swings forward, and is bent at the knee by
        two-bone solving so the ankle lands on it, and the ankle turned back so the foot lies flat; the arms swing against the
        legs. Standing, everything rests. The ground is asked of the engine under each foot (stairLift), so a slope can come later.
-   NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, hair styles past a cap of hair, and
-   the card's rule that a wall never hides the person you steer (#22): the body stands in the depth like any piece. */
+   mq-v260: his head is as large a share of his height as a card's (the skeleton's `head`), the walk's pace is the distance
+   he covers so a foot that is down stays put, and he is shown through walls as his card is (t3BodyThrough).
+   NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, and hair styles past a cap of hair. */
 const BODYNEAR=3;      /* squares from the camera's focus within which the person you steer is a body, not a card */
 const BODYHYST=0.5;    /* and he becomes the card again only past BODYNEAR + this, so standing at the edge never flickers */
 const SKELETONS={
   person:{
-    joints:{   /* name: [parent, rest x, y, z] — a person of about 0.9 squares, as tall as his card draws him */
-      hips:[null,0,0.40,0], spine:["hips",0,0.07,0], chest:["spine",0,0.10,0], neck:["chest",0,0.11,0], head:["neck",0,0.04,0],
-      shoulder_l:["chest",0.105,0.085,0], elbow_l:["shoulder_l",0,-0.12,0], wrist_l:["elbow_l",0,-0.11,0],
-      shoulder_r:["chest",-0.105,0.085,0], elbow_r:["shoulder_r",0,-0.12,0], wrist_r:["elbow_r",0,-0.11,0],
-      upleg_l:["hips",0.055,-0.02,0], knee_l:["upleg_l",0,-0.17,0], ankle_l:["knee_l",0,-0.175,0], toe_l:["ankle_l",0,-0.02,0.075],
-      upleg_r:["hips",-0.055,-0.02,0], knee_r:["upleg_r",0,-0.17,0], ankle_r:["knee_r",0,-0.175,0], toe_r:["ankle_r",0,-0.02,0.075]},
+    joints:{   /* name: [parent, rest x, y, z] — a person of about 0.93 squares, as tall as his card draws him, and built as his card
+                  is (mq-v260): short legs and a body under a big head, so beside the other people's cards he reads as one of them */
+      hips:[null,0,0.30,0], spine:["hips",0,0.06,0], chest:["spine",0,0.08,0], neck:["chest",0,0.08,0], head:["neck",0,0.05,0],
+      shoulder_l:["chest",0.09,0.06,0], elbow_l:["shoulder_l",0,-0.09,0], wrist_l:["elbow_l",0,-0.085,0],
+      shoulder_r:["chest",-0.09,0.06,0], elbow_r:["shoulder_r",0,-0.09,0], wrist_r:["elbow_r",0,-0.085,0],
+      upleg_l:["hips",0.05,-0.02,0], knee_l:["upleg_l",0,-0.12,0], ankle_l:["knee_l",0,-0.125,0], toe_l:["ankle_l",0,-0.02,0.075],
+      upleg_r:["hips",-0.05,-0.02,0], knee_r:["upleg_r",0,-0.12,0], ankle_r:["knee_r",0,-0.125,0], toe_r:["ankle_r",0,-0.02,0.075]},
+    head:0.2,   /* the head's radius, here and only here: the skull, its hair and its eyes are all measured from it (bodyMake) */
     legs:[["upleg_l","knee_l","ankle_l",0],["upleg_r","knee_r","ankle_r",Math.PI]],   /* hip, knee, ankle, and where in the cycle */
     arms:[["shoulder_l","elbow_l",Math.PI],["shoulder_r","elbow_r",0]],              /* each arm swings with the other side's leg */
-    stride:0.12, lift:0.05, drop:0.03, swing:0.5}};
+    /* a walk's, not a run's (mq-v260): a foot reaches `stride` ahead of its hip and is set down there, and while it is down it
+       goes back exactly as far as he goes forward, so it stays where it was put; the arms swing `swing` radians at most */
+    stride:0.09, lift:0.025, drop:0.022, swing:0.3}};
 const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
 /* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there */
 function bodySkeleton(kind){const s=SKELETONS[kind],J={};
@@ -1317,7 +1322,8 @@ function bodyMake(skel,lk){
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
   const trousers=lk.outfit==="formal"?"#23262E":"#2E3547";
   const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
-    m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};J[j].add(m);return m;};
+    m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};m.layers.enable(1);   /* layer 1: drawn again through walls (t3BodyThrough) */
+    m.material.stencilWrite=true;m.material.stencilRef=1;m.material.stencilZPass=THREE.ReplaceStencilOp;J[j].add(m);return m;};
   const cap=(r,len)=>new THREE.CapsuleGeometry(r,len,4,10);
   const bone=(a,b)=>{const[,x,y,z]=skel.joints[b];return [Math.hypot(x,y,z),x/2,y/2,z/2];};   /* a limb part spans its joint to the next */
   /* legs: trousers to the ankle, a shoe flat under it, its sole at the ankle's rest height below the joint */
@@ -1331,15 +1337,17 @@ function bodyMake(skel,lk){
     part("wrist_"+s,new THREE.SphereGeometry(0.03,10,8),"skin",lk.skin,0,-0.02,0);});
   /* the body: hips in trousers, the torso in his shirt, a neck and a head with hair on it and two eyes that say which way he faces */
   part("hips",new THREE.SphereGeometry(1,14,10),"trousers",trousers,0,0.01,0,[0.1,0.06,0.07]);
-  part("spine",cap(0.085,0.1),"shirt",lk.shirt,0,0.08,0,[1.15,1,0.8]);
+  {const t=skel.joints.chest[2]+skel.joints.neck[2];   /* the torso spans the spine's joint to the neck's */
+    part("spine",cap(0.085,Math.max(0.02,t-0.11)),"shirt",lk.shirt,0,t/2-0.01,0,[1.15,1,0.8]);}
   part("neck",cap(0.028,0.03),"skin",lk.skin,0,0.02,0);
-  part("head",new THREE.SphereGeometry(0.12,18,14),"skin",lk.skin,0,0.085,0);
-  part("head",new THREE.SphereGeometry(0.128,18,10,0,Math.PI*2,0,Math.PI*0.48),"hair",lk.hair,0,0.09,-0.012).rotation.x=-0.25;
-  [0.04,-0.04].forEach(ex=>part("head",new THREE.SphereGeometry(0.014,8,6),"eye","#1E1A22",ex,0.09,0.112));
+  const r=skel.head,hc=0.7*r;   /* the head sits on its joint, its centre 0.7 of a radius above it */
+  part("head",new THREE.SphereGeometry(r,20,16),"skin",lk.skin,0,hc,0);
+  part("head",new THREE.SphereGeometry(r*1.067,20,12,0,Math.PI*2,0,Math.PI*0.48),"hair",lk.hair,0,hc+0.04*r,-0.1*r).rotation.x=-0.25;
+  [0.333,-0.333].forEach(ex=>part("head",new THREE.SphereGeometry(0.117*r,8,6),"eye","#1E1A22",ex*r,hc+0.04*r,0.933*r));
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron"))part("spine",new THREE.BoxGeometry(0.15,0.24,0.012),"apron","#EFE9DC",0,0.0,0.075);
   /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk */
   const sh=new THREE.Mesh(new THREE.CircleGeometry(0.15,20),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
-  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(1,0.6,1);sh.userData={shadow:true};root.add(sh);
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(1,0.6,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
   root.userData.joints=J;root.userData.skel=skel;return root;}
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
 function t3BodyPose(B,phase,moving,groundAt){
@@ -1351,7 +1359,10 @@ function t3BodyPose(B,phase,moving,groundAt){
   S.legs.forEach(([hp,kn,an,off])=>{
     const ps=phase+off,L1=-S.joints[kn][2],L2=-S.joints[an][2];
     const H=J[hp].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);   /* the hip, in the body's own frame */
-    const fz=moving?S.stride*Math.sin(ps):0,lift=moving?S.lift*Math.max(0,Math.cos(ps)):0;
+    /* the foot swings forward while cos > 0, then is down for the other half, going back in step with the phase, which
+       moves with the distance he covers (t3Body): so a foot that is down stays where it was put */
+    const u=((ps%(2*Math.PI))+2*Math.PI)%(2*Math.PI),down=u>=Math.PI/2&&u<=Math.PI*1.5;
+    const fz=moving?(down?S.stride*(1-2*(u-Math.PI/2)/Math.PI):S.stride*Math.sin(ps)):0,lift=moving&&!down?S.lift*Math.cos(ps):0;
     const w=new THREE.Vector3(H.x,0,fz).applyMatrix4(B.matrixWorld),g=(gnd(w.x,w.z)-B.position.y)/sc;
     const ankleRest=S.joints.hips[2]+S.joints[hp][2]+S.joints[kn][2]+S.joints[an][2];   /* the ankle's height when he stands straight */
     const ty=g+ankleRest+lift,dy=ty-H.y,dz=fz-H.z;
@@ -1371,11 +1382,32 @@ function t3Body(){
   if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);T3.body=null;}
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
   if(!T3.body){T3.body=bodyMake(bodySkeleton("person"),look);T3.body.userData.key=key;T3.scene.add(T3.body);}
-  const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1];
-  B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(T3PERSON/0.92);
+  const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1],S=B.userData.skel,sc=T3PERSON/0.92;
+  /* THE WALK'S PACE IS THE DISTANCE HE COVERS (mq-v260), never the clock: a foot is down for half a cycle and goes back
+     2 strides in it, so a cycle is 4 strides of ground. A jump (a door, a warp) is not walked */
+  const at=B.userData.at,go=at?Math.hypot(fx-at[0],fy-at[1]):0;B.userData.at=[fx,fy];
+  if(moving&&go<1)B.userData.phase=(B.userData.phase||0)+go*Math.PI/(2*S.stride*sc);
+  B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(sc);
   B.traverse(o=>{if(o.isMesh&&o.userData.base)o.material.color.copy(o.userData.base).multiply(T3.tint);});
-  t3BodyPose(B,bob,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
+  t3BodyPose(B,B.userData.phase||0,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
+  /* the card's rule, the body's too: a wall never hides the person you steer, unless he is down a hole or the drone is
+     the one steered (t3Actors) — so draw3d draws him again over the street (t3BodyThrough) */
+  B.userData.through=!DRONE.on&&lift>=0;
   return true;}
+/* SHOWN THROUGH WALLS, AS HIS CARD IS (mq-v260): after the street is drawn, the depth is cleared and the body drawn again
+   on its own layer, so a wall between him and the camera does not hide him; and anyone whose card stands nearer the
+   camera than he does is drawn again over him, only where he is (the stencil his parts leave), so a person can still
+   stand in front of him, as with his card */
+function t3BodyThrough(){
+  const B=T3.body;if(!T3.bodyOn||!B||!B.visible||!B.userData.through)return;
+  const r=T3.renderer,cam=T3.cam,ac=r.autoClear,me=cam.position.distanceTo(B.position),near=[];
+  T3.pool.forEach(p=>{if(p.live&&p.spr.visible&&!p.spr.userData.drone&&cam.position.distanceTo(p.spr.position)<me){
+    const m=p.spr.material;near.push([p.spr,m.stencilWrite,m.stencilFunc]);m.stencilWrite=true;m.stencilFunc=THREE.EqualStencilFunc;m.stencilRef=1;
+    m.stencilZPass=m.stencilZFail=m.stencilFail=THREE.KeepStencilOp;p.spr.layers.enable(1);}});
+  const bg=T3.scene.background;T3.scene.background=null;   /* a colour behind the scene clears the screen on every render: not this one */
+  r.autoClear=false;r.clearDepth();cam.layers.set(1);
+  try{r.render(T3.scene,cam);}
+  finally{cam.layers.set(0);r.autoClear=ac;T3.scene.background=bg;near.forEach(([s,w,f])=>{s.layers.disable(1);s.material.stencilWrite=w;s.material.stencilFunc=f;});}}
 function t3Actors(){
   const list=[];
   const w=CW();
@@ -1525,6 +1557,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Fiesta();
     t3Leash();
     T3.renderer.render(T3.scene,T3.cam);
+    t3BodyThrough();
     return true;
   }catch(e){T3.fail=true;t3Note("render",e);t3Fell();return false;}
 }

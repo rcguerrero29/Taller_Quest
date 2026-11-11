@@ -1601,3 +1601,20 @@ see-through there, as a tree is. `GAMEV` and `CACHE` mq-v258. Meridian declares 
   depth like any piece. The foot slides a little at full speed: the game steps a square in a quarter second, faster than a
   stride this short can carry.
 
+
+### 2026-11-11 · the jointed body, second slice — a card's head, a walk that keeps pace with the ground, seen through walls
+- **Built** (`engine/engine3d.js`, grep `THE JOINTED BODY`), three things seen in the first picture. **The head**: the skeleton
+  carries the head's radius (`head`, kept once; skull, hair and eyes are measured from it) and is rebuilt short-legged under it,
+  so his head is the same share of his height as a drawn card's (about 47%), at the same total height. **The walk**: its phase
+  is the distance he covers, never the clock (`t3Body`); a foot swings forward for half a cycle and is down for the other half,
+  going back exactly as far as he goes forward, so it stays where it was put; arms swing 0.3 radians, not 0.5. **Through walls**:
+  after the street is drawn, the depth is cleared and the body drawn again on its own layer (`t3BodyThrough`), as his card is
+  drawn through walls; anyone whose card stands nearer the camera is drawn again over him, only where he is. Down a hole, or
+  while the drone is steered, he stands in the depth, as his card does. `GAMEV` and `CACHE` mq-v260. No world in this
+  repository turns the body on, so Meridian and the two small worlds are untouched.
+- **Measured, red first** on mq-v259 (`test/engine.smoke.js`, grep `THE PERSON YOU STEER STANDS AS A JOINTED BODY`): the head's
+  share against a card painted in the page; a foot that is down, walked 2.5 squares a hundredth at a time; and a wall-sized block
+  between him and the camera, with the street still drawn around him.
+- **Not done.** The pace is honest and fast: the game steps a square in a quarter second, and a stride a walk's angles allow on
+  legs this short covers about a third of a square a cycle, so up close at full speed he takes about 23 steps a second. A
+  calm walk at that speed needs the person to move slower up close, or longer legs than a card's; neither was asked here.
