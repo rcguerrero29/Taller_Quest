@@ -355,7 +355,8 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT` — and a template part's `link`
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE` (the outfits a
+world turns on, a list: §7) — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
@@ -370,7 +371,7 @@ chat sets somebody down) asks the engine's `shutToPeople` instead. Say nothing a
 declare a letter, make sure it is not the only way anywhere: `test/engine.smoke.js` (grep `pets-only`) declares it on
 a page of its own and fails if the player is cut off from a tile he could reach with it open.
 
-**`TROLLEYAT` — the one optional seam with a boot audit of its own, so it is worth its own paragraph.**
+**`TROLLEYAT` — an optional seam with a boot audit of its own (as `OUTFITTAKE` is, §7), so it is worth its own paragraph.**
 One entry per line: `{world, row, from, to, stops}`. `stops` is a **list of platform tiles — the tile
 a person stands on to be served — beside the rails, never on them**, and it is a list rather than a
 number because two different readers need it: *is this tile a stop* (the travel panel opens there)
@@ -684,6 +685,18 @@ the camera goes with it; a card names the tile under it; Escape flies it home. T
 stays exactly where he stood, and nothing about a flight is ever saved. It is a builder's tool, so it
 is off until a pack asks for it, and Meridian does not. `name:{en:"…",es:"…"}` renames it; nothing
 else in `BUILDER` is read, and the engine says so at boot if you write anything else.
+
+**One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
+before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file
+loaded after `engine/boot.js` is never seen, and nothing says so. It is a list, not a word: `"apron"` on its own, `["Apron"]`
+in capitals or an object turns nothing on, and the engine says so once at boot, in one line of the browser's console:
+`CRIT outfit: OUTFITTAKE is "apron", not a list of outfit words such as ["apron"], so this world turns no outfit on`,
+or `CRIT outfit: OUTFITTAKE names "Apron": not an outfit this engine draws (casual, formal, apron), so nothing is turned on for it`.
+The same line is kept in the game's log, of kind `outfit`. Read your console the first time. Then
+offer the word in your creator's outfits in each language, `outfits:[["casual","None"],["apron","Apron"]]`:
+None is the everyday clothes, and Apron puts an apron on the person, in the creator's preview and in
+every camera. A world that says nothing draws every outfit word but `formal` as the everyday clothes,
+an apron that arrives in a save or a Trolley Pass included (engine/engine.js, grep "THE OUTFITS A WORLD TURNS ON").
 
 ## 8 · What 2026-09-05 added to this template *(a private pack, the first world built from it)*
 

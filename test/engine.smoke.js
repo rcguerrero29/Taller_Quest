@@ -12874,6 +12874,441 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...SF.map(m => 'saved look (#301): ' + m));
   }
 
+  /* ---- THE APRON IS DRAWN ONLY IN A WORLD THAT TURNS IT ON, AND IT CHANGES NOTHING ELSE ----
+     The engine draws one outfit of its own for every world, formal, and every other outfit word as the everyday clothes.
+     It also draws an apron, which a world has to ask for: OUTFITTAKE, the list of outfit words a world turns on
+     (engine/engine.js, grep "THE OUTFITS A WORLD TURNS ON"). Silence is not consent. A save keeps any outfit word of up to
+     eight letters and a Trolley Pass carries it, and neither asks whether this world's creator offers it (only another
+     player's look is asked that, #32), so an apron can reach a world that never offered one: the drawing has to be gated by
+     the world's word, never by the outfit word alone. Asked the way a person would notice it, in three parts:
+       1. a world that has not turned it on (this one, unless it declares the list itself) draws every outfit word exactly
+          as before. Every word its creator offers in any language, the apron, words other worlds offer, and odd and unknown
+          ones, each read the way a save and a pass read it, is drawn in every hair style the creator offers, facing every
+          way, standing and mid-stride, by the person painter on the card the 3D camera bakes, with room all round it; and
+          in the creator's preview and on the billboard of the person you steer in 3D, as he faces you; and each must be the
+          everyday clothes pixel for pixel. Formal is the one word that must differ: it is the control that this comparison
+          can see an outfit at all (nothing to measure is not a pass). THE CARD IS READ OFF THE ENGINE as it bakes the person
+          you steer: the canvas, the transform it paints through and where it puts him, never a copy typed here, so a card
+          that changes size is measured at its new size. Where there is no 3D camera, a canvas of this check's own stands in;
+       2. a page that turns the apron on THE WAY A WORLD DOES: `const OUTFITTAKE=["apron"];` in a pack script the page loads
+          before engine/boot.js, served by routing so no file in the tree changes, for whichever world this suite is pointed
+          at; and the page must find the list a name of its own that window does not carry. A list hung on window is what an
+          init script makes, and an engine that read window.OUTFITTAKE would pass a check that put it there and turn nothing on
+          in any real world. (Playwright wraps an init script in a function, so a `const` written in one declares nothing the
+          page can see: measured with 1.63, typeof OUTFITTAKE was "undefined" there and the engine turned nothing on.) Its
+          creator offers None and Apron, None being the engine's everyday clothes, opened on a phone: its log says nothing
+          about a list written right; None is pressed at the start and is the everyday clothes of the page without the list,
+          pixel for pixel; the preview shows (some size, on screen, under nothing) before its pixels count; pressing Apron puts
+          an apron on the person in the preview; every outfit word but the apron is drawn exactly as on the page without the
+          list; the apron stays on whichever way he faces and mid-stride, turned aside with at least about half of what it
+          shows facing you, and from behind at least a band across his back; nothing it paints falls outside the card the 3D
+          camera bakes (paint out there is thrown away, so the room would show it cut off); and in the 3D room, once Begin has
+          shown the world, the person you steer is in an apron ON THE PHONE'S SCREEN. The room is drawn first rather than
+          waited for (the renderer is made by the first frame drawn in 3D) and the apron counted in the frame it renders; a
+          renderer renders whether anybody can see its canvas or not, so the apron is then counted again in pictures of the
+          screen itself, where he stands, drawn as the game draws him, and he stands at least 8 CSS px wide there (he is
+          played at about 14 to 20). THE PAGE WITHOUT THE LIST IS THE WITNESS for the 3D camera: where it drew the
+          person you steer in 3D on this machine, this page must too, or turning the apron on took the camera away, and the
+          card it bakes is then read off the page without the list, so the apron is still held inside it; only where that
+          page could not draw in 3D either is the 3D room said and not asked;
+       3. a world that writes the list wrong (the word "apron" where the list goes, ["Apron"] in capitals, an object) turns
+          nothing on and says so once at boot, in one critical line of the game's log, of kind outfit, that names
+          OUTFITTAKE, and logs nothing else new; a list in a file loaded after engine/boot.js is never seen; and a world that
+          says nothing (a fresh page of it with no pack script) and the page whose list is written right log the same lines,
+          every kind, none of them about OUTFITTAKE, an outfit or the apron.
+     THE CLOCK IS HELD STILL (people blink by Date.now), with the season's face paint off and the petal put down, on every
+     page, so a difference is the outfit and nothing else. Red on mq-v256, which had no apron to turn on, in the second part. */
+  {
+    const AP = [], AN = [];
+    const say = (k, m) => (k ? AN : AP).push((k ? 'COUNT-ONLY: ' : '') + 'the apron: ' + m);
+    /* a line of the game's log as it is told, the same line on two pages, and a line about the outfits a world turns on */
+    const line = e => e.kind + ': ' + e.msg + (e.crit ? ' (critical)' : ''), same = (e, f) => e.kind === f.kind && e.msg === f.msg && e.crit === f.crit;
+    const about = e => /OUTFITTAKE|outfit|apron/i.test(e.kind + ' ' + e.msg);
+    /* the one kit every page draws with, so every page is asked the same thing */
+    const kit = () => {
+      const A = window.__apron = {};
+      /* the clock held still (people blink by Date.now), for a drawing the 3D camera makes too */
+      A.clock = fn => { const k = { now: Date.now, pn: performance.now }, t = performance.now();
+        try { Date.now = () => 1000; performance.now = () => t; return fn(); } finally { Date.now = k.now; performance.now = k.pn; } };
+      /* and, for a drawing two pages must agree on, the season's face paint off and the petal put down as well */
+      A.still = fn => { const k = { sp: seasonPick, ap: alePick, pm: petalMoment };
+        try { seasonPick = 'off'; seasonMemo.day = ''; alePick = { hero: 0, off: 0, animals: {}, custom: {} }; petalMoment = false; return A.clock(fn); }
+        finally { seasonPick = k.sp; seasonMemo.day = ''; alePick = k.ap; petalMoment = k.pm; } };
+      /* the 3D camera's card, read off the engine as it bakes the person you steer (t3Actors): the canvas it paints him on,
+         the transform it paints through and where it puts him. A reason instead where this shell has no 3D camera, or this
+         page cannot draw one (`red` where the engine bakes him some other way, which nothing here can measure). Whether a
+         page that cannot draw one is a red is for the caller to say: only another page of the same world can tell */
+      A.learn = () => {
+        if (typeof T3 === 'undefined' || !window.THREE || (typeof CAMS !== 'undefined' && !CAMS.includes('3d'))) return { why: 'this shell has no 3D camera' };
+        const w = document.getElementById('world'), kw = { cam: camMode, hidden: w.hidden, dir, moving }, dp = drawPerson; let got = null;
+        try {
+          w.hidden = false; camSet('3d'); sizeCanvas(); dir = 'down'; moving = false;
+          drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero && !got) { const t = g.getTransform(); got = { cw: g.canvas.width, ch: g.canvas.height, m: [t.a, t.b, t.c, t.d, t.e, t.f], sx, sy, on: g.canvas }; } return dp.apply(this, arguments); };
+          if (!draw3d() || T3.fail) return { why: 'the 3D camera cannot draw on this page (it fell back to the flat one)' };
+          const h = T3.pool.find(p => p.live && p.spr.userData.hero);
+          if (!got) return { red: true, why: 'the 3D camera baked nobody through the person painter as the person you steer, so the card he is baked on could not be read' };
+          if (!h || h.c !== got.on) return { red: true, why: 'the person painter painted the person you steer on something that is not his billboard in 3D, so the card he is baked on could not be read' };
+          const { on, ...G } = got; G.k = Math.sqrt(Math.abs(G.m[0] * G.m[3] - G.m[1] * G.m[2])); return G;
+        } finally { drawPerson = dp; dir = kw.dir; moving = kw.moving; camSet(kw.cam); sizeCanvas(); w.hidden = kw.hidden; }
+      };
+      /* where there is no card, a canvas of this check's own with room round him: an instrument, not a copy of the card */
+      A.own = { cw: 64, ch: 80, m: [1, 0, 0, 1, 0, 0], sx: 16, sy: 16, k: 1, own: true };
+      /* a person drawn by the engine's own painter on the card G, with M px of room all round it, so nothing he paints is
+         lost at its edge */
+      A.card = (lk, o, G, M) => { M = M || 0; const c = document.createElement('canvas'); c.width = G.cw + 2 * M; c.height = G.ch + 2 * M;
+        const g = c.getContext('2d'); g.setTransform(G.m[0], G.m[1], G.m[2], G.m[3], G.m[4] + M, G.m[5] + M);
+        drawPerson(g, G.sx, G.sy, lk, o); return g.getImageData(0, 0, c.width, c.height).data; };
+      A.diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) n++; return n; };
+      A.hash = d => { let h = 2166136261; for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+      A.pv = () => { const cv = document.getElementById('pv'); return cv ? cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data : null; };
+      A.opts = [];
+      ['down', 'left', 'right', 'up'].forEach(dir => [{}, { moving: true, bob: 2 }, { moving: true, bob: -2 }].forEach(m => A.opts.push({ dir, ...m })));
+      A.opts.push({ dir: 'down', hero: true }, { dir: 'down', idle: 0.8, who: 'probe' });
+      A.say = o => 'facing ' + o.dir + (o.moving ? ', mid-stride with the ' + (o.bob > 0 ? 'left' : 'right') + ' foot down' : '') + (o.hero ? ', as the person you steer' : '') + (o.idle ? ', swaying as a neighbour does' : '');
+      /* every hair style the creator offers, the patterns and the colours turning with them */
+      A.looks = () => { const st = (T().styles || [['cap', '']]).map(o => o[0]), pt = ['plain'].concat((T().patterns || []).map(o => o[0]));
+        return st.map((s, i) => ({ shirt: SWATCH.shirt[i % SWATCH.shirt.length], skin: SWATCH.skin[(i + 1) % SWATCH.skin.length], hair: SWATCH.hair[(i + 2) % SWATCH.hair.length], style: s, pattern: pt[i % pt.length] })); };
+      /* every word this world's creator offers in any language, the engine's own, other worlds', and odd ones a save keeps */
+      A.words = () => { const w = [];
+        Object.keys(UI).forEach(l => ((UI[l] && UI[l].outfits) || []).forEach(o => { if (Array.isArray(o) && typeof o[0] === 'string') w.push(o[0]); }));
+        return [...new Set(w.concat(['casual', 'formal', 'apron', 'Apron', 'APRON', 'coat', 'none', 'None', 'zzzzzzzz', '', '__proto__', 'valueOf', 'constructor', 'apronapronapron']))]; };
+      /* the hashes of every look, way and word on the card G, so two pages can be held against each other */
+      A.all = (looks, words, G) => A.still(() => { const H = {};
+        words.forEach(w => { H['=' + w] = []; looks.forEach(L => A.opts.forEach(o => H['=' + w].push(A.hash(A.card(saveLook({ ...L, outfit: w }), o, G, 16))))); });
+        return H; });
+      /* every line of the game's log, every kind, as it is kept: its kind, its words, how often it was told, and whether it is
+         critical (the console prints a critical one after CRIT) */
+      A.log = () => (typeof mqLog !== 'undefined' && Array.isArray(mqLog) ? mqLog : []).filter(e => e && typeof e === 'object').map(e => ({ kind: String(e.kind), msg: String(e.msg), n: e.n, crit: !!e.crit }));
+    };
+    /* A PAGE OF THIS WORLD WITH ONE MORE PACK SCRIPT, `src`, loaded just before engine/boot.js as a world's own file is (or
+       just after it, `after`, where a world that put it there would), and served by routing, so no file in the tree changes;
+       every other request is the file on disk, and nothing leaves the machine. With no `src` (null), the page is the world's
+       own, with no pack script added. False where the shell loads no engine/boot.js to put it beside */
+    const shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
+    const href = require('url').pathToFileURL(file).href, packAt = new URL('__outfittake.js', href).href;
+    const withPack = async (ctx, src, after) => {
+      if (src !== null && !bootTag.test(shellHtml)) return false;
+      const tag = '<script src="__outfittake.js"></script>', doc = src === null ? null : shellHtml.replace(bootTag, m => after ? m + '\n' + tag : tag + '\n' + m);
+      await ctx.route('**', r => { const u = r.request().url();
+        if (doc !== null && u === href) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
+        if (doc !== null && u === packAt) return r.fulfill({ body: src, contentType: 'text/javascript; charset=utf-8' });
+        return u.startsWith('file://') ? r.continue() : r.abort(); });
+      return true; };
+    const on0 = await page.evaluate(() => typeof OUTFITTAKE === 'undefined' ? null : (Array.isArray(OUTFITTAKE) ? OUTFITTAKE.slice() : String(OUTFITTAKE)));
+    await page.evaluate(kit);
+    const looks = await page.evaluate(() => window.__apron.looks()), words = await page.evaluate(() => window.__apron.words());
+    /* the card every comparison below is drawn on, read off the engine; or this check's own canvas, and why */
+    const G1 = await page.evaluate(() => window.__apron.learn());
+    if (G1.red) say(0, G1.why + ', which is not a pass');
+    else if (G1.why) say(1, G1.why + ': the person painter is asked on a canvas of this check\'s own with room round him, and no card is asked anything');
+    const C1 = G1.why ? null : G1;
+    /* THE WITNESS for the page that turns the apron on: this page, without the list, drew the person you steer in 3D on this
+       machine (a red above still drew him). Where it did, a page of the same world with the list that cannot is a red, said
+       once; where it did not, the 3D camera is said and not asked there either */
+    const drew1 = !G1.why || !!G1.red;
+    let fell = false;
+    const no3d = (why, what) => { if (!drew1) { say(1, why + ', as on the page without the list, so ' + what); return; }
+      if (!fell) say(0, 'in a world that turns the apron on, ' + why + ', where this machine drew the same world without the list in 3D: turning the apron on took the 3D camera away, so ' + what);
+      fell = true; };
+    let plain = null, rightLog = null;
+    /* ---- 1 · a world that has not turned it on ---- */
+    if (on0 !== null) say(1, 'this world declares OUTFITTAKE itself (' + JSON.stringify(on0) + '), so a world that has not turned the apron on was not asked here; every world that says nothing is asked in its own run');
+    else {
+      const one = await page.evaluate(([looks, words, G1]) => { const A = window.__apron, P = [], N = [], C = G1.why ? A.own : G1;
+        const kept = words.map(w => ({ w, s: saveLook({ outfit: w }).outfit, p: (((sanitizeSave({ n: 'x', lk: { outfit: w } }) || {}).lk) || {}).outfit }));
+        kept.forEach(k => { if (k.s !== k.p) P.push('a save keeps the outfit word "' + k.w + '" as "' + k.s + '" and a Trolley Pass carries it as "' + k.p + '": the two readings of a look disagree'); });
+        if (!kept.some(k => k.s === 'apron' && k.p === 'apron')) P.push('a save or a Trolley Pass no longer keeps the outfit word "apron", so whether an apron that reaches this world is drawn was not asked, which is not a pass');
+        const shown = k => '"' + k.w + '"' + (k.s !== k.w ? ' (kept as "' + k.s + '")' : '');
+        const where = G1.why ? 'on a canvas of this check\'s own' : 'on the card the 3D camera bakes';
+        A.still(() => {
+          let formal = 0;
+          const bad = new Map();   /* keyed by the word itself, and a word may be "__proto__" */
+          looks.forEach(L => A.opts.forEach(o => { const base = A.card(saveLook({ ...L, outfit: 'casual' }), o, C, 16);
+            kept.forEach(k => { const n = A.diff(base, A.card(saveLook({ ...L, outfit: k.w }), o, C, 16));
+              if (k.s === 'formal') { if (n) formal++; } else if (n && !bad.has(k.w)) bad.set(k.w, { n, k, at: A.say(o) + ', with ' + L.style + ' hair' }); }); }));
+          bad.forEach(b => P.push('in a world that has not turned the apron on, a person whose saved look says ' + shown(b.k) +
+            ', as a save keeps it and a Trolley Pass carries it, is not drawn in the everyday clothes: ' + b.n + ' pixels differ ' + where + ', ' + b.at + '. The apron reaches only a world that asks for it'));
+          if (!formal) P.push('formal is drawn exactly as the everyday clothes ' + where + ' every time, so this comparison cannot see an outfit at all and nothing was measured, which is not a pass');
+          N.seen = [where + (G1.why ? '' : ', read off the engine as it bakes,') + ' with room round it, in ' + looks.length + ' hair styles and ' + A.opts.length + ' ways of standing and walking'];
+          /* the creator's preview, as the creator draws it */
+          const keep = { ...look };
+          try { const base = (look = saveLook({ ...keep, outfit: 'casual' }), pvDraw(), A.pv());
+            if (!base) N.push('this shell has no creator preview, so a world that has not turned the apron on was not looked at there');
+            else kept.forEach(k => { look = saveLook({ ...keep, outfit: k.w }); pvDraw(); const n = A.diff(base, A.pv());
+              if (k.s === 'formal') { if (!n) P.push('formal looks like the everyday clothes in the creator\'s preview, so the preview cannot show an outfit and was not measured, which is not a pass'); }
+              else if (n) P.push('in a world that has not turned the apron on, the creator\'s preview of a person whose look says ' + shown(k) + ' is not the everyday clothes: ' + n + ' pixels differ'); });
+            if (base) N.seen.push('in the creator\'s preview, in one look facing you'); }
+          finally { look = keep; pvDraw(); }
+        });
+        /* the billboard of the person you steer, in the 3D camera, under the clock alone (the season stays the room's) */
+        A.clock(() => { const keep = { ...look };
+          if (G1.why) { N.push(G1.why + ', so in a world that has not turned the apron on the billboard of the person you steer was not compared'); return; }
+          const kw = { cam: camMode, hidden: document.getElementById('world').hidden, dir, moving };
+          try { document.getElementById('world').hidden = false; camSet('3d'); sizeCanvas(); dir = 'down'; moving = false;
+            const card3 = () => { if (!draw3d() || T3.fail) return null; const h = T3.pool.find(p => p.live && p.spr.userData.hero); return h ? h.g.getImageData(0, 0, h.c.width, h.c.height).data : null; };
+            look = saveLook({ ...keep, outfit: 'casual' }); const base = card3();
+            if (!base) P.push('the 3D camera drew no billboard for the person you steer, so it was not compared, which is not a pass');
+            else kept.forEach(k => { look = saveLook({ ...keep, outfit: k.w }); const d = card3(), n = d ? A.diff(base, d) : -1;
+              if (k.s === 'formal') { if (!n) P.push('formal looks like the everyday clothes on the billboard of the person you steer in 3D, so the billboard cannot show an outfit and was not measured, which is not a pass'); }
+              else if (n) P.push('in a world that has not turned the apron on, the person you steer in 3D, whose look says ' + shown(k) + ', is not drawn in the everyday clothes on his billboard: ' + n + ' pixels differ'); });
+            if (base) N.seen.push('and on the billboard of the person you steer in 3D, in that look facing you');
+          } finally { look = keep; dir = kw.dir; moving = kw.moving; camSet(kw.cam); sizeCanvas(); document.getElementById('world').hidden = kw.hidden; }
+        });
+        return { P, N, seen: N.seen || [], words: kept.length, others: kept.filter(k => k.s !== 'formal').length };
+      }, [looks, words, G1]);
+      one.P.forEach(m => say(0, m)); one.N.forEach(m => say(1, m));
+      if (!one.P.length) say(1, 'in a world that has not turned it on, every one of the ' + one.others + ' outfit words besides formal, of the ' + one.words + ' asked, the apron among them, is drawn as the everyday clothes pixel for pixel ' + one.seen.join(', ') + '; and formal, the control, is seen to differ from them in each');
+      plain = await page.evaluate(([looks, words, G1]) => window.__apron.all(looks, words, G1.why ? window.__apron.own : G1), [looks, words, G1]);
+    }
+    /* ---- 2 · a page that turns it on, as a world does, on a phone ---- */
+    if (on0 !== null && !(Array.isArray(on0) && on0.includes('apron'))) say(1, 'this world turns on ' + JSON.stringify(on0) + ' and not the apron, so a world that turns the apron on was not asked here');
+    else {
+      const actx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const ap = await actx.newPage(), apErr = [];
+      ap.on('pageerror', e => apErr.push(e.message));
+      try {
+        if (on0 !== null) await ap.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+        else if (!(await withPack(actx, 'const OUTFITTAKE=["apron"];\n'))) { say(0, 'this shell loads no engine/boot.js, so a list could not be declared before the engine the way a world declares it, and nothing was asked of a world that turns the apron on'); throw 0; }
+        await ap.goto(href); await boot(ap);
+        /* the list as a world declares it: a name of the page's own, which window does not carry */
+        const how = await ap.evaluate(() => ({ type: typeof OUTFITTAKE, onWindow: 'OUTFITTAKE' in window, list: typeof OUTFITTAKE !== 'undefined' && Array.isArray(OUTFITTAKE) ? OUTFITTAKE.slice() : null }));
+        if (on0 === null && how.onWindow) { say(0, 'the page meant to turn the apron on hangs its list on window, where a world declares it with const in its own files and window never carries it: an engine that read window.OUTFITTAKE would pass here and draw no apron in any real world'); throw 0; }
+        if (how.type !== 'object' || !how.list || !how.list.includes('apron')) { say(0, 'the page meant to turn the apron on reads OUTFITTAKE as ' + (how.list ? JSON.stringify(how.list) : how.type) + ', so nothing was asked of a world that turns it on'); throw 0; }
+        await ap.evaluate(kit);
+        /* its log, every kind: nothing in it about the list, and (in the third part) line for line the log of the same world
+           saying nothing */
+        const said = await ap.evaluate(() => window.__apron.log());
+        if (on0 === null) { rightLog = said;
+          said.filter(about).forEach(e => say(0, 'a world whose list is written right, ' + JSON.stringify(how.list) + ', has a line about it in the game\'s log: "' + line(e) + '"')); }
+        /* the card this page's 3D camera bakes, read off its engine; the one the cut-off is measured against. Where this page
+           cannot draw in 3D, the card of the page without the list stands in, read off the same engine */
+        const G2 = await ap.evaluate(() => window.__apron.learn());
+        if (G2.red) say(0, 'in a world that turns the apron on, ' + G2.why + ', which is not a pass');
+        else if (G2.why) no3d(G2.why, C1 ? 'the apron is held inside the card the page without the list bakes, read off the same engine' : 'the apron is measured on a canvas of this check\'s own, where no card can cut it off');
+        /* its creator offers None, the engine's everyday clothes, and Apron, in every language it has; the clock stands still from here */
+        await ap.evaluate(() => { Object.keys(UI).forEach(l => { if (UI[l] && typeof UI[l] === 'object') UI[l].outfits = [['casual', 'None'], ['apron', 'Apron']]; });
+          Date.now = () => 1000; seasonPick = 'off'; seasonMemo.day = ''; petalMoment = false; });
+        await ap.click('.classes button[data-c="architect"]');
+        const row = () => ap.evaluate(() => { const b = [...document.querySelectorAll('#rowOutfit button')], d = window.__apron.pv();
+          return { labels: b.map(x => x.textContent), pressed: b.map(x => x.getAttribute('aria-pressed')), outfit: look.outfit, look: { ...look }, d: d ? Array.from(d) : null }; });
+        const c0 = await row();
+        if (!c0.labels.includes('None') || !c0.labels.includes('Apron')) { say(0, 'the creator of a world that offers None and Apron shows ' + JSON.stringify(c0.labels) + ', so neither could be pressed'); throw 0; }
+        if (c0.pressed[c0.labels.indexOf('None')] !== 'true' || c0.outfit !== 'casual') say(0, 'in a world that offers None and Apron, None is not what the creator starts on (the look says "' + c0.outfit + '", the buttons ' + JSON.stringify(c0.pressed) + ')');
+        if (!c0.d) { say(0, 'the creator has no preview, so the apron was not looked at there, which is not a pass'); throw 0; }
+        /* pictures of the phone's screen, compared as a person compares them: how many pixels differ between the first and
+           the second, with nothing changed between them, and between the first and the third, with the apron chosen */
+        const differ = pics => ap.evaluate(async pics => { const px = [];
+          for (const b64 of pics) { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+            const img = await createImageBitmap(new Blob([u8], { type: 'image/png' })), c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+            const g = c.getContext('2d'); g.drawImage(img, 0, 0); px.push(g.getImageData(0, 0, c.width, c.height).data); }
+          const n = (a, b) => { let k = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) k++; return k; };
+          return { noise: n(px[0], px[1]), moved: n(px[0], px[2]) }; }, pics);
+        /* what the page says about the preview on the phone, read before Apron is pressed: its size, where it stands, and what is
+           on top where the person is painted. It names the cause when the pictures of the screen below do not show the apron, and
+           decides nothing itself: CSS can hide, cover, filter or shrink the preview in more ways than such rules can list */
+        const hid = await ap.evaluate(() => { const cv = document.getElementById('pv'); cv.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          const r = cv.getBoundingClientRect(), st = getComputedStyle(cv);
+          if (!(r.width >= 1 && r.height >= 1)) return 'it is ' + Math.round(r.width) + ' by ' + Math.round(r.height) + ' px on the page';
+          if (r.right <= 0 || r.bottom <= 0 || r.left >= innerWidth || r.top >= innerHeight) return 'it stands off the screen, at ' + Math.round(r.left) + ', ' + Math.round(r.top) + ' on a screen ' + innerWidth + ' by ' + innerHeight;
+          if (st.visibility !== 'visible') return 'it is hidden (visibility: ' + st.visibility + ')';
+          let op = 1; for (let e = cv; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+          if (op < 0.1) return 'it is all but transparent (opacity ' + op.toFixed(2) + ')';
+          const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+          for (let i = 3, q = 0; i < d.length; i += 4, q++) if (d[i] > 40) { const x = q % cv.width, y = (q / cv.width) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+          if (x1 < 0) return null;   /* nobody in it: the pixels say so below */
+          for (const [u, v] of [[(x0 + x1) / 2, (y0 + y1) / 2], [(x0 + x1) / 2, y0 + (y1 - y0) * 0.7]]) {   /* the middle of him, and his waist */
+            const X = r.left + (u + 0.5) / cv.width * r.width, Y = r.top + (v + 0.5) / cv.height * r.height, top = document.elementFromPoint(X, Y);
+            if (top !== cv) return 'where the person is painted, at ' + Math.round(X) + ', ' + Math.round(Y) + ', it is under ' + (top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') + (top.className && typeof top.className === 'string' ? '.' + top.className.trim().split(/\s+/).join('.') : '') : 'nothing on the screen at all'); }
+          return null; });
+        /* None is the everyday clothes of the page without the list, pixel for pixel */
+        if (plain) { const h0 = await ap.evaluate(d => window.__apron.hash(d), c0.d);
+          const hp = await page.evaluate(lk => { const A = window.__apron, keep = { ...look }; try { return A.still(() => { look = { ...lk }; pvDraw(); return A.hash(A.pv()); }); } finally { look = keep; pvDraw(); } }, c0.look);
+          if (h0 !== hp) say(0, 'in a world that turns the apron on, None in the creator\'s preview is not the everyday clothes of a world that does not: turning the apron on changed None'); }
+        else say(1, 'this world turns the apron on itself, so None could not be held against a world that does not');
+        await ap.locator('#rowOutfit button', { hasText: 'Apron' }).click();
+        const c1 = await row();
+        if (c1.outfit !== 'apron' || c1.pressed[c1.labels.indexOf('Apron')] !== 'true') say(0, 'pressing Apron in the creator leaves the look saying "' + c1.outfit + '", with the buttons ' + JSON.stringify(c1.pressed));
+        /* the person's own paint, and how much of it the apron changes */
+        let body = 0, moved = 0; for (let i = 0; i < c0.d.length; i += 4) { if (c0.d[i + 3] > 40) body++;
+          if (Math.abs(c0.d[i] - c1.d[i]) + Math.abs(c0.d[i + 1] - c1.d[i + 1]) + Math.abs(c0.d[i + 2] - c1.d[i + 2]) + Math.abs(c0.d[i + 3] - c1.d[i + 3]) > 30) moved++; }
+        if (!body) say(0, 'the creator\'s preview has nobody in it, so the apron was not looked at, which is not a pass');
+        else if (moved < body * 0.15) say(0, 'in a world that turns the apron on, pressing Apron in the creator changes ' + moved + ' of the ' + body + ' pixels the person covers in the preview: he is still in his everyday clothes');
+        else {
+          /* ON THE PHONE'S SCREEN. Its own pixels say what was painted, not what shows. So the screen is asked in pictures of it
+             where the preview stands (scrolled into view, as a person scrolls to it), the person drawn by the engine's own
+             painter in his everyday clothes twice and then in the apron. He stands at least 8 CSS px wide there, where an
+             apron can be seen at all, as the 3D room asks; and in them the apron changes at least 15 in 100 of the pixels he
+             covers there, and more than twice what two pictures with nothing changed differ by */
+          const pr = await ap.evaluate(() => { const cv = document.getElementById('pv'); cv.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const r = cv.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, cw: cv.width, ch: cv.height, vw: innerWidth, vh: innerHeight }; });
+          const x = Math.max(0, Math.floor(pr.l)), y = Math.max(0, Math.floor(pr.t)), w = Math.min(pr.vw, Math.ceil(pr.l + pr.w)) - x, h = Math.min(pr.vh, Math.ceil(pr.t + pr.h)) - y;
+          const his = Math.round(body * pr.w / pr.cw * pr.h / pr.ch), why = hid ? ' Read off the page: ' + hid + '.' : '';
+          let bx0 = 1e9, bx1 = -1; for (let i = 3, q = 0; i < c0.d.length; i += 4, q++) if (c0.d[i] > 40) { const bx = q % pr.cw; if (bx < bx0) bx0 = bx; if (bx > bx1) bx1 = bx; }
+          const css = bx1 >= bx0 ? Math.round((bx1 - bx0 + 1) * pr.w / pr.cw) : 0;   /* how wide he stands on the screen, as the 3D room asks it */
+          if (w < 1 || h < 1 || his < 1) say(0, 'on a phone the creator\'s preview is not on the screen: it is ' + Math.round(pr.w) + ' by ' + Math.round(pr.h) + ' px at ' + Math.round(pr.l) + ', ' + Math.round(pr.t) + ' on a screen ' + pr.vw + ' by ' + pr.vh + ', so whatever its pixels say, nobody sees an apron there.' + why);
+          else if (css < 8) say(0, 'on a phone the person in the creator\'s preview stands ' + css + ' CSS px wide on the screen, too small for an apron to be seen on him, so it was not looked at there, which is not a pass.' + why);
+          else {
+            const pic = async k => { await ap.evaluate(k => { look.outfit = k; pvDraw(); }, k); await rafs(ap, 2); return (await ap.screenshot({ clip: { x, y, width: w, height: h } })).toString('base64'); };
+            const seen = await differ([await pic('casual'), await pic('casual'), await pic('apron')]);   /* it ends in the apron he chose */
+            const calm = seen.noise ? 'two pictures with nothing changed differ by ' + seen.noise : 'two pictures with nothing changed are alike';
+            if (seen.moved < his * 0.15 || seen.moved <= 2 * seen.noise) say(0, 'on a phone the creator\'s preview does not show the apron on the screen: in pictures of the screen where it stands, choosing Apron changes ' + seen.moved + ' of the about ' + his + ' pixels the person covers there (' + calm + '), where its own pixels change ' + moved + ' of ' + body + '.' + why);
+            else say(1, 'pressing Apron in the creator changes ' + moved + ' of the ' + body + ' pixels the person covers in the preview, and in pictures of the phone\'s screen where it stands, with him ' + css + ' CSS px wide, ' + seen.moved + ' of the about ' + his + ' (' + calm + ')'); } }
+        /* whichever way he faces and mid-stride: turned aside, at least about half of what it changes facing you in the same
+           stride; from behind, at least a band one pixel tall across his back; and nothing of it outside the card: this page's,
+           or where it has none, the card of the page without the list (only where neither has one is the cut-off not asked) */
+        const Cw = G2.why ? C1 : G2;
+        const ways = await ap.evaluate(([looks, C]) => { const A = window.__apron, P = [], G = C || A.own, card = !!C;
+          A.still(() => { const M = 16, W = G.cw + 2 * M, H = G.ch + 2 * M, n = A.opts.map(() => looks.map(() => 0)), lost = A.opts.map(() => 0);
+            looks.forEach((L, li) => A.opts.forEach((o, oi) => { const a = A.card(saveLook({ ...L, outfit: 'casual' }), o, G, M), b = A.card(saveLook({ ...L, outfit: 'apron' }), o, G, M);
+              let all = 0, out = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4;
+                if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) { all++; if (x < M || x >= M + G.cw || y < M || y >= M + G.ch) out++; } }
+              n[oi][li] = all; if (out > lost[oi]) lost[oi] = out; }));
+            if (n.every(r => r.every(k => !k))) { P.push('in a world that turns the apron on, a person whose look says "apron" is drawn in his everyday clothes by the person painter, in every hair style, whichever way he faces, standing or mid-stride'); return; }
+            const ref = o => A.opts.findIndex(q => q.dir === 'down' && !q.hero && !q.idle && !!q.moving === !!o.moving && (q.bob || 0) === (o.bob || 0));
+            const band = 12 * G.k * G.k;   /* a band one pixel tall across his back, at the card's own scale */
+            A.opts.forEach((o, oi) => {
+              const off = n[oi].filter(k => !k).length;
+              if (off) { P.push('in a world that turns the apron on, a person in an apron is drawn in his everyday clothes ' + A.say(o) + ', in ' + off + ' of ' + looks.length + ' hair styles: it comes off when he turns or walks'); return; }
+              if (o.dir === 'up') { const few = n[oi].filter(k => k < band);
+                if (few.length) P.push('turned away from you (' + A.say(o) + '), the apron changes only ' + Math.min(...few) + ' pixels, in ' + few.length + ' of ' + looks.length + ' hair styles: fewer than a band one pixel tall across his back would (' + band + '), so it is all but gone when he turns away');
+                return; }
+              const r = ref(o); if (r < 0 || r === oi) return;
+              const low = n[oi].map((k, li) => [k, n[r][li]]).filter(([k, d]) => k * 2 < d);
+              if (low.length) P.push('turned aside, ' + A.say(o) + ', the apron changes ' + low[0][0] + ' pixels where ' + A.say(A.opts[r]) + ' it changes ' + low[0][1] + ', in ' + low.length + ' of ' + looks.length + ' hair styles: most of it comes off when he turns');
+            });
+            if (!card) return;
+            if (lost.every(k => k)) P.push('the apron paints up to ' + Math.max(...lost) + ' pixels outside the card the 3D camera bakes whichever way he faces, standing or mid-stride, so in the room it is cut off at the card\'s edge');
+            else lost.forEach((k, oi) => { if (k) P.push('the apron paints ' + k + ' pixels outside the card the 3D camera bakes, ' + A.say(A.opts[oi]) + ', so in the room it is cut off at the card\'s edge'); }); });
+          return { P }; }, [looks, Cw]);
+        ways.P.forEach(m => say(0, m));
+        /* every outfit word but the apron, exactly as on the page without the list */
+        if (plain) { const lit = await ap.evaluate(([looks, words, G1]) => window.__apron.all(looks, words, G1.why ? window.__apron.own : G1), [looks, words, G1]);
+          words.forEach(w => { const a = plain['=' + w] || [], b = lit['=' + w] || []; const n = a.filter((h, i) => h !== b[i]).length;
+            if (w === 'apron') return;
+            if (n || a.length !== b.length || !a.length) say(0, 'turning the apron on changed how a person whose look says "' + w + '" is drawn, in ' + n + ' of ' + a.length + ' pictures of him: it turns on the apron and nothing else'); }); }
+        else say(1, 'this world turns the apron on itself, so the other outfit words could not be held against a world that does not');
+        /* IN THE 3D ROOM, ON THE PHONE'S SCREEN. The room is drawn here first, as every 3D check in this file draws it (the
+           renderer is made by the first frame drawn in 3D, and on a busy machine the game's own loop may not have drawn one
+           yet), and read off the renderer: whether the person you steer is in its frame, how much of him the apron changes
+           there, and where he stands in it. A renderer draws that frame whether anybody can see its canvas or not: hidden,
+           covered, taken off the page or never shown after Begin, it still renders, at a size of its own, and its pixels read
+           the same. So the frame says nothing about the screen. The screen is asked in pictures of it, taken where he stands,
+           with him drawn in his everyday clothes and then in the apron by the engine's own 3D drawing (here first, so a picture
+           never waits on a busy machine's next frame, and then by the game's own loop wherever it runs, which draws the same),
+           so they show whatever the page hides, covers or shrinks the room by: Begin shows the world; he stands at least 8 CSS
+           px wide there, where an apron can be seen at all; and in those pictures the apron changes at least 15 in 100 of the
+           pixels he covers, and more than twice what two pictures with nothing changed differ by */
+        const go = await ap.evaluate(() => typeof T3 !== 'undefined' && !!window.THREE && (typeof CAMS === 'undefined' || CAMS.includes('3d')));
+        if (!go) no3d('this shell has no 3D camera', 'the apron was looked at in the creator and by the person painter only');
+        else {
+          await ap.click('#begin');
+          const began = await until(ap, () => !document.getElementById('world').hidden, null, 2400) || await ap.evaluate(() => !document.getElementById('world').hidden);   /* read once more: the wait is paced by frames */
+          const room = !began ? null : await ap.evaluate(() => { const A = window.__apron;   /* nothing on the page is closed or hidden by the check first: a panel over the room is in the pictures, as it is in front of him */
+            camSet('3d'); sizeCanvas(); T3.turn = null; dir = 'down'; moving = false; held = null;
+            if (!draw3d() || T3.fail) return { cannot: true };
+            const c3 = T3.renderer.domElement; if (!c3.width) return { none: 'the 3D canvas has no size' };
+            const dp = drawPerson, keep = look.outfit;
+            const shot = () => { if (!draw3d() || T3.fail) return null; T3.renderer.render(T3.scene, T3.cam); const c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
+              const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
+            const ne = (a, b, i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30;
+            return A.still(() => { try {
+              drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero) return; return dp.apply(this, arguments); };
+              const none = shot(); drawPerson = dp;
+              look.outfit = 'casual'; const a = shot(), a2 = shot(); look.outfit = 'apron'; const b = shot();
+              if (!none || !a || !a2 || !b) return { none: 'the 3D camera did not draw the room' };
+              let foot = 0, noise = 0, moved = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+              for (let i = 0, p = 0; i < a.length; i += 4, p++) { if (ne(none, a, i)) { foot++; const x = p % c3.width, y = (p / c3.width) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+                if (ne(a, a2, i)) noise++; if (ne(a, b, i)) moved++; }
+              /* where he stands on the screen: his box in the frame, put where the page puts the canvas (scrolled into view as
+                 the preview is, and scaled as its object-fit scales it), and what is on top there, for a red to name */
+              c3.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              const r = c3.getBoundingClientRect(), st = getComputedStyle(c3), sx = r.width / c3.width, sy = r.height / c3.height;
+              const k = { contain: Math.min(sx, sy), cover: Math.max(sx, sy), none: 1, 'scale-down': Math.min(1, sx, sy) }[st.objectFit];
+              const kx = k === undefined ? sx : k, ky = k === undefined ? sy : k, ox = r.left + (r.width - c3.width * kx) / 2, oy = r.top + (r.height - c3.height * ky) / 2;
+              const on = { x0: ox + x0 * kx, x1: ox + (x1 + 1) * kx, y0: oy + y0 * ky, y1: oy + (y1 + 1) * ky }, top = document.elementFromPoint((on.x0 + on.x1) / 2, (on.y0 + on.y1) / 2);
+              let op = 1; for (let e = c3; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+              return { foot, noise, moved, wide: x1 >= x0 ? x1 - x0 + 1 : 0, kx, ky, on, box: [r.width, r.height], screen: [innerWidth, innerHeight],
+                top: top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') : 'nothing', vis: st.visibility, op };
+            } finally { drawPerson = dp; look.outfit = keep; } }); });
+          if (!began) say(0, 'on a phone the world is still hidden 2.4 seconds after Begin, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
+          else if (room.cannot) no3d('the 3D camera cannot draw the room on this page (it fell back to the flat one)', 'the apron was not looked at in the 3D room');
+          else if (room.none) say(0, 'in the 3D room ' + room.none + ', so the apron was not looked at there, which is not a pass');
+          else if (room.noise) say(0, 'the 3D room cannot be measured: two frames with nothing changed differ by ' + room.noise + ' pixels');
+          else if (!room.foot) say(0, 'the person you steer is not in the frame the 3D room is drawn in, so the apron was not looked at there, which is not a pass');
+          else if (room.moved < room.foot * 0.15) say(0, 'in the 3D room, on a phone, the person you steer in an apron changes ' + room.moved + ' of the ' + room.foot + ' pixels he covers in the frame the renderer draws: he is still in his everyday clothes');
+          else {
+            /* on the screen: his box with 2 px of the room round it, cut to the screen */
+            const css = Math.round(room.wide * room.kx), o = room.on, [vw, vh] = room.screen, box = room.box.map(Math.round).join(' by ');
+            const x = Math.max(0, Math.floor(o.x0) - 2), y = Math.max(0, Math.floor(o.y0) - 2), w = Math.min(vw, Math.ceil(o.x1) + 2) - x, h = Math.min(vh, Math.ceil(o.y1) + 2) - y;
+            if (!(room.box[0] >= 1 && room.box[1] >= 1)) say(0, 'on a phone the 3D canvas is ' + box + ' px on the page, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
+            else if (css < 8) say(0, 'in the 3D room on a phone the person you steer stands ' + css + ' CSS px wide on the screen, too small for an apron to be seen on him, so it was not looked at there, which is not a pass');
+            else if (w < 1 || h < 1) say(0, 'in the 3D room on a phone the person you steer stands off the screen, at ' + Math.round(o.x0) + ', ' + Math.round(o.y0) + ' on a screen ' + vw + ' by ' + vh + ', so the apron was not looked at there, which is not a pass');
+            else {
+              const pic = async outfit => { await ap.evaluate(k => { look.outfit = k; draw3d(); }, outfit); await rafs(ap, 2); return (await ap.screenshot({ clip: { x, y, width: w, height: h } })).toString('base64'); };
+              const pics = [await pic('casual'), await pic('casual'), await pic('apron')];   /* it ends in the apron he chose */
+              const seen = await differ(pics);
+              const his = Math.round(room.foot * room.kx * room.ky), calm = seen.noise ? 'two pictures with nothing changed differ by ' + seen.noise : 'two pictures with nothing changed are alike';
+              if (seen.moved < his * 0.15 || seen.moved <= 2 * seen.noise) say(0, 'on a phone the 3D room does not show the apron on the screen: in pictures of the screen where the person you steer stands, choosing Apron changes ' + seen.moved + ' of the about ' + his + ' pixels he covers (' + calm + '), where the frame the renderer draws changes ' + room.moved + ' of ' + room.foot +
+                '. On top at his middle: ' + room.top + '; the 3D canvas is ' + box + ' px on the page, visibility ' + room.vis + ', opacity ' + +room.op.toFixed(2));
+              else say(1, 'in the 3D room on a phone the person you steer stands ' + css + ' CSS px wide on the screen, and in pictures of the screen where he stands the apron changes ' + seen.moved + ' of the about ' + his + ' pixels he covers (' + calm + ')');
+            }
+          }
+        }
+      } catch (e) { if (e !== 0) say(0, 'the check could not drive the page that turns the apron on to the end, so it measured nothing past: ' + String(e && e.message || e).split('\n')[0]); }
+      if (apErr.length) say(0, 'the page that turns the apron on threw: ' + apErr[0].split('\n')[0]);
+      await actx.close();
+    }
+    /* ---- 3 · a world that writes the list wrong says so, once, and turns nothing on; a list loaded after the engine is
+       never seen; and a world that says nothing and one whose list is written right log the same lines ---- */
+    if (on0 !== null) say(1, 'this world declares OUTFITTAKE itself, so a world that writes it wrong, loads it after the engine or says nothing was not asked here');
+    else {
+      /* the first page is the world as it is, with no pack script added: every log below is held against what it logs */
+      const LISTS = [['says nothing about the outfits it turns on', null, 'none'],
+                     ['declares OUTFITTAKE as the word "apron", not a list', 'const OUTFITTAKE="apron";\n', 'wrong'],
+                     ['declares OUTFITTAKE as ["Apron"], in capitals', 'const OUTFITTAKE=["Apron"];\n', 'wrong'],
+                     ['declares OUTFITTAKE as an object, {apron:true}', 'const OUTFITTAKE={apron:true};\n', 'wrong'],
+                     ['declares OUTFITTAKE=["apron"] in a file loaded after engine/boot.js', 'const OUTFITTAKE=["apron"];\n', 'late']];
+      const red0 = AP.length; let told = 0, late = false, L0 = null;
+      for (const [what, src, how] of LISTS) {
+        const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }), errs = [];
+        try { const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
+          if (!(await withPack(ctx, src, how === 'late'))) { say(0, 'this shell loads no engine/boot.js, so a world that ' + what + ' could not be put beside the engine'); continue; }
+          await p.goto(href); await boot(p); await p.evaluate(kit);
+          const r = await p.evaluate(() => { const A = window.__apron;
+            return { log: A.log(), list: typeof OUTFITTAKE === 'undefined' ? null : Array.isArray(OUTFITTAKE) ? OUTFITTAKE.slice() : typeof OUTFITTAKE,
+              drawn: A.clock(() => A.diff(A.card(saveLook({ outfit: 'casual' }), { dir: 'down' }, A.own, 0), A.card(saveLook({ outfit: 'apron' }), { dir: 'down' }, A.own, 0))) }; });
+          if (errs.length) say(0, 'a world that ' + what + ' threw at boot: ' + errs[0].split('\n')[0]);
+          if (r.drawn) say(0, 'a world that ' + what + ' draws an apron anyway: ' + r.drawn + ' pixels of a person in one change' + (how === 'late' ? ', where the engine reads the list once, as it loads, and a file loaded after engine/boot.js is never seen' : ''));
+          if (how === 'none') { L0 = r.log;
+            r.log.filter(about).forEach(e => say(0, 'a world that ' + what + ' has a line about them in the game\'s log: "' + line(e) + '"')); continue; }
+          /* nothing to measure is not a pass: the late page must have its list, where the engine has already loaded */
+          if (how === 'late') { if (!Array.isArray(r.list) || !r.list.includes('apron')) say(0, 'the page meant to load the list after engine/boot.js reads OUTFITTAKE as ' + JSON.stringify(r.list) + ', so whether a list loaded there is seen was not asked, which is not a pass');
+            else if (!r.drawn && !errs.length) late = true;
+            continue; }
+          /* a list written wrong: told once, in one critical line of kind outfit that names OUTFITTAKE, and nothing else new */
+          const o = r.log.filter(e => e.kind === 'outfit'), t = o[0];
+          r.log.filter(e => e.kind !== 'outfit' && !(L0 || []).some(f => same(e, f))).forEach(e => say(0, 'a world that ' + what + ' has a line in the game\'s log besides the one that tells it, which the same world saying nothing does not have: "' + line(e) + '"'));
+          if (!o.length) say(0, 'a world that ' + what + ' draws no apron, and the game\'s log says nothing about why in a line of kind outfit');
+          else if (o.length > 1) say(0, 'a world that ' + what + ' is told so in ' + o.length + ' lines of the game\'s log at boot, where one says it');
+          else if (t.n > 1) say(0, 'a world that ' + what + ' is told so ' + t.n + ' times by the time it has booted, where once says it');
+          else if (!t.crit) say(0, 'a world that ' + what + ' is told so in a line of the game\'s log that is not critical, so the console prints it without CRIT, where a list that turns nothing on is told as critically as a BUILDER written wrong: "' + line(t) + '"');
+          else if (!/OUTFITTAKE/.test(t.msg)) say(0, 'a world that ' + what + ' is told so by a line that never names OUTFITTAKE, so whoever wrote it cannot find what to fix: "' + line(t) + '"');
+          else told++;
+        } finally { await ctx.close(); }
+      }
+      /* the page whose list is written right (the second part) and the world saying nothing, line for line, every kind:
+         a line on one and not the other is one the list put there or took away */
+      if (!L0) say(0, 'the world saying nothing gave no log to hold the others against, so no log was compared, which is not a pass');
+      else if (rightLog) {
+        rightLog.filter(e => !L0.some(f => same(e, f))).forEach(e => say(0, 'a world whose list is written right, ["apron"], has a line in the game\'s log that the same world saying nothing does not: "' + line(e) + '"'));
+        L0.filter(e => !rightLog.some(f => same(e, f))).forEach(e => say(0, 'a world that says nothing about the outfits it turns on has a line in the game\'s log that the same world with its list written right does not, so saying nothing is told something: "' + line(e) + '"'));
+      }
+      if (AP.length === red0 && L0 && rightLog && late && told === LISTS.filter(l => l[2] === 'wrong').length)
+        say(1, 'a world that writes the list wrong (as a word, in capitals, as an object) turns nothing on and is told so once at boot, in one critical line of the game\'s log of kind outfit that names OUTFITTAKE, and logs nothing else new; a list in a file loaded after engine/boot.js is never seen; and the world saying nothing and the page whose list is written right log ' + (L0.length ? 'the same ' + L0.length + ' line(s), every kind' : 'nothing at all, in any kind') + ', none of it about OUTFITTAKE, an outfit or the apron');
+    }
+    fails.push(...AP, ...AN);
+  }
+
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
