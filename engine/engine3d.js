@@ -1614,7 +1614,7 @@ const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are s
    the fore leg across from it together */
 SKELETONS.dog={
   joints:{hips:[null,0,0.19,-0.135],spine:["hips",0,0,0.125],chest:["spine",0,0,0.125],neck:["chest",0,0.06,0.04],head:["neck",0,0.095,0.04],
-    mouth:["head",0,-0.06,0.115],tail_1:["hips",0,0.045,-0.065],tail_2:["tail_1",0,0.11,-0.06],tail_tip:["tail_2",0,0.115,-0.01],
+    mouth:["head",0,-0.06,0.115],tail_1:["hips",0,0.045,-0.065],tail_2:["tail_1",0,0.12,-0.06],tail_tip:["tail_2",0,0.135,-0.01],
     hind_l:["hips",0.055,-0.02,0],hock_l:["hind_l",0,-0.075,0],hpaw_l:["hock_l",0,-0.07,0],
     hind_r:["hips",-0.055,-0.02,0],hock_r:["hind_r",0,-0.075,0],hpaw_r:["hock_r",0,-0.07,0],
     fore_l:["chest",0.055,-0.02,0],wrist_l:["fore_l",0,-0.075,0],fpaw_l:["wrist_l",0,-0.07,0],
@@ -1635,8 +1635,8 @@ SKELETONS.dog={
        stand up 3.5 px over her head; a thin tail that curls over */
 const DOGBUILDS=Object.freeze({
   beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,ear:"drop",tail:"up"}),
-  lab:Object.freeze({size:1.15,length:0.9,legs:1,head:0.95,neck:1.15,ear:"drop",tail:"out"}),
-  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.4,neck:2.2,ear:"up",tail:"curl"})});
+  lab:Object.freeze({size:1.15,length:0.85,legs:1,head:0.95,neck:1.15,ear:"drop",tail:"out"}),
+  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.4,neck:2.45,ear:"up",tail:"curl"})});
 /* IS HE HELD PLAINLY ENOUGH TO BE A BODY this instant? Only standing, walking and wagging, calm or happy. Everything else
    his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
    lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */

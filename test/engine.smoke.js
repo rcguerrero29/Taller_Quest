@@ -14334,6 +14334,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                       const near = meshes.filter(o => o.parent === j || o.parent === j.parent || (o.parent && o.parent.parent === j));
                       if (!near.some(o => bx.get(o).containsPoint(w))) bad.add('no part reaches his ' + n + ' joint'); });
                     meshes.forEach(o => { if (!meshes.some(q => q !== o && bx.get(q).intersectsBox(bx.get(o)))) bad.add('his ' + o.userData.wears + ' on the ' + o.parent.name + ' joint touches no other part'); });
+                    /* and between each joint and the one it hangs from, a part all the way: no gap in a leg, the neck or the tail */
+                    JN.forEach(n => { const j = B.getObjectByName(n), pj = j.parent; if (n === 'mouth' || !pj || pj === B) return;
+                      const a = pj.getWorldPosition(new THREE.Vector3()), c = j.getWorldPosition(new THREE.Vector3());
+                      for (const t of [0.25, 0.5, 0.75]) { const q = a.clone().lerp(c, t); if (!meshes.some(o => bx.get(o).containsPoint(q))) { bad.add('nothing joins his ' + pj.name + ' to his ' + n + ': there is a gap between them'); break; } } });
                     return [...bad].map(m => 'the ' + kind + '\'s body ' + when + ': ' + m); };
                   const paws = sk.legs.map(l => [l[2], B.getObjectByName(l[2]).children.find(o => o.isMesh)]);
                   if (paws.some(([, m]) => !m)) { said('the ' + kind + '\'s body has a leg with no paw, so where he stands could not be measured'); continue; }
