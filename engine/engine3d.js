@@ -1593,6 +1593,7 @@ function t3BodyPreview(cv,lk,ang){
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
 const DOGCOLLARLIE=0.55;   /* how far his collar tips down toward his throat, in radians */
+const DOGTUCK=[0.62,0.86];   /* at his hips: the share of his chest's depth below the spine, and of his ribs' width */
 const DOGREST=0.22;       /* seconds after his last step for which he is still walking: longer than the pause between two steps of one walk */
 const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. His card's legs stand
                              still while he goes a square every 160 ms, so the body's pace is a trot's: at his speed his paws would have to
@@ -1623,7 +1624,7 @@ SKELETONS.dog={
     fore_r:["chest",-0.066,-0.02,0],wrist_r:["fore_r",0,-0.075,0],fpaw_r:["wrist_r",0,-0.07,0]},
   /* how thick, in these units: the barrel's half height (the card's 8 px body), the neck, the legs (2.2 px wide), the paw,
      the tail (a 2.4 px line) */
-  limb:{barrel:0.132,neck:0.07,leg:0.04,shin:0.036,paw:0.044,tail:0.036},head:0.132,
+  limb:{barrel:0.122,neck:0.07,leg:0.04,shin:0.036,paw:0.044,tail:0.036},head:0.132,
   legs:[["hind_l","hock_l","hpaw_l",0],["fore_r","wrist_r","fpaw_r",0],["hind_r","hock_r","hpaw_r",Math.PI],["fore_l","wrist_l","fpaw_l",Math.PI]],
   arms:[],stride:0.075,lift:0.045,drop:0.015,swing:0};
 /* EACH BREED AGAINST THE BEAGLE: 1 is the beagle's. `size` scales the whole dog, `length` his back, `legs` his legs, `head`
@@ -1691,9 +1692,14 @@ function dogMake(skel,lk){
   {const lo=at("spine").z,len=at("spine").z+at("chest").z+0.145*b.size;
     const m=part("spine",new THREE.CapsuleGeometry(Lm.barrel,Math.max(0.001,len-2*Lm.barrel),8,24),bw,paint.body,0,0,(at("chest").z-lo)/2);
     /* the sheet is laid by where each point of him is, evenly from end to end: the capsule's own lays most of it on its two round ends */
-    {const g=m.geometry,ps=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<ps.count;i++)uv.setY(i,Math.max(0,Math.min(1,ps.getY(i)/len+0.5)));uv.needsUpdate=true;}
+    {const g=m.geometry,ps=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<ps.count;i++)uv.setY(i,Math.max(0,Math.min(1,ps.getY(i)/len+0.5)));uv.needsUpdate=true;
+      /* a dog's trunk is not a sausage: deep at the chest, his belly drawn up toward his loins and his waist a little
+         narrower than his ribs (DOGTUCK: how much of his depth below the spine, and of his width, is left at his hips) */
+      for(let i=0;i<ps.count;i++){const s=Math.max(0,Math.min(1,ps.getY(i)/len+0.5)),z=ps.getZ(i);
+        if(z>0)ps.setZ(i,z*(DOGTUCK[0]+(1-DOGTUCK[0])*s));ps.setX(i,ps.getX(i)*(DOGTUCK[1]+(1-DOGTUCK[1])*s));}
+      ps.needsUpdate=true;g.computeVertexNormals();}
     m.rotation.x=Math.PI/2;m.scale.set(1.02,1,1);M.barrelLen=len;coat(m,"barrel",128,128);}
-  part("chest",ball(Lm.barrel*0.86),bw,paint.body,0,-Lm.barrel*0.14,Lm.barrel*0.22,[0.92,1,1]);
+  part("chest",ball(Lm.barrel*0.8),bw,paint.body,0,-Lm.barrel*0.12,Lm.barrel*0.12,[0.9,1.06,0.85]);
   /* the neck, from the chest up to the head, and the collar round it under his jaw: a thin band lying on the neck, where
      the card paints it under his head */
   const nv=at("neck").add(at("head")),nu=nv.clone().normalize(),nL=nv.length();
@@ -1725,7 +1731,7 @@ function dogMake(skel,lk){
      chin (the sheet's left edge) by his nose (a quarter along) and his crown (half) to his nape, and from ear to ear */
   {const g=new THREE.SphereGeometry(r,24,16);g.rotateZ(Math.PI/2);coat(part("head",g,bw,paint.body,0,0,0),"skull",128,64);}
   const ml=b.ear==="up"?0.75:1;   /* the chi's muzzle is short */
-  part("head",ball(r*0.55,14,10),bw,paint.body,0,-r*0.4,r*(0.45+0.4*ml),[1.02*(b.jaw||1),0.88*(b.jaw||1),1.35*ml]);
+  coat(part("head",ball(r*0.55,14,10),bw,paint.body,0,-r*0.4,r*(0.45+0.4*ml),[1.02*(b.jaw||1),0.88*(b.jaw||1),1.35*ml]),"muzzle",64,32);
   part("head",ball(r*0.26,10,8),"nose","#26202B",0,-r*0.26,r*(0.25+1.14*ml));
   [1,-1].forEach(sd=>part("head",ball(r*(b.ear==="up"?0.2:0.16),10,8),"eye","#26202B",sd*r*0.5,r*0.14,r*0.82));
   const earCol=lk.kind==="beagle"?paint.coat:b.ear==="up"?paint.coat:shadeHex(paint.coat,-0.25);
@@ -1761,6 +1767,7 @@ function dogMake(skel,lk){
    freckles on his ear. The lab's card and the chi's are all coat, so they paint nothing.
      · barrel: across the sheet is round him, the middle the top of his back; down the sheet is from his chest to his tail;
      · skull: across is from his chin (0) by his nose (1/4) over his crown (1/2) to his nape (3/4); down is from ear to ear;
+     · muzzle: across is round it, his nose a quarter along; down is from its top to his chin;
      · ear: across is round the flap, the middle and the two edges its outer faces; down is from its root to its end */
 const DOGCOAT={
   beagle:{
@@ -1786,6 +1793,11 @@ const DOGCOAT={
       ["heart",(g,w,h,paint)=>{g.translate(w*0.46,h/2);g.rotate(Math.PI/2);const s=h*0.19;g.fillStyle=paint.body;
         g.beginPath();g.moveTo(0,s*1.15);g.bezierCurveTo(-s*0.35,s*0.7,-s*1.2,s*0.25,-s*1.2,-s*0.35);g.bezierCurveTo(-s*1.2,-s*1.05,-s*0.25,-s*1.1,0,-s*0.45);
         g.bezierCurveTo(s*0.25,-s*1.1,s*1.2,-s*1.05,s*1.2,-s*0.35);g.bezierCurveTo(s*1.2,s*0.25,s*0.35,s*0.7,0,s*1.15);g.closePath();g.fill();}]],
+    muzzle:[
+      /* the freckles on his muzzle: small flecks of his lemon on the white, on either side over his lip. Across the sheet
+         is round his muzzle (his nose a quarter along, his two sides at the start and the middle), down it from top to chin */
+      ["freckles",(g,w,h,paint)=>{g.fillStyle=paint.coat;
+        [[0.09,0.36,0.4],[0.15,0.46,1.3],[0.06,0.52,2.2],[0.41,0.36,2.6],[0.35,0.47,0.9],[0.44,0.53,1.7]].forEach(([u,v,a])=>{g.beginPath();g.ellipse(u*w,v*h,w*0.022,h*0.05,a,0,7);g.fill();});}]],
     ear:[
       /* the two white freckles on his ear, as the card's, on the face of the flap that shows */
       ["freckles",(g,w,h,paint)=>{g.fillStyle=paint.body;[[0.5,0.32],[0.54,0.66],[0.0,0.32],[0.04,0.66],[1,0.32]].forEach(([u,v])=>{g.beginPath();g.ellipse(u*w,v*h,w*0.035,h*0.05,0.4,0,7);g.fill();});}]]},
