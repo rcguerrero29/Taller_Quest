@@ -1594,6 +1594,7 @@ const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a foll
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
 const DOGCOLLARLIE=0.55;   /* how far his collar tips down toward his throat, in radians */
 const DOGTUCK=[0.62,0.86];   /* at his hips: the share of his chest's depth below the spine, and of his ribs' width */
+const DOGUNDER=0.8;    /* how much of his barrel's roundness is left under his spine, standing: his legs are mostly in view under a little chest */
 const DOGREST=0.22;       /* seconds after his last step for which he is still walking: longer than the pause between two steps of one walk */
 const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. His card's legs stand
                              still while he goes a square every 160 ms, so the body's pace is a trot's: at his speed his paws would have to
@@ -1628,7 +1629,7 @@ SKELETONS.dog={
   legs:[["hind_l","hock_l","hpaw_l",0],["fore_r","wrist_r","fpaw_r",0],["hind_r","hock_r","hpaw_r",Math.PI],["fore_l","wrist_l","fpaw_l",Math.PI]],
   arms:[],stride:0.075,lift:0.045,drop:0.015,swing:0};
 /* EACH BREED AGAINST THE BEAGLE: 1 is the beagle's. `size` scales the whole dog, `length` his back, `legs` his legs, `head`
-   his head, `neck` how high his head is carried; `ear` and `tail` are words DOGPART reads. A breed is a row here and its
+   his head, `neck` how high his head is carried, `chest` how deep his chest hangs under his spine; `ear` and `tail` are words DOGPART reads. A breed is a row here and its
    markings in DOGPART, and nothing else. Read off the cards beside the beagle's:
      · the lab (drawLab): a body 16 px by 9.5 against 14 by 8 and his head 13.4 px up against 11.7, so 1.15 of him; his
        back, at that size, as long as the card's; a blocky head no bigger than the beagle's on a bigger dog; an otter tail
@@ -1637,9 +1638,9 @@ SKELETONS.dog={
        (1.35 of the beagle's at her size), carried as high as the beagle carries his, so a long neck under it; ears that
        stand up 3.5 px over her head; a thin tail that curls over */
 const DOGBUILDS=Object.freeze({
-  beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,ear:"drop",tail:"up"}),
-  lab:Object.freeze({size:1.12,length:0.85,legs:1,head:0.92,neck:1,jaw:1.25,ear:"drop",tail:"out"}),
-  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.2,neck:1.4,jaw:0.85,ear:"up",tail:"curl"})});
+  beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,chest:1,ear:"drop",tail:"up"}),
+  lab:Object.freeze({size:1.12,length:0.85,legs:1,head:0.92,neck:1,chest:1.1,jaw:1.25,ear:"drop",tail:"out"}),
+  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.2,neck:1.4,chest:0.9,jaw:0.85,ear:"up",tail:"curl"})});
 /* IS HE HELD PLAINLY ENOUGH TO BE A BODY this instant? Only standing, walking and wagging, calm or happy. Everything else
    his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
    lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */
@@ -1689,6 +1690,7 @@ function dogMake(skel,lk){
      as the card's and as wide as deep; the chest a round under its front, so he stands deep-chested. Its sheet runs round
      him (the middle of the sheet is the top of his back, its two edges meet under his belly) and from his chest, at the
      sheet's top, back to his tail */
+  const ch=typeof b.chest==="number"&&isFinite(b.chest)?Math.max(0.6,Math.min(1.4,b.chest)):1;   /* the breed's chest, held to what the trunk can carry */
   {const lo=at("spine").z,len=at("spine").z+at("chest").z+0.145*b.size;
     const m=part("spine",new THREE.CapsuleGeometry(Lm.barrel,Math.max(0.001,len-2*Lm.barrel),8,24),bw,paint.body,0,0,(at("chest").z-lo)/2);
     /* the sheet is laid by where each point of him is, evenly from end to end: the capsule's own lays most of it on its two round ends */
@@ -1696,10 +1698,10 @@ function dogMake(skel,lk){
       /* a dog's trunk is not a sausage: deep at the chest, his belly drawn up toward his loins and his waist a little
          narrower than his ribs (DOGTUCK: how much of his depth below the spine, and of his width, is left at his hips) */
       for(let i=0;i<ps.count;i++){const s=Math.max(0,Math.min(1,ps.getY(i)/len+0.5)),z=ps.getZ(i);
-        if(z>0)ps.setZ(i,z*(DOGTUCK[0]+(1-DOGTUCK[0])*s));ps.setX(i,ps.getX(i)*(DOGTUCK[1]+(1-DOGTUCK[1])*s));}
+        if(z>0)ps.setZ(i,z*(DOGTUCK[0]+(1-DOGTUCK[0])*s)*DOGUNDER*ch);ps.setX(i,ps.getX(i)*(DOGTUCK[1]+(1-DOGTUCK[1])*s));}
       ps.needsUpdate=true;g.computeVertexNormals();}
     m.rotation.x=Math.PI/2;m.scale.set(1.02,1,1);M.barrelLen=len;coat(m,"barrel",128,128);}
-  part("chest",ball(Lm.barrel*0.8),bw,paint.body,0,-Lm.barrel*0.12,Lm.barrel*0.12,[0.9,1.06,0.85]);
+  part("chest",ball(Lm.barrel*0.64*ch),bw,paint.body,0,-Lm.barrel*0.16,Lm.barrel*0.1,[0.95,1.05,0.9]);
   /* the neck, from the chest up to the head, and the collar round it under his jaw: a thin band lying on the neck, where
      the card paints it under his head */
   const nv=at("neck").add(at("head")),nu=nv.clone().normalize(),nL=nv.length();
@@ -1784,13 +1786,13 @@ const DOGCOAT={
         [[0.4,0.7,0.3],[0.38,0.36,1.1],[0.45,0.53,2],[0.36,0.5,0.7],[0.6,0.66,2.4],[0.62,0.4,0.2],[0.55,0.47,1.5],[0.64,0.56,0.9]]
           .forEach(([u,v,a])=>{g.beginPath();g.ellipse(u*w,v*h,w*0.013,h*0.018,a,0,7);g.fill();});}]],
     skull:[
-      /* the lemon crown: from over his brow back across the top of his skull and down his nape, ear to ear, its front
-         edge soft and rounded; his face, his muzzle and his throat stay white */
-      ["crown",(g,w,h,paint)=>{const cap=(x0,a)=>{g.globalAlpha=a;g.fillStyle=paint.coat;g.beginPath();g.moveTo(w*0.9,0);g.lineTo(x0+h*0.1,0);
-          g.quadraticCurveTo(x0-h*0.08,h/2,x0+h*0.1,h);g.lineTo(w*0.9,h);g.closePath();g.fill();};
-        cap(w*0.35,0.35);cap(w*0.365,0.6);cap(w*0.38,1);}],
+      /* the lemon of his head: over the top of his skull and down his nape, ear to ear, and forward on either side round
+         his eyes and over his cheeks, its edge soft; between his eyes it stops higher, and his muzzle and throat are white */
+      ["crown",(g,w,h,paint)=>{const cap=(d,a)=>{const xs=w*(0.2-d),xm=w*(0.345-d);g.globalAlpha=a;g.fillStyle=paint.coat;g.beginPath();g.moveTo(w*0.9,0);g.lineTo(xs,0);
+          g.bezierCurveTo(xs,h*0.34,xm,h*0.36,xm,h/2);g.bezierCurveTo(xm,h*0.64,xs,h*0.66,xs,h);g.lineTo(w*0.9,h);g.closePath();g.fill();};
+        cap(0.02,0.4);cap(0,1);}],
       /* the white heart on it, canon: its point to his nose, the two bumps back on either side */
-      ["heart",(g,w,h,paint)=>{g.translate(w*0.46,h/2);g.rotate(Math.PI/2);const s=h*0.19;g.fillStyle=paint.body;
+      ["heart",(g,w,h,paint)=>{g.translate(w*0.46,h/2);g.rotate(Math.PI/2);const s=h*0.135;g.fillStyle=paint.body;
         g.beginPath();g.moveTo(0,s*1.15);g.bezierCurveTo(-s*0.35,s*0.7,-s*1.2,s*0.25,-s*1.2,-s*0.35);g.bezierCurveTo(-s*1.2,-s*1.05,-s*0.25,-s*1.1,0,-s*0.45);
         g.bezierCurveTo(s*0.25,-s*1.1,s*1.2,-s*1.05,s*1.2,-s*0.35);g.bezierCurveTo(s*1.2,s*0.25,s*0.35,s*0.7,0,s*1.15);g.closePath();g.fill();}]],
     muzzle:[

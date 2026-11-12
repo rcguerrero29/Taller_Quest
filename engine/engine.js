@@ -933,7 +933,12 @@ const BODYPLAN=Object.freeze([
   {key:"hat",of:"person",kind:"option",note:"hats"},
   {key:"paint",of:"person",kind:"option",note:"face painting and make-up, the Day of the Dead's among them; piercings and tattoos with it"},
   {key:"breed",of:"dog",kind:"option",note:"the dog's breed; today it is the dog's own kind (DOGK), not a choice of the table"},
-  {key:"marks",of:"dog",kind:"option",note:"a breed's markings as a choice; today each breed has one set (DOGPART)"},
+  {key:"marks",of:"dog",kind:"option",note:"a breed's markings as a choice; today each breed has one set (DOGCOAT)"},
+  {key:"freckles",of:"dog",kind:"measure",note:"more or fewer freckles on the muzzle; today the beagle's are painted as one mark (DOGCOAT)"},
+  {key:"chest",of:"dog",kind:"measure",note:"how deep the chest is; today a measure of the breed (DOGBUILDS). Lying down it is to fill out a little, by the size of the dog, when lying is a body"},
+  {key:"head",of:"dog",kind:"measure",note:"the size of the head and face; today a measure of the breed (DOGBUILDS)"},
+  {key:"legs",of:"dog",kind:"measure",note:"how long the legs are; today a measure of the breed (DOGBUILDS)"},
+  {key:"tail",of:"dog",kind:"option",note:"the tail's kind (short, curled, fluffy and others) and its shape; today a word of the breed (DOGBUILDS)"},
   {key:"coat",of:"dog",kind:"colour",note:"the coat's colour; today it is the dog's own colour, cleaned by dogLookOf"},
   {key:"paint",of:"dog",kind:"option",note:"painted in the manner of an alebrije"}
 ].map(r=>Object.freeze(r)));
