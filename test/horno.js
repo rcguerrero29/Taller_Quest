@@ -697,7 +697,8 @@ async function played() {
    the gauge's worlds, the same size of run as this one, took 112 s, 165 s and more than 180 s. The limit is 300 s, as
    the gauge's: a minute or more over the slowest normal run, and a stuck run still fails inside five minutes. SIGKILL, because Playwright gives the child its own SIGTERM
    handler and a child whose event loop is stuck never runs any handler. */
-const LIMIT_S = 300;
+/* 480 s from 2026-11-12, with the gauge's (test/gauge.js says why): the engine's checks grew with the dog's body */
+const LIMIT_S = 480;
 function demands() {
   const expectedPath = path.join(root, 'content', 'horno', 'expected.txt');
   let out = '';
