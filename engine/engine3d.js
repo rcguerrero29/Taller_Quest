@@ -1592,65 +1592,164 @@ function t3BodyPreview(cv,lk,ang){
    coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
-const DOGSTEPS=[3,7];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. FILL: set from how his card's legs read at his speeds */
+const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. His card's legs stand
+                             still while he goes a square every 160 ms, so the body's pace is a trot's: at his speed his paws would have to
+                             step sixty times a second to stay planted; held to eight they glide, as the person's do, and never flutter */
 /* THE DOG'S SKELETON, in squares, as he stands facing +z: [parent, x, y, z] from the parent's joint. Every joint is named
-   here and nowhere else. FILL: every number. Read them off the beagle's card (drawBeagle paints him in a 32 by 32 cell,
-   one card pixel being T3PERSON/32 of a square): his length from chest to tail, his height at the back, his head's size
-   and where it sits, the length of his legs. `mouth` is where a carried ball rides. The legs are named as the walk reads
-   them, [top joint, middle joint, paw, where in the cycle], a trot: one hind leg and the fore leg across from it together */
+   here and nowhere else. Read off the beagle's card (drawBeagle paints him in a 32 by 32 cell facing right, one card
+   pixel being 0.92/32 = 0.02875 of these units, which the body's scale makes T3PERSON/32 of a square; his paws stand on
+   the card's row 27.7 and the middle of the cell is the middle of his square):
+     · his back: the card's body is 14 px long and 8 tall, its middle 6.7 px above the ground, so the hips stand at 0.19
+       and the barrel hangs on the spine; his hind legs stand under card column -4.9 and his fore legs under 4.1, so the
+       hips are 0.135 behind the middle and the chest 0.25 ahead of the hips;
+     · his head: the card's head is a circle of 4.6 px round (6.5, 16) that takes in his throat; the skull is drawn 0.105
+       round at the head joint, 0.345 up and 0.195 ahead, so its top is the card's 16.3 px above the ground, and the neck
+       shows below it where his collar is painted. `mouth` is under the nose (card 10.6, 17.2), where a carried ball rides;
+     · his tail: from card (-7, 19.5) up and back to (-10, 11), the white tip 1.5 px round: tail_1 at its root, tail_2 a
+       little under halfway, tail_tip at the white tip;
+     · his legs: 2.2 px wide, from the barrel's middle to the paw; the paw joint 0.025 above the ground, as the person's
+       ankle stands above his sole, so the paw is drawn under it. The spine and the chest stand level with the hips
+       (their y is 0): the walk reads a fore leg's rest height off the hips, its top joint and the two below it.
+   The legs are named as the walk reads them, [top joint, middle joint, paw, where in the cycle], a trot: one hind leg and
+   the fore leg across from it together */
 SKELETONS.dog={
-  joints:{hips:[null,0,0.2,-0.14],spine:["hips",0,0,0.14],chest:["spine",0,0,0.14],neck:["chest",0,0.05,0.05],head:["neck",0,0.04,0.07],
-    mouth:["head",0,-0.03,0.1],tail_1:["hips",0,0.04,-0.05],tail_2:["tail_1",0,0.07,-0.04],tail_tip:["tail_2",0,0.06,-0.02],
-    hind_l:["hips",0.07,-0.02,0],hock_l:["hind_l",0,-0.085,0],hpaw_l:["hock_l",0,-0.085,0],
-    hind_r:["hips",-0.07,-0.02,0],hock_r:["hind_r",0,-0.085,0],hpaw_r:["hock_r",0,-0.085,0],
-    fore_l:["chest",0.07,-0.02,0],wrist_l:["fore_l",0,-0.085,0],fpaw_l:["wrist_l",0,-0.085,0],
-    fore_r:["chest",-0.07,-0.02,0],wrist_r:["fore_r",0,-0.085,0],fpaw_r:["wrist_r",0,-0.085,0]},
-  limb:{barrel:0.1,neck:0.06,leg:0.03,shin:0.025,paw:0.03,tail:0.018},head:0.11,
+  joints:{hips:[null,0,0.19,-0.135],spine:["hips",0,0,0.125],chest:["spine",0,0,0.125],neck:["chest",0,0.06,0.04],head:["neck",0,0.095,0.04],
+    mouth:["head",0,-0.06,0.115],tail_1:["hips",0,0.045,-0.065],tail_2:["tail_1",0,0.11,-0.06],tail_tip:["tail_2",0,0.115,-0.01],
+    hind_l:["hips",0.055,-0.02,0],hock_l:["hind_l",0,-0.075,0],hpaw_l:["hock_l",0,-0.07,0],
+    hind_r:["hips",-0.055,-0.02,0],hock_r:["hind_r",0,-0.075,0],hpaw_r:["hock_r",0,-0.07,0],
+    fore_l:["chest",0.055,-0.02,0],wrist_l:["fore_l",0,-0.075,0],fpaw_l:["wrist_l",0,-0.07,0],
+    fore_r:["chest",-0.055,-0.02,0],wrist_r:["fore_r",0,-0.075,0],fpaw_r:["wrist_r",0,-0.07,0]},
+  /* how thick, in these units: the barrel's half height (the card's 8 px body), the neck, the legs (2.2 px wide), the paw,
+     the tail (a 2.4 px line) */
+  limb:{barrel:0.115,neck:0.055,leg:0.032,shin:0.029,paw:0.034,tail:0.03},head:0.105,
   legs:[["hind_l","hock_l","hpaw_l",0],["fore_r","wrist_r","fpaw_r",0],["hind_r","hock_r","hpaw_r",Math.PI],["fore_l","wrist_l","fpaw_l",Math.PI]],
-  arms:[],stride:0.05,lift:0.02,drop:0.008,swing:0};
+  arms:[],stride:0.055,lift:0.03,drop:0.015,swing:0};
 /* EACH BREED AGAINST THE BEAGLE: 1 is the beagle's. `size` scales the whole dog, `length` his back, `legs` his legs, `head`
-   his head; `ear` and `tail` are words DOGPART reads. A breed is a row here and its markings in DOGPART, and nothing else.
-   FILL: the lab's and the chi's numbers, read off their cards beside the beagle's (drawLab, drawChi) */
+   his head, `neck` how high his head is carried; `ear` and `tail` are words DOGPART reads. A breed is a row here and its
+   markings in DOGPART, and nothing else. Read off the cards beside the beagle's:
+     · the lab (drawLab): a body 16 px by 9.5 against 14 by 8 and his head 13.4 px up against 11.7, so 1.15 of him; his
+       back, at that size, as long as the card's; a blocky head no bigger than the beagle's on a bigger dog; an otter tail
+       carried out behind him;
+     · the chi (drawChi): a body 9.5 px by 5.5, so 0.7 of him, on legs a little long for it; an apple head 4.2 px round
+       (1.35 of the beagle's at her size), carried as high as the beagle carries his, so a long neck under it; ears that
+       stand up 3.5 px over her head; a thin tail that curls over */
 const DOGBUILDS=Object.freeze({
-  beagle:Object.freeze({size:1,length:1,legs:1,head:1,ear:"drop",tail:"up"}),
-  lab:Object.freeze({size:1,length:1,legs:1,head:1,ear:"drop",tail:"out"}),
-  chi:Object.freeze({size:1,length:1,legs:1,head:1,ear:"up",tail:"curl"})});
+  beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,ear:"drop",tail:"up"}),
+  lab:Object.freeze({size:1.15,length:0.9,legs:1,head:0.95,neck:1.15,ear:"drop",tail:"out"}),
+  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.4,neck:2.2,ear:"up",tail:"curl"})});
 /* IS HE HELD PLAINLY ENOUGH TO BE A BODY this instant? Only standing, walking and wagging, calm or happy. Everything else
    his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
    lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */
 function dogBodyWants(cr,P){
   return !!cr&&!!P&&DOGK.has(cr.kind)&&!!cr.follow&&!P.hid&&!P.lift&&!P.side&&!P.sit&&!P.lay&&!P.howl&&!P.dig&&!P.love&&!P.drop&&!P.nod;}
 /* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */
-function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||DOGBUILDS.beagle,J={},back=new Set(["spine","chest"]),leg=/^(hock|hpaw|wrist|fpaw)_/;
+function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||DOGBUILDS.beagle,J={},back=new Set(["spine","chest"]),leg=/^(hock|hpaw|wrist|fpaw)_/,up=new Set(["neck","head"]);
   Object.keys(s.joints).forEach(n=>{const[p,x,y,z]=s.joints[n];
-    J[n]=[p,x*b.size,y*b.size*(leg.test(n)?b.legs:1),z*b.size*(back.has(n)?b.length:1)];});
+    J[n]=[p,x*b.size,y*b.size*(leg.test(n)?b.legs:1)*(up.has(n)?(b.neck||1):1),z*b.size*(back.has(n)?b.length:1)];});
   J.hips=[null,0,s.joints.hips[2]*b.size*b.legs,s.joints.hips[3]*b.size*b.length];   /* he stands as high as his legs are long */
   const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.size;});
   return {...s,joints:J,limb,head:s.head*b.size*b.head,stride:s.stride*b.size*b.legs,lift:s.lift*b.size,drop:s.drop*b.size,build:b,kind};}
+/* THE CARD'S OWN PAINT, where a card does not paint with the dog's colour: the beagle's card is lemon and white whatever his
+   record says (drawBeagle), so his body is too, and his record's coat is not read for him. Every other breed is painted in
+   the coat his record names (dogLookOf), as his card is */
+const DOGCARDPAINT=Object.freeze({beagle:Object.freeze({body:"#F6F2E8",coat:"#E8C46A"})});
 /* THE DOG'S MAKER. Handed a skeleton (dogSkeleton) and a look (dogLookOf, already cleaned: kind, coat, collar, band), it
    answers a group named "dogbody" whose userData holds `joints` (an Object3D for every joint of the skeleton, named for
    itself, parented as the skeleton says), `skel` and `look`. Every part hangs on a joint, says what it wears in
    userData.wears (coat, white, ear, nose, eye, collar, band, tail, tip, mark) and keeps its paint in userData.base, so
    t3BodyLight can light it; every size is read off the skeleton, so the parts meet at the joints for every breed; a
    shadow lies under him as under the person. No bandana is drawn where the look has none.
-   FILL: the parts. Until then he is joints with nothing on them. */
+   His body is painted as his card is: the beagle white with his lemon markings (DOGCARDPAINT, DOGPART), every other
+   breed all over in his coat ("coat"). Simple rounded parts, the outline first: a barrel as long and as deep as the card's
+   body, a skull and a muzzle as the card's head, the legs as thick as the card's, the tail the card's sickle */
 function dogMake(skel,lk){
   const root=new THREE.Group();root.name="dogbody";const J={};
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
-  /* FILL: barrel, chest, neck, head, muzzle, nose, eyes, ears (by build.ear), four legs and paws, the tail in two parts and
-     its tip (by build.tail), the collar, the bandana where lk.band is a colour, the shadow; then the breed's markings: */
-  if(typeof DOGPART[lk.kind]==="function")DOGPART[lk.kind]({J,skel,lk,root});
+  const b=skel.build||DOGBUILDS.beagle,Lm=skel.limb,r=skel.head,at=n=>new THREE.Vector3(...skel.joints[n].slice(1));
+  const paint=DOGCARDPAINT[lk.kind]||{body:lk.coat,coat:lk.coat},bw=DOGCARDPAINT[lk.kind]?"white":"coat";
+  const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
+    m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};J[j].add(m);return m;};
+  const ball=(rr,w,h)=>new THREE.SphereGeometry(rr,w||14,h||10);
+  /* a capsule of radius rr on joint j from its joint along v (a vector in j's frame), reaching `over` past each end */
+  const span=(j,v,rr,wears,col,over)=>{const L=v.length(),m=part(j,new THREE.CapsuleGeometry(rr,Math.max(0.001,L+2*(over||0)-2*rr),4,12),wears,col,v.x/2,v.y/2,v.z/2);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize());return m;};
+  const M={J,skel,lk,root,b,Lm,r,at,part,ball,span,paint};   /* what a breed's part function is handed */
+  /* the barrel, on the spine: from 0.075 behind the hind legs to 0.07 ahead of the fore legs as the card's body is, as deep
+     as the card's, and a little narrower than deep; the chest a round under its front, so he stands deep-chested */
+  {const lo=at("spine").z,len=at("spine").z+at("chest").z+0.145*b.size;
+    const m=part("spine",new THREE.CapsuleGeometry(Lm.barrel,Math.max(0.001,len-2*Lm.barrel),6,16),bw,paint.body,0,0,(at("chest").z-lo)/2);
+    m.rotation.x=Math.PI/2;m.scale.set(0.88,1,1);M.barrelLen=len;}
+  part("chest",ball(Lm.barrel*0.92),bw,paint.body,0,-Lm.barrel*0.08,Lm.barrel*0.25,[0.8,1,1]);
+  /* the neck, from the chest up to the head, and the collar round its foot, where the card paints it under his head */
+  const nv=at("neck").add(at("head"));span("chest",nv,Lm.neck,bw,paint.body,0.02*b.size);
+  const cv=nv.clone().multiplyScalar(0.22);   /* the collar a fifth of the way up, under his head and ears, and standing out round the neck */
+  {const col=part("chest",new THREE.TorusGeometry(Lm.neck*1.45,Lm.neck*0.58,8,20),"collar",lk.collar,cv.x,cv.y,cv.z);
+    col.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),nv.clone().normalize());}
+  /* the bandana, only where his record has one: a triangle hung from the collar over the front of his chest, its point down */
+  if(lk.band){const m=part("chest",new THREE.ConeGeometry(Lm.neck*1.7,Lm.neck*2.4,3),"band",lk.band,0,cv.y-Lm.neck*0.9,Math.max(cv.z+Lm.neck*1.4,Lm.barrel*1.2),[1,1,0.5]);m.rotation.set(Math.PI-0.45,Math.PI,0);}
+  /* the head: the skull round its joint, the muzzle ahead of it and a little down, the nose at its end, the eyes over the
+     muzzle, where the card puts its eye, and the ears by the breed's build */
+  part("head",ball(r,20,14),bw,paint.body,0,0,0);
+  const ml=b.ear==="up"?0.75:1;   /* the chi's muzzle is short */
+  part("head",ball(r*0.55,14,10),bw,paint.body,0,-r*0.42,r*(0.45+0.4*ml),[0.95,0.85,1.35*ml]);
+  part("head",ball(r*0.24,10,8),"nose","#26202B",0,-r*0.3,r*(0.25+1.14*ml));
+  [1,-1].forEach(sd=>part("head",ball(r*(b.ear==="up"?0.2:0.15),10,8),"eye","#26202B",sd*r*0.5,r*0.12,r*0.8));
+  const earCol=lk.kind==="beagle"?paint.coat:b.ear==="up"?paint.coat:shadeHex(paint.coat,-0.25);
+  [1,-1].forEach(sd=>{
+    if(b.ear==="up"){const m=part("head",new THREE.ConeGeometry(r*0.42,r*1.3,4),"ear",earCol,sd*r*0.55,r*1.12,-r*0.05,[1,1,0.45]);m.rotation.set(0,0,-sd*0.35);
+      const n=part("head",new THREE.ConeGeometry(r*0.24,r*0.7,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.56,r*1.0,r*0.08,[1,1,0.3]);n.rotation.set(0,0,-sd*0.35);}
+    else{const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.92,-r*0.35,-r*0.12,[0.22,0.85,0.48]);m.rotation.z=sd*0.12;}});
+  /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
+     the paw joint, its sole on the ground (the joint's rest height under it) and a little ahead */
+  skel.legs.forEach(([hp,kn,an])=>{
+    span(hp,at(kn),Lm.leg,bw,paint.body,Lm.leg*0.5);span(kn,at(an),Lm.shin,bw,paint.body,Lm.shin*0.3);
+    const rest=skel.joints.hips[2]+skel.joints[hp][2]+skel.joints[kn][2]+skel.joints[an][2];
+    part(an,ball(1,12,8),bw,paint.body,0,0,Lm.paw*0.35,[Lm.paw,Math.max(rest,0.01),Lm.paw*1.45]);});
+  /* the tail in two parts and its tip: the beagle's sickle carried up ("up"), the lab's otter tail carried out behind
+     ("out"), the chi's thin tail curled over ("curl"). In the coat; the tip is the breed's (DOGPART paints the beagle's white) */
+  {const t1=J.tail_1,t2=J.tail_2;
+    if(b.tail==="out")t1.rotation.x=-0.55;
+    if(b.tail==="curl"){t1.rotation.x=0.1;t2.rotation.x=0.9;}
+    t1.userData.rest=t1.rotation.x;
+    const tr=Lm.tail*(b.tail==="out"?1.25:b.tail==="curl"?0.75:1);
+    span("tail_1",at("tail_2"),tr,"tail",paint.coat,tr*0.4);span("tail_2",at("tail_tip"),tr*0.85,"tail",paint.coat,tr*0.3);
+    part("tail_tip",ball(tr*1.15,10,8),"tip",paint.coat,0,0,0);}
+  /* his shadow on the ground, as his card paints one under him: an oval as long as he is, which does not move with the walk */
+  {const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.15,depthWrite:false}));
+    sh.rotation.x=-Math.PI/2;sh.position.set(0,0.006,at("hips").z+at("spine").z);sh.scale.set(Lm.barrel*1.25,M.barrelLen*0.62,1);sh.userData={shadow:true};root.add(sh);}
+  if(typeof DOGPART[lk.kind]==="function")DOGPART[lk.kind](M);
   root.userData.joints=J;root.userData.skel=skel;root.userData.look=lk;return root;}
 /* EACH BREED'S MARKINGS, by its kind: handed what the maker knows, it hangs the parts that make this breed this breed on
    the joints. The beagle's are his card's: the lemon saddle on a white coat, the freckles, the lemon crown, the heart on
-   his face, the white tip of his tail. FILL: all three, each matching its card */
-const DOGPART={beagle(M){},lab(M){},chi(M){}};
+   his face, the white tip of his tail. The lab's card is all coat with a darker ear, which the maker already draws; the
+   chi's card is all coat with darker insides to her ears, which it draws too: theirs add nothing */
+const DOGPART={
+  beagle(M){const{part,ball,J,Lm,r,paint,b}=M,lemon=paint.coat,white=paint.body;
+    /* the saddle, the card's lemon over the top of his back from behind his shoulders to his hips, its edge half way down */
+    const sz=M.barrelLen*0.3;
+    part("spine",new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI*0.42),"mark",lemon,0,-Lm.barrel*0.05,-0.012*b.size,[Lm.barrel*0.92,Lm.barrel*1.1,sz*1.25]).userData.mark="saddle";
+    /* the white freckles across it, as the card's four */
+    [[0.45,-0.55],[-0.4,0.3],[0.1,-0.05],[-0.25,-0.7]].forEach(([fx,fz])=>part("spine",ball(Lm.barrel*0.11,8,6),"white",white,fx*Lm.barrel*0.55,Lm.barrel*1.03,fz*sz));
+    /* the lemon crown over his brow and the back of his skull, and the white heart on it, its point to his nose */
+    {const m=part("head",new THREE.SphereGeometry(r*1.03,20,10,0,Math.PI*2,0,Math.PI*0.42),"mark",lemon,0,0,-r*0.05);m.rotation.x=0.35;m.userData.mark="crown";}
+    [1,-1].forEach(sd=>{part("head",ball(r*0.31,10,8),"mark",white,sd*r*0.24,r*0.8,r*0.62,[1,0.6,1]).userData.mark="heart";});
+    {const m=part("head",new THREE.ConeGeometry(r*0.42,r*0.6,10),"mark",white,0,r*0.62,r*0.88,[1,1,0.45]);m.rotation.x=Math.PI-0.95;m.userData.mark="heart";}
+    /* the white tip of his tail, canon */
+    J.tail_tip.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="tip"){o.userData.base=new THREE.Color(white);o.material.color.set(white);}});},
+  lab(M){},
+  chi(M){}};
 /* HOW HE IS HELD THIS FRAME: his legs by the walk every body shares, then what is a dog's own, read off the pose his card
-   reads. FILL: the tail swung side to side by P.wag (card pixels: T3PERSON/32 of a square each, at the tail's tip), and
-   nothing else decided here */
+   reads: his tail swung side to side by the pose's `wag`, card pixels at the tip, so the tip of the body's tail is as far
+   to his side as the card's is behind or ahead of its rest; calm or happy, as dogPose says. Nothing else is decided here */
 function t3DogPose(B,P,phase,moving,groundAt){
-  t3BodyPose(B,phase,moving,groundAt);}
+  t3BodyPose(B,phase,moving,groundAt);
+  const J=B.userData.joints,t1=J.tail_1,tip=J.tail_tip;if(!t1||!tip)return;
+  /* turned about its own fore-and-aft line, the tip goes to his side by its height over that line times the sine */
+  t1.rotation.z=0;t1.updateWorldMatrix(true,true);
+  const h=Math.max(0.01,t1.worldToLocal(tip.getWorldPosition(new THREE.Vector3())).y),w=(P&&typeof P.wag==="number"&&isFinite(P.wag)?P.wag:0)*0.92/32;
+  t1.rotation.z=-Math.asin(Math.max(-0.9,Math.min(0.9,w/h)));
+  B.updateWorldMatrix(true,true);}
 /* each frame, before the animals' cards are listed: which dogs stand as bodies, each where his record puts him, facing the
    way his last step went. Answers the set of dogs whose cards are not to be drawn (t3Actors). A dog's body is kept while he
    is in this world and hidden while he is his card, made again when his look changes, and thrown away when he leaves */
@@ -1707,7 +1806,13 @@ function t3Actors(){
       else if(cr.kind==="beagle")drawBeagle(g,cr,2,6);
       else if(cr.kind==="lab")drawLab(g,cr,2,6);
       else if(cr.kind==="chi")drawChi(g,cr,2,6);}});});
-  if(BALL&&BALL.world===world)list.push({x:BALL.fx,y:BALL.fy,f:g=>drawBall(g,2,6,BALL.phase,BALL.t)});
+  /* the ball. Carried by a dog who stands as a body this frame (THE DOG'S BODY), it rides at his body's `mouth`, whichever way
+     he faces: pinned there, and painted with its middle on the billboard's anchor, so the anchor is the mouth */
+  if(BALL&&BALL.world===world){const B=BALL.phase==="carried"&&T3.dogShown&&T3.dogShown.has(BALL.dog)&&T3.dogOn?T3.dogOn.get(BALL.dog):null,
+      mo=B&&B.userData.joints&&B.userData.joints.mouth;
+    if(mo){const q=mo.getWorldPosition(new THREE.Vector3()),x=q.x-0.5,y=q.z-0.5;
+      list.push({x,y,h:q.y-stairLift(w,Math.round(x),Math.round(y)),fixed:true,ball:true,f:g=>drawBall(g,2,16,BALL.phase,BALL.t)});}
+    else list.push({x:BALL.fx,y:BALL.fy,f:g=>drawBall(g,2,6,BALL.phase,BALL.t)});}
   DOGTHINGS.forEach(o=>{if(o.world===world)list.push({x:o.fx,y:o.fy,f:g=>drawDogThing(g,2,6,o)});});
   /* hero:true — drawn through whatever stands between them and the camera (#22: "a wall between
      you and the camera hides you in 3D"). The four camera stops put a wall in front of the hero
@@ -1784,7 +1889,7 @@ function t3Actors(){
     /* the DRONE is the thing in the air and the thing you steer, so while it flies it takes #22's rule —
        never hidden — and the hero, no longer the one you steer, stands behind walls like everyone (#271) */
     p.spr.material.depthTest=a.drone?false:(!(a.hero&&!DRONE.on)||lift<0);p.spr.renderOrder=a.drone?2000:1000-Math.round(dl*10);
-    p.spr.userData.hero=!!a.hero;p.spr.userData.drone=!!a.drone; /* so a guard can find the person you steer without reading a rendering flag for it */
+    p.spr.userData.hero=!!a.hero;p.spr.userData.drone=!!a.drone;p.spr.userData.ball=!!a.ball; /* so a guard can find the person you steer without reading a rendering flag for it */
     p.spr.visible=true;p.live=true;
   });
   for(let i=list.length;i<T3.pool.length;i++){T3.pool[i].spr.visible=false;T3.pool[i].live=false;}
