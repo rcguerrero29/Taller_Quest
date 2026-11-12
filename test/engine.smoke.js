@@ -14162,6 +14162,36 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...BP, ...BN);
   }
 
+  /* ---- THE DOG WHO FOLLOWS YOU STANDS AS A JOINTED BODY (mq-v263) ----
+     A world that names `dog` in its own BODYTAKE list sees a dog who follows the person you steer, up close in the 3D camera,
+     as a four-legged body in his own coat and markings, and as his card from afar and whenever he does anything but stand,
+     walk and wag (engine/engine3d.js, grep "THE DOG'S BODY"). A world that says nothing sees every dog as his card.
+     THE SENTENCES BELOW ARE OWED: each is what a person would say if that part broke, with how it is to be measured. Until
+     a sentence is asked it is a red here, since nothing measured is not a pass. FILL: ask each one, in a world that takes the
+     dog's body (this world as it stands if it names `dog` itself; otherwise a page with `const BODYTAKE=["person","dog"];`
+     put before the engine, as the person's section does), with both clocks held (dogPose's nw and t), the dog's body
+     measured against HIS OWN CARD in the same camera at the same hour and never against a number typed here, and fewer
+     than 50 pixels of him on the screen a red. Then plant each fault in a copy outside the repository and see its own
+     sentence. Take a sentence off this list only when its check is written. */
+  { const OWED = [
+      ['A', 'in a world that has not asked for the dog\'s body, a dog who follows stands as a body anyway, or his card is missing', 'a world that says nothing, and a world that names only `person`: no object named "dogbody" in the scene, his card drawn, across a walk'],
+      ['B', 'the dog who follows you, up close, is still his card (or is both his card and a body)', 'the body visible and his card not listed that frame; then the camera\'s focus moved past DOGNEAR: his card and no body'],
+      ['C', 'the dog\'s body is not made of the joints its skeleton names, or its parts do not meet at the joints', 'every joint of SKELETONS.dog present by name; every part touching the joint it hangs on, standing and through a walk cycle swept in 48 steps, for each breed'],
+      ['D', 'the dog\'s paws leave the ground or sink into it', 'all four paws on the ground standing; through the walk each paw that is down is on the ground, and no paw goes under it, on flat ground and on a stair'],
+      ['E', 'the dog\'s body is not the size of his card', 'his length and his height on the screen within 15% of his card\'s, side on, at noon, for each breed'],
+      ['F', 'the dog\'s body is not in his card\'s colours', 'the share of his coat colour and of white on the screen close to his card\'s; the beagle\'s saddle, crown and white tail tip each seen in pixels; a lab and a chi in the coat their record names'],
+      ['G', 'at night the dog\'s body is darker or brighter than his card', 'at ten at night his coat between 80% and 125% as bright as his card\'s'],
+      ['H', 'his tail does not wag, or wags when his card\'s does not', 'with the clock t swept through one swing, the tail\'s tip moves side to side and follows the sign of dogPose\'s wag; with wag held at zero it is still'],
+      ['I', 'the dog does something his body cannot do and stays a body', 'for each of sit, lay, howl, dig, the hearts, inside the tunnel, over the bar and through the poles: that same frame the body is hidden and his card is drawn; and when it ends he is a body again'],
+      ['J', 'a dog who does not follow, or a fourth dog, stands as a body', 'a dog with follow off is his card up close; with more than DOGBODYMAX following, the nearest DOGBODYMAX are bodies and the rest are cards'],
+      ['K', 'his collar or his bandana is missing from his body, or a bandana shows that he does not wear', 'the collar\'s colour seen in pixels; a bandana in its colour when his record has one, none when it has none, and none when its colour is not a colour'],
+      ['L', 'the ball he carries is not at his mouth', 'while the ball is carried by a dog who is a body, the ball is drawn at the body\'s `mouth` joint, whichever way he faces'],
+      ['M', 'a dog\'s record that is not what it should be reaches his body', 'dogLookOf: a kind that is not a dog\'s comes out a beagle; a coat, collar or bandana that is not a hex colour comes out the default or none; a key it does not name is dropped'],
+      ['N', 'a body is left behind when its dog leaves', 'after he goes through a door, is rehomed or stops following: no body of his in the scene after the next frame, and its parts disposed'],
+      ['O', 'a planned choice is let in before it is built', 'every key of BODYPLAN handed in a look: bodyChoicesOf drops it, the builder shows no control for it, and it reaches no maker'],
+      ['P', 'a check that finds a dog by his card finds none in a world that takes the dog\'s body', 'cardOn holds the dogs\' bodies off as it holds the person\'s, so every existing check of a dog asks his card; one count-only line says which families were asked that way'] ];
+    OWED.forEach(([k, s, how]) => fails.push('the dog\'s body, ' + k + ', is not asked yet: ' + s + ' (to be measured: ' + how + ')')); }
+
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,

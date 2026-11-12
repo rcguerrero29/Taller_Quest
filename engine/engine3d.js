@@ -1347,10 +1347,10 @@ const SKELETONS={
    his arms and legs, `head` makes the head alone larger or smaller, and (mq-v262) `hang` lowers or raises the hem of his
    shirt. From mq-v262 the measures, their ranges and their defaults are rows of BODYCHOICE (engine/engine.js), the one
    table of the body's choices; this is its defaults, frozen, the build a new character starts with */
-const BODYBUILD=Object.freeze(Object.fromEntries(BODYCHOICE.filter(r=>r.kind==="measure").map(r=>[r.key,r.def])));
+const BODYBUILD=Object.freeze(Object.fromEntries(bodyRows("person").filter(r=>r.kind==="measure").map(r=>[r.key,r.def])));
 /* a build as the body reads it: every measure of the table, held to its range, or the default where it is not a number */
 function bodyBuildOf(b){const c=bodyChoicesOf(b),o={};
-  BODYCHOICE.forEach(r=>{if(r.kind==="measure")o[r.key]=c[r.key];});
+  bodyRows("person").forEach(r=>{if(r.kind==="measure")o[r.key]=c[r.key];});
   return o;}
 /* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there, and
    every joint, the head, the limbs and the walk sized for the build (BODYBUILD unless one is handed in) */
@@ -1419,7 +1419,7 @@ function bodyMake(skel,lk,build){
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
   {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
   /* each option of the table, by its part function */
-  BODYCHOICE.forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,C[row.key]);});
+  bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,C[row.key]);});
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
@@ -1559,7 +1559,7 @@ function t3BodyPreview(cv,lk,ang){
     if(!P.body){P.body=bodyMake(bodySkeleton("person",Ch),lk,Ch);P.body.userData.key=key;P.scene.add(P.body);}
     const B=P.body;B.rotation.set(0,ang||0,0);t3BodyPose(B,0,false);
     /* framed on the tallest body the table allows, so a taller choice is seen as taller, not as the same size */
-    const top=BODYCHOICE.find(r=>r.key==="height"),tall=0.95*(top?top.max:1),tilt=Math.atan2(T3CAMH,T3CAMD),d=tall*1.8;
+    const top=bodyRows("person").find(r=>r.key==="height"),tall=0.95*(top?top.max:1),tilt=Math.atan2(T3CAMH,T3CAMD),d=tall*1.8;
     P.cam.aspect=W/Hh;P.cam.position.set(0,tall*0.5+Math.sin(tilt)*d,Math.cos(tilt)*d);P.cam.lookAt(0,tall*0.47,0);P.cam.updateProjectionMatrix();
     const r=T3.renderer,cc=r.getClearColor(new THREE.Color()),ca=r.getClearAlpha();
     r.setRenderTarget(P.rt);r.setClearColor(0x000000,0);r.clear();r.render(P.scene,P.cam);
@@ -1568,6 +1568,115 @@ function t3BodyPreview(cv,lk,ang){
     for(let y=0;y<Hh;y++)img.data.set(P.px.subarray((Hh-1-y)*row,(Hh-y)*row),y*row);   /* the picture comes back upside down */
     g.putImageData(img,0,0);return true;
   }catch(e){t3Note("preview",e);return false;}}
+/* ---- THE DOG'S BODY (mq-v263): a dog who follows you, up close, stands as a jointed body as you do ----
+   A world that names `dog` in its own BODYTAKE list sees a dog who follows the person you steer, up close in the 3D camera,
+   as a four-legged body made of the same kind of joints and parts as the person's, in the dog's own coat, markings, collar
+   and bandana. From farther off, and whenever he does anything but stand, walk and wag, he is his card, exactly as today.
+   A world that says nothing has none of this: every dog is his card in every camera.
+   WHAT DECIDES IT, each in one place:
+     · WHICH DOGS (t3DogBodies): a dog of this world whose kind runs the dog program (DOGK), who follows (cr.follow), within
+       DOGNEAR squares of the camera's focus, and held as plainly as dogBodyWants says. At most DOGBODYMAX at once, the
+       nearest first: a body costs parts, and a street of twenty-four adopted dogs is not twenty-four bodies.
+     · HOW HE IS HELD: dogPose (engine/engine.js), the one place a dog's pose is decided, read once a frame with the same two
+       clocks his card is painted with. The body decides nothing about his pose a second time: his tail swings by the
+       pose's `wag`, he walks when his record says he moves, and any pose the body does not draw sends him back to his card
+       that same frame (dogBodyWants).
+     · WHAT HE IS MADE FROM: dogLookOf (engine/engine.js), the dog's record cleaned. The body reads the dog through nothing else.
+     · HIS SHAPE: SKELETONS.dog, sized for his breed by DOGBUILDS, made by dogMake, his breed's markings by DOGPART.
+     · HIS WALK: the person's own (t3BodyPose reads any skeleton's `legs`), four legs in a trot, the two diagonals together.
+     · HIS LIGHT: t3BodyLight, as the person's, so at night he is as bright as the cards beside him.
+   NOT DONE HERE: sitting, lying, howling, digging, the agility course and the hearts as a body (he is his card for each); a
+   body for a dog who does not follow, for the star's own dog (DOG) or for any other animal; a choice of breed, markings or
+   coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
+const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
+const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
+const DOGSTEPS=[3,7];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. FILL: set from how his card's legs read at his speeds */
+/* THE DOG'S SKELETON, in squares, as he stands facing +z: [parent, x, y, z] from the parent's joint. Every joint is named
+   here and nowhere else. FILL: every number. Read them off the beagle's card (drawBeagle paints him in a 32 by 32 cell,
+   one card pixel being T3PERSON/32 of a square): his length from chest to tail, his height at the back, his head's size
+   and where it sits, the length of his legs. `mouth` is where a carried ball rides. The legs are named as the walk reads
+   them, [top joint, middle joint, paw, where in the cycle], a trot: one hind leg and the fore leg across from it together */
+SKELETONS.dog={
+  joints:{hips:[null,0,0.2,-0.14],spine:["hips",0,0,0.14],chest:["spine",0,0,0.14],neck:["chest",0,0.05,0.05],head:["neck",0,0.04,0.07],
+    mouth:["head",0,-0.03,0.1],tail_1:["hips",0,0.04,-0.05],tail_2:["tail_1",0,0.07,-0.04],tail_tip:["tail_2",0,0.06,-0.02],
+    hind_l:["hips",0.07,-0.02,0],hock_l:["hind_l",0,-0.085,0],hpaw_l:["hock_l",0,-0.085,0],
+    hind_r:["hips",-0.07,-0.02,0],hock_r:["hind_r",0,-0.085,0],hpaw_r:["hock_r",0,-0.085,0],
+    fore_l:["chest",0.07,-0.02,0],wrist_l:["fore_l",0,-0.085,0],fpaw_l:["wrist_l",0,-0.085,0],
+    fore_r:["chest",-0.07,-0.02,0],wrist_r:["fore_r",0,-0.085,0],fpaw_r:["wrist_r",0,-0.085,0]},
+  limb:{barrel:0.1,neck:0.06,leg:0.03,shin:0.025,paw:0.03,tail:0.018},head:0.11,
+  legs:[["hind_l","hock_l","hpaw_l",0],["fore_r","wrist_r","fpaw_r",0],["hind_r","hock_r","hpaw_r",Math.PI],["fore_l","wrist_l","fpaw_l",Math.PI]],
+  arms:[],stride:0.05,lift:0.02,drop:0.008,swing:0};
+/* EACH BREED AGAINST THE BEAGLE: 1 is the beagle's. `size` scales the whole dog, `length` his back, `legs` his legs, `head`
+   his head; `ear` and `tail` are words DOGPART reads. A breed is a row here and its markings in DOGPART, and nothing else.
+   FILL: the lab's and the chi's numbers, read off their cards beside the beagle's (drawLab, drawChi) */
+const DOGBUILDS=Object.freeze({
+  beagle:Object.freeze({size:1,length:1,legs:1,head:1,ear:"drop",tail:"up"}),
+  lab:Object.freeze({size:1,length:1,legs:1,head:1,ear:"drop",tail:"out"}),
+  chi:Object.freeze({size:1,length:1,legs:1,head:1,ear:"up",tail:"curl"})});
+/* IS HE HELD PLAINLY ENOUGH TO BE A BODY this instant? Only standing, walking and wagging, calm or happy. Everything else
+   his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
+   lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */
+function dogBodyWants(cr,P){
+  return !!cr&&!!P&&DOGK.has(cr.kind)&&!!cr.follow&&!P.hid&&!P.lift&&!P.side&&!P.sit&&!P.lay&&!P.howl&&!P.dig&&!P.love&&!P.drop&&!P.nod;}
+/* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */
+function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||DOGBUILDS.beagle,J={},back=new Set(["spine","chest"]),leg=/^(hock|hpaw|wrist|fpaw)_/;
+  Object.keys(s.joints).forEach(n=>{const[p,x,y,z]=s.joints[n];
+    J[n]=[p,x*b.size,y*b.size*(leg.test(n)?b.legs:1),z*b.size*(back.has(n)?b.length:1)];});
+  J.hips=[null,0,s.joints.hips[2]*b.size*b.legs,s.joints.hips[3]*b.size*b.length];   /* he stands as high as his legs are long */
+  const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.size;});
+  return {...s,joints:J,limb,head:s.head*b.size*b.head,stride:s.stride*b.size*b.legs,lift:s.lift*b.size,drop:s.drop*b.size,build:b,kind};}
+/* THE DOG'S MAKER. Handed a skeleton (dogSkeleton) and a look (dogLookOf, already cleaned: kind, coat, collar, band), it
+   answers a group named "dogbody" whose userData holds `joints` (an Object3D for every joint of the skeleton, named for
+   itself, parented as the skeleton says), `skel` and `look`. Every part hangs on a joint, says what it wears in
+   userData.wears (coat, white, ear, nose, eye, collar, band, tail, tip, mark) and keeps its paint in userData.base, so
+   t3BodyLight can light it; every size is read off the skeleton, so the parts meet at the joints for every breed; a
+   shadow lies under him as under the person. No bandana is drawn where the look has none.
+   FILL: the parts. Until then he is joints with nothing on them. */
+function dogMake(skel,lk){
+  const root=new THREE.Group();root.name="dogbody";const J={};
+  Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
+  Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
+  /* FILL: barrel, chest, neck, head, muzzle, nose, eyes, ears (by build.ear), four legs and paws, the tail in two parts and
+     its tip (by build.tail), the collar, the bandana where lk.band is a colour, the shadow; then the breed's markings: */
+  if(typeof DOGPART[lk.kind]==="function")DOGPART[lk.kind]({J,skel,lk,root});
+  root.userData.joints=J;root.userData.skel=skel;root.userData.look=lk;return root;}
+/* EACH BREED'S MARKINGS, by its kind: handed what the maker knows, it hangs the parts that make this breed this breed on
+   the joints. The beagle's are his card's: the lemon saddle on a white coat, the freckles, the lemon crown, the heart on
+   his face, the white tip of his tail. FILL: all three, each matching its card */
+const DOGPART={beagle(M){},lab(M){},chi(M){}};
+/* HOW HE IS HELD THIS FRAME: his legs by the walk every body shares, then what is a dog's own, read off the pose his card
+   reads. FILL: the tail swung side to side by P.wag (card pixels: T3PERSON/32 of a square each, at the tail's tip), and
+   nothing else decided here */
+function t3DogPose(B,P,phase,moving,groundAt){
+  t3BodyPose(B,phase,moving,groundAt);}
+/* each frame, before the animals' cards are listed: which dogs stand as bodies, each where his record puts him, facing the
+   way his last step went. Answers the set of dogs whose cards are not to be drawn (t3Actors). A dog's body is kept while he
+   is in this world and hidden while he is his card, made again when his look changes, and thrown away when he leaves */
+function t3DogBodies(dt){
+  const on=T3.dogOn||(T3.dogOn=new Map()),shown=new Set();
+  const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(cr);};
+  if(!DOGBODYON){[...on.keys()].forEach(drop);T3.dogShown=shown;return shown;}
+  const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
+  const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)&&cr.follow).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
+      return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=DOGNEAR+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
+    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,DOGBODYMAX);
+  const keep=new Set(want.map(e=>e.cr));
+  [...on.keys()].forEach(cr=>{if(keep.has(cr))return;if(cr.world!==world||!CRIT.includes(cr))drop(cr);else on.get(cr).visible=false;});
+  want.forEach(({cr,P})=>{const lk=dogLookOf(cr),key=JSON.stringify(lk);let B=on.get(cr);
+    if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(cr);B=null;}
+    if(!B){B=dogMake(dogSkeleton(lk.kind),lk);B.userData.key=key;T3.scene.add(B);on.set(cr,B);}
+    const S=B.userData.skel,lift=stairLift(w,Math.round(cr.fx),Math.round(cr.fy)),[hx,hy]=P.heading;
+    if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);else if(B.userData.yaw===undefined)B.userData.yaw=Math.atan2(P.face<0?-1:1,0);
+    /* his pace follows his speed, held to a dog's (DOGSTEPS), as the person's is held to a person's: the ground he covered
+       and the time it took are handed in, never read here; a jump (a door) is not walked */
+    const at=B.userData.at,go=at?Math.hypot(cr.fx-at[0],cr.fy-at[1]):0;B.userData.at=[cr.fx,cr.fy];
+    if(cr.moving&&go>0&&go<1&&dt>0){const n=Math.min(DOGSTEPS[1],Math.max(DOGSTEPS[0],go/dt/(2*S.stride*sc)));
+      B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
+    B.visible=true;B.position.set(cr.fx+0.5,lift,cr.fy+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    t3BodyLight(B);
+    t3DogPose(B,P,B.userData.phase||0,!!cr.moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
+    shown.add(cr);});
+  T3.dogShown=shown;return shown;}
 function t3Actors(){
   const list=[];
   const w=CW();
@@ -1588,6 +1697,7 @@ function t3Actors(){
   if(world===AW("pig"))list.push({x:PIG.fx,y:PIG.fy,fc:PIG,f:g=>drawPigeon(g,2,6)});
   if(world===AW("loro"))list.push({x:LORO.x,y:LORO.y,f:g=>drawLoro(g,2,6)});
   CRIT.forEach(cr=>{if(cr.world!==world)return;
+    if(T3.dogShown&&T3.dogShown.has(cr))return;   /* he stands as a body this frame (THE DOG'S BODY), so his card is not drawn as well */
     list.push({x:cr.fx,y:cr.fy,fc:cr,pull:t3GearPull(cr),f:g=>{
       if(cr.kind==="butterfly")drawButterfly(g,cr,2,6);
       else if(cr.kind==="colibri")drawColibri(g,cr,2,6);
@@ -1709,7 +1819,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Glow();
     t3Reveal();
     t3Trolley();   /* the car first: the people ask where it stands (t3Actors, tramBetween) */
-    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
+    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;t3DogBodies(T3.dogT?Math.min(0.25,(tn-T3.dogT)/1000):0);T3.dogT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
     t3Actors();
     t3DroneMarks();
     t3Petals();

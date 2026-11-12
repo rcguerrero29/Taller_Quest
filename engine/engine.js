@@ -883,7 +883,12 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
    hair worn as a cap so his face shows from a world's camera.
    A world that says nothing has none of it: its looks keep exactly the keys they kept, its creator shows no new control and
    its preview is the 2D one. The choices are kept with the look, as `look.body`, and only where the world takes the body. */
-const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
+/* WHICH BODIES A WORLD TAKES (mq-v263). BODYTAKE is the world's own list. `person` is the person you steer; `dog` is a dog who
+   follows him (engine/engine3d.js, grep "THE DOG'S BODY"). A name this list does not hold is nothing, and a world that says
+   nothing takes none: closed unless a world opens it */
+const BODYKINDS=Object.freeze(["person","dog"]);
+const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
+const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
 const BODYCHOICE=Object.freeze([
   {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1},   /* how tall he is; his head stays the same share of him */
   {key:"width",kind:"measure",min:0.6,max:1.35,step:0.05,def:1},     /* how wide his shoulders, chest and hips are */
@@ -895,8 +900,11 @@ const BODYCHOICE=Object.freeze([
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
-function bodyChoicesOf(raw){const o={},src=raw&&typeof raw==="object"?raw:{};
-  BODYCHOICE.forEach(r=>{const v=Object.prototype.hasOwnProperty.call(src,r.key)?src[r.key]:undefined;
+/* WHOSE ROW (mq-v263): a row belongs to one body, named by its `of` (one of BODYKINDS), and to the person where it does not
+   say. Every reader takes its own body's rows through bodyRows, so a row added for a dog is not offered to a person */
+const bodyRows=of=>BODYCHOICE.filter(r=>(r.of||"person")===(of||"person"));
+function bodyChoicesOf(raw,of){const o={},src=raw&&typeof raw==="object"?raw:{};
+  bodyRows(of).forEach(r=>{const v=Object.prototype.hasOwnProperty.call(src,r.key)?src[r.key]:undefined;
     if(r.kind==="measure")o[r.key]=typeof v==="number"&&isFinite(v)?Math.max(r.min,Math.min(r.max,v)):r.def;
     else o[r.key]=typeof v==="string"&&r.list.includes(v)?v:r.def;});
   return o;}
@@ -905,6 +913,38 @@ function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
          style:saveStr(lkIn.style,12,"cap"),outfit:saveStr(lkIn.outfit,8,"casual"),pattern:saveStr(lkIn.pattern,10,"plain")};
   if(BODYON)lk.body=bodyChoicesOf(lkIn.body);   /* only where the world takes the body: elsewhere a look is exactly what it was */
   return lk;}
+/* ---- WHAT THE TABLE LEAVES ROOM FOR (mq-v263): choices that are planned and NOT built ----
+   A list for people to read and for one check to hold, and nothing else: no save, no builder and no body reads it. Each row
+   names a choice somebody will build one day, whose body it is for (`of`), and the kind of row it will be: a `measure`
+   (a number in a range), an `option` (one word of a list), or a `colour` (a hex colour, cleaned as a look's colours are).
+   UNTIL A ROW IS BUILT IT IS REFUSED: its key is not in BODYCHOICE, so bodyChoicesOf drops it from any look that carries
+   it (a save, a Trolley Pass, another player's look), the builder shows no control for it, and the body draws nothing for
+   it. Building one is: move its row into BODYCHOICE with its range or its words and a default that draws what is drawn
+   today, write its part function (BODYPART for a person, DOGPART for a dog, engine/engine3d.js), and take it off this list.
+   A kind of row the table does not have yet (`colour`) is added to bodyChoicesOf with the first row that needs it. */
+const BODYPLAN=Object.freeze([
+  {key:"style",of:"person",kind:"option",note:"the card's hair styles (look.style), each with at least a simple shape on the body"},
+  {key:"top",of:"person",kind:"option",note:"more clothes above the waist, grouped by the type of garment (a shirt, a blouse); every type offered to every character, and no gender kept"},
+  {key:"bottom",of:"person",kind:"option",note:"more clothes below the waist, grouped by the type of garment (trousers, a skirt, shorts); every type offered to every character, and no gender kept"},
+  {key:"nose",of:"person",kind:"option",note:"a choice of noses"},
+  {key:"brows",of:"person",kind:"option",note:"eyebrows"},
+  {key:"muscle",of:"person",kind:"measure",note:"how muscled the arms, chest and legs are; a measure that draws parts of its own"},
+  {key:"glasses",of:"person",kind:"option",note:"glasses"},
+  {key:"hat",of:"person",kind:"option",note:"hats"},
+  {key:"paint",of:"person",kind:"option",note:"face painting and make-up, the Day of the Dead's among them; piercings and tattoos with it"},
+  {key:"breed",of:"dog",kind:"option",note:"the dog's breed; today it is the dog's own kind (DOGK), not a choice of the table"},
+  {key:"marks",of:"dog",kind:"option",note:"a breed's markings as a choice; today each breed has one set (DOGPART)"},
+  {key:"coat",of:"dog",kind:"colour",note:"the coat's colour; today it is the dog's own colour, cleaned by dogLookOf"},
+  {key:"paint",of:"dog",kind:"option",note:"painted in the manner of an alebrije"}
+].map(r=>Object.freeze(r)));
+/* A DOG'S LOOK, CLEANED (mq-v263): what a dog's body is made from, read off the dog himself and nothing else. A dog's
+   record comes from a world's file or from a save, so it is data: the kind must be one that runs the dog program or it is
+   a beagle; a colour must be a hex colour (saveCol, the look's own check) or it is the breed's first coat, the blue
+   collar he starts with, or no bandana at all. The body reads a dog only through this, and its answer, as text, is the
+   key a body is kept under */
+function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
+  const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
+  return{kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};}
 /* ANOTHER PLAYER'S LOOK (#32; the owner approved fixing the colour check). In multiplayer a
    stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
    data. It gets the save's own reading first — saveLook, the same function: a colour must be hex, a
@@ -6469,7 +6509,7 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
   const head=document.createElement("p");head.className="crsec";head.textContent=bodyWord("title");box.appendChild(head);
   const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
   const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});pvDraw();};
-  BODYCHOICE.forEach(row=>{const id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
+  bodyRows("person").forEach(row=>{const id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
       const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
