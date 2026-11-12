@@ -14185,7 +14185,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   {
     const DP = [], DN = [];
     const say = (k, m) => (k ? DN : DP).push((k ? 'COUNT-ONLY: ' : '') + 'the dog\'s body: ' + m);
-    const OWED = [];   /* every sentence A to P is asked below; a sentence that is not would be listed here and stay a red */
+    const OWED = [];   /* every sentence A to R is asked below; a sentence that is not would be listed here and stay a red */
     OWED.forEach(([k, s]) => DP.push('the dog\'s body, ' + k + ', is not asked yet: ' + s));
     const DOGJOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'mouth', 'tail_1', 'tail_2', 'tail_tip', 'hind_l', 'hock_l', 'hpaw_l',
       'hind_r', 'hock_r', 'hpaw_r', 'fore_l', 'wrist_l', 'fpaw_l', 'fore_r', 'wrist_r', 'fpaw_r'];
@@ -14251,6 +14251,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       K.near = (P, hex, tol) => { const c = new THREE.Color(hex), [h0] = hsv(c.r * 255, c.g * 255, c.b * 255); return P.filter(q => { const [h, s, v] = hsv(q[2], q[3], q[4]); return s > 0.3 && v > 60 && Math.abs(((h - h0) + 540) % 360 - 180) < (tol || 18); }); };
       K.white = P => P.filter(q => { const [, s, v] = hsv(q[2], q[3], q[4]); return s < 0.2 && v > 110; });
       K.magenta = P => P.filter(q => q[2] > 120 && q[4] > 120 && q[3] < 70);
+      /* how many pixels of him differ between two reads of him: there in one and not the other, or another colour */
+      K.diff = (A, Bp) => { const m = new Map(A.map(q => [q[0] + ',' + q[1], q])), seen = new Set(); let n = 0;
+        Bp.forEach(q => { const k = q[0] + ',' + q[1], a = m.get(k); seen.add(k); if (!a || Math.abs(a[2] - q[2]) + Math.abs(a[3] - q[3]) + Math.abs(a[4] - q[4]) > 30) n++; });
+        m.forEach((q, k) => { if (!seen.has(k)) n++; }); return n; };
       /* a part of his body painted one colour for one frame, and given back */
       K.probe = (cr, pick, run) => { const B = K.bodyOf(cr), kept = []; if (!B) return run();
         B.traverse(o => { if (o.isMesh && o.userData.base && pick(o)) { kept.push([o, o.userData.base]); o.userData.base = new THREE.Color('#FF00FF'); } });
@@ -14371,7 +14375,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   SHOT[kind + h + f] = K.frames(cr); }
                 if (kind === 'beagle') {
                   K.at(12); K.face(cr, 'right'); K.show(cr);
-                  for (const m of ['saddle', 'crown', 'heart']) SHOT['mark-' + m] = K.probe(cr, o => o.userData.mark === m, () => { const F = K.frames(cr); return { n: K.magenta(F.body).length, all: F.body.length }; });
+                  /* his markings are paint in his coat (DOGCOAT): each is asked by what it paints. He is drawn with it, and again
+                     with that one mark taken out of his coat's list, and the pixels of him that differ are the mark; his body is
+                     made again each time (his collar a step away and back, which changes the key his body is kept by), and drawn
+                     twice with nothing changed first, so a body that differs from itself is not read as a mark. The heart is
+                     on his face, so it is asked facing you; the saddle, his back's freckles and the crown side on */
+                  const remake = () => { const c0 = cr.collar; cr.collar = c0 === '#123456' ? '#654321' : '#123456'; K.show(cr); cr.collar = c0; K.show(cr); };
+                  SHOT.marks = [];
+                  for (const [m, sheet, f] of [['saddle', 'barrel', 'right'], ['freckles', 'barrel', 'right'], ['crown', 'skull', 'right'], ['heart', 'skull', 'toward']]) {
+                    K.face(cr, f); remake(); const B = K.bodyOf(cr), r = { m, sheet, f, worn: false }; SHOT.marks.push(r);
+                    if (B) B.traverse(o => { if (o.isMesh && o.userData.sheet === sheet && Array.isArray(o.userData.marks) && o.userData.marks.includes(m)) r.worn = true; });
+                    const L = DOGCOAT.beagle && DOGCOAT.beagle[sheet], i = Array.isArray(L) ? L.findIndex(e => e[0] === m) : -1;
+                    if (!r.worn || i < 0) continue;
+                    const a = K.frames(cr).body; remake(); const a2 = K.frames(cr).body, out = L.splice(i, 1);
+                    try { remake(); r.without = K.frames(cr).body; } finally { L.splice(i, 0, ...out); remake(); }
+                    r.all = a.length; r.noise = K.diff(a, a2); r.n = K.diff(a, r.without); }
+                  K.face(cr, 'right'); K.show(cr);
                   SHOT['mark-tip'] = K.probe(cr, o => o.userData.wears === 'tip', () => { const F = K.frames(cr); return { n: K.magenta(F.body).length, all: F.body.length, white: o => 0 }; });
                   { const B = K.bodyOf(cr), t = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'tip') t.push('#' + o.userData.base.getHexString()); }); SHOT.tipCol = t; } } }
               const said3 = { '12right': 'at noon, side on', '12toward': 'at noon, facing you', '22right': 'at ten at night, side on' };
@@ -14404,9 +14423,34 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 for (const k of ['12right', '12toward']) { const F = ok(kind, k); if (!F) continue;
                   const b = K.near(F.body, '#0FA8B4', 14).length, c = K.near(F.card, '#0FA8B4', 14).length;
                   if (c < 4) N.push(said3[k] + ', the ' + kind + '\'s card shows ' + c + ' pixels of his collar, so his body\'s collar was asked to show at all');
-                  if (b < Math.max(4, c * 0.4)) said(said3[k] + ', the ' + kind + '\'s collar is missing from his body: ' + b + ' pixels of it show, where his card shows ' + c); } }
-              /* F, the beagle's markings: his saddle, his crown and the heart on his face each seen, and his tail's tip white */
-              for (const m of ['saddle', 'crown', 'heart', 'tip']) { const r = SHOT['mark-' + m];
+                  /* side on, his collar shows on his body as on his card, two fifths of it at least. Facing you his card cannot
+                     face you (it is the side-on drawing, its collar a band across his whole neck), so its count is the wrong
+                     yardstick there: the body's collar is a ring round his neck seen from in front, under his jaw, and a fifth of
+                     the card's count is asked of it (measured on 252661a: the beagle passes both, the lab shows 13 of a card's 49,
+                     the chi 7 of 30) */
+                  const need = k === '12toward' ? Math.max(4, c * 0.2) : Math.max(4, c * 0.4);
+                  if (b < need) said(said3[k] + ', the ' + kind + '\'s collar is missing from his body: ' + b + ' pixels of it show, where his card shows ' + c); } }
+              /* F, the beagle's markings: his saddle, the freckles on his back, his crown and the heart on his face each seen on
+                 his body, as paint in his coat; and his tail's tip white */
+              if (!Array.isArray(SHOT.marks) || !SHOT.marks.length) said('the beagle\'s markings were not asked: he was not drawn side on at noon');
+              for (const r of SHOT.marks || []) { const what = r.m === 'freckles' ? 'freckles on his back' : r.m === 'heart' ? 'heart on his face' : r.m, where = r.f === 'toward' ? 'facing you' : 'side on';
+                N.push('the beagle\'s ' + what + ', ' + where + ': ' + (r.all === undefined ? 'not measured' : r.n + ' of his ' + r.all + ' pixels are it (drawn twice unchanged, ' + r.noise + ' differ)'));
+                if (!r.worn) said('the beagle\'s body has no ' + what + ', which his card has: his coat paints none');
+                else if (r.all === undefined) said('the beagle\'s ' + what + ' is on his body but not in the list of his coat\'s markings, so it could not be taken out and measured');
+                else if (r.all < 50 || r.without.length < 50) said('the beagle\'s ' + what + ' could not be measured: fewer than 50 pixels of him show');
+                else if (r.noise) said('the beagle\'s ' + what + ' could not be measured: drawn twice with nothing changed, ' + r.noise + ' pixels of him differ');
+                /* a fiftieth of him for a marking that covers a part of him; the freckles are dots, as the card's four are, and
+                   are asked a two-hundredth (measured on 252661a: 12 of his 1478 pixels side on, the saddle 294, the crown 263, the
+                   heart 120 of 898 facing you) */
+                else if (r.n < Math.max(4, r.all * (r.m === 'freckles' ? 0.005 : 0.02))) said('at noon, ' + where + ', the beagle\'s ' + what + (r.m === 'freckles' ? ' do' : ' does') + ' not show on his body: taking ' + (r.m === 'freckles' ? 'them' : 'it') + ' out of his coat changes ' + r.n + ' of his ' + r.all + ' pixels'); }
+              /* a marking is paint, not a part: none of his body's parts wears "mark", and his coat's markings add no part to him */
+              { const count = () => { const B = dogMake(dogSkeleton('beagle'), dogLookOf({ kind: 'beagle' })), mk = new Set(); let n = 0;
+                  B.traverse(o => { if (o.isMesh && o.userData.wears) { n++; if (o.userData.wears === 'mark') mk.add(o.parent.name); } }); t3Dispose(B); return { n, mk: [...mk] }; };
+                const keep = DOGCOAT.beagle, full = count(); let bare;
+                DOGCOAT.beagle = {}; try { bare = count(); } finally { DOGCOAT.beagle = keep; }
+                if (full.mk.length) said('a marking of the beagle\'s stands out of his body as a part of its own, on his ' + full.mk.join(', ') + ', where a marking is paint in his coat');
+                if (full.n !== bare.n) said('the beagle\'s markings are built as parts: his body has ' + full.n + ' parts with his coat\'s markings and ' + bare.n + ' without them'); }
+              for (const m of ['tip']) { const r = SHOT['mark-' + m];
                 if (!r.parts) said('the beagle\'s body has no ' + (m === 'tip' ? 'tip to his tail' : m) + ', which his card has');
                 else if (r.all < 50) said('the beagle\'s ' + m + ' could not be measured: fewer than 50 pixels of him show');
                 else if (r.n < Math.max(4, r.all * 0.02)) said('side on at noon, the beagle\'s ' + (m === 'tip' ? 'tail\'s tip' : m) + ' does not show: ' + r.n + ' of his ' + r.all + ' pixels'); }
@@ -14415,13 +14459,57 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               K.unplant(cr); cr = K.plant('beagle', at); K.at(12);
               for (const [band, want] of [['#E0218A', true], [null, false], ['red; background:url(x)', false], ['javascript:alert(1)', false], [12, false]]) {
                 cr.band = band; const looks = [];
-                for (const f of ['right', 'toward']) { K.face(cr, f); K.show(cr); const F = K.frames(cr), B = K.bodyOf(cr);
-                  let parts = 0; if (B) B.traverse(o => { if (o.isMesh && o.userData.wears === 'band') parts++; });
-                  looks.push({ f, parts, b: K.near(F.body, '#E0218A', 14).length, c: K.near(F.card, '#E0218A', 14).length, all: F.body.length }); }
-                if (want) looks.forEach(L => { if (L.all < 50) said('with a bandana, facing ' + L.f + ', fewer than 50 pixels of the beagle show, so his bandana could not be measured');
-                  else if (!L.parts || L.b < Math.max(4, L.c * 0.4)) said('the beagle wears a bandana on his card and it is missing from his body, facing ' + (L.f === 'right' ? 'right' : 'you') + ': ' + L.b + ' pixels of it, where his card shows ' + L.c); });
+                for (const f of ['right', 'toward', 'away']) { K.face(cr, f); K.show(cr); const F = K.frames(cr), B = K.bodyOf(cr);
+                  let parts = 0, knot = 0, cloth = 0; if (B) B.traverse(o => { if (o.isMesh && o.userData.wears === 'band') { parts++; if (o.userData.band === 'knot') knot++; if (o.userData.band === 'point') cloth++; } });
+                  const L = { f, parts, knot, cloth, b: K.near(F.body, '#E0218A', 14).length, c: K.near(F.card, '#E0218A', 14).length, all: F.body.length };
+                  /* what of it is the knot and its ends (facing away) or the cloth (facing you): the same frame with those hidden */
+                  if (want && B && f !== 'right') { const hide = f === 'away' ? (o => o.userData.band === 'knot' || o.userData.band === 'end') : (o => o.userData.band === 'point'), hid = [];
+                    B.traverse(o => { if (o.isMesh && o.visible && hide(o)) { o.visible = false; hid.push(o); } });
+                    try { L.less = K.near(K.frames(cr).body, '#E0218A', 14).length; } finally { hid.forEach(o => { o.visible = true; }); } }
+                  looks.push(L); }
+                if (want) looks.forEach(L => { if (L.all < 50) { said('with a bandana, facing ' + L.f + ', fewer than 50 pixels of the beagle show, so his bandana could not be measured'); return; }
+                  N.push('with a bandana, facing ' + L.f + ': ' + L.b + ' pixels of it on his body, ' + L.c + ' on his card' + (L.less === undefined ? '' : ', ' + (L.b - L.less) + ' of them its ' + (L.f === 'away' ? 'knot and ends' : 'cloth')));
+                  if (L.f === 'away') { if (!L.knot) said('the beagle\'s bandana is not tied: his body has no knot at the back of his neck');
+                    else if (L.b - L.less < 4) said('with a bandana, facing away, the knot at the back of the beagle\'s neck does not show: ' + (L.b - L.less) + ' pixels of the bandana\'s colour are its knot and ends'); return; }
+                  if (!L.parts || L.b < Math.max(4, L.c * 0.4)) said('the beagle wears a bandana on his card and it is missing from his body, facing ' + (L.f === 'right' ? 'right' : 'you') + ': ' + L.b + ' pixels of it, where his card shows ' + L.c);
+                  if (L.f === 'toward') { if (!L.cloth) said('the beagle\'s bandana has no cloth hanging over his chest');
+                    else if (L.b - L.less < Math.max(4, L.c * 0.2)) said('with a bandana, facing you, the cloth over the beagle\'s chest does not show: ' + (L.b - L.less) + ' pixels of the bandana\'s colour are its cloth, where his card shows ' + L.c + ' of it'); } });
                 else looks.forEach(L => { if (L.parts) said('the beagle\'s body wears a bandana that his record ' + (band === null ? 'does not have' : 'names in no colour (' + JSON.stringify(band) + ')')); }); }
               cr.band = null;
+              /* ---- Q · the collar's button: pressed beside a dog, it steps his collar through the collar's colours, the first the
+                       blue every collar starts as, and back to it; his card and his body both wear the colour it gives, and it is
+                       kept under his name ---- */
+              { const btn = document.getElementById('collar'), pr = () => { const s0 = (() => { try { return JSON.parse(localStorage.getItem(SK('park')) || '{}'); } catch (e) { return {}; } })();
+                    return { mem: parkPrefs.collar ? parkPrefs.collar[cr.name] : undefined, kept: s0 && s0.collar ? s0.collar[cr.name] : undefined }; };
+                const start = dogLookOf({}).collar, cols = typeof COLLARCOLS !== 'undefined' && Array.isArray(COLLARCOLS) ? COLLARCOLS : null;
+                if (!btn) said('beside a dog there is no button for his collar\'s colour');
+                else if (!cols || cols.length < 2) said('the collar has no colours to step through');
+                else { if (cols[0] !== start) said('the collar\'s button starts at ' + cols[0] + ', where every collar starts as ' + start);
+                  if (cols.some(c => saveCol(c) !== c) || new Set(cols).size !== cols.length) said('the collar\'s colours are not each a colour, once: ' + cols.join(', '));
+                  const kp = [petTarget, petCrit], c0 = cr.collar; cr.collar = undefined; K.face(cr, 'right'); K.show(cr);
+                  try { petTarget = cr.kind; petCrit = cr; const got = [];
+                    for (let k = 1; k <= cols.length; k++) { btn.click(); const w = cols[k % cols.length], s1 = pr(); got.push(cr.collar);
+                      if (cr.collar !== w) { said('pressing the collar\'s button ' + k + ' time(s) beside a dog gives him ' + JSON.stringify(cr.collar) + ', where the next of its colours is ' + w); break; }
+                      const want = w === start ? undefined : w;
+                      if (s1.mem !== want || s1.kept !== want) { said('pressing the collar\'s button, his collar ' + w + ' is not kept under his name: the game holds ' + JSON.stringify(s1.mem) + ' and has saved ' + JSON.stringify(s1.kept)); break; }
+                      if (k === 1) { const F = K.frames(cr), b = K.near(F.body, w, 14).length, c = K.near(F.card, w, 14).length;
+                        N.push('the collar\'s button, first press: ' + b + ' pixels of ' + w + ' on his body, ' + c + ' on his card');
+                        if (c < 4) said('pressing the collar\'s button, his card does not wear the new colour: ' + c + ' pixels of ' + w + ' show on it');
+                        if (b < Math.max(4, c * 0.4)) said('pressing the collar\'s button, his body does not wear the new colour: ' + b + ' pixels of ' + w + ' show on it, where his card shows ' + c); } }
+                  } finally { [petTarget, petCrit] = kp; cr.collar = c0; if (parkPrefs.collar) delete parkPrefs.collar[cr.name]; } } }
+              /* ---- R · between two steps of one walk his legs do not snap to standing: the frame after his last step he is still
+                       walking, and once he has been still longer than DOGREST he stands. Frames of a sixtieth of a second, handed
+                       to the engine's own t3DogBodies, so no clock is read ---- */
+              { const kp = t3DogPose, seen = []; K.face(cr, 'right'); K.show(cr);
+                t3DogPose = function (B, P, ph, mv, ...a) { if (B === K.bodyOf(cr)) seen.push(mv); return kp.call(this, B, P, ph, mv, ...a); };
+                try { const dt = 1 / 60, step = () => { seen.length = 0; t3DogBodies(dt); return seen.length ? seen[seen.length - 1] : null; };
+                  cr.moving = true; const a = step(); cr.moving = false; const b = step(); let k = 1, c = b;
+                  while (k * dt <= DOGREST && k < 600) { k++; c = step(); }
+                  if (a === null || b === null || c === null) said('a dog who follows you was not a body through his last step, so whether his legs snap to standing could not be asked');
+                  else { if (!a) said('a dog who follows you is moving and his body is not walking');
+                    if (!b) said('between two steps of a walk the dog\'s legs snap to standing: the frame after his last step he stands, where he is still walking for ' + DOGREST + ' s');
+                    if (c) said('a dog who has stopped is still walking ' + (k * dt).toFixed(2) + ' s after his last step, past the ' + DOGREST + ' s he walks on for'); } }
+                finally { t3DogPose = kp; cr.moving = false; } }
               /* ---- H · his tail wags: swept over one swing by the clock t alone, the tip goes from side to side as the card's wag
                        says, calm and happy; with the wag held at zero it is still ---- */
               K.face(cr, 'right');
@@ -14522,6 +14610,29 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (!a || !b) { say(0, 'in ' + what + ', no free tile beside the person you steer, so whether a check finds a dog by his card could not be asked'); continue; }
             if (!held || a.body || !a.card) say(0, 'in ' + what + ', a check that finds a dog by his card finds none: with cardOn the dog who follows you is ' + (a.body ? 'still a body' : 'not drawn as his card'));
             if (!b.body) say(0, 'in ' + what + ', after cardOff the dog who follows you is not a body again'); }
+          /* ---- Q, kept · his collar's colour comes back when the game is loaded again, by his name; and a saved collar that is
+                   not a colour, or a saved name that reaches the record's own parts, changes no dog's collar. Two dogs of the
+                   player's own, one named "constructor", as a player may name one ---- */
+          { const { p: cp, err: cErr } = await openWith(takes ? null : ['person', 'dog']);
+            const key = await cp.evaluate(() => SK('park')), dogs = [{ n: 'Pinto', k: 'lab', x: 2, y: 2 }, { n: 'constructor', k: 'chi', x: 3, y: 2 }];
+            const load = async raw => { await cp.evaluate(([k, v]) => { localStorage.setItem(k, v); }, [key, raw]); await cp.reload(); await boot(cp);
+              return cp.evaluate(() => { const o = {}; CRIT.forEach(c => { if (isDog(c) && c.name) o[c.name] = c.collar === undefined ? '(none)' : typeof c.collar === 'string' ? c.collar : '(a ' + typeof c.collar + ')'; });
+                return { o, polluted: Object.prototype.hasOwnProperty.call(Object.prototype, 'Pinto') }; }); };
+            const base = await load(JSON.stringify({ dogs }));
+            if (!('Pinto' in base.o)) say(0, 'a dog of the player\'s own is not in the game after it loads, so his collar could not be asked to come back');
+            else {
+              const got = await cp.evaluate(() => { const c = CRIT.find(q => q.name === 'Pinto'), btn = document.getElementById('collar'); if (!btn || typeof COLLARCOLS === 'undefined') return null;
+                petTarget = c.kind; petCrit = c; btn.click(); return { w: COLLARCOLS[1], now: c.collar }; });
+              if (!got) say(0, 'beside a dog of the player\'s own there is no button for his collar\'s colour, so whether it comes back could not be asked');
+              else { const back = await load(await cp.evaluate(k => localStorage.getItem(k), key));
+                say(1, 'the collar\'s colour kept: chosen ' + got.w + ', worn ' + back.o.Pinto + ' after the game is loaded again (' + base.o.Pinto + ' before)');
+                if (back.o.Pinto !== got.w) say(0, 'a collar chosen with the button does not come back when the game is loaded again: the dog wears ' + back.o.Pinto + ', where ' + got.w + ' was chosen'); }
+              const same = r => Object.keys(base.o).filter(n => r.o[n] !== base.o[n]).map(n => n + ' wears ' + r.o[n]);
+              for (const v of ['javascript:alert(1)', 'red; background:url(x)', 12]) { const r = await load(JSON.stringify({ dogs, collar: { Pinto: v } })), d = same(r);
+                if (d.length) say(0, 'a saved collar that is not a colour (' + JSON.stringify(v) + ') reaches the dog: ' + d.join(', ')); }
+              { const r = await load('{"dogs":' + JSON.stringify(dogs) + ',"collar":{"__proto__":{"Pinto":"#C0392B","constructor":"#C0392B"}}}'), d = same(r);
+                if (d.length || r.polluted) say(0, 'a saved collar under the name __proto__ changes a dog\'s collar: ' + (d.join(', ') || 'every object in the game now names Pinto')); } }
+            cErr.forEach(m => say(0, 'the page that keeps the collar\'s colour threw: ' + m)); }
           dErr.forEach(m => say(0, 'the page that takes the dog\'s body threw: ' + m));
         }
       }
