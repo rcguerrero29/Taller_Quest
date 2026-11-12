@@ -14269,7 +14269,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const doc = list === null ? dShell : dShell.replace(dBoot, m => '<script src="__dogtake.js"></script>\n' + m);
       await ctx.route('**', r => { const u = r.request().url();
         if (u === dHref) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
-        if (u === dPack) return r.fulfill({ body: 'const BODYTAKE=' + JSON.stringify(list) + ';\n', contentType: 'text/javascript; charset=utf-8' });
+        if (list !== null && u === dPack) return r.fulfill({ body: 'const BODYTAKE=' + JSON.stringify(list) + ';\n', contentType: 'text/javascript; charset=utf-8' });
         return u.startsWith('file://') ? r.continue() : r.abort(); });
       await p.goto(dHref); await boot(p); await p.evaluate(kitSrc); return { p, err }; };
     const has3d = p => p.evaluate(() => typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d')));
