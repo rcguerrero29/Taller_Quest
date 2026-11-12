@@ -13516,7 +13516,13 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
        mq-v260, in the second part too, three things a person sees in the first picture: beside a drawn card his head is
        the card's share of his height; walked along at the game's speed and slowly, a person's pace of steps a second
        (BODYSTEPS), always a foot on the ground and none in it, and the swing a walk's; and a wall-sized block between him and the camera does not hide
-       him, while the street around him is still drawn. Red on mq-v259 in the head and the wall, and on the first mq-v260 (pace by distance alone) in the steps a second. */
+       him, while the street around him is still drawn. Red on mq-v259 in the head and the wall, and on the first mq-v260 (pace by distance alone) in the steps a second.
+       mq-v261, in the second part too, the same person as his card in the game's own 3D camera, each frame of his body set
+       beside the same frame with his card in his place: facing you, as wide as his card; his face showing as his card's does,
+       facing you and from the side; at night as bright as his card. And his build is data: handed builds other than the card's
+       (small, large, wide, slim, thick), the body is made to each, every joint there, every part meeting its joints, both
+       soles on the ground standing and through a walk. Red on mq-v260 in all four. The page is a phone's at a phone's
+       three pixels to the point (mq-v261), so a person a third of a square wide is measured in more than a dozen pixels. */
   {
     const BP = [], BN = [];
     const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
@@ -13546,7 +13552,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (!bootTag.test(shellHtml)) say(0, 'this shell loads no engine/boot.js, so the list could not be declared before the engine the way a world declares it');
     else if (on0 !== null && !(Array.isArray(own) && own.includes('person'))) say(1, 'this world\'s own BODYTAKE (' + on0 + ') does not name the person, so a world that asks for the body was not asked here');
     else {
-      const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const bctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
       const bp = await bctx.newPage(), bErr = [];
       bp.on('pageerror', e => bErr.push(e.message));
       const doc = on0 !== null ? shellHtml : shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
@@ -13695,6 +13701,137 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (kept < 0.9) P.push('with his body up close, the street around him is gone from the screen: away from him, ' + Math.round(kept * 100) + '% of what the camera shows round his card still shows round his body');
               } finally { t3Body = kb; Date = RD; if (wall) { T3.scene.remove(wall); wall.geometry.dispose(); wall.material.dispose(); }
                 bases.forEach(([o, c]) => { o.userData.base = c; }); camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; } }
+            /* D · THE SAME PERSON AS HIS CARD, in the game's own 3D camera (mq-v261). Three frames from the same camera, the
+                   clock held: his body; his card in its place (the engine's choice of card or body held to the card); and
+                   neither (his card hidden after the engine draws the people), the street alone. What is him is what differs
+                   from the street alone, within a square of where he stands; his parts are told apart by their hue, his look
+                   set for it to a green shirt, an orange skin and a violet hair, and no season's face paint (the paint is held
+                   off for these frames, as the hour is). From those pixels:
+                     · AS WIDE AS HIS CARD: facing you, the widest row of his shirt (his chest and the sleeves beside it, as the
+                       card's shirt stands for both) within 15% of the card's widest, either way;
+                     · HIS FACE SHOWS: of his head (the skin and hair above the middle of his shirt), the share that is skin,
+                       facing you at least 85% of his card's share, and facing right at least 60% of it (the side of a head
+                       is half hair, and that is a face from the side; under the old cap of hair it was half of the card's);
+                     · AT NIGHT AS BRIGHT AS HIS CARD: at ten at night, the mean brightness of his shirt and of his skin each
+                       at least 80% of the card's own, and no more than 125% of it.
+                   Nothing measured is a red: a frame that shows fewer than 50 pixels of his shirt, or of his head, says so. */
+            { const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden }, kb = t3Body, ka = t3Actors, kf = faceLooks, RD = Date, kl = look;
+              let hour = 12;
+              Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(hour, 0, 0, 0)); };
+              Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
+              const hsv = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; if (!c) return [0, 0, mx];
+                let h = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4; h *= 60; if (h < 0) h += 360; return [h, c / mx, mx]; };
+              const LOOK = { skin: '#D9874A', hair: '#7A3FB8', shirt: '#2F9E6E' };
+              const hues = Object.fromEntries(Object.entries(LOOK).map(([k, c]) => { const q = new THREE.Color(c); return [k, hsv(q.r * 255, q.g * 255, q.b * 255)[0]]; }));
+              const kind = (r, g, b) => { const [h, s, v] = hsv(r, g, b); if (s < 0.25 || v < 40) return null;
+                for (const k of ['shirt', 'skin', 'hair']) if (Math.abs(((h - hues[k]) + 540) % 360 - 180) < 22) return k; return null; };
+              const grab = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
+                gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
+              /* him in frame F, against the street alone in E */
+              const read = (F, E) => { const { W, H } = F, v = new THREE.Vector3(fx + 0.5, 0.45, fy + 0.5).project(T3.cam), u = new THREE.Vector3(fx + 1.5, 0.45, fy + 0.5).project(T3.cam);
+                const cx = (v.x + 1) / 2 * W, cy = (v.y + 1) / 2 * H, sq = Math.abs(u.x - v.x) / 2 * W, M = { shirt: [], skin: [], hair: [] };
+                for (let y = Math.max(0, Math.floor(cy - sq)); y < Math.min(H, cy + sq); y++) for (let x = Math.max(0, Math.floor(cx - sq)); x < Math.min(W, cx + sq); x++) {
+                  const i = (y * W + x) * 4, a = F.px, e = E.px;
+                  if (Math.abs(a[i] - e[i]) + Math.abs(a[i + 1] - e[i + 1]) + Math.abs(a[i + 2] - e[i + 2]) <= 40) continue;
+                  const k = kind(a[i], a[i + 1], a[i + 2]); if (k) M[k].push([x, y, 0.2126 * a[i] + 0.7152 * a[i + 1] + 0.0722 * a[i + 2]]); }
+                const by = {}; M.shirt.forEach(([x, y]) => { const r = by[y] = by[y] || [x, x]; r[0] = Math.min(r[0], x); r[1] = Math.max(r[1], x); });
+                const wide = M.shirt.length ? Math.max(...Object.values(by).map(r => r[1] - r[0] + 1)) : 0;
+                const ys = M.shirt.map(q => q[1]), mid = ys.length ? (Math.min(...ys) + Math.max(...ys)) / 2 : 0;   /* the screen's rows count up here: his head is above his shirt's middle */
+                const fs = M.skin.filter(q => q[1] > mid).length, fh = M.hair.filter(q => q[1] > mid).length;
+                const lum = a => a.length ? a.reduce((s, q) => s + q[2], 0) / a.length : 0;
+                return { shirt: M.shirt.length, head: fs + fh, wide, share: fs / Math.max(1, fs + fh), lumShirt: lum(M.shirt), lumSkin: lum(M.skin) }; };
+              const F = {};
+              try { faceLooks = () => null; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap' }); moving = false;
+                wEl.hidden = false; camSet('3d'); sizeCanvas();
+                for (const [h, d] of [[12, 'down'], [12, 'right'], [22, 'down']]) { hour = h; dir = d;
+                  const Bf = grab(), on = T3.bodyOn;
+                  t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; const Cf = grab();
+                  t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); }; const Ef = grab();
+                  t3Actors = ka; t3Body = kb;
+                  F[h + d] = { on, body: read(Bf, Ef), card: read(Cf, Ef) }; }
+              } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = 'down'; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
+              const said = { '12down': 'at noon, facing you', '12right': 'at noon, facing right', '22down': 'at ten at night, facing you' }, pct = x => Math.round(x * 100) + '%';
+              const ok = Object.entries(F).filter(([k, f]) => {
+                if (!f.on) { P.push(said[k] + ', the person you steer is not a jointed body in the 3D camera, so he could not be set beside his card'); return false; }
+                const bad = ['body', 'card'].filter(w => f[w].shirt < 50 || f[w].head < 50);
+                if (bad.length) P.push(said[k] + ', his ' + bad.join(' and his ') + ' could not be measured on the screen: fewer than 50 pixels of his shirt or of his head show');
+                return !bad.length; }).map(([k]) => k);
+              if (ok.includes('12down')) { const f = F['12down'], r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
+                if (r < 0.85 || r > 1.15) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
+                if (hs < 0.85) P.push('facing you, his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
+              if (ok.includes('12right')) { const f = F['12right'], hs = f.body.share / Math.max(1e-6, f.card.share);
+                if (hs < 0.6) P.push('facing right, his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
+              if (ok.includes('22down')) { const f = F['22down'];
+                [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
+                  if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');
+                  else if (r > 1.25) P.push('at ten at night his body glows beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s'); }); } }
+            /* E · HIS BUILD IS DATA, AND ANY BUILD FITS HIS SKELETON (mq-v261). The build the engine gives every person is held in
+                   one place (BODYBUILD), each measure 1 for the card's build, and cannot be changed by anything that runs. Then
+                   builds other than the card's are handed to the engine's own makers directly (bodySkeleton, bodyMake), never
+                   through a player's choice, a save or a setting, for none exists: small, large, wide, slim, thick, and the
+                   card's own beside them. Each:
+                     · is that build: against the card's build, standing, his height in proportion to `height`, his chest's
+                       width to width x height, his leg's thickness to limbs x height, his head to head x height, within 5%;
+                     · has every named joint;
+                     · its parts meet: each joint lies in a part hung on the joint before it (or the one before that, where that
+                       joint carries no part of its own) and in a part of its own where it carries one, within a hundredth of a
+                       square, measured against each part's own shape (a capsule, a ball, a box), standing and at 12 steps of a
+                       walk cycle;
+                     · both soles on the ground standing, flat and level, and through the walk none under it and always one on it. */
+            { const NAMED = ['height', 'width', 'limbs', 'head'];
+              const held = typeof BODYBUILD === 'object' && BODYBUILD ? BODYBUILD : null;
+              if (!held) P.push('his build is not held as data in one place: the engine keeps no build for the body, so no build can ever be chosen');
+              else { const off = NAMED.filter(k => held[k] !== 1);
+                if (off.length) P.push('the build every person gets is not the card\'s: ' + off.map(k => k + ' ' + held[k]).join(', ') + ', where each is 1 for the build that matches his card');
+                if (!Object.isFrozen(held)) P.push('the build every person gets can be changed by anything that runs on the page, where nothing may change it yet');
+                if (B.userData.build && NAMED.some(k => B.userData.build[k] !== held[k])) P.push('the body standing in the street is not made to the build every person gets'); }
+              const BUILDS = { 'card\'s': {}, small: { height: 0.75 }, large: { height: 1.25 }, wide: { width: 1.35 }, slim: { width: 0.8, limbs: 0.75 }, thick: { width: 1.1, limbs: 1.5 } };
+              const full = b => Object.fromEntries(NAMED.map(k => [k, k in b ? b[k] : 1]));
+              const make = b => { const X = bodyMake(bodySkeleton('person', b && full(b)), look, b && full(b)); X.updateWorldMatrix(true, true); return X; };
+              const span = (X, f, ax) => { const bx = new THREE.Box3(); X.traverse(o => { if (o.isMesh && o.userData.wears && f(o)) { o.updateWorldMatrix(true, false); bx.union(new THREE.Box3().setFromObject(o)); } });
+                return bx.isEmpty() ? 0 : bx.max[ax] - bx.min[ax]; };
+              const sizes = X => { t3BodyPose(X, 0, false); return {
+                height: span(X, () => true, 'y'),
+                chest: span(X, o => o.parent && o.parent.name === 'spine' && o.userData.wears === 'shirt', 'x'),
+                leg: span(X, o => o.parent && o.parent.name === 'knee_l' && o.userData.wears === 'trousers', 'x'),
+                head: span(X, o => o.parent && o.parent.name === 'head' && o.userData.wears === 'skin', 'y') }; };
+              /* how far a point is from a part, measured against the part's own shape, in squares */
+              const gap = (m, Pw) => { const g = m.geometry, q = g.parameters || {}, l = m.worldToLocal(Pw.clone()); let c = l.clone();
+                if (g.type === 'CapsuleGeometry') { const hl = (q.length !== undefined ? q.length : q.height) / 2, a = new THREE.Vector3(0, Math.max(-hl, Math.min(hl, l.y)), 0), d = l.clone().sub(a);
+                  if (d.length() > q.radius) c = a.add(d.setLength(q.radius)); }
+                else if (g.type === 'SphereGeometry') { if (l.length() > q.radius) c = l.clone().setLength(q.radius); }
+                else if (g.type === 'BoxGeometry') c.set(Math.max(-q.width / 2, Math.min(q.width / 2, l.x)), Math.max(-q.height / 2, Math.min(q.height / 2, l.y)), Math.max(-q.depth / 2, Math.min(q.depth / 2, l.z)));
+                else return Infinity;
+                return m.localToWorld(c).distanceTo(Pw); };
+              const carries = (X, n) => { const j = X.getObjectByName(n); return j ? j.children.filter(o => o.isMesh && o.userData.wears && !/^(hair|eye|apron)$/.test(o.userData.wears)) : []; };
+              const apart = (X, eps) => { const out = []; X.updateWorldMatrix(true, true);
+                JOINTS.forEach(n => { const j = X.getObjectByName(n), p = j && j.parent; if (!j || !p || p === X) return;
+                  const Pw = j.getWorldPosition(new THREE.Vector3());
+                  let from = carries(X, p.name); if (!from.length && p.parent && p.parent !== X) from = carries(X, p.parent.name);
+                  const mine = carries(X, n), d1 = from.length ? Math.min(...from.map(m => gap(m, Pw))) : 0, d2 = mine.length ? Math.min(...mine.map(m => gap(m, Pw))) : 0;
+                  if (d1 > eps) out.push(n + ' stands ' + d1.toFixed(3) + ' of a square off the part before it');
+                  if (d2 > eps) out.push(n + ' stands ' + d2.toFixed(3) + ' of a square off its own part'); });
+                return out; };
+              const base = sizes(make(null));
+              if (!(base.height > 0.3 && base.chest > 0 && base.leg > 0 && base.head > 0)) P.push('the card\'s build could not be measured standing: height ' + base.height.toFixed(3) + ', chest ' + base.chest.toFixed(3) + ', leg ' + base.leg.toFixed(3) + ', head ' + base.head.toFixed(3));
+              else Object.entries(BUILDS).forEach(([name, b0]) => { const b = full(b0), X = make(b0), say2 = m => P.push('a ' + name + ' build (' + NAMED.map(k => k + ' ' + b[k]).join(', ') + ') ' + m);
+                const missing = JOINTS.filter(n => !X.getObjectByName(n)); if (missing.length) { say2('has no joint named ' + missing.join(', ')); return; }
+                const s = sizes(X), want = { height: b.height, chest: b.width * b.height, leg: b.limbs * b.height, head: b.head * b.height }, words = { height: 'tall', chest: 'wide across the chest', leg: 'thick in the leg', head: 'big in the head' };
+                Object.keys(want).forEach(k => { const r = s[k] / base[k]; if (Math.abs(r / want[k] - 1) > 0.05) say2('comes out ' + r.toFixed(2) + ' times as ' + words[k] + ' as the card\'s build, where it should be ' + want[k].toFixed(2) + ' times: the build is not what the body is made from'); });
+                const eps = 0.01, ft = ['l', 'r'].map(sd => X.getObjectByName('ankle_' + sd).children.find(o => o.isMesh && o.userData.wears === 'shoe'));
+                if (ft.some(f => !f)) { say2('has no foot on one leg'); return; }
+                t3BodyPose(X, 0, false); let gaps = apart(X, eps);
+                if (gaps.length) say2('standing, comes apart at its joints: ' + gaps.slice(0, 3).join('; '));
+                ft.forEach((f, i) => { const h = sole(f); if (Math.abs(h) > 0.01) say2('standing, has his ' + (i ? 'right' : 'left') + ' foot ' + (h > 0 ? 'floating ' : 'sunk ') + Math.abs(h).toFixed(3) + ' of a square ' + (h > 0 ? 'above' : 'below') + ' the ground');
+                  if (level(f) < 0.995) say2('standing, has his ' + (i ? 'right' : 'left') + ' foot tipped, not flat'); });
+                let below = 0, air = 0, walkGaps = [];
+                for (let k = 0; k < 12; k++) { t3BodyPose(X, k / 12 * Math.PI * 2, true); const h = ft.map(sole);
+                  if (h.some(v => v < -0.01)) below++; if (Math.min(...h) > 0.01) air++;
+                  const g = apart(X, eps); if (g.length && !walkGaps.length) walkGaps = g; }
+                if (below) say2('walking, puts a foot into the ground at ' + below + ' of 12 steps of the cycle');
+                if (air) say2('walking, has both feet off the ground at ' + air + ' of 12 steps of the cycle');
+                if (walkGaps.length) say2('walking, comes apart at its joints: ' + walkGaps.slice(0, 3).join('; '));
+                X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }); }
             /* far from the focus, and the edge, standing still */
             t3BodyPose(B, 0, false);
             const away = d => { focusXY = () => [fx + d, fy]; return show(); };
@@ -13705,7 +13842,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             away(0); const fromNear = [away(edge), away(edge), away(edge)];
             if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
             if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
-            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, and is his card again past ' + BODYNEAR + ' squares');
+            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, as wide as his card with his face showing facing you and from the side and as bright as his card at night, made to five builds besides the card\'s that each fit his skeleton, and is his card again past ' + BODYNEAR + ' squares');
           } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
           return { P, N }; }, [JOINTS, String(shows)]);
         R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));

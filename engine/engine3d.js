@@ -1290,6 +1290,19 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
        legs. Standing, everything rests. The ground is asked of the engine under each foot (stairLift), so a slope can come later.
    mq-v260: his head is as large a share of his height as a card's (the skeleton's `head`), the walk's pace follows his speed,
    held between BODYSTEPS steps a second (a foot may glide a little), and he is shown through walls as his card is (t3BodyThrough).
+   mq-v261, THE SAME PERSON AS HIS CARD, in a world's own camera (it looks down at about 38 degrees):
+     · HIS BUILD IS DATA (BODYBUILD, here and only here): a few named measures, each 1 for the build that matches his card —
+       how tall he is, how wide, how thick his arms and legs are, how big his head is. bodySkeleton(kind, build) puts every
+       joint where that build has it and bodyMake sizes every part from those joints and numbers, so whatever the build the
+       parts meet at the joints and both soles stand on the ground. Every world and every person gets the card's build; no
+       player, save, setting or screen can change it yet (the object is frozen, and nothing reads a build from anywhere else).
+     · as wide as his card: the shirt across his chest and arms, and his legs, are the card's widths, in the card's colours
+       (the card's arms are shirt, so are his sleeves);
+     · his face shows from that camera: the hair is a cap over the crown and a shell behind, so facing you the face is the
+       lower half of his head as on his card, and from the side the face shows in front of the hair;
+     · at night as bright as his card (t3BodyLight): a card is painted, not lit, and at night it is only tinted; the body was
+       tinted AND lit by the night's dimmed lamps, darker twice over. Its paint is now set so that a face turned to the
+       camera comes out as the card's paint does, tint and all, by day and by night.
    NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, and hair styles past a cap of hair. */
 const BODYNEAR=3;      /* squares from the camera's focus within which the person you steer is a body, not a card */
 const BODYHYST=0.5;
@@ -1298,12 +1311,16 @@ const BODYSTEPS=[2,5]; /* steps a second, fewest and most (mq-v260): his pace fo
 const SKELETONS={
   person:{
     joints:{   /* name: [parent, rest x, y, z] — a person of about 0.93 squares, as tall as his card draws him, and built as his card
-                  is (mq-v260): short legs and a body under a big head, so beside the other people's cards he reads as one of them */
+                  is (mq-v260): short legs and a body under a big head, so beside the other people's cards he reads as one of them.
+                  At the card's build (mq-v261): the shoulders as far apart as the card's shirt is wide, less a sleeve, and the
+                  hips as the card's legs stand; the torso is as wide as the shoulders are apart (bodyMake) */
       hips:[null,0,0.30,0], spine:["hips",0,0.06,0], chest:["spine",0,0.08,0], neck:["chest",0,0.08,0], head:["neck",0,0.05,0],
-      shoulder_l:["chest",0.09,0.06,0], elbow_l:["shoulder_l",0,-0.09,0], wrist_l:["elbow_l",0,-0.085,0],
-      shoulder_r:["chest",-0.09,0.06,0], elbow_r:["shoulder_r",0,-0.09,0], wrist_r:["elbow_r",0,-0.085,0],
-      upleg_l:["hips",0.05,-0.02,0], knee_l:["upleg_l",0,-0.12,0], ankle_l:["knee_l",0,-0.125,0], toe_l:["ankle_l",0,-0.02,0.075],
-      upleg_r:["hips",-0.05,-0.02,0], knee_r:["upleg_r",0,-0.12,0], ankle_r:["knee_r",0,-0.125,0], toe_r:["ankle_r",0,-0.02,0.075]},
+      shoulder_l:["chest",0.15,0.035,0], elbow_l:["shoulder_l",0,-0.09,0], wrist_l:["elbow_l",0,-0.085,0],
+      shoulder_r:["chest",-0.15,0.035,0], elbow_r:["shoulder_r",0,-0.09,0], wrist_r:["elbow_r",0,-0.085,0],
+      upleg_l:["hips",0.085,-0.02,0], knee_l:["upleg_l",0,-0.12,0], ankle_l:["knee_l",0,-0.125,0], toe_l:["ankle_l",0,-0.02,0.075],
+      upleg_r:["hips",-0.085,-0.02,0], knee_r:["upleg_r",0,-0.12,0], ankle_r:["knee_r",0,-0.125,0], toe_r:["ankle_r",0,-0.02,0.075]},
+    /* how thick each limb is at the card's build, in squares: the card's legs are 4 of its 32 pixels wide, its arms 2.6 */
+    limb:{leg:0.056,shin:0.052,arm:0.045,forearm:0.04,hand:0.035},
     head:0.2,   /* the head's radius, here and only here: the skull, its hair and its eyes are all measured from it (bodyMake) */
     legs:[["upleg_l","knee_l","ankle_l",0],["upleg_r","knee_r","ankle_r",Math.PI]],   /* hip, knee, ankle, and where in the cycle */
     arms:[["shoulder_l","elbow_l",Math.PI],["shoulder_r","elbow_r",0]],              /* each arm swings with the other side's leg */
@@ -1311,14 +1328,29 @@ const SKELETONS={
        goes back a stride's length each step (the steps a second held between BODYSTEPS); the arms swing `swing` radians at most */
     stride:0.09, lift:0.025, drop:0.022, swing:0.3}};
 const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
-/* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there */
-function bodySkeleton(kind){const s=SKELETONS[kind],J={};
+/* HIS BUILD (mq-v261), held here and only here: each measure is 1 for the build that matches his card. `height` makes the
+   whole person smaller or larger (his head stays the same share of him), `width` widens or narrows his shoulders, chest and
+   hips, `limbs` thickens or thins his arms and legs, `head` makes the head alone larger or smaller. Every person gets this
+   one; it is frozen, and no player, save, setting or screen reads or writes a build yet */
+const BODYBUILD=Object.freeze({height:1,width:1,limbs:1,head:1});
+/* a build as the body reads it: every measure of BODYBUILD, a number between a half and two, or the card's where it is not */
+function bodyBuildOf(b){const o={};
+  Object.keys(BODYBUILD).forEach(k=>{const v=b&&typeof b==="object"?b[k]:undefined;o[k]=typeof v==="number"&&isFinite(v)&&v>=0.5&&v<=2?v:BODYBUILD[k];});
+  return o;}
+/* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there, and
+   every joint, the head, the limbs and the walk sized for the build (BODYBUILD unless one is handed in) */
+function bodySkeleton(kind,build){const s=SKELETONS[kind],J={},b=bodyBuildOf(build||BODYBUILD),H=b.height,W=b.width*b.height;
   const over=typeof BODYREST!=="undefined"&&BODYREST&&typeof BODYREST==="object"?BODYREST:{};
   Object.keys(s.joints).forEach(n=>{const j=s.joints[n],o=Object.prototype.hasOwnProperty.call(over,n)?over[n]:null;
-    J[n]=[j[0]].concat(Array.isArray(o)&&o.length===3&&o.every(v=>typeof v==="number"&&isFinite(v)&&Math.abs(v)<1)?o:j.slice(1));});
-  return {...s,joints:J};}
-/* THE ONE MAKER: joints as Object3Ds named for themselves, and on each the part it carries, each part saying what it wears */
-function bodyMake(skel,lk){
+    const[x,y,z]=Array.isArray(o)&&o.length===3&&o.every(v=>typeof v==="number"&&isFinite(v)&&Math.abs(v)<1)?o:j.slice(1);
+    J[n]=[j[0],x*W,y*H,z*H];});
+  const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.limbs*H;});
+  return {...s,joints:J,limb,head:s.head*b.head*H,stride:s.stride*H,lift:s.lift*H,drop:s.drop*H,build:b};}
+/* THE ONE MAKER: joints as Object3Ds named for themselves, and on each the part it carries, each part saying what it wears.
+   Every size is read off the skeleton (its joints, its limbs, its head) and the build it was made for, never typed here
+   apart from the share of a part that overlaps the next, so the parts meet at the joints whatever the build */
+function bodyMake(skel,lk,build){
+  const b=bodyBuildOf(build||skel.build||BODYBUILD),H=b.height,Lm=skel.limb||{};
   const root=new THREE.Group();root.name="body";const J={};
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
@@ -1326,31 +1358,45 @@ function bodyMake(skel,lk){
   const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
     m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};m.layers.enable(1);   /* layer 1: drawn again through walls (t3BodyThrough) */
     m.material.stencilWrite=true;m.material.stencilRef=1;m.material.stencilZPass=THREE.ReplaceStencilOp;J[j].add(m);return m;};
-  const cap=(r,len)=>new THREE.CapsuleGeometry(r,len,4,10);
-  const bone=(a,b)=>{const[,x,y,z]=skel.joints[b];return [Math.hypot(x,y,z),x/2,y/2,z/2];};   /* a limb part spans its joint to the next */
-  /* legs: trousers to the ankle, a shoe flat under it, its sole at the ankle's rest height below the joint */
+  const cap=(r,len)=>new THREE.CapsuleGeometry(r,Math.max(0.001,len),4,12);
+  const bone=(a,c)=>{const[,x,y,z]=skel.joints[c];return [Math.hypot(x,y,z),x/2,y/2,z/2];};   /* a limb part spans its joint to the next */
+  const at=n=>skel.joints[n].slice(1),sp=at("spine"),ch=at("chest"),nk=at("neck"),hd=at("head");
+  /* legs: trousers to the ankle, as thick as the card's legs are wide, a shoe flat under each, its sole at the ankle's rest
+     height below the joint */
   ["l","r"].forEach(s=>{
-    let[L,x,y,z]=bone("upleg_"+s,"knee_"+s);part("upleg_"+s,cap(0.048,L-0.02),"trousers",trousers,x,y,z);
-    [L,x,y,z]=bone("knee_"+s,"ankle_"+s);part("knee_"+s,cap(0.041,L-0.02),"trousers",trousers,x,y,z);
-    part("ankle_"+s,new THREE.BoxGeometry(0.06,0.04,0.12),"shoe","#2A2522",0,-0.015,0.025);
-    /* arms: a sleeve to the elbow, the forearm in skin, a hand */
-    [L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);part("shoulder_"+s,cap(0.036,L-0.01),"shirt",lk.shirt,x,y,z);
-    [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(0.029,L-0.02),"skin",lk.skin,x,y,z);
-    part("wrist_"+s,new THREE.SphereGeometry(0.03,10,8),"skin",lk.skin,0,-0.02,0);});
-  /* the body: hips in trousers, the torso in his shirt, a neck and a head with hair on it and two eyes that say which way he faces */
-  part("hips",new THREE.SphereGeometry(1,14,10),"trousers",trousers,0,0.01,0,[0.1,0.06,0.07]);
-  {const t=skel.joints.chest[2]+skel.joints.neck[2];   /* the torso spans the spine's joint to the neck's */
-    part("spine",cap(0.085,Math.max(0.02,t-0.11)),"shirt",lk.shirt,0,t/2-0.01,0,[1.15,1,0.8]);}
-  part("neck",cap(0.028,0.03),"skin",lk.skin,0,0.02,0);
-  const r=skel.head,hc=0.7*r;   /* the head sits on its joint, its centre 0.7 of a radius above it */
-  part("head",new THREE.SphereGeometry(r,20,16),"skin",lk.skin,0,hc,0);
-  part("head",new THREE.SphereGeometry(r*1.067,20,12,0,Math.PI*2,0,Math.PI*0.48),"hair",lk.hair,0,hc+0.04*r,-0.1*r).rotation.x=-0.25;
-  [0.333,-0.333].forEach(ex=>part("head",new THREE.SphereGeometry(0.117*r,8,6),"eye","#1E1A22",ex*r,hc+0.04*r,0.933*r));
-  if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron"))part("spine",new THREE.BoxGeometry(0.15,0.24,0.012),"apron","#EFE9DC",0,0.0,0.075);
-  /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk */
-  const sh=new THREE.Mesh(new THREE.CircleGeometry(0.15,20),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
-  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(1,0.6,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
-  root.userData.joints=J;root.userData.skel=skel;return root;}
+    let[L,x,y,z]=bone("upleg_"+s,"knee_"+s);part("upleg_"+s,cap(Lm.leg,L),"trousers",trousers,x,y,z);
+    [L,x,y,z]=bone("knee_"+s,"ankle_"+s);part("knee_"+s,cap(Lm.shin,L-Lm.shin*0.5),"trousers",trousers,x,y,z);
+    const ah=skel.joints.hips[2]+skel.joints["upleg_"+s][2]+skel.joints["knee_"+s][2]+skel.joints["ankle_"+s][2];   /* the ankle's rest height */
+    const tz=skel.joints["toe_"+s][3];   /* a shoe as wide as the trouser leg and a little more, from the heel to the toe's joint */
+    part("ankle_"+s,new THREE.BoxGeometry(2*Lm.shin+0.01*H,0.04*H,1.7*tz),"shoe","#2A2522",0,0.02*H-ah,0.15*tz);
+    /* arms: his shirt's sleeve to the wrist, as his card's arms are all shirt, and a hand */
+    [L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);part("shoulder_"+s,cap(Lm.arm,L),"shirt",lk.shirt,x,y,z);
+    [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(Lm.forearm,L),"shirt",lk.shirt,x,y,z);
+    part("wrist_"+s,new THREE.SphereGeometry(Lm.hand,10,8),"skin",lk.skin,0,-Lm.hand*0.5,0);});
+  /* the body. The hips, in trousers, as wide as the legs stand. The torso in his shirt, as wide as the shoulders stand apart,
+     not quite as deep, from a little below the hips to a little above the neck; its sides are straight through the
+     shoulders' height, so each arm hangs from its side */
+  const hx=Math.abs(at("upleg_l")[0])+Lm.leg,tw=Math.abs(at("shoulder_l")[0]),td=tw*0.85;
+  part("hips",new THREE.SphereGeometry(1,16,10),"trousers",trousers,0,0.01*H,0,[hx,0.07*H,td*0.9]);
+  {const lo=-sp[1]-0.09*H,hi=ch[1]+nk[1]+0.04*H,h=hi-lo;   /* from the spine's joint: down over the hips as the card's shirt
+                                                              hangs over his legs, up past the neck */
+    part("spine",new THREE.CapsuleGeometry(1,3,6,20),"shirt",lk.shirt,0,(lo+hi)/2,0,[tw,h/5,td]);}
+  part("neck",cap(0.045*H,hd[1]),"skin",lk.skin,0,hd[1]/2,0);
+  /* the head sits on its joint, its centre 0.7 of a radius above it. The hair is a cap over the crown, its edge a little
+     under halfway to the brow at the front and lower behind, and a shell over the back of the head to below the ears: from a
+     camera that looks down at him, the face is the lower half of his head as on his card, and from the side the face shows
+     in front of the hair. The eyes sit where the card has them, a little above the middle of the face */
+  const r=skel.head,hc=0.7*r,hr=r*1.05;
+  part("head",new THREE.SphereGeometry(r,24,18),"skin",lk.skin,0,hc,0);
+  part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;
+  part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;   /* its edge slants back behind the ear */
+  [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
+  if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron"))part("spine",new THREE.BoxGeometry(tw*1.1,0.24*H,0.012*H),"apron","#EFE9DC",0,0,td+0.004*H);
+  /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk. Round, as wide as his
+     card's, so the camera's slant makes it the card's flat oval whichever way he faces */
+  const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
+  root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;return root;}
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
 function t3BodyPose(B,phase,moving,groundAt){
   const S=B.userData.skel,J=B.userData.joints,gnd=groundAt||(()=>0);
@@ -1383,7 +1429,7 @@ function t3Body(dt){
   const key=[look.skin,look.hair,look.shirt,look.outfit].join("|");
   if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);T3.body=null;}
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
-  if(!T3.body){T3.body=bodyMake(bodySkeleton("person"),look);T3.body.userData.key=key;T3.scene.add(T3.body);}
+  if(!T3.body){T3.body=bodyMake(bodySkeleton("person",BODYBUILD),look,BODYBUILD);T3.body.userData.key=key;T3.scene.add(T3.body);}
   const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1],S=B.userData.skel,sc=T3PERSON/0.92;
   /* THE WALK'S PACE FOLLOWS HIS SPEED, HELD TO A PERSON'S (mq-v260): the distance he covered and the time it took are handed
      in (dt, seconds, from draw3d), never read here. A cycle is 2 steps; the steps a second that would keep a planted foot
@@ -1393,12 +1439,24 @@ function t3Body(dt){
   if(moving&&go>0&&go<1&&dt>0){const n=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
     B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
   B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(sc);
-  B.traverse(o=>{if(o.isMesh&&o.userData.base)o.material.color.copy(o.userData.base).multiply(T3.tint);});
+  t3BodyLight(B);
   t3BodyPose(B,B.userData.phase||0,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
   /* the card's rule, the body's too: a wall never hides the person you steer, unless he is down a hole or the drone is
      the one steered (t3Actors) — so draw3d draws him again over the street (t3BodyThrough) */
   B.userData.through=!DRONE.on&&lift>=0;
   return true;}
+/* AT NIGHT AS BRIGHT AS HIS CARD (mq-v261). A card is painted, not lit: its colour is its paint times the hour's tint
+   (t3Light), so at night it is a little bluer and a little darker. The body's parts are lit, by the ambient lamp and the
+   sun, and at night both are turned down (0.6 of a bluish ambient and 0.15 of sun, against 0.66 and 0.42 by day); its paint
+   used to be tinted as well, so at night he came out darker twice over, nearly black beside the cards. Now each part's
+   paint is its colour times the tint, divided by the light that falls this hour on a face turned to the camera: that
+   face comes out exactly as the card's paint does, by day and by night, and the faces turned from the light stay darker,
+   which is what gives him a shape */
+function t3BodyLight(B){
+  const n=new THREE.Vector3().subVectors(T3.cam.position,B.position).normalize(),k=Math.max(0,n.dot(T3.sun.position.clone().normalize()));
+  const L=T3.amb.color.clone().multiplyScalar(T3.amb.intensity).add(T3.sun.color.clone().multiplyScalar(T3.sun.intensity*k));
+  const f=new THREE.Color(T3.tint.r/Math.max(0.05,L.r),T3.tint.g/Math.max(0.05,L.g),T3.tint.b/Math.max(0.05,L.b));
+  B.traverse(o=>{if(o.isMesh&&o.userData.base)o.material.color.copy(o.userData.base).multiply(f);});}
 /* SHOWN THROUGH WALLS, AS HIS CARD IS (mq-v260): after the street is drawn, the depth is cleared and the body drawn again
    on its own layer, so a wall between him and the camera does not hide him; and anyone whose card stands nearer the
    camera than he does is drawn again over him, only where he is (the stencil his parts leave), so a person can still
