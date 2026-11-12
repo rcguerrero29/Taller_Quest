@@ -253,10 +253,11 @@ const CANDIDATES = [
     ['flavor', 'locs', 'classes', 'chat', 'arrive', 'pass'].forEach(k => {
       if (keys(UI.en[k]) !== keys(UI.es[k])) problems.push('UI.' + k + ' subkeys differ');
     });
-    /* MERIDIAN NAMES EVERY WORD THE ENGINE KEEPS, but the zoom buttons' names, which it leaves to the engine. The engine's own
+    /* MERIDIAN NAMES EVERY WORD THE ENGINE KEEPS, but the zoom buttons' names, which it leaves to the engine, and the words of
+       the body's builder (body), which Meridian never shows: it does not take the jointed body (BODYTAKE). The engine's own
        words lie beneath a world's, so a word dropped from Meridian's words file would come out as the engine's without a sound:
        its verdict headings tidied away read the engine's "Solid call" for Meridian's own. Each is asked for as Meridian's own. */
-    { const LEFT = ['zoomIn', 'zoomOut'], D = typeof UIDEF === 'object' && UIDEF ? UIDEF : {}, own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
+    { const LEFT = ['zoomIn', 'zoomOut', 'body'], D = typeof UIDEF === 'object' && UIDEF ? UIDEF : {}, own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
       ['en', 'es'].forEach(L => { const d = D[L] || {}, inL = L === 'es' ? 'Spanish' : 'English';
         Object.keys(d).filter(k => !LEFT.includes(k)).forEach(k => { const g = d[k];
           if (g && typeof g === 'object' && !Array.isArray(g)) Object.keys(g).forEach(w => { if (!own(UI[L], k) || !own(UI[L][k], w)) problems.push('Meridian names no "' + k + '.' + w + '" of its own in ' + inL + ', so a player there reads the engine\'s own word for it'); });

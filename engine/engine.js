@@ -763,7 +763,10 @@ const UIDEF={
     any:"Somewhere to go",ride:"take the tram",arrow:"Arrow to your destination",arrowOn:"On",arrowOff:"Off",
     arrowHint:"Only shows once you've got a destination."},
   save:{full:SAVE_FALLBACK.full,blocked:SAVE_FALLBACK.blocked},
-  zoomIn:"Zoom in",zoomOut:"Zoom out"},
+  zoomIn:"Zoom in",zoomOut:"Zoom out",
+  body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
+    head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
+    cut:"Hair shape",cut_cap:"Close to the head",cut_full:"Fuller",turnL:"Turn left",turnR:"Turn right"}},
  es:{
   talkPre:"💬 ",
   quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ A medias",badH:"✕ Esta vez no",
@@ -809,7 +812,10 @@ const UIDEF={
     arrowHint:"Nomás sale cuando ya tienes destino."},
   save:{full:"Este dispositivo ya no tiene espacio — lo que hagas ahora no se está guardando.",
     blocked:"Este navegador no deja guardar el juego. Una ventana privada hace eso."},
-  zoomIn:"Acercar",zoomOut:"Alejar"}};
+  zoomIn:"Acercar",zoomOut:"Alejar",
+  body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
+    head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
+    cut:"Forma del pelo",cut_cap:"Pegado a la cabeza",cut_full:"Más abundante",turnL:"Girar a la izquierda",turnR:"Girar a la derecha"}}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
@@ -861,9 +867,44 @@ function setWorldTag(){$("worldTag").textContent=T().locs[world]+(worldPending(w
    look that crosses any other boundary is read by the SAME code and not a copy of it (#32). */
 const saveCol=v=>(typeof v==="string"&&/^#[0-9A-Fa-f]{3,8}$/.test(v))?v:null;
 const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
+/* ---- THE BODY'S CHOICES (mq-v262): one table, read by the save, the builder and the body alike ----
+   A world that names `person` in its own `BODYTAKE` list sees the person it steers, up close in the 3D camera, as a jointed body
+   (engine/engine3d.js, grep "THE JOINTED BODY"). How that body is built is the player's to choose, and every choice is a row of
+   BODYCHOICE, here and only here:
+     · a MEASURE has a range (`min` to `max`) and a default (`def`), and `step` for the builder's slider: 1 is the build that
+       matches his card;
+     · an OPTION has a list of the words it allows (`list`) and a default, the first-time look.
+   Three things read the table and nothing else: bodyChoicesOf, below, which cleans a look's choices wherever a look is read
+   (saveLook, so a save, a Trolley Pass and another player's look alike); the builder's controls in the creator (grep "THE
+   BODY BUILDER"), a slider for a measure and a row of buttons for an option, labelled with the words T().body names for its
+   key; and bodyMake (engine/engine3d.js), which sizes the skeleton by the measures and hands each option to the part
+   function of the same key (BODYPART). So a choice added later — more clothes, a nose to pick, eyebrows — is a row here and
+   a part function there, and nothing else. The defaults are the card-matching person: his card's build, long sleeves, and
+   hair worn as a cap so his face shows from a world's camera.
+   A world that says nothing has none of it: its looks keep exactly the keys they kept, its creator shows no new control and
+   its preview is the 2D one. The choices are kept with the look, as `look.body`, and only where the world takes the body. */
+const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
+const BODYCHOICE=Object.freeze([
+  {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1},   /* how tall he is; his head stays the same share of him */
+  {key:"width",kind:"measure",min:0.6,max:1.35,step:0.05,def:1},     /* how wide his shoulders, chest and hips are */
+  {key:"limbs",kind:"measure",min:0.7,max:1.5,step:0.05,def:1},      /* how thick his arms and legs are */
+  {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1},      /* how big his head is */
+  {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1},        /* how far below his waist his shirt hangs */
+  {key:"sleeves",kind:"option",list:["long","short"],def:"long"},     /* long sleeves to the wrist, or short ones and bare arms */
+  {key:"cut",kind:"option",list:["cap","full"],def:"cap"}             /* the hair as a cap over the crown, or fuller */
+].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
+/* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
+   range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
+function bodyChoicesOf(raw){const o={},src=raw&&typeof raw==="object"?raw:{};
+  BODYCHOICE.forEach(r=>{const v=Object.prototype.hasOwnProperty.call(src,r.key)?src[r.key]:undefined;
+    if(r.kind==="measure")o[r.key]=typeof v==="number"&&isFinite(v)?Math.max(r.min,Math.min(r.max,v)):r.def;
+    else o[r.key]=typeof v==="string"&&r.list.includes(v)?v:r.def;});
+  return o;}
 function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
-  return{shirt:saveCol(lkIn.shirt)||"#8B5CF6",skin:saveCol(lkIn.skin)||"#E5AC82",hair:saveCol(lkIn.hair)||"#26202B",
-         style:saveStr(lkIn.style,12,"cap"),outfit:saveStr(lkIn.outfit,8,"casual"),pattern:saveStr(lkIn.pattern,10,"plain")};}
+  const lk={shirt:saveCol(lkIn.shirt)||"#8B5CF6",skin:saveCol(lkIn.skin)||"#E5AC82",hair:saveCol(lkIn.hair)||"#26202B",
+         style:saveStr(lkIn.style,12,"cap"),outfit:saveStr(lkIn.outfit,8,"casual"),pattern:saveStr(lkIn.pattern,10,"plain")};
+  if(BODYON)lk.body=bodyChoicesOf(lkIn.body);   /* only where the world takes the body: elsewhere a look is exactly what it was */
+  return lk;}
 /* ANOTHER PLAYER'S LOOK (#32; the owner approved fixing the colour check). In multiplayer a
    stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
    data. It gets the save's own reading first — saveLook, the same function: a colour must be hex, a
@@ -6377,7 +6418,80 @@ function buildOpts(rowId,list,key){
     row.appendChild(b);});
 }
 function pvDraw(){const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,22);
-  g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});}
+  g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});
+  if(BODYON)bodyPvDraw();}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER) */
+/* ---- THE BODY BUILDER (mq-v262): the creator's own controls for the body's choices, where the world takes the body ----
+   The creator (and the chair, which is the same screen) gains, under the hair's style, one control for each row of the table
+   of the body's choices (grep "THE BODY'S CHOICES"): a slider for a measure, held to its range and moved by its step, and a
+   row of buttons for an option, one per word it allows. Nothing else lists the choices, so a row added to the table is a
+   control here with no other edit. Every control is labelled in words, in the player's language, from T().body: the
+   engine's own words (UIDEF) where the world names none, and the key itself, its words spaced, where nobody names it yet.
+   Each is at least 44 pixels to touch and is reached and changed by keyboard (a slider by its arrows, a button by Enter
+   or Space), with a ring round the one in focus. A change cleans the look's choices again (bodyChoicesOf) and draws the
+   preview at once.
+   THE PREVIEW is his body, turning: drawn by the 3D camera's renderer into a canvas of its own in the preview's box
+   (t3BodyPreview, engine/engine3d.js), beside his card, which stays: up close he is his body, and farther off, and to
+   everyone else, he is still his card, so a player sees both as he builds. It turns by itself, slowly, unless the player has
+   asked for reduced motion, and two buttons turn him by hand either way. Where the 3D cannot draw, the 2D preview stays.
+   A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. A world
+   that takes it but has no 3D camera (no 3D library on its page) never shows the body, so it is offered no builder either;
+   its saves still keep the choices, cleaned, so a look carried to a world with the camera keeps them. */
+const BODYPV={ang:0,spin:0,t:0};
+const bodyWords=()=>{const t=T(),w=t&&t.body;return (w&&typeof w==="object"&&w)||uiDef("body")||{};};
+const bodyWord=k=>{const w=bodyWords()[k];return typeof w==="string"&&w?w:String(k).replace(/_/g," ");};   /* a word nobody names reads as its key */
+let BODYCSS=null;
+function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
+  /* the ring round the control in focus. An adopted sheet, never a <style> written into the page (the page's policy refuses
+     one); a browser that cannot adopt one keeps its own focus ring */
+  try{const s=new CSSStyleSheet();s.replaceSync(".bodyb .opt:focus-visible,.bodyb input[type=range]:focus-visible,.pvturn .opt:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}");
+    document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];BODYCSS=true;}catch(e){}}
+function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(!box)return null;
+  const r=Math.min(3,Math.max(1,window.devicePixelRatio||1));
+  c=document.createElement("canvas");c.id="pvBody";c.width=Math.round(120*r);c.height=Math.round(180*r);
+  c.style.width="120px";c.style.height="180px";c.style.display="block";c.style.marginRight="8px";c.setAttribute("role","img");
+  box.insertBefore(c,box.firstChild);box.style.display="flex";box.style.alignItems="flex-end";   /* his body and his card side by side */
+  return c;}
+function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
+  const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;
+  c.setAttribute("aria-label",bodyWord("preview"));return ok;}
+const bodyStill=()=>{try{return window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
+function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
+  const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
+    if(BODYPV.t)BODYPV.ang+=Math.min(0.1,(now-BODYPV.t)/1000)*0.8;BODYPV.t=now;bodyPvDraw();BODYPV.spin=requestAnimationFrame(step);};
+  BODYPV.spin=requestAnimationFrame(step);}
+function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a world with no 3D camera never shows the body, so offers no builder */
+  bodyCss();look.body=bodyChoicesOf(look.body);
+  let box=$("bodyRows");if(!box){box=document.createElement("div");box.id="bodyRows";box.className="bodyb";
+    const after=$("rowStyle"),host=after&&after.parentNode;
+    if(host)after.insertAdjacentElement("afterend",box);
+    else{const cr=$("creator");if(!cr)return;cr.insertBefore(box,$("begin")||null);}}
+  box.textContent="";
+  const head=document.createElement("p");head.className="crsec";head.textContent=bodyWord("title");box.appendChild(head);
+  const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
+  const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});pvDraw();};
+  BODYCHOICE.forEach(row=>{const id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
+    if(row.kind==="measure"){lb.htmlFor=id;
+      const wrap=document.createElement("div");wrap.className="row";
+      const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
+      inp.value=String(look.body[row.key]);big(inp);inp.style.width="100%";inp.style.margin="0";inp.style.accentColor="var(--accent)";inp.dataset.choice=row.key;
+      const say=()=>inp.setAttribute("aria-valuetext",Math.round(Number(inp.value)*100)+"%");say();
+      inp.addEventListener("input",()=>{say();set(row.key,Number(inp.value));});
+      wrap.appendChild(inp);box.appendChild(wrap);}
+    else{const wrap=document.createElement("div");wrap.className="row";wrap.setAttribute("role","group");wrap.setAttribute("aria-labelledby",lb.id);
+      row.list.forEach(w=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.choice=row.key;b.dataset.word=w;
+        b.textContent=bodyWord(row.key+"_"+w);b.setAttribute("aria-pressed",look.body[row.key]===w?"true":"false");
+        b.addEventListener("click",()=>{set(row.key,w);[...wrap.children].forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));});
+        wrap.appendChild(b);});
+      box.appendChild(wrap);}});
+  /* the two buttons that turn him by hand, under the preview */
+  const pv=$("pvbox"),pvp=pv&&pv.parentNode;
+  if(pvp){let tr=$("pvTurn");if(!tr){tr=document.createElement("div");tr.id="pvTurn";tr.className="pvturn";
+      tr.style.display="flex";tr.style.gap="8px";tr.style.justifyContent="center";tr.style.flexBasis="100%";tr.style.marginTop="6px";
+      pvp.style.flexWrap="wrap";pvp.appendChild(tr);}
+    tr.textContent="";
+    [["turnL",-1],["turnR",1]].forEach(([k,s])=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.turn=String(s);
+      b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);});}
+  bodySpin();}
 $("pvtog").addEventListener("click",()=>{const bx=$("pvbox");bx.classList.toggle("dark");
   $("pvtog").textContent=bx.classList.contains("dark")?"☀️":"🌙";});
 /* Every return to the street goes through here. A save that booted straight into an
@@ -6395,7 +6509,7 @@ function enterWorld(fresh){
 document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("click",()=>{
   cls=b.querySelector("b").textContent;look.shirt=SHIRTS[b.dataset.c]||look.shirt;
   $("intro").hidden=true;$("creator").hidden=false;
-  buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();pvDraw();
+  buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
 }));
 /* ---------- the chair (the owner asked to change outfit
    and haircut after the start, at a small barber) — the creator reopens over the world with the name locked;
@@ -6411,7 +6525,7 @@ let chairHow=null;
 function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;
   $("crTitle").textContent=(how&&how.title)||t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
   const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
-  buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();pvDraw();
+  buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
   $("begin").textContent=(how&&how.done)||t.chairDone||t.begin;$("world").hidden=true;$("creator").hidden=false;held=null;
   /* #126: the chair opens over the world, and the page was left scrolled wherever the world had it — so the panel
      could open entirely below the fold with its way out unreachable. Put it in view and start it at its own top. */
@@ -6979,7 +7093,7 @@ function applyLang(){
   $("langQuick").textContent=t.langQuick;
   applyText();
   if(!$("world").hidden){applyCtl();checkTalk();}
-  if(!$("creator").hidden){buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");}
+  if(!$("creator").hidden){buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");if(BODYON){buildBodyRows();pvDraw();}}
   if($("lbPattern")){$("lbPattern").textContent=t.lbPattern||"Pattern";$("lbPattern").hidden=!t.patterns;$("rowPattern").hidden=!t.patterns;}
   if(!$("hud").hidden)hud();
   mqStore(SK("lang"),lang);

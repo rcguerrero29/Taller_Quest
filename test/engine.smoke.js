@@ -13522,7 +13522,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
        facing you and from the side; at night as bright as his card. And his build is data: handed builds other than the card's
        (small, large, wide, slim, thick), the body is made to each, every joint there, every part meeting its joints, both
        soles on the ground standing and through a walk. Red on mq-v260 in all four. The page is a phone's at a phone's
-       three pixels to the point (mq-v261), so a person a third of a square wide is measured in more than a dozen pixels. */
+       three pixels to the point (mq-v261), so a person a third of a square wide is measured in more than a dozen pixels.
+       mq-v262, THE BODY'S CHOICES (one table, BODYCHOICE, engine/engine.js): in the second part, D asks its face checks for
+       each hair the table offers and that the fuller hair is fuller; E asks every measure at both ends of its range and every
+       corner of all the ranges together, and that the shirt hangs lower when chosen longer; and F asks, of the person a new
+       character starts as and of the detailed one, that his nose, his knees and elbows and his shoes show in the game's camera,
+       and that short sleeves bare his arms and long ones cover them. On pages of their own: G, a world that says nothing shows
+       and keeps nothing new; H, the builder in the creator (labelled in two languages, the keyboard, a phone, the preview);
+       I, the save cleans every look it reads; J, two rows planted in the table reach the builder, the save and the maker.
+       Red on mq-v261 in D, E, F, H and J (G holds there, as it must: it asks that nothing changed). */
   {
     const BP = [], BN = [];
     const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
@@ -13739,38 +13747,49 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const ys = M.shirt.map(q => q[1]), mid = ys.length ? (Math.min(...ys) + Math.max(...ys)) / 2 : 0;   /* the screen's rows count up here: his head is above his shirt's middle */
                 const fs = M.skin.filter(q => q[1] > mid).length, fh = M.hair.filter(q => q[1] > mid).length;
                 const lum = a => a.length ? a.reduce((s, q) => s + q[2], 0) / a.length : 0;
-                return { shirt: M.shirt.length, head: fs + fh, wide, share: fs / Math.max(1, fs + fh), lumShirt: lum(M.shirt), lumSkin: lum(M.skin) }; };
-              const F = {};
-              try { faceLooks = () => null; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap' }); moving = false;
+                return { shirt: M.shirt.length, hair: M.hair.length, head: fs + fh, wide, share: fs / Math.max(1, fs + fh), lumShirt: lum(M.shirt), lumSkin: lum(M.skin) }; };
+              const F = {}, rowC = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'cut') : null, CUTS = rowC ? rowC.list : [null];
+              /* mq-v262: asked for each hair the table offers (the row "cut"), so whichever a player chooses his face shows */
+              if (!rowC) P.push('the body\'s choices have no hair to choose, so a player cannot have the fuller hair or the cap');
+              try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
+                for (const cut of CUTS) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body: cut ? { cut } : {} });
                 for (const [h, d] of [[12, 'down'], [12, 'right'], [22, 'down']]) { hour = h; dir = d;
                   const Bf = grab(), on = T3.bodyOn;
                   t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; const Cf = grab();
                   t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); }; const Ef = grab();
                   t3Actors = ka; t3Body = kb;
-                  F[h + d] = { on, body: read(Bf, Ef), card: read(Cf, Ef) }; }
+                  F[cut + '|' + h + d] = { on, body: read(Bf, Ef), card: read(Cf, Ef) }; } }
               } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = 'down'; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
-              const said = { '12down': 'at noon, facing you', '12right': 'at noon, facing right', '22down': 'at ten at night, facing you' }, pct = x => Math.round(x * 100) + '%';
-              const ok = Object.entries(F).filter(([k, f]) => {
+              const hairSaid = c => c === null ? '' : ' with the hair "' + c + '"', pct = x => Math.round(x * 100) + '%';
+              for (const cut of CUTS) {
+              const said = { '12down': 'at noon, facing you' + hairSaid(cut), '12right': 'at noon, facing right' + hairSaid(cut), '22down': 'at ten at night, facing you' + hairSaid(cut) };
+              const ok = Object.entries(F).filter(([k]) => k.startsWith(cut + '|')).map(([k, f]) => [k.slice(k.indexOf('|') + 1), f]).filter(([k, f]) => {
                 if (!f.on) { P.push(said[k] + ', the person you steer is not a jointed body in the 3D camera, so he could not be set beside his card'); return false; }
                 const bad = ['body', 'card'].filter(w => f[w].shirt < 50 || f[w].head < 50);
                 if (bad.length) P.push(said[k] + ', his ' + bad.join(' and his ') + ' could not be measured on the screen: fewer than 50 pixels of his shirt or of his head show');
                 return !bad.length; }).map(([k]) => k);
-              if (ok.includes('12down')) { const f = F['12down'], r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
+              const at3 = k => F[cut + '|' + k];
+              if (ok.includes('12down') && ok.includes('12right')) N.push('his face' + hairSaid(cut) + ': ' + pct(at3('12down').body.share) + ' of his head skin facing you (his card ' + pct(at3('12down').card.share) + '), ' + pct(at3('12right').body.share) + ' facing right (his card ' + pct(at3('12right').card.share) + ')');
+              if (ok.includes('12down')) { const f = at3('12down'), r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
                 if (r < 0.85 || r > 1.15) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
                 if (hs < 0.85) P.push('facing you, his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
-              if (ok.includes('12right')) { const f = F['12right'], hs = f.body.share / Math.max(1e-6, f.card.share);
+              if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
                 if (hs < 0.6) P.push('facing right, his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
-              if (ok.includes('22down')) { const f = F['22down'];
+              if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
                   if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');
                   else if (r > 1.25) P.push('at ten at night his body glows beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s'); }); } }
+              /* and the fuller hair is fuller: more of it on the screen, facing you, than the cap */
+              { const fu = F['full|12down'], cp = F['cap|12down'];
+                if (rowC && !(rowC.list.includes('full') && rowC.list.includes('cap'))) P.push('the hair offers ' + rowC.list.join(', ') + ', where a player must be able to choose the fuller hair or the cap');
+                else if (fu && cp && fu.on && cp.on && !(fu.body.hair > cp.body.hair)) P.push('facing you, the fuller hair is no fuller than the cap: ' + fu.body.hair + ' pixels of hair against ' + cp.body.hair); } }
             /* E · HIS BUILD IS DATA, AND ANY BUILD FITS HIS SKELETON (mq-v261). The build the engine gives every person is held in
                    one place (BODYBUILD), each measure 1 for the card's build, and cannot be changed by anything that runs. Then
                    builds other than the card's are handed to the engine's own makers directly (bodySkeleton, bodyMake), never
                    through a player's choice, a save or a setting, for none exists: small, large, wide, slim, thick, and the
                    card's own beside them. Each:
-                     · is that build: against the card's build, standing, his height in proportion to `height`, his chest's
+                     · is that build: against the card's build, standing, his height to his neck (mq-v262: the head is a measure of its own) in proportion to `height`, his chest's
                        width to width x height, his leg's thickness to limbs x height, his head to head x height, within 5%;
                      · has every named joint;
                      · its parts meet: each joint lies in a part hung on the joint before it (or the one before that, where that
@@ -13784,14 +13803,33 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               else { const off = NAMED.filter(k => held[k] !== 1);
                 if (off.length) P.push('the build every person gets is not the card\'s: ' + off.map(k => k + ' ' + held[k]).join(', ') + ', where each is 1 for the build that matches his card');
                 if (!Object.isFrozen(held)) P.push('the build every person gets can be changed by anything that runs on the page, where nothing may change it yet');
-                if (B.userData.build && NAMED.some(k => B.userData.build[k] !== held[k])) P.push('the body standing in the street is not made to the build every person gets'); }
+                /* mq-v262: the body in the street is made to the build his look has chosen, which for this look is none, so the card's */
+                if (B.userData.build && NAMED.some(k => B.userData.build[k] !== held[k])) P.push('the body standing in the street, for a look that has chosen no build, is not made to the build a new character starts with'); }
               const BUILDS = { 'card\'s': {}, small: { height: 0.75 }, large: { height: 1.25 }, wide: { width: 1.35 }, slim: { width: 0.8, limbs: 0.75 }, thick: { width: 1.1, limbs: 1.5 } };
-              const full = b => Object.fromEntries(NAMED.map(k => [k, k in b ? b[k] : 1]));
+              const full = b => ({ ...Object.fromEntries(NAMED.map(k => [k, k in b ? b[k] : 1])), ...('hang' in b ? { hang: b.hang } : {}) });
               const make = b => { const X = bodyMake(bodySkeleton('person', b && full(b)), look, b && full(b)); X.updateWorldMatrix(true, true); return X; };
+              /* mq-v262, EVERY BUILD A PLAYER CAN CHOOSE: each measure of the table of the body's choices at both ends of its range,
+                 the others at the card's, and every corner of all the ranges together (each measure at one end or the other). The
+                 ranges are read from the table, which is what is being asked: whether every build it allows fits his skeleton.
+                 And the shirt's hem hangs lower at the long end of its measure than at the short */
+              const MEAS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.filter(r => r.kind === 'measure') : [];
+              const want5 = ['height', 'width', 'limbs', 'head', 'hang'], gone5 = want5.filter(k => !MEAS.some(r => r.key === k));
+              if (gone5.length) P.push('a player cannot choose his ' + gone5.map(k => ({ height: 'height', width: 'width', limbs: 'arms and legs\' thickness', head: 'head', hang: 'shirt\'s length' })[k]).join(', ') + ': the body\'s choices have no measure for it');
+              MEAS.forEach(r => { if (!(r.min <= r.def && r.def <= r.max && r.min < r.max)) P.push('the measure ' + r.key + ' runs from ' + r.min + ' to ' + r.max + ' with its default at ' + r.def + ', so it is no range a player can move in');
+                BUILDS[r.key + ' at its least (' + r.min + ')'] = { [r.key]: r.min }; BUILDS[r.key + ' at its most (' + r.max + ')'] = { [r.key]: r.max }; });
+              for (let m = 0; m < (1 << MEAS.length) && MEAS.length <= 8; m++) { const b = {}; MEAS.forEach((r, i) => { b[r.key] = m >> i & 1 ? r.max : r.min; });
+                BUILDS['corner ' + (m + 1) + ' of the ranges'] = b; }
+              { const hr = MEAS.find(r => r.key === 'hang');
+                if (hr) { const hem = v => { const X = make({ hang: v }); t3BodyPose(X, 0, false); const bx = new THREE.Box3();
+                    X.traverse(o => { if (o.isMesh && o.parent && o.parent.name === 'spine' && o.userData.wears === 'shirt') { o.updateWorldMatrix(true, false); bx.union(new THREE.Box3().setFromObject(o)); } });
+                    X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); return bx.isEmpty() ? null : bx.min.y; };
+                  const lo = hem(hr.max), hi = hem(hr.min);
+                  if (lo === null || hi === null) P.push('his shirt could not be found on his body, so how far it hangs was not asked');
+                  else if (!(lo < hi - 0.01)) P.push('his shirt hangs no lower when its length is chosen longest (' + hr.max + ') than shortest (' + hr.min + '): its hem is at ' + lo.toFixed(3) + ' and ' + hi.toFixed(3)); } }
               const span = (X, f, ax) => { const bx = new THREE.Box3(); X.traverse(o => { if (o.isMesh && o.userData.wears && f(o)) { o.updateWorldMatrix(true, false); bx.union(new THREE.Box3().setFromObject(o)); } });
                 return bx.isEmpty() ? 0 : bx.max[ax] - bx.min[ax]; };
               const sizes = X => { t3BodyPose(X, 0, false); return {
-                height: span(X, () => true, 'y'),
+                height: span(X, o => !(o.parent && o.parent.name === 'head'), 'y'),   /* to his neck: from mq-v262 his head is a measure of its own */
                 chest: span(X, o => o.parent && o.parent.name === 'spine' && o.userData.wears === 'shirt', 'x'),
                 leg: span(X, o => o.parent && o.parent.name === 'knee_l' && o.userData.wears === 'trousers', 'x'),
                 head: span(X, o => o.parent && o.parent.name === 'head' && o.userData.wears === 'skin', 'y') }; };
@@ -13832,6 +13870,82 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (air) say2('walking, has both feet off the ground at ' + air + ' of 12 steps of the cycle');
                 if (walkGaps.length) say2('walking, comes apart at its joints: ' + walkGaps.slice(0, 3).join('; '));
                 X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }); }
+            /* F · THE DETAILS EVERY BODY HAS, AND THE SLEEVES (mq-v262). In the game's own 3D camera, the clock held at noon and
+                   no season's face paint, his look set to the hues of D, each of these frames is set beside the same frame with
+                   one kind of his parts painted a colour no street has (a magenta): what turns that colour is that part, as
+                   the camera shows it, in front of everything else. Asked of the person a new character starts as (no
+                   choices made) and of the detailed one (short sleeves, the fuller hair, slimmer), facing you and facing right:
+                     · HIS NOSE SHOWS: at least as many pixels of his nose as of one of his eyes (the larger of the two on the
+                       screen: the eyes are what a card has for a face, and a person sees them);
+                     · HIS KNEES AND ELBOWS SHOW: where each limb bends, the ball of its joint (a shade off what covers it) shows
+                       in at least as many pixels as one of his eyes, for both knees together and both elbows together;
+                     · HIS SHOES SHOW, AS MUCH AS THEY DID WHEN HIS LEGS WERE THIN (the second slice): both shoes together in at
+                       least as many pixels as his trousers; each shoe facing you (the nearer facing right) at least as many as
+                       an eye; and where they show, the frame with them hidden shows the street, not his trousers, in at least as
+                       many pixels as an eye, so they stand out past his trouser legs. On mq-v261 the shoes showed in about half
+                       as many pixels as his trousers, and the check is red there.
+                   AND THE SLEEVES: his arms (every part hung on a shoulder or an elbow) are painted, and where they show the
+                   ordinary frame is read by hue: with short sleeves more of his arms shows skin than shirt, with long sleeves
+                   more than ten times as much shirt as skin. Each option of the sleeves row is asked; a table with no sleeves
+                   row is a red. Nothing measured is a red: an eye under 4 pixels, or arms under 50, says so. Red on mq-v261 in every part. */
+            { const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden }, kb = t3Body, kf = faceLooks, RD = Date, kl = look;
+              Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(12, 0, 0, 0)); };
+              Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
+              const hsv = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; if (!c) return [0, 0, mx];
+                let h = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4; h *= 60; if (h < 0) h += 360; return [h, c / mx, mx]; };
+              const LOOK = { skin: '#D9874A', hair: '#7A3FB8', shirt: '#2F9E6E' };
+              const hues = Object.fromEntries(Object.entries(LOOK).map(([k, c]) => { const q = new THREE.Color(c); return [k, hsv(q.r * 255, q.g * 255, q.b * 255)[0]]; }));
+              const kind = (r, g, b) => { const [h, s, v] = hsv(r, g, b); if (s < 0.25 || v < 40) return null;
+                for (const k of ['shirt', 'skin', 'hair']) if (Math.abs(((h - hues[k]) + 540) % 360 - 180) < 22) return k; return null; };
+              const grab = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
+                gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
+              const mag = (px, i) => px[i] > 150 && px[i + 2] > 150 && px[i + 1] < 90;
+              /* the pixels where parts that pass f turn magenta when painted, against the frame as it is (A) */
+              const painted = (f, A, hide) => { const Bd = T3.body, kept = [];
+                Bd.traverse(o => { if (o.isMesh && o.userData.base && f(o)) { kept.push([o, o.userData.base, o.visible]); if (hide) o.visible = false; else o.userData.base = new THREE.Color('#FF00FF'); } });
+                let F; try { F = grab(); } finally { kept.forEach(([o, c, v]) => { o.userData.base = c; o.visible = v; }); }
+                if (!kept.length) return null;
+                const out = []; for (let i = 0; i < F.px.length; i += 4) if (hide ? F.px[i] !== A.px[i] || F.px[i + 1] !== A.px[i + 1] || F.px[i + 2] !== A.px[i + 2] : mag(F.px, i) && !mag(A.px, i)) out.push(i);
+                return { at: out, F }; };
+              const on = (o, j) => o.parent && new RegExp('^' + j + '_[lr]$').test(o.parent.name);
+              const DETAILED = { sleeves: 'short', cut: 'full', width: 0.75, limbs: 0.8 }, rowS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'sleeves') : null;
+              if (!rowS) P.push('the body\'s choices have no sleeves, so a player cannot choose short sleeves and bare arms');
+              try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
+                for (const [who, body] of [['the person a new character starts as', {}], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED]])
+                  for (const d of ['down', 'right']) { dir = d; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body });
+                    const A = grab(), say3 = m => P.push(who + ', facing ' + (d === 'down' ? 'you' : 'right') + ', ' + m);
+                    if (!T3.bodyOn || !T3.body) { say3('is not a jointed body in the 3D camera, so his nose, joints and shoes could not be looked for'); continue; }
+                    const n = f => { const r = painted(f, A); return r ? r.at.length : -1; };
+                    const one = f => { const v = [0, 1].map(i => { let k = 0; return n(o => f(o) && k++ === i); }); return Math.max(...v); };   /* the larger of a pair, one at a time */
+                    const eye = one(o => o.userData.wears === 'eye');
+                    if (!(eye >= 4)) { say3('his eyes could not be found on the screen (' + eye + ' pixels of the larger), so his nose, joints and shoes were not measured'); continue; }
+                    const nose = n(o => o.userData.wears === 'nose'), knee = n(o => o.userData.wears === 'joint' && on(o, 'knee')), elbow = n(o => o.userData.wears === 'joint' && on(o, 'elbow'));
+                    const shoeL = n(o => o.userData.wears === 'shoe' && on(o, 'ankle') && o.parent.name.endsWith('_l')), shoeR = n(o => o.userData.wears === 'shoe' && on(o, 'ankle') && o.parent.name.endsWith('_r'));
+                    if (nose < 0) say3('has no nose'); else if (nose < eye) say3('his nose does not show: ' + nose + ' pixels of it, where one of his eyes shows in ' + Math.round(eye));
+                    if (knee < 0) say3('has nothing at his knees to show where his legs bend'); else if (knee < eye) say3('his knees do not show: ' + knee + ' pixels of them, where one of his eyes shows in ' + Math.round(eye));
+                    if (elbow < 0) say3('has nothing at his elbows to show where his arms bend'); else if (elbow < eye) say3('his elbows do not show: ' + elbow + ' pixels of them, where one of his eyes shows in ' + Math.round(eye));
+                    [['left', shoeL], ['right', shoeR]].forEach(([s, v]) => { if (v < 0) say3('has no ' + s + ' shoe'); else if (v < eye && (d === 'down' || Math.max(shoeL, shoeR) === v)) say3('his ' + s + ' shoe hardly shows: ' + v + ' pixels of it, where one of his eyes shows in ' + Math.round(eye)); });
+                    /* where his shoes show, the frame with them hidden: what is there is not his trousers, nor any of him */
+                    const shoes = painted(o => o.userData.wears === 'shoe', A), bare = painted(o => o.userData.wears === 'shoe', A, true);
+                    const tr = new THREE.Color('#2E3547'), trousers = (F, i) => { const c = new THREE.Color(F[i] / 255, F[i + 1] / 255, F[i + 2] / 255); return Math.abs(c.getHSL({}).h - tr.getHSL({}).h) < 0.06 && c.getHSL({}).l < 0.35; };
+                    const out = shoes && bare ? shoes.at.filter(i => { const F = bare.F.px; return !kind(F[i], F[i + 1], F[i + 2]) && !trousers(F, i); }).length : 0;
+                    /* AS NOTICEABLE AS THEY WERE: both shoes together take at least as much of the screen as his trousers do */
+                    const legs = n(o => o.userData.wears === 'trousers'), both = shoes ? shoes.at.length : 0;
+                    if (legs > 0 && both < legs) say3('his shoes are small beside his trousers: ' + both + ' pixels of shoe, where his trousers show in ' + legs);
+                    if (shoes && bare && out < eye) say3('his shoes do not stand out past his trouser legs: ' + out + ' pixels of them show where the street would, where one of his eyes shows in ' + Math.round(eye));
+                    if (d === 'down') N.push(who + ' facing you: eye ' + eye + ', nose ' + nose + ', knees ' + knee + ', elbows ' + elbow + ', shoes ' + shoeL + '/' + shoeR + ', past the legs ' + out + ', trousers ' + legs);
+                  }
+                /* the sleeves, each option of the row */
+                if (rowS) for (const w of rowS.list) { dir = 'down'; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body: { sleeves: w } });
+                  const A = grab(), arm = painted(o => on(o, 'shoulder') || on(o, 'elbow'), A);
+                  if (!arm || arm.at.length < 50) { P.push('with ' + w + ' sleeves, his arms could not be found on the screen (' + (arm ? arm.at.length : 0) + ' pixels)'); continue; }
+                  let skin = 0, shirt = 0; arm.at.forEach(i => { const k = kind(A.px[i], A.px[i + 1], A.px[i + 2]); if (k === 'skin') skin++; else if (k === 'shirt') shirt++; });
+                  if (w === 'short' && !(skin > shirt)) P.push('with short sleeves his arms are not bare: ' + skin + ' pixels of his arms show skin and ' + shirt + ' show his shirt');
+                  if (w === 'long' && !(shirt > 10 * skin)) P.push('with long sleeves his arms show skin: ' + skin + ' pixels of skin on his arms, against ' + shirt + ' of shirt');
+                  if (w !== 'short' && w !== 'long') N.push('COUNT-ONLY: sleeves "' + w + '": ' + skin + ' skin, ' + shirt + ' shirt');
+                  N.push(w + ' sleeves: arms ' + arm.at.length + ', skin ' + skin + ', shirt ' + shirt); }
+                if (rowS && !(rowS.list.includes('short') && rowS.list.includes('long'))) P.push('the sleeves offer ' + rowS.list.join(', ') + ', where a player must be able to choose short sleeves or long');
+              } finally { t3Body = kb; faceLooks = kf; Date = RD; look = kl; dir = 'down'; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); } }
             /* far from the focus, and the edge, standing still */
             t3BodyPose(B, 0, false);
             const away = d => { focusXY = () => [fx + d, fy]; return show(); };
@@ -13842,13 +13956,208 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             away(0); const fromNear = [away(edge), away(edge), away(edge)];
             if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
             if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
-            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, as wide as his card with his face showing facing you and from the side and as bright as his card at night, made to five builds besides the card\'s that each fit his skeleton, and is his card again past ' + BODYNEAR + ' squares');
+            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, as wide as his card with his face showing facing you and from the side and as bright as his card at night, made to five builds besides the card\'s and to every end and corner of the ranges a player can choose, each fitting his skeleton, with a nose, knees, elbows and shoes that show and sleeves that bare or cover his arms, and is his card again past ' + BODYNEAR + ' squares');
           } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
           return { P, N }; }, [JOINTS, String(shows)]);
         R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
         if (bErr.length) say(0, 'the page that asks for the body threw "' + bErr[0] + '"');
       } catch (e) { say(0, 'the page that asks for the body could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
       await bctx.close();
+      /* ---- mq-v262 · THE BODY'S CHOICES, ON PAGES OF THEIR OWN ----
+         The table of the body's choices (BODYCHOICE, engine/engine.js, grep "THE BODY'S CHOICES") is read here for what it
+         offers — its rows, their ranges and their words are what is being asked about — never for a number to compare with.
+           G · A WORLD THAT SAYS NOTHING SHOWS AND KEEPS NOTHING NEW (rule 6): on this shell as it stands, with no list, the
+               creator opened as a player opens it shows no control for the body and its preview is the 2D one, drawn; a look
+               read by the save (saveLook) has exactly the six things a look has always had, and a body handed in with it
+               changes nothing at all; and the look a new character saves has no body.
+           H · THE BUILDER (rule 4), on a phone 390 pixels wide that asked for reduced motion, in a world that takes the body:
+               the creator shows a control for every choice of the table (a slider for a measure, one button for each word of
+               an option), each labelled in words in English and in Spanish, the Spanish not the English, as are the two
+               buttons that turn him; every one is reached by the Tab key alone, shows a ring when it has the focus, and is
+               changed by the keyboard (a slider by its arrow, a button by Enter); each change changes the look the save would
+               keep and the body in the preview, counted in the preview's pixels; the preview shows his body, drawn in 3D (beside his
+               card, which stays), it does not turn by itself, and the buttons turn him; and no control is off the screen or smaller than
+               44 pixels either way.
+           I · THE SAVE CLEANS WHAT IT READS (rule 5): a look with measures out of range, of the wrong type, not numbers at
+               all, an option no row offers, a very long word, words shaped like markup, a key no row has, a body that is not
+               an object, and a key hidden on its prototype, each comes out with every measure in its range and every option
+               one of its words, a measure out of range held to its nearest end and anything else at the default, and nothing
+               the table does not list; a look saved before the choices existed comes out as the person a new character
+               starts as (the card's build, every measure 1, long sleeves, the hair a cap), as does that new character; the
+               real save keeps every choice through a round trip; and another player's look is cleaned the same way.
+           J · ONE TABLE (rule 9): two rows planted in the table on a page of their own, an option and a measure, with no other
+               edit, show in the builder as a control each, are kept and cleaned by the save, and are read by the maker of the
+               body, which keeps them on the body it makes. */
+      const PLANTAT = 'const BODYCHOICE=Object.freeze([';
+      const page4 = async (html, opts, plant) => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, ...(opts || {}) });
+        const p = await ctx.newPage(), errs = []; let planted = null; p.on('pageerror', e => errs.push(e.message));
+        await ctx.route('**', r => { const u = r.request().url();
+          if (u === href) return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
+          if (u === packAt) return r.fulfill({ body: 'const BODYTAKE=["person"];\n', contentType: 'text/javascript; charset=utf-8' });
+          if (plant && /\/engine\/engine\.js(\?.*)?$/.test(u)) { const src = fs.readFileSync(require('url').fileURLToPath(u.split('?')[0]), 'utf8'), at = src.indexOf(PLANTAT);
+            planted = at >= 0 && src.indexOf(PLANTAT, at + 1) < 0;
+            return r.fulfill({ body: planted ? src.slice(0, at + PLANTAT.length) + plant + src.slice(at + PLANTAT.length) : src, contentType: 'text/javascript; charset=utf-8' }); }
+          return u.startsWith('file://') ? r.continue() : r.abort(); });
+        await p.goto(href); await boot(p);
+        await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); }); await rafs(p);
+        return { ctx, p, errs, planted: () => planted }; };
+      /* ---- G · a world that says nothing ---- */
+      if (on0 === null) {
+        const G = await page4(shellHtml);
+        try { const R = await G.p.evaluate(() => { const P = [], cr = document.getElementById('creator'), pv = document.getElementById('pv');
+            if (cr.hidden) { P.push('the creator could not be opened, so whether it shows anything new was not asked'); return P; }
+            const extra = [...cr.querySelectorAll('[data-choice],input[type=range],#bodyRows,#pvBody,#pvTurn')];
+            if (extra.length) P.push('in a world that has not asked for the body, the creator shows ' + extra.length + ' control(s) for the body anyway');
+            const d = pv.getContext('2d').getImageData(0, 0, pv.width, pv.height).data; let drawn = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) drawn++;
+            if (pv.hidden || !drawn) P.push('in a world that has not asked for the body, the creator\'s 2D preview is ' + (pv.hidden ? 'hidden' : 'blank'));
+            const SIX = ['shirt', 'skin', 'hair', 'style', 'outfit', 'pattern'];
+            [{}, { shirt: '#123456', style: 'afro' }, { skin: 'red', outfit: 'formal', pattern: 'dots' }].forEach(L => { const a = saveLook(L), b = saveLook({ ...L, body: { height: 1.2, sleeves: 'short', cut: 'full' } });
+              if (Object.keys(a).join() !== SIX.join()) P.push('in a world that has not asked for the body, a look read by the save keeps ' + Object.keys(a).join(', ') + ', where it has always kept ' + SIX.join(', '));
+              if (JSON.stringify(a) !== JSON.stringify(b)) P.push('in a world that has not asked for the body, a body handed in with a look changes what the save keeps: ' + JSON.stringify(b)); });
+            if ('body' in look) P.push('in a world that has not asked for the body, a new character\'s look has a body: ' + JSON.stringify(look.body));
+            return P; });
+          R.forEach(m => say(0, m)); if (!R.length) say(1, 'in a world that has not asked for the body, the creator shows no control for it, its preview is the 2D card, and a look keeps the six things it always kept');
+          if (G.errs.length) say(0, 'the creator of a world that says nothing threw "' + G.errs[0] + '"');
+        } catch (e) { say(0, 'the creator of a world that says nothing could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        await G.ctx.close(); }
+      /* ---- H and I · the builder and the save, in a world that takes the body ---- */
+      { const H = await page4(doc, { reducedMotion: 'reduce' });
+        try { const p = H.p, P = [];
+          const pre = await p.evaluate(() => { const cr = document.getElementById('creator'), c = document.getElementById('pvBody'), pv = document.getElementById('pv');
+            if (cr.hidden) return { why: 'the creator could not be opened' };
+            if (typeof BODYCHOICE !== 'object' || !BODYCHOICE) return { why: 'the engine keeps no table of the body\'s choices, so the creator offers him no choice of his body' };
+            return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max })), no3d: typeof THREE === 'undefined', ctl: document.querySelectorAll('#creator [data-choice]').length, body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null }; });
+          if (pre.why) P.push('in a world that takes the body, ' + pre.why);
+          else {
+            /* A WORLD WITH NO 3D CAMERA never shows the body, so it is offered no builder: the save still keeps and cleans the
+               choices (I), so a look carried to a world with the camera keeps them */
+            if (pre.no3d) { if (pre.ctl) P.push('in a world with no 3D camera, where his body is never shown, the creator offers ' + pre.ctl + ' control(s) for it');
+              else say(1, 'this shell has no 3D camera, so his body is never shown and the creator offers no builder for it'); }
+            else {
+            if (!pre.body3d) P.push('in a world that takes the body, the creator\'s preview is not his body: no 3D picture of him is drawn there');
+            /* the person a new character starts as, before anything is touched: the card's build, long sleeves, the hair a cap */
+            if (!pre.nb) P.push('a new character\'s look has no body');
+            else { const off = pre.rows.filter(r => r.kind === 'measure' && pre.nb[r.key] !== 1).map(r => r.key + ' ' + pre.nb[r.key]);
+              if (pre.nb.sleeves !== 'long') off.push('sleeves ' + pre.nb.sleeves); if (pre.nb.cut !== 'cap') off.push('hair ' + pre.nb.cut);
+              if (off.length) P.push('a new character does not start as the card-matching person: ' + off.join(', ')); }
+            /* every control: present, its kind, labelled in both languages */
+            const L = await p.evaluate(rows => { const out = { missing: [], words: {} }, label = el => { if (el.labels && el.labels.length) return el.labels[0].textContent.trim();
+                const g = el.closest('[aria-labelledby]'), id = g && g.getAttribute('aria-labelledby'), lb = id && document.getElementById(id); return lb ? lb.textContent.trim() : ''; };
+              for (const lg of ['en', 'es']) { lang = lg; applyLang(); out.words[lg] = {};
+                rows.forEach(r => { const c = [...document.querySelectorAll('#creator [data-choice="' + r.key + '"]')];
+                  if (lg === 'en') { if (!c.length) out.missing.push(r.key + ': no control');
+                    else if (r.kind === 'measure' && !(c.length === 1 && c[0].type === 'range' && +c[0].min === r.min && +c[0].max === r.max)) out.missing.push(r.key + ': not one slider from ' + r.min + ' to ' + r.max);
+                    else if (r.kind === 'option' && c.map(b => b.dataset.word).join() !== r.list.join()) out.missing.push(r.key + ': buttons for ' + c.map(b => b.dataset.word).join(', ') + ', where it offers ' + r.list.join(', ')); }
+                  c.forEach(el => { out.words[lg][r.key + (el.dataset.word ? ' ' + el.dataset.word : '')] = { label: label(el), text: el.dataset.word ? el.textContent.trim() : '' }; }); });
+                [...document.querySelectorAll('#pvTurn button')].forEach((b, i) => { out.words[lg]['the button that turns him ' + (i ? 'right' : 'left')] = { label: 'x', text: b.textContent.trim() }; }); }
+              lang = 'en'; applyLang(); return out; }, pre.rows);
+            L.missing.forEach(m => P.push('the builder\'s control for ' + m));
+            if (Object.keys(L.words.en).filter(k => /^the button that turns/.test(k)).length !== 2) P.push('the builder has no two buttons to turn him by hand');
+            Object.keys(L.words.en).forEach(k => { const e = L.words.en[k], s = L.words.es[k] || { label: '', text: '' }, key = k.split(' ')[0];
+              if (!e.label || e.label === key) P.push('the builder\'s control for ' + k + ' is not labelled in words in English');
+              else if (!s.label || s.label === key) P.push('the builder\'s control for ' + k + ' is not labelled in words in Spanish');
+              else if (e.label !== 'x' && s.label === e.label) P.push('the builder\'s control for ' + k + ' says "' + e.label + '" in Spanish as in English');
+              if (/ /.test(k) || /^the button/.test(k)) { if (!e.text || !s.text) P.push('the builder\'s ' + k + ' shows no words ' + (!e.text ? 'in English' : 'in Spanish'));
+                else if (e.text === s.text) P.push('the builder\'s ' + k + ' says "' + e.text + '" in Spanish as in English'); } });
+            /* the keyboard: Tab from the name, collecting what takes the focus, each one's ring */
+            const want = [...pre.rows.flatMap(r => r.kind === 'measure' ? [r.key] : r.list.map(w => r.key + ' ' + w)), 'turn -1', 'turn 1'], seen = new Set(), noRing = new Set();
+            await p.evaluate(() => { const t = document.getElementById('pvtog') || document.getElementById('heroname'); t.focus(); });
+            for (let k = 0; k < 120 && seen.size < want.length; k++) { await p.keyboard.press('Tab');
+              const a = await p.evaluate(() => { const e = document.activeElement; if (!e || !e.dataset) return null;
+                const id = e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : e.dataset.turn ? 'turn ' + e.dataset.turn : null;
+                const cs = getComputedStyle(e); return id ? { id, ring: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 } : null; });
+              if (a) { seen.add(a.id); if (!a.ring) noRing.add(a.id); } }
+            const unreached = want.filter(w => !seen.has(w));
+            if (unreached.length) P.push('by the Tab key alone the builder\'s ' + unreached.join(', ') + ' cannot be reached');
+            if (noRing.size) P.push('with the keyboard\'s focus on the builder\'s ' + [...noRing].join(', ') + ', no ring shows which control has it');
+            /* each changed by the keyboard: the look the save would keep, and the preview's pixels */
+            const pix = () => p.evaluate(() => { const c = document.getElementById('pvBody'); if (!c || c.hidden) return null; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; return Array.from(d.filter((v, i) => i % 4 === 3 ? false : true)).join(','); });
+            const differ = (a, b) => { if (!a || !b) return -1; const x = a.split(','), y = b.split(','); let n = 0; for (let i = 0; i < x.length; i++) if (Math.abs(x[i] - y[i]) > 24) n++; return n; };
+            for (const r of pre.rows) { const targets = r.kind === 'measure' ? [null] : r.list;
+              for (const w of targets) { const sel = '#creator [data-choice="' + r.key + '"]' + (w ? '[data-word="' + w + '"]' : '');
+                const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined }), r.key), img0 = await pix();
+                if (w && before.v === w) continue;   /* the word already chosen is chosen again by the next pass */
+                await p.focus(sel); await p.keyboard.press(r.kind === 'measure' ? (before.v >= r.max ? 'ArrowLeft' : 'ArrowRight') : 'Enter'); await rafs(p);
+                const after = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, kept: saveLook(look).body ? saveLook(look).body[k] : undefined }), r.key), img1 = await pix();
+                const what = r.key + (w ? ' "' + w + '"' : '');
+                if (after.v === before.v || (w && after.v !== w)) P.push('the builder\'s ' + what + ' changed by the keyboard does not change his look: it stays ' + JSON.stringify(after.v));
+                else if (after.kept !== after.v) P.push('the builder\'s ' + what + ' changes his look to ' + JSON.stringify(after.v) + ', but the save would keep ' + JSON.stringify(after.kept));
+                const n = differ(img0, img1); if (n < 0) P.push('the builder\'s preview of his body could not be read after his ' + what + ' changed');
+                else if (n === 0) P.push('the builder\'s ' + what + ' changed, and his body in the preview did not change at all'); } }
+            /* the preview stays still for a person who asked for reduced motion, and turns by hand */
+            { const a = await pix(); await p.waitForTimeout(400); await rafs(p, 4); const b = await pix();
+              if (differ(a, b) > 0) P.push('for a person who asked for reduced motion, the builder\'s preview turns by itself');
+              await p.click('#pvTurn [data-turn="1"]'); await rafs(p); const c = await pix();
+              if (!(differ(b, c) > 0)) P.push('the builder\'s button that turns him does not turn him in the preview'); }
+            /* at 390 pixels wide: every control on the screen and big enough to touch */
+            const sizes = await p.evaluate(() => [...document.querySelectorAll('#creator [data-choice], #pvTurn button')].map(e => { e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect();
+              return { id: e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : 'the button that turns him', w: r.width, h: r.height, l: r.left, r: r.right, vw: document.documentElement.clientWidth }; }));
+            if (!sizes.length) P.push('on a phone the builder\'s controls could not be found to measure');
+            sizes.forEach(s => { if (s.l < 0 || s.r > s.vw) P.push('on a phone 390 pixels wide, the builder\'s ' + s.id + ' is partly off the screen (' + Math.round(s.l) + ' to ' + Math.round(s.r) + ' of ' + s.vw + ')');
+              if (s.w < 44 || s.h < 44) P.push('on a phone, the builder\'s ' + s.id + ' is ' + Math.round(s.w) + ' by ' + Math.round(s.h) + ' pixels, smaller than a finger\'s 44'); });
+            }
+            /* ---- I · the save cleans what it reads ---- */
+            const I = await p.evaluate(() => { const P = [], rows = BODYCHOICE, ks = rows.map(r => r.key).join();
+              const clean = (b, why) => { if (!b || typeof b !== 'object') { P.push(why + ', the save keeps no body'); return false; }
+                if (Object.keys(b).join() !== ks) P.push(why + ', the save keeps ' + Object.keys(b).join(', ') + ', where the body\'s choices are ' + ks);
+                rows.forEach(r => { const v = b[r.key];
+                  if (r.kind === 'measure' && !(typeof v === 'number' && v >= r.min && v <= r.max)) P.push(why + ', his ' + r.key + ' comes out ' + JSON.stringify(v) + ', outside ' + r.min + ' to ' + r.max);
+                  if (r.kind === 'option' && !r.list.includes(v)) P.push(why + ', his ' + r.key + ' comes out ' + JSON.stringify(String(v).slice(0, 40)) + ', not one of ' + r.list.join(', ')); }); return true; };
+              const M = rows.filter(r => r.kind === 'measure'), O = rows.filter(r => r.kind === 'option');
+              const bad = {}, expect = {};
+              M.forEach((r, i) => { const v = [r.max + 9, r.min - 9, String(r.def + 0.01), NaN, Infinity, null, [r.max], { v: 1 }][i % 8]; bad[r.key] = v; expect[r.key] = i % 8 === 0 ? r.max : i % 8 === 1 ? r.min : r.def; });
+              O.forEach((r, i) => { const v = ['not a word it offers', 'x'.repeat(5000), '<img src=x onerror=alert(1)>', r.list[0].toUpperCase(), 7][i % 5]; bad[r.key] = v; expect[r.key] = r.def; });
+              bad.not_a_choice = 'kept?'; bad.innerHTML = '<b>';
+              const b1 = saveLook({ body: bad }).body;
+              if (clean(b1, 'from a look with measures out of range, of the wrong type, unknown words, a very long word and markup')) {
+                Object.keys(expect).forEach(k => { if (b1[k] !== expect[k]) P.push('from a look whose ' + k + ' is ' + JSON.stringify(String(bad[k]).slice(0, 40)) + ', the save keeps ' + JSON.stringify(b1[k]) + ', where it should keep ' + JSON.stringify(expect[k])); }); }
+              [['a body that is a word', 'tall'], ['a body that is a list', [1.2, 'short']], ['a body that is nothing', null], ['a key hidden on the body\'s prototype', JSON.parse('{"__proto__":{"height":1.2,"sleeves":"short"}}')]].forEach(([why, b]) => {
+                const o = saveLook({ body: b }).body; if (clean(o, 'from ' + why)) rows.forEach(r => { if (o[r.key] !== r.def) P.push('from ' + why + ', his ' + r.key + ' comes out ' + JSON.stringify(o[r.key]) + ', not the default'); }); });
+              /* the person a new character starts as: the card's build, long sleeves, the hair a cap */
+              const card = b => { const off = []; M.forEach(r => { if (b[r.key] !== 1) off.push(r.key + ' ' + b[r.key]); });
+                if (b.sleeves !== 'long') off.push('sleeves ' + b.sleeves); if (b.cut !== 'cap') off.push('hair ' + b.cut); return off; };
+              const old = (sanitizeSave({ n: 'Old', lk: { shirt: '#8B5CF6', skin: '#E5AC82', hair: '#26202B', style: 'cap', outfit: 'casual' } }) || {}).lk;
+              if (!old || !old.body) P.push('a look saved before the body\'s choices existed comes out of the save with no body');
+              else { const off = card(old.body); if (off.length) P.push('a look saved before the body\'s choices existed comes out as another person: ' + off.join(', ')); }
+              /* the real save, there and back */
+              const mine = {}; M.forEach((r, i) => { mine[r.key] = i % 2 ? r.min : r.max; }); O.forEach(r => { mine[r.key] = r.list[r.list.length - 1]; });
+              const keep = look.body; look.body = { ...mine };
+              try { const kept = save(); const back = loadSave(); const got = back && back.lk && back.lk.body;
+                if (!kept) P.push('the save could not be written on this page, so whether it keeps the body\'s choices was not asked');
+                else if (!got || JSON.stringify(got) !== JSON.stringify(bodyChoicesOf(mine))) P.push('the choices ' + JSON.stringify(mine) + ' come back from the save as ' + JSON.stringify(got));
+              } finally { look.body = keep; }
+              /* another player's look */
+              const peer = peerLook({ look: { body: { height: 99, cut: '<script>', not_a_choice: 1 } } }).body; clean(peer, 'in another player\'s look with a height of 99 and markup for a hair');
+              return P; });
+            I.forEach(m => P.push(m)); }
+          P.forEach(m => say(0, m)); if (H.errs.length) say(0, 'the builder\'s page threw "' + H.errs[0] + '"');
+          if (!P.length && !pre.no3d) say(1, 'the builder shows a control for each of the ' + pre.rows.length + ' choices of the body, labelled in English and Spanish, each reached, ringed and changed by the keyboard, changing the look the save keeps and his body in its 3D preview, which stays still for reduced motion and turns by hand, none off a phone\'s screen or under 44 pixels; and the save cleans every look it reads');
+        } catch (e) { say(0, 'the builder in a world that takes the body could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        await H.ctx.close(); }
+      /* ---- J · one table: two rows planted in it ---- */
+      { const J = await page4(doc, null, '{key:"collar",kind:"option",list:["none","high"],def:"none"},{key:"girth",kind:"measure",min:0.8,max:1.2,step:0.1,def:1},');
+        try { if (!J.planted()) say(0, 'the table of the body\'s choices could not be found once in the engine (' + PLANTAT + '), so a row could not be planted in it');
+          else { const R = await J.p.evaluate(() => { const P = [];
+              if (!BODYCHOICE.some(r => r.key === 'collar')) { P.push('the rows planted in the table of the body\'s choices are not in it on the page'); return P; }
+              const cb = [...document.querySelectorAll('#creator [data-choice="collar"]')], cg = [...document.querySelectorAll('#creator [data-choice="girth"]')], d3 = typeof THREE !== 'undefined';
+              if (d3) {
+              if (cb.map(b => b.dataset.word).join() !== 'none,high') P.push('a choice planted in the table as a row (a collar, none or high) shows no buttons for it in the builder');
+              if (!(cg.length === 1 && cg[0].type === 'range')) P.push('a measure planted in the table as a row (a girth) shows no slider for it in the builder');
+              [...cb, ...cg].forEach(el => { const lb = el.labels && el.labels[0] ? el.labels[0] : document.getElementById((el.closest('[aria-labelledby]') || {}).getAttribute ? el.closest('[aria-labelledby]').getAttribute('aria-labelledby') : '');
+                if (!lb || !lb.textContent.trim() || (el.dataset.word && !el.textContent.trim())) P.push('a choice planted in the table, which nobody has named words for, shows a blank control in the builder'); });
+              }
+              const a = saveLook({ body: { collar: 'high', girth: 1.1 } }).body, b = saveLook({ body: { collar: 'low', girth: 7 } }).body;
+              if (a.collar !== 'high' || a.girth !== 1.1) P.push('a choice planted in the table is not kept by the save: ' + JSON.stringify({ collar: a.collar, girth: a.girth }));
+              if (b.collar !== 'none' || b.girth !== 1.2) P.push('a choice planted in the table is not cleaned by the save: a collar "low" and a girth of 7 come out ' + JSON.stringify({ collar: b.collar, girth: b.girth }));
+              if (d3) { const C = bodyChoicesOf({ collar: 'high', girth: 1.1 }), X = bodyMake(bodySkeleton('person', C), { ...look, body: C }, C), u = X.userData.choices || {};
+              if (u.collar !== 'high' || u.girth !== 1.1) P.push('a choice planted in the table does not reach the maker of the body: it keeps ' + JSON.stringify({ collar: u.collar, girth: u.girth }));
+              X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+              if (cb[1]) { cb[1].click(); if (!look.body || look.body.collar !== 'high') P.push('pressing a planted choice\'s button in the builder does not change the look'); } }
+              return P; });
+            R.forEach(m => say(0, m)); if (!R.length) say(1, 'two rows planted in the table of the body\'s choices, with no other edit, show in the builder, are kept and cleaned by the save and reach the maker of the body'); }
+          if (J.errs.length) say(0, 'the page with rows planted in the table threw "' + J.errs[0] + '"');
+        } catch (e) { say(0, 'the page with rows planted in the table could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        await J.ctx.close(); }
     }
     fails.push(...BP, ...BN);
   }
