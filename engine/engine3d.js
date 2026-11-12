@@ -1559,7 +1559,7 @@ function t3BodyPreview(cv,lk,ang){
     if(!P.body){P.body=bodyMake(bodySkeleton("person",Ch),lk,Ch);P.body.userData.key=key;P.scene.add(P.body);}
     const B=P.body;B.rotation.set(0,ang||0,0);t3BodyPose(B,0,false);
     /* framed on the tallest body the table allows, so a taller choice is seen as taller, not as the same size */
-    const top=BODYCHOICE.find(r=>r.key==="height"),tall=0.95*(top?top.max:1),tilt=Math.atan2(T3CAMH,T3CAMD),d=tall*2.35;
+    const top=BODYCHOICE.find(r=>r.key==="height"),tall=0.95*(top?top.max:1),tilt=Math.atan2(T3CAMH,T3CAMD),d=tall*1.8;
     P.cam.aspect=W/Hh;P.cam.position.set(0,tall*0.5+Math.sin(tilt)*d,Math.cos(tilt)*d);P.cam.lookAt(0,tall*0.47,0);P.cam.updateProjectionMatrix();
     const r=T3.renderer,cc=r.getClearColor(new THREE.Color()),ca=r.getClearAlpha();
     r.setRenderTarget(P.rt);r.setClearColor(0x000000,0);r.clear();r.render(P.scene,P.cam);

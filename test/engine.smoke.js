@@ -6317,7 +6317,7 @@ function findChromium() {
           if (notHere.length) MP.push('On ' + notHere.join('; ') + ', the ◉ is not where I stand (' + when + ')');
           if (offDoor.length) MP.push('In ' + offDoor.join('; ') + ', the ◉ is not on a door into a building — a room is shown at the door of the building it is in (' + when + ')');
           if (notYours.length) MP.push('In ' + notYours.join('; ') + ', the ◉ is on another building\'s door: from that door I cannot walk to where I am without going back out to the street (' + when + ')');
-          if (rings.length) MN.push(when + ', the ◉ was a ring round a marker at the door in ' + rings.length + ' place(s): ' + rings.join(', '));
+          if (rings.length) MN.push('COUNT-ONLY: ' + when + ', the ◉ was a ring round a marker at the door in ' + rings.length + ' place(s): ' + rings.join(', '));
           MN.push('COUNT-ONLY: the map was opened with its real button in ' + opened + ' place(s) ' + when +
             (unplaced.length ? '; ' + unplaced.length + ' place(s) that no door leads into from a street the plan draws, and with no spot of their own, were not asked for a ◉: ' + unplaced.join(', ') : ''));
         }
@@ -8682,7 +8682,7 @@ function findChromium() {
           const life1 = await ballLife(), wait1 = await waitLife();
           if (life0 === null || life1 === null) MP.push('A ball thrown a tile away never landed (' + where + '), so the time the game gives it was not read — nothing to measure is not a pass');
           else if (Math.abs(life1 - life0) > 300) MP.push('A ball that landed after the map had stood open 1.2 s was given ' + ((life1 - life0) / 1000).toFixed(1) + ' s more on the ground than one that landed before it opened (' + where + ') — the game set its time on the wall clock, which ran on behind the map');
-          if (i >= 0 && (wait0 === null || wait1 === null)) MN.push(person + ' took no further step (' + where + '), so the wait the game gives after a step was not read');
+          if (i >= 0 && (wait0 === null || wait1 === null)) MN.push('COUNT-ONLY: ' + person + ' took no further step (' + where + '), so the wait the game gives after a step was not read');
           else if (i >= 0 && Math.abs(wait1 - wait0) > 300) MP.push('After the map had stood open 1.2 s, the game gave ' + person + ' a wait ' + ((wait1 - wait0) / 1000).toFixed(1) + ' s longer before the next step than the same wait before it opened (' + where + ') — the game set the wait on the wall clock, which ran on behind the map');
           /* the hold: a ball on the ground, the person waiting and a bowl, each with 1.5 s left; read the instant the map opens
              and the instant it closes, both in the page, so nothing between the reading and the map's own click is counted */

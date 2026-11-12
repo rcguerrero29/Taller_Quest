@@ -6434,7 +6434,7 @@ function pvDraw(){if(BODYON&&bodyPvDraw())return;   /* a world that takes the bo
    asked for reduced motion, and two buttons turn him by hand either way. Where the 3D cannot draw, the 2D preview stays.
    A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. */
 const BODYPV={ang:0,spin:0,t:0};
-const bodyWords=()=>{const t=T(),w=t&&t.body;return w&&typeof w==="object"?w:(uiDef("body")||{});};
+const bodyWords=()=>{const t=T(),w=t&&t.body;return (w&&typeof w==="object"&&w)||uiDef("body")||{};};
 const bodyWord=k=>{const w=bodyWords()[k];return typeof w==="string"&&w?w:String(k).replace(/_/g," ");};   /* a word nobody names reads as its key */
 let BODYCSS=null;
 function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
@@ -6469,7 +6469,7 @@ function buildBodyRows(){if(!BODYON)return;
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
       const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
-      inp.value=String(look.body[row.key]);big(inp);inp.style.width="100%";inp.style.margin="0";inp.dataset.choice=row.key;
+      inp.value=String(look.body[row.key]);big(inp);inp.style.width="100%";inp.style.margin="0";inp.style.accentColor="var(--accent)";inp.dataset.choice=row.key;
       const say=()=>inp.setAttribute("aria-valuetext",Math.round(Number(inp.value)*100)+"%");say();
       inp.addEventListener("input",()=>{say();set(row.key,Number(inp.value));});
       wrap.appendChild(inp);box.appendChild(wrap);}
