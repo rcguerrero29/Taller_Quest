@@ -1327,15 +1327,17 @@ const SKELETONS={
     /* a walk's, not a run's (mq-v260): a foot reaches `stride` ahead of its hip and is set down there, and while it is down it
        goes back a stride's length each step (the steps a second held between BODYSTEPS); the arms swing `swing` radians at most */
     stride:0.09, lift:0.025, drop:0.022, swing:0.3}};
-const BODYON=typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes("person");
-/* HIS BUILD (mq-v261), held here and only here: each measure is 1 for the build that matches his card. `height` makes the
-   whole person smaller or larger (his head stays the same share of him), `width` widens or narrows his shoulders, chest and
-   hips, `limbs` thickens or thins his arms and legs, `head` makes the head alone larger or smaller. Every person gets this
-   one; it is frozen, and no player, save, setting or screen reads or writes a build yet */
-const BODYBUILD=Object.freeze({height:1,width:1,limbs:1,head:1});
-/* a build as the body reads it: every measure of BODYBUILD, a number between a half and two, or the card's where it is not */
-function bodyBuildOf(b){const o={};
-  Object.keys(BODYBUILD).forEach(k=>{const v=b&&typeof b==="object"?b[k]:undefined;o[k]=typeof v==="number"&&isFinite(v)&&v>=0.5&&v<=2?v:BODYBUILD[k];});
+/* BODYON, whether this world takes the body, is decided once in engine/engine.js beside the table of the body's choices
+   (grep "THE BODY'S CHOICES"), which this file loads after. */
+/* HIS BUILD (mq-v261), each measure 1 for the build that matches his card. `height` makes the whole person smaller or larger
+   (his head stays the same share of him), `width` widens or narrows his shoulders, chest and hips, `limbs` thickens or thins
+   his arms and legs, `head` makes the head alone larger or smaller, and (mq-v262) `hang` lowers or raises the hem of his
+   shirt. From mq-v262 the measures, their ranges and their defaults are rows of BODYCHOICE (engine/engine.js), the one
+   table of the body's choices; this is its defaults, frozen, the build a new character starts with */
+const BODYBUILD=Object.freeze(Object.fromEntries(BODYCHOICE.filter(r=>r.kind==="measure").map(r=>[r.key,r.def])));
+/* a build as the body reads it: every measure of the table, held to its range, or the default where it is not a number */
+function bodyBuildOf(b){const c=bodyChoicesOf(b),o={};
+  BODYCHOICE.forEach(r=>{if(r.kind==="measure")o[r.key]=c[r.key];});
   return o;}
 /* the skeleton a world gets: the engine's, with any joint the world moves by hand (a list of three numbers) put there, and
    every joint, the head, the limbs and the walk sized for the build (BODYBUILD unless one is handed in) */
@@ -1348,9 +1350,16 @@ function bodySkeleton(kind,build){const s=SKELETONS[kind],J={},b=bodyBuildOf(bui
   return {...s,joints:J,limb,head:s.head*b.head*H,stride:s.stride*H,lift:s.lift*H,drop:s.drop*H,build:b};}
 /* THE ONE MAKER: joints as Object3Ds named for themselves, and on each the part it carries, each part saying what it wears.
    Every size is read off the skeleton (its joints, its limbs, its head) and the build it was made for, never typed here
-   apart from the share of a part that overlaps the next, so the parts meet at the joints whatever the build */
+   apart from the share of a part that overlaps the next, so the parts meet at the joints whatever the build.
+   mq-v262, THE DETAILS EVERY BODY HAS, which do not change his outline: a nose, a shade off his skin, under his eyes; a ball
+   at each knee and elbow a shade off what covers it, so the joints show where the limb bends; and shoes that stand out from
+   his trousers, longer than the foot, wider than the leg, on a sole a shade lighter than the shoe. And THE CHOICES: every
+   option of the table of the body's choices (BODYCHOICE, engine/engine.js) is handed to the part function of its key in
+   BODYPART, below, which hangs its parts on the joints; the measures came in with the build. What was chosen is kept on the
+   body as userData.choices, every row of the table */
 function bodyMake(skel,lk,build){
   const b=bodyBuildOf(build||skel.build||BODYBUILD),H=b.height,Lm=skel.limb||{};
+  const C={...bodyChoicesOf(lk&&lk.body),...b};   /* every choice in the table: the look's options, the build's measures */
   const root=new THREE.Group();root.name="body";const J={};
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
@@ -1361,36 +1370,43 @@ function bodyMake(skel,lk,build){
   const cap=(r,len)=>new THREE.CapsuleGeometry(r,Math.max(0.001,len),4,12);
   const bone=(a,c)=>{const[,x,y,z]=skel.joints[c];return [Math.hypot(x,y,z),x/2,y/2,z/2];};   /* a limb part spans its joint to the next */
   const at=n=>skel.joints[n].slice(1),sp=at("spine"),ch=at("chest"),nk=at("neck"),hd=at("head");
-  /* legs: trousers to the ankle, as thick as the card's legs are wide, a shoe flat under each, its sole at the ankle's rest
-     height below the joint */
+  /* A JOINT SHOWS where its ball is a shade off the cloth or skin round it: darker on a light colour, lighter on a dark one,
+     so the knee of dark trousers reads as well as the elbow of a pale sleeve. Just wider than the limb, so it is seen at its
+     edges as well as across it, and no wider than a sleeve is, so the outline stays his */
+  const shade=col=>{const c=new THREE.Color(col),l=0.2126*c.r+0.7152*c.g+0.0722*c.b;
+    return "#"+(l<0.2?c.lerp(new THREE.Color(1,1,1),0.16):c.multiplyScalar(0.8)).getHexString();};
+  const nose=col=>"#"+new THREE.Color(col).multiply(new THREE.Color(0.86,0.7,0.64)).getHexString();   /* a warmer, deeper shade of the skin, as a nose catches colour */
+  const knob=(j,r,col)=>part(j,new THREE.SphereGeometry(r*1.12,14,10),"joint",shade(col),0,0,0);
+  const M={J,skel,lk,b,H,Lm,part,cap,bone,knob,head:skel.head};   /* what a part function is handed */
+  /* legs: trousers to the ankle, as thick as the card's legs are wide, the knee showing; and a shoe flat under each, its sole
+     at the ankle's rest height below the joint, from behind the heel to past the toe's joint */
   ["l","r"].forEach(s=>{
     let[L,x,y,z]=bone("upleg_"+s,"knee_"+s);part("upleg_"+s,cap(Lm.leg,L),"trousers",trousers,x,y,z);
     [L,x,y,z]=bone("knee_"+s,"ankle_"+s);part("knee_"+s,cap(Lm.shin,L-Lm.shin*0.5),"trousers",trousers,x,y,z);
+    knob("knee_"+s,Math.max(Lm.leg,Lm.shin),trousers);
     const ah=skel.joints.hips[2]+skel.joints["upleg_"+s][2]+skel.joints["knee_"+s][2]+skel.joints["ankle_"+s][2];   /* the ankle's rest height */
-    const tz=skel.joints["toe_"+s][3];   /* a shoe as wide as the trouser leg and a little more, from the heel to the toe's joint */
-    part("ankle_"+s,new THREE.BoxGeometry(2*Lm.shin+0.01*H,0.04*H,1.7*tz),"shoe","#2A2522",0,0.02*H-ah,0.15*tz);
-    /* arms: his shirt's sleeve to the wrist, as his card's arms are all shirt, and a hand */
-    [L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);part("shoulder_"+s,cap(Lm.arm,L),"shirt",lk.shirt,x,y,z);
-    [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(Lm.forearm,L),"shirt",lk.shirt,x,y,z);
+    const tz=skel.joints["toe_"+s][3],sw=2.3*Lm.shin,sl=0.014*H,su=0.04*H,back=0.7*tz,front=1.45*tz;   /* the sole first: it is the foot that stands */
+    part("ankle_"+s,new THREE.BoxGeometry(sw*1.04,sl,back+front),"shoe","#7A5A42",0,sl/2-ah,(front-back)/2);
+    part("ankle_"+s,new THREE.BoxGeometry(sw,su,back+front-0.006*H),"shoe","#2A1E18",0,sl+su/2-ah,(front-back)/2-0.003*H);
+    /* a hand at the end of each arm; the arm itself is the sleeves' (BODYPART.sleeves) */
     part("wrist_"+s,new THREE.SphereGeometry(Lm.hand,10,8),"skin",lk.skin,0,-Lm.hand*0.5,0);});
   /* the body. The hips, in trousers, as wide as the legs stand. The torso in his shirt, as wide as the shoulders stand apart,
-     not quite as deep, from a little below the hips to a little above the neck; its sides are straight through the
-     shoulders' height, so each arm hangs from its side */
+     not quite as deep, from below the hips (as far as `hang` says: 1 is as far as the card's shirt hangs over his legs) to a
+     little above the neck; its sides are straight through the shoulders' height, so each arm hangs from its side */
   const hx=Math.abs(at("upleg_l")[0])+Lm.leg,tw=Math.abs(at("shoulder_l")[0]),td=tw*0.85;
   part("hips",new THREE.SphereGeometry(1,16,10),"trousers",trousers,0,0.01*H,0,[hx,0.07*H,td*0.9]);
-  {const lo=-sp[1]-0.09*H,hi=ch[1]+nk[1]+0.04*H,h=hi-lo;   /* from the spine's joint: down over the hips as the card's shirt
-                                                              hangs over his legs, up past the neck */
+  {const lo=-sp[1]-0.09*H*b.hang,hi=ch[1]+nk[1]+0.04*H,h=hi-lo;
     part("spine",new THREE.CapsuleGeometry(1,3,6,20),"shirt",lk.shirt,0,(lo+hi)/2,0,[tw,h/5,td]);}
   part("neck",cap(0.045*H,hd[1]),"skin",lk.skin,0,hd[1]/2,0);
-  /* the head sits on its joint, its centre 0.7 of a radius above it. The hair is a cap over the crown, its edge a little
-     under halfway to the brow at the front and lower behind, and a shell over the back of the head to below the ears: from a
-     camera that looks down at him, the face is the lower half of his head as on his card, and from the side the face shows
-     in front of the hair. The eyes sit where the card has them, a little above the middle of the face */
-  const r=skel.head,hc=0.7*r,hr=r*1.05;
+  /* the head sits on its joint, its centre 0.7 of a radius above it. The eyes sit where the card has them, a little above the
+     middle of the face; the nose under them and between them, a shade off his skin and standing a little proud of the face,
+     so it is seen from the front by its colour and from the side by its shape. The hair is the cut's (BODYPART.cut) */
+  const r=skel.head,hc=0.7*r;
   part("head",new THREE.SphereGeometry(r,24,18),"skin",lk.skin,0,hc,0);
-  part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;
-  part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;   /* its edge slants back behind the ear */
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
+  {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
+  /* each option of the table, by its part function */
+  BODYCHOICE.forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,C[row.key]);});
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
@@ -1400,7 +1416,38 @@ function bodyMake(skel,lk,build){
      card's, so the camera's slant makes it the card's flat oval whichever way he faces */
   const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
   sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
-  root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;return root;}
+  root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;root.userData.choices=C;return root;}
+/* THE PART FUNCTIONS OF THE BODY'S OPTIONS (mq-v262), one for each option row of BODYCHOICE (engine/engine.js) that draws
+   something, by the row's key. Each is handed what the maker knows (M: the joints, the skeleton, the look, the build, the
+   maker's own `part`, `cap`, `bone` and `knob`) and the word chosen, and hangs its parts on the joints. A row with no
+   function here draws nothing and is still kept */
+const BODYPART={
+  /* the arms. LONG: his shirt's sleeve to the wrist, as his card's arms are all shirt. SHORT: a sleeve of his shirt over the
+     top of the upper arm, and below it the arm bare, a little thinner than the sleeve was, to the hand */
+  sleeves(M,v){const{part,cap,bone,knob,Lm,lk}=M;
+    ["l","r"].forEach(s=>{let[L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);
+      if(v==="short"){part("shoulder_"+s,cap(Lm.arm*0.8,L),"skin",lk.skin,x,y,z);
+        part("shoulder_"+s,cap(Lm.arm*1.04,L*0.32),"shirt",lk.shirt,x*0.42,y*0.42,z*0.42);}
+      else part("shoulder_"+s,cap(Lm.arm,L),"shirt",lk.shirt,x,y,z);
+      const fr=v==="short"?Lm.forearm*0.85:Lm.forearm,ar=v==="short"?Lm.arm*0.8:Lm.arm,col=v==="short"?lk.skin:lk.shirt;
+      [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(fr,L),v==="short"?"skin":"shirt",col,x,y,z);
+      knob("elbow_"+s,Math.max(ar,fr),col);});},
+  /* the hair, in his hair colour. CAP: a cap over the crown, its edge a little under halfway to the brow at the front and
+     lower behind, and a shell over the back of the head to below the ears: from a camera that looks down at him, the face is
+     the lower half of his head as on his card, and from the side the face shows in front of the hair. FULL: more of it — a
+     crown that stands proud of the head and a shell that reaches further round the sides and lower at the back — with its
+     edge at the brow where the cap's is, so the face shows as much from the front */
+  cut(M,v){const{part,lk}=M,r=M.head,hc=0.7*r;
+    if(v==="full"){
+      part("head",new THREE.SphereGeometry(r*1.07,24,12,0,Math.PI*2,0,Math.PI*0.4),"hair",lk.hair,0,hc+0.02*r,-0.06*r).rotation.x=-0.3;
+      part("head",new THREE.SphereGeometry(r*0.92,20,12,0,Math.PI*2,0,Math.PI*0.5),"hair",lk.hair,0,hc+0.22*r,-0.24*r,[1,0.7,1]).rotation.x=-0.3;   /* the crown, proud of the head */
+      [0,Math.PI*0.88].forEach(p0=>part("head",new THREE.SphereGeometry(r*1.07,10,12,p0,Math.PI*0.12,0,Math.PI*0.44),"hair",lk.hair,0,hc,-0.02*r));   /* over the ears, so the sides fall instead of standing out */
+      part("head",new THREE.SphereGeometry(r*1.1,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;
+      return;}
+    const hr=r*1.05;
+    part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;
+    part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;}   /* its edge slants back behind the ear */
+};
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
 function t3BodyPose(B,phase,moving,groundAt){
   const S=B.userData.skel,J=B.userData.joints,gnd=groundAt||(()=>0);
@@ -1430,10 +1477,12 @@ function t3Body(dt){
   if(!BODYON){T3.bodyOn=false;return false;}
   const[qx,qy]=focusXY(),d=Math.hypot(fx-qx,fy-qy);
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
-  const key=[look.skin,look.hair,look.shirt,look.outfit].join("|");
-  if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);T3.body=null;}
+  /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
+     made again when any of them, or a colour he wears, changes */
+  const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,JSON.stringify(Ch)].join("|");
+  if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);t3Dispose(T3.body);T3.body=null;}
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
-  if(!T3.body){T3.body=bodyMake(bodySkeleton("person",BODYBUILD),look,BODYBUILD);T3.body.userData.key=key;T3.scene.add(T3.body);}
+  if(!T3.body){T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}
   const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1],S=B.userData.skel,sc=T3PERSON/0.92;
   /* THE WALK'S PACE FOLLOWS HIS SPEED, HELD TO A PERSON'S (mq-v260): the distance he covered and the time it took are handed
      in (dt, seconds, from draw3d), never read here. A cycle is 2 steps; the steps a second that would keep a planted foot
@@ -1475,6 +1524,37 @@ function t3BodyThrough(){
   r.autoClear=false;r.clearDepth();cam.layers.set(1);
   try{r.render(T3.scene,cam);}
   finally{cam.layers.set(0);r.autoClear=ac;T3.scene.background=bg;near.forEach(([s,w,f])=>{s.layers.disable(1);s.material.stencilWrite=w;s.material.stencilFunc=f;});}}
+/* THE BUILDER'S PREVIEW (mq-v262): his body as the look's choices make it, standing, turned `ang` radians from facing you, drawn
+   into the creator's own 2D canvas `cv`. Drawn by the 3D camera's own renderer (one WebGL context on the page, as a browser
+   allows only so many), into a picture of its own off the screen (a render target the canvas's size), read back and put
+   into the canvas, so the street's frame, its size and its camera are never touched. Its own small scene, lit as the street
+   is by day, and its own camera looking down at him at the street camera's angle, so what the builder shows is what the
+   street will. The body is made again only when the look changes. False where it cannot draw (no 3D library, a page whose
+   3D failed, no WebGL): the creator then keeps its 2D preview */
+function t3BodyPreview(cv,lk,ang){
+  if(typeof THREE==="undefined"||T3.fail||!cv)return false;
+  try{
+    if(!T3.renderer)t3Init();
+    const W=cv.width,Hh=cv.height;if(!W||!Hh)return false;
+    let P=T3.pv;
+    if(!P){P=T3.pv={scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(30,W/Hh,0.05,20),
+      amb:new THREE.AmbientLight(0xffffff,DAY_AMB),sun:new THREE.DirectionalLight(0xfff2dd,DAY_SUN)};
+      P.sun.position.set(14,22,8);P.scene.add(P.amb,P.sun);}
+    if(!P.rt||P.rt.width!==W||P.rt.height!==Hh){if(P.rt)P.rt.dispose();P.rt=new THREE.WebGLRenderTarget(W,Hh,{samples:4});P.px=new Uint8Array(W*Hh*4);}
+    const Ch=bodyChoicesOf(lk.body),key=[lk.skin,lk.hair,lk.shirt,lk.outfit,JSON.stringify(Ch)].join("|");
+    if(P.body&&P.body.userData.key!==key){P.scene.remove(P.body);t3Dispose(P.body);P.body=null;}
+    if(!P.body){P.body=bodyMake(bodySkeleton("person",Ch),lk,Ch);P.body.userData.key=key;P.scene.add(P.body);}
+    const B=P.body;B.rotation.set(0,ang||0,0);t3BodyPose(B,0,false);
+    /* framed on the tallest body the table allows, so a taller choice is seen as taller, not as the same size */
+    const top=BODYCHOICE.find(r=>r.key==="height"),tall=0.95*(top?top.max:1),tilt=Math.atan2(T3CAMH,T3CAMD),d=tall*2.35;
+    P.cam.aspect=W/Hh;P.cam.position.set(0,tall*0.5+Math.sin(tilt)*d,Math.cos(tilt)*d);P.cam.lookAt(0,tall*0.47,0);P.cam.updateProjectionMatrix();
+    const r=T3.renderer,cc=r.getClearColor(new THREE.Color()),ca=r.getClearAlpha();
+    r.setRenderTarget(P.rt);r.setClearColor(0x000000,0);r.clear();r.render(P.scene,P.cam);
+    r.readRenderTargetPixels(P.rt,0,0,W,Hh,P.px);r.setRenderTarget(null);r.setClearColor(cc,ca);
+    const g=cv.getContext("2d"),img=g.createImageData(W,Hh),row=W*4;
+    for(let y=0;y<Hh;y++)img.data.set(P.px.subarray((Hh-1-y)*row,(Hh-y)*row),y*row);   /* the picture comes back upside down */
+    g.putImageData(img,0,0);return true;
+  }catch(e){t3Note("preview",e);return false;}}
 function t3Actors(){
   const list=[];
   const w=CW();
