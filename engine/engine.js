@@ -6196,6 +6196,7 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
   const bandOK=dogT&&world===PL.park;
   $("band").hidden=!bandOK;
   if(bandOK)$("band").textContent=T().bandLb||"🎀";
+  {const cb=$("collar");if(cb){cb.hidden=!bandOK;if(bandOK)cb.textContent=T().collarLb||"🔵";}}   /* the collar's colour, beside the bandana's (mq-v263) */
   const aleOn=!!alebLooks()||!!faceLooks();if($("aleRnd")){$("aleRnd").hidden=!aleOn;$("aleNext").hidden=!aleOn;} /* the looks: random, next — the animal you are beside, else your face; in Muertos the face alone */
   const loveOK=dogT; /* you can always tell him */
   $("love").hidden=!loveOK;
@@ -8665,9 +8666,14 @@ function spawnCustom(rec){
    session, no clock: fetch, treats, howls. Crossing back plays a little recap.
    The park holds the preview customization: bandanas, and adopting your own
    dog (who gets the full beagle program). All per-device, in `mqpark`. */
-const parkPrefs={band:{},dogs:[],train:{}};
+const parkPrefs={band:{},collar:Object.create(null),dogs:[],train:{}};
 try{const p0=JSON.parse(localStorage.getItem(SK("park"))||"{}");
   if(p0&&typeof p0==="object"){parkPrefs.band=(p0.band&&typeof p0.band==="object")?p0.band:{};
+    /* the collars' colours (mq-v263), cleaned where they are read: a saved colour that is not a colour is left out, and
+       that dog wears the collar he starts with. A null-prototype map, so no saved name can reach the object's own parts */
+    {const cl=Object.create(null);if(p0.collar&&typeof p0.collar==="object"&&!Array.isArray(p0.collar))
+      Object.keys(p0.collar).slice(0,64).forEach(k=>{const v=saveCol(p0.collar[k]);if(v&&typeof k==="string"&&k.length<=40)cl[k]=v;});
+      parkPrefs.collar=cl;}
     parkPrefs.dogs=Array.isArray(p0.dogs)?p0.dogs.slice(0,24):[]; /* no adoption limit (owner) — just a sanity ceiling */
     parkPrefs.train=(p0.train&&typeof p0.train==="object")?p0.train:{};
     /* #264: the star dog's kept name, and how many dogs have been stubborn about a new one. Neither is
@@ -8751,6 +8757,7 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
 parkPersist();
 /* #281: every dog gets his bandana back, not only a beagle — the button gives one to any breed and the record keeps it by name */
 CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.band[cr.name])cr.band=parkPrefs.band[cr.name];});
+CRIT.forEach(cr=>{if(isDog(cr)&&cr.name&&parkPrefs.collar[cr.name])cr.collar=parkPrefs.collar[cr.name];});   /* and his collar's colour (mq-v263) */
 $("leash").addEventListener("click",()=>{
   if(!DOGK.has(petTarget)||!petCrit||world===PL.park)return;
   const c=petCrit;
@@ -8790,6 +8797,19 @@ $("band").addEventListener("click",()=>{
   c.band=BANDCOLS[i];
   if(c.name){if(c.band)parkPrefs.band[c.name]=c.band;else delete parkPrefs.band[c.name];parkPersist();}
   toast(c.band?T().bandToast:T().bandOff,1600);
+});
+/* THE COLLAR'S COLOUR (mq-v263): a button beside the bandana's, shown when it is, for the dog you are beside. Each press
+   takes the next of the same colours the bandana comes in; the first is the blue every collar starts as. His card and
+   his body both wear it (drawBeagle and the others read cr.collar; the body reads dogLookOf), and it is kept by his
+   name with his bandana. The button is made here, after the bandana's, so no shell has to carry it */
+const COLLARCOLS=BANDCOLS.filter(Boolean).sort((a,b)=>(b==="#2E5FA8")-(a==="#2E5FA8"));
+const collarBtn=$("collar")||(()=>{const b=document.createElement("button");b.className="talk treat";b.id="collar";b.hidden=true;$("band").after(b);return b;})();
+collarBtn.addEventListener("click",()=>{
+  if(!DOGK.has(petTarget)||!petCrit)return;
+  const c=petCrit,i=(Math.max(0,COLLARCOLS.indexOf(saveCol(c.collar)||COLLARCOLS[0]))+1)%COLLARCOLS.length;
+  c.collar=COLLARCOLS[i];
+  if(c.name){if(i)parkPrefs.collar[c.name]=c.collar;else delete parkPrefs.collar[c.name];parkPersist();}
+  toast(T().collarToast||"🔵",1600);
 });
 /* the two alebrije buttons (the owner asked for one button for a random look and another to step through
    that animal's looks): they act on the animal you are beside (the same target as the treat and the bandana),
@@ -8976,6 +8996,7 @@ $("renGo").addEventListener("click",()=>{
   const rec=renRec(c);if(!rec)return;
   const old=c.name,star=c===starDog();
   if(parkPrefs.band[old]!==undefined){parkPrefs.band[n]=parkPrefs.band[old];delete parkPrefs.band[old];}
+  if(parkPrefs.collar[old]!==undefined){parkPrefs.collar[n]=parkPrefs.collar[old];delete parkPrefs.collar[old];}
   /* #277: the alebrije look goes with the dog, like the bandana: the one chosen for it or, if nobody chose, the one
      its old name gave it, and any custom look over that. Nothing stays under the old name. A stopgap: the picks are
      kept by name until dogs are given ids that never change. */
