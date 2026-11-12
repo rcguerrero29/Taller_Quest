@@ -6432,7 +6432,9 @@ function pvDraw(){if(BODYON&&bodyPvDraw())return;   /* a world that takes the bo
    THE PREVIEW is his body, turning: drawn by the 3D camera's renderer into a canvas of its own in the preview's box
    (t3BodyPreview, engine/engine3d.js), the 2D one hidden while it shows. It turns by itself, slowly, unless the player has
    asked for reduced motion, and two buttons turn him by hand either way. Where the 3D cannot draw, the 2D preview stays.
-   A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. */
+   A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. A world
+   that takes it but has no 3D camera (no 3D library on its page) never shows the body, so it is offered no builder either;
+   its saves still keep the choices, cleaned, so a look carried to a world with the camera keeps them. */
 const BODYPV={ang:0,spin:0,t:0};
 const bodyWords=()=>{const t=T(),w=t&&t.body;return (w&&typeof w==="object"&&w)||uiDef("body")||{};};
 const bodyWord=k=>{const w=bodyWords()[k];return typeof w==="string"&&w?w:String(k).replace(/_/g," ");};   /* a word nobody names reads as its key */
@@ -6455,7 +6457,7 @@ function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
     if(BODYPV.t)BODYPV.ang+=Math.min(0.1,(now-BODYPV.t)/1000)*0.8;BODYPV.t=now;bodyPvDraw();BODYPV.spin=requestAnimationFrame(step);};
   BODYPV.spin=requestAnimationFrame(step);}
-function buildBodyRows(){if(!BODYON)return;
+function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a world with no 3D camera never shows the body, so offers no builder */
   bodyCss();look.body=bodyChoicesOf(look.body);
   let box=$("bodyRows");if(!box){box=document.createElement("div");box.id="bodyRows";box.className="bodyb";
     const after=$("rowStyle"),host=after&&after.parentNode;

@@ -1453,9 +1453,9 @@ const BODYPART={
   cut(M,v){const{part,lk}=M,r=M.head,hc=0.7*r;
     if(v==="full"){
       part("head",new THREE.SphereGeometry(r*1.07,24,12,0,Math.PI*2,0,Math.PI*0.4),"hair",lk.hair,0,hc+0.02*r,-0.06*r).rotation.x=-0.3;
-      part("head",new THREE.SphereGeometry(r*0.92,20,12,0,Math.PI*2,0,Math.PI*0.5),"hair",lk.hair,0,hc+0.22*r,-0.24*r,[1,0.7,1]).rotation.x=-0.3;   /* the crown, proud of the head */
-      [0,Math.PI*0.88].forEach(p0=>part("head",new THREE.SphereGeometry(r*1.07,10,12,p0,Math.PI*0.12,0,Math.PI*0.44),"hair",lk.hair,0,hc,-0.02*r));   /* over the ears, so the sides fall instead of standing out */
-      part("head",new THREE.SphereGeometry(r*1.1,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;
+      part("head",new THREE.SphereGeometry(r*0.88,20,12,0,Math.PI*2,0,Math.PI*0.5),"hair",lk.hair,0,hc+0.2*r,-0.22*r,[1,0.66,1]).rotation.x=-0.3;   /* the crown, proud of the head */
+      [0,Math.PI*0.88].forEach(p0=>part("head",new THREE.SphereGeometry(r*1.06,10,12,p0,Math.PI*0.12,0,Math.PI*0.4),"hair",lk.hair,0,hc,-0.02*r));   /* over the ears, so the sides fall instead of standing out */
+      part("head",new THREE.SphereGeometry(r*1.09,24,12,Math.PI+0.34,Math.PI-0.68,0,Math.PI*0.56),"hair",lk.hair,0,hc,0).rotation.x=0.3;
       return;}
     const hr=r*1.05;
     part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;

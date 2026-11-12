@@ -13770,6 +13770,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (bad.length) P.push(said[k] + ', his ' + bad.join(' and his ') + ' could not be measured on the screen: fewer than 50 pixels of his shirt or of his head show');
                 return !bad.length; }).map(([k]) => k);
               const at3 = k => F[cut + '|' + k];
+              if (ok.includes('12down') && ok.includes('12right')) N.push('his face' + hairSaid(cut) + ': ' + pct(at3('12down').body.share) + ' of his head skin facing you (his card ' + pct(at3('12down').card.share) + '), ' + pct(at3('12right').body.share) + ' facing right (his card ' + pct(at3('12right').card.share) + ')');
               if (ok.includes('12down')) { const f = at3('12down'), r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
                 if (r < 0.85 || r > 1.15) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
                 if (hs < 0.85) P.push('facing you, his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
@@ -14025,9 +14026,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const pre = await p.evaluate(() => { const cr = document.getElementById('creator'), c = document.getElementById('pvBody'), pv = document.getElementById('pv');
             if (cr.hidden) return { why: 'the creator could not be opened' };
             if (typeof BODYCHOICE !== 'object' || !BODYCHOICE) return { why: 'the engine keeps no table of the body\'s choices, so the creator offers him no choice of his body' };
-            return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max })), body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null }; });
+            return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max })), no3d: typeof THREE === 'undefined', ctl: document.querySelectorAll('#creator [data-choice]').length, body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null }; });
           if (pre.why) P.push('in a world that takes the body, ' + pre.why);
           else {
+            /* A WORLD WITH NO 3D CAMERA never shows the body, so it is offered no builder: the save still keeps and cleans the
+               choices (I), so a look carried to a world with the camera keeps them */
+            if (pre.no3d) { if (pre.ctl) P.push('in a world with no 3D camera, where his body is never shown, the creator offers ' + pre.ctl + ' control(s) for it');
+              else say(1, 'this shell has no 3D camera, so his body is never shown and the creator offers no builder for it'); }
+            else {
             if (!pre.body3d) P.push('in a world that takes the body, the creator\'s preview is not his body: no 3D picture of him is drawn there');
             /* the person a new character starts as, before anything is touched: the card's build, long sleeves, the hair a cap */
             if (!pre.nb) P.push('a new character\'s look has no body');
@@ -14090,6 +14096,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (!sizes.length) P.push('on a phone the builder\'s controls could not be found to measure');
             sizes.forEach(s => { if (s.l < 0 || s.r > s.vw) P.push('on a phone 390 pixels wide, the builder\'s ' + s.id + ' is partly off the screen (' + Math.round(s.l) + ' to ' + Math.round(s.r) + ' of ' + s.vw + ')');
               if (s.w < 44 || s.h < 44) P.push('on a phone, the builder\'s ' + s.id + ' is ' + Math.round(s.w) + ' by ' + Math.round(s.h) + ' pixels, smaller than a finger\'s 44'); });
+            }
             /* ---- I · the save cleans what it reads ---- */
             const I = await p.evaluate(() => { const P = [], rows = BODYCHOICE, ks = rows.map(r => r.key).join();
               const clean = (b, why) => { if (!b || typeof b !== 'object') { P.push(why + ', the save keeps no body'); return false; }
@@ -14125,7 +14132,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               return P; });
             I.forEach(m => P.push(m)); }
           P.forEach(m => say(0, m)); if (H.errs.length) say(0, 'the builder\'s page threw "' + H.errs[0] + '"');
-          if (!P.length) say(1, 'the builder shows a control for each of the ' + pre.rows.length + ' choices of the body, labelled in English and Spanish, each reached, ringed and changed by the keyboard, changing the look the save keeps and his body in its 3D preview, which stays still for reduced motion and turns by hand, none off a phone\'s screen or under 44 pixels; and the save cleans every look it reads');
+          if (!P.length && !pre.no3d) say(1, 'the builder shows a control for each of the ' + pre.rows.length + ' choices of the body, labelled in English and Spanish, each reached, ringed and changed by the keyboard, changing the look the save keeps and his body in its 3D preview, which stays still for reduced motion and turns by hand, none off a phone\'s screen or under 44 pixels; and the save cleans every look it reads');
         } catch (e) { say(0, 'the builder in a world that takes the body could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
         await H.ctx.close(); }
       /* ---- J · one table: two rows planted in it ---- */
@@ -14133,18 +14140,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         try { if (!J.planted()) say(0, 'the table of the body\'s choices could not be found once in the engine (' + PLANTAT + '), so a row could not be planted in it');
           else { const R = await J.p.evaluate(() => { const P = [];
               if (!BODYCHOICE.some(r => r.key === 'collar')) { P.push('the rows planted in the table of the body\'s choices are not in it on the page'); return P; }
-              const cb = [...document.querySelectorAll('#creator [data-choice="collar"]')], cg = [...document.querySelectorAll('#creator [data-choice="girth"]')];
+              const cb = [...document.querySelectorAll('#creator [data-choice="collar"]')], cg = [...document.querySelectorAll('#creator [data-choice="girth"]')], d3 = typeof THREE !== 'undefined';
+              if (d3) {
               if (cb.map(b => b.dataset.word).join() !== 'none,high') P.push('a choice planted in the table as a row (a collar, none or high) shows no buttons for it in the builder');
               if (!(cg.length === 1 && cg[0].type === 'range')) P.push('a measure planted in the table as a row (a girth) shows no slider for it in the builder');
               [...cb, ...cg].forEach(el => { const lb = el.labels && el.labels[0] ? el.labels[0] : document.getElementById((el.closest('[aria-labelledby]') || {}).getAttribute ? el.closest('[aria-labelledby]').getAttribute('aria-labelledby') : '');
                 if (!lb || !lb.textContent.trim() || (el.dataset.word && !el.textContent.trim())) P.push('a choice planted in the table, which nobody has named words for, shows a blank control in the builder'); });
+              }
               const a = saveLook({ body: { collar: 'high', girth: 1.1 } }).body, b = saveLook({ body: { collar: 'low', girth: 7 } }).body;
               if (a.collar !== 'high' || a.girth !== 1.1) P.push('a choice planted in the table is not kept by the save: ' + JSON.stringify({ collar: a.collar, girth: a.girth }));
               if (b.collar !== 'none' || b.girth !== 1.2) P.push('a choice planted in the table is not cleaned by the save: a collar "low" and a girth of 7 come out ' + JSON.stringify({ collar: b.collar, girth: b.girth }));
-              const C = bodyChoicesOf({ collar: 'high', girth: 1.1 }), X = bodyMake(bodySkeleton('person', C), { ...look, body: C }, C), u = X.userData.choices || {};
+              if (d3) { const C = bodyChoicesOf({ collar: 'high', girth: 1.1 }), X = bodyMake(bodySkeleton('person', C), { ...look, body: C }, C), u = X.userData.choices || {};
               if (u.collar !== 'high' || u.girth !== 1.1) P.push('a choice planted in the table does not reach the maker of the body: it keeps ' + JSON.stringify({ collar: u.collar, girth: u.girth }));
               X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
-              if (cb[1]) { cb[1].click(); if (!look.body || look.body.collar !== 'high') P.push('pressing a planted choice\'s button in the builder does not change the look'); }
+              if (cb[1]) { cb[1].click(); if (!look.body || look.body.collar !== 'high') P.push('pressing a planted choice\'s button in the builder does not change the look'); } }
               return P; });
             R.forEach(m => say(0, m)); if (!R.length) say(1, 'two rows planted in the table of the body\'s choices, with no other edit, show in the builder, are kept and cleaned by the save and reach the maker of the body'); }
           if (J.errs.length) say(0, 'the page with rows planted in the table threw "' + J.errs[0] + '"');
