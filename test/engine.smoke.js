@@ -14302,7 +14302,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             K.hold();
             try {
               const at = K.spot();
-              if (!at) { N.push('no free tile beside the person you steer, so his dog could not be planted'); return { P, N }; }
               const pct = x => Math.round(x * 100) + '%';
               /* ---- B · up close he is a body and not his card; past DOGNEAR he is his card and no body ---- */
               let cr = K.plant('beagle', at), s = K.show(cr);
