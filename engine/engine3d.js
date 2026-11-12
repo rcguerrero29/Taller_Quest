@@ -1475,9 +1475,11 @@ function t3BodyPose(B,phase,moving,groundAt){
        follows his speed held between BODYSTEPS (t3Body): so a foot that is down stays put at a slow walk, glides a little at a quick one */
     const u=((ps%(2*Math.PI))+2*Math.PI)%(2*Math.PI),down=u>=Math.PI/2&&u<=Math.PI*1.5;
     const fz=moving?(down?S.stride*(1-2*(u-Math.PI/2)/Math.PI):S.stride*Math.sin(ps)):0,lift=moving&&!down?S.lift*Math.cos(ps):0;
-    const w=new THREE.Vector3(H.x,0,fz).applyMatrix4(B.matrixWorld),g=(gnd(w.x,w.z)-B.position.y)/sc;
+    /* the foot is set down under its own hip (mq-v263): a person's hips stand at his middle, so this is where it always was;
+       a dog's hind legs stand behind his middle and his fore legs ahead of it, and each reaches from its own hip */
+    const w=new THREE.Vector3(H.x,0,H.z+fz).applyMatrix4(B.matrixWorld),g=(gnd(w.x,w.z)-B.position.y)/sc;
     const ankleRest=S.joints.hips[2]+S.joints[hp][2]+S.joints[kn][2]+S.joints[an][2];   /* the ankle's height when he stands straight */
-    const ty=g+ankleRest+lift,dy=ty-H.y,dz=fz-H.z;
+    const ty=g+ankleRest+lift,dy=ty-H.y,dz=fz;
     const d=Math.min(Math.hypot(dy,dz),L1+L2-1e-4),th=Math.atan2(dz,-dy);
     const al=Math.acos(Math.max(-1,Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d)))),be=Math.acos(Math.max(-1,Math.min(1,(L1*L1+L2*L2-d*d)/(2*L1*L2))));
     J[hp].rotation.set(-(th+al),0,0);J[kn].rotation.set(Math.PI-be,0,0);J[an].rotation.set((th+al)-(Math.PI-be),0,0);});
