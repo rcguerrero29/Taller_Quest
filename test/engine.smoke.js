@@ -13975,8 +13975,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                an option), each labelled in words in English and in Spanish, the Spanish not the English, as are the two
                buttons that turn him; every one is reached by the Tab key alone, shows a ring when it has the focus, and is
                changed by the keyboard (a slider by its arrow, a button by Enter); each change changes the look the save would
-               keep and the body in the preview, counted in the preview's pixels; the preview is his body, drawn in 3D, not the
-               2D one, it does not turn by itself, and the buttons turn him; and no control is off the screen or smaller than
+               keep and the body in the preview, counted in the preview's pixels; the preview shows his body, drawn in 3D (beside his
+               card, which stays), it does not turn by itself, and the buttons turn him; and no control is off the screen or smaller than
                44 pixels either way.
            I · THE SAVE CLEANS WHAT IT READS (rule 5): a look with measures out of range, of the wrong type, not numbers at
                all, an option no row offers, a very long word, words shaped like markup, a key no row has, a body that is not
@@ -14040,7 +14040,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             else { const off = pre.rows.filter(r => r.kind === 'measure' && pre.nb[r.key] !== 1).map(r => r.key + ' ' + pre.nb[r.key]);
               if (pre.nb.sleeves !== 'long') off.push('sleeves ' + pre.nb.sleeves); if (pre.nb.cut !== 'cap') off.push('hair ' + pre.nb.cut);
               if (off.length) P.push('a new character does not start as the card-matching person: ' + off.join(', ')); }
-            if (pre.pv2d) P.push('in a world that takes the body, the creator still shows the 2D card as its preview');
             /* every control: present, its kind, labelled in both languages */
             const L = await p.evaluate(rows => { const out = { missing: [], words: {} }, label = el => { if (el.labels && el.labels.length) return el.labels[0].textContent.trim();
                 const g = el.closest('[aria-labelledby]'), id = g && g.getAttribute('aria-labelledby'), lb = id && document.getElementById(id); return lb ? lb.textContent.trim() : ''; };

@@ -6417,9 +6417,9 @@ function buildOpts(rowId,list,key){
       b.setAttribute("aria-pressed","true");pvDraw();});
     row.appendChild(b);});
 }
-function pvDraw(){if(BODYON&&bodyPvDraw())return;   /* a world that takes the body shows his body; any other, the card as ever */
-  const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,22);
-  g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});}
+function pvDraw(){const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,22);
+  g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});
+  if(BODYON)bodyPvDraw();}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER) */
 /* ---- THE BODY BUILDER (mq-v262): the creator's own controls for the body's choices, where the world takes the body ----
    The creator (and the chair, which is the same screen) gains, under the hair's style, one control for each row of the table
    of the body's choices (grep "THE BODY'S CHOICES"): a slider for a measure, held to its range and moved by its step, and a
@@ -6430,7 +6430,8 @@ function pvDraw(){if(BODYON&&bodyPvDraw())return;   /* a world that takes the bo
    or Space), with a ring round the one in focus. A change cleans the look's choices again (bodyChoicesOf) and draws the
    preview at once.
    THE PREVIEW is his body, turning: drawn by the 3D camera's renderer into a canvas of its own in the preview's box
-   (t3BodyPreview, engine/engine3d.js), the 2D one hidden while it shows. It turns by itself, slowly, unless the player has
+   (t3BodyPreview, engine/engine3d.js), beside his card, which stays: up close he is his body, and farther off, and to
+   everyone else, he is still his card, so a player sees both as he builds. It turns by itself, slowly, unless the player has
    asked for reduced motion, and two buttons turn him by hand either way. Where the 3D cannot draw, the 2D preview stays.
    A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. A world
    that takes it but has no 3D camera (no 3D library on its page) never shows the body, so it is offered no builder either;
@@ -6447,10 +6448,10 @@ function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
 function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(!box)return null;
   const r=Math.min(3,Math.max(1,window.devicePixelRatio||1));
   c=document.createElement("canvas");c.id="pvBody";c.width=Math.round(120*r);c.height=Math.round(180*r);
-  c.style.width="120px";c.style.height="180px";c.style.display="block";c.setAttribute("role","img");
+  c.style.width="120px";c.style.height="180px";c.style.display="inline-block";c.style.verticalAlign="bottom";c.style.marginRight="8px";c.setAttribute("role","img");
   box.insertBefore(c,box.firstChild);return c;}
 function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
-  const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;$("pv").hidden=ok;
+  const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;
   c.setAttribute("aria-label",bodyWord("preview"));return ok;}
 const bodyStill=()=>{try{return window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
 function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
