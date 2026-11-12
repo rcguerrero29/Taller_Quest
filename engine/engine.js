@@ -8671,9 +8671,13 @@ function spawnCustom(rec){
    session, no clock: fetch, treats, howls. Crossing back plays a little recap.
    The park holds the preview customization: bandanas, and adopting your own
    dog (who gets the full beagle program). All per-device, in `mqpark`. */
-const parkPrefs={band:{},collar:Object.create(null),dogs:[],train:{}};
+const parkPrefs={band:Object.create(null),collar:Object.create(null),dogs:[],train:{}};
 try{const p0=JSON.parse(localStorage.getItem(SK("park"))||"{}");
-  if(p0&&typeof p0==="object"){parkPrefs.band=(p0.band&&typeof p0.band==="object")?p0.band:{};
+  if(p0&&typeof p0==="object"){
+    /* the bandanas' colours, cleaned where they are read as the collars' are (mq-v263): a saved colour that is not a colour is left out */
+    {const bd=Object.create(null);if(p0.band&&typeof p0.band==="object"&&!Array.isArray(p0.band))
+      Object.keys(p0.band).slice(0,64).forEach(k=>{const v=saveCol(p0.band[k]);if(v&&k.length<=40)bd[k]=v;});
+      parkPrefs.band=bd;}
     /* the collars' colours (mq-v263), cleaned where they are read: a saved colour that is not a colour is left out, and
        that dog wears the collar he starts with. A null-prototype map, so no saved name can reach the object's own parts */
     {const cl=Object.create(null);if(p0.collar&&typeof p0.collar==="object"&&!Array.isArray(p0.collar))

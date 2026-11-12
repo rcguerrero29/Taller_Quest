@@ -1751,7 +1751,7 @@ function dogMake(skel,lk){
   /* the tail in two parts and its tip: the beagle's sickle carried up ("up"), the lab's otter tail carried out behind
      ("out"), the chi's thin tail curled over ("curl"). In the coat; the tip is the breed's (DOGPART paints the beagle's white) */
   {const t1=J.tail_1,t2=J.tail_2;
-    if(b.tail==="out"){t1.rotation.x=-0.85;t2.rotation.x=0.3;}
+    if(b.tail==="out"){t1.rotation.x=-0.62;t2.rotation.x=0.25;}
     if(b.tail==="curl"){t1.rotation.x=0.1;t2.rotation.x=0.9;}
     t1.userData.rest=t1.rotation.x;
     const tr=Lm.tail*(b.tail==="out"?1.1:b.tail==="curl"?0.75:1);
@@ -1850,7 +1850,7 @@ function t3DogBodies(dt){
     t3BodyLight(B);
     /* he is walking from his first step until a moment after his last (DOGREST): his record says he moves only while
        each step lasts, and between two steps of one walk his legs would otherwise snap to standing and back */
-    B.userData.still=cr.moving?0:(B.userData.still===undefined?Infinity:B.userData.still+(dt>0?dt:Infinity));
+    B.userData.still=cr.moving?0:(B.userData.still===undefined?Infinity:B.userData.still+(dt>0?dt:0));
     t3DogPose(B,P,B.userData.phase||0,B.userData.still<DOGREST,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
     shown.add(cr);});
   T3.dogShown=shown;return shown;}
