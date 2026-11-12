@@ -6448,8 +6448,9 @@ function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
 function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(!box)return null;
   const r=Math.min(3,Math.max(1,window.devicePixelRatio||1));
   c=document.createElement("canvas");c.id="pvBody";c.width=Math.round(120*r);c.height=Math.round(180*r);
-  c.style.width="120px";c.style.height="180px";c.style.display="inline-block";c.style.verticalAlign="bottom";c.style.marginRight="8px";c.setAttribute("role","img");
-  box.insertBefore(c,box.firstChild);return c;}
+  c.style.width="120px";c.style.height="180px";c.style.display="block";c.style.marginRight="8px";c.setAttribute("role","img");
+  box.insertBefore(c,box.firstChild);box.style.display="flex";box.style.alignItems="flex-end";   /* his body and his card side by side */
+  return c;}
 function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
   const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;
   c.setAttribute("aria-label",bodyWord("preview"));return ok;}
