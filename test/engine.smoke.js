@@ -14210,8 +14210,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       K.at = (h, off) => { S.hour = h; S.off = off || 0; };
       K.off = v => { S.off = v; };
       /* a free tile next to you, on the ground floor of the street */
-      K.spot = (far) => { const w = CW(), qx = Math.round(fx), qy = Math.round(fy), R = far ? [[4, 0], [-4, 0], [0, 4], [0, -4], [4, 1], [-4, 1], [5, 0], [-5, 0]] : [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [0, -1], [2, 0], [-2, 0]];
-        for (const [dx, dy] of R) { const x = qx + dx, y = qy + dy; if (w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && !stairLift(w, x, y)) return [x, y]; } return null; };
+      K.spot = () => { const w = CW(), qx = Math.round(fx), qy = Math.round(fy);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [0, -1], [2, 0], [-2, 0]]) { const x = qx + dx, y = qy + dy; if (w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && !stairLift(w, x, y)) return [x, y]; }
+        return [qx, qy]; };   /* a room with no free tile beside you: your own tile, as a dog who follows you stands at your feet (you are not drawn in his frames) */
       K.plant = (kind, at, o) => { const [x, y] = at, coat = { beagle: '#E8C46A', lab: '#E0C070', chi: '#C9975C' }[kind] || '#E8C46A';
         const cr = { kind, world, x, y, fx: x, fy: y, c: coat, follow: true, task: null, sit: false, layT: 0, howlT: 0, digT: 0, loveT: 0, happyT: 0, moving: false, mt: 0,
           dx: 1, dy: 0, face: 1, next: Infinity, holdT: 0, stayT: 0, home: [x, y], name: 'probe', ...(o || {}) };
@@ -14300,7 +14301,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const R = await dp.evaluate(([JN]) => { const K = window.__dk, P = [], N = [], said = s => P.push(s);
             K.hold();
             try {
-              const at = K.spot(), far = K.spot(true);
+              const at = K.spot();
               if (!at) { N.push('no free tile beside the person you steer, so his dog could not be planted'); return { P, N }; }
               const pct = x => Math.round(x * 100) + '%';
               /* ---- B · up close he is a body and not his card; past DOGNEAR he is his card and no body ---- */
@@ -14308,8 +14309,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (!s.ok) { N.push('the 3D camera cannot draw on this page, so the dog\'s body was not asked'); return { P, N }; }
               if (!s.body) { said('the dog who follows you, up close in the 3D camera, is still his flat card: no body stands there'); return { P, N }; }
               if (s.card) said('the dog who follows you is drawn twice up close: his card stands in the same place as his body');
-              if (!far) N.push('no free tile four squares from the person you steer, so the dog was not asked from afar');
-              else { const [qx, qy] = focusXY(); cr.fx = cr.x = qx + (DOGNEAR + BODYHYST + 0.6); cr.fy = cr.y = qy; s = K.show(cr);
+              { const [qx, qy] = focusXY();   /* from afar he is drawn where he stands, a free tile or not */ cr.fx = cr.x = qx + (DOGNEAR + BODYHYST + 0.6); cr.fy = cr.y = qy; s = K.show(cr);
                 if (s.body) said('a dog who follows you ' + (DOGNEAR + BODYHYST + 0.6).toFixed(1) + ' squares from the camera\'s focus, past where a body is drawn, is still a body');
                 if (!s.card) said('a dog who follows you, seen from afar, has no card');
                 cr.fx = cr.x = at[0]; cr.fy = cr.y = at[1]; K.show(cr); }
