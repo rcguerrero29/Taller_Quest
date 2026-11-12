@@ -1391,7 +1391,11 @@ function bodyMake(skel,lk,build){
   part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;
   part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;   /* its edge slants back behind the ear */
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
-  if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron"))part("spine",new THREE.BoxGeometry(tw*1.1,0.24*H,0.012*H),"apron","#EFE9DC",0,0,td+0.004*H);
+  /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
+     middle of his thighs, as wide as his hips, over the front of his shirt */
+  if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
+    part("spine",new THREE.BoxGeometry(tw*1.1,0.19*H,0.012*H),"apron","#EFE9DC",0,0.055*H,z);
+    part("spine",new THREE.BoxGeometry(hx*2.1,0.19*H,0.012*H),"apron","#EFE9DC",0,-0.135*H,z);}
   /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk. Round, as wide as his
      card's, so the camera's slant makes it the card's flat oval whichever way he faces */
   const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
