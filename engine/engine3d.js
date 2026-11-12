@@ -1303,7 +1303,20 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
      · at night as bright as his card (t3BodyLight): a card is painted, not lit, and at night it is only tinted; the body was
        tinted AND lit by the night's dimmed lamps, darker twice over. Its paint is now set so that a face turned to the
        camera comes out as the card's paint does, tint and all, by day and by night.
-   NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, and hair styles past a cap of hair. */
+   mq-v262, CHOSEN BY THE PLAYER, and the details back on every body:
+     · HIS BUILD AND HIS CLOTHES ARE CHOICES, rows of one table, BODYCHOICE (engine/engine.js, grep "THE BODY'S CHOICES"): five
+       measures (height, width, limbs, head, and how far his shirt hangs), each held to a range in which he fits his skeleton
+       and stands on the ground, and two options, long sleeves or short ones with bare arms, and the hair as a cap or fuller.
+       They are kept with his look as look.body, cleaned where a look is read (saveLook), chosen in the creator (grep "THE BODY
+       BUILDER", engine/engine.js) and shown there turning (t3BodyPreview). bodyMake reads the measures through the skeleton
+       and hands each option to its part function in BODYPART, so a choice added later is a row and a function. A new
+       character, and a look saved before this, is the card-matching person: the card's build, long sleeves, the cap.
+     · ON EVERY BODY, whatever is chosen, since they do not change his outline: a nose, a ball at each knee and elbow a shade
+       off what covers it, and shoes that stand out from his trousers (bodyMake).
+     · THE HAIR AND look.style: the card's style (look.style) is drawn on his card, and the body's two hairs are both its
+       "Short" (cap) drawn in 3D, closer or fuller, so the body keeps its own choice, look.body.cut, and does not read the style.
+   NOT DONE HERE: other people, a costume, a four-legged skeleton, weights or skinning, the card's other hair styles in 3D,
+   and more choices (noses, eyebrows, muscles, more clothes), which are each a row and a part function when they come. */
 const BODYNEAR=3;      /* squares from the camera's focus within which the person you steer is a body, not a card */
 const BODYHYST=0.5;
 const BODYSTEPS=[2,5]; /* steps a second, fewest and most (mq-v260): his pace follows his speed but stays a person's, so a quick walk on

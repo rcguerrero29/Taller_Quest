@@ -13522,7 +13522,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
        facing you and from the side; at night as bright as his card. And his build is data: handed builds other than the card's
        (small, large, wide, slim, thick), the body is made to each, every joint there, every part meeting its joints, both
        soles on the ground standing and through a walk. Red on mq-v260 in all four. The page is a phone's at a phone's
-       three pixels to the point (mq-v261), so a person a third of a square wide is measured in more than a dozen pixels. */
+       three pixels to the point (mq-v261), so a person a third of a square wide is measured in more than a dozen pixels.
+       mq-v262, THE BODY'S CHOICES (one table, BODYCHOICE, engine/engine.js): in the second part, D asks its face checks for
+       each hair the table offers and that the fuller hair is fuller; E asks every measure at both ends of its range and every
+       corner of all the ranges together, and that the shirt hangs lower when chosen longer; and F asks, of the person a new
+       character starts as and of the detailed one, that his nose, his knees and elbows and his shoes show in the game's camera,
+       and that short sleeves bare his arms and long ones cover them. On pages of their own: G, a world that says nothing shows
+       and keeps nothing new; H, the builder in the creator (labelled in two languages, the keyboard, a phone, the preview);
+       I, the save cleans every look it reads; J, two rows planted in the table reach the builder, the save and the maker.
+       Red on mq-v261 in D, E, F, H and J (G holds there, as it must: it asks that nothing changed). */
   {
     const BP = [], BN = [];
     const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
@@ -13866,16 +13874,19 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    one kind of his parts painted a colour no street has (a magenta): what turns that colour is that part, as
                    the camera shows it, in front of everything else. Asked of the person a new character starts as (no
                    choices made) and of the detailed one (short sleeves, the fuller hair, slimmer), facing you and facing right:
-                     · HIS NOSE SHOWS: at least as many pixels of his nose as of one of his eyes (the eyes are what a card has
-                       for a face, and a person sees them);
+                     · HIS NOSE SHOWS: at least as many pixels of his nose as of one of his eyes (the larger of the two on the
+                       screen: the eyes are what a card has for a face, and a person sees them);
                      · HIS KNEES AND ELBOWS SHOW: where each limb bends, the ball of its joint (a shade off what covers it) shows
                        in at least as many pixels as one of his eyes, for both knees together and both elbows together;
-                     · HIS SHOES SHOW: each shoe at least as many pixels as one of his hands, and the shoes stand out past his
-                       trouser legs, in at least as many pixels as a hand, where the frame without them shows the street.
+                     · HIS SHOES SHOW, AS MUCH AS THEY DID WHEN HIS LEGS WERE THIN (the second slice): both shoes together in at
+                       least as many pixels as his trousers; each shoe facing you (the nearer facing right) at least as many as
+                       an eye; and where they show, the frame with them hidden shows the street, not his trousers, in at least as
+                       many pixels as an eye, so they stand out past his trouser legs. On mq-v261 the shoes showed in about half
+                       as many pixels as his trousers, and the check is red there.
                    AND THE SLEEVES: his arms (every part hung on a shoulder or an elbow) are painted, and where they show the
                    ordinary frame is read by hue: with short sleeves more of his arms shows skin than shirt, with long sleeves
                    more than ten times as much shirt as skin. Each option of the sleeves row is asked; a table with no sleeves
-                   row is a red. Nothing measured is a red: an eye or a hand under 4 pixels, or arms under 50, says so. */
+                   row is a red. Nothing measured is a red: an eye under 4 pixels, or arms under 50, says so. Red on mq-v261 in every part. */
             { const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden }, kb = t3Body, kf = faceLooks, RD = Date, kl = look;
               Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(12, 0, 0, 0)); };
               Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
@@ -13896,7 +13907,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const out = []; for (let i = 0; i < F.px.length; i += 4) if (hide ? F.px[i] !== A.px[i] || F.px[i + 1] !== A.px[i + 1] || F.px[i + 2] !== A.px[i + 2] : mag(F.px, i) && !mag(A.px, i)) out.push(i);
                 return { at: out, F }; };
               const on = (o, j) => o.parent && new RegExp('^' + j + '_[lr]$').test(o.parent.name);
-              const DETAILED = { sleeves: 'short', cut: 'full', width: 0.75, limbs: 0.8 }, rowS = BODYCHOICE.find(r => r.key === 'sleeves');
+              const DETAILED = { sleeves: 'short', cut: 'full', width: 0.75, limbs: 0.8 }, rowS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'sleeves') : null;
               if (!rowS) P.push('the body\'s choices have no sleeves, so a player cannot choose short sleeves and bare arms');
               try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
                 for (const [who, body] of [['the person a new character starts as', {}], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED]])
@@ -13917,8 +13928,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     const shoes = painted(o => o.userData.wears === 'shoe', A), bare = painted(o => o.userData.wears === 'shoe', A, true);
                     const tr = new THREE.Color('#2E3547'), trousers = (F, i) => { const c = new THREE.Color(F[i] / 255, F[i + 1] / 255, F[i + 2] / 255); return Math.abs(c.getHSL({}).h - tr.getHSL({}).h) < 0.06 && c.getHSL({}).l < 0.35; };
                     const out = shoes && bare ? shoes.at.filter(i => { const F = bare.F.px; return !kind(F[i], F[i + 1], F[i + 2]) && !trousers(F, i); }).length : 0;
+                    /* AS NOTICEABLE AS THEY WERE: both shoes together take at least as much of the screen as his trousers do */
+                    const legs = n(o => o.userData.wears === 'trousers'), both = shoes ? shoes.at.length : 0;
+                    if (legs > 0 && both < legs) say3('his shoes are small beside his trousers: ' + both + ' pixels of shoe, where his trousers show in ' + legs);
                     if (shoes && bare && out < eye) say3('his shoes do not stand out past his trouser legs: ' + out + ' pixels of them show where the street would, where one of his eyes shows in ' + Math.round(eye));
-                    if (d === 'down') N.push(who + ' facing you: eye ' + eye + ', nose ' + nose + ', knees ' + knee + ', elbows ' + elbow + ', shoes ' + shoeL + '/' + shoeR + ', past the legs ' + out);
+                    if (d === 'down') N.push(who + ' facing you: eye ' + eye + ', nose ' + nose + ', knees ' + knee + ', elbows ' + elbow + ', shoes ' + shoeL + '/' + shoeR + ', past the legs ' + out + ', trousers ' + legs);
                   }
                 /* the sleeves, each option of the row */
                 if (rowS) for (const w of rowS.list) { dir = 'down'; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body: { sleeves: w } });
@@ -13941,7 +13955,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             away(0); const fromNear = [away(edge), away(edge), away(edge)];
             if (fromFar.some(x => x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from far, he pops from his card to his body');
             if (fromNear.some(x => !x.body)) P.push('standing still just past ' + BODYNEAR + ' squares, coming from near, he pops from his body to his card');
-            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, as wide as his card with his face showing facing you and from the side and as bright as his card at night, made to five builds besides the card\'s that each fit his skeleton, and is his card again past ' + BODYNEAR + ' squares');
+            if (!P.length) N.push('the person you steer stands up close as a body of ' + JOINTS.length + ' named joints in his own colours, his head a card\'s share of his height, feet on the ground standing and through a walk cycle swept in 48 steps, a person\'s pace of steps a second at any speed, seen through a wall, as wide as his card with his face showing facing you and from the side and as bright as his card at night, made to five builds besides the card\'s and to every end and corner of the ranges a player can choose, each fitting his skeleton, with a nose, knees, elbows and shoes that show and sleeves that bare or cover his arms, and is his card again past ' + BODYNEAR + ' squares');
           } finally { focusXY = keep.fxy; look = keep.look; dir = keep.dir; moving = keep.moving; bob = keep.bob; }
           return { P, N }; }, [JOINTS, String(shows)]);
         R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
@@ -14010,8 +14024,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         try { const p = H.p, P = [];
           const pre = await p.evaluate(() => { const cr = document.getElementById('creator'), c = document.getElementById('pvBody'), pv = document.getElementById('pv');
             if (cr.hidden) return { why: 'the creator could not be opened' };
+            if (typeof BODYCHOICE !== 'object' || !BODYCHOICE) return { why: 'the engine keeps no table of the body\'s choices, so the creator offers him no choice of his body' };
             return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max })), body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null }; });
-          if (pre.why) P.push('in a world that takes the body, ' + pre.why + ', so the builder was not asked');
+          if (pre.why) P.push('in a world that takes the body, ' + pre.why);
           else {
             if (!pre.body3d) P.push('in a world that takes the body, the creator\'s preview is not his body: no 3D picture of him is drawn there');
             /* the person a new character starts as, before anything is touched: the card's build, long sleeves, the hair a cap */
