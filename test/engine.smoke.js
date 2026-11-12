@@ -14332,15 +14332,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   B.traverse(o => { if (o.isMesh && o.userData.wears) meshes.push(o); });
                   if (!meshes.length) { said('the ' + kind + '\'s body has joints and nothing on them: no part a person could see'); continue; }
                   const boxOf = o => new THREE.Box3().setFromObject(o).expandByScalar(eps);
-                  const meet = (when) => { const bx = new Map(meshes.map(o => [o, boxOf(o)])), bad = new Set();
+                  const meet = (when) => { B.updateWorldMatrix(true, true); const bx = new Map(meshes.map(o => [o, boxOf(o)])), bad = new Set();
                     JN.forEach(n => { const j = B.getObjectByName(n), w = j.getWorldPosition(new THREE.Vector3());
                       const near = meshes.filter(o => o.parent === j || o.parent === j.parent || (o.parent && o.parent.parent === j));
                       if (!near.some(o => bx.get(o).containsPoint(w))) bad.add('no part reaches his ' + n + ' joint'); });
                     meshes.forEach(o => { if (!meshes.some(q => q !== o && bx.get(q).intersectsBox(bx.get(o)))) bad.add('his ' + o.userData.wears + ' on the ' + o.parent.name + ' joint touches no other part'); });
-                    /* and between each joint and the one it hangs from, a part all the way: no gap in a leg, the neck or the tail */
+                    /* and between each joint and the one it hangs from, a part of HIM all the way: no gap in a leg, the neck or the
+                       tail. Asked of each part's own shape, not of the box round it (a capsule and a ball exactly, anything else by
+                       the box in its own frame), and never of what he wears: a collar's box covers his neck and is not his neck */
+                    const inPart = (o, q) => { const g = o.geometry, p = o.worldToLocal(q.clone()), s = o.getWorldScale(new THREE.Vector3()), tol = eps / Math.max(1e-9, Math.min(s.x, s.y, s.z)), pr = g.parameters || {};
+                      if (g.type === 'CapsuleGeometry') { const h = (pr.length !== undefined ? pr.length : pr.height) / 2, y = Math.max(-h, Math.min(h, p.y)); return Math.hypot(p.x, p.y - y, p.z) <= pr.radius + tol; }
+                      if (g.type === 'SphereGeometry') return p.length() <= pr.radius + tol;
+                      if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox.clone().expandByScalar(tol).containsPoint(p); };
+                    const his = meshes.filter(o => o.userData.wears !== 'collar' && o.userData.wears !== 'band');
                     JN.forEach(n => { const j = B.getObjectByName(n), pj = j.parent; if (n === 'mouth' || !pj || pj === B) return;
                       const a = pj.getWorldPosition(new THREE.Vector3()), c = j.getWorldPosition(new THREE.Vector3());
-                      for (const t of [0.25, 0.5, 0.75]) { const q = a.clone().lerp(c, t); if (!meshes.some(o => bx.get(o).containsPoint(q))) { bad.add('nothing joins his ' + pj.name + ' to his ' + n + ': there is a gap between them'); break; } } });
+                      for (let k = 1; k < 8; k++) { const q = a.clone().lerp(c, k / 8); if (!his.some(o => inPart(o, q))) { bad.add('nothing joins his ' + pj.name + ' to his ' + n + ': there is a gap between them'); break; } } });
                     return [...bad].map(m => 'the ' + kind + '\'s body ' + when + ': ' + m); };
                   const paws = sk.legs.map(l => [l[2], B.getObjectByName(l[2]).children.find(o => o.isMesh)]);
                   if (paws.some(([, m]) => !m)) { said('the ' + kind + '\'s body has a leg with no paw, so where he stands could not be measured'); continue; }
@@ -14619,6 +14626,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               return cp.evaluate(() => { const o = {}; CRIT.forEach(c => { if (isDog(c) && c.name) o[c.name] = c.collar === undefined ? '(none)' : typeof c.collar === 'string' ? c.collar : '(a ' + typeof c.collar + ')'; });
                 return { o, polluted: Object.prototype.hasOwnProperty.call(Object.prototype, 'Pinto') }; }); };
             const base = await load(JSON.stringify({ dogs }));
+            ['Pinto', 'constructor'].forEach(n => { if (n in base.o && base.o[n] !== '(none)') say(0, 'with no collar saved for him, the player\'s dog named ' + n + ' wears ' + base.o[n] + ', where he wears the collar he starts with'); });
             if (!('Pinto' in base.o)) say(0, 'a dog of the player\'s own is not in the game after it loads, so his collar could not be asked to come back');
             else {
               const got = await cp.evaluate(() => { const c = CRIT.find(q => q.name === 'Pinto'), btn = document.getElementById('collar'); if (!btn || typeof COLLARCOLS === 'undefined') return null;
