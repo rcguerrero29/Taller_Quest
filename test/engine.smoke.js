@@ -70,6 +70,18 @@ function findChromium() {
   const boot = async p => { await p.waitForFunction(() => document.readyState === 'complete' && document.fonts.status === 'loaded', null, { timeout: 30000 }); await rafs(p); };
   const rafs = (p, n = 2) => p.evaluate(n => new Promise(r => { let k = 0; const t = setTimeout(r, 400); const f = () => { if (++k >= n) { clearTimeout(t); r(); } else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n);
   const until = (p, fn, arg, ms = 5000) => p.waitForFunction(fn, arg, { timeout: ms }).then(() => true, () => false);
+  /* HIS CARD, WITH HIS BODY HELD OFF. A world that names `person` in its own BODYTAKE sees the person you steer, up close in the
+     3D camera, as a jointed body, and his card is not drawn there (engine/engine3d.js, grep "THE JOINTED BODY"). A check that
+     finds him by his card asks it of the card, as he is seen from afar in that world: cardOn(p, what) holds the body off on
+     page p (t3Body says "no body here" until cardOff puts it back), and byCard(p, what, run) does both round run. The body
+     itself is asked by its own section, never held off. In a world that says nothing both do nothing at all. */
+  const carded = new Set();
+  const cardOn = async (p, what) => { const held = await p.evaluate(() => {
+      if (typeof BODYON === 'undefined' || !BODYON || typeof t3Body !== 'function' || window.__bodyKept) return false;
+      window.__bodyKept = t3Body; t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; return true; });
+    if (held) carded.add(what); return held; };
+  const cardOff = async (p, held) => { if (held && !p.isClosed()) await p.evaluate(() => { if (window.__bodyKept) { t3Body = window.__bodyKept; delete window.__bodyKept; } }); };
+  const byCard = async (p, what, run) => { const held = await cardOn(p, what); try { return await run(); } finally { await cardOff(p, held); } };
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [], warns = [];
   page.on('pageerror', e => pageErrors.push(e.message));
@@ -3736,6 +3748,7 @@ function findChromium() {
     if (needK) await sp.addInitScript({ content: kitSrc });
     await sp.addInitScript(() => { window.BUILDER = {}; });
     await sp.goto('file://' + file); await sp.waitForFunction(() => typeof kitchenLay === 'function' && typeof KITCHEN === 'object' && document.readyState === 'complete', null, { timeout: 15000 }); await sp.waitForTimeout(150);
+    await cardOn(sp, 'the kitchen along four walls');   /* whether the fridge hides him is asked of his card; this page is closed below */
     try {
       const T0 = await sp.evaluate(() => {
         const C = KITCOL, R4 = ['#########', '#.KKKKK.#', '#K.....K#', '#K.....K#', '#K.....K#', '#K.....K#', '#.KKKKK.#', '#########'].map(r => r.replace(/K/g, C));
@@ -4530,7 +4543,7 @@ function findChromium() {
      is switched off, the tram sent away, and the critters and people of that world taken out of the
      picture, so nothing else stands on the spot. Nothing here calls a painter: the whim makes the mark, and draw() / draw3d() draw it. The 3D
      camera is asked at all four of its quarter turns, because a mark can hide behind a wall at one stop. */
-  const leaves = await page.evaluate(() => {
+  const leaves = await byCard(page, 'where the dog digs and leaves a mess', () => page.evaluate(() => {
     const P = [];
     const K = typeof DOGK !== 'undefined' ? [...DOGK][0] : null;
     if (typeof dogWhim !== 'function' || typeof DECALS === 'undefined' || !K) { P.push('COUNT-ONLY: this shell has no dog, so nothing is dug and nothing is left on the ground'); return P; }
@@ -4690,7 +4703,7 @@ function findChromium() {
       camSet(keep.cam); sizeCanvas(); document.getElementById('world').hidden = keep.hid;
     }
     return P;
-  });
+  }));
   fails.push(...leaves.filter(l => !/^COUNT-ONLY: /.test(l)));
   leaves.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
@@ -10247,7 +10260,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      hangs no string over walkable ground has nothing to look at, which is said out loud, not passed.
      It looks at a string ON POLES (swagMount, engine/engine.js): a string taped to a wall lies on the wall's face and is
      never hidden by design, so a pack whose first string is taped must not stand in for its strings on poles here. */
-  const endOn = await page.evaluate(() => {
+  const endOn = await byCard(page, 'a string seen end-on', () => page.evaluate(() => {
     const P = [];
     if (typeof T3 === 'undefined' || !window.THREE) { P.push('COUNT-ONLY: this shell declined 3D, so no string was looked at end-on'); return P; }
     if (typeof fiestaSwags !== 'function' || typeof seasonSet !== 'function') { P.push('COUNT-ONLY: this engine hangs no swags'); return P; }
@@ -10308,7 +10321,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     seasonSet(pick0); world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; T3.yaw = keep.yaw;
     camSet(keep.cam); sizeCanvas(); t3Invalidate(); document.getElementById('world').hidden = true;
     return P;
-  });
+  }));
   fails.push(...endOn.filter(l => !/^COUNT-ONLY: /.test(l)));
   endOn.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
@@ -10693,7 +10706,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     try {
       await tq.evaluate(() => { enterWorld(false); document.querySelectorAll('.settings').forEach(p => { p.hidden = true; });
         ['reader', 'card'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; }); });
-      const got = await tq.evaluate(tapedRoom);
+      const got = await byCard(tq, 'taped papel picado', () => tq.evaluate(tapedRoom));
       TP.push(...got.P); fails.push(...got.N);
     } catch (e) { TP.push('the probe could not run to the end, so it measured nothing: ' + String(e && e.message || e).split('\n')[0]); }
     if (tErr.length) TP.push('the page threw while the probe room was dressed: ' + [...new Set(tErr)].slice(0, 3).join(' | '));
@@ -11673,7 +11686,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* the bar the drone is held to: how much of his own tile the hero covers, measured the way a
        player sees him — builder off, before anything takes off */
     const heroBar = {};
-    for (const cam of ['top', 'front', 'iso', '3d']) heroBar[cam] = await page.evaluate(c => window.__drShot(c), cam);
+    await byCard(page, 'the drone\'s bar', async () => { for (const cam of ['top', 'front', 'iso', '3d']) heroBar[cam] = await page.evaluate(c => window.__drShot(c), cam); });
     await page.evaluate(() => { camSet('top'); sizeCanvas(); });
     await pressB();
     let st = await droneAt();
@@ -13174,7 +13187,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     await page.evaluate(kit);
     const looks = await page.evaluate(() => window.__apron.looks()), words = await page.evaluate(() => window.__apron.words());
     /* the card every comparison below is drawn on, read off the engine; or this check's own canvas, and why */
-    const G1 = await page.evaluate(() => window.__apron.learn());
+    const G1 = await byCard(page, 'the apron\'s card', () => page.evaluate(() => window.__apron.learn()));
     if (G1.red) say(0, G1.why + ', which is not a pass');
     else if (G1.why) say(1, G1.why + ': the person painter is asked on a canvas of this check\'s own with room round him, and no card is asked anything');
     const C1 = G1.why ? null : G1;
@@ -13190,7 +13203,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* ---- 1 · a world that has not turned it on ---- */
     if (on0 !== null) say(1, 'this world declares OUTFITTAKE itself (' + JSON.stringify(on0) + '), so a world that has not turned the apron on was not asked here; every world that says nothing is asked in its own run');
     else {
-      const one = await page.evaluate(([looks, words, G1]) => { const A = window.__apron, P = [], N = [], C = G1.why ? A.own : G1;
+      const one = await byCard(page, 'the apron\'s card', () => page.evaluate(([looks, words, G1]) => { const A = window.__apron, P = [], N = [], C = G1.why ? A.own : G1;
         const kept = words.map(w => ({ w, s: saveLook({ outfit: w }).outfit, p: (((sanitizeSave({ n: 'x', lk: { outfit: w } }) || {}).lk) || {}).outfit }));
         kept.forEach(k => { if (k.s !== k.p) P.push('a save keeps the outfit word "' + k.w + '" as "' + k.s + '" and a Trolley Pass carries it as "' + k.p + '": the two readings of a look disagree'); });
         if (!kept.some(k => k.s === 'apron' && k.p === 'apron')) P.push('a save or a Trolley Pass no longer keeps the outfit word "apron", so whether an apron that reaches this world is drawn was not asked, which is not a pass');
@@ -13231,7 +13244,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           } finally { look = keep; dir = kw.dir; moving = kw.moving; camSet(kw.cam); sizeCanvas(); document.getElementById('world').hidden = kw.hidden; }
         });
         return { P, N, seen: N.seen || [], words: kept.length, others: kept.filter(k => k.s !== 'formal').length };
-      }, [looks, words, G1]);
+      }, [looks, words, G1]));
       one.P.forEach(m => say(0, m)); one.N.forEach(m => say(1, m));
       if (!one.P.length) say(1, 'in a world that has not turned it on, every one of the ' + one.others + ' outfit words besides formal, of the ' + one.words + ' asked, the apron among them, is drawn as the everyday clothes pixel for pixel ' + one.seen.join(', ') + '; and formal, the control, is seen to differ from them in each');
       plain = await page.evaluate(([looks, words, G1]) => window.__apron.all(looks, words, G1.why ? window.__apron.own : G1), [looks, words, G1]);
@@ -13258,7 +13271,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           said.filter(about).forEach(e => say(0, 'a world whose list is written right, ' + JSON.stringify(how.list) + ', has a line about it in the game\'s log: "' + line(e) + '"')); }
         /* the card this page's 3D camera bakes, read off its engine; the one the cut-off is measured against. Where this page
            cannot draw in 3D, the card of the page without the list stands in, read off the same engine */
-        const G2 = await ap.evaluate(() => window.__apron.learn());
+        const G2 = await byCard(ap, 'the apron\'s card', () => ap.evaluate(() => window.__apron.learn()));
         if (G2.red) say(0, 'in a world that turns the apron on, ' + G2.why + ', which is not a pass');
         else if (G2.why) no3d(G2.why, C1 ? 'the apron is held inside the card the page without the list bakes, read off the same engine' : 'the apron is measured on a canvas of this check\'s own, where no card can cut it off');
         /* its creator offers None, the engine's everyday clothes, and Apron, in every language it has; the clock stands still from here */
@@ -13383,13 +13396,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             camSet('3d'); sizeCanvas(); T3.turn = null; dir = 'down'; moving = false; held = null;
             if (!draw3d() || T3.fail) return { cannot: true };
             const c3 = T3.renderer.domElement; if (!c3.width) return { none: 'the 3D canvas has no size' };
-            const dp = drawPerson, keep = look.outfit;
+            /* IN A WORLD THAT TAKES THE JOINTED BODY he is his body up close, and no card: the frame without him holds the body
+               off as well as his card, or "the pixels he covers" would be whatever two frames of the same body differ by */
+            const dp = drawPerson, keep = look.outfit, kb = typeof t3Body === 'function' ? t3Body : null;
             const shot = () => { if (!draw3d() || T3.fail) return null; T3.renderer.render(T3.scene, T3.cam); const c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
               const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
             const ne = (a, b, i) => Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30;
             return A.still(() => { try {
               drawPerson = function (g, sx, sy, lk, o) { if (o && o.hero) return; return dp.apply(this, arguments); };
-              const none = shot(); drawPerson = dp;
+              if (kb) t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; };
+              const none = shot(); drawPerson = dp; if (kb) t3Body = kb;
               look.outfit = 'casual'; const a = shot(), a2 = shot(); look.outfit = 'apron'; const b = shot();
               if (!none || !a || !a2 || !b) return { none: 'the 3D camera did not draw the room' };
               let foot = 0, noise = 0, moved = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
@@ -13405,7 +13421,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               let op = 1; for (let e = c3; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
               return { foot, noise, moved, wide: x1 >= x0 ? x1 - x0 + 1 : 0, kx, ky, on, box: [r.width, r.height], screen: [innerWidth, innerHeight],
                 top: top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') : 'nothing', vis: st.visibility, op };
-            } finally { drawPerson = dp; look.outfit = keep; } }); });
+            } finally { drawPerson = dp; if (kb) t3Body = kb; look.outfit = keep; } }); });
           if (!began) say(0, 'on a phone the world is still hidden 2.4 seconds after Begin, so the 3D room is not on the screen and the apron was not looked at there, which is not a pass');
           else if (room.cannot) no3d('the 3D camera cannot draw the room on this page (it fell back to the flat one)', 'the apron was not looked at in the 3D room');
           else if (room.none) say(0, 'in the 3D room ' + room.none + ', so the apron was not looked at there, which is not a pass');
@@ -13524,12 +13540,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* ---- 2 · a page that asks for it, as a world does, on a phone ---- */
     const shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
     const href = require('url').pathToFileURL(file).href, packAt = new URL('__bodytake.js', href).href;
+    /* A WORLD THAT DECLARES THE LIST ITSELF is asked as it stands: a second `const BODYTAKE` put before the engine would throw
+       "already declared" on its page. One whose own list does not name the person is not asked for the body here. */
+    let own = null; if (on0 !== null) { try { own = JSON.parse(on0); } catch (e) { own = String(on0); } }
     if (!bootTag.test(shellHtml)) say(0, 'this shell loads no engine/boot.js, so the list could not be declared before the engine the way a world declares it');
+    else if (on0 !== null && !(Array.isArray(own) && own.includes('person'))) say(1, 'this world\'s own BODYTAKE (' + on0 + ') does not name the person, so a world that asks for the body was not asked here');
     else {
       const bctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
       const bp = await bctx.newPage(), bErr = [];
       bp.on('pageerror', e => bErr.push(e.message));
-      const doc = shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
+      const doc = on0 !== null ? shellHtml : shellHtml.replace(bootTag, m => '<script src="__bodytake.js"></script>\n' + m);
       await bctx.route('**', r => { const u = r.request().url();
         if (u === href) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
         if (u === packAt) return r.fulfill({ body: 'const BODYTAKE=["person"];\n', contentType: 'text/javascript; charset=utf-8' });
@@ -14484,6 +14504,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   fails.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   fails = fails.filter(l => !/^COUNT-ONLY: /.test(l));
   console.log('  COUNT-ONLY: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
+  if (carded.size) console.log('  COUNT-ONLY: this world takes the jointed body for the person you steer, so the checks that find him by his card asked it with his body held off, as he is seen from afar: ' + [...carded].join(', ') + '; the body itself was asked in its own section');
   /* by kind, so the sentence says what a player lost: a refused style is a piece of the page that silently
      lost its look, a refused script is a feature that silently never ran */
   if (refused.length) { const kinds = {};
