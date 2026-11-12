@@ -1709,10 +1709,10 @@ function dogMake(skel,lk){
   /* the tail in two parts and its tip: the beagle's sickle carried up ("up"), the lab's otter tail carried out behind
      ("out"), the chi's thin tail curled over ("curl"). In the coat; the tip is the breed's (DOGPART paints the beagle's white) */
   {const t1=J.tail_1,t2=J.tail_2;
-    if(b.tail==="out")t1.rotation.x=-0.55;
+    if(b.tail==="out")t1.rotation.x=-0.3;
     if(b.tail==="curl"){t1.rotation.x=0.1;t2.rotation.x=0.9;}
     t1.userData.rest=t1.rotation.x;
-    const tr=Lm.tail*(b.tail==="out"?1.25:b.tail==="curl"?0.75:1);
+    const tr=Lm.tail*(b.tail==="out"?1.1:b.tail==="curl"?0.75:1);
     span("tail_1",at("tail_2"),tr,"tail",paint.coat,tr*0.4);span("tail_2",at("tail_tip"),tr*0.85,"tail",paint.coat,tr*0.3);
     part("tail_tip",ball(tr*1.15,10,8),"tip",paint.coat,0,0,0);}
   /* his shadow on the ground, as his card paints one under him: an oval as long as he is, which does not move with the walk */
