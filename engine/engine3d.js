@@ -1448,13 +1448,22 @@ function bodyMake(skel,lk,build){
     const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
     g.fillStyle=new THREE.Color(lk.skin).getStyle();g.fillRect(0,0,w,h);
     M.paints.slice().sort((a,b)=>a.z-b.z||a.n-b.n).forEach(L=>{g.save();g.fillStyle=new THREE.Color(lk.hair).getStyle();L.fn(g,w,h);g.restore();});
+    /* on a head with a jaw the whole painting sits lower over the face (M.brow), whoever painted it: each spot takes the
+       paint of the spot that much higher on the ball, so every style's hairline comes down the brow together */
+    if(M.brow){const src=g.getImageData(0,0,w,h),out=g.createImageData(w,h),S=src.data,D=out.data;
+      for(let j=0;j<h;j++){const th=Math.PI*(j+0.5)/h,st=Math.sin(th),x=-Math.cos(th);
+        for(let i=0;i<w;i++){const ph=2*Math.PI*(i+0.5)/w,z=Math.sin(ph)*st,y=-Math.cos(ph)*st+M.brow*hsm(-0.1,0.5,z),l=Math.hypot(x,y,z)||1;
+          let a=Math.atan2(z,-y);if(a<0)a+=2*Math.PI;
+          const sj=Math.min(h-1,Math.max(0,Math.floor(Math.acos(Math.max(-1,Math.min(1,-x/l)))/Math.PI*h))),si=Math.min(w-1,Math.floor(a/(2*Math.PI)*w)),k=4*(j*w+i),q=4*(sj*w+si);
+          D[k]=S[q];D[k+1]=S[q+1];D[k+2]=S[q+2];D[k+3]=255;}}
+      g.putImageData(out,0,0);}
     const tx=new THREE.CanvasTexture(c);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;if(m.material.map)m.material.map.dispose();
     m.material.map=tx;m.material.needsUpdate=true;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");m.userData.painted=true;return m;};
   /* paint by where on his head a spot is: fn(x,y,z) is handed the spot's direction from the head's centre (x to his left
      ear's side, y up, z to his face; a unit) and answers how much of colour `col` lies there, 0 to 1 */
   M.lay=(fn,col,z)=>M.scalp((g,w,h)=>{const c=new THREE.Color(col||lk.hair),R=c.r*255,G=c.g*255,B=c.b*255,im=g.getImageData(0,0,w,h),d=im.data;
     for(let j=0;j<h;j++){const th=Math.PI*(j+0.5)/h,st=Math.sin(th),x=-Math.cos(th);
-      for(let i=0;i<w;i++){const ph=2*Math.PI*(i+0.5)/w,pz=Math.sin(ph)*st,a=fn(x,-Math.cos(ph)*st+M.brow*hsm(-0.1,0.5,pz),pz);if(!(a>0))continue;
+      for(let i=0;i<w;i++){const ph=2*Math.PI*(i+0.5)/w,a=fn(x,-Math.cos(ph)*st,Math.sin(ph)*st);if(!(a>0))continue;
         const k=4*(j*w+i),q=a>1?1:a;d[k]+=(R-d[k])*q;d[k+1]+=(G-d[k+1])*q;d[k+2]+=(B-d[k+2])*q;}}
     g.putImageData(im,0,0);},0,0,z);
   /* HAIR THAT STANDS OFF THE HEAD AS ONE MASS is a shell: one skin over the skull, pushed out as far as the hair is long.
