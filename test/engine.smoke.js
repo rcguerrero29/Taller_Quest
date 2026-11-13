@@ -14652,6 +14652,19 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                       let less; try { less = K.near(K.only(cr, E1), '#E0218A', 14).length; } finally { hid.forEach(o => { o.visible = true; }); } cloth[h] = all - less; }
                     N.push('the beagle\'s bandana cloth facing you: ' + cloth.stand + ' pixels standing, ' + cloth.sit + ' sitting');
                     if (cloth.sit < Math.max(4, cloth.stand * 0.4)) said('sitting, facing you, the cloth of the beagle\'s bandana does not show: ' + cloth.sit + ' pixels of it, where ' + cloth.stand + ' show standing'); cr.band = null; }
+                  /* the beagle's saddle and crown, side on, sitting and lying, as standing: each the pixels of him that change when that
+                     one mark is taken out of his coat (his body made again each time; drawn twice unchanged first) */
+                  if (kind === 'beagle') { K.face(cr, 'right'); put('stand', false); const E2 = K.street(cr);
+                    const remake = h => { const c0 = cr.collar; cr.collar = c0 === '#123456' ? '#654321' : '#123456'; put(h, false); cr.collar = c0; put(h, false); };
+                    for (const h of ['sit', 'lay']) for (const [m, sheet] of [['saddle', 'barrel'], ['crown', 'skull']]) {
+                      const L = DOGCOAT.beagle && DOGCOAT.beagle[sheet], i = Array.isArray(L) ? L.findIndex(e => e[0] === m) : -1;
+                      if (i < 0) { said('the beagle\'s ' + m + ' is not in his coat, so whether it shows ' + word[h] + ' could not be asked'); continue; }
+                      remake(h); const a = K.only(cr, E2); remake(h); const a2 = K.only(cr, E2), out = L.splice(i, 1); let w;
+                      try { remake(h); w = K.only(cr, E2); } finally { L.splice(i, 0, ...out); remake(h); }
+                      const n = K.diff(a, w), noise = K.diff(a, a2);
+                      N.push('the beagle\'s ' + m + ', ' + word[h] + ', side on: ' + n + ' of his ' + a.length + ' pixels (drawn twice unchanged, ' + noise + ' differ)');
+                      if (noise || a.length < 50) said('the beagle\'s ' + m + ', ' + word[h] + ', could not be measured: ' + (noise ? 'drawn twice with nothing changed, ' + noise + ' pixels of him differ' : 'fewer than 50 pixels of him show'));
+                      else if (n < Math.max(4, a.length * 0.02)) said(word[h] + ', side on, the beagle\'s ' + m + ' does not show on his body: taking it out of his coat changes ' + n + ' of his ' + a.length + ' pixels'); } }
                   K.face(cr, 'right'); put('stand', false); }
                 /* his chest fills out by his size: the lab's more than the chihuahua's */
                 if (ref.lab && ref.chi) { const dl = ref.lab.lay.wide - ref.lab.stand.wide, dc = ref.chi.lay.wide - ref.chi.stand.wide;
