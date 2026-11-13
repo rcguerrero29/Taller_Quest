@@ -1757,34 +1757,65 @@ const HAIRPART={
   /* HAIR:braids */
   /* TWO BRAIDS. The hair is parted down the middle from brow to nape, drawn flat down each side of the head over the
      ear, gathered under it and plaited into a rope that hangs in front of the shoulder to a tie and a short loose end.
-     From the front it is a centre parting and a knobbly rope either side of the face, from the side one rope under
-     the ear, from behind the parting and both ropes. The plaits, with their zigzag edge, name it.
-     Built so: the hairline is paint, the flat hair two thin shells that leave the parting's skin between them, and each
-     plait a chain of crossings leaning one way and then the other, narrowing down its length, as a plait's strands
-     cross; the tie is a band a shade darker and the loose end a taper. The two plaits differ a little, as plaits do */
+     From the front it is a centre parting and a plait either side of the face, from the side one plait under the ear,
+     from behind the parting and both plaits. The plaits name it.
+     Built as a plait is made: three strands, each laid over the middle one in turn, from the left and then from the
+     right. Each strand is its own tube on its own path round the plait's centre line: it swings from one edge to the
+     other and back, and is on top while it travels from an edge to the middle, underneath while it travels from the
+     middle out. So the plait is wider than it is thick, its face is a column of strands slanting in from each edge to
+     the middle (the V's), its outline zigzags gently on both sides, and it narrows and tightens to the tie, a band a
+     shade darker, after which the strands come loose in a short tuft. The three strands of a plait are one geometry;
+     the two plaits differ a little in length, hang and phase, as plaits do */
   braids(M){const{part,r,hc}=M,dark=shadeHex(M.hair,-0.12);
     const line=hairEdge([[0,0.62],[30,0.6],[50,0.48],[70,0.36],[93,0.26],[110,0],[125,-0.3],[150,-0.48],[180,-0.5]]);
     M.lay((x,y,z)=>hsm(0,0.04,y-line(x,z)),dark);
     /* the flat hair: one shell, drawn down from the parting either side, the parting a groove in it */
     M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.06,e)*(0.055+0.07*hsm(0.82,0.97,Math.abs(x))*hsm(0.75,0.45,y))*(0.35+0.65*hsm(0.0,0.07,Math.abs(x))));}   /* fuller where it is drawn over the top of each ear */,{tex:(g,w,h)=>{const rnd=hairRnd(3),dk=shadeHex(M.hair,-0.1),lt=shadeHex(M.hair,0.07);
       for(let i=0;i<170;i++){const x=rnd()*w;g.globalAlpha=0.22+0.3*rnd();g.strokeStyle=i%3?dk:lt;g.lineWidth=1;g.beginPath();g.moveTo(x,0);g.lineTo(x+(rnd()-0.5)*6,h);g.stroke();}g.globalAlpha=1;}});
-    /* a plait is three strands crossing: one rope whose sides swell in turn, left then right, down its length, narrowing to the tie */
-    [1,-1].forEach(sd=>{const j=sd>0?0:1,n=9,len=1-0.05*j;
-      const cv=new THREE.CatmullRomCurve3([[1.0,-0.15,-0.05],[1.15,-0.6,0.1],[1.12,-1.15*len,0.3],[1.0,-1.75*len,0.42]].map(q=>new THREE.Vector3(sd*q[0]*r,hc+q[1]*r,q[2]*r)));
-      {const seg=44,rad=10,g=new THREE.TubeGeometry(cv,seg,0.15*r,rad,false),P=g.attributes.position,c=new THREE.Vector3(),v=new THREE.Vector3();
-        for(let a=0;a<=seg;a++){const u=a/seg;cv.getPoint(u,c);const tp=u>0.86?hsm(1,0.86,u)*0.75+0.25:1;
-          for(let q=0;q<=rad;q++){const i=a*(rad+1)+q;v.fromBufferAttribute(P,i).sub(c);const w=Math.sin(u*n*Math.PI*1.16+j*1.3)*v.x/(0.15*r);
-            v.multiplyScalar((1-0.28*u)*tp*(0.86+0.42*Math.max(0,w))).add(c);P.setXYZ(i,v.x,v.y,v.z);}}
-        g.computeVertexNormals();const m=part("head",g,"hair",M.hair,0,0,0);
-        const cw=64,chh=256,cvs=document.createElement("canvas");cvs.width=cw;cvs.height=chh;const x=cvs.getContext("2d");x.fillStyle=new THREE.Color(M.hair).getStyle();x.fillRect(0,0,cw,chh);
-        /* the crossings: a line where one strand goes under the next, slanting one way and then the other */
-        x.strokeStyle=shadeHex(M.hair,-0.22);x.lineWidth=3;x.globalAlpha=0.8;
-        for(let k=-2;k<n*1.2+2;k++){const y0=k*chh/(n*1.16);for(let half=0;half<2;half++){x.beginPath();x.moveTo(half*cw/2,y0+(k%2?0:chh/(n*2.3)));x.lineTo((half+1)*cw/2,y0+(k%2?chh/(n*2.3):0));x.stroke();}}
-        const tx=new THREE.CanvasTexture(cvs);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;tx.center.set(0.5,0.5);tx.rotation=Math.PI/2;
-        m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");}
-      const e=cv.getPoint(0.91),f=cv.getPoint(1),tie=part("head",new THREE.CylinderGeometry(0.1*r,0.1*r,0.1*r,10),"hair",shadeHex(M.hair,-0.3),e.x,e.y,e.z);
-      tie.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),f.clone().sub(e).normalize());
-      const end=part("head",new THREE.ConeGeometry(0.12*r,0.32*r,8),"hair",M.hair,f.x,f.y-0.04*r,f.z);end.rotation.x=Math.PI;});},
+    /* a tube along a list of points, its section an ellipse `w` across the plait's face and `d` through it (both per point,
+       in head radii); `F` the way the plait's face looks. Pushed into one geometry's arrays */
+    const S=10,tube=(G,P,w,d,F,V)=>{const n=P.length,o=G.pos.length/3,T=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3();
+      for(let i=0;i<n;i++){T.subVectors(P[Math.min(n-1,i+1)],P[Math.max(0,i-1)]).normalize();e1.copy(F).addScaledVector(T,-F.dot(T)).normalize();e2.crossVectors(T,e1);
+        for(let j=0;j<S;j++){const a=j/S*Math.PI*2,cw=Math.cos(a)*w[i]*r,sd=Math.sin(a)*d[i]*r;
+          G.pos.push(P[i].x+e2.x*cw+e1.x*sd,P[i].y+e2.y*cw+e1.y*sd,P[i].z+e2.z*cw+e1.z*sd);G.uv.push(j/S,V?V[i]:i/(n-1));}}
+      for(let i=0;i<n-1;i++)for(let j=0;j<S;j++){const A=o+i*S+j,B=o+i*S+(j+1)%S;G.idx.push(A,A+S,B,B,A+S,B+S);}
+      const c0=G.pos.length/3;G.pos.push(P[0].x,P[0].y,P[0].z,P[n-1].x,P[n-1].y,P[n-1].z);G.uv.push(0,0,0,1);
+      for(let j=0;j<S;j++){G.idx.push(c0,o+(j+1)%S,o+j);G.idx.push(c0+1,o+(n-1)*S+j,o+(n-1)*S+(j+1)%S);}};
+    /* a strand's sheet: round it (across) and along it by where it is in its weave (down: one turn of the weave), so it
+       is a shade deeper where it runs under its neighbours and along its two sides where it presses on them, with the
+       grain of the hair running along it */
+    const sheet=(seed,weave)=>{const w=64,h=128,c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d"),rnd=hairRnd(seed),base=new THREE.Color(M.hair);
+      const im=g.createImageData(w,h),D=im.data,dk=new THREE.Color(shadeHex(M.hair,-0.28));
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){const u=2*Math.PI*(y+0.5)/h,a=2*Math.PI*(x+0.5)/w;
+        const under=weave?hsm(0.1,-0.8,-Math.sin(2*u)):0,side=Math.pow(Math.abs(Math.cos(a)),6),k=Math.min(1,0.55*under+0.35*side),i=4*(y*w+x);
+        D[i]=255*(base.r+(dk.r-base.r)*k);D[i+1]=255*(base.g+(dk.g-base.g)*k);D[i+2]=255*(base.b+(dk.b-base.b)*k);D[i+3]=255;}
+      g.putImageData(im,0,0);const dk2=shadeHex(M.hair,-0.14),lt=shadeHex(M.hair,0.1);g.lineWidth=1;
+      for(let i=0;i<70;i++){const x=rnd()*w;g.globalAlpha=0.2+0.3*rnd();g.strokeStyle=i%3?dk2:lt;g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}g.globalAlpha=1;
+      const tx=new THREE.CanvasTexture(c);tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;return tx;};
+    const mesh=(G,tx)=>{const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(G.pos,3));
+      g.setAttribute("uv",new THREE.Float32BufferAttribute(G.uv,2));g.setIndex(G.idx);g.computeVertexNormals();const m=part("head",g,"hair",M.hair,0,0,0);
+      m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");return m;};
+    [1,-1].forEach(sd=>{const rnd=hairRnd(sd>0?4711:9257),len=1+(rnd()-0.5)*0.08,lean=(rnd()-0.5)*0.06,ph=rnd()*Math.PI*2;
+      /* the plait's centre line: from under the ear, down and a little forward, to the tie in front of the shoulder */
+      const cv=new THREE.CatmullRomCurve3([[0.86,-0.02,-0.1],[1.08,-0.5,0.06],[1.1+lean,-1.05*len,0.27],[1.02+lean,-1.6*len,0.4]].map(q=>new THREE.Vector3(sd*q[0]*r,hc+q[1]*r,q[2]*r)));
+      const Fd=new THREE.Vector3(sd*0.6,0,1).normalize(),N=160,K=2.9,G={pos:[],uv:[],idx:[]};
+      for(let s=0;s<3;s++){const P=[],w=[],d=[],V=[],c=new THREE.Vector3(),T=new THREE.Vector3(),F=new THREE.Vector3(),W=new THREE.Vector3();
+        for(let i=0;i<=N;i++){const t=i/N;cv.getPoint(t,c);cv.getTangent(t,T);F.copy(Fd).addScaledVector(T,-Fd.dot(T)).normalize();W.crossVectors(T,F);
+          const env=(1-0.35*t)*(0.75+0.25*hsm(0,0.08,t)),cl=1-0.7*hsm(0.86,1,t);   /* narrower down its length; drawn together into the tie */
+          const u=2*Math.PI*K*(t+0.3*t*t)/1.3+ph+s*2*Math.PI/3;
+          const lat=0.145*env*cl*Math.sin(u),dep=-0.045*env*cl*Math.sin(2*u);
+          P.push(c.clone().addScaledVector(W,lat*r).addScaledVector(F,dep*r));w.push(0.098*env);d.push(0.062*env);V.push(u/(2*Math.PI));}
+        tube(G,P,w,d,Fd,V);}
+      mesh(G,sheet(sd>0?31:57,true));
+      /* the tie, and the loose end below it: the strands' ends, a few thin locks spreading a little */
+      const e=cv.getPoint(1),T=cv.getTangent(1),tie=part("head",new THREE.CylinderGeometry(0.096*r,0.096*r,0.08*r,14),"hair",shadeHex(M.hair,-0.3),e.x,e.y,e.z);
+      tie.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),T);
+      const L={pos:[],uv:[],idx:[]},Wt=new THREE.Vector3().crossVectors(T,Fd).normalize();
+      for(let k=0;k<5;k++){const sp=(k-2)/2,ln=(0.22+0.08*rnd())*r,P=[],w=[],d=[];
+        for(let i=0;i<=8;i++){const q=i/8;P.push(e.clone().addScaledVector(T,ln*q).addScaledVector(Wt,(sp*0.035+sp*0.05*q*q+(rnd()-0.5)*0.01)*r).addScaledVector(Fd,(Math.abs(sp)-0.5)*0.02*r));
+          const f=q<0.35?1:1-Math.pow((q-0.35)/0.65,1.6);w.push(0.046*f+0.01);d.push(0.032*f+0.008);}
+        tube(L,P,w,d,Fd);}
+      mesh(L,sheet(sd>0?33:59,false));});},
   /* /HAIR:braids */
   /* HAIR:flat */
   /* FLAT TOP. The sides and the back are clipped close and the top stands straight up and is cut off level, so the hair is
