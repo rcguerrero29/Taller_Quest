@@ -1515,7 +1515,7 @@ function bodyMake(skel,lk,build){
     for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),t=(1-y)/2,w=0.42+0.58*Math.pow(t,1.6);p.setXYZ(i,x*w,y,z>0?z*(0.3+0.7*Math.pow(t,1.3)):z*0.3);}
     g.computeVertexNormals();
     const c=new THREE.Color(lk.skin).lerp(new THREE.Color(nose(lk.skin)),0.55);
-    part("head",g,"nose","#"+c.getHexString(),0,hc+cy*r,(frontZ(0,cy)-0.04)*r,[0.14*C.nosew*r,hh*r,0.27*C.noseout*r]);}
+    part("head",g,"nose","#"+c.getHexString(),0,hc+cy*r,(frontZ(0,cy)-0.04)*r,[0.14*C.nosew*r,hh*r,0.31*C.noseout*r]);}
   /* his mouth, under his nose: a line of a deeper, warmer shade of his skin lying on the face, straight or turned up at
      its ends in a smile, as wide as he chose; or none, as his card has none */
   if(C.mouth!=="none"){const my=REAL?-0.66:noseY-0.3,col="#"+new THREE.Color(nose(lk.skin)).multiplyScalar(0.62).getHexString(),w=0.17*C.mouthw;

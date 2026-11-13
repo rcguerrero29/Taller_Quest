@@ -14542,9 +14542,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (near(c, hairRGB) < near(c, skinRGB)) low = Math.min(low, v.y / r); } }
                 parts(X, wears('hair')).forEach(o => outOf(X, o, 4000).forEach(q => { if (Math.abs(q.x) < 0.06 && q.z > 0 && q.y > eyeY && q.o > 0.003) low = Math.min(low, q.y); }));
                 free(X); return low - eyeY; };
+              /* the allowance (0.17 of a radius) is what the eye took as the same brow when the two heads were set side by side on
+                 2026-11-13: a line brought down until the number matched sat on his brows. Half the drop (0.58 and 0.51 against 0.34
+                 and 0.32) is still red. */
               for (const st of ['buzz', 'cap']) { if (!HAIRSTYLES.includes(st)) continue;
                 const f = {}; for (const face of [ROUND, ...JAWED.slice(0, 1)]) { f[face] = brow(st, { face }); if (!isFinite(f[face])) P.push('on the ' + face + ' head, the hair "' + st + '" has no hair over the middle of his brow to measure'); }
-                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] <= f[ROUND] + 0.05)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': his brow is taller on a head with a jaw, which reads as his hair going');
+                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] <= f[ROUND] + 0.17)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': his brow is taller on a head with a jaw, which reads as his hair going');
                 if (HL) for (const face of [ROUND, ...JAWED.slice(0, 1)]) { const lo = brow(st, { face, hairline: HL.min }), hi = brow(st, { face, hairline: HL.max });
                   if (!(Math.abs(hi - lo) > 0.05)) P.push('with the hair "' + st + '" on the ' + face + ' head, moving the hairline from one end to the other moves where his hair starts by ' + (isFinite(hi - lo) ? Math.abs(hi - lo).toFixed(3) : 'nothing measurable') + ' of a radius');
                   N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } } }
