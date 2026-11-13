@@ -14168,10 +14168,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...BP, ...BN);
   }
 
-  /* ---- THE DOG WHO FOLLOWS YOU STANDS AS A JOINTED BODY (mq-v263) ----
-     A world that names `dog` in its own BODYTAKE list sees a dog who follows the person you steer, up close in the 3D camera,
-     as a four-legged body in his own coat and markings, and as his card from afar and whenever he does anything but stand,
-     walk and wag (engine/engine3d.js, grep "THE DOG'S BODY"). A world that says nothing sees every dog as his card.
+  /* ---- THE DOG WHO FOLLOWS YOU STANDS AS A JOINTED BODY (mq-v263; any dog near the camera, sitting, lying and howling, mq-v264) ----
+     A world that names `dog` in its own BODYTAKE list sees a dog near the person you steer, following or not, up close in the
+     3D camera, as a four-legged body in his own coat and markings, standing, walking, sitting, lying down and howling; and as
+     his card from afar and while he digs, shows his hearts or runs the agility course (engine/engine3d.js, grep "THE DOG'S
+     BODY"). A world that says nothing sees every dog as his card.
      Each sentence below is what a person would say if that part broke. Asked in a world that takes the dog's body (this world
      as it stands if it names `dog` itself; otherwise a page with `const BODYTAKE=["person","dog"];` put before the engine, as
      the person's section does), on a phone, with both of dogPose's clocks held (the world's clock stood still, Date and
@@ -14181,13 +14182,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      shadow (the street darkened, its colour kept), is him. The body is measured against HIS OWN CARD in the same frame, never
      against a number typed here, and fewer than 50 pixels of him on the screen, or anything that could not be measured, is
      a red. Red on the skeleton of mq-v263, where every sentence was owed (each one planted since in a copy of the tree
-     outside the repository, and seen red in its own words). */
+     outside the repository, and seen red in its own words); the holds of mq-v264 (S, T, and I and J as they now read) were
+     planted the same way. */
   {
     const DP = [], DN = [];
     const say = (k, m) => (k ? DN : DP).push((k ? 'COUNT-ONLY: ' : '') + 'the dog\'s body: ' + m);
     const OWED = [];   /* every sentence A to R is asked below; a sentence that is not would be listed here and stay a red */
     OWED.forEach(([k, s]) => DP.push('the dog\'s body, ' + k + ', is not asked yet: ' + s));
-    const DOGJOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'mouth', 'tail_1', 'tail_2', 'tail_tip', 'hind_l', 'hock_l', 'hpaw_l',
+    const DOGJOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'mouth', 'jaw', 'tail_1', 'tail_2', 'tail_tip', 'hind_l', 'hock_l', 'hpaw_l',
       'hind_r', 'hock_r', 'hpaw_r', 'fore_l', 'wrist_l', 'fpaw_l', 'fore_r', 'wrist_r', 'fpaw_r'];
     /* THE KIT, put on each page: a dog planted beside you, the clocks held, a frame drawn and read */
     const kit = () => {
@@ -14259,6 +14261,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       K.probe = (cr, pick, run) => { const B = K.bodyOf(cr), kept = []; if (!B) return run();
         B.traverse(o => { if (o.isMesh && o.userData.base && pick(o)) { kept.push([o, o.userData.base]); o.userData.base = new THREE.Color('#FF00FF'); } });
         try { return { parts: kept.length, ...run() }; } finally { kept.forEach(([o, c]) => { o.userData.base = c; }); } };
+      K.grab = grab;
+      /* the street alone, once, and him read against it: for a run of frames in one light and from one camera, where only he changes */
+      K.street = cr => { K.unplant(cr); try { return grab(); } finally { CRIT.push(cr); draw3d(); } };
+      K.only = (cr, E) => read(grab(), E, cr);
+      /* his note: the pixels of the frame that are his note (the same frame with the note's paint made clear, which no hold
+         undoes), and how many of them lie above the screen height of the point `top` (the top of his head, in the world) */
+      K.note = (cr, top) => { const B = K.bodyOf(cr), n = B && B.userData.note; if (!n || !n.material) return null;
+        const a = grab(), o0 = n.material.opacity; n.material.opacity = 0; let b; try { b = grab(); } finally { n.material.opacity = o0; }
+        /* read in a window round him a fifth of the screen wide, from a tenth of its height under the top of his head to a tenth over it */
+        const { W, H } = a, tp = top.clone().project(T3.cam), sx = (tp.x + 1) / 2 * W, sy = (tp.y + 1) / 2 * H; let all = 0, above = 0;
+        for (let y = Math.max(0, Math.floor(sy - H * 0.1)); y < Math.min(H, sy + H * 0.1); y++) for (let x = Math.max(0, Math.floor(sx - W * 0.1)); x < Math.min(W, sx + W * 0.1); x++) {
+          const k = (y * W + x) * 4; if (Math.abs(a.px[k] - b.px[k]) + Math.abs(a.px[k + 1] - b.px[k + 1]) + Math.abs(a.px[k + 2] - b.px[k + 2]) <= 40) continue;
+          all++; if (y > sy) above++; }
+        return { all, above, visible: !!n.visible }; };
       window.__dk = K; return true; };
     const kitSrc = '(' + kit + ')()';
 
@@ -14354,6 +14370,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const sole = m => { m.updateWorldMatrix(true, false); return (new THREE.Box3().setFromObject(m).min.y - B.position.y) / sc; };
                   const P0 = { wag: 0 };
                   t3DogPose(B, P0, 0, false); meet('standing').forEach(said);
+                  /* his lower jaw hangs on his face, shut and dropped for a howl: each of its parts touches a part of his head */
+                  for (const howl of [false, true]) { dogHold(B, 'stand', howl, 0); B.updateWorldMatrix(true, true);
+                    const Jn = B.userData.joints, jp = meshes.filter(o => o.parent === Jn.jaw), hp = meshes.filter(o => o.parent === Jn.head && o.userData.wears !== 'ear');
+                    if (!jp.length) { said('the ' + kind + '\'s body has no lower jaw'); break; }
+                    if (jp.some(o => !hp.some(q => boxOf(q).intersectsBox(boxOf(o))))) said('the ' + kind + '\'s lower jaw is not on his face' + (howl ? ' when he howls' : '') + ': a part of it touches nothing of his head'); }
+                  t3DogPose(B, P0, 0, false);
                   paws.forEach(([n, m]) => { const h = sole(m); if (Math.abs(h) > 0.01) said('standing, the ' + kind + '\'s ' + n + ' paw is ' + (h > 0 ? 'floating ' : 'sunk ') + Math.abs(h).toFixed(3) + ' ' + (h > 0 ? 'above' : 'below') + ' the ground'); });
                   for (const stair of [false, true]) {
                     const tread = 0.12 * sc, oz = B.position.clone(), fwd = new THREE.Vector3(Math.sin(0.6), 0, Math.cos(0.6));
@@ -14399,6 +14421,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     r.all = a.length; r.noise = K.diff(a, a2); r.n = K.diff(a, r.without); }
                   K.face(cr, 'right'); K.show(cr);
                   SHOT['mark-tip'] = K.probe(cr, o => o.userData.wears === 'tip', () => { const F = K.frames(cr); return { n: K.magenta(F.body).length, all: F.body.length, white: o => 0 }; });
+                  SHOT['mark-tail'] = K.probe(cr, o => o.userData.wears === 'tip' || o.userData.wears === 'tail', () => ({ n: K.magenta(K.frames(cr).body).length }));
                   { const B = K.bodyOf(cr), t = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'tip') t.push('#' + o.userData.base.getHexString()); }); SHOT.tipCol = t; } } }
               const said3 = { '12right': 'at noon, side on', '12toward': 'at noon, facing you', '12away': 'at noon, from behind', '22right': 'at ten at night, side on' };
               const ok = (kind, k) => { const F = SHOT[kind + k];
@@ -14417,8 +14440,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 /* F · his coat, and the beagle's white, the same share of him as on his card */
                   const share = (P, f) => f(P).length / P.length, coatB = share(E.body, P => K.near(P, coatHex)), coatC = share(E.card, P => K.near(P, coatHex));
                   N.push('the ' + kind + '\'s coat: ' + pct(coatB) + ' of his body, ' + pct(coatC) + ' of his card' + (kind === 'beagle' ? '; white ' + pct(share(E.body, K.white)) + ' of his body, ' + pct(share(E.card, K.white)) + ' of his card' : ''));
-                  if (Math.abs(coatB - coatC) > 0.15) said('side on, the ' + kind + '\'s body is not in his card\'s coat: ' + pct(coatB) + ' of him is his coat colour, where ' + pct(coatC) + ' of his card is');
-                  if (kind === 'beagle') { const wb = share(E.body, K.white), wc = share(E.card, K.white); if (Math.abs(wb - wc) > 0.15) said('side on, the beagle\'s body is not his card\'s white: ' + pct(wb) + ' of him is white, where ' + pct(wc) + ' of his card is'); } }
+                  /* the beagle's body carries more of his lemon than his card does, on purpose: the lemon of his head was brought forward
+                     round his eyes and over his cheeks on the body (mq-v263), which his card does not have yet. He measures about 60%
+                     against his card's 45%, so he is allowed a fifth; every other breed keeps 15% */
+                  if (Math.abs(coatB - coatC) > (kind === 'beagle' ? 0.2 : 0.15)) said('side on, the ' + kind + '\'s body is not in his card\'s coat: ' + pct(coatB) + ' of him is his coat colour, where ' + pct(coatC) + ' of his card is');
+                  if (kind === 'beagle') { const wb = share(E.body, K.white), wc = share(E.card, K.white); if (Math.abs(wb - wc) > 0.2) said('side on, the beagle\'s body is not his card\'s white: ' + pct(wb) + ' of him is white, where ' + pct(wc) + ' of his card is'); } }
                 /* G · at ten at night as bright as his card, each of his coat and (the beagle) his white */
                 const G = ok(kind, '22right');
                 if (G) [[kind === 'beagle' ? 'lemon coat' : 'coat', P => K.near(P, coatHex)], ...(kind === 'beagle' ? [['white', K.white]] : [])].forEach(([w, f]) => {
@@ -14461,7 +14487,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               for (const m of ['tip']) { const r = SHOT['mark-' + m];
                 if (!r.parts) said('the beagle\'s body has no ' + (m === 'tip' ? 'tip to his tail' : m) + ', which his card has');
                 else if (r.all < 50) said('the beagle\'s ' + m + ' could not be measured: fewer than 50 pixels of him show');
-                else if (r.n < Math.max(4, r.all * 0.02)) said('side on at noon, the beagle\'s ' + (m === 'tip' ? 'tail\'s tip' : m) + ' does not show: ' + r.n + ' of his ' + r.all + ' pixels'); }
+                /* the tip is the last third of a tail that tapers to a point (mq-v264), so it is asked as a share of his tail as it
+                   shows, a twelfth at least: measured on mq-v264, 16 of the tail's 151 pixels, about as many as the card's tip 1.5 px round */
+                else { const t = SHOT['mark-tail'] ? SHOT['mark-tail'].n : 0; N.push('side on at noon, the beagle\'s tail\'s tip: ' + r.n + ' of his tail\'s ' + t + ' pixels');
+                  if (r.n < Math.max(4, t / 12)) said('side on at noon, the beagle\'s ' + (m === 'tip' ? 'tail\'s tip' : m) + ' does not show: ' + r.n + ' of his tail\'s ' + t + ' pixels'); } }
               if (!SHOT.tipCol.length || SHOT.tipCol.some(c => c.toLowerCase() !== '#f6f2e8')) said('the tip of the beagle\'s tail is ' + (SHOT.tipCol.join(', ') || 'not there') + ' on his body, where his card paints it white');
               /* K, the bandana: in its colour when his record has one; none when it has none; none when its colour is not a colour */
               K.unplant(cr); cr = K.plant('beagle', at); K.at(12);
@@ -14537,20 +14566,193 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (xs.length < 24) said('with his wag held at zero, the beagle was not a body in every frame, so a still tail could not be asked');
                 else if (Math.max(...xs) - Math.min(...xs) > 0.2) said('with his card\'s wag held at zero, the beagle\'s tail still swings ' + (Math.max(...xs) - Math.min(...xs)).toFixed(1) + ' card pixels: it wags on a clock of its own'); }
               K.off(0);
-              /* ---- I · each thing his body cannot do sends him back to his card that same frame, and he is a body again after ---- */
+              /* ---- S · SITTING, LYING DOWN AND HOWLING, AS A PERSON SEES THEM (mq-v264), each breed. His body as the engine holds it
+                       from his record, read in his own frame (heights over the ground he stands on, in his skeleton's units, the
+                       ones the standing paws are asked in) and on the screen beside his standing self in the same frame and light.
+                       Every measure is against his own standing, never a number typed here, except the few tolerances named ---- */
+              { const HOLD = { stand: c => { c.sit = false; c.layT = 0; }, sit: c => { c.sit = true; c.layT = 0; }, lay: c => { c.sit = false; c.layT = Infinity; } };
+                const put1 = (h, howl) => { HOLD[h](cr); cr.howlT = howl ? Infinity : 0; return K.show(cr); }, put = (h, howl) => { put1(h, howl); return put1(h, howl); };   /* put: held two frames, so a frame between holds would not be read as the hold */
+                const word = { stand: 'standing', sit: 'sitting', lay: 'lying down' };
+                /* the shape of him: every vertex of every part, in his own frame */
+                const shape = B => { B.updateWorldMatrix(true, true); const J = B.userData.joints, S = B.userData.skel, ms = [];
+                  B.traverse(o => { if (o.isMesh && o.userData.wears) ms.push(o); });
+                  const v = new THREE.Vector3(), each = (L, f) => L.forEach(m => { const ps = m.geometry.attributes.position; for (let i = 0; i < ps.count; i++) f(B.worldToLocal(v.fromBufferAttribute(ps, i).applyMatrix4(m.matrixWorld))); });
+                  const low = L => { let y = Infinity; each(L, q => { y = Math.min(y, q.y); }); return y; };
+                  const jy = n => B.worldToLocal(J[n].getWorldPosition(new THREE.Vector3())).y;
+                  const trunk = ms.filter(o => o.userData.trunk), headP = ms.filter(o => (o.parent === J.head || o.parent === J.jaw || o.parent === J.mouth) && o.userData.wears !== 'ear');   /* the top of his head is his skull, not the tips of a chihuahua's ears */
+                  let x0 = Infinity, x1 = -Infinity, top = -Infinity, topW = null;
+                  each(trunk, q => { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); }); each(headP, q => { if (q.y > top) { top = q.y; topW = q.clone(); } });
+                  const nose = ms.find(o => o.userData.wears === 'nose'), paws = {};
+                  S.legs.forEach(l => { paws[l[2]] = low(ms.filter(o => o.parent === J[l[2]])); });
+                  return { hips: jy('hips'), chest: jy('chest'), head: jy('head'), top, topW: topW && B.localToWorld(topW),
+                    nose: nose ? B.worldToLocal(nose.getWorldPosition(new THREE.Vector3())).y : NaN, paws,
+                    belly: low(trunk.filter(o => o.userData.trunk === 'barrel')), sink: low(trunk), wide: x1 - x0, trunks: trunk.length }; };
+                const f3 = x => (+x).toFixed(3);
+                const ref = {};
+                for (const kind of ['beagle', 'lab', 'chi']) {
+                  K.unplant(cr); cr = K.plant(kind, at, { collar: '#0FA8B4', band: null }); K.at(12); K.face(cr, 'right');
+                  /* each hold, howling and not, once: his shape; side on, him against the street alone, the dark of his mouth (its
+                     part painted for one frame) and his note */
+                  const M = {}, F = {}, ok = {}, mouth = {}, notes = {}, E0 = K.street(cr);
+                  for (const h of ['stand', 'sit', 'lay']) for (const hw of [false, true]) { const s0 = put(h, hw), B = K.bodyOf(cr), k = h + (hw ? '+howl' : '');
+                    ok[k] = s0.body && !!B; if (!ok[k]) { said(word[h] + (hw ? ' and howling' : '') + ', the ' + kind + ' is not a body up close, so how he is held could not be asked'); continue; }
+                    M[k] = shape(B); if (!hw) F[h] = K.only(cr, E0);
+                    mouth[k] = K.probe(cr, o => o.userData.wears === 'mouth', () => ({ n: K.magenta(K.only(cr, E0)).length }));
+                    notes[k] = K.note(cr, M[k].topW); }
+                  if (!ok.stand || !ok.sit || !ok.lay) continue;
+                  const st = M.stand, si = M.sit, la = M.lay; ref[kind] = M;
+                  if (st.trunks < 2) said('the ' + kind + '\'s body has no chest and barrel to fill out lying down: ' + st.trunks + ' part(s) of his trunk');
+                  /* SITTING: his hips down on his haunches, lower than his chest; his fore paws on the ground; his head still carried */
+                  if (!(si.hips < st.hips * 0.8)) said('sitting, the ' + kind + '\'s hips are not down: they are ' + pct(si.hips / st.hips) + ' as high as standing');
+                  if (!(si.hips < si.chest)) said('sitting, the ' + kind + '\'s hips are no lower than his chest (' + f3(si.hips) + ' against ' + f3(si.chest) + '), so he does not sit up');
+                  ['fpaw_l', 'fpaw_r'].forEach(n => { const y = si.paws[n]; if (!(Math.abs(y) <= 0.01)) said('sitting, the ' + kind + '\'s ' + n + ' paw is ' + (y > 0 ? 'floating ' : 'sunk ') + f3(Math.abs(y)) + ' ' + (y > 0 ? 'above' : 'below') + ' the ground'); });
+                  ['hpaw_l', 'hpaw_r'].forEach(n => { const y = si.paws[n]; if (!(Math.abs(y) <= 0.03)) said('sitting, the ' + kind + '\'s ' + n + ' paw is ' + (y > 0 ? 'off' : 'sunk into') + ' the ground by ' + f3(Math.abs(y))); });
+                  if (!(si.head >= st.head * 0.8)) said('sitting, the ' + kind + '\'s head hangs: it is ' + pct(si.head / st.head) + ' as high as standing');
+                  /* LYING: his belly on the ground and not sunk into it; all four paws on it; his trunk filled out sideways */
+                  const tol = 0.012;
+                  if (!(la.belly <= tol)) said('lying down, the ' + kind + '\'s belly is off the ground: the underside of his barrel is ' + f3(la.belly) + ' above it');
+                  if (!(la.sink >= -0.03)) said('lying down, the ' + kind + ' sinks into the ground: his trunk goes ' + f3(-la.sink) + ' under it');
+                  Object.entries(la.paws).forEach(([n, y]) => { if (!(y <= 0.03 && y >= -0.03)) said('lying down, the ' + kind + '\'s ' + n + ' paw is ' + (y > 0 ? 'off' : 'sunk into') + ' the ground by ' + f3(Math.abs(y))); });
+                  if (!(la.wide > st.wide * 1.02)) said('lying down, the ' + kind + '\'s chest does not fill out: his trunk is ' + pct(la.wide / st.wide) + ' as wide as standing');
+                  /* THE HOWL: his nose up, in each hold */
+                  for (const h of ['stand', 'sit', 'lay']) if (M[h + '+howl'] && !(M[h + '+howl'].nose > M[h].nose + 0.01)) said(word[h] + ' and howling, the ' + kind + '\'s nose is not raised: ' + f3(M[h + '+howl'].nose) + ' high, against ' + f3(M[h].nose) + ' without the howl');
+                  /* ON THE SCREEN, side on at noon: his outline beside his standing self; and his collar in each hold */
+                  const bx = { stand: K.box(F.stand), sit: K.box(F.sit), lay: K.box(F.lay) };
+                  if (Object.values(F).some(P => P.length < 50)) { said('side on, fewer than 50 pixels of the ' + kind + ' show in a hold, so how he sits and lies could not be seen'); continue; }
+                  N.push('the ' + kind + ' side on at noon: standing ' + bx.stand.w + ' by ' + bx.stand.h + ' pixels, sitting ' + bx.sit.w + ' by ' + bx.sit.h + ', lying ' + bx.lay.w + ' by ' + bx.lay.h);
+                  /* sitting, he is taller at the front than at the back: the top of the front third of him over the top of the back
+                     third, against the same standing (facing right, his front is the right of the screen; the screen's rows count up) */
+                  const rise = P => { const b = { x0: Math.min(...P.map(q => q[0])), x1: Math.max(...P.map(q => q[0])), y0: Math.min(...P.map(q => q[1])) }, w = b.x1 - b.x0 + 1;
+                    const top = (a, z) => Math.max(...P.filter(q => q[0] >= b.x0 + a * w && q[0] < b.x0 + z * w).map(q => q[1]));
+                    return (top(2 / 3, 1.01) - top(0, 1 / 3)) / Math.max(1, Math.max(...P.map(q => q[1])) - b.y0 + 1); };
+                  const rs = { stand: rise(F.stand), sit: rise(F.sit) };
+                  N.push('the ' + kind + ', side on, his front over his back: ' + pct(rs.stand) + ' of his height standing, ' + pct(rs.sit) + ' sitting');
+                  if (!(rs.sit > rs.stand + 0.15)) said('side on, the sitting ' + kind + ' has a standing dog\'s outline: his front stands ' + pct(rs.sit) + ' of his height over his back, where standing it stands ' + pct(rs.stand));
+                  N.push('the ' + kind + ' in his own frame (hips, chest, head; belly and trunk\'s lowest; paws): standing ' + [st.hips, st.chest, st.head].map(f3).join(', ') + '; sitting ' + [si.hips, si.chest, si.head].map(f3).join(', ') + ', paws ' + Object.values(si.paws).map(f3).join(' ') + '; lying ' + [la.hips, la.chest, la.head, la.belly, la.sink].map(f3).join(', ') + ', paws ' + Object.values(la.paws).map(f3).join(' ') + '; trunk ' + f3(st.wide) + ' wide standing, ' + f3(la.wide) + ' lying');
+                  if (!(bx.lay.h < bx.stand.h * 0.85)) said('side on, the ' + kind + ' lying down is not lower than standing: ' + bx.lay.h + ' pixels high, against ' + bx.stand.h);
+                  if (!(bx.lay.h < bx.sit.h)) said('side on, the ' + kind + ' lying down is not lower than sitting: ' + bx.lay.h + ' pixels high, against ' + bx.sit.h);
+                  const col = { stand: K.near(F.stand, '#0FA8B4', 14).length, sit: K.near(F.sit, '#0FA8B4', 14).length, lay: K.near(F.lay, '#0FA8B4', 14).length };
+                  N.push('the ' + kind + '\'s collar side on: ' + col.stand + ' pixels standing, ' + col.sit + ' sitting, ' + col.lay + ' lying');
+                  ['sit', 'lay'].forEach(h => { if (col[h] < Math.max(4, col.stand * 0.4)) said(word[h] + ', side on, the ' + kind + '\'s collar is missing: ' + col[h] + ' pixels of it show, where ' + col.stand + ' show standing'); });
+                  /* the dark of his mouth, side on: his mouth's part painted for one frame, howling and not */
+                  N.push('the ' + kind + '\'s mouth side on: ' + ['stand', 'sit', 'lay'].map(h => word[h] + ' ' + mouth[h].n + ', howling ' + mouth[h + '+howl'].n).join('; ') + ' pixels');
+                  for (const h of ['stand', 'sit', 'lay']) { const a = mouth[h + '+howl'], b = mouth[h];
+                    if (!a.parts) { said('the ' + kind + '\'s body has no mouth to open'); break; }
+                    if (a.n < 4) said(word[h] + ' and howling, side on, the ' + kind + '\'s mouth does not open: ' + a.n + ' pixels of its dark show');
+                    if (b.n > Math.max(2, a.n * 0.25)) said(word[h] + ' and not howling, side on, the ' + kind + '\'s mouth hangs open: ' + b.n + ' pixels of its dark show'); }
+                  /* his note over his head, while he howls and only then */
+                  for (const h of ['stand', 'sit', 'lay']) for (const hw of [false, true]) { const r = notes[h + (hw ? '+howl' : '')];
+                    const what = word[h] + (hw ? ' and howling' : ', not howling');
+                    if (!r) { said('the ' + kind + '\'s body has no note to sing'); break; }
+                    if (hw) { if (r.all < 4) said(what + ', no note shows over the ' + kind + '\'s head');
+                      else if (r.above < r.all * 0.9) said(what + ', the ' + kind + '\'s note is not over his head: ' + (r.all - r.above) + ' of its ' + r.all + ' pixels are below the top of his head'); }
+                    else if (r.all || r.visible) said(what + ', a note shows on the ' + kind + ' (' + r.all + ' pixels of it), where he sings none'); }
+                  /* his eyes, facing you: his eyes' parts painted for one frame, standing, lying, and lying while he howls. Shut, fewer
+                     than three quarters of their standing pixels face you (his head is lowered, so some of an open eye's are hidden
+                     anyway: measured on mq-v264, 35% to 45% here and 60% in a five-tile world; open, 94% to 96%), and howling, half as
+                     many again as shut */
+                  K.face(cr, 'toward'); const eye = {}, E1 = K.street(cr);
+                  for (const [k, h, hw] of [['stand', 'stand', false], ['lay', 'lay', false], ['lay+howl', 'lay', true]]) { put(h, hw); eye[k] = K.probe(cr, o => o.userData.wears === 'eye', () => ({ n: K.magenta(K.only(cr, E1)).length })); }
+                  N.push('the ' + kind + '\'s eyes facing you: ' + eye.stand.n + ' pixels standing, ' + eye.lay.n + ' lying, ' + eye['lay+howl'].n + ' lying and howling');
+                  if (eye.stand.n < 4) said('facing you, standing, the ' + kind + '\'s eyes do not show (' + eye.stand.n + ' pixels), so whether they shut could not be asked');
+                  else { if (!(eye.lay.n <= eye.stand.n * 0.75)) said('lying down, the ' + kind + '\'s eyes are open: ' + eye.lay.n + ' pixels of them face you, where ' + eye.stand.n + ' do standing');
+                    if (!(eye['lay+howl'].n >= Math.max(4, eye.lay.n * 1.5))) said('lying down and howling, the ' + kind + '\'s eyes are shut: ' + eye['lay+howl'].n + ' pixels of them face you, where ' + eye.lay.n + ' do lying quiet'); }
+                  /* his bandana's cloth facing you, sitting, as standing (the beagle, who wears one here) */
+                  if (kind === 'beagle') { const cloth = {}; cr.band = '#E0218A';
+                    for (const h of ['stand', 'sit']) { put(h, false); const B = K.bodyOf(cr), all = K.near(K.only(cr, E1), '#E0218A', 14).length, hid = [];
+                      B.traverse(o => { if (o.isMesh && o.visible && o.userData.band === 'point') { o.visible = false; hid.push(o); } });
+                      let less; try { less = K.near(K.only(cr, E1), '#E0218A', 14).length; } finally { hid.forEach(o => { o.visible = true; }); } cloth[h] = all - less; }
+                    N.push('the beagle\'s bandana cloth facing you: ' + cloth.stand + ' pixels standing, ' + cloth.sit + ' sitting');
+                    if (cloth.sit < Math.max(4, cloth.stand * 0.4)) said('sitting, facing you, the cloth of the beagle\'s bandana does not show: ' + cloth.sit + ' pixels of it, where ' + cloth.stand + ' show standing'); cr.band = null; }
+                  /* the beagle's saddle and crown, side on, sitting and lying, as standing: each the pixels of him that change when that
+                     one mark is taken out of his coat (his body made again each time; drawn twice unchanged first) */
+                  if (kind === 'beagle') { K.face(cr, 'right'); put('stand', false); const E2 = K.street(cr);
+                    const remake = h => { const c0 = cr.collar; cr.collar = c0 === '#123456' ? '#654321' : '#123456'; put(h, false); cr.collar = c0; put(h, false); };
+                    for (const h of ['sit', 'lay']) for (const [m, sheet] of [['saddle', 'barrel'], ['crown', 'skull']]) {
+                      const L = DOGCOAT.beagle && DOGCOAT.beagle[sheet], i = Array.isArray(L) ? L.findIndex(e => e[0] === m) : -1;
+                      if (i < 0) { said('the beagle\'s ' + m + ' is not in his coat, so whether it shows ' + word[h] + ' could not be asked'); continue; }
+                      remake(h); const a = K.only(cr, E2); remake(h); const a2 = K.only(cr, E2), out = L.splice(i, 1); let w;
+                      try { remake(h); w = K.only(cr, E2); } finally { L.splice(i, 0, ...out); remake(h); }
+                      const n = K.diff(a, w), noise = K.diff(a, a2);
+                      N.push('the beagle\'s ' + m + ', ' + word[h] + ', side on: ' + n + ' of his ' + a.length + ' pixels (drawn twice unchanged, ' + noise + ' differ)');
+                      if (noise || a.length < 50) said('the beagle\'s ' + m + ', ' + word[h] + ', could not be measured: ' + (noise ? 'drawn twice with nothing changed, ' + noise + ' pixels of him differ' : 'fewer than 50 pixels of him show'));
+                      else if (n < Math.max(4, a.length * 0.02)) said(word[h] + ', side on, the beagle\'s ' + m + ' does not show on his body: taking it out of his coat changes ' + n + ' of his ' + a.length + ' pixels'); } }
+                  K.face(cr, 'right'); put('stand', false); }
+                /* his chest fills out by his size: the lab's more than the chihuahua's */
+                if (ref.lab && ref.chi) { const dl = ref.lab.lay.wide - ref.lab.stand.wide, dc = ref.chi.lay.wide - ref.chi.stand.wide;
+                  if (!(dl > dc)) said('lying down, the lab\'s chest fills out no more than the chihuahua\'s: ' + f3(dl) + ' wider against ' + f3(dc)); }
+                /* a breed's `lie` that is not a number, or is huge, is held: his trunk lying down is never narrower than standing, never
+                   more than the most a trunk widens, and a measure that is not a number widens nothing */
+                { const B0 = dogSkeleton('beagle');
+                  for (const v of ['x', NaN, Infinity, -5, 99, 0.5]) { const sk = { ...B0, build: { ...B0.build, lie: v } }, B = dogMake(sk, dogLookOf({ kind: 'beagle' }));
+                    try { dogHold(B, 'stand', false, 0); const a = shape(B).wide; dogHold(B, 'lay', false, 0); const b = shape(B).wide, r = b / a;
+                      const most = typeof v === 'number' && isFinite(v) && v > 1 ? 1.4 : 1;
+                      if (!isFinite(r) || r < 0.999 || r > most + 0.001) said('a breed whose lying measure is ' + JSON.stringify(v === v ? v : 'NaN') + ' lies down ' + (isFinite(r) ? pct(r) + ' as wide as he stands' : 'with a trunk that cannot be measured') + ', where ' + (most > 1 ? 'a trunk widens at most to ' + pct(most) : 'a measure that is not a widening widens nothing')); }
+                    finally { t3Dispose(B); } } }
+                /* his tail swings less than half as far lying down, for the same wag; and still swings */
+                { const kp = dogPose, Wd = DOGWAG.beagle[1], sw = {}; K.unplant(cr); cr = K.plant('beagle', at); K.face(cr, 'right');
+                  try { for (const h of ['stand', 'lay']) { const xs = []; for (const w of [Wd, -Wd]) { dogPose = (c, nw, t) => ({ ...kp(c, nw, t), wag: w }); put(h, false); const x = tipX(); if (x !== null) xs.push(x); }
+                      sw[h] = xs.length === 2 ? Math.abs(xs[0] - xs[1]) : null; } } finally { dogPose = kp; put('stand', false); }
+                  if (sw.stand === null || sw.lay === null) said('the beagle was not a body standing and lying, so how far his tail swings lying down could not be asked');
+                  else { N.push('the beagle\'s tail for a wag of ' + Wd + ': ' + sw.stand.toFixed(2) + ' card pixels side to side standing, ' + sw.lay.toFixed(2) + ' lying');
+                    if (!(sw.lay < sw.stand * 0.5)) said('lying down, the beagle\'s tail swings as a standing dog\'s does: ' + sw.lay.toFixed(1) + ' card pixels for a wag that swings it ' + sw.stand.toFixed(1) + ' standing');
+                    if (!(sw.lay > sw.stand * 0.15)) said('lying down, the beagle\'s tail does not wag: ' + sw.lay.toFixed(1) + ' card pixels for a wag that swings it ' + sw.stand.toFixed(1) + ' standing'); } }
+                /* ---- he changes at once: the first frame after his record says sit, lie or stand, his body is held that way ---- */
+                { const R0 = {}; for (const h of ['stand', 'sit', 'lay']) { put(h, false); put(h, false); R0[h] = shape(K.bodyOf(cr)); }
+                  const near = (a, b) => Math.abs(a.hips - b.hips) < 1e-3 && Math.abs(a.head - b.head) < 1e-3;
+                  for (const [h, from] of [['sit', 'stand'], ['lay', 'sit'], ['stand', 'lay'], ['lay', 'stand'], ['sit', 'lay'], ['stand', 'sit']]) { put(from, false); put(from, false);
+                    put1(h, false); const m = shape(K.bodyOf(cr));
+                    if (!near(m, R0[h])) said('the frame after his record says he is ' + word[h] + ' (from ' + word[from] + '), the beagle is not held that way yet: his hips are ' + f3(m.hips) + ' high, where ' + word[h] + ' they are ' + f3(R0[h].hips)); }
+                  put('stand', false); cr.howlT = 0; } }
+              /* ---- T · his tail tapers: thinner where it ends than where it leaves him, each breed, measured across his tail by
+                       its parts' own shapes at its root, its middle joint and its end ---- */
+              for (const kind of ['beagle', 'lab', 'chi']) { const B = dogMake(dogSkeleton(kind), dogLookOf({ kind }));
+                try { B.updateWorldMatrix(true, true); const J = B.userData.joints, tails = []; B.traverse(o => { if (o.isMesh && (o.userData.wears === 'tail' || o.userData.wears === 'tip')) tails.push(o); });
+                  const inside = (o, q) => { const g = o.geometry, p = o.worldToLocal(q.clone()), pr = g.parameters || {};
+                    if (g.type === 'SphereGeometry') return p.length() <= pr.radius;
+                    if (g.type === 'CylinderGeometry') { const h = pr.height / 2; if (Math.abs(p.y) > h) return false; const t = (p.y + h) / (2 * h); return Math.hypot(p.x, p.z) <= pr.radiusBottom + (pr.radiusTop - pr.radiusBottom) * t; }
+                    if (g.type === 'CapsuleGeometry') { const h = (pr.length !== undefined ? pr.length : pr.height) / 2, y = Math.max(-h, Math.min(h, p.y)); return Math.hypot(p.x, p.y - y, p.z) <= pr.radius; }
+                    if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox.containsPoint(p); };
+                  /* across him (his own x), from the joint outward, as far as some part of his tail still holds the point */
+                  const across = n => { const c = J[n].getWorldPosition(new THREE.Vector3()), side = new THREE.Vector3(1, 0, 0).transformDirection(B.matrixWorld); let r = 0;
+                    for (let k = 1; k <= 400; k++) { const d = k * 0.0005; if (tails.some(o => inside(o, c.clone().addScaledVector(side, d)))) r = d; else break; } return 2 * r / B.scale.x; };
+                  const w = ['tail_1', 'tail_2', 'tail_tip'].map(across);
+                  N.push('the ' + kind + '\'s tail across: ' + w.map(f => f.toFixed(4)).join(', ') + ' (at his rump, its middle and its end)');
+                  if (!(w[0] > 0)) said('the ' + kind + '\'s tail does not leave his rump: nothing of it is at its root');
+                  else if (!(w[2] < w[0] * 0.6 && w[1] < w[0])) said('the ' + kind + '\'s tail does not taper: it is ' + w[0].toFixed(3) + ' across at his rump, ' + w[1].toFixed(3) + ' at its middle and ' + w[2].toFixed(3) + ' at its end'); }
+                finally { t3Dispose(B); } }
+              /* ---- I · sitting, lying down and howling (and howling while he sits or lies) are his body's own, up close, and his
+                       card is not drawn as well; each thing his body cannot do sends him back to his card that same frame, and
+                       he is a body again after ---- */
               const kg = gearPose;
-              const poses = [['sitting', c => { c.sit = true; }, c => { c.sit = false; }], ['lying down', c => { c.layT = Infinity; }, c => { c.layT = 0; }],
-                ['howling', c => { c.howlT = Infinity; }, c => { c.howlT = 0; }], ['digging', c => { c.digT = Infinity; }, c => { c.digT = 0; }],
+              const asBody = [['sitting', c => { c.sit = true; }, c => { c.sit = false; }], ['lying down', c => { c.layT = Infinity; }, c => { c.layT = 0; }],
+                ['howling', c => { c.howlT = Infinity; }, c => { c.howlT = 0; }],
+                ['howling while he sits', c => { c.sit = true; c.howlT = Infinity; }, c => { c.sit = false; c.howlT = 0; }],
+                ['howling while he lies down', c => { c.layT = Infinity; c.howlT = Infinity; }, c => { c.layT = 0; c.howlT = 0; }]];
+              const asCard = [['digging', c => { c.digT = Infinity; }, c => { c.digT = 0; }],
                 ['showing his hearts', c => { c.loveT = Infinity; }, c => { c.loveT = 0; }],
                 ['inside the agility tunnel', () => { gearPose = c => c === cr ? { hop: 0, hid: true, side: 0 } : kg(c); }, () => { gearPose = kg; }],
                 ['over the agility bar', () => { gearPose = c => c === cr ? { hop: 3, hid: false, side: 0 } : kg(c); }, () => { gearPose = kg; }],
                 ['through the weave poles', () => { gearPose = c => c === cr ? { hop: 0, hid: false, side: 1.5 } : kg(c); }, () => { gearPose = kg; }]];
-              try { for (const [what, on, off] of poses) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
+              K.face(cr, 'right');
+              try { for (const [what, on, off] of asBody) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
+                  if (!a.body) said('up close, ' + what + ', the dog is his flat card: no body ' + (/^howl/.test(what) ? 'howls' : what === 'sitting' ? 'sits' : 'lies') + ' there');
+                  else if (a.card) said('up close, ' + what + ', the dog is drawn twice: his card stands in the same place as his body');
+                  if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); }
+                for (const [what, on, off] of asCard) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
                   if (a.body) said('the dog stays a body while ' + what + ', which his body cannot do');
                   if (!a.card) said('while ' + what + ', the dog has no card either');
-                  if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); } } finally { gearPose = kg; }
-              /* ---- J · a dog who does not follow is his card; past DOGBODYMAX following dogs, the nearest are bodies ---- */
-              cr.follow = false; s = K.show(cr); if (s.body || !s.card) said('a dog who does not follow you, up close, is ' + (s.body ? 'a body' : 'not even his card') + ', where he should be his card'); cr.follow = true;
+                  if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.loveT = 0; }
+              /* ---- J · any dog near the camera is a body, whether he follows you or not (mq-v264), and past DOGNEAR his card; past
+                       DOGBODYMAX dogs, the nearest are bodies ---- */
+              cr.follow = false; s = K.show(cr);
+              if (!s.body) said('a dog who does not follow you, up close, is his flat card, where any dog near the camera stands as a body');
+              else if (s.card) said('a dog who does not follow you, up close, is drawn twice: his card stands in the same place as his body');
+              { const [qx, qy] = focusXY(); cr.fx = cr.x = qx + (DOGNEAR + BODYHYST + 0.6); cr.fy = cr.y = qy; s = K.show(cr);
+                if (s.body) said('a dog who does not follow you, ' + (DOGNEAR + BODYHYST + 0.6).toFixed(1) + ' squares from the camera\'s focus, past where a body is drawn, is still a body');
+                if (!s.card) said('a dog who does not follow you, seen from afar, has no card');
+                cr.fx = cr.x = at[0]; cr.fy = cr.y = at[1]; }
+              cr.follow = true; K.show(cr);
               { const many = [cr]; for (let k = 1; k <= DOGBODYMAX; k++) many.push(K.plant('beagle', [at[0] + k * 0.3, at[1]], { fx: at[0] + k * 0.3 }));
                 K.show(cr); const bodies = many.filter(c => { const B = K.bodyOf(c); return B && B.visible && T3.dogShown.has(c); }), cards = many.filter(c => !T3.dogShown.has(c));
                 if (bodies.length !== DOGBODYMAX) said('with ' + many.length + ' dogs following you up close, ' + bodies.length + ' stand as bodies, where ' + DOGBODYMAX + ' should');
@@ -14581,11 +14783,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 else { let off = 0; B.traverse(o => { if (o.isMesh && o.userData.wears === 'coat' && o.userData.base.getHexString() !== new THREE.Color(B.userData.look.coat).getHexString()) off++; });
                   if (off) said('a lab whose coat is not a colour is painted something other than the coat dogLookOf answers, on ' + off + ' part(s)'); }
                 cr.c = '#E8C46A'; cr.kind = 'beagle'; K.show(cr); }
-              /* ---- N · his body goes when he does: through a door, rehomed, or no longer following ---- */
+              /* ---- N · his body goes when he does: through a door, or rehomed (a dog who stops following you is still a body near the camera: J) ---- */
               { const watch = B => { const st = { n: 0, gone: 0 }; B.traverse(o => { if (o.geometry) { st.n++; const d = o.geometry.dispose.bind(o.geometry); o.geometry.dispose = () => { st.gone++; d(); }; } }); return st; };
                 const leaves = [['he goes through a door into another world', c => { c.world = c.world + '\u0000elsewhere'; }, c => { c.world = world; }, true],
-                  ['he is rehomed', c => { K.unplant(c); }, c => { CRIT.push(c); }, true],
-                  ['he stops following you', c => { c.follow = false; }, c => { c.follow = true; }, false]];
+                  ['he is rehomed', c => { K.unplant(c); }, c => { CRIT.push(c); }, true]];
                 for (const [what, go, back, dispose] of leaves) { K.show(cr); const B = K.bodyOf(cr); if (!B) { said('before ' + what + ', the dog was not a body, so his leaving could not be asked'); continue; }
                   const st = watch(B); go(cr); K.show(cr); let left = 0; T3.scene.traverse(o => { if (o === B && o.visible) left++; });
                   if (left || (dispose && B.parent)) said('after ' + what + ', his body is still in the scene the next frame');
