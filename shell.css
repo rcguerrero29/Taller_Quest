@@ -346,6 +346,9 @@
   .creator.drawers .crhead{display:contents;}   /* so the preview holds to the panel, not to the header that scrolls away */
   .creator.drawers .preview{position:sticky; top:0; z-index:3; background:var(--surface); padding:6px 0; flex-wrap:wrap;}
   .creator.drawers .crbody{padding-top:0;}
+  .crtabs{display:flex; gap:6px; flex-basis:100%; margin-top:8px; order:2;}
+  .crtab{flex:1 1 0; min-height:44px; padding:0 4px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-family:'Unbounded',sans-serif; font-size:.72rem; cursor:pointer;}
+  .crtab[aria-selected="true"]{background:var(--accent); border-color:var(--accent); color:#fff;}
   .crdrawer{border-bottom:1px solid var(--line);}
   .crdrawer>summary{display:flex; align-items:center; gap:8px; min-height:48px; cursor:pointer; list-style:none; font-family:'Unbounded',sans-serif; font-size:.82rem; color:var(--ink);}
   .crdrawer>summary::-webkit-details-marker{display:none;}
