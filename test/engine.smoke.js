@@ -13536,7 +13536,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
        and that short sleeves bare his arms and long ones cover them. On pages of their own: G, a world that says nothing shows
        and keeps nothing new; H, the builder in the creator (labelled in two languages, the keyboard, a phone, the preview);
        I, the save cleans every look it reads; J, two rows planted in the table reach the builder, the save and the maker.
-       Red on mq-v261 in D, E, F, H and J (G holds there, as it must: it asks that nothing changed). */
+       Red on mq-v261 in D, E, F, H and J (G holds there, as it must: it asks that nothing changed).
+       mq-v265, HIS HAIR IS HIS LOOK'S STYLE AND HIS HEAD HAS A SHAPE: the row "cut" is gone, so D asks its face checks for each
+       style of HAIRSTYLES beside his card in the same style, and the fuller hair is the afro; E samples the corners once there
+       are too many to make (33 measures), makes each on a shape of head, sets each build against the card's four measures
+       made with its other measures, and measures a part whose points were moved (his skull, an ear, his nose) by its own
+       shape and not by the ball it was made from; F asks the person with a jaw too; G asks that a world that says nothing
+       keeps its old creator, its rows where the page put them; H opens the tab and the drawer a control is in before it
+       touches it, walks the keyboard through the tabs and drawers, and asks the rows that need a jaw on a head that has one;
+       I asks that every option starts at its word and that a save with a style the body cannot wear, or the old row, lands
+       on one it can. K to R, below J, ask what is new. */
   {
     const BP = [], BN = [];
     const say = (k, m) => (k ? BN : BP).push((k ? 'COUNT-ONLY: ' : '') + 'the jointed body: ' + m);
@@ -13587,9 +13596,21 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const B = T3.scene.getObjectByName('body'), V = new THREE.Vector3(), at = n => { const j = B.getObjectByName(n); j.updateWorldMatrix(true, false); return j.getWorldPosition(new THREE.Vector3()); };
             const missing = JOINTS.filter(n => !B.getObjectByName(n));
             if (missing.length) { P.push('his body has no joint named ' + missing.join(', ') + ', so it is not the skeleton a person is built on'); return { P, N }; }
-            /* his colours: each part says what it wears, and its colour is his */
+            /* his colours: each part says what it wears, and its colour is his. mq-v265: a part painted on a sheet of its own (his
+               skull, with the hair laid on it; a shell of hair, drawn with its grain) wears its colour in the sheet, its own colour
+               white: the skull's is the sheet's colour in the middle of his face, where no hair is ever painted, and any other
+               sheet's is the colour most of it is filled with */
+            const sheetCol = o => { const im = o.material.map && o.material.map.image; if (!im || !im.getContext) return null;
+              const d = im.getContext('2d').getImageData(0, 0, im.width, im.height).data, hex = i => '#' + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
+              const g = o.geometry, uv = g.attributes.uv, p = g.attributes.position;
+              if (o.userData.wears === 'skin' && uv && p) { let best = -2, bi = 0; const v = new THREE.Vector3();
+                for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).normalize(); if (v.z > best) { best = v.z; bi = i; } }
+                const x = Math.min(im.width - 1, Math.floor(uv.getX(bi) * im.width)), y = Math.min(im.height - 1, Math.floor((o.material.map.flipY ? 1 - uv.getY(bi) : uv.getY(bi)) * im.height));
+                return hex(4 * (y * im.width + x)); }
+              const n = {}; for (let i = 0; i < d.length; i += 4) { const h = hex(i); n[h] = (n[h] || 0) + 1; }
+              return Object.keys(n).sort((a, b) => n[b] - n[a])[0]; };
             const want = { skin: look.skin, hair: look.hair, shirt: look.shirt, trousers: '#2E3547' }, worn = {};
-            B.traverse(o => { if (o.isMesh && o.userData.wears) (worn[o.userData.wears] = worn[o.userData.wears] || []).push('#' + o.userData.base.getHexString()); });
+            B.traverse(o => { if (o.isMesh && o.userData.wears) (worn[o.userData.wears] = worn[o.userData.wears] || []).push(sheetCol(o) || '#' + o.userData.base.getHexString()); });
             Object.entries(want).forEach(([k, c]) => { const got = worn[k] || [];
               if (!got.length) P.push('no part of his body wears his ' + k + ', so his ' + k + ' colour is lost up close');
               else if (got.some(g => g.toLowerCase() !== c.toLowerCase())) P.push('his ' + k + ' is ' + [...new Set(got)].join(', ') + ' on his body, where his look says ' + c); });
@@ -13754,20 +13775,24 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const fs = M.skin.filter(q => q[1] > mid).length, fh = M.hair.filter(q => q[1] > mid).length;
                 const lum = a => a.length ? a.reduce((s, q) => s + q[2], 0) / a.length : 0;
                 return { shirt: M.shirt.length, hair: M.hair.length, head: fs + fh, wide, share: fs / Math.max(1, fs + fh), lumShirt: lum(M.shirt), lumSkin: lum(M.skin) }; };
-              const F = {}, rowC = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'cut') : null, CUTS = rowC ? rowC.list : [null];
-              /* mq-v262: asked for each hair the table offers (the row "cut"), so whichever a player chooses his face shows */
-              if (!rowC) P.push('the body\'s choices have no hair to choose, so a player cannot have the fuller hair or the cap');
+              /* mq-v265: asked for each style of hair his body can wear (HAIRSTYLES, read off the engine; until mq-v265 the table's
+                 two hairs, the row "cut"), each set beside his card drawn in the same style, facing you and facing right, so whichever
+                 a player chooses his face shows; how wide he is and how bright at night, which no hair changes, in the style a new
+                 character starts with (the save's own default). Two grabs a frame, his body and his card, against the street alone */
+              const F = {}, CUTS = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [], START = saveLook({}).style;
+              if (!CUTS.length) P.push('the engine keeps no list of the styles of hair his body can wear, so whether his face shows under each was not asked');
+              else if (!CUTS.includes(START)) P.push('a new character starts with the hair "' + START + '", which is not one his body can wear (' + CUTS.join(', ') + ')');
+              const FRAMES = CUTS.flatMap(c => [[c, 12, 'down'], [c, 12, 'right']].concat(c === START ? [[c, 22, 'down']] : []));
               try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
-                for (const cut of CUTS) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body: cut ? { cut } : {} });
-                for (const [h, d] of [[12, 'down'], [12, 'right'], [22, 'down']]) { hour = h; dir = d;
+                for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: {} }); hour = h; dir = d;
                   const Bf = grab(), on = T3.bodyOn;
                   t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; const Cf = grab();
                   t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); }; const Ef = grab();
                   t3Actors = ka; t3Body = kb;
-                  F[cut + '|' + h + d] = { on, body: read(Bf, Ef), card: read(Cf, Ef) }; } }
+                  F[cut + '|' + h + d] = { on, body: read(Bf, Ef), card: read(Cf, Ef) }; }
               } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = 'down'; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
-              const hairSaid = c => c === null ? '' : ' with the hair "' + c + '"', pct = x => Math.round(x * 100) + '%';
+              const hairSaid = c => ' with the hair "' + c + '"', pct = x => Math.round(x * 100) + '%';
               for (const cut of CUTS) {
               const said = { '12down': 'at noon, facing you' + hairSaid(cut), '12right': 'at noon, facing right' + hairSaid(cut), '22down': 'at ten at night, facing you' + hairSaid(cut) };
               const ok = Object.entries(F).filter(([k]) => k.startsWith(cut + '|')).map(([k, f]) => [k.slice(k.indexOf('|') + 1), f]).filter(([k, f]) => {
@@ -13778,18 +13803,18 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const at3 = k => F[cut + '|' + k];
               if (ok.includes('12down') && ok.includes('12right')) N.push('his face' + hairSaid(cut) + ': ' + pct(at3('12down').body.share) + ' of his head skin facing you (his card ' + pct(at3('12down').card.share) + '), ' + pct(at3('12right').body.share) + ' facing right (his card ' + pct(at3('12right').card.share) + ')');
               if (ok.includes('12down')) { const f = at3('12down'), r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
-                if (r < 0.85 || r > 1.15) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
-                if (hs < 0.85) P.push('facing you, his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
+                if (cut === START && (r < 0.85 || r > 1.15)) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
+                if (hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
-                if (hs < 0.6) P.push('facing right, his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
+                if (hs < 0.6) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
                   if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');
                   else if (r > 1.25) P.push('at ten at night his body glows beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s'); }); } }
-              /* and the fuller hair is fuller: more of it on the screen, facing you, than the cap */
-              { const fu = F['full|12down'], cp = F['cap|12down'];
-                if (rowC && !(rowC.list.includes('full') && rowC.list.includes('cap'))) P.push('the hair offers ' + rowC.list.join(', ') + ', where a player must be able to choose the fuller hair or the cap');
-                else if (fu && cp && fu.on && cp.on && !(fu.body.hair > cp.body.hair)) P.push('facing you, the fuller hair is no fuller than the cap: ' + fu.body.hair + ' pixels of hair against ' + cp.body.hair); } }
+              /* and the fuller hair is fuller: the afro (a ball wider than his head) shows more hair facing you than the short cap */
+              { const fu = F['afro|12down'], cp = F['cap|12down'];
+                if (CUTS.length && !(CUTS.includes('afro') && CUTS.includes('cap'))) P.push('the styles of hair are ' + CUTS.join(', ') + ', where a player must be able to choose the short cap or the fuller afro');
+                else if (fu && cp && fu.on && cp.on && !(fu.body.hair > cp.body.hair)) P.push('facing you, the afro is no fuller than the short cap: ' + fu.body.hair + ' pixels of hair against ' + cp.body.hair); } }
             /* E · HIS BUILD IS DATA, AND ANY BUILD FITS HIS SKELETON (mq-v261). The build the engine gives every person is held in
                    one place (BODYBUILD), each measure 1 for the card's build, and cannot be changed by anything that runs. Then
                    builds other than the card's are handed to the engine's own makers directly (bodySkeleton, bodyMake), never
@@ -13812,8 +13837,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 /* mq-v262: the body in the street is made to the build his look has chosen, which for this look is none, so the card's */
                 if (B.userData.build && NAMED.some(k => B.userData.build[k] !== held[k])) P.push('the body standing in the street, for a look that has chosen no build, is not made to the build a new character starts with'); }
               const BUILDS = { 'card\'s': {}, small: { height: 0.75 }, large: { height: 1.25 }, wide: { width: 1.35 }, slim: { width: 0.8, limbs: 0.75 }, thick: { width: 1.1, limbs: 1.5 } };
-              const full = b => ({ ...Object.fromEntries(NAMED.map(k => [k, k in b ? b[k] : 1])), ...('hang' in b ? { hang: b.hang } : {}) });
-              const make = b => { const X = bodyMake(bodySkeleton('person', b && full(b)), look, b && full(b)); X.updateWorldMatrix(true, true); return X; };
+              /* a build is every measure it names, the four of the card's build at 1 where it names none; and from mq-v265 the
+                 shape of his head is an option of his look (face), so a build is made on the head it is handed */
+              const full = b => ({ ...Object.fromEntries(NAMED.map(k => [k, k in b ? b[k] : 1])), ...Object.fromEntries(Object.entries(b).filter(([k, v]) => typeof v === 'number')) });
+              const FACEROW = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'face' && r.kind === 'option') : null, FACES = FACEROW ? FACEROW.list.slice() : [null];
+              const make = (b, face) => { const lk = face ? { ...look, body: bodyChoicesOf({ ...(look.body || {}), face }) } : look;
+                const X = bodyMake(bodySkeleton('person', b && full(b)), lk, b && full(b)); X.updateWorldMatrix(true, true); return X; };
               /* mq-v262, EVERY BUILD A PLAYER CAN CHOOSE: each measure of the table of the body's choices at both ends of its range,
                  the others at the card's, and every corner of all the ranges together (each measure at one end or the other). The
                  ranges are read from the table, which is what is being asked: whether every build it allows fits his skeleton.
@@ -13821,10 +13850,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const MEAS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.filter(r => r.kind === 'measure') : [];
               const want5 = ['height', 'width', 'limbs', 'head', 'hang'], gone5 = want5.filter(k => !MEAS.some(r => r.key === k));
               if (gone5.length) P.push('a player cannot choose his ' + gone5.map(k => ({ height: 'height', width: 'width', limbs: 'arms and legs\' thickness', head: 'head', hang: 'shirt\'s length' })[k]).join(', ') + ': the body\'s choices have no measure for it');
+              /* mq-v265: a measure that is offered only on a head with a jaw (`needs`) is asked at its ends on the first head with one */
+              const JAWED = FACEROW ? FACES.filter(f => f !== FACEROW.def) : [], ON = {};
               MEAS.forEach(r => { if (!(r.min <= r.def && r.def <= r.max && r.min < r.max)) P.push('the measure ' + r.key + ' runs from ' + r.min + ' to ' + r.max + ' with its default at ' + r.def + ', so it is no range a player can move in');
-                BUILDS[r.key + ' at its least (' + r.min + ')'] = { [r.key]: r.min }; BUILDS[r.key + ' at its most (' + r.max + ')'] = { [r.key]: r.max }; });
-              for (let m = 0; m < (1 << MEAS.length) && MEAS.length <= 8; m++) { const b = {}; MEAS.forEach((r, i) => { b[r.key] = m >> i & 1 ? r.max : r.min; });
-                BUILDS['corner ' + (m + 1) + ' of the ranges'] = b; }
+                const k0 = r.key + ' at its least (' + r.min + ')', k1 = r.key + ' at its most (' + r.max + ')'; BUILDS[k0] = { [r.key]: r.min }; BUILDS[k1] = { [r.key]: r.max };
+                if (r.needs) { if (!JAWED.length) P.push('the measure ' + r.key + ' is offered only on a head with a jaw, and no shape of head has one'); else ON[k0] = ON[k1] = JAWED[0]; } });
+              /* EVERY CORNER while there are few enough to make (8 measures, 256 corners, as at mq-v262); past that (33 measures from
+                 mq-v265, eight billion corners) a fixed sample of them: all at their least, all at their most, the two that alternate,
+                 and twelve more drawn from a fixed seed, each made on a shape of head in turn, so no corner is left out by the count
+                 alone and the same ones are asked every run */
+              { const corner = (name, pick, face) => { const b = {}; MEAS.forEach((r, i) => { b[r.key] = pick(i) ? r.max : r.min; }); BUILDS[name] = b; ON[name] = face; };
+                if (MEAS.length <= 8) for (let m = 0; m < (1 << MEAS.length); m++) corner('corner ' + (m + 1) + ' of the ranges', i => m >> i & 1, null);
+                else { let sd = 0x5EED; const rnd = () => { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; return sd / 4294967296; };
+                  const picks = [[() => 0, 'every measure at its least'], [() => 1, 'every measure at its most'], [i => i & 1, 'the measures alternating, the first at its least'], [i => !(i & 1), 'the measures alternating, the first at its most']];
+                  for (let k = 0; k < 12; k++) { const bits = MEAS.map(() => rnd() < 0.5); picks.push([i => bits[i], 'corner ' + (k + 1) + ' of 12 drawn from a fixed seed']); }
+                  picks.forEach(([pick, name], k) => corner(name + (FACES[k % FACES.length] ? ', on the ' + FACES[k % FACES.length] + ' head' : ''), pick, FACES[k % FACES.length]));
+                  if (Object.keys(BUILDS).filter(n => / head$/.test(n) || /^every measure/.test(n)).length < 16) P.push('the corners of the ranges a player can choose were not sampled, so no build with every measure at an end was asked'); } }
               { const hr = MEAS.find(r => r.key === 'hang');
                 if (hr) { const hem = v => { const X = make({ hang: v }); t3BodyPose(X, 0, false); const bx = new THREE.Box3();
                     X.traverse(o => { if (o.isMesh && o.parent && o.parent.name === 'spine' && o.userData.wears === 'shirt') { o.updateWorldMatrix(true, false); bx.union(new THREE.Box3().setFromObject(o)); } });
@@ -13835,7 +13876,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const span = (X, f, ax) => { const bx = new THREE.Box3(); X.traverse(o => { if (o.isMesh && o.userData.wears && f(o)) { o.updateWorldMatrix(true, false); bx.union(new THREE.Box3().setFromObject(o)); } });
                 return bx.isEmpty() ? 0 : bx.max[ax] - bx.min[ax]; };
               const sizes = X => { t3BodyPose(X, 0, false); return {
-                height: span(X, o => !(o.parent && o.parent.name === 'head'), 'y'),   /* to his neck: from mq-v262 his head is a measure of its own */
+                height: span(X, o => !(o.parent && /^(head|neck)$/.test(o.parent.name)), 'y'),   /* to his collar: from mq-v262 his head is a measure of its own, and from mq-v265 the neck under a head with a jaw reaches up into the head and is sized to it */
                 chest: span(X, o => o.parent && o.parent.name === 'spine' && o.userData.wears === 'shirt', 'x'),
                 leg: span(X, o => o.parent && o.parent.name === 'knee_l' && o.userData.wears === 'trousers', 'x'),
                 head: span(X, o => o.parent && o.parent.name === 'head' && o.userData.wears === 'skin', 'y') }; };
@@ -13843,7 +13884,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const gap = (m, Pw) => { const g = m.geometry, q = g.parameters || {}, l = m.worldToLocal(Pw.clone()); let c = l.clone();
                 if (g.type === 'CapsuleGeometry') { const hl = (q.length !== undefined ? q.length : q.height) / 2, a = new THREE.Vector3(0, Math.max(-hl, Math.min(hl, l.y)), 0), d = l.clone().sub(a);
                   if (d.length() > q.radius) c = a.add(d.setLength(q.radius)); }
-                else if (g.type === 'SphereGeometry') { if (l.length() > q.radius) c = l.clone().setLength(q.radius); }
+                else if (g.type === 'SphereGeometry') { const p = g.attributes.position, v = new THREE.Vector3(); let dev = 0;
+                  for (let i = 0; i < p.count; i += 7) dev = Math.max(dev, Math.abs(v.fromBufferAttribute(p, i).length() - q.radius));
+                  /* mq-v265: his skull, ears and nose are balls whose points were moved to a shape of their own, so the ball the
+                     geometry was made as is not the part; there, how far out the part is along the point's direction is the
+                     distance of its point that lies nearest that direction (a part shaped round its own centre, as these are) */
+                  if (dev > 1e-6 * q.radius) { const d = l.clone().normalize(); let best = -2, R = 0;
+                    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = v.length(), k = n ? v.dot(d) / n : -2; if (k > best) { best = k; R = n; } }
+                    if (l.length() > R) c = d.multiplyScalar(R); }
+                  else if (l.length() > q.radius) c = l.clone().setLength(q.radius); }
                 else if (g.type === 'BoxGeometry') c.set(Math.max(-q.width / 2, Math.min(q.width / 2, l.x)), Math.max(-q.height / 2, Math.min(q.height / 2, l.y)), Math.max(-q.depth / 2, Math.min(q.depth / 2, l.z)));
                 else return Infinity;
                 return m.localToWorld(c).distanceTo(Pw); };
@@ -13856,9 +13905,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (d1 > eps) out.push(n + ' stands ' + d1.toFixed(3) + ' of a square off the part before it');
                   if (d2 > eps) out.push(n + ' stands ' + d2.toFixed(3) + ' of a square off its own part'); });
                 return out; };
-              const base = sizes(make(null));
-              if (!(base.height > 0.3 && base.chest > 0 && base.leg > 0 && base.head > 0)) P.push('the card\'s build could not be measured standing: height ' + base.height.toFixed(3) + ', chest ' + base.chest.toFixed(3) + ', leg ' + base.leg.toFixed(3) + ', head ' + base.head.toFixed(3));
-              else Object.entries(BUILDS).forEach(([name, b0]) => { const b = full(b0), X = make(b0), say2 = m => P.push('a ' + name + ' build (' + NAMED.map(k => k + ' ' + b[k]).join(', ') + ') ' + m);
+              /* the card's build on each shape of head: a build's sizes are set against the card's on the same head */
+              const bases = {}; FACES.forEach(f => { bases[f] = sizes(make(null, f)); }); const base = bases[FACES[0]];
+              const unmeasured = Object.entries(bases).filter(([f, b]) => !(b.height > 0.3 && b.chest > 0 && b.leg > 0 && b.head > 0));
+              if (unmeasured.length) unmeasured.forEach(([f, b]) => P.push('the card\'s build' + (f !== 'null' ? ' on the ' + f + ' head' : '') + ' could not be measured standing: height ' + b.height.toFixed(3) + ', chest ' + b.chest.toFixed(3) + ', leg ' + b.leg.toFixed(3) + ', head ' + b.head.toFixed(3)));
+              /* mq-v265: from here a build has measures of its head and neck too (the chin, the crown, the neck's length), which change
+                 his head's height and his own of themselves; so a build is set against the card's four measures made with the build's
+                 other measures and on the same head, and what is asked is still what the four do */
+              else Object.entries(BUILDS).forEach(([name, b0]) => { const b = full(b0), X = make(b0, ON[name] || null), rest = Object.fromEntries(Object.entries(b0).filter(([k]) => !NAMED.includes(k)));
+                let base = bases[ON[name] || (FACEROW ? FACEROW.def : null)];
+                if (Object.keys(rest).length) { const Y = make(rest, ON[name] || null); base = sizes(Y); Y.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
+                const say2 = m => P.push('a ' + name + ' build (' + NAMED.map(k => k + ' ' + b[k]).join(', ') + ') ' + m);
                 const missing = JOINTS.filter(n => !X.getObjectByName(n)); if (missing.length) { say2('has no joint named ' + missing.join(', ')); return; }
                 const s = sizes(X), want = { height: b.height, chest: b.width * b.height, leg: b.limbs * b.height, head: b.head * b.height }, words = { height: 'tall', chest: 'wide across the chest', leg: 'thick in the leg', head: 'big in the head' };
                 Object.keys(want).forEach(k => { const r = s[k] / base[k]; if (Math.abs(r / want[k] - 1) > 0.05) say2('comes out ' + r.toFixed(2) + ' times as ' + words[k] + ' as the card\'s build, where it should be ' + want[k].toFixed(2) + ' times: the build is not what the body is made from'); });
@@ -13914,11 +13971,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const out = []; for (let i = 0; i < F.px.length; i += 4) if (hide ? F.px[i] !== A.px[i] || F.px[i + 1] !== A.px[i + 1] || F.px[i + 2] !== A.px[i + 2] : mag(F.px, i) && !mag(A.px, i)) out.push(i);
                 return { at: out, F }; };
               const on = (o, j) => o.parent && new RegExp('^' + j + '_[lr]$').test(o.parent.name);
-              const DETAILED = { sleeves: 'short', cut: 'full', width: 0.75, limbs: 0.8 }, rowS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'sleeves') : null;
+              /* mq-v265: the hair is the look's style, not a row of the body's (the fuller hair is the curly: one mass standing off the
+                 head all round, as the old fuller hair did), and the head has a shape:
+                 the person with a jaw is the first shape of head that is not the one a new character starts with */
+              const fRow = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'face') : null, JAW = fRow ? fRow.list.find(w => w !== fRow.def) : null;
+              if (!JAW) P.push('his head offers no shape with a jaw, so his nose, joints and shoes were not asked on one');
+              const DETAILED = { sleeves: 'short', width: 0.75, limbs: 0.8 }, rowS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'sleeves') : null;
               if (!rowS) P.push('the body\'s choices have no sleeves, so a player cannot choose short sleeves and bare arms');
               try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
-                for (const [who, body] of [['the person a new character starts as', {}], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED]])
-                  for (const d of ['down', 'right']) { dir = d; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: 'cap', body });
+                for (const [who, body, style] of [['the person a new character starts as', {}, saveLook({}).style], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED, 'curly']].concat(JAW ? [['the person with the ' + JAW + ' head', { face: JAW }, saveLook({}).style]] : []))
+                  for (const d of ['down', 'right']) { dir = d; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style, body });
                     const A = grab(), say3 = m => P.push(who + ', facing ' + (d === 'down' ? 'you' : 'right') + ', ' + m);
                     if (!T3.bodyOn || !T3.body) { say3('is not a jointed body in the 3D camera, so his nose, joints and shoes could not be looked for'); continue; }
                     const n = f => { const r = painted(f, A); return r ? r.at.length : -1; };
@@ -13995,7 +14057,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                edit, show in the builder as a control each, are kept and cleaned by the save, and are read by the maker of the
                body, which keeps them on the body it makes. */
       const PLANTAT = 'const BODYCHOICE=Object.freeze([';
-      const page4 = async (html, opts, plant) => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, ...(opts || {}) });
+      const page4 = async (html, opts, plant, street) => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, ...(opts || {}) });
         const p = await ctx.newPage(), errs = []; let planted = null; p.on('pageerror', e => errs.push(e.message));
         await ctx.route('**', r => { const u = r.request().url();
           if (u === href) return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
@@ -14005,23 +14067,43 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             return r.fulfill({ body: planted ? src.slice(0, at + PLANTAT.length) + plant + src.slice(at + PLANTAT.length) : src, contentType: 'text/javascript; charset=utf-8' }); }
           return u.startsWith('file://') ? r.continue() : r.abort(); });
         await p.goto(href); await boot(p);
-        await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); }); await rafs(p);
+        if (!street) { await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); }); await rafs(p); }   /* street: the page as it boots, the creator not opened */
         return { ctx, p, errs, planted: () => planted }; };
+      /* mq-v265: A DRAWER IS OPENED OR SHUT, AND THE NEXT STEP WAITS FOR IT TO HAVE HAPPENED. The browser tells a drawer it was
+         opened a moment later (its toggle event), and only then does the creator shut the drawer's neighbours; a check that
+         went on before that moment had a drawer it just opened shut under it by the one before (seen once in three runs on a
+         page that asked for reduced motion). drawerAct(p, id, act) does act and waits until the drawer named id has been told */
+      const drawerAct = async (p, id, act) => { const t0 = await p.evaluate(id => { if (!window.__tgOn) { window.__tgOn = true; window.__tg = {};
+          document.addEventListener('toggle', e => { const k = e.target && e.target.id; if (k) window.__tg[k] = (window.__tg[k] || 0) + 1; }, true); } return window.__tg[id] || 0; }, id);
+        await act(); await until(p, ([id, t0]) => (window.__tg[id] || 0) > t0, [id, t0], 3000); await rafs(p, 1); };
       /* ---- G · a world that says nothing ---- */
       if (on0 === null) {
         const G = await page4(shellHtml);
-        try { const R = await G.p.evaluate(() => { const P = [], cr = document.getElementById('creator'), pv = document.getElementById('pv');
+        try { const R = await G.p.evaluate(html => { const P = [], cr = document.getElementById('creator'), pv = document.getElementById('pv');
             if (cr.hidden) { P.push('the creator could not be opened, so whether it shows anything new was not asked'); return P; }
             const extra = [...cr.querySelectorAll('[data-choice],input[type=range],#bodyRows,#pvBody,#pvTurn')];
             if (extra.length) P.push('in a world that has not asked for the body, the creator shows ' + extra.length + ' control(s) for the body anyway');
+            /* mq-v265: and its creator is the one it had, not the tabs and drawers of a world that takes the body: no tab, no
+               drawer, the heading over the choices shown, and each row of the page where the page puts it, in the body of the
+               creator under that heading, in the page's own order */
+            const tabbed = [...cr.querySelectorAll('#crTabs,[role=tab],[role=tabpanel],details,.crdrawer')];
+            if (tabbed.length) P.push('in a world that has not asked for the body, the creator is sorted into tabs and drawers anyway (' + tabbed.length + ' of them), where its choices stand in one list as they always have');
+            const host = cr.querySelector('.crbody'), lb = document.getElementById('crLooksLb'), host0 = new DOMParser().parseFromString(html, 'text/html').querySelector('#creator .crbody');
+            const ids = host0 ? [...host0.children].map(e => e.id).filter(Boolean) : [];
+            if (!host || !host0 || !ids.length) P.push('the creator has no body for its choices' + (host ? ' in the page as it is written' : '') + ', so where its rows stand was not asked');
+            else { const at = ids.map(i => document.getElementById(i));
+              const moved = ids.filter((i, k) => !at[k] || at[k].parentNode !== host);
+              if (moved.length) P.push('in a world that has not asked for the body, the creator\'s ' + moved.join(', ') + ' no longer stand in the body of the creator where the page put them');
+              else if (at.some((e, k) => k && !(at[k - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING))) P.push('in a world that has not asked for the body, the creator\'s rows are out of the page\'s own order');
+              if (lb && (lb.hidden || !lb.textContent.trim())) P.push('in a world that has not asked for the body, the heading over the creator\'s choices is ' + (lb.hidden ? 'hidden' : 'empty')); }
             const d = pv.getContext('2d').getImageData(0, 0, pv.width, pv.height).data; let drawn = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) drawn++;
             if (pv.hidden || !drawn) P.push('in a world that has not asked for the body, the creator\'s 2D preview is ' + (pv.hidden ? 'hidden' : 'blank'));
             const SIX = ['shirt', 'skin', 'hair', 'style', 'outfit', 'pattern'];
-            [{}, { shirt: '#123456', style: 'afro' }, { skin: 'red', outfit: 'formal', pattern: 'dots' }].forEach(L => { const a = saveLook(L), b = saveLook({ ...L, body: { height: 1.2, sleeves: 'short', cut: 'full' } });
+            [{}, { shirt: '#123456', style: 'afro' }, { skin: 'red', outfit: 'formal', pattern: 'dots' }].forEach(L => { const a = saveLook(L), b = saveLook({ ...L, body: { height: 1.2, sleeves: 'short', face: 'oval', beard: 'goatee', cut: 'full' } });
               if (Object.keys(a).join() !== SIX.join()) P.push('in a world that has not asked for the body, a look read by the save keeps ' + Object.keys(a).join(', ') + ', where it has always kept ' + SIX.join(', '));
               if (JSON.stringify(a) !== JSON.stringify(b)) P.push('in a world that has not asked for the body, a body handed in with a look changes what the save keeps: ' + JSON.stringify(b)); });
             if ('body' in look) P.push('in a world that has not asked for the body, a new character\'s look has a body: ' + JSON.stringify(look.body));
-            return P; });
+            return P; }, shellHtml);
           R.forEach(m => say(0, m)); if (!R.length) say(1, 'in a world that has not asked for the body, the creator shows no control for it, its preview is the 2D card, and a look keeps the six things it always kept');
           if (G.errs.length) say(0, 'the creator of a world that says nothing threw "' + G.errs[0] + '"');
         } catch (e) { say(0, 'the creator of a world that says nothing could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
@@ -14032,7 +14114,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const pre = await p.evaluate(() => { const cr = document.getElementById('creator'), c = document.getElementById('pvBody'), pv = document.getElementById('pv');
             if (cr.hidden) return { why: 'the creator could not be opened' };
             if (typeof BODYCHOICE !== 'object' || !BODYCHOICE) return { why: 'the engine keeps no table of the body\'s choices, so the creator offers him no choice of his body' };
-            return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max })), no3d: typeof THREE === 'undefined', ctl: document.querySelectorAll('#creator [data-choice]').length, body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null }; });
+            return { rows: BODYCHOICE.map(r => ({ key: r.key, kind: r.kind, list: r.list || null, min: r.min, max: r.max, def: r.def, needs: r.needs || null })), no3d: typeof THREE === 'undefined', ctl: document.querySelectorAll('#creator [data-choice]').length, body3d: !!(c && !c.hidden), pv2d: !pv.hidden, nb: look.body && typeof look.body === 'object' ? { ...look.body } : null,
+              style: look.style, drawn: typeof hairStyleOf === 'function' ? hairStyleOf(look) : null, styles: typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [] }; });
           if (pre.why) P.push('in a world that takes the body, ' + pre.why);
           else {
             /* A WORLD WITH NO 3D CAMERA never shows the body, so it is offered no builder: the save still keeps and cleans the
@@ -14041,20 +14124,41 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               else say(1, 'this shell has no 3D camera, so his body is never shown and the creator offers no builder for it'); }
             else {
             if (!pre.body3d) P.push('in a world that takes the body, the creator\'s preview is not his body: no 3D picture of him is drawn there');
-            /* the person a new character starts as, before anything is touched: the card's build, long sleeves, the hair a cap */
+            /* the person a new character starts as, before anything is touched: the card's build, every option at the word a row
+               starts at (long sleeves, the round head, no beard, ...), and on his body the hair his card wears (mq-v265: the hair is
+               the look's own style; until then a row "cut" whose word was "cap") */
             if (!pre.nb) P.push('a new character\'s look has no body');
             else { const off = pre.rows.filter(r => r.kind === 'measure' && pre.nb[r.key] !== 1).map(r => r.key + ' ' + pre.nb[r.key]);
-              if (pre.nb.sleeves !== 'long') off.push('sleeves ' + pre.nb.sleeves); if (pre.nb.cut !== 'cap') off.push('hair ' + pre.nb.cut);
+              pre.rows.filter(r => r.kind === 'option' && pre.nb[r.key] !== r.def).forEach(r => off.push(r.key + ' ' + pre.nb[r.key]));
+              if (pre.drawn !== pre.style) off.push('the hair "' + pre.drawn + '" on his body where his card wears "' + pre.style + '"');
               if (off.length) P.push('a new character does not start as the card-matching person: ' + off.join(', ')); }
-            /* every control: present, its kind, labelled in both languages */
+            /* mq-v265, THE TABS AND DRAWERS: a control sits in a drawer, under a tab; a person opens the tab and then the drawer to
+               reach it. reveal(sel) does what he does, a tap on the tab and a tap on the drawer's name, where either is shut */
+            const reveal = async sel => { const w = await p.evaluate(sel => { const e = document.querySelector(sel); if (!e) return null; const pn = e.closest('[role=tabpanel]'), d = e.closest('details');
+                return { tab: pn && pn.hidden ? pn.getAttribute('aria-labelledby') : null, d: d && !d.open ? d.id : null }; }, sel);
+              if (!w) return false; if (w.tab) await p.click('#' + w.tab); if (w.d) await drawerAct(p, w.d, () => p.click('#' + w.d + ' > summary')); if (w.tab || w.d) await rafs(p); return true; };
+            const sel = (k, w) => '#creator [data-choice="' + k + '"]' + (w ? '[data-word="' + w + '"]' : '');
+            /* mq-v265, A ROW THAT NEEDS A JAW (`needs`): on the head a new character starts with, which has none, the builder does
+               not offer it; every other row it does. Then the first other shape of head is chosen, as a person chooses it, and
+               there every row is offered; the rest of the builder is asked on that head */
+            const FACE = pre.rows.find(r => r.key === 'face' && r.kind === 'option'), JAWED = FACE ? FACE.list.filter(w => w !== FACE.def) : [];
+            const offered = () => p.evaluate(rows => rows.filter(r => document.querySelector('#creator [data-choice="' + r.key + '"]')).map(r => r.key), pre.rows);
+            { const on = await offered();
+              pre.rows.forEach(r => { if (r.needs && on.includes(r.key)) P.push('on the ' + (FACE ? FACE.def : 'first') + ' head, which has no jaw, the builder offers his ' + r.key + ', which only a head with a jaw has');
+                if (!r.needs && !on.includes(r.key)) P.push('the builder\'s control for ' + r.key + ': no control'); });
+              if (pre.rows.some(r => r.needs)) { if (!JAWED.length) P.push('some of his choices need a head with a jaw, and the builder offers no shape of head that has one');
+                else { await reveal(sel('face', JAWED[0])); await p.click(sel('face', JAWED[0])); await rafs(p);
+                  const on2 = await offered(); pre.rows.filter(r => r.needs && !on2.includes(r.key)).forEach(r => P.push('on the ' + JAWED[0] + ' head the builder does not offer his ' + r.key + ', which a head with a jaw has')); } } }
+            /* every control: present, its kind, labelled in both languages (a colour is offered as a dot of it, so its words are
+               its name to a screen reader, aria-label, and not its text) */
             const L = await p.evaluate(rows => { const out = { missing: [], words: {} }, label = el => { if (el.labels && el.labels.length) return el.labels[0].textContent.trim();
                 const g = el.closest('[aria-labelledby]'), id = g && g.getAttribute('aria-labelledby'), lb = id && document.getElementById(id); return lb ? lb.textContent.trim() : ''; };
               for (const lg of ['en', 'es']) { lang = lg; applyLang(); out.words[lg] = {};
                 rows.forEach(r => { const c = [...document.querySelectorAll('#creator [data-choice="' + r.key + '"]')];
-                  if (lg === 'en') { if (!c.length) out.missing.push(r.key + ': no control');
+                  if (lg === 'en') { if (!c.length) { if (!out.missing.some(m => m.startsWith(r.key + ':'))) out.missing.push(r.key + ': no control'); }
                     else if (r.kind === 'measure' && !(c.length === 1 && c[0].type === 'range' && +c[0].min === r.min && +c[0].max === r.max)) out.missing.push(r.key + ': not one slider from ' + r.min + ' to ' + r.max);
                     else if (r.kind === 'option' && c.map(b => b.dataset.word).join() !== r.list.join()) out.missing.push(r.key + ': buttons for ' + c.map(b => b.dataset.word).join(', ') + ', where it offers ' + r.list.join(', ')); }
-                  c.forEach(el => { out.words[lg][r.key + (el.dataset.word ? ' ' + el.dataset.word : '')] = { label: label(el), text: el.dataset.word ? el.textContent.trim() : '' }; }); });
+                  c.forEach(el => { out.words[lg][r.key + (el.dataset.word ? ' ' + el.dataset.word : '')] = { label: label(el), text: el.dataset.word ? (el.getAttribute('aria-label') || el.textContent).trim() : '' }; }); });
                 [...document.querySelectorAll('#pvTurn button')].forEach((b, i) => { out.words[lg]['the button that turns him ' + (i ? 'right' : 'left')] = { label: 'x', text: b.textContent.trim() }; }); }
               lang = 'en'; applyLang(); return out; }, pre.rows);
             L.missing.forEach(m => P.push('the builder\'s control for ' + m));
@@ -14065,39 +14169,93 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               else if (e.label !== 'x' && s.label === e.label) P.push('the builder\'s control for ' + k + ' says "' + e.label + '" in Spanish as in English');
               if (/ /.test(k) || /^the button/.test(k)) { if (!e.text || !s.text) P.push('the builder\'s ' + k + ' shows no words ' + (!e.text ? 'in English' : 'in Spanish'));
                 else if (e.text === s.text) P.push('the builder\'s ' + k + ' says "' + e.text + '" in Spanish as in English'); } });
-            /* the keyboard: Tab from the name, collecting what takes the focus, each one's ring */
-            const want = [...pre.rows.flatMap(r => r.kind === 'measure' ? [r.key] : r.list.map(w => r.key + ' ' + w)), 'turn -1', 'turn 1'], seen = new Set(), noRing = new Set();
+            /* THE KEYBOARD (mq-v265: through the tabs and drawers). From the name, Tab alone reaches the buttons that turn him and
+               the tab of the panel shown; the right arrow moves along the tabs; in a panel, Tab reaches each drawer's name, Enter
+               opens it, and Tab then reaches each control in it, and so on to the end of the panel. Every control of the table,
+               both buttons that turn him, every tab and every drawer is reached so, and shows a ring when it has the focus */
+            const TABS = await p.evaluate(() => [...document.querySelectorAll('#crTabs [role=tab]')].map(b => b.id));
+            const DRAWERS = await p.evaluate(() => [...document.querySelectorAll('#creator details.crdrawer')].filter(d => !d.hidden).map(d => d.id));
+            const onNow = await offered();
+            const want = [...pre.rows.filter(r => onNow.includes(r.key)).flatMap(r => r.kind === 'measure' ? [r.key] : r.list.map(w => r.key + ' ' + w)), 'turn -1', 'turn 1', ...TABS.map(t => 'tab ' + t), ...DRAWERS.map(d => 'drawer ' + d)], seen = new Set(), noRing = new Set();
+            const focusNow = () => { const e = document.activeElement; if (!e || !e.getAttribute) return null; let id = null;
+              if (e.dataset && e.dataset.choice) id = e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '');
+              else if (e.dataset && e.dataset.turn) id = 'turn ' + e.dataset.turn;
+              else if (e.getAttribute('role') === 'tab') id = 'tab ' + e.id;
+              else if (e.tagName === 'SUMMARY' && e.parentNode.classList.contains('crdrawer')) id = 'drawer ' + e.parentNode.id;
+              const cs = getComputedStyle(e), pn = e.closest('[role=tabpanel]');
+              return { id, ring: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0, tab: e.getAttribute('role') === 'tab', panel: pn ? pn.id : null, shut: e.tagName === 'SUMMARY' && !e.parentNode.open, d: e.tagName === 'SUMMARY' ? e.parentNode.id : null }; };
+            let a = null;
+            const press = async k => { await p.keyboard.press(k); a = await p.evaluate(`(${focusNow})()`); if (a && a.id) { seen.add(a.id); if (!a.ring) noRing.add(a.id); } return a; };
             await p.evaluate(() => { const t = document.getElementById('pvtog') || document.getElementById('heroname'); t.focus(); });
-            for (let k = 0; k < 120 && seen.size < want.length; k++) { await p.keyboard.press('Tab');
-              const a = await p.evaluate(() => { const e = document.activeElement; if (!e || !e.dataset) return null;
-                const id = e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : e.dataset.turn ? 'turn ' + e.dataset.turn : null;
-                const cs = getComputedStyle(e); return id ? { id, ring: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 } : null; });
-              if (a) { seen.add(a.id); if (!a.ring) noRing.add(a.id); } }
+            if (!TABS.length) { for (let k = 0; k < 160 && seen.size < want.length; k++) await press('Tab'); }
+            else { for (let k = 0; k < 60 && !(a && a.tab); k++) await press('Tab');
+              if (!(a && a.tab)) P.push('by the Tab key alone from his name, the creator\'s tabs cannot be reached');
+              else for (let t = 0; t < TABS.length; t++) {
+                if (t) { for (let k = 0; k < 300 && !(a && a.tab); k++) await press('Shift+Tab'); await press('ArrowRight'); }
+                const panel = await p.evaluate(() => { const b = document.querySelector('#crTabs [aria-selected="true"]'); return b ? b.getAttribute('aria-controls') : null; });
+                let inside = false;
+                for (let k = 0; k < 300; k++) { await press('Tab'); const here = !!a && a.panel === panel && !!panel;
+                  if (here) inside = true; else if (inside) break;
+                  /* Enter on a shut drawer's name, and the next key only once it has opened (drawerAct) */
+                  if (here && a.shut) await drawerAct(p, a.d, () => p.keyboard.press('Enter')); } } }
             const unreached = want.filter(w => !seen.has(w));
-            if (unreached.length) P.push('by the Tab key alone the builder\'s ' + unreached.join(', ') + ' cannot be reached');
+            if (unreached.length) P.push('by the keyboard alone (Tab, the arrows along the tabs, Enter on a drawer) the builder\'s ' + unreached.join(', ') + ' cannot be reached');
             if (noRing.size) P.push('with the keyboard\'s focus on the builder\'s ' + [...noRing].join(', ') + ', no ring shows which control has it');
-            /* each changed by the keyboard: the look the save would keep, and the preview's pixels */
+            /* each changed by the keyboard: the look the save would keep, and the preview's pixels (mq-v265: a slider is moved to its
+               far end, Home or End, as one step of a small part's measure, the width of his nose, moves it less than a pixel of the
+               preview, and a person tries the whole range). mq-v265: a choice that shows
+               only on some heads of hair or with a beard (how full the hair stands, how long the braids are, the colour of their
+               ties, how long the beard is) is asked, where it changes nothing on the look a new character has, again on each
+               style of hair in turn with a beard on, as a player who wears one sees it; the head's own shape is asked last */
             const pix = () => p.evaluate(() => { const c = document.getElementById('pvBody'); if (!c || c.hidden) return null; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; return Array.from(d.filter((v, i) => i % 4 === 3 ? false : true)).join(','); });
             const differ = (a, b) => { if (!a || !b) return -1; const x = a.split(','), y = b.split(','); let n = 0; for (let i = 0; i < x.length; i++) if (Math.abs(x[i] - y[i]) > 24) n++; return n; };
-            for (const r of pre.rows) { const targets = r.kind === 'measure' ? [null] : r.list;
-              for (const w of targets) { const sel = '#creator [data-choice="' + r.key + '"]' + (w ? '[data-word="' + w + '"]' : '');
-                const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined }), r.key), img0 = await pix();
+            const BEARD = pre.rows.find(r => r.key === 'beard' && r.kind === 'option'), withBeard = BEARD ? BEARD.list.find(w => w !== BEARD.def) : null;
+            /* and a hair of the game's own colour farthest from his, for a colour of brows chosen near his hair's own shade */
+            const far = await p.evaluate(() => { const L = h => { const c = new THREE.Color(h); return c.r + c.g + c.b; }, me = L(look.hair), S = (typeof SWATCH === 'object' && SWATCH && SWATCH.hair) || [];
+              return S.length ? S.reduce((a, b) => Math.abs(L(b) - me) > Math.abs(L(a) - me) ? b : a) : null; });
+            /* and turned by his preview's own button, an eighth of a turn at a time, for what shows only from the side or behind
+               (his neck under a head with a jaw) */
+            const CTX = [null, ...[1, 2, 3, 4, 5, 6, 7].map(turn => ({ turn })), ...pre.styles.map(st => ({ style: st, beard: withBeard }))].concat(far ? pre.styles.map(st => ({ style: st, beard: withBeard, hair: far })) : []);
+            const putBack = r => p.evaluate(([k, v]) => { look = { ...look, body: bodyChoicesOf({ ...look.body, [k]: v }) }; buildBodyRows(); pvDraw(); }, [r.key, r.def]);
+            for (const r of [...pre.rows.filter(r => r.key !== 'face' && onNow.includes(r.key)), ...pre.rows.filter(r => r.key === 'face')]) { const targets = r.kind === 'measure' ? [null] : r.list;
+              for (const w of targets) { const what = r.key + (w ? ' "' + w + '"' : '');
+                const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, style: look.style, hair: look.hair, beard: look.body ? look.body.beard : undefined }), r.key);
                 if (w && before.v === w) continue;   /* the word already chosen is chosen again by the next pass */
-                await p.focus(sel); await p.keyboard.press(r.kind === 'measure' ? (before.v >= r.max ? 'ArrowLeft' : 'ArrowRight') : 'Enter'); await rafs(p);
-                const after = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, kept: saveLook(look).body ? saveLook(look).body[k] : undefined }), r.key), img1 = await pix();
-                const what = r.key + (w ? ' "' + w + '"' : '');
-                if (after.v === before.v || (w && after.v !== w)) P.push('the builder\'s ' + what + ' changed by the keyboard does not change his look: it stays ' + JSON.stringify(after.v));
+                let n = 0, after = null, at = null;
+                const ang0 = await p.evaluate(() => BODYPV.ang);
+                for (const cx of CTX) {
+                  if (cx && cx.turn) { await p.evaluate(([k, v]) => { look = { ...look, body: bodyChoicesOf({ ...look.body, [k]: v }) }; buildBodyRows(); pvDraw(); }, [r.key, before.v]); await p.click('#pvTurn [data-turn="1"]'); await rafs(p, 1); }
+                  else if (cx) await p.evaluate(([cx, k, v]) => { look = { ...look, style: cx.style, ...(cx.hair ? { hair: cx.hair } : {}), body: bodyChoicesOf({ ...look.body, ...(cx.beard && k !== 'beard' ? { beard: cx.beard } : {}), [k]: v }) }; buildBodyRows(); pvDraw(); }, [cx, r.key, before.v]);
+                  if (!(await reveal(sel(r.key, w)))) { after = null; break; }
+                  /* the preview's pixels before, kept on the page and compared there (the same count as differ: a channel off by more than 24) */
+                  const v0 = await p.evaluate(k => { const c = document.getElementById('pvBody'); window.__pv0 = c && !c.hidden ? c.getContext('2d').getImageData(0, 0, c.width, c.height).data.slice() : null; return look.body ? look.body[k] : undefined; }, r.key);
+                  await p.focus(sel(r.key, w)); await p.keyboard.press(r.kind === 'measure' ? (v0 >= r.max ? 'Home' : 'End') : 'Enter'); await rafs(p);
+                  after = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, v0: undefined, kept: saveLook(look).body ? saveLook(look).body[k] : undefined }), r.key); after.v0 = v0;
+                  n = await p.evaluate(() => { const c = document.getElementById('pvBody'), a = window.__pv0; if (!a || !c || c.hidden) return -1; const b = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; if (b.length !== a.length) return -1;
+                    let k = 0; for (let i = 0; i < a.length; i++) if (i % 4 !== 3 && Math.abs(a[i] - b[i]) > 24) k++; return k; }); at = cx; if (n !== 0) break; }
+                if (!after) { P.push('the builder\'s ' + what + ' could not be found to change'); continue; }
+                if (after.v === after.v0 || (w && after.v !== w)) P.push('the builder\'s ' + what + ' changed by the keyboard does not change his look: it stays ' + JSON.stringify(after.v));
                 else if (after.kept !== after.v) P.push('the builder\'s ' + what + ' changes his look to ' + JSON.stringify(after.v) + ', but the save would keep ' + JSON.stringify(after.kept));
-                const n = differ(img0, img1); if (n < 0) P.push('the builder\'s preview of his body could not be read after his ' + what + ' changed');
-                else if (n === 0) P.push('the builder\'s ' + what + ' changed, and his body in the preview did not change at all'); } }
+                if (n < 0) P.push('the builder\'s preview of his body could not be read after his ' + what + ' changed');
+                else if (n === 0) P.push('the builder\'s ' + what + ' changed, and his body in the preview did not change at all, from any side, with any style of hair' + (withBeard ? ', with a beard' : '') + (far ? ', or with hair of another colour' : ''));
+                await p.evaluate(a => { BODYPV.ang = a; bodyPvDraw(); }, ang0);
+                if (at && !at.turn) await p.evaluate(([b, k]) => { look = { ...look, style: b.style, hair: b.hair, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: b.beard } : {}) }) }; buildBodyRows(); pvDraw(); }, [before, r.key]); }
+              /* an option asked is put back at the word its row starts at, so the rows after it are asked of the person a new
+                 character starts as (with no mouth chosen, the width of his mouth shows nothing, as it should) */
+              if (r.kind === 'option' && r.key !== 'face') await putBack(r); }
             /* the preview stays still for a person who asked for reduced motion, and turns by hand */
             { const a = await pix(); await p.waitForTimeout(400); await rafs(p, 4); const b = await pix();
               if (differ(a, b) > 0) P.push('for a person who asked for reduced motion, the builder\'s preview turns by itself');
               await p.click('#pvTurn [data-turn="1"]'); await rafs(p); const c = await pix();
               if (!(differ(b, c) > 0)) P.push('the builder\'s button that turns him does not turn him in the preview'); }
-            /* at 390 pixels wide: every control on the screen and big enough to touch */
-            const sizes = await p.evaluate(() => [...document.querySelectorAll('#creator [data-choice], #pvTurn button')].map(e => { e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect();
-              return { id: e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : 'the button that turns him', w: r.width, h: r.height, l: r.left, r: r.right, vw: document.documentElement.clientWidth }; }));
+            /* at 390 pixels wide: every control on the screen and big enough to touch, each measured with its tab and its drawer
+               open, as a person sees it; mq-v265, the tabs and the drawers' names too */
+            const SEL = await p.evaluate(() => [...document.querySelectorAll('#creator [data-choice], #pvTurn button, #crTabs [role=tab]')].map(e => e.dataset.choice ? '#creator [data-choice="' + e.dataset.choice + '"]' + (e.dataset.word ? '[data-word="' + e.dataset.word + '"]' : '') : e.dataset.turn ? '#pvTurn [data-turn="' + e.dataset.turn + '"]' : '#' + e.id)
+              .concat([...document.querySelectorAll('#creator details.crdrawer')].filter(d => !d.hidden).map(d => '#' + d.id + ' > summary')));
+            const sizes = [];
+            for (const s of SEL) { if (!(await reveal(s))) continue;
+              sizes.push(await p.evaluate(s => { const e = document.querySelector(s); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect();
+                return { id: e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : e.dataset.turn ? 'the button that turns him' : e.getAttribute('role') === 'tab' ? 'tab "' + e.textContent.trim() + '"' : 'drawer "' + e.textContent.trim() + '"', w: r.width, h: r.height, l: r.left, r: r.right, vw: document.documentElement.clientWidth }; }, s)); }
             if (!sizes.length) P.push('on a phone the builder\'s controls could not be found to measure');
             sizes.forEach(s => { if (s.l < 0 || s.r > s.vw) P.push('on a phone 390 pixels wide, the builder\'s ' + s.id + ' is partly off the screen (' + Math.round(s.l) + ' to ' + Math.round(s.r) + ' of ' + s.vw + ')');
               if (s.w < 44 || s.h < 44) P.push('on a phone, the builder\'s ' + s.id + ' is ' + Math.round(s.w) + ' by ' + Math.round(s.h) + ' pixels, smaller than a finger\'s 44'); });
@@ -14119,12 +14277,31 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 Object.keys(expect).forEach(k => { if (b1[k] !== expect[k]) P.push('from a look whose ' + k + ' is ' + JSON.stringify(String(bad[k]).slice(0, 40)) + ', the save keeps ' + JSON.stringify(b1[k]) + ', where it should keep ' + JSON.stringify(expect[k])); }); }
               [['a body that is a word', 'tall'], ['a body that is a list', [1.2, 'short']], ['a body that is nothing', null], ['a key hidden on the body\'s prototype', JSON.parse('{"__proto__":{"height":1.2,"sleeves":"short"}}')]].forEach(([why, b]) => {
                 const o = saveLook({ body: b }).body; if (clean(o, 'from ' + why)) rows.forEach(r => { if (o[r.key] !== r.def) P.push('from ' + why + ', his ' + r.key + ' comes out ' + JSON.stringify(o[r.key]) + ', not the default'); }); });
-              /* the person a new character starts as: the card's build, long sleeves, the hair a cap */
+              /* the person a new character starts as: the card's build, every option at the word its row starts at (long sleeves,
+                 the round head, no beard, ...); mq-v265: the hair on his body is his card's style, which the look keeps itself */
               const card = b => { const off = []; M.forEach(r => { if (b[r.key] !== 1) off.push(r.key + ' ' + b[r.key]); });
-                if (b.sleeves !== 'long') off.push('sleeves ' + b.sleeves); if (b.cut !== 'cap') off.push('hair ' + b.cut); return off; };
+                O.forEach(r => { if (b[r.key] !== r.def) off.push(r.key + ' ' + b[r.key]); }); return off; };
               const old = (sanitizeSave({ n: 'Old', lk: { shirt: '#8B5CF6', skin: '#E5AC82', hair: '#26202B', style: 'cap', outfit: 'casual' } }) || {}).lk;
               if (!old || !old.body) P.push('a look saved before the body\'s choices existed comes out of the save with no body');
-              else { const off = card(old.body); if (off.length) P.push('a look saved before the body\'s choices existed comes out as another person: ' + off.join(', ')); }
+              else { const off = card(old.body); if (off.length) P.push('a look saved before the body\'s choices existed comes out as another person: ' + off.join(', '));
+                if (hairStyleOf(old) !== 'cap') P.push('a look saved before the body\'s choices existed, with short hair, wears the hair "' + hairStyleOf(old) + '" on his body'); }
+              /* mq-v265, A STYLE HIS BODY CANNOT WEAR, AND THE ROW THAT WAS: a save with a style no game offers, or with the hair row
+                 the body had until mq-v265 (body.cut), comes out wearing a style his body can wear, keeps no "cut", and the body
+                 made from it wears that style; the card's "beard", which is a beard and not a haircut, is short hair with a beard */
+              const STY = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES : [];
+              if (!STY.length) P.push('the engine keeps no list of the styles of hair his body can wear, so a save\'s style could not be asked');
+              else for (const [why, lk] of [['a style no game offers', { style: 'zigzag-xl' }], ['the old hair row and no style', { body: { cut: 'full' } }], ['the old hair row with a style', { style: 'afro', body: { cut: 'cap', height: 1.1 } }], ['a style that is markup', { style: '<img src=x>' }], ['a style that is a number', { style: 7 }]]) {
+                const o = (sanitizeSave({ n: 'Old', lk: { shirt: '#8B5CF6', skin: '#E5AC82', hair: '#26202B', outfit: 'casual', ...lk } }) || {}).lk;
+                if (!o) { P.push('a save with ' + why + ' could not be read at all'); continue; }
+                const st = hairStyleOf(o); if (!STY.includes(st)) P.push('a save with ' + why + ' comes out wearing the hair "' + String(st).slice(0, 40) + '", which his body cannot wear');
+                if (o.body && 'cut' in o.body) P.push('a save with ' + why + ' keeps the old hair row: ' + JSON.stringify(o.body.cut));
+                if (typeof bodyMake === 'function') { const C = bodyChoicesOf(o.body), X = bodyMake(bodySkeleton('person', C), o, C);
+                  if (!STY.includes(X.userData.hair)) P.push('the body made from a save with ' + why + ' wears the hair "' + String(X.userData.hair).slice(0, 40) + '", which is no style his body can wear');
+                  X.traverse(q => { if (q.geometry) q.geometry.dispose(); if (q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); } }); } }
+              if (STY.length && typeof bodyMake === 'function') { const hairs = lk => { const C = bodyChoicesOf(lk.body), X = bodyMake(bodySkeleton('person', C), lk, C); let n = 0, st = X.userData.hair;
+                  X.traverse(q => { if (q.isMesh && q.userData.wears === 'hair') n++; if (q.geometry) q.geometry.dispose(); if (q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); } }); return { n, st }; };
+                const bd = hairs(saveLook({ ...look, style: 'beard', body: {} })), cp = hairs(saveLook({ ...look, style: 'cap', body: {} }));
+                if (bd.st !== 'cap' || !(bd.n > cp.n)) P.push('a look whose card wears the "beard" has on his body the hair "' + bd.st + '" with ' + bd.n + ' part(s) of hair, where the short cap has ' + cp.n + ': his beard is lost up close'); }
               /* the real save, there and back */
               const mine = {}; M.forEach((r, i) => { mine[r.key] = i % 2 ? r.min : r.max; }); O.forEach(r => { mine[r.key] = r.list[r.list.length - 1]; });
               const keep = look.body; look.body = { ...mine };
@@ -14133,7 +14310,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 else if (!got || JSON.stringify(got) !== JSON.stringify(bodyChoicesOf(mine))) P.push('the choices ' + JSON.stringify(mine) + ' come back from the save as ' + JSON.stringify(got));
               } finally { look.body = keep; }
               /* another player's look */
-              const peer = peerLook({ look: { body: { height: 99, cut: '<script>', not_a_choice: 1 } } }).body; clean(peer, 'in another player\'s look with a height of 99 and markup for a hair');
+              const pl = peerLook({ look: { style: '<script>', body: { height: 99, face: '<script>', cut: '<script>', not_a_choice: 1 } } }), peer = pl.body; clean(peer, 'in another player\'s look with a height of 99 and markup for a head and a hair');
+              if (STY.length && !STY.includes(hairStyleOf(pl))) P.push('another player\'s look with markup for a style wears the hair "' + String(hairStyleOf(pl)).slice(0, 40) + '" on his body');
               return P; });
             I.forEach(m => P.push(m)); }
           P.forEach(m => say(0, m)); if (H.errs.length) say(0, 'the builder\'s page threw "' + H.errs[0] + '"');
@@ -14164,6 +14342,385 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (J.errs.length) say(0, 'the page with rows planted in the table threw "' + J.errs[0] + '"');
         } catch (e) { say(0, 'the page with rows planted in the table could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
         await J.ctx.close(); }
+      /* ---- mq-v265 · K TO R: HIS HAIR, HIS HEAD AND HIS FACE, AND THE CREATOR'S TABS AND DRAWERS ----
+         The body reads the look's own style of hair (HAIRSTYLES, hairStyleOf; one function a style, HAIRPART), has a shape of
+         head (the row `face`: the card's ball, or a head built as a skull is, with a chin and a neck), ears, brows, a nose and a
+         mouth; the table of choices has a row for each part of that; and the creator, in a world that takes the body, is tabs
+         with one level of drawers. Asked of the engine's own lists, read at run time (the styles, the rows, their ranges, their
+         words, the tabs and groups), never of a copy of them; bodies made by the engine's own maker, and frames of the game's
+         own 3D camera with the clock held. Each sentence is what a person would notice:
+           K · HIS HAIR: every style made twice from the same look, with the clock and the random numbers different each time,
+               comes out the same to the byte (no flicker, no new head each time he is made); every part of it is his hair's
+               colour or a shade of it, for two hair colours far apart; and from the game's camera, facing you, right, away and
+               left, hair of his colour shows round his head for every style that has any (the bald head has none, and its
+               paint is next to nothing). A save with a style his body cannot wear lands on one it can (asked with the save, I).
+           L · HIS EARS: the bald head and the buzz have nothing standing off the head; long hair hides both ears; every other
+               style leaves two ears, one each side, showing to the camera from each side; and each ear lies ON his head for
+               every end of where it sits, how big it is and how far it stands off, each kind of ear, on each shape of head:
+               some of it touching the skin and most of it outside it (not floating, not sunk).
+           M · HIS HEAD: the round head is the ball it was, every point of its skin one radius from its centre; every other shape
+               has a chin below the ball and is deeper front to back than it is wide, and from the side shows a neck under it;
+               and on every shape his eyes, brows, nose and mouth lie on his face, each standing a little proud of the skin and
+               inside the outline of his head seen from in front, at both ends of every measure of them and for each mouth.
+           N · EVERY ROW MOVES WHAT IT NAMES: each measure of the table at its two ends makes a different body, and each word of
+               an option a body different from each other word's; a row that shows only on some hair or with a beard is asked
+               on each style in turn with one; a colour row's colour is the colour of the part it names (eyecol the eyes,
+               browcol the brows, tiecol the braids' ties), and in the creator each colour is offered as a dot of it.
+           O · HIS BEARD: none draws no hair at all on a bald head; each kind draws one, and no two kinds the same; and none of
+               them covers his eyes from the camera facing you, on any shape of head.
+           P · HIS HAIRLINE: over the middle of his brow the hair starts lower on a head with a jaw than on the round head,
+               counted from his eyes, for a style painted on the skin (the buzz) and one that stands off it (the short cap); and
+               the hairline's measure moves where it starts.
+           Q · THE CREATOR ON A PHONE (390 by 844): one tab for each of the table's tabs, exactly one panel shown, the arrows
+               moving along the tabs; each drawer opened by a tap and by Enter, opening one shutting the others of its tab; a
+               shut drawer saying what is chosen in it (the style of hair by its name; "changed" once a choice in it is off
+               where it started); its way back putting its rows back and going away; and his preview and the tabs still in
+               view with a drawer open and the panel scrolled to its foot. A world that does not take the body has none of
+               this (G).
+           R · WHAT HE COSTS: a body for every style on every shape of head, with a beard, is made without an error and is no
+               more than BODYTRIS triangles (measured on mq-v265: the heaviest, the braids with a beard on a head with a jaw,
+               about 40,700; the braids alone 37,604, the next heaviest 22,636). */
+      { const K = await page4(doc, null, null, true);
+        try { const R = await K.p.evaluate(() => { const P = [], N = [];
+            if (typeof HAIRSTYLES === 'undefined' || !Array.isArray(HAIRSTYLES) || !HAIRSTYLES.length) { P.push('the engine keeps no list of the styles of hair his body can wear, so his hair, head and face were not asked'); return { P, N }; }
+            if (typeof THREE === 'undefined') { N.push('this shell has no 3D camera, so his body is never shown and his hair, head and face were not asked'); return { P, N }; }
+            if (typeof bodyMake !== 'function') { P.push('this page has a 3D camera and cannot make his body, so his hair, head and face were not asked'); return { P, N }; }
+            const BODYTRIS = 45000;
+            const ROWS = bodyRows('person'), row = k => ROWS.find(r => r.key === k), say = k => bodyWord(k).toLowerCase();
+            const FR = row('face'), FACES = FR && FR.kind === 'option' ? FR.list.slice() : [], ROUND = FR ? FR.def : null, JAWED = FACES.filter(f => f !== ROUND);
+            if (!JAWED.length) P.push('his head offers no shape but the ball, so the shapes of a head were not asked');
+            const BR = row('beard'), KINDS = BR && BR.kind === 'option' ? BR.list.filter(w => w !== BR.def) : [];
+            const LOOK = { skin: '#D9874A', hair: '#7A3FB8', shirt: '#2F9E6E', outfit: 'casual', pattern: 'plain' };
+            const make = (st, body, lk) => { const C = bodyChoicesOf(body || {}), S = bodySkeleton('person', C), X = bodyMake(S, { ...look, ...LOOK, ...(lk || {}), style: st, body: C }, C);
+              X.userData.r = S.head; X.updateWorldMatrix(true, true); return X; };
+            const free = X => X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
+            const parts = (X, f) => { const a = []; X.traverse(o => { if (o.isMesh && f(o)) a.push(o); }); return a; };
+            const wears = w => o => o.userData.wears === w;
+            const skullOf = X => parts(X, o => o.parent && o.parent.name === 'head' && o.userData.wears === 'skin')[0];
+            const hsv = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; if (!c) return [0, 0, mx];
+              let h = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4; h *= 60; if (h < 0) h += 360; return [h, c / mx, mx]; };
+            const rgbOf = hex => { const n = parseInt(String(hex).replace('#', ''), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+            const dh = (a, b) => Math.abs(((a - b) + 540) % 360 - 180);
+            const sheet = o => { const im = o.material && o.material.map && o.material.map.image; return im && im.getContext ? im : null; };
+            /* a part's colour as it is painted: its own colour, or where it wears a sheet, the sheet's mean times its own colour */
+            const colOf = o => { const base = rgbOf((o.userData.base || o.material.color).getHexString()), im = sheet(o); if (!im) return base;
+              const d = im.getContext('2d').getImageData(0, 0, im.width, im.height).data; let r = 0, g = 0, b = 0, n = 0;
+              for (let i = 0; i < d.length; i += 4 * 7) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+              return [r / n * base[0] / 255, g / n * base[1] / 255, b / n * base[2] / 255]; };
+            /* the body as data, to the byte: each part's place in the world, its points, its colour, whether it shows, and its sheet */
+            const hashA = (a, h) => { for (let i = 0; i < a.length; i++) h = Math.imul(h ^ Math.round(a[i] * 1e4), 16777619) >>> 0; return h; };
+            const sig = X => { const s = []; X.updateWorldMatrix(true, true); X.traverse(o => { if (!o.isMesh) return;
+                let h = hashA(o.matrixWorld.elements, 2166136261); h = hashA(o.geometry.attributes.position.array, h); if (o.geometry.index) h = hashA(o.geometry.index.array, h);
+                const im = sheet(o); if (im) h = hashA(im.getContext('2d').getImageData(0, 0, im.width, im.height).data, h);
+                s.push([o.parent && o.parent.name, o.userData.wears, o.visible ? 1 : 0, (o.userData.base || o.material.color).getHexString(), h].join(':')); }); return s.join('|'); };
+            /* the skin of his head along a direction from its centre, in the skull's own frame: the ray from the centre through
+               the triangles round the skull's point that lies nearest that direction */
+            const SKINS = new WeakMap(), skinOf = skull => SKINS.get(skull) || SKINS.set(skull, skinAt(skull)).get(skull);
+            const skinAt = skull => { const g = skull.geometry, p = g.attributes.position, ix = g.index ? g.index.array : null, V = [], D = [], adj = [];
+              for (let i = 0; i < p.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(p, i); V.push(v); D.push(v.clone().normalize()); adj.push([]); }
+              if (ix) for (let t = 0; t < ix.length; t += 3) for (let k = 0; k < 3; k++) adj[ix[t + k]].push(t);
+              const ray = new THREE.Ray(), hit = new THREE.Vector3(), O = new THREE.Vector3();
+              return d => { let best = -2, bi = 0; for (let i = 0; i < D.length; i++) { const q = D[i].dot(d); if (q > best) { best = q; bi = i; } }
+                ray.set(O, d); const tried = new Set();
+                for (const t0 of adj[bi]) for (let k = 0; k < 3; k++) for (const t of adj[ix[t0 + k]]) { if (tried.has(t)) continue; tried.add(t);
+                  if (ray.intersectTriangle(V[ix[t]], V[ix[t + 1]], V[ix[t + 2]], false, hit)) return hit.length(); }
+                return V[bi].length(); }; };
+            /* how far each point of a part stands out of his skin, in head radii (below 0 is under it) */
+            const outOf = (X, o, every) => { const sk = skullOf(X), R = skinOf(sk), r = X.userData.r, p = o.geometry.attributes.position, v = new THREE.Vector3(), out = [];
+              const step = Math.max(1, Math.floor(p.count / (every || 400)));
+              for (let i = 0; i < p.count; i += step) { v.fromBufferAttribute(p, i); o.localToWorld(v); sk.worldToLocal(v); const L = v.length(); out.push({ o: (L - R(v.clone().normalize())) / r, x: v.x / r, y: v.y / r, z: v.z / r }); }
+              return out; };
+            const kr = Math.random, kn = Date.now;
+            const hold = (s, t) => { Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => t; performance.now = () => t / 1000; };
+            const back = () => { Math.random = kr; Date.now = kn; delete performance.now; };
+            /* ---- K · his hair: the same twice, his colour, and (with L) what stands off his head and his ears ---- */
+            const TEAL = '#2A9D8F', HAS = {};
+            for (const st of HAIRSTYLES) { let X = null, s1 = null, s2 = null;
+              try { hold(1, 1.7e12); X = make(st); s1 = sig(X); free(X); X = null; hold(987654321, 1.9e12); X = make(st); s2 = sig(X); }
+              catch (e) { P.push('his body could not be made with the hair "' + st + '": it threw "' + String(e && e.message || e).split('\n')[0] + '"'); continue; } finally { back(); }
+              if (s1 !== s2) P.push('the hair "' + st + '" is not the same twice: made twice from the same look, at another moment and with other random numbers, it comes out different, so his hair would change each time his body is made');
+              const hp = parts(X, wears('hair'));
+              HAS[st] = { parts: hp.length };
+              /* L · the ears: hidden by long hair, two showing otherwise, one each side */
+              const ears = parts(X, wears('ear')), sides = [1, -1].map(sd => ears.filter(o => o.visible && Math.sign(o.getWorldPosition(new THREE.Vector3()).x) === sd).length);
+              if (st === 'long') { if (ears.some(o => o.visible)) P.push('with long hair, ' + ears.filter(o => o.visible).length + ' part(s) of his ears show through it, where long hair falls over them'); }
+              else if (sides.some(n => !n)) P.push('with the hair "' + st + '" he has ' + sides.filter(Boolean).length + ' ear(s), where he has one each side');
+              free(X);
+              /* his colour, for two colours of hair far apart: every part of his hair is that colour or a shade of it */
+              for (const hair of [LOOK.hair, TEAL]) { const Y = make(st, {}, { hair }), want = hsv(...rgbOf(hair));
+                const bad = parts(Y, wears('hair')).map(o => colOf(o)).filter(c => { const [h, s] = hsv(...c); return s < 0.2 || dh(h, want[0]) > 20; });
+                if (bad.length) P.push('the hair "' + st + '" has ' + bad.length + ' part(s) in a colour that is not his hair\'s (' + bad.slice(0, 3).map(c => 'rgb(' + c.map(Math.round).join(',') + ')').join(', ') + ' where his hair is ' + hair + '): the colour he chooses for his hair colours all of it');
+                free(Y); } }
+            ['bald', 'buzz', 'long'].forEach(st => { if (!HAIRSTYLES.includes(st)) P.push('his body cannot wear the hair "' + st + '", so what it does to his head was not asked'); });
+            ['bald', 'buzz'].forEach(st => { if (HAS[st] && HAS[st].parts) P.push('the hair "' + st + '" has ' + HAS[st].parts + ' part(s) standing off his head, where it is his skull with the hair painted on'); });
+            /* ---- L · each ear lies on his head ---- */
+            { const ER = ['earup', 'earback', 'earsize', 'earangle'].map(k => [k, row(k)]), EK = row('ears'), KS = EK && EK.list ? EK.list : [null];
+              ER.filter(([k, r]) => !r).forEach(([k]) => P.push('his ears have no measure ' + k + ', so where an ear sits was not asked at that end'));
+              let worstGap = 0, worstIn = 0, n = 0;
+              for (const face of FACES.length ? FACES : [null]) for (const kind of KS) for (const [k, r] of [[null, null], ...ER.filter(([, r]) => r)]) for (const v of r ? [r.min, r.max] : [null]) {
+                const body = { ...(face ? { face } : {}), ...(kind ? { ears: kind } : {}), ...(k ? { [k]: v } : {}) }, X = make('cap', body);
+                const where = 'on the ' + (face || 'only') + ' head' + (kind ? ', with ' + kind + ' ears' : '') + (k ? ', with his ' + say(k) + ' at its ' + (v === r.min ? 'least' : 'most') + ' (' + v + ')' : '');
+                [1, -1].forEach(sd => { const mine = parts(X, o => o.userData.wears === 'ear' && Math.sign(o.getWorldPosition(new THREE.Vector3()).x) === sd);
+                  if (!mine.length) { P.push(where + ', he has no ear on his ' + (sd > 0 ? 'left' : 'right')); return; }
+                  const flap = mine.reduce((a, b) => b.geometry.attributes.position.count > a.geometry.attributes.position.count ? b : a), O = outOf(X, flap, 200), all = mine.flatMap(o => outOf(X, o, 120));
+                  const gap = Math.min(...all.map(q => q.o)), sunk = O.filter(q => q.o < 0).length / O.length; n++;
+                  worstGap = Math.max(worstGap, gap); worstIn = Math.max(worstIn, sunk);
+                  if (gap > 0.02) P.push(where + ', his ' + (sd > 0 ? 'left' : 'right') + ' ear floats off his head: its nearest point is ' + gap.toFixed(3) + ' of his head\'s radius out from the skin');
+                  else if (sunk > 0.6) P.push(where + ', his ' + (sd > 0 ? 'left' : 'right') + ' ear is sunk into his head: ' + Math.round(sunk * 100) + '% of it is under the skin'); });
+                free(X); }
+              N.push('his ears asked on ' + n + ' ear(s) of ' + (FACES.length || 1) + ' shape(s) of head: the farthest any came off the skin ' + worstGap.toFixed(3) + ' of a radius (0.02 is floating), the most of one under it ' + Math.round(worstIn * 100) + '% (60% is sunk)'); }
+            /* ---- M · his head: the ball, the chin, the depth; and his face on it ---- */
+            for (const face of FACES) { const X = make('bald', { face }), sk = skullOf(X), r = X.userData.r;
+              if (!sk) { P.push('on the ' + face + ' head there is no skull to measure'); free(X); continue; }
+              const p = sk.geometry.attributes.position, v = new THREE.Vector3(); let dev = 0, x0 = 9, x1 = -9, y0 = 9, z0 = 9, z1 = -9;
+              for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); dev = Math.max(dev, Math.abs(v.length() / r - 1)); x0 = Math.min(x0, v.x / r); x1 = Math.max(x1, v.x / r); y0 = Math.min(y0, v.y / r); z0 = Math.min(z0, v.z / r); z1 = Math.max(z1, v.z / r); }
+              if (face === ROUND) { if (dev > 1e-3) P.push('the round head is no longer the ball his card has: its skin is off a ball by up to ' + (dev * 100).toFixed(1) + '% of its radius'); }
+              else { if (!(y0 < -1.02)) P.push('the ' + face + ' head has no chin below the ball: its lowest point is ' + (-y0).toFixed(2) + ' of a radius under its centre, where the round head\'s is 1');
+                if (!(z1 - z0 > x1 - x0)) P.push('the ' + face + ' head is ' + (x1 - x0).toFixed(2) + ' wide and only ' + (z1 - z0).toFixed(2) + ' deep, where a head is deeper front to back than it is wide'); }
+              free(X); }
+            { const FM = ['eyesize', 'eyegap', 'noselen', 'nosew', 'noseout', 'mouthw'].map(k => [k, row(k)]), MR = row('mouth');
+              FM.filter(([, r]) => !r).forEach(([k]) => P.push('his face has no measure ' + k + ', so it was not asked at its ends'));
+              const cases = []; FACES.forEach(face => { FM.filter(([, r]) => r).forEach(([k, r]) => [r.min, r.max].forEach(v => cases.push([face, { [k]: v }, 'with his ' + say(k) + ' at its ' + (v === r.min ? 'least' : 'most') + ' (' + v + ')'])));
+                (MR ? MR.list : []).forEach(w => cases.push([face, { mouth: w }, 'with the mouth "' + w + '"'])); });
+              let checked = 0;
+              for (const [face, b, said] of cases) { const X = make('bald', { face, ...b }), sk = skullOf(X), r = X.userData.r, where = 'on the ' + face + ' head, ' + said + ', his ';
+                const sp = sk.geometry.attributes.position, sv = new THREE.Vector3(), half = {}; let y0 = 9, y1 = -9;
+                for (let i = 0; i < sp.count; i++) { sv.fromBufferAttribute(sp, i); const y = sv.y / r, k = Math.round(y / 0.04); half[k] = Math.max(half[k] || 0, Math.abs(sv.x / r)); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+                const hw = y => Math.max(half[Math.round(y / 0.04)] || 0, half[Math.round(y / 0.04) - 1] || 0, half[Math.round(y / 0.04) + 1] || 0);
+                for (const w of ['eye', 'brow', 'nose', 'mouth']) { const ps = parts(X, wears(w));
+                  if (w === 'mouth' && b.mouth === (MR && MR.list.find(m => m === 'none'))) { if (ps.length) P.push(where + 'mouth shows, where he chose none'); continue; }
+                  if (!ps.length) { P.push(where + w + ' is missing'); continue; }
+                  ps.forEach(o => { const O = outOf(X, o, 150), proud = Math.max(...O.map(q => q.o)), cz = O.reduce((s, q) => s + q.z, 0) / O.length; checked++;
+                    if (!(proud > 0.004)) P.push(where + w + ' is sunk into his skin, so it does not show');
+                    else if (O.some(q => q.y < y0 - 0.01 || q.y > y1 || Math.abs(q.x) > hw(q.y) + 0.01)) P.push(where + w + ' stands outside the outline of his head, seen from in front');
+                    else if (!(cz > 0)) P.push(where + w + ' is not on his face: it lies on the back half of his head'); }); }
+                free(X); }
+              N.push('his eyes, brows, nose and mouth asked in ' + checked + ' part(s) over ' + cases.length + ' faces'); }
+            /* ---- N · every row moves what it names ---- */
+            { const CTX = [{ st: HAIRSTYLES[0], b: {} }].concat(HAIRSTYLES.map((st, i) => ({ st, b: { ...(JAWED.length ? { face: JAWED[i % JAWED.length] } : {}), ...(KINDS.length ? { beard: KINDS[i % KINDS.length] } : {}) } })));
+              const isRound = c => !c.b.face || c.b.face === ROUND;
+              /* made with the clock and the random numbers held, so a body that differs is one the row changed and not the moment */
+              const sigAt = (c, k, v) => { hold(7, 1.8e12); try { const X = make(c.st, { ...c.b, [k]: v }), s = sig(X); free(X); return s; } finally { back(); } };
+              let asked = 0;
+              for (const r of ROWS) { const ctx = CTX.filter(c => !(r.needs && isRound(c)));
+                if (r.kind === 'measure') { let moved = false;
+                  for (const c of ctx) { asked++; if (sigAt(c, r.key, r.min) !== sigAt(c, r.key, r.max)) { moved = true; break; } }
+                  if (!moved) P.push('moving his ' + say(r.key) + ' from one end to the other (' + r.min + ' to ' + r.max + ') changes nothing on his body, with any style of hair, head or beard'); }
+                else if (r.kind === 'option' && r.list) { const same = new Set(r.list.flatMap((a, i) => r.list.slice(i + 1).map(b => a + '|' + b)));
+                  for (const c of ctx) { if (!same.size) break; const S = {}; r.list.forEach(w => { asked++; S[w] = sigAt(c, r.key, w); });
+                    [...same].forEach(pr => { const [a, b] = pr.split('|'); if (S[a] !== S[b]) same.delete(pr); }); }
+                  same.forEach(pr => { const [a, b] = pr.split('|'); P.push('his ' + say(r.key) + ' "' + a + '" and "' + b + '" make the same body, with any style of hair, head or beard: choosing one or the other changes nothing'); });
+                  /* a colour row colours the part it names */
+                  if (r.swatch) { const w = r.key.replace(/col$/, ''); let found = false;
+                    for (const hex of r.list.filter(x => /^#[0-9a-f]{6}$/i.test(x))) { let got = null;
+                      for (const c of ctx) { const X = make(c.st, { ...c.b, [r.key]: hex }), ps = parts(X, wears(w)); if (ps.length) got = ps.map(o => '#' + (o.userData.base || o.material.color).getHexString()); free(X); if (got) break; }
+                      if (got) { found = true; if (!got.some(g => g.toLowerCase() === hex.toLowerCase())) P.push('choosing ' + hex + ' for his ' + say(r.key) + ', his ' + w + ' is ' + [...new Set(got)].join(', ') + ' and not that colour'); } }
+                    if (!found) P.push('no part of him wears "' + w + '", so the colour row ' + say(r.key) + ' colours nothing'); } } }
+              N.push('every row of the table asked at its ends or words: ' + asked + ' bodies made'); }
+            /* ---- O · his beard ---- */
+            if (!KINDS.length) P.push('he can choose no beard, so a beard was not asked');
+            for (const face of FACES.length ? FACES : [null]) { const S = {};
+              for (const w of BR ? BR.list : []) { hold(7, 1.8e12); let X; try { X = make('bald', { ...(face ? { face } : {}), beard: w }); } finally { back(); } const n = parts(X, wears('hair')).length; S[w] = sig(X); free(X);
+                if (w === BR.def && n) P.push('with no beard chosen, on the ' + face + ' bald head, he has ' + n + ' part(s) of hair'); else if (w !== BR.def && !n) P.push('with the beard "' + w + '" chosen, on the ' + face + ' bald head, no beard stands off his face'); }
+              KINDS.forEach((a, i) => KINDS.slice(i + 1).forEach(b => { if (S[a] === S[b]) P.push('the beards "' + a + '" and "' + b + '" are drawn the same, on the ' + face + ' head'); })); }
+            /* ---- P · the hairline over his brow, counted from his eyes, in head radii ---- */
+            { const HL = row('hairline'); if (!HL) P.push('his hair has no hairline to move, so where it starts was not asked at its ends');
+              const hairRGB = rgbOf(LOOK.hair), skinRGB = rgbOf(LOOK.skin), near = (c, a) => Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
+              const brow = (st, body) => { const X = make(st, body), sk = skullOf(X), r = X.userData.r, eyes = parts(X, wears('eye'));
+                const eyeY = eyes.reduce((s, o) => s + (o.position.y - sk.position.y), 0) / Math.max(1, eyes.length) / r; let low = Infinity;
+                const im = sheet(sk), uv = sk.geometry.attributes.uv, p = sk.geometry.attributes.position, v = new THREE.Vector3();
+                if (im && uv) { const d = im.getContext('2d').getImageData(0, 0, im.width, im.height).data;
+                  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (Math.abs(v.x) > 0.06 * r || v.z <= 0 || v.y / r <= eyeY) continue;
+                    const x = Math.min(im.width - 1, Math.floor(uv.getX(i) * im.width)), y = Math.min(im.height - 1, Math.floor((sk.material.map.flipY ? 1 - uv.getY(i) : uv.getY(i)) * im.height)), k = 4 * (y * im.width + x), c = [d[k], d[k + 1], d[k + 2]];
+                    if (near(c, hairRGB) < near(c, skinRGB)) low = Math.min(low, v.y / r); } }
+                parts(X, wears('hair')).forEach(o => outOf(X, o, 4000).forEach(q => { if (Math.abs(q.x) < 0.06 && q.z > 0 && q.y > eyeY && q.o > 0.003) low = Math.min(low, q.y); }));
+                free(X); return low - eyeY; };
+              for (const st of ['buzz', 'cap']) { if (!HAIRSTYLES.includes(st)) continue;
+                const f = {}; for (const face of [ROUND, ...JAWED.slice(0, 1)]) { f[face] = brow(st, { face }); if (!isFinite(f[face])) P.push('on the ' + face + ' head, the hair "' + st + '" has no hair over the middle of his brow to measure'); }
+                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] < f[ROUND] - 0.05)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': it does not come down the brow on a head with a jaw');
+                if (HL) for (const face of [ROUND, ...JAWED.slice(0, 1)]) { const lo = brow(st, { face, hairline: HL.min }), hi = brow(st, { face, hairline: HL.max });
+                  if (!(Math.abs(hi - lo) > 0.05)) P.push('with the hair "' + st + '" on the ' + face + ' head, moving the hairline from one end to the other moves where his hair starts by ' + (isFinite(hi - lo) ? Math.abs(hi - lo).toFixed(3) : 'nothing measurable') + ' of a radius');
+                  N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } } }
+            /* ---- R · what he costs ---- */
+            { let worst = 0, at = '', n = 0;
+              for (const face of FACES.length ? FACES : [null]) for (const st of HAIRSTYLES) for (const bd of [BR ? BR.def : null, KINDS[0] || null]) { let X;
+                try { X = make(st, { ...(face ? { face } : {}), ...(bd ? { beard: bd } : {}) }); } catch (e) { P.push('his body with the hair "' + st + '" on the ' + face + ' head' + (bd ? ' and the beard "' + bd + '"' : '') + ' could not be made: "' + String(e && e.message || e).split('\n')[0] + '"'); continue; }
+                let t = 0; X.traverse(o => { if (o.isMesh) t += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; }); free(X); n++;
+                if (t > worst) { worst = t; at = '"' + st + '" on the ' + face + ' head with the beard "' + bd + '"'; }
+                if (t > BODYTRIS) P.push('his body with the hair "' + st + '" on the ' + face + ' head and the beard "' + bd + '" is ' + Math.round(t) + ' triangles, past the ' + BODYTRIS + ' a body may cost'); }
+              N.push('what he costs: ' + n + ' bodies made, the heaviest ' + Math.round(worst) + ' triangles (' + at + '), the most a body may cost ' + BODYTRIS); }
+            return { P, N }; });
+          R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
+          if (K.errs.length) say(0, 'the page that makes his hair, head and face threw "' + K.errs[0] + '"');
+        } catch (e) { say(0, 'his hair, head and face could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        await K.ctx.close(); }
+      /* the same body in the game's own 3D camera, the clock at noon and no season's face paint: K's four sides, L's ears from
+         each side, M's neck and O's eyes. His look is the hues of D (a violet hair, an orange skin, a green shirt); a part asked
+         for is painted a magenta no street has for one frame, and what turns magenta is that part as the camera shows it, in
+         front of everything else. One of his eyes facing you is the yardstick of "shows", as it is in F */
+      { const K2 = await page4(doc, null, null, true);
+        try { const R = await K2.p.evaluate(() => { const P = [], N = [];
+            if (typeof T3 === 'undefined' || !window.THREE || (typeof CAMS !== 'undefined' && !CAMS.includes('3d'))) { N.push('this shell has no 3D camera, so his hair, ears, neck and eyes were not looked at in it'); return { P, N }; }
+            if (typeof HAIRSTYLES === 'undefined' || !Array.isArray(HAIRSTYLES) || !HAIRSTYLES.length) { P.push('the engine keeps no list of the styles of hair his body can wear, so his hair was not looked for in the camera'); return { P, N }; }
+            const wEl = document.getElementById('world'), kw = { cam: camMode, hidden: wEl.hidden }, kb = t3Body, ka = t3Actors, kf = faceLooks, RD = Date, kl = look, kd = dir;
+            Date = function (...a) { return a.length ? new RD(...a) : new RD(new RD().setHours(12, 0, 0, 0)); }; Object.setPrototypeOf(Date, RD); Date.prototype = RD.prototype;
+            const LOOK = { skin: '#D9874A', hair: '#7A3FB8', shirt: '#2F9E6E', outfit: 'casual', pattern: 'plain' };
+            const hsv = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; if (!c) return [0, 0, mx];
+              let h = mx === r ? ((g - b) / c) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4; h *= 60; if (h < 0) h += 360; return [h, c / mx, mx]; };
+            const hh = (() => { const q = new THREE.Color(LOOK.hair); return hsv(q.r * 255, q.g * 255, q.b * 255)[0]; })();
+            const grab = () => { draw3d(); const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, px = new Uint8Array(W * H * 4);
+              gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
+            const mag = (px, i) => px[i] > 150 && px[i + 2] > 150 && px[i + 1] < 90;
+            /* the pixels where the parts that pass f turn magenta (their sheets set aside for the frame), against the frame as it is */
+            const painted = (f, A) => { const kept = []; T3.body.traverse(o => { if (o.isMesh && o.userData.base && f(o)) { kept.push([o, o.userData.base, o.material.map]); o.userData.base = new THREE.Color('#FF00FF'); o.material.map = null; o.material.needsUpdate = true; } });
+              let F; try { F = grab(); } finally { kept.forEach(([o, c, m]) => { o.userData.base = c; o.material.map = m; o.material.needsUpdate = true; }); }
+              if (!kept.length) return -1; let n = 0; for (let i = 0; i < F.px.length; i += 4) if (mag(F.px, i) && !mag(A.px, i)) n++; return n; };
+            const set = (style, body, d) => { look = saveLook({ ...look, ...LOOK, style, body }); dir = d; };
+            const eyeOf = A => Math.max(...[0, 1].map(i => { let k = 0; return painted(o => o.userData.wears === 'eye' && k++ === i, A); }));
+            try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
+              /* the street alone, his body and his card both hidden: what differs from it, near him, is him */
+              t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); };
+              let E; try { E = grab(); } finally { t3Body = kb; t3Actors = ka; }
+              const box = (() => { const v = new THREE.Vector3(fx + 0.5, 0.45, fy + 0.5).project(T3.cam), u = new THREE.Vector3(fx + 1.5, 0.45, fy + 0.5).project(T3.cam);
+                return { cx: (v.x + 1) / 2 * E.W, cy: (v.y + 1) / 2 * E.H, sq: Math.abs(u.x - v.x) / 2 * E.W }; })();
+              const hairPx = A => { let n = 0; for (let y = Math.max(0, Math.floor(box.cy - box.sq)); y < Math.min(A.H, box.cy + box.sq); y++) for (let x = Math.max(0, Math.floor(box.cx - box.sq)); x < Math.min(A.W, box.cx + box.sq); x++) {
+                const i = (y * A.W + x) * 4; if (Math.abs(A.px[i] - E.px[i]) + Math.abs(A.px[i + 1] - E.px[i + 1]) + Math.abs(A.px[i + 2] - E.px[i + 2]) <= 40) continue;
+                const [h, s, v] = hsv(A.px[i], A.px[i + 1], A.px[i + 2]); if (s > 0.25 && v > 40 && Math.abs(((h - hh) + 540) % 360 - 180) < 22) n++; } return n; };
+              /* the yardstick: one of his eyes, facing you, on the head a new character starts with */
+              set(saveLook({}).style, {}, 'down'); const A0 = grab(), eye = eyeOf(A0);
+              if (!(eye >= 4)) { P.push('his eyes could not be found on the screen facing you (' + eye + ' pixels of the larger), so his hair, ears, neck and eyes were not measured in the camera'); return { P, N }; }
+              /* K · from each side, hair of his colour for every style that has hair */
+              const SIDES = [['down', 'facing you'], ['right', 'facing right'], ['up', 'facing away'], ['left', 'facing left']], seen = [];
+              /* his ear with nothing over it, from each side: the bald head's; "shows" is at least a third of that */
+              const bare = {}; for (const d of ['right', 'left']) { set('bald', {}, d); bare[d] = painted(o => o.userData.wears === 'ear', grab()); }
+              if (!(bare.right >= 4 && bare.left >= 4)) P.push('his ears could not be found on the screen from the side, even on the bald head (' + bare.right + ' and ' + bare.left + ' pixels), so whether hair hides them was not asked');
+              /* every style has hair to see but the bald head: which has hair is not asked of the engine that draws it, or a style
+                 that drew nothing would count as having none */
+              for (const st of HAIRSTYLES) { const has = st !== 'bald', row = [];
+                for (const [d, said] of SIDES) { set(st, {}, d); if (!T3.bodyOn) { P.push('with the hair "' + st + '", ' + said + ', he is not a jointed body in the camera, so his hair was not looked for'); continue; }
+                  const A = grab(), n = hairPx(A); row.push(n);
+                  /* L · his ears, from the side: long hair hides them, every other style shows the one on that side */
+                  if (d === 'right' || d === 'left') { const e = painted(o => o.userData.wears === 'ear', A);
+                    if (st === 'long') { if (e > 0) P.push('with long hair, ' + said + ', ' + e + ' pixels of his ear show through it'); }
+                    else if (e < bare[d] / 3) P.push('with the hair "' + st + '", ' + said + ', his ear hardly shows: ' + Math.max(0, e) + ' pixels of it, where with no hair over it it shows in ' + bare[d]);
+                    row.push('ear ' + e); }
+                  if (has && n < eye) P.push('with the hair "' + st + '", ' + said + ', his hair does not show in the game\'s camera: ' + n + ' pixels of his hair\'s colour round his head, fewer than one of his eyes shows (' + eye + ')'); }
+                seen.push(st + ' ' + row.join('/')); }
+              N.push('his hair in the camera (facing you, right, away, left; pixels of hair, and of the ear on that side), an eye ' + eye + ', a bare ear ' + bare.right + '/' + bare.left + ': ' + seen.join('; '));
+              /* M · from the side, a neck under a head with a jaw; O · facing you, no beard covers his eyes */
+              const FR = bodyRows('person').find(r => r.key === 'face'), BR = bodyRows('person').find(r => r.key === 'beard');
+              for (const face of FR ? FR.list : []) { set('bald', { face }, 'right'); const A = grab(), n = painted(o => o.parent && o.parent.name === 'neck', A);
+                if (face !== FR.def && n < eye) P.push('on the ' + face + ' head, facing right, his neck does not show: ' + Math.max(0, n) + ' pixels of it, where one of his eyes shows in ' + eye);
+                const eyes = {}; for (const w of BR ? BR.list : []) { set('bald', { face, beard: w }, 'down'); eyes[w] = eyeOf(grab()); }
+                if (BR) BR.list.filter(w => w !== BR.def).forEach(w => { if (eyes[w] < 0.9 * eyes[BR.def]) P.push('on the ' + face + ' head, facing you, the beard "' + w + '" covers his eyes: one of them shows in ' + eyes[w] + ' pixels, where with no beard it shows in ' + eyes[BR.def]); });
+                N.push('on the ' + face + ' head: the neck facing right ' + n + ' pixels; an eye facing you ' + Object.entries(eyes).map(([w, v]) => w + ' ' + v).join(', ')); }
+            } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = kd; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
+            return { P, N }; });
+          R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
+          if (K2.errs.length) say(0, 'the page that looks at his hair, ears, neck and eyes threw "' + K2.errs[0] + '"');
+        } catch (e) { say(0, 'his hair, ears, neck and eyes could not be looked at in the camera: ' + String(e && e.message || e).split('\n')[0]); }
+        await K2.ctx.close(); }
+      /* ---- Q · the creator's tabs and drawers on a phone, driven by taps and keys as a person drives them ---- */
+      { const Q = await page4(doc); const qp = Q.p, QP = [], q = m => QP.push('on a phone, ' + m);
+        try {
+          const state = () => qp.evaluate(() => { const bar = document.getElementById('crTabs'), tabs = bar ? [...bar.querySelectorAll('[role=tab]')] : [];
+            const shown = [...document.querySelectorAll('#creator [role=tabpanel]')].filter(p => !p.hidden && p.getBoundingClientRect().height > 0);
+            const sel = tabs.find(t => t.getAttribute('aria-selected') === 'true');
+            return { want: typeof CRTABS !== 'undefined' && Array.isArray(CRTABS) ? CRTABS.map(t => t.key) : null, tabs: tabs.map(t => ({ id: t.id, name: t.textContent.trim() })),
+              sel: sel ? sel.id : null, focus: document.activeElement ? document.activeElement.id : null, panel: sel ? sel.getAttribute('aria-controls') : null, shown: shown.map(p => p.id) }; });
+          const name = id => (S0.tabs.find(t => t.id === id) || { name: id }).name;
+          const S0 = await state(), no3d = await qp.evaluate(() => typeof THREE === 'undefined');
+          if (no3d) say(1, 'this shell has no 3D camera, so the creator offers no builder for his body, and no tabs or drawers for it');
+          else if (!S0.want) q('the engine keeps no table of the creator\'s tabs, so its tabs were not asked');
+          else if (!S0.tabs.length) q('in a world that takes the body, the creator has no tabs: its choices are one long list');
+          else {
+            if (S0.tabs.length !== S0.want.length) q('the creator shows ' + S0.tabs.length + ' tab(s), where its table has ' + S0.want.length + ' (' + S0.want.join(', ') + ')');
+            S0.tabs.filter(t => !t.name).forEach(t => q('the creator\'s tab ' + t.id + ' has no name on it'));
+            if (S0.shown.length !== 1) q('the creator shows ' + S0.shown.length + ' of its tabs\' panels at once (' + S0.shown.join(', ') + '), where exactly one shows');
+            else if (S0.shown[0] !== S0.panel) q('the panel the creator shows is not the one its chosen tab names');
+            /* the arrows along the tabs, from the first, all the way round and back one */
+            await qp.focus('#' + S0.tabs[0].id); const n = S0.tabs.length;
+            for (let i = 1; i <= n + 1; i++) { const back = i === n + 1; await qp.keyboard.press(back ? 'ArrowLeft' : 'ArrowRight'); await rafs(qp, 1); const s = await state(), want = S0.tabs[back ? n - 1 : i % n].id;
+              if (s.sel !== want || s.focus !== want) { q('with the keyboard on the creator\'s tabs, the ' + (back ? 'left' : 'right') + ' arrow goes to "' + name(s.sel) + '" with the focus on ' + (s.focus ? '"' + name(s.focus) + '"' : 'nothing') + ', where the next tab is "' + name(want) + '"'); break; }
+              if (s.shown.length !== 1 || s.shown[0] !== s.panel) { q('with the keyboard on the creator\'s tabs, at "' + name(want) + '" the panel shown is ' + (s.shown.join(', ') || 'none') + ', not that tab\'s'); break; } }
+            /* each tab's drawers: by a tap and by Enter, one open at a time; each tab and each drawer's name big enough to touch */
+            const drawers = async tab => { await qp.click('#' + tab); await rafs(qp, 1); return qp.evaluate(t => { const b = document.getElementById(t), pn = b && document.getElementById(b.getAttribute('aria-controls'));
+                return pn ? [...pn.querySelectorAll('details.crdrawer')].filter(d => !d.hidden).map(d => ({ id: d.id, name: (d.querySelector('summary .crdn') || d.querySelector('summary')).textContent.trim() })) : []; }, tab); };
+            const openNow = tab => qp.evaluate(t => { const pn = document.getElementById(document.getElementById(t).getAttribute('aria-controls')); return [...pn.querySelectorAll('details.crdrawer')].filter(d => d.open).map(d => d.id); }, tab);
+            const big = sel => qp.evaluate(s => { const e = document.querySelector(s); if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return [r.width, r.height]; }, sel);
+            let scrolled = 0;
+            for (const t of S0.tabs) { const D = await drawers(t.id);
+              if (!D.length) { q('the creator\'s tab "' + t.name + '" holds no drawer'); continue; }
+              { const z = await big('#' + t.id); if (!z || z[0] < 44 || z[1] < 44) q('the creator\'s tab "' + t.name + '" is ' + (z ? Math.round(z[0]) + ' by ' + Math.round(z[1]) : 'not') + ' pixels, smaller than a finger\'s 44'); }
+              for (const d of D) { const sm = '#' + d.id + ' > summary', where = 'the drawer "' + d.name + '" under "' + t.name + '"';
+                { const z = await big(sm); if (!z || z[0] < 44 || z[1] < 44) q(where + ' is ' + (z ? Math.round(z[0]) + ' by ' + Math.round(z[1]) : 'not') + ' pixels to touch, smaller than a finger\'s 44'); }
+                if ((await openNow(t.id)).includes(d.id)) await drawerAct(qp, d.id, () => qp.click(sm));
+                await drawerAct(qp, d.id, () => qp.click(sm)); let o = await openNow(t.id);
+                if (!o.includes(d.id)) q('a tap on ' + where + ' does not open it');
+                else if (o.length > 1) q('opening ' + where + ' by a tap leaves ' + (o.length - 1) + ' other drawer(s) of its tab open beside it, where one is open at a time');
+                await drawerAct(qp, d.id, () => qp.click(sm));
+                if ((await openNow(t.id)).includes(d.id)) q('a second tap on ' + where + ' does not shut it');
+                if (D.length > 1) { const other = D.find(x => x.id !== d.id); await drawerAct(qp, other.id, () => qp.click('#' + other.id + ' > summary')); }
+                await qp.focus(sm); await drawerAct(qp, d.id, () => qp.keyboard.press('Enter')); o = await openNow(t.id);
+                if (!o.includes(d.id)) q(where + ' does not open from the keyboard, Enter on its name');
+                else if (o.length > 1) q('opening ' + where + ' from the keyboard leaves ' + (o.length - 1) + ' other drawer(s) of its tab open beside it, where one is open at a time'); }
+              /* his preview and the tabs stay in view: the last drawer open and whatever scrolls the panel scrolled to its foot */
+              const last = D[D.length - 1]; if (!(await openNow(t.id)).includes(last.id)) await drawerAct(qp, last.id, () => qp.click('#' + last.id + ' > summary'));
+              const v = await qp.evaluate(id => { const d = document.getElementById(id); let s = d.parentElement;
+                  while (s && s !== document.body && !(s.scrollHeight > s.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(s).overflowY))) s = s.parentElement;
+                  const sc = s && s !== document.body ? s : document.scrollingElement, top0 = sc.scrollTop; sc.scrollTop = sc.scrollHeight;
+                  const box = sc === document.scrollingElement ? { top: 0, bottom: innerHeight } : sc.getBoundingClientRect(), vb = { top: Math.max(0, box.top), bottom: Math.min(innerHeight, box.bottom) };
+                  /* in view: at least nine tenths of it on the screen (a page that scrolls a little round the creator may take its top pixel or two) */
+                  const look = el => { if (!el) return null; const r = el.getBoundingClientRect(); return r.height > 0 && (Math.min(r.bottom, vb.bottom) - Math.max(r.top, vb.top)) / r.height >= 0.9; };
+                  const at = el => { const r = el ? el.getBoundingClientRect() : null; return r ? Math.round(r.top) + ' to ' + Math.round(r.bottom) : 'nowhere'; };
+                  return { moved: sc.scrollTop - top0, pv: look(document.getElementById('pvBody') || document.getElementById('pvbox')), tabs: look(document.getElementById('crTabs')),
+                    where: 'his preview at ' + at(document.getElementById('pvBody') || document.getElementById('pvbox')) + ', the tabs at ' + at(document.getElementById('crTabs')) + ', of what shows ' + Math.round(vb.top) + ' to ' + Math.round(vb.bottom) + ', the page scrolled ' + Math.round(document.scrollingElement.scrollTop) }; }, last.id);
+              await rafs(qp, 1);
+              if (v.moved > 0) { scrolled++;
+                if (!v.pv) q('with the drawer "' + last.name + '" open under "' + t.name + '" and the panel scrolled to its foot, his preview is out of view (' + v.where + ')');
+                if (!v.tabs) q('with the drawer "' + last.name + '" open under "' + t.name + '" and the panel scrolled to its foot, the tabs are out of view (' + v.where + ')'); } }
+            if (!scrolled) q('no panel of the creator was long enough to scroll with a drawer open, so whether his preview stays in view was not asked');
+            /* what a shut drawer says. The drawer of his hair names his style; a person who picks another style sees its name */
+            const G = await qp.evaluate(() => CRTABS.flatMap(t => t.groups.map(g => ({ tab: t.key, key: g.key, says: !!g.say, rows: bodyRows('person').filter(r => (r.group || 'build') === g.key).map(r => r.key) }))));
+            const said = k => qp.evaluate(k => { const e = document.querySelector('#group_' + k + ' .crds'); return e ? e.textContent.trim() : null; }, k);
+            const CH = await qp.evaluate(() => bodyWord('drawer_changed'));
+            const hairG = await qp.evaluate(() => { const g = CRTABS.flatMap(t => t.groups.map(x => [t.key, x])).find(([, x]) => x.rows.some(r => r[1] === 'rowStyle')); return g ? [g[0], g[1].key] : null; });
+            if (!hairG) q('no drawer holds the styles of hair, so what a shut drawer says of his hair was not asked');
+            else { const [tab, g] = hairG, styleName = () => qp.evaluate(() => crLabelOf(T().styles, look.style));
+              if (!(await said(g) || '').includes(await styleName())) q('the shut drawer of his hair says "' + await said(g) + '", not the name of his style, "' + await styleName() + '"');
+              await qp.click('#crtab_' + tab); await rafs(qp, 1); if (!(await qp.evaluate(g => document.getElementById('group_' + g).open, g))) await drawerAct(qp, 'group_' + g, () => qp.click('#group_' + g + ' > summary'));
+              const pick = await qp.evaluate(() => { const b = [...document.querySelectorAll('#rowStyle button')].find(b => b.getAttribute('aria-pressed') !== 'true'); return b ? [...document.querySelectorAll('#rowStyle button')].indexOf(b) : -1; });
+              if (pick < 0) q('the drawer of his hair offers no other style to pick');
+              else { await qp.click('#rowStyle button >> nth=' + pick); await rafs(qp); await drawerAct(qp, 'group_' + g, () => qp.click('#group_' + g + ' > summary'));
+                const now = await said(g), nm = await styleName(); if (!(now || '').includes(nm)) q('after picking the style "' + nm + '", the shut drawer of his hair still says "' + now + '"'); } }
+            /* "changed", and the way back, in every drawer the table's rows are in */
+            let resets = 0;
+            for (const gr of G.filter(x => x.rows.length)) { const where = 'the drawer "' + await qp.evaluate(k => { const e = document.querySelector('#group_' + k + ' .crdn'); return e ? e.textContent.trim() : k; }, gr.key) + '"';
+              if (await qp.evaluate(k => { const d = document.getElementById('group_' + k); return !d || d.hidden; }, gr.key)) continue;
+              const s0 = await said(gr.key); if ((s0 || '').includes(CH)) q(where + ' says "' + s0 + '" before anything in it has changed');
+              await qp.click('#crtab_' + gr.tab); await rafs(qp, 1);
+              if (!(await qp.evaluate(k => document.getElementById('group_' + k).open, gr.key))) await drawerAct(qp, 'group_' + gr.key, () => qp.click('#group_' + gr.key + ' > summary'));
+              const ctl = await qp.evaluate(k => { const e = document.querySelector('#group_' + k + ' [data-choice]:not([aria-pressed="true"])'); return e ? { key: e.dataset.choice, word: e.dataset.word || null, range: e.type === 'range' } : null; }, gr.key);
+              if (!ctl) { q(where + ' has no control of its own to change'); continue; }
+              const csel = '#group_' + gr.key + ' [data-choice="' + ctl.key + '"]' + (ctl.word ? '[data-word="' + ctl.word + '"]' : '');
+              if (ctl.range) { await qp.focus(csel); await qp.keyboard.press('ArrowRight'); await qp.keyboard.press('ArrowLeft'); await qp.keyboard.press('ArrowLeft'); } else await qp.click(csel);
+              await rafs(qp, 1); await drawerAct(qp, 'group_' + gr.key, () => qp.click('#group_' + gr.key + ' > summary'));
+              const s1 = await said(gr.key); if (!(s1 || '').includes(CH)) q('with his ' + ctl.key + ' changed, ' + where + ', shut, says "' + s1 + '", not "' + CH + '"');
+              await drawerAct(qp, 'group_' + gr.key, () => qp.click('#group_' + gr.key + ' > summary'));
+              const rb = '#reset_' + gr.key, shown = await qp.evaluate(s => { const e = document.querySelector(s); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; }, rb);
+              if (!shown) { q(where + ' shows no way back once a choice in it has changed'); continue; }
+              const z = await big(rb); if (!z || z[0] < 44 || z[1] < 44) q('the way back in ' + where + ' is ' + (z ? Math.round(z[0]) + ' by ' + Math.round(z[1]) : 'not') + ' pixels, smaller than a finger\'s 44');
+              await qp.click(rb); await rafs(qp); resets++;
+              const after = await qp.evaluate(([rows, s]) => ({ off: bodyRows('person').filter(r => rows.includes(r.key) && look.body[r.key] !== r.def).map(r => r.key + ' ' + look.body[r.key]), shown: (e => !!e && !e.hidden)(document.querySelector(s)) }), [gr.rows, rb]);
+              if (after.off.length) q('the way back in ' + where + ' leaves ' + after.off.join(', ') + ' where it does not start');
+              if (after.shown) q('the way back in ' + where + ' still shows once everything in it is back where it started');
+              const s2 = await said(gr.key); if ((s2 || '').includes(CH)) q('after the way back, ' + where + ' still says "' + s2 + '"'); }
+            if (!resets) q('no drawer of the creator was changed and put back, so its way back was not asked');
+            if (!QP.length) say(1, 'the creator on a phone: ' + S0.tabs.length + ' tabs, one panel shown, the arrows along them; every drawer opened by a tap and by Enter, one at a time; the drawer of his hair names his style, ' + resets + ' drawers say "changed" and go back by their way back; his preview and the tabs stay in view with ' + scrolled + ' panel(s) scrolled to the foot');
+          }
+          if (Q.errs.length) q('the creator threw "' + Q.errs[0] + '"');
+        } catch (e) { q('the creator\'s tabs and drawers could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        QP.forEach(m => say(0, m)); await Q.ctx.close(); }
     }
     fails.push(...BP, ...BN);
   }
