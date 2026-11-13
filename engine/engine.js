@@ -766,7 +766,7 @@ const UIDEF={
   zoomIn:"Zoom in",zoomOut:"Zoom out",
   body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
-    cut:"Hair shape",cut_cap:"Close to the head",cut_full:"Fuller",turnL:"Turn left",turnR:"Turn right"}},
+    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right"}},
  es:{
   talkPre:"💬 ",
   quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ A medias",badH:"✕ Esta vez no",
@@ -815,7 +815,7 @@ const UIDEF={
   zoomIn:"Acercar",zoomOut:"Alejar",
   body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
-    cut:"Forma del pelo",cut_cap:"Pegado a la cabeza",cut_full:"Más abundante",turnL:"Girar a la izquierda",turnR:"Girar a la derecha"}}};
+    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha"}}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
@@ -896,12 +896,21 @@ const BODYCHOICE=Object.freeze([
   {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1},      /* how big his head is */
   {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1},        /* how far below his waist his shirt hangs */
   {key:"sleeves",kind:"option",list:["long","short"],def:"long"},     /* long sleeves to the wrist, or short ones and bare arms */
-  {key:"cut",kind:"option",list:["cap","full"],def:"cap"}             /* the hair as a cap over the crown, or fuller */
+  {key:"beard",kind:"option",list:["none","beard"],def:"none"}        /* a beard, apart from the hair's style (mq-v265) */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
 /* WHOSE ROW (mq-v263): a row belongs to one body, named by its `of` (one of BODYKINDS), and to the person where it does not
    say. Every reader takes its own body's rows through bodyRows, so a row added for a dog is not offered to a person */
+/* THE HAIR'S STYLE ON THE BODY (mq-v265). The style is the one the look already keeps (look.style, chosen on his card in
+   the creator), so the body reads it and has no hair choice of its own. HAIRSTYLES is every style the body can wear; a
+   look's style is cleaned to one of them where it is read (hairStyleOf): the card's `beard`, which is a beard and not a
+   haircut, is short hair on the body, and its beard is the body's own choice (beardOf); anything else is short hair too.
+   A style added later is a word here and its function in HAIRPART (engine/engine3d.js) */
+const HAIRSTYLES=Object.freeze(["cap","long","curly","buzz","spiky","pony","afro","mohawk","braids","flat","buns","edgar","fade","mullet","broccoli","bald"]);
+const hairStyleOf=lk=>{const s=lk&&typeof lk.style==="string"?lk.style:"";return HAIRSTYLES.includes(s)?s:"cap";};
+/* a beard on the body: where the body's own choice says so, or where the look's style is the card's `beard` */
+const beardOf=lk=>!!lk&&((lk.style==="beard")||(bodyChoicesOf(lk.body).beard==="beard"));
 const bodyRows=of=>BODYCHOICE.filter(r=>(r.of||"person")===(of||"person"));
 function bodyChoicesOf(raw,of){const o={},src=raw&&typeof raw==="object"?raw:{};
   bodyRows(of).forEach(r=>{const v=Object.prototype.hasOwnProperty.call(src,r.key)?src[r.key]:undefined;
@@ -923,7 +932,6 @@ function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
    today, write its part function (BODYPART for a person, DOGPART for a dog, engine/engine3d.js), and take it off this list.
    A kind of row the table does not have yet (`colour`) is added to bodyChoicesOf with the first row that needs it. */
 const BODYPLAN=Object.freeze([
-  {key:"style",of:"person",kind:"option",note:"the card's hair styles (look.style), each with at least a simple shape on the body"},
   {key:"top",of:"person",kind:"option",note:"more clothes above the waist, grouped by the type of garment (a shirt, a blouse); every type offered to every character, and no gender kept"},
   {key:"bottom",of:"person",kind:"option",note:"more clothes below the waist, grouped by the type of garment (trousers, a skirt, shorts); every type offered to every character, and no gender kept"},
   {key:"nose",of:"person",kind:"option",note:"a choice of noses"},

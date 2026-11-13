@@ -1415,11 +1415,21 @@ function bodyMake(skel,lk,build){
      middle of the face; the nose under them and between them, a shade off his skin and standing a little proud of the face,
      so it is seen from the front by its colour and from the side by its shape. The hair is the cut's (BODYPART.cut) */
   const r=skel.head,hc=0.7*r;
-  part("head",new THREE.SphereGeometry(r,24,18),"skin",lk.skin,0,hc,0);
+  /* the skull's sheet runs over his head from his chin (the sheet's left edge) by his face (a quarter along) and his crown
+     (half) to his nape (three quarters), and from ear to ear down the sheet: its poles are at his ears, where a pinch
+     shows least. M.scalp paints on it (hair that lies on the skin: a buzz, a fade, a hairline, stubble) */
+  {const g=new THREE.SphereGeometry(r,24,18);g.rotateZ(Math.PI/2);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
+  M.r=r;M.hc=hc;M.hair=lk.hair;
+  M.scalp=(paint,w,h)=>{const m=M.skull;w=w||128;h=h||64;const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
+    g.fillStyle=new THREE.Color(lk.skin).getStyle();g.fillRect(0,0,w,h);g.fillStyle=new THREE.Color(lk.hair).getStyle();paint(g,w,h);
+    const tx=new THREE.CanvasTexture(c);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;if(m.material.map)m.material.map.dispose();
+    m.material.map=tx;m.material.needsUpdate=true;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");m.userData.painted=true;return m;};
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
   {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
   /* each option of the table, by its part function */
-  bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,C[row.key]);});
+  bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,row.key==="beard"?(beardOf(lk)?"beard":"none"):C[row.key]);});
+  /* his hair, by the style his look keeps (hairStyleOf, engine/engine.js): one function a style, and nothing else draws hair */
+  {const st=hairStyleOf(lk);root.userData.hair=st;(typeof HAIRPART[st]==="function"?HAIRPART[st]:HAIRPART.cap)(M);}
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
@@ -1445,21 +1455,82 @@ const BODYPART={
       const fr=v==="short"?Lm.forearm*0.85:Lm.forearm,ar=v==="short"?Lm.arm*0.8:Lm.arm,col=v==="short"?lk.skin:lk.shirt;
       [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(fr,L),v==="short"?"skin":"shirt",col,x,y,z);
       knob("elbow_"+s,Math.max(ar,fr),col);});},
-  /* the hair, in his hair colour. CAP: a cap over the crown, its edge a little under halfway to the brow at the front and
-     lower behind, and a shell over the back of the head to below the ears: from a camera that looks down at him, the face is
-     the lower half of his head as on his card, and from the side the face shows in front of the hair. FULL: more of it — a
-     crown that stands proud of the head and a shell that reaches further round the sides and lower at the back — with its
-     edge at the brow where the cap's is, so the face shows as much from the front */
-  cut(M,v){const{part,lk}=M,r=M.head,hc=0.7*r;
-    if(v==="full"){
-      part("head",new THREE.SphereGeometry(r*1.07,24,12,0,Math.PI*2,0,Math.PI*0.4),"hair",lk.hair,0,hc+0.02*r,-0.06*r).rotation.x=-0.3;
-      part("head",new THREE.SphereGeometry(r*0.88,20,12,0,Math.PI*2,0,Math.PI*0.5),"hair",lk.hair,0,hc+0.2*r,-0.22*r,[1,0.66,1]).rotation.x=-0.3;   /* the crown, proud of the head */
-      [0,Math.PI*0.88].forEach(p0=>part("head",new THREE.SphereGeometry(r*1.06,10,12,p0,Math.PI*0.12,0,Math.PI*0.4),"hair",lk.hair,0,hc,-0.02*r));   /* over the ears, so the sides fall instead of standing out */
-      part("head",new THREE.SphereGeometry(r*1.09,24,12,Math.PI+0.34,Math.PI-0.68,0,Math.PI*0.56),"hair",lk.hair,0,hc,0).rotation.x=0.3;
-      return;}
-    const hr=r*1.05;
-    part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",lk.hair,0,hc,0).rotation.x=-0.21;
-    part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",lk.hair,0,hc,0).rotation.x=0.3;}   /* its edge slants back behind the ear */
+  /* a beard, apart from his hair: FILL (the session shapes it). `none` draws nothing */
+  beard(M,v){if(v!=="beard")return;hairBeard(M);}
+};
+/* ---- HIS HAIR, ONE FUNCTION A STYLE (mq-v265) ----
+   HAIRPART[style](M) hangs the hair of that style on his head and nothing else: the body's maker calls the one his look
+   names (hairStyleOf) and no other code draws hair. What a style is handed, and must keep to:
+     · THE HEAD, in the frame of the joint `head`: its centre is (0, M.hc, 0) and its radius M.r; +z is his face, +y up,
+       his ears at +x and -x. His eyes sit 0.47 of a radius above the centre and his nose 0.22: hair may not cover them
+       from the front, so a fringe ends above 0.62 of a radius over the centre unless the style is one that hides the brow.
+     · HAIR THAT STANDS OFF THE HEAD is a part: M.part("head", geometry, "hair", M.hair, x, y, z, [sx,sy,sz]). Every part
+       of his hair wears "hair" and is in his hair colour, M.hair, or a shade of it (shadeHex), so one colour changes it all.
+     · HAIR THAT LIES ON THE SKIN is paint: M.scalp((g,w,h)=>{...}) paints on the skull's own sheet, already filled with
+       his skin and with the brush set to his hair colour. Across the sheet (w) runs from his chin at 0, by his face at a
+       quarter, over his crown at a half, to his nape at three quarters and back to his chin; down the sheet (h) runs from
+       one ear to the other, the middle being the middle of his head. A marking is paint: stubble, a fade's shadow, a
+       shaved side and a hairline are painted here and never built as parts.
+     · REAL HAIR IS THE TARGET, and his card's drawing of the style is the reference for which style it is, not the shape
+       to copy: where it grows from, which way it falls, where it is short, what its outline is from the front, the
+       side and behind. It must read from the game's camera (above and behind him, forty degrees up) on all four sides.
+     · IT IS BUILT AS HAIR IS: growth from the scalp outward. Variation enters where it entered (curls differ one from
+       another; the two sides of a parting do not match to the pixel), from a seed that is the same every frame: never
+       Math.random at draw time, or he flickers and his body is made again each look.
+     · COST: a head of hair is at most about forty parts. Past that, merge or paint */
+const hairShort=M=>{const{part,r,hc}=M,hr=r*1.05;   /* the short hair he had before the styles: a cap over the crown and a shell behind. The stand-in each style starts from */
+  part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",M.hair,0,hc,0).rotation.x=-0.21;
+  part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",M.hair,0,hc,0).rotation.x=0.3;};
+const hairBeard=M=>{};   /* FILL: beard */
+const HAIRPART={
+  /* HAIR:cap */
+  cap(M){hairShort(M);},   /* FILL: cap */
+  /* /HAIR:cap */
+  /* HAIR:long */
+  long(M){hairShort(M);},   /* FILL: long */
+  /* /HAIR:long */
+  /* HAIR:curly */
+  curly(M){hairShort(M);},   /* FILL: curly */
+  /* /HAIR:curly */
+  /* HAIR:buzz */
+  buzz(M){hairShort(M);},   /* FILL: buzz */
+  /* /HAIR:buzz */
+  /* HAIR:spiky */
+  spiky(M){hairShort(M);},   /* FILL: spiky */
+  /* /HAIR:spiky */
+  /* HAIR:pony */
+  pony(M){hairShort(M);},   /* FILL: pony */
+  /* /HAIR:pony */
+  /* HAIR:afro */
+  afro(M){hairShort(M);},   /* FILL: afro */
+  /* /HAIR:afro */
+  /* HAIR:mohawk */
+  mohawk(M){hairShort(M);},   /* FILL: mohawk */
+  /* /HAIR:mohawk */
+  /* HAIR:braids */
+  braids(M){hairShort(M);},   /* FILL: braids */
+  /* /HAIR:braids */
+  /* HAIR:flat */
+  flat(M){hairShort(M);},   /* FILL: flat */
+  /* /HAIR:flat */
+  /* HAIR:buns */
+  buns(M){hairShort(M);},   /* FILL: buns */
+  /* /HAIR:buns */
+  /* HAIR:edgar */
+  edgar(M){hairShort(M);},   /* FILL: edgar */
+  /* /HAIR:edgar */
+  /* HAIR:fade */
+  fade(M){hairShort(M);},   /* FILL: fade */
+  /* /HAIR:fade */
+  /* HAIR:mullet */
+  mullet(M){hairShort(M);},   /* FILL: mullet */
+  /* /HAIR:mullet */
+  /* HAIR:broccoli */
+  broccoli(M){hairShort(M);},   /* FILL: broccoli */
+  /* /HAIR:broccoli */
+  /* HAIR:bald */
+  bald(M){hairShort(M);},   /* FILL: bald */
+  /* /HAIR:bald */
 };
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
 function t3BodyPose(B,phase,moving,groundAt){
@@ -1494,7 +1565,7 @@ function t3Body(dt){
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
   /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
      made again when any of them, or a colour he wears, changes */
-  const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,JSON.stringify(Ch)].join("|");
+  const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,hairStyleOf(look),beardOf(look),JSON.stringify(Ch)].join("|");
   if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);t3Dispose(T3.body);T3.body=null;}
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
   if(!T3.body){T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}
@@ -1556,7 +1627,7 @@ function t3BodyPreview(cv,lk,ang){
       amb:new THREE.AmbientLight(0xffffff,DAY_AMB),sun:new THREE.DirectionalLight(0xfff2dd,DAY_SUN)};
       P.sun.position.set(14,22,8);P.scene.add(P.amb,P.sun);}
     if(!P.rt||P.rt.width!==W||P.rt.height!==Hh){if(P.rt)P.rt.dispose();P.rt=new THREE.WebGLRenderTarget(W,Hh,{samples:4});P.px=new Uint8Array(W*Hh*4);}
-    const Ch=bodyChoicesOf(lk.body),key=[lk.skin,lk.hair,lk.shirt,lk.outfit,JSON.stringify(Ch)].join("|");
+    const Ch=bodyChoicesOf(lk.body),key=[lk.skin,lk.hair,lk.shirt,lk.outfit,hairStyleOf(lk),beardOf(lk),JSON.stringify(Ch)].join("|");
     if(P.body&&P.body.userData.key!==key){P.scene.remove(P.body);t3Dispose(P.body);P.body=null;}
     if(!P.body){P.body=bodyMake(bodySkeleton("person",Ch),lk,Ch);P.body.userData.key=key;P.scene.add(P.body);}
     const B=P.body;B.rotation.set(0,ang||0,0);t3BodyPose(B,0,false);
