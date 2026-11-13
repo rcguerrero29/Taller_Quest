@@ -1,8 +1,14 @@
 name: CI
 # The PUBLIC repository's checks (written 2026-09-28 for the split; the private repository keeps its own).
 # Every suite runs ONCE per pull request, and once on each push to main; a branch push alone runs nothing,
-# because its pull request is where it is judged. The job is named "smoke" because the main-lock ruleset
-# requires a check of that name, sourced from GitHub Actions.
+# because its pull request is where it is judged.
+# THE CHECK IN PARTS (2026-11-13). Until then one job ran every step one after another and a pull request waited about
+# forty minutes. The browser suites now run side by side as parts (content, engine, gauge in its three worlds, horno,
+# site), and the job named "smoke" is the gate: it runs whatever the parts did, fails unless every one of them passed,
+# and then runs the text guards itself. It is still named "smoke", and still the first job in this file, because the
+# main-lock ruleset requires a check of that name, sourced from GitHub Actions, and test/protect.js reads the first
+# job here as the one main waits for: so the lock is as it was and one green "smoke" still means everything ran green.
+# Only "smoke" is handed the private list; a part is handed no secret.
 permissions:
   contents: read        # nothing in CI may push
   pull-requests: read
@@ -25,8 +31,29 @@ jobs:
     # red rather than a pull request stuck at "running"; a run uses only the minutes it takes.
     # Measured again 2026-11-07: the engine's own step took 9 min 26 s and the gauge's three worlds 112 s, 165 s and more
     # than 180 s, so the job would end close to 30 min with every check passing. 40 min is that job with room to grow.
-    timeout-minutes: 60
+    # From 2026-11-13 this job is the gate and the text guards only (the parts below hold the browser suites, each with
+    # a stop of its own), so it takes a few minutes; 20 min is a backstop for a hung guard.
+    timeout-minutes: 20
+    # THE GATE. `needs` makes this job wait for every part; `always()` makes it run even when a part failed, because a
+    # required job that is SKIPPED counts as passed on GitHub, and a red part would then let a merge through. Its first
+    # step fails unless every part's result is exactly "success" (a cancelled or skipped part is a red, not a pass).
+    needs: [content, engine, gauge, horno, site]
+    if: ${{ always() }}
     steps:
+      - name: Every part of the check passed (a part that failed, was cancelled or did not run is a red here)
+        env:
+          PARTS: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const want = ["content", "engine", "gauge", "horno", "site"];
+            let parts; try { parts = JSON.parse(process.env.PARTS || ""); } catch (e) { parts = null; }
+            if (!parts || typeof parts !== "object") { console.log("FAIL: the results of the parts could not be read, so nobody can say they passed"); process.exit(1); }
+            const bad = want.filter(n => !parts[n] || parts[n].result !== "success").map(n => n + ": " + (parts[n] ? parts[n].result : "did not run"));
+            const extra = Object.keys(parts).filter(n => !want.includes(n));
+            if (extra.length) { console.log("FAIL: this gate waits for a part it does not ask about (" + extra.join(", ") + "); name it in the list here"); process.exit(1); }
+            if (bad.length) { console.log("FAIL: not every part of the check passed: " + bad.join("; ")); process.exit(1); }
+            console.log("OK: all " + want.length + " parts passed: " + want.join(", "));
+          '
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
           fetch-depth: 0   # the address check reads every commit a pull request brings
@@ -148,20 +175,138 @@ jobs:
         run: |
           node test/prims.js --selftest
           node test/prims.js --ci
+
+  # PART: the game's own content test and the kitchen's seams
+  content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the engine's test and the version check read the base's commits
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base this pull request is judged against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then git fetch --no-tags origin "$BASE_REF"; fi
       - name: Install Playwright + Chromium
         run: |
           npm install playwright@1.63.0
           npx playwright install --with-deps chromium
       - name: Headless smoke test
         run: node test/smoke.js
-      - name: The engine, against the game
-        run: node test/engine.smoke.js --index index.html
       - name: The kitchen's three seams (amount, hand from outside, rename), each planted red first
         run: node test/kitchen-seams.js
-      - name: The gauge — a brand-new world still boots and meets the engine on the same terms
-        run: node test/gauge.js
+
+  # PART: the engine's test against the game, the longest single run (about ten minutes on 2026-11-12)
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the engine's test and the version check read the base's commits
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base this pull request is judged against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then git fetch --no-tags origin "$BASE_REF"; fi
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: The engine, against the game
+        run: node test/engine.smoke.js --index index.html
+
+  # PART: the gauge, each of its three worlds a run of its own, side by side (together they were the longest stretch:
+  # 182 s, 286 s and more than 300 s on 2026-11-12). One world failing does not stop the other two.
+  gauge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        world: [plain, 3d, lib]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the engine's test and the version check read the base's commits
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base this pull request is judged against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then git fetch --no-tags origin "$BASE_REF"; fi
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: The gauge — a brand-new world still boots and meets the engine on the same terms (one of its three worlds)
+        env:
+          WORLD: ${{ matrix.world }}
+        run: node test/gauge.js --world "$WORLD"
+
+  # PART: the oven world
+  horno:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the engine's test and the version check read the base's commits
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base this pull request is judged against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then git fetch --no-tags origin "$BASE_REF"; fi
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
       - name: El Horno — its shell still builds from index.html
         run: node test/horno.js
+
+  # PART: what would be published, offline play, and the version check
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the engine's test and the version check read the base's commits
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base this pull request is judged against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then git fetch --no-tags origin "$BASE_REF"; fi
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
       - name: R10 — what we would publish is only the public game
         run: bash scripts/build-site.sh /tmp/_site && node test/public.js /tmp/_site
       - name: Offline play works, under a page that runs only its own script files
