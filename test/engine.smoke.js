@@ -14448,9 +14448,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (s1 !== s2) P.push('the hair "' + st + '" is not the same twice: made twice from the same look, at another moment and with other random numbers, it comes out different, so his hair would change each time his body is made');
               const hp = parts(X, wears('hair'));
               HAS[st] = { parts: hp.length };
-              /* L · the ears: hidden by long hair, two showing otherwise, one each side */
+              /* L · the ears: hidden by hair that falls or stands over them, two showing otherwise, one each side */
               const ears = parts(X, wears('ear')), sides = [1, -1].map(sd => ears.filter(o => o.visible && Math.sign(o.getWorldPosition(new THREE.Vector3()).x) === sd).length);
-              if (st === 'long') { if (ears.some(o => o.visible)) P.push('with long hair, ' + ears.filter(o => o.visible).length + ' part(s) of his ears show through it, where long hair falls over them'); }
+              if (['long', 'curly', 'afro'].includes(st)) { if (ears.some(o => o.visible)) P.push('with the hair "' + st + '", ' + ears.filter(o => o.visible).length + ' part(s) of his ears show through it, where that hair falls over them'); }
               else if (sides.some(n => !n)) P.push('with the hair "' + st + '" he has ' + sides.filter(Boolean).length + ' ear(s), where he has one each side');
               free(X);
               /* his colour, for two colours of hair far apart: every part of his hair is that colour or a shade of it */
@@ -14544,7 +14544,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 free(X); return low - eyeY; };
               for (const st of ['buzz', 'cap']) { if (!HAIRSTYLES.includes(st)) continue;
                 const f = {}; for (const face of [ROUND, ...JAWED.slice(0, 1)]) { f[face] = brow(st, { face }); if (!isFinite(f[face])) P.push('on the ' + face + ' head, the hair "' + st + '" has no hair over the middle of his brow to measure'); }
-                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] < f[ROUND] - 0.05)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': it does not come down the brow on a head with a jaw');
+                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] <= f[ROUND] + 0.05)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': his brow is taller on a head with a jaw, which reads as his hair going');
                 if (HL) for (const face of [ROUND, ...JAWED.slice(0, 1)]) { const lo = brow(st, { face, hairline: HL.min }), hi = brow(st, { face, hairline: HL.max });
                   if (!(Math.abs(hi - lo) > 0.05)) P.push('with the hair "' + st + '" on the ' + face + ' head, moving the hairline from one end to the other moves where his hair starts by ' + (isFinite(hi - lo) ? Math.abs(hi - lo).toFixed(3) : 'nothing measurable') + ' of a radius');
                   N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } } }
@@ -14608,7 +14608,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const A = grab(), n = hairPx(A); row.push(n);
                   /* L · his ears, from the side: long hair hides them, every other style shows the one on that side */
                   if (d === 'right' || d === 'left') { const e = painted(o => o.userData.wears === 'ear', A);
-                    if (st === 'long') { if (e > 0) P.push('with long hair, ' + said + ', ' + e + ' pixels of his ear show through it'); }
+                    if (['long', 'curly', 'afro'].includes(st)) { if (e > 0) P.push('with the hair "' + st + '", ' + said + ', ' + e + ' pixels of his ear show through it'); }
                     else if (e < bare[d] / 3) P.push('with the hair "' + st + '", ' + said + ', his ear hardly shows: ' + Math.max(0, e) + ' pixels of it, where with no hair over it it shows in ' + bare[d]);
                     row.push('ear ' + e); }
                   if (has && n < eye) P.push('with the hair "' + st + '", ' + said + ', his hair does not show in the game\'s camera: ' + n + ' pixels of his hair\'s colour round his head, fewer than one of his eyes shows (' + eye + ')'); }

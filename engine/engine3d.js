@@ -1430,7 +1430,7 @@ function bodyMake(skel,lk,build){
      row of HEADSET and by his own measures: how wide the jaw, how long the chin. Everything on the head (his eyes, brows,
      nose and ears, the paint, every shell of hair and the beard) is set on this surface, so it follows the shape */
   const face=REAL?headSkull(HEADSET[C.face],C):HEADSHAPE.round,eyeY=REAL?0.05:0.47,noseY=REAL?-0.3:0.22;M.face=face;M.real=REAL;
-  M.brow=(REAL?0.2:0)-(C.hairline-1)*0.4;   /* on a head with a jaw the face sits lower, so its hair starts lower on the brow by this much */
+  M.brow=(REAL?0.42:0)-(C.hairline-1)*0.4;   /* on a head with a jaw the eyes sit lower by this much, and its hair starts lower with them, so the brow is as tall as the round head's */
   /* where the skin is for a spot given from in front (x across, y up) or from the side (y up, z forward) */
   const frontZ=(x,y)=>{let z=1;for(let i=0;i<10;i++){const l=Math.hypot(x,y,z),R=face(x/l,y/l,z/l);z=Math.sqrt(Math.max(0.01,R*R-x*x-y*y));}return z;};
   const sideX=(y,z)=>{let x=1;for(let i=0;i<10;i++){const l=Math.hypot(x,y,z),R=face(x/l,y/l,z/l);x=Math.sqrt(Math.max(0.01,R*R-y*y-z*z));}return x;};
@@ -1515,7 +1515,7 @@ function bodyMake(skel,lk,build){
     for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),t=(1-y)/2,w=0.42+0.58*Math.pow(t,1.6);p.setXYZ(i,x*w,y,z>0?z*(0.3+0.7*Math.pow(t,1.3)):z*0.3);}
     g.computeVertexNormals();
     const c=new THREE.Color(lk.skin).lerp(new THREE.Color(nose(lk.skin)),0.55);
-    part("head",g,"nose","#"+c.getHexString(),0,hc+cy*r,(frontZ(0,cy)-0.04)*r,[0.125*C.nosew*r,hh*r,0.2*C.noseout*r]);}
+    part("head",g,"nose","#"+c.getHexString(),0,hc+cy*r,(frontZ(0,cy)-0.04)*r,[0.14*C.nosew*r,hh*r,0.27*C.noseout*r]);}
   /* his mouth, under his nose: a line of a deeper, warmer shade of his skin lying on the face, straight or turned up at
      its ends in a smile, as wide as he chose; or none, as his card has none */
   if(C.mouth!=="none"){const my=REAL?-0.66:noseY-0.3,col="#"+new THREE.Color(nose(lk.skin)).multiplyScalar(0.62).getHexString(),w=0.17*C.mouthw;
@@ -1697,7 +1697,8 @@ const HAIRPART={
      length everywhere: over the crown, over the tops of the ears, down to the nape. Its outline is scalloped on every side,
      which is what names it. One shell, standing out further where a curl is and less between two; its sheet is drawn with
      small curls, darker and lighter; the hairline under it is paint, a shade darker, so its edge has roots */
-  curly(M){const line=hairEdge([[0,0.6],[35,0.56],[55,0.3],[72,0.12],[95,0.08],[125,-0.25],[150,-0.42],[180,-0.45]]),lump=hairLumps(0x51ED,64,0.2);
+  curly(M){M.ears.forEach(e=>{e.visible=false;});   /* hair this full stands over his ears */
+    const line=hairEdge([[0,0.6],[35,0.56],[55,0.3],[72,0.12],[95,0.08],[125,-0.25],[150,-0.42],[180,-0.45]]),lump=hairLumps(0x51ED,64,0.2);
     M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
     M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.1,e)*M.C.hairvol*(0.1+0.19*lump(x,y,z)));},{tex:hairGrain("curl",M.hair,5),seg:84,rows:56});},
   /* /HAIR:curly */
@@ -1780,7 +1781,8 @@ const HAIRPART={
      ball wider than his head and centred a little above and behind it; his face looks out from under its front edge. One
      shell, as round as it is picked out, its surface only just uneven, drawn with small tight curls; the hairline, the
      temples and the nape are paint, so no skin shows at its roots */
-  afro(M){const line=hairEdge([[0,0.6],[35,0.55],[55,0.28],[72,0.05],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);
+  afro(M){M.ears.forEach(e=>{e.visible=false;});   /* hair this full stands over his ears */
+    const line=hairEdge([[0,0.6],[35,0.55],[55,0.28],[72,0.05],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);
     const cy=0.2,cz=-0.08,rho=1+0.5*M.C.hairvol;
     M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
     M.shell((x,y,z)=>{const e=y-line(x,z),b=y*cy+z*cz,R=b+Math.sqrt(b*b-cy*cy-cz*cz+rho*rho);   /* the ball's surface along this direction */
