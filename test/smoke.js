@@ -1195,7 +1195,7 @@ const CANDIDATES = [
     // read through them would answer for one Meridian dropped, so each is asked for as Meridian's own property
     const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k) && !!o[k];
     out.langOk = !!(['leashLb', 'parkArrive', 'parkTitle', 'parkSum', 'parkLove', 'parkTeaser',
-      'adoptLb', 'adoptAsk', 'adoptDone', 'bandLb', 'parkFull', 'loveLb', 'loveLines']
+      'adoptLb', 'adoptAsk', 'adoptDone', 'bandLb', 'collarLb', 'collarToast', 'parkFull', 'loveLb', 'loveLines']
       .every(k => own(UI.en, k) && own(UI.es, k)) && own(UI.en.locs, 'pk') && own(UI.es.locs, 'pk') && own(UI.en.arrive, 'pk') && own(UI.es.arrive, 'pk'));
     // cleanup so this section leaves no park residue for reruns
     localStorage.removeItem('mqpark');
