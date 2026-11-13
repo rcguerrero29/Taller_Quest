@@ -1570,13 +1570,13 @@ function t3BodyPreview(cv,lk,ang){
     for(let y=0;y<Hh;y++)img.data.set(P.px.subarray((Hh-1-y)*row,(Hh-y)*row),y*row);   /* the picture comes back upside down */
     g.putImageData(img,0,0);return true;
   }catch(e){t3Note("preview",e);return false;}}
-/* ---- THE DOG'S BODY (mq-v263): a dog who follows you, up close, stands as a jointed body as you do ----
-   A world that names `dog` in its own BODYTAKE list sees a dog who follows the person you steer, up close in the 3D camera,
+/* ---- THE DOG'S BODY (mq-v263; any dog, and sitting, lying and howling, from mq-v264): a dog, up close, is a jointed body as you are ----
+   A world that names `dog` in its own BODYTAKE list sees a dog near the person you steer, up close in the 3D camera,
    as a four-legged body made of the same kind of joints and parts as the person's, in the dog's own coat, markings, collar
    and bandana. From farther off, and whenever he does anything but stand, walk and wag, he is his card, exactly as today.
    A world that says nothing has none of this: every dog is his card in every camera.
    WHAT DECIDES IT, each in one place:
-     · WHICH DOGS (t3DogBodies): a dog of this world whose kind runs the dog program (DOGK), who follows (cr.follow), within
+     · WHICH DOGS (t3DogBodies): a dog of this world whose kind runs the dog program (DOGK), whether or not he follows you (from mq-v264), within
        DOGNEAR squares of the camera's focus, and held as plainly as dogBodyWants says. At most DOGBODYMAX at once, the
        nearest first: a body costs parts, and a street of twenty-four adopted dogs is not twenty-four bodies.
      · HOW HE IS HELD: dogPose (engine/engine.js), the one place a dog's pose is decided, read once a frame with the same two
@@ -1588,13 +1588,14 @@ function t3BodyPreview(cv,lk,ang){
      · HIS WALK: the person's own (t3BodyPose reads any skeleton's `legs`), four legs in a trot, the two diagonals together.
      · HIS LIGHT: t3BodyLight, as the person's, so at night he is as bright as the cards beside him.
    NOT DONE HERE: sitting, lying, howling, digging, the agility course and the hearts as a body (he is his card for each); a
-   body for a dog who does not follow, for the star's own dog (DOG) or for any other animal; a choice of breed, markings or
+   body for the star's own dog (DOG) or for any other animal; a choice of breed, markings or
    coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
 const DOGCOLLARLIE=0.55;   /* how far his collar tips down toward his throat, in radians */
 const DOGTUCK=[0.62,0.86];   /* at his hips: the share of his chest's depth below the spine, and of his ribs' width */
 const DOGUNDER=0.8;    /* how much of his barrel's roundness is left under his spine, standing: his legs are mostly in view under a little chest */
+const DOGTAIL=[1.45,1.0,0.72,0.34];   /* a tail's thickness at its root, its middle joint, where its tip begins and its end */
 const DOGREST=0.22;       /* seconds after his last step for which he is still walking: longer than the pause between two steps of one walk */
 const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are shorter than a person's, and quicker. His card's legs stand
                              still while he goes a square every 160 ms, so the body's pace is a trot's: at his speed his paws would have to
@@ -1645,7 +1646,7 @@ const DOGBUILDS=Object.freeze({
    his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
    lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */
 function dogBodyWants(cr,P){
-  return !!cr&&!!P&&DOGK.has(cr.kind)&&!!cr.follow&&!P.hid&&!P.lift&&!P.side&&!P.dig&&!P.love;}
+  return !!cr&&!!P&&DOGK.has(cr.kind)&&!P.hid&&!P.lift&&!P.side&&!P.dig&&!P.love;}
 /* HOW HE IS HELD, of the three ways his body knows (mq-v264): lying beats sitting, as on his card, and anything else is standing */
 function dogHeld(P){return P&&P.lay?"lay":P&&P.sit?"sit":"stand";}
 /* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */
@@ -1761,9 +1762,19 @@ function dogMake(skel,lk){
     if(b.tail==="out"){t1.rotation.x=-0.62;t2.rotation.x=0.25;}
     if(b.tail==="curl"){t1.rotation.x=0.1;t2.rotation.x=0.9;}
     t1.userData.rest=t1.rotation.x;t2.userData.rest=t2.rotation.x;
-    const tr=Lm.tail*(b.tail==="out"?1.1:b.tail==="curl"?0.75:1);
-    span("tail_1",at("tail_2"),tr,"tail",paint.coat,tr*0.4);span("tail_2",at("tail_tip"),tr*0.85,"tail",paint.coat,tr*0.3);
-    part("tail_tip",ball(tr*(b.tail==="up"?1.2:0.85),10,8),"tip",paint.coat,0,0,0);}
+    /* A TAIL TAPERS (mq-v264): thick where it leaves his rump, thinner at each joint, and ending in a point, not a rod with
+       a ball on it. Each stretch is a cone cut short (DOGTAIL: its thickness at the root, the middle joint, where the tip
+       begins and the very end, against the breed's own tail), rounded at each joint so a bend stays whole; the last
+       third is the tip, a part of its own on the tip's joint, which the beagle wears white */
+    const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:1),[k0,k1,k2,k3]=DOGTAIL;
+    const taper=(j,v,r0,r1,wears)=>{const L=v.length(),m=part(j,new THREE.CylinderGeometry(r1,r0,L,12,1),wears,paint.coat,v.x/2,v.y/2,v.z/2);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize());return m;};
+    const v1=at("tail_2"),v2=at("tail_tip"),cut=v2.clone().multiplyScalar(0.62);
+    part("tail_1",ball(tr*k0,10,8),"tail",paint.coat,0,0,0);taper("tail_1",v1,tr*k0,tr*k1,"tail");
+    part("tail_2",ball(tr*k1,10,8),"tail",paint.coat,0,0,0);taper("tail_2",cut,tr*k1,tr*k2,"tail");
+    {const back=cut.clone().sub(v2),m=part("tail_tip",new THREE.CylinderGeometry(tr*k2,tr*k3,back.length(),12,1),"tip",paint.coat,back.x/2,back.y/2,back.z/2);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),back.clone().normalize());}
+    part("tail_tip",ball(tr*k3,8,6),"tip",paint.coat,0,0,0);}
   /* his shadow on the ground, as his card paints one under him: an oval as long as he is, which does not move with the walk */
   {const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.15,depthWrite:false}));
     sh.rotation.x=-Math.PI/2;sh.position.set(0,0.006,at("hips").z+at("spine").z);sh.scale.set(Lm.barrel*1.25,M.barrelLen*0.62,1);sh.userData={shadow:true};root.add(sh);}
@@ -1876,7 +1887,7 @@ function t3DogBodies(dt){
   const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(cr);};
   if(!DOGBODYON){[...on.keys()].forEach(drop);T3.dogShown=shown;return shown;}
   const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
-  const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)&&cr.follow).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
+  const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
       return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=DOGNEAR+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
     .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,DOGBODYMAX);
   const keep=new Set(want.map(e=>e.cr));
