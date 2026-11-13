@@ -770,6 +770,7 @@ const UIDEF={
     jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
     eyesize:"Size of the eyes",eyegap:"Space between the eyes",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
     mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Moustache",beardlen:"Length of the beard",
+    eyecol:"Colour of the eyes",browcol:"Colour of the brows",browcol_hair:"As the hair",tiecol:"Colour of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
     hairline:"Hairline: higher or lower",hairvol:"Height and fullness",braidlen:"Length of the braids",
     group_outfit:"Outfit",group_fit:"Fit",group_skin:"Skin",group_head:"Shape of the head",group_eyes:"Eyes and brows",group_nose:"Nose and mouth",group_ears:"Ears",group_beard:"Beard",
     group_cut:"Colour and style",group_tune:"Hairline, fullness, length",group_build:"Build",group_neck:"Neck",
@@ -826,6 +827,7 @@ const UIDEF={
     jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",neckw:"Grosor del cuello",neckl:"Largo del cuello",cheeks:"Ancho de los pómulos",crown:"Altura del cráneo",skullw:"Ancho del cráneo",skulld:"Profundidad del cráneo",
     eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
     mouth:"Boca",mouth_line:"Línea",mouth_smile:"Sonrisa",mouth_none:"Sin boca",mouthw:"Ancho de la boca",beard_goatee:"Candado",beard_moustache:"Bigote",beardlen:"Largo de la barba",
+    eyecol:"Color de los ojos",browcol:"Color de las cejas",browcol_hair:"Como el pelo",tiecol:"Color de las ligas de las trenzas",tiecol_shade:"Como el pelo, más oscuro",reset:"Volver a como empezó",
     hairline:"Nacimiento del pelo: más arriba o más abajo",hairvol:"Altura y volumen",braidlen:"Largo de las trenzas",
     group_outfit:"Atuendo",group_fit:"Ajuste",group_skin:"Piel",group_head:"Forma de la cabeza",group_eyes:"Ojos y cejas",group_nose:"Nariz y boca",group_ears:"Orejas",group_beard:"Barba",
     group_cut:"Color y estilo",group_tune:"Nacimiento, volumen, largo",group_build:"Complexión",group_neck:"Cuello",
@@ -910,20 +912,22 @@ const BODYCHOICE=Object.freeze([
   {key:"limbs",kind:"measure",min:0.7,max:1.5,step:0.05,def:1,group:"build"},      /* how thick his arms and legs are */
   {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1,group:"build"},      /* how big his head is */
   {key:"neckw",kind:"measure",min:0.75,max:1.3,step:0.05,def:1,group:"neck"},      /* how thick his neck is */
-  {key:"neckl",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"neck"},        /* how long his neck is (a head with a jaw) */
+  {key:"neckl",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"neck",needs:"jaw"},        /* how long his neck is (a head with a jaw) */
   {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1,group:"fit"},          /* how far below his waist his shirt hangs */
   {key:"sleeves",kind:"option",list:["long","short"],def:"long",group:"fit"},      /* long sleeves to the wrist, or short ones and bare arms */
   {key:"face",kind:"option",list:["round","oval","square"],def:"round",group:"head"},   /* the shape of his head: the card's ball, or a head built as a skull is (mq-v265) */
-  {key:"jaw",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"head"},       /* how wide his jaw is (a head with a jaw: not the round one) */
-  {key:"chin",kind:"measure",min:0.7,max:1.2,step:0.05,def:1,group:"head"},        /* how long his jaw and chin are */
-  {key:"cheeks",kind:"measure",min:0.85,max:1.15,step:0.05,def:1,group:"head"},    /* how wide his cheekbones are */
-  {key:"crown",kind:"measure",min:0.9,max:1.12,step:0.02,def:1,group:"head"},      /* how high the top of his skull is */
-  {key:"skullw",kind:"measure",min:0.9,max:1.08,step:0.02,def:1,group:"head"},     /* how wide his skull is */
-  {key:"skulld",kind:"measure",min:0.92,max:1.12,step:0.02,def:1,group:"head"},    /* how deep his skull is, front to back */
+  {key:"jaw",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"head",needs:"jaw"},       /* how wide his jaw is (a head with a jaw: not the round one) */
+  {key:"chin",kind:"measure",min:0.7,max:1.2,step:0.05,def:1,group:"head",needs:"jaw"},        /* how long his jaw and chin are */
+  {key:"cheeks",kind:"measure",min:0.85,max:1.15,step:0.05,def:1,group:"head",needs:"jaw"},    /* how wide his cheekbones are */
+  {key:"crown",kind:"measure",min:0.9,max:1.12,step:0.02,def:1,group:"head",needs:"jaw"},      /* how high the top of his skull is */
+  {key:"skullw",kind:"measure",min:0.9,max:1.08,step:0.02,def:1,group:"head",needs:"jaw"},     /* how wide his skull is */
+  {key:"skulld",kind:"measure",min:0.92,max:1.12,step:0.02,def:1,group:"head",needs:"jaw"},    /* how deep his skull is, front to back */
   {key:"eyesize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"eyes"},     /* how big his eyes are */
   {key:"eyegap",kind:"measure",min:0.8,max:1.25,step:0.05,def:1,group:"eyes"},     /* how far apart his eyes are */
   {key:"browthick",kind:"measure",min:0.5,max:2,step:0.1,def:1,group:"eyes"},      /* how thick his brows are */
-  {key:"browtilt",kind:"measure",min:0,max:2,step:0.1,def:1,group:"eyes"},         /* which way his brows slant: down to the outside, level, or up */
+  {key:"browtilt",kind:"measure",min:0,max:2,step:0.1,def:1,group:"eyes"},
+  {key:"eyecol",kind:"option",swatch:true,list:["#1E1A22","#4A2E1A","#2F5D8A","#3F7A4A","#7A7F86"],def:"#1E1A22",group:"eyes"},   /* the colour of his eyes */
+  {key:"browcol",kind:"option",swatch:true,list:["hair","#1E1A22","#4A2E1A","#8A5A2B","#C9A24A","#8E8E93"],def:"hair",group:"eyes"},   /* his brows: as his hair a shade deeper, or a colour of their own */         /* which way his brows slant: down to the outside, level, or up */
   {key:"noselen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"nose"},     /* how long his nose is */
   {key:"nosew",kind:"measure",min:0.7,max:1.5,step:0.05,def:1,group:"nose"},       /* how wide his nose is */
   {key:"noseout",kind:"measure",min:0.6,max:1.6,step:0.1,def:1,group:"nose"},      /* how far his nose stands out */
@@ -938,7 +942,8 @@ const BODYCHOICE=Object.freeze([
   {key:"beardlen",kind:"measure",min:0.5,max:1.8,step:0.1,def:1,group:"beard"},    /* how long his beard is at the chin */
   {key:"hairline",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"tune"},    /* how high on his brow his hair starts */
   {key:"hairvol",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},     /* how tall or full the hair that stands off his head is (flat top, afro, curly, broccoli) */
-  {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"}     /* how long his braids are */
+  {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},
+  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"}   /* the braids' ties: a deeper shade of his hair, or a colour */     /* how long his braids are */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
@@ -6603,14 +6608,18 @@ function crDrawerSay(){const b=bodyChoicesOf(look.body);crGroups().forEach(G=>{c
     let v={};try{v=G.say?G.say(look)||{}:{};}catch(e){}
     const ch=bodyRows("person").some(r=>(r.group||"build")===G.key&&b[r.key]!==r.def);
     said.textContent=[v.text||"",ch?bodyWord("drawer_changed"):""].filter(Boolean).join(" · ");
+    const rb=$("reset_"+G.key);if(rb)rb.hidden=!ch;
     if(v.dot&&/^#[0-9a-fA-F]{6}$/.test(v.dot)){const o=document.createElement("span");o.className="crdot";o.style.background=v.dot;o.setAttribute("aria-hidden","true");said.appendChild(o);}});}
 function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a world with no 3D camera never shows the body, so offers no builder */
   bodyCss();look.body=bodyChoicesOf(look.body);
   const slots=crDrawers();if(!slots)return;
   Object.keys(slots).forEach(k=>{slots[k].textContent="";});
   const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
-  const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});pvDraw();};
-  bodyRows("person").forEach(row=>{const box=slots[row.group]||slots.build,id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
+  const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});
+    if(k==="face"){buildBodyRows();pvDraw();const b=document.querySelector('#creator [data-choice="face"][data-word="'+look.body.face+'"]');if(b)b.focus();}else pvDraw();};
+  const jawed=look.body.face!=="round";
+  bodyRows("person").forEach(row=>{if(row.needs==="jaw"&&!jawed)return;   /* a choice the round head has no use for is not offered on it */
+    const box=slots[row.group]||slots.build,id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
       const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
@@ -6620,7 +6629,9 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
       wrap.appendChild(inp);box.appendChild(wrap);}
     else{const wrap=document.createElement("div");wrap.className="row";wrap.setAttribute("role","group");wrap.setAttribute("aria-labelledby",lb.id);
       row.list.forEach(w=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.choice=row.key;b.dataset.word=w;
-        b.textContent=bodyWord(row.key+"_"+w);b.setAttribute("aria-pressed",look.body[row.key]===w?"true":"false");
+        if(row.swatch&&/^#[0-9a-fA-F]{6}$/.test(w)){b.className="sw";b.style.background=w;b.setAttribute("aria-label",bodyWord(row.key)+" "+w);}   /* a colour is offered as a dot of it */
+        else b.textContent=bodyWord(row.key+"_"+w);
+        b.setAttribute("aria-pressed",look.body[row.key]===w?"true":"false");
         b.addEventListener("click",()=>{set(row.key,w);[...wrap.children].forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));});
         wrap.appendChild(b);});
       box.appendChild(wrap);}});
@@ -6633,6 +6644,11 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
     [["turnL",-1],["turnR",1]].forEach(([k,s])=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.turn=String(s);
       b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);});}
   /* a drawer with nothing to show in it (its rows hidden by this world, and none from the table) is not shown */
+  /* each drawer that holds rows of the table ends with a way back to how its choices started, shown once one has changed */
+  crGroups().forEach(G=>{const mine=bodyRows("person").filter(r=>(r.group||"build")===G.key);if(!mine.length||!slots[G.key].children.length)return;
+    const b=big(document.createElement("button"));b.type="button";b.className="opt crreset";b.id="reset_"+G.key;b.textContent="↺ "+bodyWord("reset");
+    b.addEventListener("click",()=>{const o={...look.body};mine.forEach(r=>{o[r.key]=r.def;});look.body=bodyChoicesOf(o);buildBodyRows();pvDraw();const s=$("group_"+G.key);if(s){const f=s.querySelector("summary");if(f)f.focus();}});
+    slots[G.key].appendChild(b);});
   crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;
     d.hidden=!(slots[G.key].children.length||G.rows.some(([,r])=>{const e=$(r);return e&&!e.hidden;}));});
   crDrawerSay();bodySpin();}

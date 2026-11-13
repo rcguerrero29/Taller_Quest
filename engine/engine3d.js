@@ -1505,8 +1505,8 @@ function bodyMake(skel,lk,build){
       at(0.05,part("head",flap(10,8),"ear",nose(lk.skin),0,0,0,[0.02*r,0.13*r*k,0.07*r*k])).translateZ(0.02*r*k);});}
   /* his eyes, set on the skin from in front; a brow over each, in his hair's colour a shade deeper, lying on the bone above
      the eye and tilted a little down to the outside */
-  [0.36*C.eyegap,-0.36*C.eyegap].forEach(ex=>{part("head",new THREE.SphereGeometry(0.12*C.eyesize*r,8,6),"eye","#1E1A22",ex*r,hc+eyeY*r,(frontZ(ex,eyeY)-0.03)*r);
-    const by=eyeY+0.17+0.02*C.eyesize,b=part("head",new THREE.SphereGeometry(r,10,6),"brow",shadeHex(lk.hair,-0.18),ex*r,hc+by*r,(frontZ(ex,by)-0.005)*r,[0.15,0.036*C.browthick,0.04]);
+  [0.36*C.eyegap,-0.36*C.eyegap].forEach(ex=>{part("head",new THREE.SphereGeometry(0.12*C.eyesize*r,8,6),"eye",C.eyecol,ex*r,hc+eyeY*r,(frontZ(ex,eyeY)-0.03)*r);
+    const by=eyeY+0.17+0.02*C.eyesize,b=part("head",new THREE.SphereGeometry(r,10,6),"brow",C.browcol==="hair"?shadeHex(lk.hair,-0.18):C.browcol,ex*r,hc+by*r,(frontZ(ex,by)-0.005)*r,[0.15,0.036*C.browthick,0.04]);
     b.rotation.order="YXZ";b.rotation.y=Math.sign(ex)*0.3;b.rotation.z=-Math.sign(ex)*(0.14+(C.browtilt-1)*0.3);});
   /* his nose: a bridge that starts narrow between his eyes and widens and stands further off the face down to its tip,
      in his skin a shade warmer, so it is seen from the front by its shape's shadow and from the side by its outline.
@@ -1868,7 +1868,7 @@ const HAIRPART={
         tube(G,P,w,d,Fd,V);}
       mesh(G,sheet(sd>0?31:57,true));
       /* the tie, and the loose end below it: the strands' ends, a few thin locks spreading a little */
-      const e=cv.getPoint(1),T=cv.getTangent(1),tie=part("head",new THREE.CylinderGeometry(0.096*r,0.096*r,0.08*r,14),"hair",shadeHex(M.hair,-0.3),e.x,e.y,e.z);
+      const e=cv.getPoint(1),T=cv.getTangent(1),tie=part("head",new THREE.CylinderGeometry(0.096*r,0.096*r,0.08*r,14),M.C.tiecol==="shade"?"hair":"tie",M.C.tiecol==="shade"?shadeHex(M.hair,-0.3):M.C.tiecol,e.x,e.y,e.z);
       tie.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),T);
       const L={pos:[],uv:[],idx:[]},Wt=new THREE.Vector3().crossVectors(T,Fd).normalize();
       for(let k=0;k<5;k++){const sp=(k-2)/2,ln=(0.22+0.08*rnd())*r,P=[],w=[],d=[];
