@@ -6603,10 +6603,14 @@ function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody"),
   const lb=$("crLooksLb");if(lb)lb.hidden=true;   /* the tabs' and drawers' names stand where the one heading stood */
   crShowTab(crTab);return slots;}
 /* what each closed drawer says: a word or two and, where a colour is the choice, a dot of it; where the table says nothing
-   for a group, "changed" once any of its choices is off the one he started with */
+   for a group, "changed" once any choice it offers is off its standard value */
+/* a choice may need something of the body before it is offered (today: a jaw, which the round head has none of). One table, so a new need
+   is one line here and the rows, the word "changed" and the way back all follow it. A choice not offered is kept as he left it. */
+const BODYNEED={jaw:b=>b.face!=="round"};
+function bodyRowShown(r,b){const f=r.needs&&BODYNEED[r.needs];return !f||!!f(b);}
 function crDrawerSay(){const b=bodyChoicesOf(look.body);crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;const said=d.querySelector(".crds");if(!said)return;
     let v={};try{v=G.say?G.say(look)||{}:{};}catch(e){}
-    const ch=bodyRows("person").some(r=>(r.group||"build")===G.key&&b[r.key]!==r.def);
+    const ch=bodyRows("person").some(r=>(r.group||"build")===G.key&&bodyRowShown(r,b)&&b[r.key]!==r.def);
     said.textContent=[v.text||"",ch?bodyWord("drawer_changed"):""].filter(Boolean).join(" · ");
     const rb=$("reset_"+G.key);if(rb)rb.hidden=!ch;
     if(v.dot&&/^#[0-9a-fA-F]{6}$/.test(v.dot)){const o=document.createElement("span");o.className="crdot";o.style.background=v.dot;o.setAttribute("aria-hidden","true");said.appendChild(o);}});}
@@ -6617,8 +6621,7 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
   const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
   const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});
     if(k==="face"){buildBodyRows();pvDraw();const b=document.querySelector('#creator [data-choice="face"][data-word="'+look.body.face+'"]');if(b)b.focus();}else pvDraw();};
-  const jawed=look.body.face!=="round";
-  bodyRows("person").forEach(row=>{if(row.needs==="jaw"&&!jawed)return;   /* a choice the round head has no use for is not offered on it */
+  bodyRows("person").forEach(row=>{if(!bodyRowShown(row,look.body))return;   /* a choice the round head has no use for is not offered on it */
     const box=slots[row.group]||slots.build,id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
@@ -6647,7 +6650,7 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
   /* each drawer that holds rows of the table ends with a way back to how its choices started, shown once one has changed */
   crGroups().forEach(G=>{const mine=bodyRows("person").filter(r=>(r.group||"build")===G.key);if(!mine.length||!slots[G.key].children.length)return;
     const b=big(document.createElement("button"));b.type="button";b.className="opt crreset";b.id="reset_"+G.key;b.textContent="↺ "+bodyWord("reset");
-    b.addEventListener("click",()=>{const o={...look.body};mine.forEach(r=>{o[r.key]=r.def;});look.body=bodyChoicesOf(o);buildBodyRows();pvDraw();const s=$("group_"+G.key);if(s){const f=s.querySelector("summary");if(f)f.focus();}});
+    b.addEventListener("click",()=>{const o={...look.body};mine.forEach(r=>{if(bodyRowShown(r,look.body))o[r.key]=r.def;});look.body=bodyChoicesOf(o);buildBodyRows();pvDraw();const s=$("group_"+G.key);if(s){const f=s.querySelector("summary");if(f)f.focus();}});
     slots[G.key].appendChild(b);});
   crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;
     d.hidden=!(slots[G.key].children.length||G.rows.some(([,r])=>{const e=$(r);return e&&!e.hidden;}));});
