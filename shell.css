@@ -344,7 +344,7 @@
   .creator .preview{display:flex; justify-content:center; margin-bottom:10px;}
   /* the creator's drawers (a world that takes the body): one line each when closed, and his preview stays in view as the panel scrolls */
   .creator.drawers .crhead{display:contents;}   /* so the preview holds to the panel, not to the header that scrolls away */
-  .creator.drawers .preview{position:sticky; top:0; z-index:3; background:var(--surface); padding:6px 0; flex-wrap:wrap;}
+  .creator.drawers .preview{position:sticky; top:0; z-index:3; background:var(--surface); padding:6px 0; flex-wrap:wrap; box-shadow:0 -21px 0 var(--surface);}   /* the shadow covers the panel's own padding above it, where a row would otherwise pass over its top edge */
   .creator.drawers .crbody{padding-top:0;}
   .crtabs{display:flex; gap:6px; flex-basis:100%; margin-top:8px; order:2;}
   .crtab{flex:1 1 0; min-height:44px; padding:0 4px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-family:'Unbounded',sans-serif; font-size:.72rem; cursor:pointer;}
