@@ -1454,13 +1454,22 @@ function bodyMake(skel,lk,build){
       m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");}
     return m;};
   /* HIS EARS (mq-v265): on each side of his head, from the height of his brow down to the height of his nose's tip, a little
-     behind the middle of the head. Two parts an ear, which is what shows at this size: the flap, flat to the head with its
-     back edge standing off it, and the hollow inside it a shade deeper. Hair that covers the ears covers them; hair cut
-     round them is cut round them by its own hairline */
+     behind the middle of the head. Two parts an ear, which is what shows at this size: the flap, thin, lying close to the
+     head with only its back edge lifted off it, wider at the top than at the lobe; and the hollow inside it a shade deeper.
+     The kind is his choice (BODYCHOICE `ears`): round, or pointed (the top drawn up and back to a tip). Hair that covers
+     the ears hides them (M.ears); hair cut round them is cut round them by its own hairline */
   M.ears=[];
-  [1,-1].forEach(s=>{const ey=0.26,ez=-0.06,q=Math.sqrt(1-ey*ey-ez*ez);
-    const e=part("head",new THREE.SphereGeometry(r,12,10),"ear",lk.skin,s*q*0.99*r,hc+ey*r,ez*r,[0.075,0.2,0.125]);e.rotation.y=s*0.5;e.rotation.z=-s*0.08;
-    const n=part("head",new THREE.SphereGeometry(r,10,8),"ear",nose(lk.skin),s*(q*0.99+0.062)*r,hc+(ey-0.01)*r,(ez+0.035)*r,[0.03,0.125,0.07]);n.rotation.y=s*0.5;n.rotation.z=-s*0.08;M.ears.push(e,n);});
+  {const kind=C.ears==="pointed"?"pointed":"round",sm=(a,b,x)=>{const k=Math.max(0,Math.min(1,(x-a)/(b-a)));return k*k*(3-2*k);};
+    const flap=(seg,rows)=>{const g=new THREE.SphereGeometry(1,seg,rows),p=g.attributes.position;
+      for(let i=0;i<p.count;i++){let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+        z*=0.66+0.4*sm(-1,0.7,y);                                        /* wide at the top, narrow at the lobe */
+        if(kind==="pointed"&&y>0){z=z*(1-0.6*y)-0.6*y*y;y*=1.8;}         /* the top drawn up and back to a tip */
+        p.setXYZ(i,x,y,z);}
+      g.computeVertexNormals();return g;};
+    [1,-1].forEach(s=>{const ey=0.26,ez=-0.08,q=Math.sqrt(1-ey*ey-ez*ez);
+      const e=part("head",flap(14,12),"ear",lk.skin,s*q*1.0*r,hc+ey*r,ez*r,[0.055*r,0.21*r,0.135*r]);e.rotation.y=s*0.42;
+      const n=part("head",flap(10,8),"ear",nose(lk.skin),s*(q*1.0+0.042)*r,hc+(ey-0.012)*r,(ez+0.03)*r,[0.022*r,0.135*r,0.075*r]);n.rotation.y=s*0.42;M.ears.push(e,n);});}
+
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
   {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
   /* each option of the table, by its part function */
@@ -1738,10 +1747,10 @@ const HAIRPART={
      plait a chain of crossings leaning one way and then the other, narrowing down its length, as a plait's strands
      cross; the tie is a band a shade darker and the loose end a taper. The two plaits differ a little, as plaits do */
   braids(M){const{part,r,hc}=M,dark=shadeHex(M.hair,-0.12);
-    const line=hairEdge([[0,0.62],[30,0.6],[50,0.5],[70,0.5],[98,0.52],[108,0.1],[122,-0.3],[150,-0.48],[180,-0.5]]);
+    const line=hairEdge([[0,0.62],[30,0.6],[50,0.48],[70,0.36],[93,0.26],[110,0],[125,-0.3],[150,-0.48],[180,-0.5]]);
     M.lay((x,y,z)=>hsm(0,0.04,y-line(x,z)),dark);
     /* the flat hair: one shell, drawn down from the parting either side, the parting a groove in it */
-    M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.06,e)*0.055*(0.35+0.65*hsm(0.0,0.07,Math.abs(x))));},{tex:(g,w,h)=>{const rnd=hairRnd(3),dk=shadeHex(M.hair,-0.1),lt=shadeHex(M.hair,0.07);
+    M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.06,e)*(0.055+0.07*hsm(0.82,0.97,Math.abs(x))*hsm(0.75,0.45,y))*(0.35+0.65*hsm(0.0,0.07,Math.abs(x))));}   /* fuller where it is drawn over the top of each ear */,{tex:(g,w,h)=>{const rnd=hairRnd(3),dk=shadeHex(M.hair,-0.1),lt=shadeHex(M.hair,0.07);
       for(let i=0;i<170;i++){const x=rnd()*w;g.globalAlpha=0.22+0.3*rnd();g.strokeStyle=i%3?dk:lt;g.lineWidth=1;g.beginPath();g.moveTo(x,0);g.lineTo(x+(rnd()-0.5)*6,h);g.stroke();}g.globalAlpha=1;}});
     /* a plait is three strands crossing: one rope whose sides swell in turn, left then right, down its length, narrowing to the tie */
     [1,-1].forEach(sd=>{const j=sd>0?0:1,n=9,len=1-0.05*j;

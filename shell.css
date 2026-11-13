@@ -342,6 +342,18 @@
   .creator input[type=text]{width:100%; box-sizing:border-box; font-family:'IBM Plex Sans',sans-serif; font-size:1rem; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); margin-bottom:14px;}
   .creator input[type=text]:focus-visible{outline:2px solid var(--accent); border-color:var(--accent);}
   .creator .preview{display:flex; justify-content:center; margin-bottom:10px;}
+  /* the creator's drawers (a world that takes the body): one line each when closed, and his preview stays in view as the panel scrolls */
+  .creator.drawers .crhead{display:contents;}   /* so the preview holds to the panel, not to the header that scrolls away */
+  .creator.drawers .preview{position:sticky; top:0; z-index:3; background:var(--surface); padding:6px 0; flex-wrap:wrap;}
+  .creator.drawers .crbody{padding-top:0;}
+  .crdrawer{border-bottom:1px solid var(--line);}
+  .crdrawer>summary{display:flex; align-items:center; gap:8px; min-height:48px; cursor:pointer; list-style:none; font-family:'Unbounded',sans-serif; font-size:.82rem; color:var(--ink);}
+  .crdrawer>summary::-webkit-details-marker{display:none;}
+  .crdrawer>summary::before{content:"▸"; width:1em; color:var(--muted);}
+  .crdrawer[open]>summary::before{content:"▾";}
+  .crdrawer .crds{margin-left:auto; display:flex; align-items:center; gap:8px; font-family:'IBM Plex Sans',sans-serif; font-size:.85rem; color:var(--muted); text-align:right;}
+  .crdrawer .crdot{width:16px; height:16px; border-radius:50%; border:1px solid var(--line); display:inline-block; flex:none;}
+  .crdrawer[open]{padding-bottom:6px;}
   .pvbox{position:relative; background:#F7F4EC; border:1px solid #D9D3C5; border-radius:12px; padding:8px 26px 4px;}
   .pvbox.dark{background:#241F2E; border-color:var(--line);}
   .pvtog{position:absolute; top:6px; right:6px; width:28px; height:28px; border-radius:8px; border:none; background:rgba(128,120,150,.28); cursor:pointer; font-size:.85rem; line-height:1; padding:0;}

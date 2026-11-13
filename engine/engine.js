@@ -766,7 +766,8 @@ const UIDEF={
   zoomIn:"Zoom in",zoomOut:"Zoom out",
   body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
-    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right"}},
+    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",
+    ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",drawer_clothes:"Clothes",drawer_face:"Face",drawer_hair:"Hair",drawer_body:"Body",drawer_changed:"changed"}},
  es:{
   talkPre:"💬 ",
   quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ A medias",badH:"✕ Esta vez no",
@@ -815,7 +816,8 @@ const UIDEF={
   zoomIn:"Acercar",zoomOut:"Alejar",
   body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
-    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha"}}};
+    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",
+    ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",drawer_clothes:"Ropa",drawer_face:"Cara",drawer_hair:"Pelo",drawer_body:"Cuerpo",drawer_changed:"cambiado"}}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
@@ -894,9 +896,10 @@ const BODYCHOICE=Object.freeze([
   {key:"width",kind:"measure",min:0.6,max:1.35,step:0.05,def:1},     /* how wide his shoulders, chest and hips are */
   {key:"limbs",kind:"measure",min:0.7,max:1.5,step:0.05,def:1},      /* how thick his arms and legs are */
   {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1},      /* how big his head is */
-  {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1},        /* how far below his waist his shirt hangs */
-  {key:"sleeves",kind:"option",list:["long","short"],def:"long"},     /* long sleeves to the wrist, or short ones and bare arms */
-  {key:"beard",kind:"option",list:["none","beard"],def:"none"}        /* a beard, apart from the hair's style (mq-v265) */
+  {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1,drawer:"clothes"},        /* how far below his waist his shirt hangs */
+  {key:"sleeves",kind:"option",list:["long","short"],def:"long",drawer:"clothes"},     /* long sleeves to the wrist, or short ones and bare arms */
+  {key:"beard",kind:"option",list:["none","beard"],def:"none",drawer:"hair"},       /* a beard, apart from the hair's style (mq-v265) */
+  {key:"ears",kind:"option",list:["round","pointed"],def:"round",drawer:"face"}     /* the kind of ear he has (mq-v265) */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
@@ -6473,7 +6476,7 @@ function buildOpts(rowId,list,key){
 }
 function pvDraw(){const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,22);
   g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});
-  if(BODYON)bodyPvDraw();}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER) */
+  if(BODYON){bodyPvDraw();crDrawerSay();}}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER), and each drawer says what it holds */
 /* ---- THE BODY BUILDER (mq-v262): the creator's own controls for the body's choices, where the world takes the body ----
    The creator (and the chair, which is the same screen) gains, under the hair's style, one control for each row of the table
    of the body's choices (grep "THE BODY'S CHOICES"): a slider for a measure, held to its range and moved by its step, and a
@@ -6497,7 +6500,7 @@ let BODYCSS=null;
 function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
   /* the ring round the control in focus. An adopted sheet, never a <style> written into the page (the page's policy refuses
      one); a browser that cannot adopt one keeps its own focus ring */
-  try{const s=new CSSStyleSheet();s.replaceSync(".bodyb .opt:focus-visible,.bodyb input[type=range]:focus-visible,.pvturn .opt:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}");
+  try{const s=new CSSStyleSheet();s.replaceSync(".bodyb .opt:focus-visible,.bodyb input[type=range]:focus-visible,.pvturn .opt:focus-visible,.crdrawer>summary:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}");
     document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];BODYCSS=true;}catch(e){}}
 function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(!box)return null;
   const r=Math.min(3,Math.max(1,window.devicePixelRatio||1));
@@ -6513,17 +6516,46 @@ function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
     if(BODYPV.t)BODYPV.ang+=Math.min(0.1,(now-BODYPV.t)/1000)*0.8;BODYPV.t=now;bodyPvDraw();BODYPV.spin=requestAnimationFrame(step);};
   BODYPV.spin=requestAnimationFrame(step);}
+/* ---- THE CREATOR'S DRAWERS (mq-v265): where the world takes the body, the creator's choices sit in drawers ----
+   The menu had grown past a screen. Each group of choices is a drawer with its name on it: closed, it is one line that says
+   what is chosen inside; opened (by touch, or by Enter or Space on its name: it is the browser's own <details>), it shows its
+   choices, and opening one closes the others, so the menu stays a screen long and his preview, which stays at the top of the
+   panel as it scrolls, stays in view. CRDRAWERS is the table: a drawer's key, the rows the page already has that it holds
+   (label and row, by id), and what it says when closed. A row of BODYCHOICE goes in the drawer its `drawer` names (the body's,
+   where it names none). So a new choice is a row in a table and a new group is a line here, with no other work.
+   For now, as today, only a world that takes the body gets them: every other world's creator is as it was */
+const crLabelOf=(list,val)=>{const e=(list||[]).find(x=>x[0]===val);return e?String(e[1]):"";};
+const CRDRAWERS=Object.freeze([
+  {key:"clothes",rows:[["lbOutfit","rowOutfit"],["lbShirt","rowShirt"],["lbPattern","rowPattern"]],say:l=>({text:crLabelOf(T().outfits,l.outfit),dot:l.shirt})},
+  {key:"face",rows:[["lbSkin","rowSkin"],["lbPaint","rowPaint"]],say:l=>({dot:l.skin})},
+  {key:"hair",rows:[["lbHairC","rowHair"],["lbHairS","rowStyle"]],say:l=>({text:[crLabelOf(T().styles,hairStyleOf(l)===l.style?l.style:hairStyleOf(l)),beardOf(l)?bodyWord("beard"):""].filter(Boolean).join(" · "),dot:l.hair})},
+  {key:"body",rows:[],say:l=>{const b=bodyChoicesOf(l.body);return {text:bodyRows("person").some(r=>(r.drawer||"body")==="body"&&b[r.key]!==r.def)?bodyWord("drawer_changed"):""};}}
+].map(d=>Object.freeze({...d,rows:Object.freeze(d.rows.map(r=>Object.freeze(r.slice())))})));
+const crSlotId=k=>k==="body"?"bodyRows":"drawerRows_"+k;
+/* make the drawers once and move the page's rows into them; answers each drawer's own slot for the table's rows, by key */
+function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody");if(!host)return null;const slots={};
+  cr.classList.add("drawers");
+  CRDRAWERS.forEach(D=>{let d=$("drawer_"+D.key);
+    if(!d){d=document.createElement("details");d.id="drawer_"+D.key;d.className="crdrawer";
+      const s=document.createElement("summary"),nm=document.createElement("span"),said=document.createElement("span");nm.className="crdn";said.className="crds";s.appendChild(nm);s.appendChild(said);d.appendChild(s);
+      D.rows.forEach(([l,r])=>{const a=$(l),b=$(r);if(a)d.appendChild(a);if(b)d.appendChild(b);});
+      const slot=document.createElement("div");slot.id=crSlotId(D.key);slot.className="bodyb";d.appendChild(slot);host.appendChild(d);
+      d.addEventListener("toggle",()=>{if(d.open)CRDRAWERS.forEach(o=>{const x=$("drawer_"+o.key);if(x&&x!==d)x.open=false;});});}
+    d.querySelector(".crdn").textContent=bodyWord("drawer_"+D.key);slots[D.key]=$(crSlotId(D.key));});
+  const lb=$("crLooksLb");if(lb)lb.hidden=true;   /* the drawers' names stand where the one heading stood */
+  return slots;}
+/* what each closed drawer says: a word or two and, where a colour is the choice, a dot of it */
+function crDrawerSay(){CRDRAWERS.forEach(D=>{const d=$("drawer_"+D.key);if(!d)return;const said=d.querySelector(".crds");if(!said)return;
+    let v={};try{v=D.say(look)||{};}catch(e){}
+    said.textContent=v.text||"";
+    if(v.dot&&/^#[0-9a-fA-F]{6}$/.test(v.dot)){const o=document.createElement("span");o.className="crdot";o.style.background=v.dot;o.setAttribute("aria-hidden","true");said.appendChild(o);}});}
 function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a world with no 3D camera never shows the body, so offers no builder */
   bodyCss();look.body=bodyChoicesOf(look.body);
-  let box=$("bodyRows");if(!box){box=document.createElement("div");box.id="bodyRows";box.className="bodyb";
-    const after=$("rowStyle"),host=after&&after.parentNode;
-    if(host)after.insertAdjacentElement("afterend",box);
-    else{const cr=$("creator");if(!cr)return;cr.insertBefore(box,$("begin")||null);}}
-  box.textContent="";
-  const head=document.createElement("p");head.className="crsec";head.textContent=bodyWord("title");box.appendChild(head);
+  const slots=crDrawers();if(!slots)return;
+  const box=slots.body;Object.keys(slots).forEach(k=>{slots[k].textContent="";});
   const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
   const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});pvDraw();};
-  bodyRows("person").forEach(row=>{const id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
+  bodyRows("person").forEach(row=>{const box=slots[row.drawer]||slots.body,id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
       const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
@@ -6545,7 +6577,10 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
     tr.textContent="";
     [["turnL",-1],["turnR",1]].forEach(([k,s])=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.turn=String(s);
       b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);});}
-  bodySpin();}
+  /* a drawer with nothing to show in it (its rows hidden by this world, and none from the table) is not shown */
+  CRDRAWERS.forEach(D=>{const d=$("drawer_"+D.key);if(!d)return;
+    d.hidden=!(slots[D.key].children.length||D.rows.some(([,r])=>{const e=$(r);return e&&!e.hidden;}));});
+  crDrawerSay();bodySpin();}
 $("pvtog").addEventListener("click",()=>{const bx=$("pvbox");bx.classList.toggle("dark");
   $("pvtog").textContent=bx.classList.contains("dark")?"☀️":"🌙";});
 /* Every return to the street goes through here. A save that booted straight into an
