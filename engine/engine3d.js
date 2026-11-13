@@ -1418,7 +1418,17 @@ function bodyMake(skel,lk,build){
   /* the skull's sheet runs over his head from his chin (the sheet's left edge) by his face (a quarter along) and his crown
      (half) to his nape (three quarters), and from ear to ear down the sheet: its poles are at his ears, where a pinch
      shows least. M.scalp paints on it (hair that lies on the skin: a buzz, a fade, a hairline, stubble) */
-  {const g=new THREE.SphereGeometry(r,24,18);g.rotateZ(Math.PI/2);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
+  /* THE SHAPE OF HIS HEAD (mq-v265, BODYCHOICE `face`): how far out the skin is along each direction from the head's centre,
+     in radii (HEADSHAPE). Round is the ball his card has. The others keep the ball over the crown and the back, where the
+     hair sits, and shape the face below the eyes: a jaw narrower than the skull and a chin. Everything on the head (his
+     eyes, nose and ears, the paint, every shell of hair and the beard) is set on this surface, so it follows the shape */
+  const face=HEADSHAPE[C.face]||HEADSHAPE.round,eyeY=C.face&&C.face!=="round"?0.36:0.47,noseY=C.face&&C.face!=="round"?0.1:0.22;M.face=face;
+  const seam=(g,sw,sh)=>{const p=g.attributes.position,n=g.attributes.normal,a=new THREE.Vector3(),b=new THREE.Vector3();   /* the sheet's two edges meet under his chin: one normal there, so no line shows; and at each pinch */
+    for(let i=0;i<=sw;i++)[i,sh*(sw+1)+i].forEach(k=>{a.fromBufferAttribute(p,k).normalize();n.setXYZ(k,a.x,a.y,a.z);});
+    for(let j=0;j<=sh;j++){const i0=j*(sw+1),i1=i0+sw;a.fromBufferAttribute(n,i0);b.fromBufferAttribute(n,i1);a.add(b).normalize();n.setXYZ(i0,a.x,a.y,a.z);n.setXYZ(i1,a.x,a.y,a.z);}};
+  {const g=new THREE.SphereGeometry(1,40,28);g.rotateZ(Math.PI/2);const p=g.attributes.position,v=new THREE.Vector3();
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();v.multiplyScalar(face(v.x,v.y,v.z)*r);p.setXYZ(i,v.x,v.y,v.z);}
+    g.computeVertexNormals();seam(g,40,28);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
   M.r=r;M.hc=hc;M.hair=lk.hair;
   /* PAINT IS LAID IN LAYERS: every call adds one and the sheet is painted afresh from them all, lowest `z` first, so the
      hair's paint and the beard's (z 1, over the hair's) do not undo each other whichever is called first */
@@ -1443,11 +1453,8 @@ function bodyMake(skel,lk,build){
      its light one light; `tex` paints its sheet (the skull's sheet: across runs chin, face, crown, nape; down runs ear to ear) */
   M.shell=(fn,o)=>{o=o||{};const sw=o.seg||48,sh=o.rows||32,g=new THREE.SphereGeometry(1,sw,sh);if(!o.up)g.rotateZ(Math.PI/2);   /* `up`: the sheet's pinches at his crown and chin instead of his ears, for a rim that runs level round the head */
     const p=g.attributes.position,v=new THREE.Vector3();
-    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();const R=fn(v.x,v.y,v.z);v.multiplyScalar(Math.max(0.9,R)*r);p.setXYZ(i,v.x,v.y,v.z);}
-    g.computeVertexNormals();
-    {const n=g.attributes.normal,a=new THREE.Vector3(),b=new THREE.Vector3();
-      for(let i=0;i<=sw;i++)[i,sh*(sw+1)+i].forEach(k=>{a.fromBufferAttribute(p,k).normalize();n.setXYZ(k,a.x,a.y,a.z);});   /* and at each ear, where the sheet pinches */   /* the sheet's two edges meet under his chin: one normal there, so no line shows */
-      for(let j=0;j<=sh;j++){const i0=j*(sw+1),i1=i0+sw;a.fromBufferAttribute(n,i0);b.fromBufferAttribute(n,i1);a.add(b).normalize();n.setXYZ(i0,a.x,a.y,a.z);n.setXYZ(i1,a.x,a.y,a.z);}}
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();const R=fn(v.x,v.y,v.z);v.multiplyScalar((face(v.x,v.y,v.z)+Math.max(0.9,R)-1)*r);p.setXYZ(i,v.x,v.y,v.z);}
+    g.computeVertexNormals();if(!o.up)seam(g,sw,sh);
     const col=o.col||lk.hair,m=part("head",g,"hair",col,0,hc,0);m.material.side=THREE.DoubleSide;
     if(o.tex){const w=512,h=256,c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle=new THREE.Color(col).getStyle();x.fillRect(0,0,w,h);
       o.tex(x,w,h);const tx=new THREE.CanvasTexture(c);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;
@@ -1466,12 +1473,12 @@ function bodyMake(skel,lk,build){
         if(kind==="pointed"&&y>0){z=z*(1-0.6*y)-0.6*y*y;y*=1.8;}         /* the top drawn up and back to a tip */
         p.setXYZ(i,x,y,z);}
       g.computeVertexNormals();return g;};
-    [1,-1].forEach(s=>{const ey=0.26,ez=-0.08,q=Math.sqrt(1-ey*ey-ez*ez);
+    [1,-1].forEach(s=>{const ey=eyeY-0.2,ez=-0.08,q=Math.sqrt(1-ey*ey-ez*ez)*face(s*Math.sqrt(1-ey*ey-ez*ez),ey,ez);
       const e=part("head",flap(14,12),"ear",lk.skin,s*q*1.0*r,hc+ey*r,ez*r,[0.055*r,0.21*r,0.135*r]);e.rotation.y=s*0.42;
       const n=part("head",flap(10,8),"ear",nose(lk.skin),s*(q*1.0+0.042)*r,hc+(ey-0.012)*r,(ez+0.03)*r,[0.022*r,0.135*r,0.075*r]);n.rotation.y=s*0.42;M.ears.push(e,n);});}
 
-  [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
-  {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
+  [0.35,-0.35].forEach(ex=>{const ey=eyeY,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97*face(ex,ey,Math.sqrt(1-ex*ex-ey*ey));part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
+  {const ny=noseY,nz=Math.sqrt(1-ny*ny)*0.95*face(0,ny,Math.sqrt(1-ny*ny));part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
   /* each option of the table, by its part function */
   bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,row.key==="beard"?(beardOf(lk)?"beard":"none"):C[row.key]);});
   /* his hair, by the style his look keeps (hairStyleOf, engine/engine.js): one function a style, and nothing else draws hair */
@@ -1490,6 +1497,15 @@ function bodyMake(skel,lk,build){
    something, by the row's key. Each is handed what the maker knows (M: the joints, the skeleton, the look, the build, the
    maker's own `part`, `cap`, `bone` and `knob`) and the word chosen, and hangs its parts on the joints. A row with no
    function here draws nothing and is still kept */
+/* THE SHAPES A HEAD CAN HAVE: for a direction from the head's centre (a unit: x to his ear, y up, z to his face), how far
+   out the skin is, in radii. Each is the ball above the eyes' height and behind the ears, so hair made for the ball fits */
+const HEADSHAPE=(()=>{const s=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+  const low=y=>s(0.2,-0.85,y),chin=(y,z)=>s(0.72,1,-0.8*y+0.6*z),back=(x,z)=>s(0,-0.6,z)*(1-x*x);
+  return {round:()=>1,
+    /* oval: the jaw narrows from the cheekbones to a rounded chin that stands a little forward and down; the head draws in to the neck behind */
+    oval:(x,y,z)=>1-low(y)*(0.25*x*x+0.16*back(x,z))+0.09*chin(y,z),
+    /* square: the jaw stays nearly as wide as the skull down to its corners, and the chin is broad and short */
+    square:(x,y,z)=>1-low(y)*(0.06*x*x+0.16*back(x,z))+0.07*low(y)*s(0.45,0.8,Math.abs(x))*s(-0.3,0.3,z)+0.05*chin(y,z)};})();
 const BODYPART={
   /* the arms. LONG: his shirt's sleeve to the wrist, as his card's arms are all shirt. SHORT: a sleeve of his shirt over the
      top of the upper arm, and below it the arm bare, a little thinner than the sleeve was, to the hand */
