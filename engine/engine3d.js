@@ -1619,7 +1619,7 @@ const DOGSTEPS=[3,8];     /* steps a second, fewest and most: a dog's legs are s
    the fore leg across from it together */
 SKELETONS.dog={
   joints:{hips:[null,0,0.2,-0.135],spine:["hips",0,0,0.125],chest:["spine",0,0,0.125],neck:["chest",0,0.085,0.04],head:["neck",0,0.135,0.04],
-    mouth:["head",0,-0.06,0.115],jaw:["head",0,-0.075,0.05],tail_1:["hips",0,0.045,-0.065],tail_2:["tail_1",0,0.12,-0.06],tail_tip:["tail_2",0,0.135,-0.01],
+    mouth:["head",0,-0.06,0.115],jaw:["head",0,-0.1,0.055],tail_1:["hips",0,0.045,-0.065],tail_2:["tail_1",0,0.12,-0.06],tail_tip:["tail_2",0,0.135,-0.01],
     hind_l:["hips",0.066,-0.02,0],hock_l:["hind_l",0,-0.075,0],hpaw_l:["hock_l",0,-0.07,0],
     hind_r:["hips",-0.066,-0.02,0],hock_r:["hind_r",0,-0.075,0],hpaw_r:["hock_r",0,-0.07,0],
     fore_l:["chest",0.066,-0.02,0],wrist_l:["fore_l",0,-0.075,0],fpaw_l:["wrist_l",0,-0.07,0],
@@ -1742,8 +1742,8 @@ function dogMake(skel,lk){
   [1,-1].forEach(sd=>part("head",ball(r*(b.ear==="up"?0.2:0.16),10,8),"eye","#26202B",sd*r*0.5,r*0.14,r*0.82));
   /* his lower jaw, hung on its own joint under his muzzle, and the dark of his mouth lying on it: shut, both are inside
      his muzzle; they show when the joint drops (a howl) */
-  part("jaw",ball(r*0.42,12,8),bw,paint.body,0,-r*0.02,r*0.36*ml,[0.9*(b.jaw||1),0.36,1.15*ml]);
-  part("jaw",ball(r*0.34,10,6),"mouth","#3A1F2B",0,r*0.07,r*0.36*ml,[0.8*(b.jaw||1),0.22,1.05*ml]);
+  part("jaw",ball(r*0.42,12,8),bw,paint.body,0,-r*0.03,r*0.4*ml,[0.9*(b.jaw||1),0.34,1.15*ml]);
+  part("jaw",ball(r*0.36,10,6),"mouth","#3A1F2B",0,r*0.09,r*0.4*ml,[0.82*(b.jaw||1),0.34,1.05*ml]);
   const earCol=lk.kind==="beagle"?paint.coat:b.ear==="up"?paint.coat:shadeHex(paint.coat,-0.25);
   [1,-1].forEach(sd=>{
     if(b.ear==="up"){const m=part("head",new THREE.ConeGeometry(r*0.55,r*1.75,4),"ear",earCol,sd*r*0.62,r*1.25,-r*0.05,[1,1,0.45]);m.rotation.set(0,0,-sd*0.4);
@@ -1765,11 +1765,11 @@ function dogMake(skel,lk){
     /* A TAIL TAPERS (mq-v264): thick where it leaves his rump, thinner at each joint, and ending in a point, not a rod with
        a ball on it. Each stretch is a cone cut short (DOGTAIL: its thickness at the root, the middle joint, where the tip
        begins and the very end, against the breed's own tail), rounded at each joint so a bend stays whole; the last
-       third is the tip, a part of its own on the tip's joint, which the beagle wears white */
+       half of its second stretch is the tip, a part of its own on the tip's joint, which the beagle wears white */
     const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:1),[k0,k1,k2,k3]=DOGTAIL;
     const taper=(j,v,r0,r1,wears)=>{const L=v.length(),m=part(j,new THREE.CylinderGeometry(r1,r0,L,12,1),wears,paint.coat,v.x/2,v.y/2,v.z/2);
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize());return m;};
-    const v1=at("tail_2"),v2=at("tail_tip"),cut=v2.clone().multiplyScalar(0.62);
+    const v1=at("tail_2"),v2=at("tail_tip"),cut=v2.clone().multiplyScalar(0.45);
     part("tail_1",ball(tr*k0,10,8),"tail",paint.coat,0,0,0);taper("tail_1",v1,tr*k0,tr*k1,"tail");
     part("tail_2",ball(tr*k1,10,8),"tail",paint.coat,0,0,0);taper("tail_2",cut,tr*k1,tr*k2,"tail");
     {const back=cut.clone().sub(v2),m=part("tail_tip",new THREE.CylinderGeometry(tr*k2,tr*k3,back.length(),12,1),"tip",paint.coat,back.x/2,back.y/2,back.z/2);
@@ -1858,6 +1858,7 @@ function t3DogPose(B,P,phase,moving,groundAt){
        his head is brought level again; his tail lies out behind him.
      · LYING: his belly is on the ground; his fore legs are stretched out ahead and his hind legs folded beside him; his
        head is lowered and his eyes are shut; his chest fills out sideways by the breed's `lie`; his tail lies out behind. */
+const DOGJAW=0.8;   /* how far his jaw drops for a howl, in radians: far enough that the dark of his mouth shows under his muzzle from the side */
 const DOGSIT=0.55,DOGLAY=0.72;   /* how high his hips are held, in barrel radii, sitting and lying */
 function dogHold(B,held,howl,t){
   const S=B.userData.skel,J=B.userData.joints,b=S.build||DOGBUILDS.beagle,A=S.joints.hips[2],zc=S.joints.spine[3]+S.joints.chest[3];
@@ -1872,7 +1873,7 @@ function dogHold(B,held,howl,t){
       else{J[hp].rotation.set(-Math.PI/2+0.3,0,0);J[kn].rotation.set(2.3,0,0);J[an].rotation.set(Math.PI/2-2.6,0,0);}});}
   if(howl){neck-=0.45;head-=0.5;}
   J.hips.rotation.x=-pitch;J.neck.rotation.x=neck;J.head.rotation.x=head;J.tail_1.rotation.x=tail;J.tail_2.rotation.x=tail2;
-  if(J.jaw)J.jaw.rotation.x=howl?0.6:0;
+  if(J.jaw)J.jaw.rotation.x=howl?DOGJAW:0;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.wears==="eye"){if(u.open===undefined)u.open=o.scale.y;o.scale.y=u.open*(shut?0.22:1);}
     if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}});
