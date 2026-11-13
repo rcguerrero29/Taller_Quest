@@ -14370,6 +14370,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const sole = m => { m.updateWorldMatrix(true, false); return (new THREE.Box3().setFromObject(m).min.y - B.position.y) / sc; };
                   const P0 = { wag: 0 };
                   t3DogPose(B, P0, 0, false); meet('standing').forEach(said);
+                  /* his lower jaw hangs on his face, shut and dropped for a howl: each of its parts touches a part of his head */
+                  for (const howl of [false, true]) { dogHold(B, 'stand', howl, 0); B.updateWorldMatrix(true, true);
+                    const Jn = B.userData.joints, jp = meshes.filter(o => o.parent === Jn.jaw), hp = meshes.filter(o => o.parent === Jn.head && o.userData.wears !== 'ear');
+                    if (!jp.length) { said('the ' + kind + '\'s body has no lower jaw'); break; }
+                    if (jp.some(o => !hp.some(q => boxOf(q).intersectsBox(boxOf(o))))) said('the ' + kind + '\'s lower jaw is not on his face' + (howl ? ' when he howls' : '') + ': a part of it touches nothing of his head'); }
+                  t3DogPose(B, P0, 0, false);
                   paws.forEach(([n, m]) => { const h = sole(m); if (Math.abs(h) > 0.01) said('standing, the ' + kind + '\'s ' + n + ' paw is ' + (h > 0 ? 'floating ' : 'sunk ') + Math.abs(h).toFixed(3) + ' ' + (h > 0 ? 'above' : 'below') + ' the ground'); });
                   for (const stair of [false, true]) {
                     const tread = 0.12 * sc, oz = B.position.clone(), fwd = new THREE.Vector3(Math.sin(0.6), 0, Math.cos(0.6));
