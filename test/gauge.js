@@ -232,7 +232,16 @@ return 1;
    only world here that takes the engine's furniture from its library rather than drawing its own. Any
    one failing fails the build, and none short-circuits another — a run that stops at the first failure
    tells you a third of what changed. */
-const rc = measure('content/gauge/index.html', 'expected.txt', 'the gauge')
-         | measure('content/gauge/index-3d.html', 'expected-3d.txt', 'the gauge in 3D')
-         | measure('content/gauge/index-lib.html', 'expected-lib.txt', 'the gauge laying the engine\'s furniture');
+const WORLDS3 = { plain: ['content/gauge/index.html', 'expected.txt', 'the gauge'],
+  '3d': ['content/gauge/index-3d.html', 'expected-3d.txt', 'the gauge in 3D'],
+  lib: ['content/gauge/index-lib.html', 'expected-lib.txt', 'the gauge laying the engine\'s furniture'] };
+/* ONE WORLD, WHEN ASKED (2026-11-13): `--world plain|3d|lib` measures that world alone, so the public check can run the
+   three side by side, each as a part of its own. With no `--world`, all three, as before: that is what a person runs.
+   A name that is not one of the three is a red: a run that measured nothing is not a pass. */
+const only = process.argv.includes('--world') ? process.argv[process.argv.indexOf('--world') + 1] : null;
+if (only !== null && !Object.prototype.hasOwnProperty.call(WORLDS3, only)) {
+  console.log('FAIL — the gauge was asked for the world ' + JSON.stringify(only === undefined ? '' : only) + ', which is not one of ' + Object.keys(WORLDS3).join(', ') + ', so nothing was measured');
+  process.exit(1);
+}
+const rc = (only ? [only] : Object.keys(WORLDS3)).map(w => measure(...WORLDS3[w])).reduce((a, b) => a | b, 0);
 process.exit(rc ? 1 : 0);
