@@ -14644,12 +14644,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (hw) { if (r.all < 4) said(what + ', no note shows over the ' + kind + '\'s head');
                       else if (r.above < r.all * 0.9) said(what + ', the ' + kind + '\'s note is not over his head: ' + (r.all - r.above) + ' of its ' + r.all + ' pixels are below the top of his head'); }
                     else if (r.all || r.visible) said(what + ', a note shows on the ' + kind + ' (' + r.all + ' pixels of it), where he sings none'); }
-                  /* his eyes, facing you: his eyes' parts painted for one frame, standing, lying, and lying while he howls */
+                  /* his eyes, facing you: his eyes' parts painted for one frame, standing, lying, and lying while he howls. Shut, fewer
+                     than three quarters of their standing pixels face you (his head is lowered, so some of an open eye's are hidden
+                     anyway: measured on mq-v264, 35% to 45% here and 60% in a five-tile world; open, 94% to 96%), and howling, half as
+                     many again as shut */
                   K.face(cr, 'toward'); const eye = {}, E1 = K.street(cr);
                   for (const [k, h, hw] of [['stand', 'stand', false], ['lay', 'lay', false], ['lay+howl', 'lay', true]]) { put(h, hw); eye[k] = K.probe(cr, o => o.userData.wears === 'eye', () => ({ n: K.magenta(K.only(cr, E1)).length })); }
                   N.push('the ' + kind + '\'s eyes facing you: ' + eye.stand.n + ' pixels standing, ' + eye.lay.n + ' lying, ' + eye['lay+howl'].n + ' lying and howling');
                   if (eye.stand.n < 4) said('facing you, standing, the ' + kind + '\'s eyes do not show (' + eye.stand.n + ' pixels), so whether they shut could not be asked');
-                  else { if (!(eye.lay.n <= eye.stand.n * 0.5)) said('lying down, the ' + kind + '\'s eyes are open: ' + eye.lay.n + ' pixels of them face you, where ' + eye.stand.n + ' do standing');
+                  else { if (!(eye.lay.n <= eye.stand.n * 0.75)) said('lying down, the ' + kind + '\'s eyes are open: ' + eye.lay.n + ' pixels of them face you, where ' + eye.stand.n + ' do standing');
                     if (!(eye['lay+howl'].n >= Math.max(4, eye.lay.n * 1.5))) said('lying down and howling, the ' + kind + '\'s eyes are shut: ' + eye['lay+howl'].n + ' pixels of them face you, where ' + eye.lay.n + ' do lying quiet'); }
                   /* his bandana's cloth facing you, sitting, as standing (the beagle, who wears one here) */
                   if (kind === 'beagle') { const cloth = {}; cr.band = '#E0218A';
