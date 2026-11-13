@@ -14214,32 +14214,36 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const far = await p.evaluate(() => { const L = h => { const c = new THREE.Color(h); return c.r + c.g + c.b; }, me = L(look.hair), S = (typeof SWATCH === 'object' && SWATCH && SWATCH.hair) || [];
               return S.length ? S.reduce((a, b) => Math.abs(L(b) - me) > Math.abs(L(a) - me) ? b : a) : null; });
             /* and turned by his preview's own button, an eighth of a turn at a time, for what shows only from the side or behind
-               (his neck under a head with a jaw) */
-            const CTX = [null, ...[1, 2, 3, 4, 5, 6, 7].map(turn => ({ turn })), ...pre.styles.map(st => ({ style: st, beard: withBeard }))].concat(far ? pre.styles.map(st => ({ style: st, beard: withBeard, hair: far })) : []);
+               (his neck under a head with a jaw). First each style in turn with all of these together (a beard, every other one
+               in the far colour, turned a further eighth each time), which finds the look a row shows in within a few tries;
+               then, only where none of those showed it, each of them alone */
+            const CTX = [null, ...pre.styles.map((st, i) => ({ style: st, beard: withBeard, ...(far && i % 2 ? { hair: far } : {}), turn: i % 8 })),
+              ...[1, 2, 3, 4, 5, 6, 7].map(turn => ({ turn })), ...pre.styles.map(st => ({ style: st, beard: withBeard }))].concat(far ? pre.styles.map(st => ({ style: st, beard: withBeard, hair: far })) : []);
             const putBack = r => p.evaluate(([k, v]) => { look = { ...look, body: bodyChoicesOf({ ...look.body, [k]: v }) }; buildBodyRows(); pvDraw(); }, [r.key, r.def]);
             for (const r of [...pre.rows.filter(r => r.key !== 'face' && onNow.includes(r.key)), ...pre.rows.filter(r => r.key === 'face')]) { const targets = r.kind === 'measure' ? [null] : r.list;
+              let good = null;   /* the look in which the row's last word showed, tried first for the next */
               for (const w of targets) { const what = r.key + (w ? ' "' + w + '"' : '');
                 const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, style: look.style, hair: look.hair, beard: look.body ? look.body.beard : undefined }), r.key);
                 if (w && before.v === w) continue;   /* the word already chosen is chosen again by the next pass */
                 let n = 0, after = null, at = null;
                 const ang0 = await p.evaluate(() => BODYPV.ang);
-                for (const cx of CTX) {
-                  if (cx && cx.turn) { await p.evaluate(([k, v]) => { look = { ...look, body: bodyChoicesOf({ ...look.body, [k]: v }) }; buildBodyRows(); pvDraw(); }, [r.key, before.v]); await p.click('#pvTurn [data-turn="1"]'); await rafs(p, 1); }
-                  else if (cx) await p.evaluate(([cx, k, v]) => { look = { ...look, style: cx.style, ...(cx.hair ? { hair: cx.hair } : {}), body: bodyChoicesOf({ ...look.body, ...(cx.beard && k !== 'beard' ? { beard: cx.beard } : {}), [k]: v }) }; buildBodyRows(); pvDraw(); }, [cx, r.key, before.v]);
+                for (const cx of good ? [null, good, ...CTX.filter(c => c && c !== good)] : CTX) {
+                  if (cx) { await p.evaluate(([cx, k, v, a, b]) => { look = { ...look, style: cx.style || b.style, hair: cx.hair || b.hair, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: cx.beard || b.beard } : {}), [k]: v }) }; BODYPV.ang = a; buildBodyRows(); pvDraw(); }, [cx, r.key, before.v, ang0, before]);
+                    for (let i = 0; i < (cx.turn || 0); i++) await p.click('#pvTurn [data-turn="1"]'); if (cx.turn) await rafs(p, 1); }
                   if (!(await reveal(sel(r.key, w)))) { after = null; break; }
                   /* the preview's pixels before, kept on the page and compared there (the same count as differ: a channel off by more than 24) */
                   const v0 = await p.evaluate(k => { const c = document.getElementById('pvBody'); window.__pv0 = c && !c.hidden ? c.getContext('2d').getImageData(0, 0, c.width, c.height).data.slice() : null; return look.body ? look.body[k] : undefined; }, r.key);
                   await p.focus(sel(r.key, w)); await p.keyboard.press(r.kind === 'measure' ? (v0 >= r.max ? 'Home' : 'End') : 'Enter'); await rafs(p);
                   after = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, v0: undefined, kept: saveLook(look).body ? saveLook(look).body[k] : undefined }), r.key); after.v0 = v0;
                   n = await p.evaluate(() => { const c = document.getElementById('pvBody'), a = window.__pv0; if (!a || !c || c.hidden) return -1; const b = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; if (b.length !== a.length) return -1;
-                    let k = 0; for (let i = 0; i < a.length; i++) if (i % 4 !== 3 && Math.abs(a[i] - b[i]) > 24) k++; return k; }); at = cx; if (n !== 0) break; }
+                    let k = 0; for (let i = 0; i < a.length; i++) if (i % 4 !== 3 && Math.abs(a[i] - b[i]) > 24) k++; return k; }); at = cx; if (n !== 0) { if (cx) good = cx; break; } }
                 if (!after) { P.push('the builder\'s ' + what + ' could not be found to change'); continue; }
                 if (after.v === after.v0 || (w && after.v !== w)) P.push('the builder\'s ' + what + ' changed by the keyboard does not change his look: it stays ' + JSON.stringify(after.v));
                 else if (after.kept !== after.v) P.push('the builder\'s ' + what + ' changes his look to ' + JSON.stringify(after.v) + ', but the save would keep ' + JSON.stringify(after.kept));
                 if (n < 0) P.push('the builder\'s preview of his body could not be read after his ' + what + ' changed');
                 else if (n === 0) P.push('the builder\'s ' + what + ' changed, and his body in the preview did not change at all, from any side, with any style of hair' + (withBeard ? ', with a beard' : '') + (far ? ', or with hair of another colour' : ''));
                 await p.evaluate(a => { BODYPV.ang = a; bodyPvDraw(); }, ang0);
-                if (at && !at.turn) await p.evaluate(([b, k]) => { look = { ...look, style: b.style, hair: b.hair, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: b.beard } : {}) }) }; buildBodyRows(); pvDraw(); }, [before, r.key]); }
+                if (at) await p.evaluate(([b, k]) => { look = { ...look, style: b.style, hair: b.hair, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: b.beard } : {}) }) }; buildBodyRows(); pvDraw(); }, [before, r.key]); }
               /* an option asked is put back at the word its row starts at, so the rows after it are asked of the person a new
                  character starts as (with no mouth chosen, the width of his mouth shows nothing, as it should) */
               if (r.kind === 'option' && r.key !== 'face') await putBack(r); }
@@ -14253,9 +14257,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const SEL = await p.evaluate(() => [...document.querySelectorAll('#creator [data-choice], #pvTurn button, #crTabs [role=tab]')].map(e => e.dataset.choice ? '#creator [data-choice="' + e.dataset.choice + '"]' + (e.dataset.word ? '[data-word="' + e.dataset.word + '"]' : '') : e.dataset.turn ? '#pvTurn [data-turn="' + e.dataset.turn + '"]' : '#' + e.id)
               .concat([...document.querySelectorAll('#creator details.crdrawer')].filter(d => !d.hidden).map(d => '#' + d.id + ' > summary')));
             const sizes = [];
-            for (const s of SEL) { if (!(await reveal(s))) continue;
-              sizes.push(await p.evaluate(s => { const e = document.querySelector(s); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect();
-                return { id: e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : e.dataset.turn ? 'the button that turns him' : e.getAttribute('role') === 'tab' ? 'tab "' + e.textContent.trim() + '"' : 'drawer "' + e.textContent.trim() + '"', w: r.width, h: r.height, l: r.left, r: r.right, vw: document.documentElement.clientWidth }; }, s)); }
+            /* one tap on a tab and a drawer for all that is in that drawer */
+            const BY = await p.evaluate(ss => { const m = {}; ss.forEach(s => { const e = document.querySelector(s), d = e && e.closest('details'), k = d ? d.id : '-'; (m[k] = m[k] || []).push(s); }); return Object.values(m); }, SEL);
+            for (const g of BY) { if (!(await reveal(g[0]))) continue;
+              sizes.push(...await p.evaluate(ss => ss.map(s => { const e = document.querySelector(s); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect();
+                return { id: e.dataset.choice ? e.dataset.choice + (e.dataset.word ? ' ' + e.dataset.word : '') : e.dataset.turn ? 'the button that turns him' : e.getAttribute('role') === 'tab' ? 'tab "' + e.textContent.trim() + '"' : 'drawer "' + e.textContent.trim() + '"', w: r.width, h: r.height, l: r.left, r: r.right, vw: document.documentElement.clientWidth }; }), g)); }
             if (!sizes.length) P.push('on a phone the builder\'s controls could not be found to measure');
             sizes.forEach(s => { if (s.l < 0 || s.r > s.vw) P.push('on a phone 390 pixels wide, the builder\'s ' + s.id + ' is partly off the screen (' + Math.round(s.l) + ' to ' + Math.round(s.r) + ' of ' + s.vw + ')');
               if (s.w < 44 || s.h < 44) P.push('on a phone, the builder\'s ' + s.id + ' is ' + Math.round(s.w) + ' by ' + Math.round(s.h) + ' pixels, smaller than a finger\'s 44'); });
@@ -14622,7 +14628,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         } catch (e) { say(0, 'his hair, ears, neck and eyes could not be looked at in the camera: ' + String(e && e.message || e).split('\n')[0]); }
         await K2.ctx.close(); }
       /* ---- Q · the creator's tabs and drawers on a phone, driven by taps and keys as a person drives them ---- */
-      { const Q = await page4(doc); const qp = Q.p, QP = [], q = m => QP.push('on a phone, ' + m);
+      { const Q = await page4(doc, { reducedMotion: 'reduce' }); const qp = Q.p, QP = [], q = m => QP.push('on a phone, ' + m);
         try {
           const state = () => qp.evaluate(() => { const bar = document.getElementById('crTabs'), tabs = bar ? [...bar.querySelectorAll('[role=tab]')] : [];
             const shown = [...document.querySelectorAll('#creator [role=tabpanel]')].filter(p => !p.hidden && p.getBoundingClientRect().height > 0);
