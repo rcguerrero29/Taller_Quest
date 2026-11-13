@@ -1420,10 +1420,47 @@ function bodyMake(skel,lk,build){
      shows least. M.scalp paints on it (hair that lies on the skin: a buzz, a fade, a hairline, stubble) */
   {const g=new THREE.SphereGeometry(r,24,18);g.rotateZ(Math.PI/2);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
   M.r=r;M.hc=hc;M.hair=lk.hair;
-  M.scalp=(paint,w,h)=>{const m=M.skull;w=w||128;h=h||64;const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
-    g.fillStyle=new THREE.Color(lk.skin).getStyle();g.fillRect(0,0,w,h);g.fillStyle=new THREE.Color(lk.hair).getStyle();paint(g,w,h);
+  /* PAINT IS LAID IN LAYERS: every call adds one and the sheet is painted afresh from them all, lowest `z` first, so the
+     hair's paint and the beard's (z 1, over the hair's) do not undo each other whichever is called first */
+  M.paints=[];
+  M.scalp=(paint,w,h,z)=>{const m=M.skull;w=256;h=128;if(paint)M.paints.push({z:z||0,fn:paint,n:M.paints.length});
+    const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
+    g.fillStyle=new THREE.Color(lk.skin).getStyle();g.fillRect(0,0,w,h);
+    M.paints.slice().sort((a,b)=>a.z-b.z||a.n-b.n).forEach(L=>{g.save();g.fillStyle=new THREE.Color(lk.hair).getStyle();L.fn(g,w,h);g.restore();});
     const tx=new THREE.CanvasTexture(c);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;if(m.material.map)m.material.map.dispose();
     m.material.map=tx;m.material.needsUpdate=true;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");m.userData.painted=true;return m;};
+  /* paint by where on his head a spot is: fn(x,y,z) is handed the spot's direction from the head's centre (x to his left
+     ear's side, y up, z to his face; a unit) and answers how much of colour `col` lies there, 0 to 1 */
+  M.lay=(fn,col,z)=>M.scalp((g,w,h)=>{const c=new THREE.Color(col||lk.hair),R=c.r*255,G=c.g*255,B=c.b*255,im=g.getImageData(0,0,w,h),d=im.data;
+    for(let j=0;j<h;j++){const th=Math.PI*(j+0.5)/h,st=Math.sin(th),x=-Math.cos(th);
+      for(let i=0;i<w;i++){const ph=2*Math.PI*(i+0.5)/w,a=fn(x,-Math.cos(ph)*st,Math.sin(ph)*st);if(!(a>0))continue;
+        const k=4*(j*w+i),q=a>1?1:a;d[k]+=(R-d[k])*q;d[k+1]+=(G-d[k+1])*q;d[k+2]+=(B-d[k+2])*q;}}
+    g.putImageData(im,0,0);},0,0,z);
+  /* HAIR THAT STANDS OFF THE HEAD AS ONE MASS is a shell: one skin over the skull, pushed out as far as the hair is long.
+     fn(x,y,z) answers, for a direction from the head's centre, how far out the hair's surface is in head radii; 1 or less is
+     no hair there, and the shell is under the skin: the answer should fall smoothly through 1 at the hairline (hairRise), so
+     the rim is the hairline itself and not the mesh's steps. One part whatever the style, so its outline is one outline and
+     its light one light; `tex` paints its sheet (the skull's sheet: across runs chin, face, crown, nape; down runs ear to ear) */
+  M.shell=(fn,o)=>{o=o||{};const sw=o.seg||48,sh=o.rows||32,g=new THREE.SphereGeometry(1,sw,sh);if(!o.up)g.rotateZ(Math.PI/2);   /* `up`: the sheet's pinches at his crown and chin instead of his ears, for a rim that runs level round the head */
+    const p=g.attributes.position,v=new THREE.Vector3();
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();const R=fn(v.x,v.y,v.z);v.multiplyScalar(Math.max(0.9,R)*r);p.setXYZ(i,v.x,v.y,v.z);}
+    g.computeVertexNormals();
+    {const n=g.attributes.normal,a=new THREE.Vector3(),b=new THREE.Vector3();
+      for(let i=0;i<=sw;i++)[i,sh*(sw+1)+i].forEach(k=>{a.fromBufferAttribute(p,k).normalize();n.setXYZ(k,a.x,a.y,a.z);});   /* and at each ear, where the sheet pinches */   /* the sheet's two edges meet under his chin: one normal there, so no line shows */
+      for(let j=0;j<=sh;j++){const i0=j*(sw+1),i1=i0+sw;a.fromBufferAttribute(n,i0);b.fromBufferAttribute(n,i1);a.add(b).normalize();n.setXYZ(i0,a.x,a.y,a.z);n.setXYZ(i1,a.x,a.y,a.z);}}
+    const col=o.col||lk.hair,m=part("head",g,"hair",col,0,hc,0);m.material.side=THREE.DoubleSide;
+    if(o.tex){const w=512,h=256,c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle=new THREE.Color(col).getStyle();x.fillRect(0,0,w,h);
+      o.tex(x,w,h);const tx=new THREE.CanvasTexture(c);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;
+      m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");}
+    return m;};
+  /* HIS EARS (mq-v265): on each side of his head, from the height of his brow down to the height of his nose's tip, a little
+     behind the middle of the head. Two parts an ear, which is what shows at this size: the flap, flat to the head with its
+     back edge standing off it, and the hollow inside it a shade deeper. Hair that covers the ears covers them; hair cut
+     round them is cut round them by its own hairline */
+  M.ears=[];
+  [1,-1].forEach(s=>{const ey=0.26,ez=-0.06,q=Math.sqrt(1-ey*ey-ez*ez);
+    const e=part("head",new THREE.SphereGeometry(r,12,10),"ear",lk.skin,s*q*0.99*r,hc+ey*r,ez*r,[0.075,0.2,0.125]);e.rotation.y=s*0.5;e.rotation.z=-s*0.08;
+    const n=part("head",new THREE.SphereGeometry(r,10,8),"ear",nose(lk.skin),s*(q*0.99+0.062)*r,hc+(ey-0.01)*r,(ez+0.035)*r,[0.03,0.125,0.07]);n.rotation.y=s*0.5;n.rotation.z=-s*0.08;M.ears.push(e,n);});
   [0.35,-0.35].forEach(ex=>{const ey=0.47,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97;part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
   {const ny=0.22,nz=Math.sqrt(1-ny*ny)*0.95;part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
   /* each option of the table, by its part function */
@@ -1455,7 +1492,7 @@ const BODYPART={
       const fr=v==="short"?Lm.forearm*0.85:Lm.forearm,ar=v==="short"?Lm.arm*0.8:Lm.arm,col=v==="short"?lk.skin:lk.shirt;
       [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);part("elbow_"+s,cap(fr,L),v==="short"?"skin":"shirt",col,x,y,z);
       knob("elbow_"+s,Math.max(ar,fr),col);});},
-  /* a beard, apart from his hair: FILL (the session shapes it). `none` draws nothing */
+  /* a beard, apart from his hair (hairBeard). `none` draws nothing */
   beard(M,v){if(v!=="beard")return;hairBeard(M);}
 };
 /* ---- HIS HAIR, ONE FUNCTION A STYLE (mq-v265) ----
@@ -1478,6 +1515,28 @@ const BODYPART={
        another; the two sides of a parting do not match to the pixel), from a seed that is the same every frame: never
        Math.random at draw time, or he flickers and his body is made again each look.
      · COST: a head of hair is at most about forty parts. Past that, merge or paint */
+/* WHAT THE STYLES SHARE. hsm: a smooth step from 0 at a to 1 at b. hairEdge: a hairline, from a list of [degrees round from
+   his face, height in head radii]: it answers the height the hair starts at for a spot (x,z), the same either side.
+   HAIRLINE is the ordinary one: high on the brow, down by the temple to a sideburn before the ear, up over the ear and
+   down to the nape. hairRnd: numbers from a seed, the same every time. hairLumps: a head's worth of soft lumps (curls
+   standing out of a mass), as a function of direction, 0 between lumps to 1 on one. hairGrain: the texture of a mass of
+   hair on a shell's sheet: "strand" is strands lying front to back, "curl" small curls, "ends" the cut ends of clipped hair */
+const hairRise=(e,t)=>e<=0?1+e:1+t;   /* a shell's answer: `e` is the height above the hairline, `t` the hair's length there (which must reach 0 at the line) */
+const hsm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+const hairEdge=K=>(x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;let i=1;while(i<K.length-1&&K[i][0]<a)i++;
+  const A=K[i-1],B=K[i],t=Math.max(0,Math.min(1,(a-A[0])/(B[0]-A[0])));return A[1]+(B[1]-A[1])*t*t*(3-2*t);};
+const HAIRLINE=[[0,0.7],[30,0.69],[48,0.56],[60,0.3],[70,0.02],[80,-0.16],[92,-0.16],[104,-0.02],[125,-0.3],[150,-0.46],[180,-0.48]];
+const hairRnd=s=>()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};
+const hairLumps=(seed,n,size)=>{const rnd=hairRnd(seed),ga=Math.PI*(3-Math.sqrt(5)),P=[];
+  for(let i=0;i<n;i++){const y=1-2*(i+0.5)/n,q=Math.sqrt(1-y*y),a=i*ga+rnd()*0.5;const yy=y+(rnd()-0.5)*0.1,l=Math.hypot(q,yy);P.push([Math.cos(a)*q/l,yy/l,Math.sin(a)*q/l,size*(0.8+0.4*rnd()),0.7+0.3*rnd()]);}
+  return (x,y,z)=>{let m=0;for(let i=0;i<n;i++){const L=P[i],d=Math.max(0,1-(x*L[0]+y*L[1]+z*L[2]));if(d>0.5)continue;const v=L[4]*Math.exp(-d/(L[3]*L[3]*0.5));if(v>m)m=v;}return m;};};
+const hairGrain=(kind,col,seed,k)=>(g,w,h)=>{const rnd=hairRnd(seed||7),dk=shadeHex(col,-0.13),lt=shadeHex(col,0.08);k=k||1;
+  if(kind==="strand"){g.lineWidth=1.5;for(let i=0;i<260;i++){const y=rnd()*h,x=rnd()*w,l=w*(0.12+0.25*rnd());g.globalAlpha=0.25+0.3*rnd();g.strokeStyle=i%3?dk:lt;
+      g.beginPath();g.moveTo(x,y);g.lineTo(x+l,y+(rnd()-0.5)*3);g.stroke();if(x+l>w){g.beginPath();g.moveTo(x-w,y);g.lineTo(x+l-w,y);g.stroke();}}}
+  else if(kind==="curl"){g.lineWidth=2.2*k;for(let i=0;i<900/(k*k);i++){const x=rnd()*w,y=rnd()*h,q=(4+4*rnd())*k,a=rnd()*6.28;g.globalAlpha=0.3+0.4*rnd();g.strokeStyle=i%3?dk:lt;
+      g.beginPath();g.arc(x,y,q,a,a+3.4+rnd()*1.6);g.stroke();}}
+  else{for(let i=0;i<5200;i++){g.globalAlpha=0.18+0.3*rnd();g.fillStyle=i%3?dk:lt;g.fillRect(rnd()*w,rnd()*h,2.4,2.4);}}
+  g.globalAlpha=1;};
 const hairShort=M=>{const{part,r,hc}=M,hr=r*1.05;   /* the short hair he had before the styles: a cap over the crown and a shell behind. The stand-in each style starts from */
   part("head",new THREE.SphereGeometry(hr,24,10,0,Math.PI*2,0,Math.PI*0.36),"hair",M.hair,0,hc,0).rotation.x=-0.21;
   part("head",new THREE.SphereGeometry(hr,24,12,Math.PI+0.3,Math.PI-0.6,0,Math.PI*0.58),"hair",M.hair,0,hc,0).rotation.x=0.3;};
@@ -1488,53 +1547,23 @@ const hairShort=M=>{const{part,r,hc}=M,hr=r*1.05;   /* the short hair he had bef
    lengthens the lower face, from the side it juts down and forward from the ear, and from behind it shows only under the jaw.
    The hair is drawn after the beard and paints the scalp afresh, so the beard's paint is laid again over whatever the hair
    paints: M.scalp is wrapped to do it */
-const hairBeard=M=>{const{part,r,hc}=M,under=shadeHex(M.hair,-0.12);
-  const line=[[0,0.03],[0.3,0.0],[0.46,-0.13],[0.72,-0.06],[1.0,0.1],[1.12,0.34],[1.36,0.34],[1.46,-1.2],[3.15,-1.2]];
-  const top=a=>{let k=1;while(line[k][0]<a)k++;const[a0,y0]=line[k-1],[a1,y1]=line[k],t=(a-a0)/(a1-a0);return y0+(y1-y0)*t*t*(3-2*t);};
-  const paint=(g,w,h)=>{const c=parseInt(g.fillStyle.slice(1),16),im=g.getImageData(0,0,w,h),d=im.data;
-    for(let py=0;py<h;py++)for(let px=0;px<w;px++){const th=Math.PI*(py+0.5)/h,ph=2*Math.PI*(px+0.5)/w,st=Math.sin(th);
-      const x=-Math.cos(th),y=-Math.cos(ph)*st,z=Math.sin(ph)*st,edge=(top(Math.atan2(Math.abs(x),z))-y)/0.06;if(edge<=0)continue;
-      const lip=1-(x*x)/(0.17*0.17)-((y+0.2)*(y+0.2))/(0.05*0.05),burn=Math.max(0,Math.min(1,(0.34-y)/0.26));
-      const a=Math.min(1,edge)*burn*(z>0&&lip>0?1-Math.min(1,lip*3):1),i=4*(py*w+px);
-      d[i]+=((c>>16&255)-d[i])*a;d[i+1]+=((c>>8&255)-d[i+1])*a;d[i+2]+=((c&255)-d[i+2])*a;}
-    g.putImageData(im,0,0);};
-  const scalp=M.scalp;
-  M.scalp=(fn,w,h)=>scalp((g,cw,ch)=>{const brush=g.fillStyle;if(fn){g.save();fn(g,cw,ch);g.restore();}g.fillStyle=brush;paint(g,cw,ch);},w||256,h||128);
-  M.scalp(null);
-  /* the mass of it: a ball set lower and further forward than his head, so that what stands clear of his face is nothing at
-     his lip and his cheek, thickest under his chin. Then the tufts that break its edge, and two pads up each side of the jaw */
-  part("head",new THREE.SphereGeometry(0.86*r,18,12),"hair",M.hair,0,hc-0.36*r,0.14*r);
-  [0.27,0.3,0.26].forEach((q,k)=>{const a=(k-1)*0.62+(k?0.04:-0.03),e=0.95-0.2*Math.abs(k-1),R=0.68*r;
-    part("head",new THREE.SphereGeometry(r,10,8),"hair",M.hair,Math.sin(a)*Math.cos(e)*R,hc-0.36*r-Math.sin(e)*R,0.14*r+Math.cos(a)*Math.cos(e)*R,[q,q*1.25,q]);});
-  [1,-1].forEach(sx=>{[[0.72,-0.36,0.46,0.2],[1.14,-0.08,0.32,0.16]].forEach(([a,y,wide,deep],k)=>{const c=Math.sqrt(1-y*y),v=new THREE.Vector3(sx*Math.sin(a)*c,y,Math.cos(a)*c);
-      wide+=sx*0.015*(k?1:-1);   /* a pad on the cheek and one before the ear, each lying flat to the face, thin the way it stands off */
-      part("head",new THREE.SphereGeometry(r,12,8),"hair",M.hair,v.x*0.86*r,hc+v.y*0.86*r,v.z*0.86*r,[wide,wide*1.15,deep]).quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),v);});
-    part("head",new THREE.SphereGeometry(r,8,6),"hair",M.hair,sx*0.15*r,hc-0.07*r,0.985*r,[0.17,0.075,0.07]).rotation.z=-sx*0.3;});};
+const hairBeard=M=>{const top=hairEdge([[0,0.03],[17,0],[26,-0.13],[41,-0.06],[57,0.1],[64,0.34],[76,0.34],[84,-1.2],[180,-1.2]]);
+  /* how far into the beard a spot is, from its upper edge down; and how near his chin, where it is longest */
+  const deep=(x,y,z)=>top(x,z)-y,chin=(x,y,z)=>hsm(0.25,0.95,-0.72*y+0.69*z-0.35*x*x);
+  M.lay((x,y,z)=>hsm(-0.03,0.05,deep(x,y,z))*hsm(-0.25,0.1,z),shadeHex(M.hair,-0.1),1);
+  M.shell((x,y,z)=>{const d=deep(x,y,z),b=hsm(-0.3,0.15,z);
+    return hairRise(Math.min(d,b-0.3),hsm(0,0.22,d)*b*(0.05+0.2*chin(x,y,z)));},{tex:hairGrain("curl",M.hair,23,0.8)});};
 const HAIRPART={
   /* HAIR:cap */
   /* SHORT. An ordinary short cut: it grows from a hairline high on the brow, down past the temples to a sideburn, and round
-     to the nape; it lies close over the sides and the back, and on top it is a little longer and combed across to one side
-     from a parting, lifted at the brow. The hairline, the sideburns and the nape are paint; the close hair is one shell; the
-     top is bands of strands laid across the skull. The outline is the skull's with a little height on top, and the brow's
-     edge is the swept fringe, higher on the parting's side */
-  cap(M){const{part,r,hc}=M;
-    let sd=11;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
-    const K=[[0,0.7],[30,0.69],[48,0.56],[60,0.3],[70,0.02],[80,-0.16],[92,-0.16],[104,-0.02],[125,-0.3],[150,-0.46],[180,-0.48]];
-    const line=(x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;let i=1;while(i<K.length-1&&K[i][0]<a)i++;
-      const A=K[i-1],B=K[i],t=(a-A[0])/(B[0]-A[0]);return A[1]+(B[1]-A[1])*t;};
-    M.scalp((g,w,h)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++){const ph=(i+0.5)/w*2*Math.PI,th=(j+0.5)/h*Math.PI,st=Math.sin(th);
-      const x=-Math.cos(th),y=-Math.cos(ph)*st,z=Math.sin(ph)*st,e=(y-line(x,z))/0.06;
-      if(e>0){g.globalAlpha=Math.min(1,e);g.fillRect(i,j,1,1);}}g.globalAlpha=1;},256,128);
-    /* the close hair of the sides and the back: one shell, from the brow's hairline over the crown to below the bump of the skull */
-    {const m=part("head",new THREE.SphereGeometry(r*1.035,24,12,0,Math.PI*2,0,77*Math.PI/180),"hair",shadeHex(M.hair,-0.07),0,hc,0);m.rotation.x=-33*Math.PI/180;}
-    /* the top, longer, combed across from a parting on one side: bands of strands that follow the skull, each from the
-       parting down its own side, laid from the brow back to the whorl, no two as long or standing as high */
-    const D=Math.PI/180,n=10,t0=47,t1=125,dt=(t1-t0)/n;
-    for(let i=0;i<n;i++){const f=i/(n-1),a0=-0.36+(rnd()-0.5)*0.04;
-      [[a0,0.62+0.42*Math.min(1,f*2)+(rnd()-0.5)*0.14],[a0-0.07,-(0.5+0.3*Math.min(1,f*2)+(rnd()-0.5)*0.1)]].forEach(([from,to],k)=>{
-        const lo=Math.min(from,to),hi=Math.max(from,to),R=r*(1.065+(i%2?0.014:0)+0.012*rnd()+(i===0?0.045:i===1?0.03:i===2?0.015:0)+(k?-0.008:0));
-        const g=new THREE.SphereGeometry(R,10,3,1.5*Math.PI-hi,hi-lo,(t0+dt*i-1.5)*D,(dt+2)*D);g.rotateX(Math.PI/2);
-        part("head",g,"hair",shadeHex(M.hair,-0.05*(i%2)-0.03*rnd()),0,hc,0);});}},
+     to the nape; it lies close over the sides and the back, and on top it is a little longer and combed across from a
+     parting on one side, lifted at the brow. The hairline, the sideburns and the nape are paint, a shade darker as short
+     hair shows its roots; the hair is one shell, close at the sides, fuller on top, with the parting a shallow line in it */
+  cap(M){const line=hairEdge(HAIRLINE);
+    M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
+    M.shell((x,y,z)=>{const e=y-line(x,z),f=hsm(0.1,0.6,z),up=hsm(0.3,0.8,y);
+      const part=1-0.5*Math.exp(-Math.pow((x-0.42)/0.05,2))*up;   /* the parting, on his left */
+      return hairRise(e,Math.max(hsm(0,0.06,e)*f,hsm(0,0.14,e),hsm(0.5,0.7,y))*(0.045+0.05*up+0.035*f*up)*part);},{tex:hairGrain("strand",M.hair,11),seg:72,rows:48});},
   /* /HAIR:cap */
   /* HAIR:long */
   /* LONG: it grows from the whole scalp, parts down the middle of the crown and falls by its own weight: a curtain each
@@ -1542,7 +1571,8 @@ const HAIRPART={
      a sheet behind from the crown to the shoulder blades. Its length past the shoulders is what names it. The scalp under
      it is painted, so no skin shows between locks; each lock is one tapered ribbon from the parting over the skull and
      down, wide in its fall and thin at its tip, a little different from its neighbour in width, length and shade */
-  long(M){const{part,r,hc}=M;
+  long(M){M.ears.forEach(e=>{e.visible=false;});   /* long hair falls over his ears */
+    const{part,r,hc}=M;
     let sd=7031;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd/4294967296;};
     const V=(x,y,z)=>new THREE.Vector3(x*r,hc+y*r,z*r);
     const back=x=>-(1.21*Math.sqrt(Math.max(0.05,1-(x/1.43)*(x/1.43)))+0.14);   /* where his back is, behind his shoulders, at this far from his middle */
@@ -1578,30 +1608,13 @@ const HAIRPART={
     fall(3.1,1,"back");fall(3.05,-1,"back");},
   /* /HAIR:long */
   /* HAIR:curly */
-  /* CURLY: it grows all over the scalp and every strand coils, so it stands off the head as a cloud of separate curls,
-     much the same length everywhere: over the crown, over the ears, down to the nape. Its outline is scalloped on every
-     side, which is what names it. One ball a curl, set outward from the scalp where it grows, each a little different
-     in size, reach and turn from a fixed seed; the lowest row and the odd curl between are a shade darker, as curls
-     underneath are. The scalp under them is painted in the darker shade, so a gap between two curls shows hair */
-  curly(M){const{part,r,hc}=M;let s=0x51ED270B;
-    const rnd=()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
-    const dark=shadeHex(M.hair,-0.12),mid=shadeHex(M.hair,-0.06);
-    const sm=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
-    /* the hairline, as the height it stands at round the head: high over the brow, down over the ears, low at the nape */
-    const line=z=>z>0?-0.22+0.86*sm(z/0.72):-0.22-0.26*sm(-z);
-    M.scalp((g,w,h)=>{g.fillStyle=dark;for(let py=0;py<h;py++)for(let px=0;px<w;px++){
-      const ph=2*Math.PI*(px+0.5)/w,th=Math.PI*(py+0.5)/h,y=-Math.cos(ph)*Math.sin(th),z=Math.sin(ph)*Math.sin(th);
-      if(y>line(z)+0.28)g.fillRect(px,py,1,1);}});
-    const geo=new THREE.IcosahedronGeometry(1,1),lite=shadeHex(M.hair,0.07),ga=Math.PI*(3-Math.sqrt(5));
-    const curl=(x,y,z,col)=>{const rad=r*(0.25+0.07*rnd()),d=r*(0.98+0.12*rnd());
-      let cy=y*d;if(z>0.3&&cy-rad<0.64*r)cy=0.64*r+rad;   /* a curl on the brow stops above his eyes */
-      part("head",geo,"hair",col,x*d,hc+cy,z*d,[rad*(0.9+0.2*rnd()),rad*(0.9+0.2*rnd()),rad*(0.9+0.2*rnd())]).rotation.set(rnd()*6.28,rnd()*6.28,rnd()*6.28);};
-    /* a row of curls along the hairline, all the way round, then the rest of the head above it */
-    const R=14;for(let i=0;i<R;i++){const a=(i+0.5+0.3*(rnd()-0.5))/R*2*Math.PI,z0=Math.cos(a),y=line(z0*0.95)+0.13,q=Math.sqrt(Math.max(0,1-y*y));
-      curl(Math.sin(a)*q,y,z0*q,i%3?dark:mid);}
-    const N=40;for(let i=0;i<N;i++){const y=1-2*(i+0.5)/N,q=Math.sqrt(1-y*y),a=i*ga,x=Math.cos(a)*q,z=Math.sin(a)*q;
-      if(y<line(z)+0.42)continue;
-      curl(x,y,z,y>0.6?(i%3===1?M.hair:lite):(i%3===1?mid:M.hair));}},
+  /* CURLY: it grows all over the scalp and every strand coils, so it stands off the head as one mass of curls, much the same
+     length everywhere: over the crown, over the tops of the ears, down to the nape. Its outline is scalloped on every side,
+     which is what names it. One shell, standing out further where a curl is and less between two; its sheet is drawn with
+     small curls, darker and lighter; the hairline under it is paint, a shade darker, so its edge has roots */
+  curly(M){const line=hairEdge([[0,0.6],[35,0.56],[55,0.3],[72,0.12],[95,0.08],[125,-0.25],[150,-0.42],[180,-0.45]]),lump=hairLumps(0x51ED,64,0.2);
+    M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
+    M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.1,e)*(0.1+0.19*lump(x,y,z)));},{tex:hairGrain("curl",M.hair,5),seg:84,rows:56});},
   /* /HAIR:curly */
   /* HAIR:buzz */
   /* A BUZZ is clipped to a few millimetres all over his scalp, so none of it stands off his head: it is paint, and the outline
@@ -1679,24 +1692,14 @@ const HAIRPART={
   /* /HAIR:pony */
   /* HAIR:afro */
   /* AN AFRO. It grows from the whole scalp, hairline to nape, in tight curls that stand straight out to one length, so it is a
-     ball wider than his head and centred a little above and behind it; his face looks out from under its front edge. Built
-     as it grows: clumps of curl standing out all round, each its own size and turn (from a fixed seed), over a darker core
-     that is the depth between them; the hairline, the temples and the nape are paint, so no skin shows at its roots */
-  afro(M){const{part,r,hc}=M,dark=shadeHex(M.hair,-0.12);
-    let sd=1337;const rnd=()=>{sd=(sd+0x6D2B79F5)|0;let t=Math.imul(sd^(sd>>>15),1|sd);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};
-    M.scalp((g,w,h)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++){const th=Math.PI*(j+0.5)/h,ph=2*Math.PI*(i+0.5)/w,
-      x=Math.cos(th),y=-Math.sin(th)*Math.cos(ph),z=Math.sin(th)*Math.sin(ph);
-      const t=Math.min(1,Math.max(0,(0.2-z)/0.6)),e=t*t*(3-2*t);
-      if(y>(0.66-0.45*x*x)*(1-e)-0.5*e)g.fillRect(i,j,1,1);}});
-    const cy=hc+0.26*r,cz=-0.06*r;
-    part("head",new THREE.SphereGeometry(1.08*r,16,12),"hair",dark,0,cy+0.05*r,cz-0.24*r);
-    /* ring over ring from the crown down, each ring matched left to right so the ball is round, each clump its own size */
-    [[0.96,1],[0.74,5],[0.44,8],[0.12,10],[-0.2,10],[-0.5,7]].forEach(([dy,n],ring)=>{const q=Math.sqrt(1-dy*dy);
-      for(let k=0;k<n;k++){const a=(ring%2?Math.PI/n:0)+2*Math.PI*k/n,dx=q*Math.sin(a),dz=q*Math.cos(a);
-        const lr=r*(0.37+0.07*rnd()),R=r*(ring?0.98+0.06*rnd():0.86),x=dx*R,y=cy+dy*R,z=cz+dz*R,rx=rnd()*3,ry=rnd()*3;
-        if(z>0.2*r&&y-hc-lr*0.9<0.68*r&&Math.abs(x)<0.95*r)continue;   /* none over his face */
-        if(dy<-0.3&&z>-0.15*r)continue;                                  /* nor hanging by his jaw */
-        const m=part("head",new THREE.IcosahedronGeometry(lr,1),"hair",M.hair,x,y,z);m.rotation.set(rx,ry,0);}});},
+     ball wider than his head and centred a little above and behind it; his face looks out from under its front edge. One
+     shell, as round as it is picked out, its surface only just uneven, drawn with small tight curls; the hairline, the
+     temples and the nape are paint, so no skin shows at its roots */
+  afro(M){const line=hairEdge([[0,0.6],[35,0.55],[55,0.28],[72,0.05],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);
+    const cy=0.2,cz=-0.08,rho=1.5;
+    M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
+    M.shell((x,y,z)=>{const e=y-line(x,z),b=y*cy+z*cz,R=b+Math.sqrt(b*b-cy*cy-cz*cz+rho*rho);   /* the ball's surface along this direction */
+      return hairRise(e,hsm(0,0.14,e)*(R*(0.97+0.04*lump(x,y,z))-1));},{tex:hairGrain("curl",M.hair,11,0.6),seg:72,rows:48});},
   /* /HAIR:afro */
   /* HAIR:mohawk */
   /* MOHAWK: the sides shaved to stubble (paint) and one strip of long hair left down the middle from above the brow over
@@ -1735,47 +1738,38 @@ const HAIRPART={
      plait a chain of crossings leaning one way and then the other, narrowing down its length, as a plait's strands
      cross; the tie is a band a shade darker and the loose end a taper. The two plaits differ a little, as plaits do */
   braids(M){const{part,r,hc}=M,dark=shadeHex(M.hair,-0.12);
-    const edge=(ax,az)=>0.7+(az>0?0.16*Math.exp(-ax*ax/0.12):0)-1.3*Math.pow((1-az)/2,0.7);
-    M.scalp((g,w,h)=>{for(let py=0;py<h;py++)for(let px=0;px<w;px++){const ph=(px+0.5)/w*2*Math.PI,th=(py+0.5)/h*Math.PI,s=Math.sin(th);
-      const x=-Math.cos(th),y=-Math.cos(ph)*s,z=Math.sin(ph)*s,d=Math.hypot(x,z)||1e-6;if(Math.abs(x)>0.03&&y>edge(x/d,z/d)-0.02)g.fillRect(px,py,1,1);}},256,128);
-    /* each shell stops at the hairline exactly: a point of it that would lie on his face is drawn up to the line */
-    [0,1].forEach(k=>{const g=new THREE.SphereGeometry(1,48,12,0,Math.PI*2,k?Math.PI/2+0.045:0,Math.PI/2-0.045),p=g.attributes.position;g.rotateZ(Math.PI/2);
-      for(let i=0;i<p.count;i++){let x=p.getX(i),y=p.getY(i),z=p.getZ(i);const d=Math.hypot(x,z)||1e-6,e=edge(x/d,z/d);
-        if(y<e){const c=Math.sqrt(1-e*e)/d;x*=c;z*=c;y=e;}p.setXYZ(i,x,y,z);}
-      g.computeVertexNormals();part("head",g,"hair",M.hair,0,hc,0,[r*1.045,r*1.045,r*1.045]);});
+    const line=hairEdge([[0,0.62],[30,0.6],[50,0.5],[70,0.5],[98,0.52],[108,0.1],[122,-0.3],[150,-0.48],[180,-0.5]]);
+    M.lay((x,y,z)=>hsm(0,0.04,y-line(x,z)),dark);
+    /* the flat hair: one shell, drawn down from the parting either side, the parting a groove in it */
+    M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.06,e)*0.055*(0.35+0.65*hsm(0.0,0.07,Math.abs(x))));},{tex:(g,w,h)=>{const rnd=hairRnd(3),dk=shadeHex(M.hair,-0.1),lt=shadeHex(M.hair,0.07);
+      for(let i=0;i<170;i++){const x=rnd()*w;g.globalAlpha=0.22+0.3*rnd();g.strokeStyle=i%3?dk:lt;g.lineWidth=1;g.beginPath();g.moveTo(x,0);g.lineTo(x+(rnd()-0.5)*6,h);g.stroke();}g.globalAlpha=1;}});
+    /* a plait is three strands crossing: one rope whose sides swell in turn, left then right, down its length, narrowing to the tie */
     [1,-1].forEach(sd=>{const j=sd>0?0:1,n=9,len=1-0.05*j;
       const cv=new THREE.CatmullRomCurve3([[1.0,-0.15,-0.05],[1.15,-0.6,0.1],[1.12,-1.15*len,0.3],[1.0,-1.75*len,0.42]].map(q=>new THREE.Vector3(sd*q[0]*r,hc+q[1]*r,q[2]*r)));
-      for(let k=0;k<n;k++){const t=k/(n-1)*0.84,c=cv.getPoint(t),lean=(k+j)%2?1:-1,sz=(1-0.3*t)*0.17*r,off=0.085*r*lean*(1-0.3*t);
-        const m=part("head",new THREE.SphereGeometry(sz,10,8),"hair",M.hair,c.x+off*0.7,c.y,c.z+off*0.7*sd,[0.75,1.3,0.8]);
-        m.rotation.set(-0.6*lean*sd,0,0.6*lean);}
+      {const seg=44,rad=10,g=new THREE.TubeGeometry(cv,seg,0.15*r,rad,false),P=g.attributes.position,c=new THREE.Vector3(),v=new THREE.Vector3();
+        for(let a=0;a<=seg;a++){const u=a/seg;cv.getPoint(u,c);const tp=u>0.86?hsm(1,0.86,u)*0.75+0.25:1;
+          for(let q=0;q<=rad;q++){const i=a*(rad+1)+q;v.fromBufferAttribute(P,i).sub(c);const w=Math.sin(u*n*Math.PI*1.16+j*1.3)*v.x/(0.15*r);
+            v.multiplyScalar((1-0.28*u)*tp*(0.86+0.42*Math.max(0,w))).add(c);P.setXYZ(i,v.x,v.y,v.z);}}
+        g.computeVertexNormals();const m=part("head",g,"hair",M.hair,0,0,0);
+        const cw=64,chh=256,cvs=document.createElement("canvas");cvs.width=cw;cvs.height=chh;const x=cvs.getContext("2d");x.fillStyle=new THREE.Color(M.hair).getStyle();x.fillRect(0,0,cw,chh);
+        /* the crossings: a line where one strand goes under the next, slanting one way and then the other */
+        x.strokeStyle=shadeHex(M.hair,-0.22);x.lineWidth=3;x.globalAlpha=0.8;
+        for(let k=-2;k<n*1.2+2;k++){const y0=k*chh/(n*1.16);for(let half=0;half<2;half++){x.beginPath();x.moveTo(half*cw/2,y0+(k%2?0:chh/(n*2.3)));x.lineTo((half+1)*cw/2,y0+(k%2?chh/(n*2.3):0));x.stroke();}}
+        const tx=new THREE.CanvasTexture(cvs);tx.generateMipmaps=false;tx.minFilter=THREE.LinearFilter;tx.center.set(0.5,0.5);tx.rotation=Math.PI/2;
+        m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");}
       const e=cv.getPoint(0.91),f=cv.getPoint(1),tie=part("head",new THREE.CylinderGeometry(0.1*r,0.1*r,0.1*r,10),"hair",shadeHex(M.hair,-0.3),e.x,e.y,e.z);
       tie.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),f.clone().sub(e).normalize());
       const end=part("head",new THREE.ConeGeometry(0.12*r,0.32*r,8),"hair",M.hair,f.x,f.y-0.04*r,f.z);end.rotation.x=Math.PI;});},
   /* /HAIR:braids */
   /* HAIR:flat */
-  /* FLAT TOP. The sides and the back are clipped to the skin and the top stands straight up and is cut off level, so the hair
-     is longest at the front and the corners and shortest over the crown, and the outline is a box with a deck on a round
-     head. The clipped sides are paint, thinner toward the nape. The top is tufts standing upright from the scalp in rows, each
-     rooted a little further out than it ends so the walls run up from the head's sides, and each ending at the one height
-     but for a hair's breadth; the corner tufts are set in so the box's corners are round */
-  flat(M){const{part,r,hc}=M;
-    let sd=5;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
-    const K=[[0,0.68],[35,0.66],[52,0.52],[64,0.2],[74,-0.02],[82,-0.08],[92,-0.06],[104,0],[125,-0.25],[150,-0.4],[180,-0.42]];
-    const line=(x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;let i=1;while(i<K.length-1&&K[i][0]<a)i++;
-      const A=K[i-1],B=K[i],t=(a-A[0])/(B[0]-A[0]);return A[1]+(B[1]-A[1])*t;};
-    M.scalp((g,w,h)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++){const ph=(i+0.5)/w*2*Math.PI,th=(j+0.5)/h*Math.PI,st=Math.sin(th);
-      const x=-Math.cos(th),y=-Math.cos(ph)*st,z=Math.sin(ph)*st,e=y-line(x,z);
-      if(e>0){g.globalAlpha=Math.min(1,e/0.05)*Math.min(1,0.45+e*1.1);g.fillRect(i,j,1,1);}}g.globalAlpha=1;},256,128);
-    const top=1.26,nx=5,nz=5,hw=0.75,zf=0.7,zb=-0.76,cw=2*hw/nx,cd=(zf-zb)/nz;
-    for(let a=0;a<nx;a++)for(let b=0;b<nz;b++){
-      let x=-hw+cw*(a+0.5),z=zb+cd*(b+0.5);const corner=(a===0||a===nx-1)&&(b===0||b===nz-1);
-      if(corner){x*=0.93;z*=0.93;}
-      /* the root is on the scalp, further out than the tip: the outer tufts lean in as they rise, so the walls run up from the head's sides */
-      const bx=x*1.07,bz=z*(z>0?1.03:1.07),by=Math.max(0.55,Math.sqrt(Math.max(0,1-bx*bx-bz*bz)))-0.05,t=top+(rnd()-0.5)*0.03,v=rnd();
-      const g=new THREE.BoxGeometry(cw*r*1.03,(t-by)*r,cd*r*1.03),P=g.attributes.position;
-      for(let i=0;i<P.count;i++)if(P.getY(i)<0){P.setX(i,P.getX(i)*1.04+(bx-x)*r);P.setZ(i,P.getZ(i)*1.04+(bz-z)*r);}
-      g.computeVertexNormals();
-      part("head",g,"hair",shadeHex(M.hair,-0.06*v),x*r,hc+(by+t)/2*r,z*r);}},
+  /* FLAT TOP. The sides and the back are clipped close and the top stands straight up and is cut off level, so the hair is
+     longest at the front and the corners and shortest over the crown, and the outline is a box with a deck on a round
+     head. The clipped sides are paint, thinner toward the nape. The top is one shell: walls that rise straight from the
+     head's sides and a level deck, its corners rounded as clippers leave them; its sheet shows the cut ends */
+  flat(M){const line=hairEdge(HAIRLINE),top=1.2,hw=0.8,zf=0.76,zb=0.8,p=6;
+    M.lay((x,y,z)=>{const e=y-line(x,z);return hsm(0,0.04,e)*Math.min(1,0.4+e*1.3);},shadeHex(M.hair,-0.2));
+    M.shell((x,y,z)=>{if(y<0.2)return 0.9;const wall=Math.pow(Math.pow(Math.abs(x)/hw,p)+Math.pow(Math.abs(z)/(z>0?zf:zb),p),-1/p);
+      return Math.min(top/y,wall,1+2.5*Math.min(y-line(x,z),y-0.5));}   /* and it starts at his hairline in front, and no lower than his temples at the sides */,{tex:hairGrain("ends",M.hair,5),seg:64,rows:64,up:true});},
   /* /HAIR:flat */
   /* HAIR:buns */
   /* TWO BUNS. The hair is parted down the middle and pulled tight over the scalp to two points high on his head, one over
@@ -1830,28 +1824,12 @@ const HAIRPART={
   /* HAIR:fade */
   /* THE TAPER FADE. It grows over the whole scalp and is cut by length: a short top brushed forward, a little taller over
      the brow, and sides and back clipped shorter and shorter on the way down until the skin shows at the ear and the nape.
-     The melt from hair to skin is the cut, and it lies on the skin, so it is paint; only the top stands off the head, as
-     short clumps laid from the crown forward, each a little different from the next */
-  fade(M){const{part,r,hc}=M;
-    const rnd=(s=>()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;})(29);
-    const sm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);},mix=(a,b,t)=>a+(b-a)*t;
-    M.scalp((g,w,h)=>{g.fillStyle=shadeHex(M.hair,-0.1);   /* clipped hair shows its roots, a shade deeper than the top */
-      for(let j=0;j<h;j++)for(let i=0;i<w;i++){
-      const th=(j+0.5)/h*Math.PI,ph=(i+0.5)/w*2*Math.PI,s=Math.sin(th),dy=-s*Math.cos(ph),dz=s*Math.sin(ph);
-      /* how far a spot is above the line the hair grows from, a line high over the brow and low at the nape; the line is
-         crisp over the face and a long melt at the sides and behind */
-      const e=0.8*dy-0.6*dz,f=sm(0.0,0.45,dz),lo=mix(-0.1,0.13,f),a=sm(lo,mix(lo+0.6,0.18,f),mix(dy,e,f));
-      if(a>0.004){g.globalAlpha=a;g.fillRect(i,j,1,1);}}
-      g.globalAlpha=1;},256,128);
-    const geo=new THREE.SphereGeometry(1,8,6),fwd=new THREE.Vector3(0,0.15,1);
-    const tuft=(a,b,k,sx,sy,sz,col,up)=>{const n=new THREE.Vector3(Math.sin(b),Math.cos(b)*Math.cos(a),Math.cos(b)*Math.sin(a));
-      const x=n.clone().cross(fwd).normalize(),z=x.clone().cross(n).applyAxisAngle(x,-(up||0)),y=n.clone().applyAxisAngle(x,-(up||0));
-      const m=part("head",geo,"hair",col,n.x*k*r,hc+n.y*k*r,n.z*k*r,[sx*r,sy*r,sz*r]);
-      m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z));   /* long the way it is brushed, `up` radians off the scalp */return m;};
-    /* rows from the brow back to the crown: the first row is the tallest, the last lies nearly flat */
-    [[0.52,5,0.13],[0.27,6,0.11],[-0.06,5,0.09],[-0.4,6,0.075],[-0.7,4,0.06]].forEach(([a,n,t],ri)=>{
-      for(let i=0;i<n;i++){const b=(i-(n-1)/2)*0.2+(rnd()-0.5)*0.04;
-        tuft(a+(rnd()-0.5)*0.08,b,1.0+(ri===0?0.04:0),0.115+rnd()*0.02,t*(0.9+rnd()*0.25),0.3+rnd()*0.06,(i+ri)%2?shadeHex(M.hair,-0.07):M.hair,ri===0?0.55:ri===1?0.2:0);}});},
+     The melt from hair to skin is the cut, and it lies on the skin, so it is paint, darker than the top as clipped hair
+     shows its roots; the top is one shell that thins to nothing where the clipped sides begin and ends crisp at the brow */
+  fade(M){const line=hairEdge(HAIRLINE);
+    M.lay((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z);return e<=0?0:Math.max(hsm(0,0.04,e)*f,hsm(0.02,0.5,e));},shadeHex(M.hair,-0.24));
+    M.shell((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z),m=Math.max(hsm(0,0.09,e)*f,hsm(0.42,0.8,y));
+      return e<=0?0.97+e:0.97+0.03*hsm(0,0.3,m)+m*(0.07+0.055*hsm(0.1,0.8,z));},{tex:hairGrain("strand",M.hair,29),seg:72,rows:48});},
   /* /HAIR:fade */
   /* HAIR:mullet */
   /* MULLET: short where it is seen from the front, long where it is seen from behind. The sides are clipped to the skin
@@ -1892,25 +1870,13 @@ const HAIRPART={
       lock([[dx*0.9,0.3,dz*0.9],[dx*1.06,-0.3,dz*1.08],[xe*0.8,-0.95,Math.min(-0.8,back(xe)+0.2)],[xe*0.95,-1.4,back(xe)-0.02],[xe*1.14,-1.65-0.22*len,back(xe)-0.26]],0.3,0.1,shadeHex(M.hair,-0.06-rnd()*0.06),0.3);}},
   /* /HAIR:mullet */
   /* HAIR:broccoli */
-  /* BROCCOLI: the sides and the back are clipped to the skin and fade out toward the ears and the nape, and the top is
-     left long and curly, so it stands up as one floret and tumbles forward over the brow. Its outline is a head of
-     broccoli: a narrow stalk of bare sides under a bumpy crown wider than the stalk. The clipped hair is paint, thinner
-     the lower it goes; the top is one ball a curl, piled from the scalp up and leaning toward his face, each a little
-     different from a fixed seed, the under row a shade darker */
-  broccoli(M){const{part,r,hc}=M;let s=0x0B40CC01;
-    const rnd=()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
-    const dark=shadeHex(M.hair,-0.12),mid=shadeHex(M.hair,-0.06);
-    /* the clipped hair: from a line that is high over the brow, over the ears and low at the nape, thickening upward */
-    M.scalp((g,w,h)=>{for(let py=0;py<h;py++)for(let px=0;px<w;px++){
-      const ph=2*Math.PI*(px+0.5)/w,th=Math.PI*(py+0.5)/h,y=-Math.cos(ph)*Math.sin(th),z=Math.sin(ph)*Math.sin(th);
-      const t=(y-(0.14+(z>0?0.66*z:0.6*z)))/0.5;if(t<=0)continue;
-      g.globalAlpha=Math.min(1,0.3+0.7*t);g.fillRect(px,py,1,1);}g.globalAlpha=1;});
-    const geo=new THREE.IcosahedronGeometry(1,1),N=22,ga=Math.PI*(3-Math.sqrt(5));
-    for(let i=0;i<N;i++){const c=1-0.5*(i+0.5)/N,q=Math.sqrt(1-c*c),a=i*ga,x=Math.cos(a)*q,z=Math.sin(a)*q;   /* the top cap of the head, round his crown */
-      const rad=r*(0.26+0.07*rnd()),up=i<8,d=r*(up?1.3+0.12*rnd():1.02+0.08*rnd());
-      let cy=c*d,cz=z*d+0.16*r;if(cy-rad<(cz>0.3*r?0.7:0.4)*r)cy=(cz>0.3*r?0.7:0.4)*r+rad;   /* the curls over his brow stop above his eyes */
-      const m=part("head",geo,"hair",up?(i%3===1?M.hair:shadeHex(M.hair,0.07)):(i%2?dark:mid),x*d,hc+cy,cz,[rad*(0.9+0.2*rnd()),rad*(0.9+0.2*rnd()),rad*(0.9+0.2*rnd())]);
-      m.rotation.set(rnd()*6.28,rnd()*6.28,rnd()*6.28);}},
+  /* THE BROCCOLI CUT. The sides and the back are faded to the skin, as a taper fade's are, and the top is left long and
+     curly, so it stands up and out over the faded sides as a head of big loose curls, fullest over the brow. The fade is
+     paint; the top is one shell that swells where a curl is, drawn with curls */
+  broccoli(M){const line=hairEdge(HAIRLINE),lump=hairLumps(77,30,0.3);
+    M.lay((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z);return e<=0?0:Math.max(hsm(0,0.04,e)*f,hsm(0.02,0.5,e));},shadeHex(M.hair,-0.24));
+    M.shell((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z),m=Math.max(hsm(0,0.09,e)*f,hsm(0.36,0.66,y));
+      return e<=0?0.97+e:0.97+0.03*hsm(0,0.3,m)+m*(0.13+0.2*lump(x,y,z)+0.06*hsm(0.1,0.8,z));},{tex:hairGrain("curl",M.hair,41),seg:84,rows:56});},
   /* /HAIR:broccoli */
   /* HAIR:bald */
   /* BALD is a head with no hair on it: nothing stands off it and its outline is his skull's. A shaved scalp still shows
