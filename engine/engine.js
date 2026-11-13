@@ -767,7 +767,7 @@ const UIDEF={
   body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
     beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",
-    face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",drawer_clothes:"Clothes",drawer_face:"Face",drawer_hair:"Hair",drawer_body:"Body",drawer_changed:"changed"}},
+    jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",drawer_clothes:"Clothes",drawer_face:"Face",drawer_hair:"Hair",drawer_body:"Body",drawer_changed:"changed"}},
  es:{
   talkPre:"💬 ",
   quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ A medias",badH:"✕ Esta vez no",
@@ -817,7 +817,7 @@ const UIDEF={
   body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
     beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",
-    face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",drawer_clothes:"Ropa",drawer_face:"Cara",drawer_hair:"Pelo",drawer_body:"Cuerpo",drawer_changed:"cambiado"}}};
+    jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",drawer_clothes:"Ropa",drawer_face:"Cara",drawer_hair:"Pelo",drawer_body:"Cuerpo",drawer_changed:"cambiado"}}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
@@ -899,6 +899,12 @@ const BODYCHOICE=Object.freeze([
   {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1,drawer:"clothes"},        /* how far below his waist his shirt hangs */
   {key:"sleeves",kind:"option",list:["long","short"],def:"long",drawer:"clothes"},     /* long sleeves to the wrist, or short ones and bare arms */
   {key:"face",kind:"option",list:["round","oval","square"],def:"round",drawer:"face"},   /* the shape of his head: the card's ball, or a face with a jaw and a chin (mq-v265) */
+  {key:"jaw",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,drawer:"face"},      /* how wide his jaw is (a head with a jaw: not the round one) */
+  {key:"chin",kind:"measure",min:0.7,max:1.2,step:0.05,def:1,drawer:"face"},       /* how long his jaw and chin are */
+  {key:"earsize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,drawer:"face"},    /* how big his ears are */
+  {key:"earup",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,drawer:"face"},      /* how high on his head his ears sit */
+  {key:"earback",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,drawer:"face"},    /* how far back on his head his ears sit */
+  {key:"earangle",kind:"measure",min:0,max:2.5,step:0.25,def:1,drawer:"face"},     /* how far his ears stand off his head */
   {key:"beard",kind:"option",list:["none","beard"],def:"none",drawer:"face"},       /* a beard, apart from the hair's style (mq-v265) */
   {key:"ears",kind:"option",list:["round","pointed"],def:"round",drawer:"face"}     /* the kind of ear he has (mq-v265) */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
