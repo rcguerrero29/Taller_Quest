@@ -14295,10 +14295,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (!o) { P.push('a save with ' + why + ' could not be read at all'); continue; }
                 const st = hairStyleOf(o); if (!STY.includes(st)) P.push('a save with ' + why + ' comes out wearing the hair "' + String(st).slice(0, 40) + '", which his body cannot wear');
                 if (o.body && 'cut' in o.body) P.push('a save with ' + why + ' keeps the old hair row: ' + JSON.stringify(o.body.cut));
-                if (typeof bodyMake === 'function') { const C = bodyChoicesOf(o.body), X = bodyMake(bodySkeleton('person', C), o, C);
+                if (typeof bodyMake === 'function' && typeof THREE !== 'undefined') { const C = bodyChoicesOf(o.body), X = bodyMake(bodySkeleton('person', C), o, C);
                   if (!STY.includes(X.userData.hair)) P.push('the body made from a save with ' + why + ' wears the hair "' + String(X.userData.hair).slice(0, 40) + '", which is no style his body can wear');
                   X.traverse(q => { if (q.geometry) q.geometry.dispose(); if (q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); } }); } }
-              if (STY.length && typeof bodyMake === 'function') { const hairs = lk => { const C = bodyChoicesOf(lk.body), X = bodyMake(bodySkeleton('person', C), lk, C); let n = 0, st = X.userData.hair;
+              /* (a world with no 3D camera never makes his body, so these two are asked only where it does) */
+              if (STY.length && typeof bodyMake === 'function' && typeof THREE !== 'undefined') { const hairs = lk => { const C = bodyChoicesOf(lk.body), X = bodyMake(bodySkeleton('person', C), lk, C); let n = 0, st = X.userData.hair;
                   X.traverse(q => { if (q.isMesh && q.userData.wears === 'hair') n++; if (q.geometry) q.geometry.dispose(); if (q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); } }); return { n, st }; };
                 const bd = hairs(saveLook({ ...look, style: 'beard', body: {} })), cp = hairs(saveLook({ ...look, style: 'cap', body: {} }));
                 if (bd.st !== 'cap' || !(bd.n > cp.n)) P.push('a look whose card wears the "beard" has on his body the hair "' + bd.st + '" with ' + bd.n + ' part(s) of hair, where the short cap has ' + cp.n + ': his beard is lost up close'); }
