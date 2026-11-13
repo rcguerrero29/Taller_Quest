@@ -1473,9 +1473,14 @@ function bodyMake(skel,lk,build){
         if(kind==="pointed"&&y>0){z=z*(1-0.6*y)-0.6*y*y;y*=1.8;}         /* the top drawn up and back to a tip */
         p.setXYZ(i,x,y,z);}
       g.computeVertexNormals();return g;};
-    [1,-1].forEach(s=>{const ey=eyeY-0.2,ez=-0.08,q=Math.sqrt(1-ey*ey-ez*ez)*face(s*Math.sqrt(1-ey*ey-ez*ez),ey,ez);
-      const e=part("head",flap(14,12),"ear",lk.skin,s*q*1.0*r,hc+ey*r,ez*r,[0.055*r,0.21*r,0.135*r]);e.rotation.y=s*0.42;
-      const n=part("head",flap(10,8),"ear",nose(lk.skin),s*(q*1.0+0.042)*r,hc+(ey-0.012)*r,(ez+0.03)*r,[0.022*r,0.135*r,0.075*r]);n.rotation.y=s*0.42;M.ears.push(e,n);});}
+    /* each ear lies on the head: its flat side to the skin where it sits, upright, its back edge lifted a little off the
+       head and its top leaning a little back, as an ear does */
+    [1,-1].forEach(s=>{const ey=eyeY-0.2,ez=-0.1,ex=s*Math.sqrt(1-ey*ey-ez*ez),f=face(ex,ey,ez),n=new THREE.Vector3(ex,ey,ez);
+      const X=n.clone().multiplyScalar(s),Y=new THREE.Vector3(0,1,0).addScaledVector(X,-X.y).normalize(),Z=new THREE.Vector3().crossVectors(X,Y);
+      const q=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X,Y,Z)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.16,s*0.26,0,"YXZ")));
+      const at=(k,m)=>{m.position.set(n.x*(f+k)*r,hc+n.y*(f+k)*r,n.z*(f+k)*r);m.quaternion.copy(q);M.ears.push(m);return m;};
+      at(0.012,part("head",flap(14,12),"ear",lk.skin,0,0,0,[0.05*r,0.2*r,0.125*r]));
+      at(0.05,part("head",flap(10,8),"ear",nose(lk.skin),0,0,0,[0.02*r,0.13*r,0.07*r])).translateZ(0.02*r);});}
 
   [0.35,-0.35].forEach(ex=>{const ey=eyeY,ez=Math.sqrt(1-ex*ex-ey*ey)*0.97*face(ex,ey,Math.sqrt(1-ex*ex-ey*ey));part("head",new THREE.SphereGeometry(0.12*r,8,6),"eye","#1E1A22",ex*r,hc+ey*r,ez*r);});
   {const ny=noseY,nz=Math.sqrt(1-ny*ny)*0.95*face(0,ny,Math.sqrt(1-ny*ny));part("head",new THREE.SphereGeometry(0.15*r,12,8),"nose",nose(lk.skin),0,hc+ny*r,nz*r,[0.9,1,1.3]);}
@@ -1767,7 +1772,7 @@ const HAIRPART={
      shade darker, after which the strands come loose in a short tuft. The three strands of a plait are one geometry;
      the two plaits differ a little in length, hang and phase, as plaits do */
   braids(M){const{part,r,hc}=M,dark=shadeHex(M.hair,-0.12);
-    const line=hairEdge([[0,0.62],[30,0.6],[50,0.48],[70,0.36],[93,0.26],[110,0],[125,-0.3],[150,-0.48],[180,-0.5]]);
+    const line=hairEdge([[0,0.62],[30,0.6],[50,0.48],[70,0.36],[93,0.26],[110,-0.12],[125,-0.44],[150,-0.5],[180,-0.5]]);
     M.lay((x,y,z)=>hsm(0,0.04,y-line(x,z)),dark);
     /* the flat hair: one shell, drawn down from the parting either side, the parting a groove in it */
     M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.06,e)*(0.055+0.07*hsm(0.82,0.97,Math.abs(x))*hsm(0.75,0.45,y))*(0.35+0.65*hsm(0.0,0.07,Math.abs(x))));}   /* fuller where it is drawn over the top of each ear */,{tex:(g,w,h)=>{const rnd=hairRnd(3),dk=shadeHex(M.hair,-0.1),lt=shadeHex(M.hair,0.07);
@@ -1796,8 +1801,8 @@ const HAIRPART={
       g.setAttribute("uv",new THREE.Float32BufferAttribute(G.uv,2));g.setIndex(G.idx);g.computeVertexNormals();const m=part("head",g,"hair",M.hair,0,0,0);
       m.material.map=tx;m.userData.base=new THREE.Color("#FFFFFF");m.material.color.set("#FFFFFF");return m;};
     [1,-1].forEach(sd=>{const rnd=hairRnd(sd>0?4711:9257),len=1+(rnd()-0.5)*0.08,lean=(rnd()-0.5)*0.06,ph=rnd()*Math.PI*2;
-      /* the plait's centre line: from under the ear, down and a little forward, to the tie in front of the shoulder */
-      const cv=new THREE.CatmullRomCurve3([[0.86,-0.02,-0.1],[1.08,-0.5,0.06],[1.1+lean,-1.05*len,0.27],[1.02+lean,-1.6*len,0.4]].map(q=>new THREE.Vector3(sd*q[0]*r,hc+q[1]*r,q[2]*r)));
+      /* the plait's centre line: gathered behind the ear and below it, where the neck begins, then down and forward over the shoulder to the tie */
+      const cv=new THREE.CatmullRomCurve3([[0.66,-0.34,-0.48],[0.9,-0.74,-0.2],[1.1+lean,-1.1*len,0.2],[1.02+lean,-1.6*len,0.4]].map(q=>new THREE.Vector3(sd*q[0]*r,hc+q[1]*r,q[2]*r)));
       const Fd=new THREE.Vector3(sd*0.6,0,1).normalize(),N=160,K=2.9,G={pos:[],uv:[],idx:[]};
       for(let s=0;s<3;s++){const P=[],w=[],d=[],V=[],c=new THREE.Vector3(),T=new THREE.Vector3(),F=new THREE.Vector3(),W=new THREE.Vector3();
         for(let i=0;i<=N;i++){const t=i/N;cv.getPoint(t,c);cv.getTangent(t,T);F.copy(Fd).addScaledVector(T,-Fd.dot(T)).normalize();W.crossVectors(T,F);
