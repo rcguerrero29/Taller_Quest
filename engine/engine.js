@@ -769,11 +769,11 @@ const UIDEF={
     beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",
     jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
     eyesize:"Size of the eyes",eyegap:"Space between the eyes",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
-    mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Moustache",beardlen:"Length of the beard",
-    eyecol:"Colour of the eyes",browcol:"Colour of the brows",browcol_hair:"As the hair",tiecol:"Colour of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
+    mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Mustache",beardlen:"Length of the beard",
+    eyecol:"Color of the eyes",browcol:"Color of the brows",browcol_hair:"As the hair",tiecol:"Color of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
     hairline:"Hairline: higher or lower",hairvol:"Height and fullness",braidlen:"Length of the braids",
     group_outfit:"Outfit",group_fit:"Fit",group_skin:"Skin",group_head:"Shape of the head",group_eyes:"Eyes and brows",group_nose:"Nose and mouth",group_ears:"Ears",group_beard:"Beard",
-    group_cut:"Colour and style",group_tune:"Hairline, fullness, length",group_build:"Build",group_neck:"Neck",
+    group_cut:"Color and style",group_tune:"Hairline, fullness, length",group_build:"Build",group_neck:"Neck",
     drawer_clothes:"Clothes",drawer_face:"Face",drawer_hair:"Hair",drawer_body:"Body",drawer_changed:"changed"}},
  es:{
   talkPre:"💬 ",
@@ -925,9 +925,9 @@ const BODYCHOICE=Object.freeze([
   {key:"eyesize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"eyes"},     /* how big his eyes are */
   {key:"eyegap",kind:"measure",min:0.8,max:1.25,step:0.05,def:1,group:"eyes"},     /* how far apart his eyes are */
   {key:"browthick",kind:"measure",min:0.5,max:2,step:0.1,def:1,group:"eyes"},      /* how thick his brows are */
-  {key:"browtilt",kind:"measure",min:0,max:2,step:0.1,def:1,group:"eyes"},
+  {key:"browtilt",kind:"measure",min:0,max:2,step:0.1,def:1,group:"eyes"},        /* which way his brows slant: down to the outside, level, or up */
   {key:"eyecol",kind:"option",swatch:true,list:["#1E1A22","#4A2E1A","#2F5D8A","#3F7A4A","#7A7F86"],def:"#1E1A22",group:"eyes"},   /* the colour of his eyes */
-  {key:"browcol",kind:"option",swatch:true,list:["hair","#1E1A22","#4A2E1A","#8A5A2B","#C9A24A","#8E8E93"],def:"hair",group:"eyes"},   /* his brows: as his hair a shade deeper, or a colour of their own */         /* which way his brows slant: down to the outside, level, or up */
+  {key:"browcol",kind:"option",swatch:true,list:["hair","#1E1A22","#4A2E1A","#8A5A2B","#C9A24A","#8E8E93"],def:"hair",group:"eyes"},   /* his brows: as his hair a shade deeper, or a colour of their own */
   {key:"noselen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"nose"},     /* how long his nose is */
   {key:"nosew",kind:"measure",min:0.7,max:1.5,step:0.05,def:1,group:"nose"},       /* how wide his nose is */
   {key:"noseout",kind:"measure",min:0.6,max:1.6,step:0.1,def:1,group:"nose"},      /* how far his nose stands out */
@@ -942,8 +942,8 @@ const BODYCHOICE=Object.freeze([
   {key:"beardlen",kind:"measure",min:0.5,max:1.8,step:0.1,def:1,group:"beard"},    /* how long his beard is at the chin */
   {key:"hairline",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"tune"},    /* how high on his brow his hair starts */
   {key:"hairvol",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},     /* how tall or full the hair that stands off his head is (flat top, afro, curly, broccoli) */
-  {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},
-  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"}   /* the braids' ties: a deeper shade of his hair, or a colour */     /* how long his braids are */
+  {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},    /* how long his braids are */
+  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"}   /* the braids' ties: a deeper shade of his hair, or a colour */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
