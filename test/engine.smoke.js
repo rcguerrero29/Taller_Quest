@@ -37,7 +37,19 @@ function findChromium() {
 (async () => {
   const args = process.argv.slice(2);
   const idx = args[args.indexOf('--index') + 1];
-  if (!args.includes('--index') || !idx) { console.error('usage: node test/engine.smoke.js --index <path to an index.html>'); process.exit(2); }
+  if (!args.includes('--index') || !idx) { console.error('usage: node test/engine.smoke.js --index <path to an index.html> [--part map|body|rest]'); process.exit(2); }
+  /* ONE PART OF THIS FILE, WHEN ASKED (2026-11-14). A run of every check against a world with a 3D camera took 386 to 476 s
+     of the 480 s the gauge and the oven world allow it (test/gauge.js, test/horno.js), and a limit raised each time the
+     checks grow is a check that wants splitting, not a longer rope. Measured per part on 2026-11-14 (the gauge's
+     furniture world, the slowest): the map opened in every place, 137 s; the bodies of the person and the dog, 184 s;
+     everything else, 156 s. `--part map`, `--part body` and `--part rest` each ask only their own checks, after the same
+     page is opened, and the three together ask exactly what the whole file asks; with no `--part`, the whole file, as
+     before (the engine's own part of the public check). The parts are cut where the file's own sections are, and no
+     section reads what another declared (the only one that did, the first section's flat letters, is read through `r`
+     below, and is null where that section was not asked). A word that is not one of the three is a red, not a run */
+  const part = args.includes('--part') ? args[args.indexOf('--part') + 1] : null;
+  if (part !== null && !['map', 'body', 'rest'].includes(part)) { console.error('FAIL — this file was asked for the part ' + JSON.stringify(part === undefined ? '' : part) + ', which is not one of map, body, rest, so nothing was asked'); process.exit(2); }
+  const runs = w => part === null || part === w;
   const exe = findChromium();
   if (!exe) { console.error('No Chromium found. Set CHROMIUM_PATH, or install one of: ' + CANDIDATES.join(', ')); process.exit(1); }
   const root = path.resolve(__dirname, '..'), file = path.resolve(root, idx);
@@ -111,7 +123,9 @@ function findChromium() {
      after boot (measured on the library shell: 12 of 12 against 13 of 13). This sleep is the time passing, so it stays. */
   await page.waitForTimeout(1500);
   let fails = [];
+  let r = null;   /* the first section's findings and the letters still flat, read again by the closing line */
 
+  if (runs('rest')) {   /* ---- the part `rest`, first stretch (its sections keep their own indent) ---- */
   /* ---- in-scene text has a floor (Rosa's 3D note) ----
      Text painted into the world is authored in tile units and the camera decides how big it lands:
      measured on a phone, one unit is about a CSS pixel, so a glyph authored at 5.5 arrives around
@@ -1147,7 +1161,7 @@ function findChromium() {
     if (stray.length) P.push('storage keys outside the prefix "' + pfx + '": ' + stray.join(', '));
     return { P, stillFlat: Object.keys(flat).sort().map(g => g + '×' + flat[g]) };
   }, idx);
-  const r = r0.P; r.stillFlat = r0.stillFlat;
+  r = r0.P; r.stillFlat = r0.stillFlat;
   fails.push(...r.filter(l => !/^COUNT-ONLY: /.test(l)));
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
@@ -6078,6 +6092,8 @@ function findChromium() {
   });
   fails.push(...bearings);
 
+  }
+  if (runs('map')) {   /* ---- the part `map` ---- */
   /* ---- WHEREVER THE MAP OPENS IT SHOWS WHERE YOU ARE, AND THE EDGE ARROW WAITS TO BE TURNED ON ----
      Two rules, each asked of the screen a person is looking at, never of the function that ought to produce it:
        · the caption under the map says "◉ you are here", so wherever the map opens the ◉ is drawn where you are — in
@@ -8797,6 +8813,8 @@ function findChromium() {
     MN.forEach(l => fails.push(l));
     MP.forEach(l => fails.push(l));
   }
+  }
+  if (runs('rest')) {   /* ---- the part `rest`, second stretch ---- */
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
@@ -13523,6 +13541,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...AP, ...AN);
   }
 
+  }
+  if (runs('body')) {   /* ---- the part `body`: the person's and the dog's jointed bodies ---- */
   /* ---- THE PERSON YOU STEER STANDS AS A JOINTED BODY, ONLY WHERE THE WORLD ASKS (mq-v259) ----
      A world that names `person` in its own `BODYTAKE` list sees the person you steer, up close in the 3D camera, as a body of
      rounded parts hung on a skeleton of named joints (engine/engine3d.js, grep "THE JOINTED BODY"); farther than BODYNEAR
@@ -13765,7 +13785,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                        is half hair, and that is a face from the side; under the old cap of hair it was half of the card's).
                        From 2026-11-14 this share is asked of the style a new character starts with only: every other style is
                        asked, in the game's camera below (D, beside K), that his eyes show facing you and from the side some of
-                       his face does, each against the bald head. The shares of every style are still printed, count-only;
+                       his face does, each against the bald head, and those numbers are printed, count-only, for every style;
                      · AT NIGHT AS BRIGHT AS HIS CARD: at ten at night, the mean brightness of his shirt and of his skin each
                        at least 80% of the card's own, and no more than 125% of it.
                    Nothing measured is a red: a frame that shows fewer than 50 pixels of his shirt, or of his head, says so. */
@@ -13801,7 +13821,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const F = {}, CUTS = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [], START = saveLook({}).style;
               if (!CUTS.length) P.push('the engine keeps no list of the styles of hair his body can wear, so whether his face shows under each was not asked');
               else if (!CUTS.includes(START)) P.push('a new character starts with the hair "' + START + '", which is not one his body can wear (' + CUTS.join(', ') + ')');
-              const FRAMES = CUTS.flatMap(c => [[c, 12, 'down'], [c, 12, 'right']].concat(c === START ? [[c, 22, 'down']] : []));
+              /* from 2026-11-14 the share of his card is asked of the style he starts with only (every other style is asked in the camera
+                 beside K, below), so only its frames are made, and the afro and the cap facing you, for the fuller hair */
+              const FRAMES = !CUTS.includes(START) ? [] : [[START, 12, 'down'], [START, 12, 'right'], [START, 22, 'down'], ...['afro', 'cap'].filter(c => c !== START && CUTS.includes(c)).map(c => [c, 12, 'down'])];
               try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
                 for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: {} }); hour = h; dir = d;
@@ -14406,7 +14428,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
            R · WHAT HE COSTS: a body for every style on every shape of head, with a beard, is made without an error and is no
                more than BODYTRIS triangles (measured on mq-v265: the heaviest, the braids with a beard on a head with a jaw,
                about 40,700; the braids alone 37,604, the next heaviest 22,636). */
-      { const K = await page4(doc, null, null, true);
+      /* K, L, M, N, O, P AND R ARE ASKED IN THE GAME'S OWN WORLD ONLY (2026-11-14). They make his body with the engine's own makers
+         (bodySkeleton, bodyMake) from a look this check writes in full (skin, hair, shirt, clothes, pattern, style, every choice of
+         the body), and ask nothing of the street, the camera, the light or the creator: the pack files of any world load before
+         the engine (each shell's script order), so none can declare a name the engine declares, and what they make is the engine's
+         alone. Run in every world, they gave the same answer at about 20 s each time. The body a world actually draws is still
+         asked in every world: by D, F and the camera's look beside K (his hair, ears, neck, eyes and face on its own street).
+         `--index index.html`, the game, is the run that asks them (the engine's own part of the public check) */
+      if (path.resolve(file) !== path.resolve(root, 'index.html')) say(1, 'his hair, head and face made by the engine alone (K to R) are asked in the game\'s own world, index.html, and not again in this one: the world cannot change what the engine makes from a look the check writes in full');
+      else { const K = await page4(doc, null, null, true);
         try { const R = await K.p.evaluate(() => { const P = [], N = [];
             if (typeof HAIRSTYLES === 'undefined' || !Array.isArray(HAIRSTYLES) || !HAIRSTYLES.length) { P.push('the engine keeps no list of the styles of hair his body can wear, so his hair, head and face were not asked'); return { P, N }; }
             if (typeof THREE === 'undefined') { N.push('this shell has no 3D camera, so his body is never shown and his hair, head and face were not asked'); return { P, N }; }
@@ -15568,6 +15598,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...DP, ...DN);
   }
 
+  }
+  if (runs('rest')) {   /* ---- the part `rest`, last stretch ---- */
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
@@ -16347,6 +16379,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...new Set(WN), ...new Set(WD.map(m => 'the engine\'s own words: ' + m)));   /* a sentence once, however often a screen was read */
   }
 
+  }
+  if (part !== null) console.log('  COUNT-ONLY: this run asked the part "' + part + '" of test/engine.smoke.js only; the other two parts are asked by runs of their own');
   await page.setViewportSize({ width: 480, height: 900 });
   await browser.close();
   /* COUNT-ONLY lines are what a check SAW, not what it found — "2 flights walked in 15 worlds",
@@ -16365,5 +16399,5 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254, #256): ' +
       Object.entries(kinds).map(([k, n]) => n + ' ' + k).join(', ') + ' — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 2).join(' | ')); }
   if (fails.length) { console.log('FAIL (' + idx + ')\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : 'nothing') + '.');
+  console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r && r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : r ? 'nothing' : 'not asked in this part') + '.');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
