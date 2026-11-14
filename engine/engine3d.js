@@ -1681,14 +1681,15 @@ const HAIRPART={
     {const g=new THREE.CylinderGeometry(1,1,1,16,1,true,Math.PI*0.5,Math.PI);
       const m=part("head",g,"hair",shadeHex(M.hair,-0.14),0,hc-1.75*r,-0.1*r,[0.95*r,2.1*r,0.95*r]);m.material.side=THREE.DoubleSide;}
     /* a lock by where it leaves the head (the way round from his face, 0, to the back of his head, pi) */
-    const fall=(az,sx,kind)=>{const dx=Math.sin(az)*sx,dz=Math.cos(az),R=1.07,zr=kind==="back"?-0.3:0.62-0.5*az/Math.PI*2;
+    const fall=(az,sx,kind,nw)=>{const dx=Math.sin(az)*sx,dz=Math.cos(az),R=1.07,zr=kind==="back"?-0.3:0.62-0.5*az/Math.PI*2;
       const P=[kind==="back"?[dx*0.12,1.02,zr+dz*0.12]:[0.02*sx,0.98,zr]];[0.38,0.75,1.12].forEach(a=>{const k=1-a/1.3;P.push([dx*Math.sin(a)*R,Math.cos(a)*R+0.02,zr*k+dz*Math.sin(a)*R]);});
       const len=rnd(),wj=0.9+rnd()*0.25;let wid,tip=0.35;
       if(kind==="front"){P.push([dx*1.1,-0.35,dz*1.1+0.02],[sx*1.0,-1.05,0.5],[sx*0.92,-1.75,0.9],[sx*0.84,-2.25-0.3*len,1.0]);wid=0.3;}
       else if(kind==="side"){const xe=0.98+0.1*len;P.push([dx*1.12,-0.4,dz*1.1-0.08],[sx*1.08,-1.15,-0.95],[sx*xe,-1.9,back(xe)+0.02],[sx*xe*0.96,-2.85-0.3*len,back(xe)-0.02]);wid=0.34;}
       else{const xe=dx*1.25;P.push([dx*1.1,-0.4,dz*1.12],[xe*0.95,-1.2,Math.min(dz*1.15,back(xe)+0.12)],[xe,-2.0,back(xe)],[xe*0.97,-3.0-0.3*len,back(xe)-0.03]);wid=0.36;tip=0.3;}
-      lock(P,wid*wj,0.085,shadeHex(M.hair,(rnd()-0.5)*0.1),tip);};
-    [-1,1].forEach(sx=>{fall(0.92,sx,"front");fall(1.25,sx,"front");fall(1.55,sx,"front");fall(1.8,sx,"side");fall(2.12,sx,"side");
+      lock(P,wid*wj*(nw||1),0.085,shadeHex(M.hair,(rnd()-0.5)*0.1),tip);};
+    /* the curtain leaves his head behind the corner of his eye, as hair parted in the middle does, so from the side his brow, eye, nose and mouth show */
+    [-1,1].forEach(sx=>{fall(1.22,sx,"front",0.72);fall(1.42,sx,"front");fall(1.62,sx,"front");fall(1.8,sx,"side");fall(2.12,sx,"side");
       fall(2.45,sx,"back");fall(2.78,sx,"back");});
     fall(3.1,1,"back");fall(3.05,-1,"back");},
   /* /HAIR:long */
@@ -1782,11 +1783,11 @@ const HAIRPART={
      shell, as round as it is picked out, its surface only just uneven, drawn with small tight curls; the hairline, the
      temples and the nape are paint, so no skin shows at its roots */
   afro(M){M.ears.forEach(e=>{e.visible=false;});   /* hair this full stands over his ears */
-    const line=hairEdge([[0,0.6],[35,0.55],[55,0.28],[72,0.05],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);
+    const line=hairEdge([[0,0.72],[35,0.69],[55,0.58],[68,0.4],[78,0.08],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);   /* at the temple the hairline stays above his eye until it turns down in front of his ear, as a temple does: hair this thick growing beside the eye would stand between it and anyone to his side */
     const cy=0.2,cz=-0.08,rho=1+0.5*M.C.hairvol;
     M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
     M.shell((x,y,z)=>{const e=y-line(x,z),b=y*cy+z*cz,R=b+Math.sqrt(b*b-cy*cy-cz*cz+rho*rho);   /* the ball's surface along this direction */
-      return hairRise(e,hsm(0,0.14,e)*(R*(0.97+0.04*lump(x,y,z))-1));},{tex:hairGrain("curl",M.hair,11,0.6),seg:72,rows:48});},
+      return hairRise(e,hsm(0,0.14+0.34*hsm(0.15,0.7,z),e)*(R*(0.97+0.04*lump(x,y,z))-1));},{tex:hairGrain("curl",M.hair,11,0.6),seg:72,rows:48});},   /* over his face it comes out of the hairline more slowly than at the sides and back, so its rim stands above his brow, not on his eyes */
   /* /HAIR:afro */
   /* HAIR:mohawk */
   /* MOHAWK: the sides shaved to stubble (paint) and one strip of long hair left down the middle from above the brow over
