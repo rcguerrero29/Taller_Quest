@@ -87,6 +87,7 @@ and neither is the draft. Read `CLAUDE.md`, `docs/OWNER.md` and `docs/STORY.md` 
   literal one, and give the shorter one.
 - **Dead strings.** Keys nothing reaches. Say so rather than translating them; a stale translated
   epilogue is a trap for the next person.
+- **A copy is a second place a word goes stale.** When a lane copies the engine or a world's words into another tree — a lab copy, a patch made from it — grep that copy for every word you saw change, after the change: on 2026-11-08 the lane's Spanish 'Somewhere to go' became *adonde* between my first grep and my first read, and another world's lab copy and its first patch still said *a dónde* at the same line. And when the engine gains a table of default words, grep for the inline `||"…"` fallbacks it replaces: they are dead copies of the same words, and the next person edits the wrong one.
 
 ## Deliver
 
@@ -166,3 +167,5 @@ Three places this goes wrong, and the third is the one nobody catches:
 The check, and it is cheap: **read your scene as somebody whose first five minutes in this city this
 is.** Every proper noun, every callback, every bit of jargon — can they keep walking? If they have to
 ask "what chair?", rewrite the sentence, not the glossary.
+
+**A line that says a thing works again is a claim about which thing.** Before you pass a recovery line on length, find the flag that fires it and every write that sets and clears it. On 2026-11-09 `save.back` passed its 4200 ms with 720 to spare and was false in the likeliest way a device fills up. One flag (`storeBad`) serves every write, and the decision record, which tells nobody when it fails, is written before the save on every answer. So the engine said "saving again" after each answer to a player who was never told it stopped. Grep the flag, not only the toast.
