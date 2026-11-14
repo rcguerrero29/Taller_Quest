@@ -8510,7 +8510,7 @@ function readPass(){
   return null;
 }
 function stripPassHash(){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
-/* THE PASS'S PANEL OPENS WHATEVER THE CODE DOES, AND THE CODE IS DRAWN IN WHOLE PIXELS (mq-v265).
+/* THE PASS'S PANEL OPENS WHATEVER THE CODE DOES, AND THE CODE IS DRAWN IN WHOLE SCREEN PIXELS (mq-v265).
    The library that draws the code throws when a link fits no code (2,953 characters is the most one holds). Nothing stood
    round it, and the panel was shown only after the drawing: with a big game the Pass button did nothing at all, and Share
    and Copy link, which need no code, were never offered. Now the code is made first and kept (passQR, nothing when it
@@ -8520,9 +8520,16 @@ function stripPassHash(){try{history.replaceState(null,"",location.pathname+loca
    The code was also drawn one dot a square and stretched to 190 px by the stylesheet, which is never a whole number of
    pixels a square. passDraw sizes it once the panel is on the screen, by the room the panel has: the inside width of its
    box, and the tallest the box may grow less its padding and Close, so all of the code shows at once on a phone turned on
-   its side. Each square is the largest whole number of the page's pixels that fits, the picture is drawn at exactly that
-   size and its box is given that size (written on the element, so a world whose own stylesheet still says 190 px gets the
-   same code). The light border of four squares stays. A window that changes size with the panel open is drawn again.
+   its side. Each square is the largest whole number of SCREEN pixels that fits. A phone has two or three screen pixels to
+   a pixel of the page, and counted in the page's pixels a finished game's code was 3 screen pixels a square on a phone
+   where 4 fit. The picture is drawn at exactly that size, one dot of it to a screen pixel, so nothing is stretched, and
+   its box is given that size in the page's pixels, which need not be a whole number of them (written on the element, so a
+   world whose own stylesheet still says 190 px gets the same code). The light border of four squares stays. A window
+   that changes size with the panel open is drawn again.
+   MEASURED 2026-11-14, at 1.25, 1.5, 2, 2.625 and 3 screen pixels to a pixel of the page: a browser really at the ratio
+   paints a box that is not a whole number of page pixels exactly, 19 of 19. A browser only told to pretend the ratio, as
+   a test's or a developer's tools do, paints such a box on the nearest whole page pixel, and the code comes out a pixel
+   or two wider or shorter (10 of 11): that is the pretending, not a screen.
    The guard: test/engine.smoke.js, grep "THE PASS'S PANEL". */
 let passQR=null;
 function passDraw(){
@@ -8534,8 +8541,8 @@ function passDraw(){
      number ("90%"), and read as pixels it left room for a code one dot a square; that, and no limit at all, is no limit here */
   const tall=/px$/.test(cs.maxHeight)?f(cs.maxHeight):0;
   const high=tall?tall-f(cs.borderTopWidth)-f(cs.borderBottomWidth)-f(cs.paddingTop)-f(cs.paddingBottom)-$("tpClose").getBoundingClientRect().height:wide;
-  const m=Math.max(1,Math.floor(Math.min(wide,high)/sq)),px2=sq*m;
-  cv2.width=px2;cv2.height=px2;cv2.style.width=cv2.style.height=px2+"px";
+  const dp=window.devicePixelRatio||1,m=Math.max(1,Math.floor(Math.min(wide,high)*dp/sq)),px2=sq*m;   /* m and px2 are screen pixels */
+  cv2.width=px2;cv2.height=px2;cv2.style.width=cv2.style.height=(px2/dp)+"px";
   const g=cv2.getContext("2d");
   g.fillStyle="#FFF";g.fillRect(0,0,px2,px2);
   g.fillStyle="#14121B";
