@@ -97,6 +97,10 @@ what a count of one would let through.** *(Applied from your own post-flight; yo
 shape twice before you recognised it, working down the list instead of asking what each assertion
 could not distinguish.)*
 
+A sixth, since 2026-11-12: **a check written from the construction** asks whether the part exists, so
+it cannot disagree with how the thing was built. Plant the fault that keeps the part and loses the
+picture: present but under the skin, hidden, or a pixel wide.
+
 ## The rule you do not get to bend, and it is about you specifically
 
 **You never modify a tracked file. Ever.** On 2026-09-10 an agent doing exactly your job replaced

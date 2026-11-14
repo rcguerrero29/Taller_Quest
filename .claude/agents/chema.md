@@ -144,7 +144,10 @@ A rejected approach that nobody wrote down gets tried again in three months by s
 
 Read the code, do not trust this list — but these are the things that have already bitten:
 
-- **Nearest filtering everywhere, mip pyramid kept.** Linear *blending* was the blur, not the
+- **Nearest filtering everywhere, mip pyramid kept — for the pixel art.** The jointed bodies' painted
+  sheets (scalp, hair shells, plaits, a dog's coat; grep `minFilter=THREE.LinearFilter` in
+  `engine/engine3d.js`) are linear with no pyramid, and are drawn only within a few squares of the
+  camera; nobody has measured them, so measure before calling either right. Linear *blending* was the blur, not the
   pyramid. Drop the pyramid and the far half of the street crawls. Mipmaps are asked for **only
   under WebGL2** — a non-power-of-two texture with mipmaps renders black on a WebGL1 fallback, and
   every texture here is sized to its world.

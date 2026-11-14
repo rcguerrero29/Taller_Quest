@@ -136,6 +136,12 @@ node test/engine.smoke.js --index <the other world's index.html>
 `CHROMIUM_PATH=/opt/pw-browsers/chromium` if Chromium is not found. **Both packs, every time.** One
 engine, two games: a pass on one is half a pass.
 
+**A screen a world must ask for is seen only in a world that asks.** Before passing a change behind a
+pack's list (grep `TAKE=` in each pack's `content/`; Meridian does not list `BODYTAKE` today), name the
+shell that shows it and look there. Where no world in hand asks, load Meridian with the list added as
+`test/engine.smoke.js` does (grep `__bodytake.js`) and say so. A world with a page of its own carries
+its own styles, not `shell.css`: check the page that shows the screen.
+
 **3 · Then the size matrix**, on whatever the change touched.
 
 **4 · Look at a screenshot FIRST, then at the end.** A prototype here once passed every pixel test while putting teeth along every wall in HQ. Numbers do not see that; a person does. And on 2026-09-13 you measured twenty-eight rows of a canvas nobody could see: the town boots to its class picker, `#vp` was `0×0`, and `draw()` fills the backing buffer whether or not the element has a layout box, so `getImageData` returned real, correct, meaningless pixels and every row passed. **Before the first number, one screenshot that shows the thing you are about to measure is on a screen.** No car on the rollers, no reading.

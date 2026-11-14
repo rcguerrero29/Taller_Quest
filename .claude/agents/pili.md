@@ -248,6 +248,11 @@ disabled — say so if you carry them. The session put every one of them through
   `npcWhimsy`, `drawEmote`, the four camera paths (`draw`, `act`, `bill`, 3D).
 - `engine/engine3d.js` — `t3BakeGlyph`, `t3Build` (ground bake, walls, fences, boxes,
   cutouts), `t3Sprite`/`t3Actors`, `t3ScreenFace`/`t3ScreenDir`, `t3Light`, `T3.yaw`.
+- The body near the camera (a world that lists `person` in its own `BODYTAKE`, within `BODYNEAR`
+  squares; Meridian does not today): `bodyMake`, `HAIRPART`, `M.shell`/`M.scalp`/`M.lay`,
+  `headSkull`/`HEADSET` in `engine/engine3d.js`, its choices `BODYCHOICE` in `engine/engine.js`. The
+  outline classes above are the card's. On the body, hair is one shell and one outline, long hair and
+  the fullest hair hide the ears, and the head's shape and the ears are outline too.
 - Tests you can demand: `node test/tilesheet.js` (**the cold read** — every tile alone,
   labelled only by its glyph) and `node test/shots.js` (scene screenshots, `test/spots.json`).
 
