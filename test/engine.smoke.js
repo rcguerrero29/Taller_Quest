@@ -13069,6 +13069,282 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...SF.map(m => 'saved look (#301): ' + m));
   }
 
+  /* ---- THE PASS'S PANEL: IT OPENS WHEN NO CODE CAN BE DRAWN, A LINK TOO LONG IS REFUSED UNREAD, EVERY QUEST'S SCORE IS KEPT, AND THE CODE IS CRISP (mq-v265) ----
+     A game with no server carries a save to another device as a link, the pass. Its panel in Settings shows the link as a
+     code a camera reads, with Share and Copy link under it, and the device that opens the link is offered the game.
+     Measured on mq-v264, and each asked here the way a person would notice it:
+       1 · THE PANEL NEVER OPENED FOR A BIG GAME. The library that draws the code throws when a link fits no code (a code
+           holds 2,953 characters at most), nothing stood round the drawing, and the panel was shown only after it: the
+           Pass button did nothing at all, and Share and Copy link, which need no code, were never offered. A finished
+           game's link in the game this repository serves is about 2,500 characters, so that was a few choices away.
+           ASKED: a game is grown, in its own save, until the library says its link fits no code (said out loud if that
+           cannot be done); Pass is pressed; the panel is on the screen, shows no code (not even the one an earlier opening
+           left), says a line it does not say with a code, in the language in use and not the same in both, and Copy link
+           and Share, pressed with a real pointer, hand on one link that offers the game on another device.
+       2 · A LINK OF ANY LENGTH WAS DECODED on arrival. The game now states the longest pass it reads (PASSMAX in
+           engine/engine.js, counted from the # on, so where the game is served does not count).
+           ASKED: a finished game's pass, with spaces after it that change nothing it says, is opened as long as the game
+           says it reads, and is offered; one character longer, it is not: no card, nothing of it handed to the decoder,
+           the game kept on the device untouched, no error, and the screen is the one a link that cannot be read shows. A
+           link of 200,000 characters is refused the same way whatever length the game states, and the stated length is at
+           least twice a finished game's pass here.
+       3 · A SAVE KEPT THE SCORES OF 64 QUESTS and dropped the rest without a word; the game this repository serves has 60.
+           ASKED: a game with a score for every quest of this world, for its side quest and for a few more comes back whole
+           from its own save; and the save's reading, handed 5,000 scores, reads no more than 1,000 of them (a save can
+           come in a link somebody else wrote, so a cap stays).
+       4 · THE CODE WAS DRAWN ONE DOT A SQUARE AND STRETCHED TO 190 PIXELS, never a whole number of pixels a square.
+           ASKED OF A PHOTOGRAPH OF THE SCREEN, at a phone's size (390×844, three screen pixels to a pixel of the page) light
+           and dark, with that phone turned on its side while the panel is open, and at a laptop's size (1280×800) light and
+           dark: every square of the code is one flat square, all of one size, a whole number of the page's pixels; no pixel
+           in it is neither dark nor light; its three corner marks are whole; the light border round it is four squares
+           wide and light all the way round; its box is wholly inside the panel, above Close, where all of it is seen at
+           once; and one pixel more a square would not fit the room the panel has.
+     The device's share sheet and clipboard, which this browser has none of, are stood in for, each keeping what it was
+     handed, and the decoder every link goes through is counted; nothing of the game is stood in for. */
+  {
+    const PF = [], PN = [], LNG = { en: 'English', es: 'Spanish' };
+    const say = m => { if (!PF.includes(m)) PF.push(m); };
+    const first = e => String(e && e.message || e).split('\n')[0];
+    const device = () => { window.__shared = []; window.__copied = []; window.__decoded = 0;
+      try { Object.defineProperty(navigator, 'share', { value: d => { window.__shared.push(d && d.url); return Promise.resolve(); }, configurable: true }); } catch (e) {}
+      try { Object.defineProperty(navigator, 'clipboard', { value: { writeText: v => { window.__copied.push(v); return Promise.resolve(); } }, configurable: true }); } catch (e) {}
+      const real = window.atob; window.atob = s => { window.__decoded = Math.max(window.__decoded, String(s).length); return real.call(window, s); }; };
+    const fresh = async opts => { const ctx = await browser.newContext(opts); await ctx.addInitScript(device);
+      await ctx.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      const p = await ctx.newPage(), errs = []; p.on('pageerror', e => errs.push(first(e))); return { ctx, p, errs }; };
+    const start = async p => { await p.goto('file://' + file); await boot(p);
+      await p.click('.classes button[data-c="architect"]', { timeout: 4000 }).catch(() => p.evaluate(() => document.querySelector('.classes button').click()));
+      await p.evaluate(() => { const n = document.getElementById('heroname'); if (n && !n.value) n.value = 'Ana'; });
+      await p.click('#begin', { timeout: 4000 }).catch(() => p.evaluate(() => document.getElementById('begin').click()));
+      if (!await until(p, () => !document.getElementById('world').hidden, null, 4000)) throw new Error('the game did not start from its creator'); };
+    const shut = p => p.evaluate(() => { document.querySelectorAll('.settings').forEach(s => { s.hidden = true; }); });
+    const openIt = async p => { await p.evaluate(() => { document.querySelectorAll('.settings').forEach(s => { s.hidden = true; }); document.getElementById('gear').click(); document.getElementById('openTp').click(); }).catch(() => {}); await rafs(p, 2); };
+    /* the pass's panel as a person sees it: whether it is on the screen, each line of words in it, and how many pictures */
+    const panelNow = p => p.evaluate(() => { const el = document.getElementById('tpass'), box = el && el.querySelector('.box');
+      const seen = e => { if (!e || !e.getClientRects().length) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const r = box ? box.getBoundingClientRect() : null, on = !!el && !el.hidden && seen(box) && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth, lines = [];
+      if (on) { const tw = document.createTreeWalker(box, NodeFilter.SHOW_TEXT); let n; while ((n = tw.nextNode())) { const t = n.textContent.replace(/\s+/g, ' ').trim(); if (t && seen(n.parentElement)) lines.push(t); } }
+      return { on, lines, codes: on ? [...box.querySelectorAll('canvas, img, svg')].filter(seen).length : 0, share: on && seen(document.getElementById('tpShare')) }; });
+    const pressed = (p, id) => p.click('#' + id, { timeout: 3000 }).then(() => true, () => false);
+
+    /* 4's reader: the code in the open panel, photographed and read on a blank page of its own */
+    const decode = await browser.newPage(); await decode.setContent('<!doctype html><title>read</title>');
+    /* where the code's box is and the room its panel has for it: the inside width of the box, and the tallest the box may grow less its
+       padding and Close; read off the page as it is laid out, with the code brought to the top of a panel too short to show everything */
+    const roomNow = () => { const el = document.getElementById('tpass'), box = el && !el.hidden && el.querySelector('.box'); if (!box || !box.getClientRects().length) return null;
+        const cv = [...box.querySelectorAll('canvas')].find(c => c.getClientRects().length && c.getBoundingClientRect().width > 0); if (!cv) return { none: true };
+        const f = v => parseFloat(v) || 0, cs = getComputedStyle(box);
+        box.scrollTop += cv.getBoundingClientRect().top - (box.getBoundingClientRect().top + f(cs.borderTopWidth));
+        const r = cv.getBoundingClientRect(), b = box.getBoundingClientRect(), close = box.querySelector('.close'), cr = close && close.getClientRects().length ? close.getBoundingClientRect() : null;
+        const inL = b.left + f(cs.borderLeftWidth) + f(cs.paddingLeft), inR = b.right - f(cs.borderRightWidth) - f(cs.paddingRight), foot = cr ? cr.top : b.bottom;
+        const most = f(cs.maxHeight) ? f(cs.maxHeight) - f(cs.borderTopWidth) - f(cs.borderBottomWidth) - f(cs.paddingTop) - f(cs.paddingBottom) - (cr ? cr.height : 0) : null;
+        const out = []; if (r.left < inL - 0.5) out.push('past its left'); if (r.right > inR + 0.5) out.push('past its right'); if (r.top < b.top - 0.5) out.push('above it'); if (r.bottom > foot + 0.5) out.push(cr ? 'under Close' : 'below it');
+        if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) out.push('off the screen');
+        return { r: [r.left, r.top, r.width, r.height], roomW: inR - inL, roomH: most, out, dpr: devicePixelRatio, rad: f(getComputedStyle(cv).borderTopLeftRadius) }; };
+    const codeAt = async (p, where) => { const said = PF.length, geo = await p.evaluate(roomNow);
+      if (!geo) { say(where + ' the pass\'s panel is not on the screen, so its code was not measured'); return null; }
+      if (geo.none) { say(where + ' the pass\'s panel shows no code for a game just started, so nothing about its code was measured'); return null; }
+      await rafs(p, 2);
+      const [L, T0, W0, H0] = geo.r, clip = { x: Math.max(0, Math.floor(L)), y: Math.max(0, Math.floor(T0)) }; clip.width = Math.ceil(L + W0) - clip.x; clip.height = Math.ceil(T0 + H0) - clip.y;
+      const png = await p.screenshot({ clip });
+      /* where the box is on the screen: a panel whose width is a share of the screen's puts it at a fraction of a pixel, and the browser
+         paints it on the nearest whole pixel of the page (measured: 55.48 at 55, 500.5 at 501), so the photograph is read from there */
+      const k = geo.dpr, c = await decode.evaluate(async ({ b64, ox, oy, cw, ch, rad }) => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+        const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight; const g = cv.getContext('2d'); g.drawImage(img, 0, 0);
+        const W = cv.width, H = cv.height, d = g.getImageData(0, 0, W, H).data, lum = (x, y) => { const i = (y * W + x) * 4; return 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; };
+        /* the code's own box on the screen, a pixel in from each edge and without its four rounded corners: what is outside is the panel */
+        const x0 = Math.round(ox) + 1, y0 = Math.round(oy) + 1, x1 = Math.round(ox + cw) - 2, y1 = Math.round(oy + ch) - 2, R = Math.max(0, rad - 1.5);
+        const inBox = (x, y) => { if (x < x0 || x > x1 || y < y0 || y > y1 || x >= W || y >= H) return false;
+          const cx = x + 0.5 < ox + rad ? ox + rad : x + 0.5 > ox + cw - rad ? ox + cw - rad : null, cy = y + 0.5 < oy + rad ? oy + rad : y + 0.5 > oy + ch - rad ? oy + ch - rad : null;
+          return cx === null || cy === null || Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= R; };
+        let a = W, b = H, e = -1, f = -1, rim = 0, rimDark = 0;
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (inBox(x, y)) { const dk = lum(x, y) < 128;
+          if (x === x0 || x === x1 || y === y0 || y === y1) { rim++; if (dk) rimDark++; }
+          if (dk) { if (x < a) a = x; if (x > e) e = x; if (y < b) b = y; if (y > f) f = y; } }
+        if (e < 0) return { none: true };
+        /* a box dark round its rim is a code drawn light on dark, or one with no light border at all: nothing more is read off it */
+        if (rimDark * 2 > rim) return { rimDark, rim };
+        const wd = e - a + 1, hd = f - b + 1; let r7 = 0, grey = 0; while (a + r7 <= e && lum(a + r7, b) < 128) r7++;
+        /* drawn crisp, every pixel of the code is dark or light; a picture stretched smooth has greys along every edge, and no squares to count */
+        for (let y = b; y <= f; y++) for (let x = a; x <= e; x++) { const v = lum(x, y); if (v >= 64 && v <= 192) grey++; }
+        const o = { wd, hd, r7, grey, sides: { left: a - ox, top: b - oy, right: ox + cw - (e + 1), bottom: oy + ch - (f + 1) }, m: null };
+        if (grey || !r7 || r7 % 7) return o;
+        const m = o.m = r7 / 7, n = o.n = wd / m; if (wd !== hd || n !== Math.floor(n)) return o;
+        let ragged = 0, soft = 0; const dark = (i, j) => lum(a + j * m + (m >> 1), b + i * m + (m >> 1)) < 128;
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const want = dark(i, j); let off = false;
+          for (let y = b + i * m; y < b + (i + 1) * m; y++) for (let x = a + j * m; x < a + (j + 1) * m; x++) { const v = lum(x, y); if (v >= 64 && v <= 192) soft++; if ((v < 128) !== want) off = true; }
+          if (off) ragged++; }
+        o.ragged = ragged; o.soft = soft;
+        /* a corner mark: a dark ring seven squares across, a light ring inside it, three dark squares in the middle */
+        const mark = (i0, j0) => { for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) { const ring = i === 0 || i === 6 || j === 0 || j === 6, mid = i >= 2 && i <= 4 && j >= 2 && j <= 4; if (dark(i0 + i, j0 + j) !== (ring || mid)) return false; } return true; };
+        o.marks = n >= 21 ? [mark(0, 0), mark(0, n - 7), mark(n - 7, 0)].filter(Boolean).length : 0;
+        let ringDark = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (inBox(x, y) && (x < a || x > e || y < b || y > f) && lum(x, y) <= 192) ringDark++;
+        o.ringDark = ringDark; return o;
+      }, { b64: png.toString('base64'), ox: (Math.round(L) - clip.x) * k, oy: (Math.round(T0) - clip.y) * k, cw: (Math.round(L + W0) - Math.round(L)) * k, ch: (Math.round(T0 + H0) - Math.round(T0)) * k, rad: geo.rad * k });
+      /* PASS_SHOTS=<a folder> keeps each photograph and what was read off it, for whoever has to look */
+      if (process.env.PASS_SHOTS) { const nm = path.join(process.env.PASS_SHOTS, 'pass-' + where.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')); fs.writeFileSync(nm + '.png', png); fs.writeFileSync(nm + '.json', JSON.stringify({ geo, clip, read: c })); }
+      if (c.none) { say(where + ' nothing dark is drawn where the pass\'s code goes, so nothing about it was measured'); return null; }
+      /* a box that is not wholly in view is not a photograph of the whole code: said, and nothing more is read off it */
+      if (geo.out.length) { say(where + ' the code\'s box (' + Math.round(W0) + ' px wide, ' + Math.round(H0) + ' tall) is not wholly inside its panel where all of it is seen at once: it is ' + geo.out.join(' and ')); return null; }
+      if (c.rim) { say(where + ' the code\'s box is dark round its rim (' + c.rimDark + ' of ' + c.rim + ' pixels): the code is drawn light on dark, or has no light border at all, and a camera reads dark squares on light'); return null; }
+      if (c.grey) { say(where + ' ' + c.grey + ' pixels inside the code are neither dark nor light: it is drawn soft, not crisp, and its squares cannot be counted'); return null; }
+      if (!c.r7) { say(where + ' what is drawn where the code goes has nothing dark at its top left corner, where a code has a corner mark: it is not a code a camera can find'); return null; }
+      if (c.m === null) { say(where + ' the code\'s squares are not a whole number of screen pixels: the top edge of its corner mark, seven squares long, is ' + c.r7 + ' screen pixels (' + (c.r7 / 7).toFixed(2) + ' a square), and the whole code is ' + c.wd + ' across'); return null; }
+      if (c.wd !== c.hd || c.n !== Math.floor(c.n)) { say(where + ' the code is ' + c.wd + ' screen pixels across and ' + c.hd + ' down, which is not a whole number of its ' + c.m + '-pixel squares each way, so its squares are not all one size'); return null; }
+      const px = c.m / k, across = W0 / px, room = geo.roomH === null ? geo.roomW : Math.min(geo.roomW, geo.roomH);
+      if (px !== Math.floor(px)) say(where + ' each square of the code is ' + c.m + ' screen pixels, which is ' + px.toFixed(2) + ' pixels of the page: not a whole number');
+      if (c.ragged) say(where + ' ' + c.ragged + ' of the code\'s ' + c.n * c.n + ' squares are not one flat square on the screen (' + c.m + ' screen pixels each way), so its squares are not all one size');
+      if (c.soft) say(where + ' ' + c.soft + ' pixels inside the code are neither dark nor light: it is drawn soft, not crisp');
+      if (c.marks !== 3) say(where + ' what is drawn is not a code a camera can find: ' + c.marks + ' of its three corner marks are whole');
+      Object.entries(c.sides).forEach(([side, v]) => { if (v < 4 * c.m - 1) say(where + ' the light border round the code is ' + (v / c.m).toFixed(1) + ' squares wide on the ' + side + ', where a code is read with four'); });
+      if (c.ringDark) say(where + ' the border round the code is not light all the way round: ' + c.ringDark + ' of its pixels are not');
+      if (W0 > room + 0.5) say(where + ' the code\'s box is ' + Math.round(W0) + ' px across, where its panel has room for ' + Math.floor(room));
+      else if (px === Math.floor(px) && Math.abs(across - Math.round(across)) < 0.01 && (px + 1) * Math.round(across) <= room) say(where + ' the code is drawn ' + px + ' px a square (' + Math.round(W0) + ' px across), where its panel has room for ' + (px + 1) + ' (' + (px + 1) * Math.round(across) + ' of ' + Math.floor(room) + ' px)');
+      return PF.length > said ? null : { where, n: c.n, across: Math.round(across), px, box: Math.round(W0), room: Math.floor(room) }; };   /* what is told as measured is only what stood */
+    const seenAs = c => c ? c.where.replace(/^at |^with /, '') + ' ' + c.n + ' squares, ' + c.across + ' with its border, ' + c.px + ' px a square, ' + c.box + ' of ' + c.room + ' px' : null;
+
+    const phone = await fresh({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, colorScheme: 'light' });
+    let laptop = null;
+    try {
+      const p = phone.p; await start(p);
+      const langs = await p.evaluate(() => Object.keys(UI).filter(L => L === 'en' || L === 'es')), hero = await p.evaluate(() => heroName);
+
+      /* 1 · THE PANEL OPENS WHEN NO CODE CAN BE DRAWN */
+      const lineBy = {}; let bigLink = null;
+      for (const L of langs) { try {
+        await p.evaluate(L => { document.querySelectorAll('.settings').forEach(s => { s.hidden = true; }); document.getElementById(L === 'es' ? 'optEs' : 'optEn').click(); }, L);
+        /* an earlier opening, with the game as it is: a code is drawn, and it is the one that could be left behind */
+        await openIt(p); const before = await panelNow(p); await shut(p);
+        if (!before.on || !before.codes) { say('in ' + LNG[L] + ' the pass\'s panel ' + (before.on ? 'shows no code' : 'did not open') + ' for a game just started, so nothing about a pass too big for a code was measured'); continue; }
+        /* the game grows until its link fits no code: papers handed to the player, which a save keeps by name, until the library that draws codes says no */
+        const grown = await p.evaluate(() => { if (typeof qrcode === 'undefined') return { none: true };
+          const fits = () => { try { const q = qrcode(0, 'L'); q.addData(passURL()); q.make(); return true; } catch (e) { return false; } }, added = [];
+          for (let i = 0; i < 400 && fits(); i++) { const id = 'pass-check-paper-' + String(i).padStart(3, '0') + '-' + 'x'.repeat(18); handedDocs.add(id); added.push(id); }
+          window.__passPapers = added; return { fits: fits(), papers: added.length, chars: passURL().length }; });
+        if (grown.none || grown.fits) { say('in ' + LNG[L] + ' the check could not make a game too big for a code (' + (grown.none ? 'this shell loads no library that draws codes' : 'with ' + grown.papers + ' papers handed its link is ' + grown.chars + ' characters and still fits one') + '), so nothing about such a pass was measured'); continue; }
+        const e0 = phone.errs.length, how = 'in ' + LNG[L] + ', with a game whose link (' + grown.chars + ' characters) fits no code, ';
+        await p.evaluate(() => { window.__copied.length = 0; window.__shared.length = 0; });
+        await openIt(p);
+        const now = await panelNow(p), threw = phone.errs.slice(e0);
+        if (!now.on) say(how + 'pressing Pass in Settings opens nothing: its panel is not on the screen, so neither Share nor Copy link is offered' + (threw.length ? ', and the page threw "' + threw[0] + '"' : ''));
+        else {
+          if (threw.length) say(how + 'opening the pass\'s panel threw "' + threw[0] + '"');
+          if (now.codes) say(how + 'the panel shows a code all the same: the one an earlier opening left, which carries an older game');
+          const extra = now.lines.filter(t => !before.lines.includes(t)), word = await p.evaluate(() => { const w = T().tpBig; return typeof w === 'string' && w.trim() ? w : null; });
+          if (!extra.length) say(how + 'the panel says nothing it does not say with a code: not why there is none, nor what to do instead');
+          else if (extra.some(t => /undefined|\bnull\b|\bNaN\b|\[object /.test(t))) say(how + 'the panel\'s line reads "' + extra.join(' | ') + '"');
+          else if (!word) say(how + 'the panel\'s line reads "' + extra.join(' | ') + '", and neither this world nor the engine names the word for it in ' + LNG[L]);
+          else if (extra.length !== 1 || extra[0] !== word) say(how + 'the panel\'s line reads "' + extra.join(' | ') + '", where the word for it in ' + LNG[L] + ' is "' + word + '"');
+          else lineBy[L] = extra[0];
+          const cOk = await pressed(p, 'tpCopy'), copied = await p.evaluate(() => window.__copied[window.__copied.length - 1] || null);
+          if (!cOk) say(how + 'Copy link cannot be pressed: it is not on the screen, or something covers it');
+          else if (!copied) say(how + 'pressing Copy link copies nothing');
+          if (!now.share) say(how + 'no Share button is offered on a device that can share');
+          else { const sOk = await pressed(p, 'tpShare'), shared = await p.evaluate(() => window.__shared[window.__shared.length - 1] || null);
+            if (!sOk) say(how + 'Share cannot be pressed: it is not on the screen, or something covers it');
+            else if (!shared) say(how + 'pressing Share hands the device nothing to share');
+            else if (copied && shared !== copied) say(how + 'Share hands on another link than the one Copy link copies'); }
+          bigLink = copied || bigLink;
+        }
+      } finally { await p.evaluate(() => { (window.__passPapers || []).forEach(id => handedDocs.delete(id)); window.__passPapers = []; save(); }); await shut(p); } }
+      if (lineBy.en && lineBy.es && lineBy.en === lineBy.es) say('in Spanish, the line the panel says when no code can be drawn is the English one: "' + lineBy.es + '"');
+      /* ...and that link, opened on another device, offers the game */
+      if (bigLink) { const far = await fresh({ viewport: { width: 390, height: 844 } });
+        try { await far.p.goto(bigLink); await boot(far.p);
+          const card = await far.p.evaluate(() => { const c = document.getElementById('tpFound'); return { on: !!c && !c.hidden && c.getClientRects().length > 0, text: c ? c.innerText.replace(/\s+/g, ' ').trim() : '' }; });
+          if (!card.on) say('the link the panel copies for a game too big for a code (' + bigLink.length + ' characters), opened on another device, offers no game' + (far.errs.length ? ', and the page threw "' + far.errs[0] + '"' : ''));
+          else if (!card.text.includes(hero)) say('the link the panel copies for a game too big for a code, opened on another device, offers "' + card.text.slice(0, 120) + '", which is not ' + hero + '\'s game');
+          else PN.push('COUNT-ONLY: the pass: with a link too big for any code (' + bigLink.length + ' characters) the panel opened with no code and a line of its own in ' + Object.keys(lineBy).map(L => LNG[L]).join(' and ') + ', and the link Copy link and Share hand on offered ' + hero + '\'s game on another device');
+        } finally { await far.ctx.close(); } }
+
+      /* 3 · EVERY QUEST'S SCORE IS KEPT, AND A SAVE WITH THOUSANDS IS CUT */
+      { const k = await p.evaluate(() => { const n = QEN.length, few = Math.max(0, Math.min(8, 99 - n)), mine = qa, want = {};
+          for (let i = -1; i < n + few; i++) want[i] = 1 + ((i + 2) * 7) % 97;
+          qa = Object.assign({}, want); const stored = save(), back = loadSave(); qa = mine; save();
+          const lost = Object.keys(want).filter(q => !back || !back.qa || back.qa[q] !== want[q]);
+          /* the save's own reading, handed a real save whose scores are 5,000, each counted as it is read */
+          const many = {}; for (let i = 0; i < 5000; i++) many[i] = 1;
+          let reads = 0; const real = loadSave(); if (real) real.qa = new Proxy(many, { get: (t, q) => { if (typeof q === 'string') reads++; return t[q]; } });
+          const out = real ? sanitizeSave(real) : null;
+          return { n, few, total: Object.keys(want).length, lost, stored, read: !!back, reads, came: !!out }; });
+        const name = q => q === '-1' ? 'the side quest' : 'quest ' + q;
+        if (!k.stored || !k.read) say('the check could not save a game and read it back, so whether every quest\'s score is kept was not measured');
+        else if (k.lost.length) say('a game with a score for each of this world\'s ' + k.n + (k.n === 1 ? ' quest' : ' quests') + ', for its side quest and for ' + k.few + ' quests more (' + k.total + ' scores) came back from its own save with ' + (k.total - k.lost.length) + ': the scores of ' + k.lost.slice(0, 6).map(name).join(', ') + (k.lost.length > 6 ? ' and ' + (k.lost.length - 6) + ' more' : '') + ' were dropped without a word');
+        if (!k.few) PN.push('COUNT-ONLY: the pass: this world has ' + k.n + (k.n === 1 ? ' quest' : ' quests') + ', and a save holds a quest\'s number only up to 98, so no score past its own quests was tried');
+        if (!k.came || k.reads < Math.min(k.total, 5000) - k.lost.length) say('the check could not count the scores the save\'s reading reads (' + (k.came ? k.reads + ' of 5,000 counted, fewer than a real game has' : 'it refused a real save with 5,000 scores') + '), so whether thousands are cut was not measured');
+        else if (k.reads > 1000) say('a save that arrives with 5,000 scores had ' + k.reads + ' of them read: nothing cuts it short, and a save can come in a link somebody else wrote');
+        else if (!k.lost.length) PN.push('COUNT-ONLY: the pass: ' + k.total + ' scores (this world\'s ' + k.n + (k.n === 1 ? ' quest' : ' quests') + ', its side quest and ' + k.few + ' more) came back whole from a save, and of 5,000 handed to the save\'s reading ' + k.reads + ' were read'); }
+
+      /* 2 · A LINK TOO LONG IS REFUSED BEFORE IT IS DECODED */
+      { const made = await p.evaluate(() => { const mine = [done, qa, marks];
+          /* the biggest pass this world makes of its own quests: every one done, each with a score and a grade */
+          done = new Set(done); qa = Object.assign({}, qa); marks = Object.assign({}, marks); QEN.forEach((_, i) => { done.add(i); qa[i] = qa[i] || 20; marks[i] = marks[i] || 1; });
+          const u = passURL(); [done, qa, marks] = mine; save();
+          const base = u.replace(/#.*$/, ''), m = u.match(/#save=([A-Za-z0-9\-_]+)$/); if (!m) return null;
+          const J = unb64u(m[1]), bytes = unescape(encodeURIComponent(J)).length;
+          /* the same pass with spaces after it, which change nothing it says, until the part from # on is as long as asked:
+             the longest that is no longer (over: false), or the shortest that is no shorter (over: true) */
+          const sized = (len, over) => { for (let L = len - 6; L > 0 && Math.abs(L - (len - 6)) < 8; L += over ? 1 : -1) { const r = L % 4; if (r === 1) continue;
+              const B = Math.floor(L / 4) * 3 + (r ? r - 1 : 0); return B < bytes ? null : base + '#save=' + b64u(J + ' '.repeat(B - bytes)); } return null; };
+          const cap = typeof PASSMAX === 'number' && PASSMAX > 0 ? PASSMAX : null;
+          return { cap, base, real: u.length - base.length, at: cap ? sized(cap, false) : null, over: cap ? sized(cap + 1, true) : null, huge: sized(200000, true), kept: localStorage.getItem(SK('1')) }; });
+        const arrive = async link => { const q = await phone.ctx.newPage(), errs = []; q.on('pageerror', e => errs.push(first(e)));
+          try { await q.goto(link); await boot(q);
+            return Object.assign(await q.evaluate(() => { const seen = id => { const el = document.getElementById(id); return !!el && !el.hidden && el.getClientRects().length > 0; };
+              return { card: seen('tpFound'), shows: ['intro', 'hud', 'world', 'card', 'end', 'tpFound', 'tpass', 'settings'].filter(seen).join(' and ') || 'nothing',
+                words: seen('intro') ? document.getElementById('intro').innerText.replace(/\s+/g, ' ').trim() : '', decoded: window.__decoded, kept: localStorage.getItem(SK('1')) }; }), { errs, chars: link.length });
+          } finally { await q.close(); } };
+        if (!made || !made.huge) say('the check could not read a pass of this world\'s own making, so nothing about a link too long was measured');
+        else {
+          const len = l => l.length - made.base.length, unread = await arrive(made.base + '#save=AAAA');
+          const refused = (a, what) => { let ok = true; const bad = m => { ok = false; say(what + ' ' + m); };
+            if (a.card) { bad('was read all the same, and its game offered'); return false; }
+            if (a.decoded >= a.chars - made.base.length - 6) bad('was refused only after all of it was handed to the decoder');
+            if (a.kept !== made.kept) bad('changed the game kept on the device');
+            if (a.errs.length) bad('threw "' + a.errs[0] + '"');
+            if (a.shows !== unread.shows || a.words !== unread.words) bad('shows the player ' + a.shows + (a.shows === unread.shows ? ', with other words than' : ', where') + ' a link that cannot be read shows ' + unread.shows);
+            return ok; };
+          if (unread.card || unread.errs.length) say('a link that cannot be read (#save=AAAA) ' + (unread.card ? 'shows a card offering a game' : 'threw "' + unread.errs[0] + '"') + ', so there is nothing to hold a refused link to');
+          const huge = await arrive(made.huge), hugeOk = refused(huge, 'a link ' + len(made.huge).toLocaleString('en-US') + ' characters long from the # on, where a finished game\'s pass here is ' + made.real.toLocaleString('en-US') + ',');
+          if (!made.cap) say('the game states no longest pass it reads (no PASSMAX in engine/engine.js), so no link is too long for it to decode');
+          else if (!made.at || !made.over) say('the check could not make a pass exactly as long as the longest the game says it reads (' + made.cap + ' characters from the # on), so the edge was not measured');
+          else { const at = await arrive(made.at), over = await arrive(made.over), by = len(made.over) - made.cap;
+            if (!at.card) say('a finished game\'s pass ' + len(made.at) + ' characters long from the # on, no longer than the longest the game says it reads (' + made.cap + '), offers no game' + (at.errs.length ? ' (the page threw "' + at.errs[0] + '")' : '') + ', so the refusal of a longer one says nothing about length');
+            else if (at.decoded < len(made.at) - 6) say('the check\'s count of what is handed to the decoder saw ' + at.decoded + ' characters for a pass of ' + len(made.at) + ' that arrived, so it cannot tell whether a refused link was decoded');
+            const overOk = refused(over, 'a link ' + by + ' character' + (by === 1 ? '' : 's') + ' longer than the longest pass the game says it reads (' + made.cap + ' from the # on)');
+            if (made.cap < 2 * made.real) say('the longest pass the game reads is ' + made.cap + ' characters from the # on, and a finished game\'s pass here is already ' + made.real + ': less than twice the room, so a real pass is close to being refused');
+            if (at.card && overOk && hugeOk) PN.push('COUNT-ONLY: the pass: a finished game\'s pass here is ' + made.real + ' characters from the # on; padded to ' + len(made.at) + ' (the game reads ' + made.cap + ' at most) it was offered, and at ' + len(made.over) + ' and at ' + len(made.huge) + ' it was refused undecoded, showing ' + over.shows + ' as a link that cannot be read does'); }
+        } }
+
+      /* 4 · THE CODE IS CRISP, A WHOLE NUMBER OF PIXELS A SQUARE, AND AS LARGE AS ITS PANEL ALLOWS */
+      { const seen = [], dark = q => q.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+        const both = async (q, size) => { await shut(q); await q.emulateMedia({ colorScheme: 'light' }); await openIt(q);
+          seen.push(await codeAt(q, 'at ' + size + ', light,'));
+          await q.emulateMedia({ colorScheme: 'dark' }); await rafs(q, 2);
+          if (!await dark(q)) say('at ' + size + ' the page did not turn dark when the device did, so the code was not measured in the dark theme'); else seen.push(await codeAt(q, 'at ' + size + ', dark,')); };
+        await both(p, 'a phone\'s size (390×844)');
+        /* the phone is turned on its side with the panel still open, and the code has to be drawn again for the room it has now. Whether
+           that room asks for a smaller code depends on how long this game's link is, and the folder this checkout sits in is part of the
+           link: planted 2026-11-14, a code that was NOT drawn again went unseen in a copy whose folder had a longer name, because there
+           the same size fitted both ways. So the screen is made shorter, from a phone's 390, until the panel has room only for a smaller
+           code than the one it shows; a code left at its old size is then past that room, and the photograph says so */
+        { const up = seen[seen.length - 1], was = up ? up.px * up.across : 0; let h = 390, room = null;
+          if (!up) say('the code at a phone\'s size was not measured, so whether a phone turned on its side draws it again was not measured either');
+          else if (up.px < 2) say('the code for a game just started is already ' + up.px + ' px a square at a phone\'s size, so a phone turned on its side has no smaller code to draw and whether it draws one again was not measured');
+          else { for (; h >= 210; h -= 30) { await p.setViewportSize({ width: 844, height: h }); await rafs(p, 3);
+              const g = await p.evaluate(roomNow); room = g && !g.none ? (g.roomH === null ? g.roomW : Math.min(g.roomW, g.roomH)) : null; if (room !== null && room < was) break; }
+            if (room === null || room >= was) say('the check could not make the screen short enough for the pass\'s panel to need a smaller code (' + (room === null ? 'the panel or its code left the screen' : 'at 844×' + (h + 30) + ' it still has room for ' + Math.floor(room) + ' px, and the code is ' + was) + '), so whether a phone turned on its side draws the code again was not measured');
+            else seen.push(await codeAt(p, 'with the phone turned on its side (844×' + h + ') while the panel is open, dark,')); } }
+        laptop = await fresh({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light' });
+        await start(laptop.p); await both(laptop.p, 'a laptop\'s size (1280×800)');
+        if (laptop.errs.length) say('the page threw while the pass\'s panel was opened at a laptop\'s size: "' + laptop.errs[0] + '"');
+        const told = seen.map(seenAs).filter(Boolean);
+        if (told.length) PN.push('COUNT-ONLY: the pass: its code, read off a photograph of the screen — ' + told.join('; ')); }
+    } catch (e) { say('the check could not drive the game to the end, so it measured nothing past: ' + first(e)); }
+    await decode.close(); await phone.ctx.close(); if (laptop) await laptop.ctx.close();
+    fails.push(...PN, ...PF.map(m => 'the pass: ' + m));
+  }
+
   /* ---- THE APRON IS DRAWN ONLY IN A WORLD THAT TURNS IT ON, AND IT CHANGES NOTHING ELSE ----
      The engine draws one outfit of its own for every world, formal, and every other outfit word as the everyday clothes.
      It also draws an apron, which a world has to ask for: OUTFITTAKE, the list of outfit words a world turns on
