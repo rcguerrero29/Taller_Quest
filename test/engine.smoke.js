@@ -40,9 +40,10 @@ function findChromium() {
   if (!args.includes('--index') || !idx) { console.error('usage: node test/engine.smoke.js --index <path to an index.html> [--part map|body|rest]'); process.exit(2); }
   /* ONE PART OF THIS FILE, WHEN ASKED (2026-11-14). A run of every check against a world with a 3D camera took 386 to 476 s
      of the 480 s the gauge and the oven world allow it (test/gauge.js, test/horno.js), and a limit raised each time the
-     checks grow is a check that wants splitting, not a longer rope. Measured per part on 2026-11-14 (the gauge's
-     furniture world, the slowest): the map opened in every place, 137 s; the bodies of the person and the dog, 184 s;
-     everything else, 156 s. `--part map`, `--part body` and `--part rest` each ask only their own checks, after the same
+     checks grow is a check that wants splitting, not a longer rope. Measured whole on 2026-11-14, section by section, on
+     a busy machine: in the gauge's furniture world 476 s, of which the map opened in every place 137 s and the bodies of
+     the person and the dog 184 s. Measured in parts the same day, the map, the bodies and the rest: the gauge in 3D 104,
+     146 and 135 s; its furniture world 120, 135 and 133 s; the oven world 98, 133 and 130 s. `--part map`, `--part body` and `--part rest` each ask only their own checks, after the same
      page is opened, and the three together ask exactly what the whole file asks; with no `--part`, the whole file, as
      before (the engine's own part of the public check). The parts are cut where the file's own sections are, and no
      section reads what another declared (the only one that did, the first section's flat letters, is read through `r`
