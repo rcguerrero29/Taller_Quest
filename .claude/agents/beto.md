@@ -101,6 +101,9 @@ behaviour can pin a bug — one did, at 40px, and passed the whole time.
 
 - **`px,py` are integers and `fx,fy` are the floats.** `engine/engine.js:388`. The camera (`:1565`,
   `:1682`), the 2D hero (`:1752`) and the 3D hero (`engine3d.js:806`, `:911`) all read `fx,fy`.
+  Where a world takes the jointed body, the 3D hero's card is listed only while `T3.bodyOn` is false
+  (grep `list.push({x:fx,y:fy,hero:true`), and the body stands at `fx,fy` itself (grep
+  `B.position.set(fx+0.5`).
   Anything that must move smoothly moves `fx,fy`; anything that must be a *place* stays in `px,py`.
   **`sanitizeSave` rounds and clamps `px,py`** (`engine.js:462`, `:498`), so a fractional `px` is
   silently corrupted on the next save and across a `#save=` link.
@@ -182,6 +185,13 @@ the *rendered label* rather than the key (`engine.js:3980`, saved at `:503`).
   listen" and priced a merge board as the biggest build in the game. Two real mouse drags in the shipped
   engine merged masa → tortilla → taco with nothing in `engine/` touched. *(Applied 2026-09-14 from
   crew run 8.)*
+- **The jointed body is made whole again whenever its key changes, and the key is written twice.**
+  `t3Body` and `t3BodyPreview` (`engine/engine3d.js`, grep `key=[look.skin,` and `key=[lk.skin,`) each
+  join the look's colours, `outfit`, `hairStyleOf`, `beardOf` and the cleaned choices, which on
+  2026-11-13 is everything `bodyMake` reads from a look. Anything `bodyMake` starts to read goes into
+  both keys, or the street or the preview keeps the old body all session. Only a world whose own
+  `BODYTAKE` names `person` builds one; Meridian does not, so the tests add the list themselves (grep
+  `__bodytake.js` in `test/engine.smoke.js`). *(Applied 2026-11-14.)*
 
 ## A distinction your RULE/CHOICE cut does not give you
 
