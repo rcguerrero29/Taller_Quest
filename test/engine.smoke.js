@@ -13137,7 +13137,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         box.scrollTop += cv.getBoundingClientRect().top - (box.getBoundingClientRect().top + f(cs.borderTopWidth));
         const r = cv.getBoundingClientRect(), b = box.getBoundingClientRect(), close = box.querySelector('.close'), cr = close && close.getClientRects().length ? close.getBoundingClientRect() : null;
         const inL = b.left + f(cs.borderLeftWidth) + f(cs.paddingLeft), inR = b.right - f(cs.borderRightWidth) - f(cs.paddingRight), foot = cr ? cr.top : b.bottom;
-        const most = f(cs.maxHeight) ? f(cs.maxHeight) - f(cs.borderTopWidth) - f(cs.borderBottomWidth) - f(cs.paddingTop) - f(cs.paddingBottom) - (cr ? cr.height : 0) : null;
+        const tall = /px$/.test(cs.maxHeight) ? f(cs.maxHeight) : 0;   /* a height the page does not say in pixels (a share of the screen, or none) is no limit */
+        const most = tall ? tall - f(cs.borderTopWidth) - f(cs.borderBottomWidth) - f(cs.paddingTop) - f(cs.paddingBottom) - (cr ? cr.height : 0) : null;
         const out = []; if (r.left < inL - 0.5) out.push('past its left'); if (r.right > inR + 0.5) out.push('past its right'); if (r.top < b.top - 0.5) out.push('above it'); if (r.bottom > foot + 0.5) out.push(cr ? 'under Close' : 'below it');
         if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) out.push('off the screen');
         return { r: [r.left, r.top, r.width, r.height], roomW: inR - inL, roomH: most, out, dpr: devicePixelRatio, rad: f(getComputedStyle(cv).borderTopLeftRadius) }; };
@@ -13337,6 +13338,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             else seen.push(await codeAt(p, 'with the phone turned on its side (844×' + h + ') while the panel is open, dark,')); } }
         laptop = await fresh({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light' });
         await start(laptop.p); await both(laptop.p, 'a laptop\'s size (1280×800)');
+        /* a world's own stylesheet may say the panel's tallest height as a share of the screen. The page hands that back as its own number
+           ("90%"), and read as 90 pixels it left room for a code one dot a square: it is no limit that can be counted, so the code stays
+           the size the panel's width allows */
+        await laptop.p.evaluate(() => { document.querySelector('#tpass .box').style.maxHeight = '90%'; }); await openIt(laptop.p);
+        seen.push(await codeAt(laptop.p, 'at a laptop\'s size with the panel\'s tallest height said as 90% of the screen, dark,'));
+        await laptop.p.evaluate(() => { document.querySelector('#tpass .box').style.maxHeight = ''; });
         if (laptop.errs.length) say('the page threw while the pass\'s panel was opened at a laptop\'s size: "' + laptop.errs[0] + '"');
         const told = seen.map(seenAs).filter(Boolean);
         if (told.length) PN.push('COUNT-ONLY: the pass: its code, read off a photograph of the screen — ' + told.join('; ')); }

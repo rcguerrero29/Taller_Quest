@@ -8530,7 +8530,10 @@ function passDraw(){
   cv2.hidden=!qr;if(!qr)return;
   const n=qr.getModuleCount(),q=4,sq=n+q*2,box=cv2.closest(".box")||cv2.parentElement,cs=getComputedStyle(box),f=v=>parseFloat(v)||0;
   const wide=box.getBoundingClientRect().width-f(cs.borderLeftWidth)-f(cs.borderRightWidth)-f(cs.paddingLeft)-f(cs.paddingRight);
-  const high=f(cs.maxHeight)?f(cs.maxHeight)-f(cs.borderTopWidth)-f(cs.borderBottomWidth)-f(cs.paddingTop)-f(cs.paddingBottom)-$("tpClose").getBoundingClientRect().height:wide;
+  /* the tallest the box may grow counts only where the page says it in pixels. A share of the screen comes back as its own
+     number ("90%"), and read as pixels it left room for a code one dot a square; that, and no limit at all, is no limit here */
+  const tall=/px$/.test(cs.maxHeight)?f(cs.maxHeight):0;
+  const high=tall?tall-f(cs.borderTopWidth)-f(cs.borderBottomWidth)-f(cs.paddingTop)-f(cs.paddingBottom)-$("tpClose").getBoundingClientRect().height:wide;
   const m=Math.max(1,Math.floor(Math.min(wide,high)/sq)),px2=sq*m;
   cv2.width=px2;cv2.height=px2;cv2.style.width=cv2.style.height=px2+"px";
   const g=cv2.getContext("2d");
