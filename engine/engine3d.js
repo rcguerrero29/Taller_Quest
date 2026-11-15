@@ -1756,7 +1756,12 @@ const HAIRPART={
   curly(M){M.ears.forEach(e=>{e.visible=false;});   /* hair this full stands over his ears */
     const line=hairEdge([[0,0.6],[35,0.56],[55,0.3],[72,0.12],[95,0.08],[125,-0.25],[150,-0.42],[180,-0.45]]),lump=hairLumps(0x51ED,64,0.2);
     M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
-    M.shell((x,y,z)=>{const e=y-line(x,z);return hairRise(e,hsm(0,0.1,e)*M.C.hairvol*(0.1+0.19*lump(x,y,z)));},{tex:hairGrain("curl",M.hair,5),seg:84,rows:56});},
+    /* the mass is measured on the spot as a unit, as its paint is. The shell is handed it moved down with his brow and not
+       yet a unit: on the round head it is one already, but on a head with a jaw it is longer, so its height over the line
+       read high and every spot read as the top of a curl. There the mass came down past its own roots and stood at its
+       fullest over his brow, and from the side, the camera being above him, it hid his eye and stood in front of its outer
+       corner. As a unit, it starts where its roots are painted and its curls are the same curls on every head */
+    M.shell((x,y,z)=>{const l=Math.hypot(x,y,z);x/=l;y/=l;z/=l;const e=y-line(x,z);return hairRise(e,hsm(0,0.1,e)*M.C.hairvol*(0.1+0.19*lump(x,y,z)));},{tex:hairGrain("curl",M.hair,5),seg:84,rows:56});},
   /* /HAIR:curly */
   /* HAIR:buzz */
   /* A BUZZ is clipped to a few millimetres all over his scalp, so none of it stands off his head: it is paint, and the outline
