@@ -1679,13 +1679,17 @@ const HAIRPART={
       for(let j=0;j<K;j++){idx.push(A,j,(j+1)%K);idx.push(B,N*K+(j+1)%K,N*K+j);}
       const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
       return part("head",g,"hair",col,0,0,0);};
-    /* the skin under it: hair above the brow, and down to the nape only where the curtains cover it. In front of the
-       curtains it grows from the ordinary hairline, as anyone's does, so his temple is hair and his cheek is skin: until
-       2026-11-15 everything behind the front of his face was painted hair down to his jaw, and from the side his cheek read
-       as hair whatever the locks did */
-    {const hl=hairEdge(HAIRLINE);
+    /* the skin under it: hair above the brow and over the temples, framing his forehead, and down to the nape where the
+       curtains cover it; his cheek in front of the curtains is skin. Until 2026-11-15 everything behind the front of his
+       face was painted hair down to his jaw, so from the side his cheek read as hair whatever the locks did; the first mend
+       that day took the ordinary hairline in front of the curtains, which sits higher at the temples, and the hair began
+       too far back (balding, he said, most on a head with a jaw). So the temples' hair comes down to about the top of his
+       cheekbone, beside his eye, and no lower; and on a head with a jaw, whose paint is moved down to its lower eyes less at
+       the sides than in front, the temples are brought down by the difference */
+    {const hl=hairEdge(HAIRLINE),cheek=0.36;
     M.lay((x,y,z)=>{const top=0.8-0.22*Math.min(1,Math.abs(x)/0.6),az=Math.atan2(Math.abs(x),z)*180/Math.PI,under=hsm(70,84,az),
-        front=z>0.7?top:z>0.6?hl(x,z)+(top-hl(x,z))*(z-0.6)/0.1:hl(x,z);
+        temple=Math.min(hl(x,z),cheek)-M.brow*(1-hsm(-0.1,0.5,z)),
+        front=z>0.7?top:z>0.6?temple+(top-temple)*(z-0.6)/0.1:temple;
       return hsm(-0.015,0.015,y-(front*(1-under)-0.6*under));});}
     /* what is seen between the curtains, behind his neck: the underside of the sheet, in shadow */
     {const g=new THREE.CylinderGeometry(1,1,1,16,1,true,Math.PI*0.5,Math.PI);
