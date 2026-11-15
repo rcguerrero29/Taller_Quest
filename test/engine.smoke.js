@@ -14153,8 +14153,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               /* mq-v265: asked for each style of hair his body can wear (HAIRSTYLES, read off the engine; until mq-v265 the table's
                  two hairs, the row "cut"), each set beside his card drawn in the same style, facing you and facing right, so whichever
                  a player chooses his face shows; how wide he is and how bright at night, which no hair changes, in the style a new
-                 character starts with (the save's own default). Two grabs a frame, his body and his card, against the street alone */
-              const F = {}, CUTS = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [], START = saveLook({}).style;
+                 character starts with. Two grabs a frame, his body and his card, against the street alone.
+                 The style he starts with is read off his look on this page as it booted, before anything here touched it
+                 (2026-11-15): until then it was the save's word for a look that names no style (saveLook({})), which the
+                 engine writes apart from the look a new character starts with, so the two could part and no line say so */
+              const F = {}, CUTS = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [], START = keep.look.style;
               if (!CUTS.length) P.push('the engine keeps no list of the styles of hair his body can wear, so whether his face shows under each was not asked');
               else if (!CUTS.includes(START)) P.push('a new character starts with the hair "' + START + '", which is not one his body can wear (' + CUTS.join(', ') + ')');
               /* from 2026-11-14 the share of his card is asked of the style he starts with only (every other style is asked in the camera
@@ -14356,7 +14359,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const DETAILED = { sleeves: 'short', width: 0.75, limbs: 0.8 }, rowS = typeof BODYCHOICE === 'object' && BODYCHOICE ? BODYCHOICE.find(r => r.key === 'sleeves') : null;
               if (!rowS) P.push('the body\'s choices have no sleeves, so a player cannot choose short sleeves and bare arms');
               try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
-                for (const [who, body, style] of [['the person a new character starts as', {}, saveLook({}).style], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED, 'curly']].concat(JAW ? [['the person with the ' + JAW + ' head', { face: JAW }, saveLook({}).style]] : []))
+                for (const [who, body, style] of [['the person a new character starts as', {}, keep.look.style], ['the detailed person (short sleeves, the fuller hair, slimmer)', DETAILED, 'curly']].concat(JAW ? [['the person with the ' + JAW + ' head', { face: JAW }, keep.look.style]] : []))
                   for (const d of ['down', 'right']) { dir = d; look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style, body });
                     const A = grab(), say3 = m => P.push(who + ', facing ' + (d === 'down' ? 'you' : 'right') + ', ' + m);
                     if (!T3.bodyOn || !T3.body) { say3('is not a jointed body in the 3D camera, so his nose, joints and shoes could not be looked for'); continue; }
@@ -14981,8 +14984,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const hairPx = A => { let n = 0; for (let y = Math.max(0, Math.floor(box.cy - box.sq)); y < Math.min(A.H, box.cy + box.sq); y++) for (let x = Math.max(0, Math.floor(box.cx - box.sq)); x < Math.min(A.W, box.cx + box.sq); x++) {
                 const i = (y * A.W + x) * 4; if (Math.abs(A.px[i] - E.px[i]) + Math.abs(A.px[i + 1] - E.px[i + 1]) + Math.abs(A.px[i + 2] - E.px[i + 2]) <= 40) continue;
                 const [h, s, v] = hsv(A.px[i], A.px[i + 1], A.px[i + 2]); if (s > 0.25 && v > 40 && Math.abs(((h - hh) + 540) % 360 - 180) < 22) n++; } return n; };
-              /* the yardstick: one of his eyes, facing you, on the head a new character starts with */
-              set(saveLook({}).style, {}, 'down'); const A0 = grab(), eye = eyeOf(A0);
+              /* the yardstick: one of his eyes, facing you, on the head a new character starts with (the style of this page's
+                 look as it booted, kl, before anything here touched it) */
+              set(kl.style, {}, 'down'); const A0 = grab(), eye = eyeOf(A0);
               if (!(eye >= 4)) { P.push('his eyes could not be found on the screen facing you (' + eye + ' pixels of the larger), so his hair, ears, neck and eyes were not measured in the camera'); return { P, N }; }
               /* K · from each side, hair of his colour for every style that has hair */
               const SIDES = [['down', 'facing you'], ['right', 'facing right'], ['up', 'facing away'], ['left', 'facing left']], seen = [];
@@ -15016,7 +15020,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                      face.
                  His head is what turns magenta when every part on his head is painted so (the parts the head joint carries); in that
                  outline, a pixel of the frame as it is drawn is skin or hair by its hue (D's hues). Nothing to measure is a red. */
-              { const START = saveLook({}).style, skH = (() => { const q = new THREE.Color(LOOK.skin); return hsv(q.r * 255, q.g * 255, q.b * 255)[0]; })();
+              { const START = kl.style, skH = (() => { const q = new THREE.Color(LOOK.skin); return hsv(q.r * 255, q.g * 255, q.b * 255)[0]; })();
                 /* read in the square round where he stands only (the box his hair is counted in, above), not the whole screen */
                 const bx0 = Math.max(0, Math.floor(box.cx - box.sq)), by0 = Math.max(0, Math.floor(box.cy - box.sq)), W = Math.min(E.W, Math.ceil(box.cx + box.sq)) - bx0, H = Math.min(E.H, Math.ceil(box.cy + box.sq)) - by0;
                 const gb = () => { draw3d(); const gl = T3.renderer.getContext(), px = new Uint8Array(W * H * 4); gl.readPixels(bx0, by0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
@@ -15083,7 +15087,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const onStreet = lk => { look = lk; dir = 'down'; hold(); try { draw3d(); } finally { back(); } return T3.bodyOn ? sigOf(T3.body) : null; };
                 const pvc = document.createElement('canvas'); pvc.width = 120; pvc.height = 160;
                 const inPreview = lk => { hold(); let ok; try { ok = typeof t3BodyPreview === 'function' && t3BodyPreview(pvc, lk, 0); } finally { back(); } return ok && T3.pv ? sigOf(T3.pv.body) : null; };
-                const base = saveLook({ ...look, ...LOOK, style: saveLook({}).style, body: {} });
+                const base = saveLook({ ...look, ...LOOK, style: kl.style, body: {} });
                 const CHG = [['his skin', { skin: '#8D5524' }], ['his hair\'s colour', { hair: '#2A9D8F' }], ['his shirt', { shirt: '#B03A48' }], ['his clothes', { outfit: 'formal' }],
                   ['the style of his hair', { style: 'afro' }], ['his beard', { body: { beard: 'goatee' } }], ['the shape of his head', { body: { face: 'oval' } }], ['the width of his nose', { body: { nosew: 1.5 } }]];
                 /* the change as the creator makes it, in the look it is handed: what is not his body written in (look[part]=col,
