@@ -752,6 +752,7 @@ const UIDEF={
     attempts:"attempts",foot:"Written by the game from your own play."},
   tpTitle:"🎫 Pass",
   tpNote:"Your game as a link. Scan the code with your other device's camera, or share the link to it — opening it there always asks first.",
+  tpBig:"This pass is too big for a code. Share the link or copy it instead.",
   tpShare:"📤 Share",tpCopy:"🔗 Copy link",tpCopied:"Link copied.",tpFoundLb:"🎫 A game came with this link",
   tpFoundTx:(n,x,d,q)=>`${n}'s game — ${x} XP, ${d} of ${q} ${q===1?"quest":"quests"}.`,
   tpReplace:n=>`Playing it replaces the game kept on this device (${n}).`,
@@ -808,6 +809,7 @@ const UIDEF={
     attempts:"intentos",foot:"Lo escribió el juego a partir de cómo jugaste."},
   tpTitle:"🎫 Pase",
   tpNote:"Tu partida como enlace. Escanea el código con la cámara de tu otro dispositivo, o compártele el enlace — al abrirlo allá, siempre te pregunta antes.",
+  tpBig:"Este pase ya es muy grande para un código. Mejor comparte el enlace o cópialo.",
   tpShare:"📤 Compartir",tpCopy:"🔗 Copiar enlace",tpCopied:"Enlace copiado.",tpFoundLb:"🎫 Este enlace trae una partida",
   tpFoundTx:(n,x,d,q)=>`La partida de ${n} — ${x} XP, ${d} de ${q} ${q===1?"misión":"misiones"}.`,
   tpReplace:n=>`Jugarla reemplaza la partida guardada en este dispositivo (${n}).`,
@@ -1039,8 +1041,13 @@ function sanitizeSave(s){
   const wearIn=k2=>{const o=(s[k2]&&typeof s[k2]==="object")?s[k2]:{};
     return{bandana:col(o.bandana),collar:col(o.collar),cape:col(o.cape)};};
   const d=Array.isArray(s.d)?[...new Set(s.d.map(v=>num(v,0,98,-1)).filter(v=>v>=0))]:[];
+  /* THE SCORES A SAVE KEEPS (mq-v265). This read the first 64 and dropped the rest without a word, in a game that has 60
+     quests and a side quest: with four quests more the side quest's score would be lost on every load, and with five
+     the newest quest's. A save numbers its quests from -1 (the side quest) to 98, a hundred scores at most, so 128 cannot cut
+     a real save of any world; the cap stays because a save can come in a link somebody else wrote.
+     The guard: test/engine.smoke.js, grep "THE PASS'S PANEL". */
   const qa={};
-  if(s.qa&&typeof s.qa==="object")Object.keys(s.qa).slice(0,64).forEach(k2=>{
+  if(s.qa&&typeof s.qa==="object")Object.keys(s.qa).slice(0,128).forEach(k2=>{
     const ki=num(k2,-1,98,null);if(ki!==null)qa[ki]=num(s.qa[k2],0,99,0);});
   /* cs (districts claimed), mk (grades) and so (opening toasts seen) were NOT carried
      through here, so every Continue reset the district counter to zero: the last ending
@@ -8593,12 +8600,25 @@ $("wdClose").addEventListener("click",()=>{$("wardrobe").hidden=true;});
    Share it to your other device, or scan the QR with its camera. ---------- */
 const b64u=s2=>btoa(unescape(encodeURIComponent(s2))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const unb64u=s2=>decodeURIComponent(escape(atob(s2.replace(/-/g,"+").replace(/_/g,"/"))));
+/* THE LONGEST PASS THE GAME READS (mq-v265). A pass is text somebody else may have written, and a link of any length was
+   decoded, read and washed before anything was asked of it. So the address is counted first, from its # on (where a world
+   is served from does not count), and a link longer than PASSMAX is refused whole, before a letter of it is matched or
+   decoded: the player sees what a link that cannot be read has always shown, the opening page and no card, and nothing
+   kept on the device changes.
+   WHY 16,384 CHARACTERS. Far above any real pass: measured 2026-11-14 in the game this repository serves, a pass is about
+   600 characters for a new game, 2,450 for a finished one and 2,740 with every paper, announcement and colour a game can
+   collect; with every quest number a save can hold and its lists of papers and announcements full it is 6,905.
+   Far below abuse: a browser carries an address over a hundred times longer (about two million characters in Chromium),
+   and that is the room this takes away.
+   The guard: test/engine.smoke.js, grep "THE PASS'S PANEL". */
+const PASSMAX=16384;
 function passURL(){
   save();
   const blob={v:1,l:lang,s:loadSave()};
   return location.href.replace(/#.*$/,"")+"#save="+b64u(JSON.stringify(blob)); /* href, not origin — file:// has origin "null" */
 }
 function readPass(){
+  if(location.hash.length>PASSMAX)return null;   /* too long to be a pass: refused whole, before a letter of it is matched or decoded */
   const m=location.hash.match(/#save=([A-Za-z0-9\-_]+)/);
   if(!m)return null;
   try{const j=JSON.parse(unb64u(m[1]));
@@ -8607,24 +8627,58 @@ function readPass(){
   return null;
 }
 function stripPassHash(){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
+/* THE PASS'S PANEL OPENS WHATEVER THE CODE DOES, AND THE CODE IS DRAWN IN WHOLE SCREEN PIXELS (mq-v265).
+   The library that draws the code throws when a link fits no code (2,953 characters is the most one holds). Nothing stood
+   round it, and the panel was shown only after the drawing: with a big game the Pass button did nothing at all, and Share
+   and Copy link, which need no code, were never offered. Now the code is made first and kept (passQR, nothing when it
+   cannot be made), the panel opens either way, and where no code could be made the panel hides the one an earlier
+   opening left and says so in one line, where the code would be (tpBig: the world's own word, or the engine's). A shell
+   written before that line has no place for it, so the engine makes one.
+   The code was also drawn one dot a square and stretched to 190 px by the stylesheet, which is never a whole number of
+   pixels a square. passDraw sizes it once the panel is on the screen, by the room the panel has: the inside width of its
+   box, and the tallest the box may grow less its padding and Close, so all of the code shows at once on a phone turned on
+   its side. Each square is the largest whole number of SCREEN pixels that fits. A phone has two or three screen pixels to
+   a pixel of the page, and counted in the page's pixels a finished game's code was 3 screen pixels a square on a phone
+   where 4 fit. The picture is drawn at exactly that size, one dot of it to a screen pixel, so nothing is stretched, and
+   its box is given that size in the page's pixels, which need not be a whole number of them (written on the element, so a
+   world whose own stylesheet still says 190 px gets the same code). The light border of four squares stays. A window
+   that changes size with the panel open is drawn again.
+   MEASURED 2026-11-14, at 1.25, 1.5, 2, 2.625 and 3 screen pixels to a pixel of the page: a browser really at the ratio
+   paints a box that is not a whole number of page pixels exactly, 19 of 19. A browser only told to pretend the ratio, as
+   a test's or a developer's tools do, paints such a box on the nearest whole page pixel, and the code comes out a pixel
+   or two wider or shorter (10 of 11): that is the pretending, not a screen.
+   The guard: test/engine.smoke.js, grep "THE PASS'S PANEL". */
+let passQR=null;
+function passDraw(){
+  const cv2=$("tpqr"),qr=passQR;
+  cv2.hidden=!qr;if(!qr)return;
+  const n=qr.getModuleCount(),q=4,sq=n+q*2,box=cv2.closest(".box")||cv2.parentElement,cs=getComputedStyle(box),f=v=>parseFloat(v)||0;
+  const wide=box.getBoundingClientRect().width-f(cs.borderLeftWidth)-f(cs.borderRightWidth)-f(cs.paddingLeft)-f(cs.paddingRight);
+  /* the tallest the box may grow counts only where the page says it in pixels. A share of the screen comes back as its own
+     number ("90%"), and read as pixels it left room for a code one dot a square; that, and no limit at all, is no limit here */
+  const tall=/px$/.test(cs.maxHeight)?f(cs.maxHeight):0;
+  const high=tall?tall-f(cs.borderTopWidth)-f(cs.borderBottomWidth)-f(cs.paddingTop)-f(cs.paddingBottom)-$("tpClose").getBoundingClientRect().height:wide;
+  const dp=window.devicePixelRatio||1,m=Math.max(1,Math.floor(Math.min(wide,high)*dp/sq)),px2=sq*m;   /* m and px2 are screen pixels */
+  cv2.width=px2;cv2.height=px2;cv2.style.width=cv2.style.height=(px2/dp)+"px";
+  const g=cv2.getContext("2d");
+  g.fillStyle="#FFF";g.fillRect(0,0,px2,px2);
+  g.fillStyle="#14121B";
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(qr.isDark(y,x))g.fillRect((x+q)*m,(y+q)*m,m,m);
+}
 function openPass(){
   const t=T(),url=passURL();
   $("tpTitle").textContent=t.tpTitle;$("tpNote").textContent=t.tpNote;
   $("tpShare").textContent=t.tpShare;$("tpCopy").textContent=t.tpCopy;$("tpClose").textContent=t.closeSet;
   $("tpShare").hidden=!navigator.share;
-  const cv2=$("tpqr");
-  if(typeof qrcode!=="undefined"){
-    const qr=qrcode(0,"L");qr.addData(url);qr.make();
-    const n=qr.getModuleCount(),q=4,px2=n+q*2;
-    cv2.width=px2;cv2.height=px2;
-    const g=cv2.getContext("2d");
-    g.fillStyle="#FFF";g.fillRect(0,0,px2,px2);
-    g.fillStyle="#14121B";
-    for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(qr.isDark(y,x))g.fillRect(x+q,y+q,1,1);
-    cv2.hidden=false;
-  }else cv2.hidden=true;
+  passQR=null;
+  if(typeof qrcode!=="undefined"){try{const qr=qrcode(0,"L");qr.addData(url);qr.make();passQR=qr;}catch(e){}}
+  let big=$("tpBig");
+  if(!big){big=document.createElement("p");big.id="tpBig";$("tpqr").after(big);}
+  big.textContent=t.tpBig;big.hidden=!!passQR||typeof qrcode==="undefined";
   $("settings").hidden=true;$("tpass").hidden=false;held=null;
+  passDraw();   /* after the panel is shown: the code is sized by the room the panel has */
 }
+window.addEventListener("resize",()=>{if(!$("tpass").hidden)passDraw();});
 $("openTp").addEventListener("click",openPass);
 $("openMp").addEventListener("click",()=>{const t=T();
   $("mpTitle").textContent=t.mpTitle;$("mpNote").textContent=t.mpNote;$("mpClose").textContent=t.closeSet;
