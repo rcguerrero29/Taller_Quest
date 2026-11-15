@@ -15207,7 +15207,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                       let n = 0; for (let j = 0; j < c.length; j++) { if (!SKINS.includes(c[j])) continue; const [x, y] = at(j), q = rows[y]; if (!q || (x - (q[0] + q[1]) / 2) * b.front <= 0 || (hf[y] !== undefined && (x - hf[y]) * b.front <= 0)) continue; n++; }
                       return n; };
                     const ok = d => { const b = B[d]; if (!b) return false;
-                      const fr = over(b, b.c, FACE).n, why = !(b.eye.n >= 20) ? 'his eye (' + b.eye.n + ' pixels)' : !b.front ? 'which way his face points' : !(b.nose >= 20) ? 'his nose (' + b.nose + ' pixels)' : !(fr >= 20) ? 'his face in front of his eye, below it (' + fr + ' pixels)' : null;
+                      const fr = over(b, b.c, FACE).n, why = !(b.eye.n >= 20) ? 'his eye (' + b.eye.n + ' pixels)' : !b.front ? 'which way his face points' : !(b.nose >= 20) ? 'his nose (' + b.nose + ' pixels)' : !(fr >= 20) ? 'his face in front of his eye, below it (' + fr + ' pixels)' : !(b.ear.n >= 20) ? 'his ear (' + b.ear.n + ' pixels)' : null;
                       if (why) { if (!b.said) P.push('on the ' + face + ' head, bald, facing ' + d + ', ' + why + ' could not be found on the screen, so whether each style and beard leaves his face showing from that side was not asked'); b.said = true; return false; }
                       return true; };
                     /* 6 · his neck from each side, under a head with a jaw */
@@ -15227,7 +15227,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                         const earFront = b.ear.n ? (b.front > 0 ? b.ear.x1 : b.ear.x0) : null, earBack = b.ear.n ? (b.front > 0 ? b.ear.x0 : b.ear.x1) : null;
                         for (let j = 0; j < c.length; j++) { if (!isHair(c[j])) continue; const [x, y] = at(j); if (y < b.eye.y0 || y > b.eye.y1) continue; const a = (x - b.eb) * b.front;
                           if (a > tol) fwd++; else if (a <= 0 && earBack !== null && a >= (earBack - b.eb) * b.front && (near === null || a > near)) near = a; }
-                        const ef = earFront === null ? null : (earFront - b.eb) * b.front, side = (st === START ? '' : '') + 'facing ' + d;
+                        const ef = earFront === null ? null : (earFront - b.eb) * b.front, side = 'facing ' + d;
                         said.push(d + ': hair over his face below his eye ' + pct(ff.s) + ', eye ' + pct(es) + ', nose ' + pct(ns) + ', at his temple ' + fwd + ' px in front of his eye, the hair nearest his eye at eye level ' + (near === null ? 'none' : (near / rpx).toFixed(2)) + ' (his ear\'s front ' + (ef === null ? '?' : (ef / rpx).toFixed(2)) + '), side face ' + pct(sf));
                         if (st === START) continue;   /* held to his card's share, in D */
                         const w = 'with the hair "' + st + '" on the ' + face + ' head, ' + side + ', ';
@@ -15238,7 +15238,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                         if (ef !== null && near !== null && near < ef - tol) P.push(w + 'the hair at his temple starts behind the front of his ear, so he looks as if he were losing his hair there');
                         if (near === null && q.ears !== 'show') P.push(w + 'no hair grows at his temple, between his eye and his ear, where this hair ' + (q.ears === 'cover' ? 'covers' : 'may cover') + ' his ears'); }
                       if (face === ROUND && bD) { const c = frame(st, { face }, 'down');
-                        if (c && bD.eye.n >= 20) { const e = [0, 0], z = [0, 0], mid = bD.hx; for (let j = 0; j < c.length; j++) { if (c[j] === EYE) e[(j % W) < mid ? 0 : 1]++; if (bD.c[j] === EYE) z[(j % W) < mid ? 0 : 1]++; }
+                        if (!c) P.push('with the hair "' + st + '" on the ' + face + ' head, facing you, he is not a jointed body in the camera, so his eyes were not asked');
+                        else if (!(bD.eye.n >= 20)) { if (!bD.said) P.push('on the ' + face + ' head, bald, facing you, his eyes could not be found on the screen (' + bD.eye.n + ' pixels), so whether each style leaves them showing was not asked'); bD.said = true; }
+                        else { const e = [0, 0], z = [0, 0], mid = bD.hx; for (let j = 0; j < c.length; j++) { if (c[j] === EYE) e[(j % W) < mid ? 0 : 1]++; if (bD.c[j] === EYE) z[(j % W) < mid ? 0 : 1]++; }
                           const r = e.map((v, i) => v / Math.max(1, z[i])); said.push('facing you: eyes ' + r.map(pct).join('/'));
                           if (st !== START && z[0] >= 10 && z[1] >= 10) { if (!q.bangs) r.forEach((v, i) => { if (v < 0.5) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + pct(v) + ' of it shows, and this hair has no bangs to lie over it'); });
                             else if ((e[0] + e[1]) < (z[0] + z[1]) / 10) P.push('facing you with the hair "' + st + '", his bangs hide both his eyes: ' + pct((e[0] + e[1]) / (z[0] + z[1])) + ' of them shows, where bangs leave some of them showing'); } } }
@@ -15247,15 +15249,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     /* 5 · each beard on the bald head, and the card's style "beard" */
                     const brow = [];
                     for (const w of KINDS.concat(offered ? ['the style'] : [])) { const said = [], full = w === 'beard' || w === 'the style', who = w === 'the style' ? 'the card\'s style "beard"' : 'the beard "' + w + '"';
-                      for (const d of ['right', 'left', 'down']) { if (d !== 'down' && !ok(d)) continue; const b = B[d]; if (!b) continue; const c = w === 'the style' ? frame('beard', { face }, d) : frame('bald', { face, beard: w }, d); if (!c) continue;
+                      for (const d of ['right', 'left', 'down']) { if (d !== 'down' && !ok(d)) continue; const b = B[d]; if (!b) continue;
+                        if (d === 'down' && !(b.eye.n >= 20 && b.mouth >= 10)) { if (!b.saidB) P.push('on the ' + face + ' head, bald, facing you, his ' + (b.eye.n >= 20 ? 'mouth (' + b.mouth : 'eyes (' + b.eye.n) + ' pixels) could not be found on the screen, so whether each beard leaves his face showing facing you was not asked'); b.saidB = true; continue; }
+                        const c = w === 'the style' ? frame('beard', { face }, d) : frame('bald', { face, beard: w }, d);
+                        if (!c) { P.push('with ' + who + ' on the ' + face + ' head, ' + (d === 'down' ? 'facing you' : 'facing ' + d) + ', he is not a jointed body in the camera, so his beard was not asked'); continue; }
                         const sd = d === 'down' ? 'facing you' : 'facing ' + d, es = count(c, EYE) / Math.max(1, b.eye.n), ns = count(c, NOSE) / Math.max(1, b.nose), cov = k => over(b, c, k);
                         const chin = cov(['CHIN']), jaw = cov(['JAW']), lip = cov(['LIP']);
                         said.push(sd + ': ' + (d === 'down' ? 'chin ' + pct(chin.s) + ', upper lip ' + pct(lip.s) + ', mouth ' + pct(count(c, MOUTH) / Math.max(1, b.mouth)) : 'jaw ' + pct(jaw.s)) + ', eye' + (d === 'down' ? 's ' : ' ') + pct(es) + ', nose ' + pct(ns));
                         const h = 'on the ' + face + ' head, ' + sd + ', ' + who + ' ';
                         if (es < (d === 'down' ? 0.9 : 0.5)) P.push(h + 'covers his eye' + (d === 'down' ? 's' : '') + ': ' + pct(es) + ' of ' + (d === 'down' ? 'them' : 'it') + ' shows, where with no beard it is all');
                         if (ns < 0.5) P.push(h + 'covers his nose: ' + pct(ns) + ' of it shows');
-                        if (d === 'down') { if (!(b.mouth >= 10)) P.push('on the ' + face + ' head, bald, facing you, his mouth could not be found on the screen (' + b.mouth + ' pixels), so whether a beard leaves it showing was not asked');
-                          else if (count(c, MOUTH) < b.mouth / 2) P.push(h + 'covers his mouth: ' + pct(count(c, MOUTH) / b.mouth) + ' of it shows, where a beard leaves his mouth showing');
+                        if (d === 'down') { if (count(c, MOUTH) < b.mouth / 2) P.push(h + 'covers his mouth: ' + pct(count(c, MOUTH) / b.mouth) + ' of it shows, where a beard leaves his mouth showing');
                           if (full || w === 'goatee') { if (!(chin.n >= 20)) P.push('on the ' + face + ' head, facing you, his chin could not be found on the screen, so whether ' + who + ' covers it was not asked'); else if (chin.s < 0.5) P.push(h + 'leaves his chin bare: ' + pct(chin.s) + ' of it is under it'); }
                           if (w === 'goatee' || w === 'moustache') { const need = w === 'moustache' ? 1 / 3 : 1 / 5;
                             if (!(lip.n >= 20)) P.push('on the ' + face + ' head, facing you, his upper lip could not be found on the screen, so whether ' + who + ' covers it was not asked');
