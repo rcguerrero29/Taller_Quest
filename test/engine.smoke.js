@@ -15208,52 +15208,72 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const s2 = await said(gr.key); if ((s2 || '').includes(CH)) q('after the way back, ' + where + ' still says "' + s2 + '"'); }
             if (!resets) q('no drawer of the creator was changed and put back, so its way back was not asked');
             /* A CHOICE THE HEAD HAS NO USE FOR IS KEPT (2026-11-14), walked as a person walks it, in each drawer that holds a
-               choice needing a jaw: from a new character's round head, a head with a jaw picked and that choice taken to its
-               end with the keyboard; the round head picked again (the choice gone from the drawer, the drawer saying nothing
-               changed and showing no way back; where the drawer has a measure the round head keeps, that one changed and put
-               back by the drawer's way back); the head with a jaw picked again (the choice where he left it, the drawer saying
-               "changed", its way back shown); and the way back pressed (the choice where a new character starts). The round
-               head is the face row's first word, as a new character starts; the head with a jaw is its next */
-            let walked = 0;
+               choice needing a jaw: from a new character's round head, a head with a jaw picked and EVERY choice in the drawer
+               that needs one taken to its end (2026-11-15; until then the first measure alone, so in the head's drawer one of
+               six): a measure by the keyboard, End (Home where it starts at its top), a word by a tap on the last word of its
+               row that is not where a new character starts; the round head picked again (each choice gone from the drawer,
+               the drawer saying nothing changed and showing no way back; where the drawer has a measure the round head keeps,
+               that one changed and put back by the drawer's way back); the head with a jaw picked again (each choice where he
+               left it, in his look and in its control, the drawer saying "changed", its way back shown); and the way back
+               pressed (each choice where a new character starts). A drawer that cannot be walked is named, and is a red.
+               The round head is the face row's first word, as a new character starts; the head with a jaw is its next */
+            let walked = 0, walkedRows = 0;
             { const W2 = await qp.evaluate(() => { const rows = bodyRows('person'), FR = rows.find(r => r.key === 'face');
                 if (!FR || FR.kind !== 'option') return null; const tabOf = g => (CRTABS.find(t => t.groups.some(x => x.key === g)) || {}).key;
                 const groups = [...new Set(rows.filter(r => r.needs === 'jaw').map(r => r.group || 'build'))];
                 const named = r => r && { ...r, name: bodyWord(r.key).toLowerCase() };
                 return { round: FR.def, jawed: FR.list.find(w => w !== FR.def), faceGroup: FR.group || 'build', faceTab: tabOf(FR.group || 'build'),
-                  groups: groups.map(g => ({ g, tab: tabOf(g), need: named(rows.find(r => (r.group || 'build') === g && r.needs === 'jaw' && r.kind === 'measure')), keep: named(rows.find(r => (r.group || 'build') === g && !r.needs && r.kind === 'measure')) })).filter(x => x.need) }; });
+                  groups: groups.map(g => ({ g, tab: tabOf(g), needs: rows.filter(r => (r.group || 'build') === g && r.needs === 'jaw').map(named), keep: named(rows.find(r => (r.group || 'build') === g && !r.needs && r.kind === 'measure')) })) }; });
               const fresh = () => qp.evaluate(() => { look = saveLook({ ...look, body: {} }); buildBodyRows(); if (typeof crDrawerSay === 'function') crDrawerSay(); });
+              /* where he takes each choice: a measure to the end away from where it starts, a word to the last of its row that is not where it starts */
+              const end = r => r.kind === 'measure' ? (r.max !== r.def ? r.max : r.min) : r.kind === 'option' && Array.isArray(r.list) ? r.list.filter(w => w !== r.def).pop() : undefined;
+              const shows = (r, v) => r.kind === 'measure' ? Number(v) === end(r) : v === end(r);
               if (!W2 || !W2.jawed) q('his head offers no shape with a jaw, so whether a choice the round head has no use for is kept was not asked');
-              else if (!W2.groups.length) q('no measure of his needs a jaw, so whether one the round head has no use for is kept was not asked');
-              else for (const { g, tab, need, keep } of W2.groups) {
+              else if (!W2.groups.length) q('no choice of his needs a jaw, so whether one the round head has no use for is kept was not asked');
+              else for (const { g, tab, needs, keep } of W2.groups) {
                 const where = 'the drawer "' + await qp.evaluate(k => { const e = document.querySelector('#group_' + k + ' .crdn'); return e ? e.textContent.trim() : k; }, g) + '"';
-                const st = () => qp.evaluate(([g, k]) => { const i = document.getElementById('body_' + k), r = document.getElementById('reset_' + g), d = document.querySelector('#group_' + g + ' .crds');
-                  return { row: !!i && i.getBoundingClientRect().height > 0, val: i ? i.value : null, kept: look.body[k], said: d ? d.textContent.trim() : '', back: !!r && !r.hidden && r.getBoundingClientRect().height > 0 }; }, [g, need.key]);
+                const these = needs.length > 1 ? 'the ' + needs.length + ' choices that need a jaw' : 'his ' + needs[0].name, them = needs.length > 1 ? 'them' : 'it';
+                if (!tab) { q(where + ' holds ' + these + ', and no tab of the creator holds that drawer, so it was not walked'); continue; }
+                const stuck = needs.filter(r => end(r) === undefined || end(r) === r.def);
+                if (stuck.length) { q(where + ' holds ' + stuck.map(r => 'his ' + r.name).join(', ') + ', which need' + (stuck.length > 1 ? '' : 's') + ' a jaw and which the walk cannot take anywhere from where a new character starts (a row that is not a measure or a word, or one with nowhere else to go), so the drawer was not walked'); continue; }
+                const st = () => qp.evaluate(([g, ks]) => { const r = document.getElementById('reset_' + g), d = document.querySelector('#group_' + g + ' .crds');
+                    /* a measure's control is its slider; a word's, the button of its row that is pressed */
+                    const ctl = k => { const i = document.getElementById('body_' + k); if (i) return { row: i.getBoundingClientRect().height > 0, val: i.value };
+                      const bs = [...document.querySelectorAll('#group_' + g + ' [data-choice="' + k + '"]')], on = bs.find(b => b.getAttribute('aria-pressed') === 'true');
+                      return { row: bs.some(b => b.getBoundingClientRect().height > 0), val: on ? on.dataset.word : null }; };
+                    return { rows: Object.fromEntries(ks.map(k => [k, { ...ctl(k), kept: look.body[k] }])), said: d ? d.textContent.trim() : '', back: !!r && !r.hidden && r.getBoundingClientRect().height > 0 }; }, [g, needs.map(r => r.key)]);
                 const open = async (t, k) => { await qp.click('#crtab_' + t); await rafs(qp, 1); if (!(await qp.evaluate(k => { const d = document.getElementById('group_' + k); return !!d && d.open; }, k))) await drawerAct(qp, 'group_' + k, () => qp.click('#group_' + k + ' > summary')); };
                 const face = async w => { await open(W2.faceTab, W2.faceGroup); await qp.click('#group_' + W2.faceGroup + ' [data-choice="face"][data-word="' + w + '"]'); await rafs(qp); await open(tab, g); };
                 await fresh(); await rafs(qp);
                 await face(W2.round); const s0 = await st();
-                if (s0.row) { q('on the ' + W2.round + ' head, ' + where + ' offers his ' + need.name + ', a choice that needs a jaw'); continue; }
+                { const on = needs.filter(r => s0.rows[r.key].row); if (on.length) { on.forEach(r => q('on the ' + W2.round + ' head, ' + where + ' offers his ' + r.name + ', a choice that needs a jaw')); continue; } }
                 await face(W2.jawed);
-                if (!(await st()).row) { q('on the ' + W2.jawed + ' head, ' + where + ' does not offer his ' + need.name); continue; }
-                await qp.focus('#body_' + need.key); await qp.keyboard.press('End'); await rafs(qp); const s1 = await st();
-                if (String(s1.kept) !== String(need.max)) { q('on the ' + W2.jawed + ' head, his ' + need.name + ' taken to its end with the keyboard is ' + s1.kept + ', where its end is ' + need.max); continue; }
+                { const s = await st(), off = needs.filter(r => !s.rows[r.key].row); if (off.length) { off.forEach(r => q('on the ' + W2.jawed + ' head, ' + where + ' does not offer his ' + r.name)); continue; } }
+                for (const r of needs) { if (r.kind === 'measure') { await qp.focus('#body_' + r.key); await qp.keyboard.press(end(r) === r.max ? 'End' : 'Home'); }
+                  else await qp.click('#group_' + g + ' [data-choice="' + r.key + '"][data-word="' + end(r) + '"]');
+                  await rafs(qp); }
+                const s1 = await st();
+                { const short = needs.filter(r => String(s1.rows[r.key].kept) !== String(end(r)));
+                  if (short.length) { short.forEach(r => q('on the ' + W2.jawed + ' head, in ' + where + ', his ' + r.name + ' taken to its end ' + (r.kind === 'measure' ? 'with the keyboard' : 'by a tap') + ' is ' + s1.rows[r.key].kept + ', where its end is ' + end(r))); continue; } }
                 await face(W2.round); const s2 = await st();
-                if (s2.row) q('back on the ' + W2.round + ' head, ' + where + ' still offers his ' + need.name + ', which that head has no use for');
+                needs.forEach(r => { if (s2.rows[r.key].row) q('back on the ' + W2.round + ' head, ' + where + ' still offers his ' + r.name + ', which that head has no use for'); });
                 if (s2.said.includes(CH)) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' says "' + s2.said + '": a choice it does not show is counted as changed');
                 if (s2.back) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' shows its way back');
                 if (keep) { await qp.focus('#body_' + keep.key); await qp.keyboard.press('End'); await rafs(qp);
                   if (!(await st()).back) q('on the ' + W2.round + ' head, with his ' + keep.name + ' changed, ' + where + ' shows no way back');
                   else { await qp.click('#reset_' + g); await rafs(qp); } }
                 await face(W2.jawed); const s3 = await st();
-                if (!s3.row) q('on the ' + W2.jawed + ' head again, ' + where + ' does not offer his ' + need.name);
-                else if (String(s3.kept) !== String(need.max) || Number(s3.val) !== need.max) q('on the ' + W2.jawed + ' head again, his ' + need.name + ' is ' + s3.kept + ' (the drawer shows ' + s3.val + '), where he left it at ' + need.max + (keep ? ', after the drawer\'s way back was pressed on the ' + W2.round + ' head' : '') + ': a choice the round head has no use for was not kept');
-                if (!s3.said.includes(CH)) q('on the ' + W2.jawed + ' head again, with his ' + need.name + ' where he left it, ' + where + ' says "' + s3.said + '", not "' + CH + '"');
-                if (!s3.back) q('on the ' + W2.jawed + ' head again, with his ' + need.name + ' changed, ' + where + ' shows no way back');
+                needs.forEach(r => { const x = s3.rows[r.key];
+                  if (!x.row) q('on the ' + W2.jawed + ' head again, ' + where + ' does not offer his ' + r.name);
+                  else if (String(x.kept) !== String(end(r))) q('on the ' + W2.jawed + ' head again, his ' + r.name + ' is ' + x.kept + ' (the drawer shows ' + x.val + '), where he left it at ' + end(r) + (keep ? ', after the drawer\'s way back was pressed on the ' + W2.round + ' head' : '') + ': a choice the round head has no use for was not kept');
+                  else if (!shows(r, x.val)) q('on the ' + W2.jawed + ' head again, his ' + r.name + ' is where he left it, ' + end(r) + ', but ' + where + ' shows it at ' + x.val + ': its control does not show the choice he has'); });
+                if (!s3.said.includes(CH)) q('on the ' + W2.jawed + ' head again, with ' + these + ' where he left ' + them + ', ' + where + ' says "' + s3.said + '", not "' + CH + '"');
+                if (!s3.back) q('on the ' + W2.jawed + ' head again, with ' + these + ' changed, ' + where + ' shows no way back');
                 else { await qp.click('#reset_' + g); await rafs(qp); const s4 = await st();
-                  if (String(s4.kept) !== String(need.def)) q('the way back in ' + where + ', pressed on the ' + W2.jawed + ' head, leaves his ' + need.name + ' at ' + s4.kept + ', where a new character starts at ' + need.def);
+                  needs.forEach(r => { if (String(s4.rows[r.key].kept) !== String(r.def)) q('the way back in ' + where + ', pressed on the ' + W2.jawed + ' head, leaves his ' + r.name + ' at ' + s4.rows[r.key].kept + ', where a new character starts at ' + r.def); });
                   if (s4.said.includes(CH)) q('after the way back in ' + where + ', it still says "' + s4.said + '"'); }
-                await fresh(); walked++; } }
-            if (walked && !QP.length) say(1, 'a choice the round head has no use for, walked in ' + walked + ' drawer(s): kept as he left it, not counted as changed, not put back by the way back while it is not offered');
+                await fresh(); walked++; walkedRows += needs.length; } }
+            if (walked && !QP.length) say(1, 'a choice the round head has no use for, walked for each of the ' + walkedRows + ' that need a jaw, in ' + walked + ' drawer(s): kept as he left it, not counted as changed, not put back by the way back while it is not offered');
             if (!QP.length) say(1, 'the creator on a phone: ' + S0.tabs.length + ' tabs, one panel shown, the arrows along them; every drawer opened by a tap and by Enter, one at a time; the drawer of his hair names his style, ' + resets + ' drawers say "changed" and go back by their way back; his preview and the tabs stay in view with ' + scrolled + ' panel(s) scrolled to the foot');
           }
           if (Q.errs.length) q('the creator threw "' + Q.errs[0] + '"');
