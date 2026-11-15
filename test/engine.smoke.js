@@ -15081,8 +15081,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    1 · EACH STYLE SAYS HOW FAR IT REACHES (beside K, above): what it allows is read from it here.
                    2 · FROM THE SIDE, HIS EYE, NOSE, MOUTH AND CHIN SHOW: below his eye, down to his chin, hair lies over no more
                        than a tenth of his face in front of his eye (his cheek there, his nose, his mouth and his chin: a stray
-                       lock's edge, not a lock); his nose shows at least half of what it shows bald (with bangs, the part of it below
-                       his eye: a fringe may lie over the rows of his eye, and the bridge of his nose is in them); and without bangs
+                       lock's edge, not a lock); his nose shows at least half of what it shows bald (with bangs, a quarter of the part
+                       of it below his eye: a fringe may lie over the rows of his eye, the bridge of his nose is in them, and a fringe
+                       over one whole eye hides some of his nose below it from the camera's height); and without bangs
                        his eye shows at least half (with bangs his eye is not asked: a fringe may lie over it).
                    3 · AT HIS TEMPLE THE HAIR STARTS AT THE OUTER CORNER OF HIS EYE OR BEHIND IT, AND IN FRONT OF HIS EAR: in the
                        rows of his eye, without bangs, hair in front of the eye's outer corner is no more than a quarter of what
@@ -15222,7 +15223,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     for (const st of HAIRSTYLES) { if (st === 'bald') continue; const q = reachOf(st); if (!q) continue; const said = [];
                       for (const d of ['right', 'left']) { if (!ok(d)) continue; const b = B[d], c = frame(st, { face }, d);
                         if (!c) { P.push('with the hair "' + st + '" on the ' + face + ' head, facing ' + d + ', he is not a jointed body in the camera, so his face was not asked'); continue; }
-                        /* with bangs, which may lie over the rows of his eye, his nose is asked below his eye only (its bridge is in those rows) */
+                        /* with bangs, which may lie over the rows of his eye, his nose is asked below his eye only (its bridge is in those rows),
+                           and a quarter of that is enough: a fringe over one whole eye hangs in front of his face, and from the camera's
+                           height it hides some of his nose below the eye (planted, 44% showed) */
                         const noseBelow = x => { let n = 0; for (let j = 0; j < x.length; j++) if (x[j] === NOSE && ((j / W) | 0) < b.eye.y0) n++; return n; }, nb0 = q.bangs ? noseBelow(b.c) : 0;
                         const ff = over(b, c, FACE), es = count(c, EYE) / b.eye.n, ns = q.bangs && nb0 >= 10 ? noseBelow(c) / nb0 : count(c, NOSE) / b.nose, sf = sideFace(b, c) / Math.max(1, b.face || (b.face = sideFace(b, b.c)));
                         /* in the rows of his eye: hair in front of the outer corner, and the hair nearest his eye behind it; his ear's front */
@@ -15235,7 +15238,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                         if (st === START) continue;   /* held to his card's share, in D */
                         const w = 'with the hair "' + st + '" on the ' + face + ' head, ' + side + ', ';
                         if (ff.s > 0.1) P.push(w + 'his hair hangs over his face in front of his eye: ' + pct(ff.s) + ' of his cheek, nose, mouth and chin below his eye is under hair, where below his eye no hair comes in front of it');
-                        if (ns < 0.5) P.push(w + 'his hair hides his nose: ' + pct(ns) + ' of it shows');
+                        if (ns < (q.bangs ? 0.25 : 0.5)) P.push(w + 'his hair hides his nose: ' + pct(ns) + ' of it' + (q.bangs ? ' below his eye' : '') + ' shows');
                         if (!q.bangs && es < 0.5) P.push(w + 'his hair hides his eye: ' + pct(es) + ' of it shows, and this hair has no bangs to lie over it');
                         if (!q.bangs && fwd > b.eye.n / 4) P.push(w + 'the hair at his temple comes in front of the outer corner of his eye: ' + fwd + ' pixels of it, where his eye shows in ' + b.eye.n + ', and this hair has no bangs');
                         if (ef !== null && near !== null && near < ef - tol) P.push(w + 'the hair at his temple starts behind the front of his ear, so he looks as if he were losing his hair there');
