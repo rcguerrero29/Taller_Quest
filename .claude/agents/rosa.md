@@ -105,6 +105,9 @@ Cover both games, all four cameras, both languages, both seasons and off, and at
 (390×560 and 390×844) *and* a wide desktop (1440×900). Several bugs in this project were visible
 at exactly one size.
 
+A screen only one world asks for (grep `TAKE=` in each pack) is walked in that world's shell, and its
+styles are read in that shell: a world with a page of its own carries its own `<style>`, not `shell.css`.
+
 ## What earns a finding
 
 Judgement, not an inventory. Problems that cost the player something: a control that cannot be

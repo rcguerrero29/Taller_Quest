@@ -701,26 +701,37 @@ async function played() {
 const LIMIT_S = 480;
 function demands() {
   const expectedPath = path.join(root, 'content', 'horno', 'expected.txt');
-  let out = '';
-  const t0 = Date.now();
-  try {
-    out = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', 'content/horno/index.html'],
-      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
-  } catch (e) {
-    out = (e.stdout || '') + (e.stderr || '');
-    if (e.code === 'ETIMEDOUT') {
-      console.log('FAIL — el horno\'s engine checks (node test/engine.smoke.js --index content/horno/index.html) timed out:');
-      console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes two to three minutes on GitHub\'s machine (on 2026-11-07, the gauge\'s three worlds took 112 s, 165 s and over 180 s), so they were stopped.');
-      console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
-      console.log('last thing it printed is where it stuck.');
-      console.log('--- the last thing the inner run printed ---');
-      console.log(out.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
-      return false;
+  /* in three parts, each with the whole stop (2026-11-14; test/gauge.js says why): the map, the bodies and the rest, each a run
+     of its own, each timed on its own line; together they ask exactly what one run asked. A part that ends without saying OK
+     or FAIL did not finish, and is a red of its own */
+  let out = '', hung = false;
+  for (const part of ['map', 'body', 'rest']) {
+    const t0 = Date.now(); let o = '';
+    try {
+      o = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', 'content/horno/index.html', '--part', part],
+        { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
+    } catch (e) {
+      o = (e.stdout || '') + (e.stderr || '');
+      if (e.code === 'ETIMEDOUT') {
+        console.log('FAIL — the part "' + part + '" of el horno\'s engine checks (node test/engine.smoke.js --index content/horno/index.html --part ' + part + ') timed out:');
+        console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where on 2026-11-14 the slowest part took about three minutes on a busy machine, so it was stopped.');
+        console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
+        console.log('last thing it printed is where it stuck.');
+        console.log('--- the last thing the inner run printed ---');
+        console.log(o.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+        hung = true; continue;
+      }
     }
+    console.log('  COUNT-ONLY: el horno: the part "' + part + '" of its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of its ' + LIMIT_S + ' s stop');
+    if (!/^(OK —|FAIL \()/m.test(o)) {
+      console.log('FAIL — the part "' + part + '" of el horno\'s engine checks never finished, so what it asks was not measured. The last thing it printed:');
+      console.log(o.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+      hung = true; continue; }
+    out += o + '\n';
   }
-  console.log('  COUNT-ONLY: el horno: its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of their ' + LIMIT_S + ' s stop');
-  const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
-    .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')).sort();
+  if (hung) return false;
+  const got = [...new Set(out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
+    .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')))].sort();   /* a line two parts both say is one demand */
   if (!/COUNT-ONLY|\bOK\b|^FAIL/m.test(out)) {
     console.log('FAIL — el horno never ran. The shared suite produced nothing at all, which is not');
     console.log('the same as finding nothing. This is a broken run, not an easier template.');

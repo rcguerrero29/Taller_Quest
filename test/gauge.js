@@ -168,28 +168,41 @@ if (process.argv.includes('--build-only')) process.exit(0);
 const LIMIT_S = 480;
 function measure(shell, expectedFile, label) {
 const expectedPath = path.join(root, 'content', 'gauge', expectedFile);
-let out = '';
-const t0 = Date.now();
-try {
-  out = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', shell],
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
-} catch (e) {
-  out = (e.stdout || '') + (e.stderr || '');
-  if (e.code === 'ETIMEDOUT') {
-    console.log('FAIL — ' + label + ' timed out: its engine checks (node test/engine.smoke.js --index ' + shell + ') were');
-    console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where a normal run takes three to six minutes on GitHub\'s machine (on 2026-11-12: 182 s, 286 s, and over 300 s for the furniture world), so they were stopped.');
-    console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
-    console.log('last thing it printed is where it stuck.');
-    console.log('--- the last thing the inner run printed ---');
-    console.log(out.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
-    return 1;
+/* IN THREE PARTS, EACH WITH THE WHOLE STOP (2026-11-14): the engine's checks grew again (his hair, head and creator), and the
+   furniture world took 440 s of its 480 s in one run. The limit stays; the run is split (test/engine.smoke.js, `--part`): the
+   map, the bodies, and the rest, one after the other, each a run of its own that must finish inside LIMIT_S, each timed on
+   its own line. The three ask together exactly what one run asked, so the demands below are the same lines. A part that
+   ends without saying OK or FAIL did not finish, and is a red of its own: its missing lines are not good news */
+let out = '', hung = false;
+for (const part of ['map', 'body', 'rest']) {
+  const t0 = Date.now(); let o = '';
+  try {
+    o = execFileSync('node', [path.join(root, 'test', 'engine.smoke.js'), '--index', shell, '--part', part],
+      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: LIMIT_S * 1000, killSignal: 'SIGKILL' });
+  } catch (e) {
+    o = (e.stdout || '') + (e.stderr || '');
+    if (e.code === 'ETIMEDOUT') {
+      console.log('FAIL — ' + label + ' timed out: the part "' + part + '" of its engine checks (node test/engine.smoke.js --index ' + shell + ' --part ' + part + ') was');
+      console.log('still running after ' + Math.round((Date.now() - t0) / 1000) + ' s, where on 2026-11-14 the slowest part took about three minutes on a busy machine, so it was stopped.');
+      console.log('This is a hung run, not a finding about the engine: run it again, and if it hangs again, the');
+      console.log('last thing it printed is where it stuck.');
+      console.log('--- the last thing the inner run printed ---');
+      console.log(o.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+      hung = true; continue;
+    }
   }
+  console.log('  COUNT-ONLY: ' + label + ': the part "' + part + '" of its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of its ' + LIMIT_S + ' s stop');
+  if (!/^(OK —|FAIL \()/m.test(o)) {
+    console.log('FAIL — ' + label + ': the part "' + part + '" of its engine checks never finished, so what it asks was not measured. The last thing it printed:');
+    console.log(o.trim().split('\n').slice(-12).join('\n') || '(it printed nothing at all)');
+    hung = true; continue; }
+  out += o + '\n';
 }
+if (hung) return 1;
 
-console.log('  COUNT-ONLY: ' + label + ': its engine checks took ' + Math.round((Date.now() - t0) / 1000) + ' s of their ' + LIMIT_S + ' s stop');
-const got = out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
+const got = [...new Set(out.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2).trim())
   // one line carries a live frame count; the number is noise, the fact is not
-  .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')).sort();
+  .map(l => l.replace(/drawn \d+ time\(s\)/, 'drawn N time(s)')))].sort();   /* a line two parts both say (a page error, a refusal) is one demand */
 
 /* A gauge that cannot RUN must never report that the template got easier.
    2026-09-16: the shared suite could not launch a browser (the container's chromium was a

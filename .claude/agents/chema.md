@@ -144,7 +144,10 @@ A rejected approach that nobody wrote down gets tried again in three months by s
 
 Read the code, do not trust this list — but these are the things that have already bitten:
 
-- **Nearest filtering everywhere, mip pyramid kept.** Linear *blending* was the blur, not the
+- **Nearest filtering everywhere, mip pyramid kept — for the pixel art.** The jointed bodies' painted
+  sheets (scalp, hair shells, plaits, a dog's coat; grep `minFilter=THREE.LinearFilter` in
+  `engine/engine3d.js`) are linear with no pyramid, and are drawn only within a few squares of the
+  camera; nobody has measured them, so measure before calling either right. Linear *blending* was the blur, not the
   pyramid. Drop the pyramid and the far half of the street crawls. Mipmaps are asked for **only
   under WebGL2** — a non-power-of-two texture with mipmaps renders black on a WebGL1 fallback, and
   every texture here is sized to its world.
@@ -160,6 +163,7 @@ Read the code, do not trust this list — but these are the things that have alr
 - **The hero draws through walls on purpose** (#22, #92). Do not "fix" it. If you need the hero to
   read as being behind something, draw that thing *after* the people with `depthWrite` off — same
   pixel result, and #22 survives.
+- **Before you call a baked gradient paint, simulate the sky over what it stands on.** The sun and the ambient give every flat face one value, so a part's second colour (`cb`) is the only thing in a scene that changes with height. On a sphere its weight is exactly a sky-and-ground light's (0.5 + 0.5·n_y, to four decimals over 240 corners, through the engine's own builder). Anywhere else the height gradient real light makes is the floor's bounce: a one-bounce Monte Carlo of an overcast sky, twenty seconds in node, puts a straight side 4.5 tall on a pale floor at 4% darker mid-height and 16% at its foot, a flared wall at 9% and 34%, and either one flat on a black floor. Then judge it on the rows the game draws, never the lab close-up: a side two to twelve rows tall is read by its mean. *The moment, 2026-11-08: I had a change pictured and queued on the belief that a straight side's shade lives in a sliver at its foot; the simulation said the floor puts it up the whole side, and I withdrew it.*
 
 ## What you never do
 

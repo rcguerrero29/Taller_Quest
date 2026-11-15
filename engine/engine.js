@@ -767,7 +767,15 @@ const UIDEF={
   zoomIn:"Zoom in",zoomOut:"Zoom out",
   body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
-    cut:"Hair shape",cut_cap:"Close to the head",cut_full:"Fuller",turnL:"Turn left",turnR:"Turn right"}},
+    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",
+    jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
+    eyesize:"Size of the eyes",eyegap:"Space between the eyes",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
+    mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Mustache",beardlen:"Length of the beard",
+    eyecol:"Color of the eyes",browcol:"Color of the brows",browcol_hair:"As the hair",tiecol:"Color of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
+    hairline:"Hairline: higher or lower",hairvol:"Height and fullness",braidlen:"Length of the braids",
+    group_outfit:"Outfit",group_fit:"Fit",group_skin:"Skin",group_head:"Shape of the head",group_eyes:"Eyes and brows",group_nose:"Nose and mouth",group_ears:"Ears",group_beard:"Beard",
+    group_cut:"Color and style",group_tune:"Hairline, fullness, length",group_build:"Build",group_neck:"Neck",
+    drawer_clothes:"Clothes",drawer_face:"Face",drawer_hair:"Hair",drawer_body:"Body",drawer_changed:"changed"}},
  es:{
   talkPre:"💬 ",
   quest:"Misión",followup:" · seguimiento",codexLb:"📜 La idea",okH:"✅ Buena decisión",midH:"◐ A medias",badH:"✕ Esta vez no",
@@ -817,7 +825,15 @@ const UIDEF={
   zoomIn:"Acercar",zoomOut:"Alejar",
   body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
-    cut:"Forma del pelo",cut_cap:"Pegado a la cabeza",cut_full:"Más abundante",turnL:"Girar a la izquierda",turnR:"Girar a la derecha"}}};
+    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",
+    jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",neckw:"Grosor del cuello",neckl:"Largo del cuello",cheeks:"Ancho de los pómulos",crown:"Altura del cráneo",skullw:"Ancho del cráneo",skulld:"Profundidad del cráneo",
+    eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
+    mouth:"Boca",mouth_line:"Línea",mouth_smile:"Sonrisa",mouth_none:"Sin boca",mouthw:"Ancho de la boca",beard_goatee:"Candado",beard_moustache:"Bigote",beardlen:"Largo de la barba",
+    eyecol:"Color de los ojos",browcol:"Color de las cejas",browcol_hair:"Como el pelo",tiecol:"Color de las ligas de las trenzas",tiecol_shade:"Como el pelo, más oscuro",reset:"Volver a como empezó",
+    hairline:"Nacimiento del pelo: más arriba o más abajo",hairvol:"Altura y volumen",braidlen:"Largo de las trenzas",
+    group_outfit:"Atuendo",group_fit:"Ajuste",group_skin:"Piel",group_head:"Forma de la cabeza",group_eyes:"Ojos y cejas",group_nose:"Nariz y boca",group_ears:"Orejas",group_beard:"Barba",
+    group_cut:"Color y estilo",group_tune:"Nacimiento, volumen, largo",group_build:"Complexión",group_neck:"Cuello",
+    drawer_clothes:"Ropa",drawer_face:"Cara",drawer_hair:"Pelo",drawer_body:"Cuerpo",drawer_changed:"cambiado"}}};
 const uiPlain=o=>!!o&&typeof o==="object"&&Object.getPrototypeOf(o)===Object.prototype;
 let UIAT=null;   /* the language object the engine's words were last laid beneath */
 function uiLay(){Object.keys(UIDEF).forEach(L=>{const o=UI[L],d=UIDEF[L];if(!uiPlain(o))return;
@@ -892,18 +908,68 @@ const BODYKINDS=Object.freeze(["person","dog"]);
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
 const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
 const BODYCHOICE=Object.freeze([
-  {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1},   /* how tall he is; his head stays the same share of him */
-  {key:"width",kind:"measure",min:0.6,max:1.35,step:0.05,def:1},     /* how wide his shoulders, chest and hips are */
-  {key:"limbs",kind:"measure",min:0.7,max:1.5,step:0.05,def:1},      /* how thick his arms and legs are */
-  {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1},      /* how big his head is */
-  {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1},        /* how far below his waist his shirt hangs */
-  {key:"sleeves",kind:"option",list:["long","short"],def:"long"},     /* long sleeves to the wrist, or short ones and bare arms */
-  {key:"cut",kind:"option",list:["cap","full"],def:"cap"}             /* the hair as a cap over the crown, or fuller */
+  /* each row says where the creator shows it: `group`, one of the groups of CRTABS (grep "THE CREATOR'S TABS") */
+  {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"build"},   /* how tall he is; his head stays the same share of him */
+  {key:"width",kind:"measure",min:0.6,max:1.35,step:0.05,def:1,group:"build"},     /* how wide his shoulders, chest and hips are */
+  {key:"limbs",kind:"measure",min:0.7,max:1.5,step:0.05,def:1,group:"build"},      /* how thick his arms and legs are */
+  {key:"head",kind:"measure",min:0.85,max:1.2,step:0.05,def:1,group:"build"},      /* how big his head is */
+  {key:"neckw",kind:"measure",min:0.75,max:1.3,step:0.05,def:1,group:"neck"},      /* how thick his neck is */
+  {key:"neckl",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"neck",needs:"jaw"},        /* how long his neck is (a head with a jaw) */
+  {key:"hang",kind:"measure",min:0.4,max:1.5,step:0.1,def:1,group:"fit"},          /* how far below his waist his shirt hangs */
+  {key:"sleeves",kind:"option",list:["long","short"],def:"long",group:"fit"},      /* long sleeves to the wrist, or short ones and bare arms */
+  {key:"face",kind:"option",list:["round","oval","square"],def:"round",group:"head"},   /* the shape of his head: the card's ball, or a head built as a skull is (mq-v265) */
+  {key:"jaw",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"head",needs:"jaw"},       /* how wide his jaw is (a head with a jaw: not the round one) */
+  {key:"chin",kind:"measure",min:0.7,max:1.2,step:0.05,def:1,group:"head",needs:"jaw"},        /* how long his jaw and chin are */
+  {key:"cheeks",kind:"measure",min:0.85,max:1.15,step:0.05,def:1,group:"head",needs:"jaw"},    /* how wide his cheekbones are */
+  {key:"crown",kind:"measure",min:0.9,max:1.12,step:0.02,def:1,group:"head",needs:"jaw"},      /* how high the top of his skull is */
+  {key:"skullw",kind:"measure",min:0.9,max:1.08,step:0.02,def:1,group:"head",needs:"jaw"},     /* how wide his skull is */
+  {key:"skulld",kind:"measure",min:0.92,max:1.12,step:0.02,def:1,group:"head",needs:"jaw"},    /* how deep his skull is, front to back */
+  {key:"eyesize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"eyes"},     /* how big his eyes are */
+  {key:"eyegap",kind:"measure",min:0.8,max:1.25,step:0.05,def:1,group:"eyes"},     /* how far apart his eyes are */
+  {key:"browthick",kind:"measure",min:0.5,max:2,step:0.1,def:1,group:"eyes"},      /* how thick his brows are */
+  {key:"browtilt",kind:"measure",min:0,max:2,step:0.1,def:1,group:"eyes"},        /* which way his brows slant: down to the outside, level, or up */
+  {key:"eyecol",kind:"option",swatch:true,list:["#1E1A22","#4A2E1A","#2F5D8A","#3F7A4A","#7A7F86"],def:"#1E1A22",group:"eyes"},   /* the colour of his eyes */
+  {key:"browcol",kind:"option",swatch:true,list:["hair","#1E1A22","#4A2E1A","#8A5A2B","#C9A24A","#8E8E93"],def:"hair",group:"eyes"},   /* his brows: as his hair a shade deeper, or a colour of their own */
+  {key:"noselen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"nose"},     /* how long his nose is */
+  {key:"nosew",kind:"measure",min:0.7,max:1.5,step:0.05,def:1,group:"nose"},       /* how wide his nose is */
+  {key:"noseout",kind:"measure",min:0.6,max:1.6,step:0.1,def:1,group:"nose"},      /* how far his nose stands out */
+  {key:"mouth",kind:"option",list:["line","smile","none"],def:"line",group:"nose"},/* his mouth: a line, a smile, or none as his card has */
+  {key:"mouthw",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"nose"},       /* how wide his mouth is */
+  {key:"ears",kind:"option",list:["round","pointed"],def:"round",group:"ears"},    /* the kind of ear he has (mq-v265) */
+  {key:"earsize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"ears"},     /* how big his ears are */
+  {key:"earup",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"ears"},       /* how high on his head his ears sit */
+  {key:"earback",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"ears"},     /* how far back on his head his ears sit */
+  {key:"earangle",kind:"measure",min:0,max:2.5,step:0.25,def:1,group:"ears"},      /* how far his ears stand off his head */
+  {key:"beard",kind:"option",list:["none","beard","goatee","moustache"],def:"none",group:"beard"},   /* a beard, apart from the hair's style (mq-v265), and its kind */
+  {key:"beardlen",kind:"measure",min:0.5,max:1.8,step:0.1,def:1,group:"beard"},    /* how long his beard is at the chin */
+  {key:"hairline",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"tune"},    /* how high on his brow his hair starts */
+  {key:"hairvol",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},     /* how tall or full the hair that stands off his head is (flat top, afro, curly, broccoli) */
+  {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},    /* how long his braids are */
+  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"}   /* the braids' ties: a deeper shade of his hair, or a colour */
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
 /* WHOSE ROW (mq-v263): a row belongs to one body, named by its `of` (one of BODYKINDS), and to the person where it does not
    say. Every reader takes its own body's rows through bodyRows, so a row added for a dog is not offered to a person */
+/* THE HAIR'S STYLE ON THE BODY (mq-v265). The style is the one the look already keeps (look.style, chosen on his card in
+   the creator), so the body reads it and has no hair choice of its own. HAIRSTYLES is every style the body can wear; a
+   look's style is cleaned to one of them where it is read (hairStyleOf): the card's `beard`, which is a beard and not a
+   haircut, is short hair on the body, and its beard is the body's own choice (beardOf); anything else is short hair too.
+   A style added later is a word here, its function in HAIRPART (engine/engine3d.js) and its reach in HAIRREACH below */
+const HAIRSTYLES=Object.freeze(["cap","long","curly","buzz","spiky","pony","afro","mohawk","braids","flat","buns","edgar","fade","mullet","broccoli","bald"]);
+/* HOW FAR EACH STYLE'S HAIR REACHES, as a real cut does (the owner's rule, 2026-11-15: his head is checked the way a real
+   head looks). `ears`: show where the cut leaves his ears showing, may where its length may fall over them, cover where
+   it covers them. `bangs`: true where a fringe may lie over his eyes, most of both and at times one whole eye. Data for the
+   checks of his face (test/engine.smoke.js, grep "HAIRREACH"), which ask each style what its reach allows; nothing is drawn
+   from it, and a style with no reach here is a red there */
+const HAIRREACH=Object.freeze(Object.fromEntries(Object.entries({
+  cap:["show",false],long:["cover",false],curly:["may",false],buzz:["show",false],spiky:["show",false],pony:["show",false],
+  afro:["cover",false],mohawk:["show",false],braids:["may",false],flat:["show",false],buns:["show",false],edgar:["show",true],
+  fade:["show",false],mullet:["show",false],broccoli:["show",true],bald:["show",false]
+}).map(([k,[ears,bangs]])=>[k,Object.freeze({ears,bangs})])));
+const hairStyleOf=lk=>{const s=lk&&typeof lk.style==="string"?lk.style:"";return HAIRSTYLES.includes(s)?s:"cap";};
+/* a beard on the body: where the body's own choice says so, or where the look's style is the card's `beard` */
+const beardOf=lk=>!!lk&&((lk.style==="beard")||(bodyChoicesOf(lk.body).beard!=="none"));
 const bodyRows=of=>BODYCHOICE.filter(r=>(r.of||"person")===(of||"person"));
 function bodyChoicesOf(raw,of){const o={},src=raw&&typeof raw==="object"?raw:{};
   bodyRows(of).forEach(r=>{const v=Object.prototype.hasOwnProperty.call(src,r.key)?src[r.key]:undefined;
@@ -925,7 +991,6 @@ function saveLook(lkIn){lkIn=(lkIn&&typeof lkIn==="object")?lkIn:{};
    today, write its part function (BODYPART for a person, DOGPART for a dog, engine/engine3d.js), and take it off this list.
    A kind of row the table does not have yet (`colour`) is added to bodyChoicesOf with the first row that needs it. */
 const BODYPLAN=Object.freeze([
-  {key:"style",of:"person",kind:"option",note:"the card's hair styles (look.style), each with at least a simple shape on the body"},
   {key:"top",of:"person",kind:"option",note:"more clothes above the waist, grouped by the type of garment (a shirt, a blouse); every type offered to every character, and no gender kept"},
   {key:"bottom",of:"person",kind:"option",note:"more clothes below the waist, grouped by the type of garment (trousers, a skirt, shorts); every type offered to every character, and no gender kept"},
   {key:"nose",of:"person",kind:"option",note:"a choice of noses"},
@@ -6472,7 +6537,7 @@ function buildOpts(rowId,list,key){
 }
 function pvDraw(){const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,22);
   g.clearRect(-6,-16,70,80);drawPerson(g,0,0,look,{dir:"down",hero:true});
-  if(BODYON)bodyPvDraw();}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER) */
+  if(BODYON){bodyPvDraw();crDrawerSay();}}   /* a world that takes the body shows his body beside his card (THE BODY BUILDER), and each drawer says what it holds */
 /* ---- THE BODY BUILDER (mq-v262): the creator's own controls for the body's choices, where the world takes the body ----
    The creator (and the chair, which is the same screen) gains, under the hair's style, one control for each row of the table
    of the body's choices (grep "THE BODY'S CHOICES"): a slider for a measure, held to its range and moved by its step, and a
@@ -6496,7 +6561,7 @@ let BODYCSS=null;
 function bodyCss(){if(BODYCSS!==null)return;BODYCSS=false;
   /* the ring round the control in focus. An adopted sheet, never a <style> written into the page (the page's policy refuses
      one); a browser that cannot adopt one keeps its own focus ring */
-  try{const s=new CSSStyleSheet();s.replaceSync(".bodyb .opt:focus-visible,.bodyb input[type=range]:focus-visible,.pvturn .opt:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}");
+  try{const s=new CSSStyleSheet();s.replaceSync(".bodyb .opt:focus-visible,.bodyb input[type=range]:focus-visible,.pvturn .opt:focus-visible,.crdrawer>summary:focus-visible,.crtab:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}");
     document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];BODYCSS=true;}catch(e){}}
 function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(!box)return null;
   const r=Math.min(3,Math.max(1,window.devicePixelRatio||1));
@@ -6512,17 +6577,69 @@ function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
     if(BODYPV.t)BODYPV.ang+=Math.min(0.1,(now-BODYPV.t)/1000)*0.8;BODYPV.t=now;bodyPvDraw();BODYPV.spin=requestAnimationFrame(step);};
   BODYPV.spin=requestAnimationFrame(step);}
+/* ---- THE CREATOR'S TABS AND DRAWERS (mq-v265): where the world takes the body, the creator's choices are sorted ----
+   The menu had grown far past a screen. It is now a short row of tabs (the few broad parts of him: clothes, face, hair,
+   body), which stays in view under his preview, and under the chosen tab one level of drawers, one for each group of
+   choices. A drawer, closed, is one line that says what is chosen inside; opened (by touch, or by Enter or Space on its
+   name: it is the browser's own <details>), it shows its choices, and opening one closes the others of its tab. Tabs
+   for the few parallel parts and one level of drawers under them, never a drawer inside a drawer: that is the usual
+   guidance for a long menu on a phone.
+   CRTABS is the table: each tab's key and its groups; a group's key, the rows the page already has that it holds (label
+   and row, by id), and what it says when closed where that is more than "changed". A row of BODYCHOICE goes in the group
+   its `group` names. So a new choice is a row in a table, a new group or tab a line here, with no other work.
+   For now, as today, only a world that takes the body gets them: every other world's creator is as it was */
+const crLabelOf=(list,val)=>{const e=(list||[]).find(x=>x[0]===val);return e?String(e[1]):"";};
+const CRTABS=Object.freeze([
+  {key:"clothes",groups:[{key:"outfit",rows:[["lbOutfit","rowOutfit"],["lbShirt","rowShirt"],["lbPattern","rowPattern"]],say:l=>({text:crLabelOf(T().outfits,l.outfit),dot:l.shirt})},{key:"fit"}]},
+  {key:"face",groups:[{key:"skin",rows:[["lbSkin","rowSkin"],["lbPaint","rowPaint"]],say:l=>({dot:l.skin})},{key:"head"},{key:"eyes"},{key:"nose"},{key:"ears"},{key:"beard"}]},
+  {key:"hair",groups:[{key:"cut",rows:[["lbHairC","rowHair"],["lbHairS","rowStyle"]],say:l=>({text:crLabelOf(T().styles,l.style),dot:l.hair})},{key:"tune"}]},
+  {key:"body",groups:[{key:"build"},{key:"neck"}]}
+].map(t=>Object.freeze({key:t.key,groups:Object.freeze(t.groups.map(g=>Object.freeze({key:g.key,say:g.say||null,rows:Object.freeze((g.rows||[]).map(r=>Object.freeze(r.slice())))})))})));
+const crGroups=()=>CRTABS.flatMap(t=>t.groups);
+const crSlotId=k=>k==="build"?"bodyRows":"groupRows_"+k;
+let crTab=null;
+function crShowTab(k){crTab=CRTABS.some(t=>t.key===k)?k:CRTABS[0].key;
+  CRTABS.forEach(t=>{const p=$("drawer_"+t.key),b=$("crtab_"+t.key),on=t.key===crTab;if(p)p.hidden=!on;if(b){b.setAttribute("aria-selected",on?"true":"false");b.tabIndex=on?0:-1;}});}
+/* make the tabs and drawers once and move the page's rows into them; answers each group's own slot for the table's rows, by key */
+function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody"),pv=cr&&cr.querySelector(".preview");if(!host)return null;const slots={};
+  cr.classList.add("drawers");
+  let bar=$("crTabs");if(!bar){bar=document.createElement("div");bar.id="crTabs";bar.className="crtabs";bar.setAttribute("role","tablist");(pv||host).appendChild(bar);
+    bar.addEventListener("keydown",e=>{if(e.key!=="ArrowRight"&&e.key!=="ArrowLeft")return;const i=CRTABS.findIndex(t=>t.key===crTab),n=CRTABS[(i+(e.key==="ArrowRight"?1:CRTABS.length-1))%CRTABS.length];
+      crShowTab(n.key);const b=$("crtab_"+n.key);if(b)b.focus();e.preventDefault();});}
+  CRTABS.forEach(Tb=>{let b=$("crtab_"+Tb.key),p=$("drawer_"+Tb.key);
+    if(!b){b=document.createElement("button");b.type="button";b.id="crtab_"+Tb.key;b.className="crtab";b.setAttribute("role","tab");b.setAttribute("aria-controls","drawer_"+Tb.key);b.addEventListener("click",()=>crShowTab(Tb.key));bar.appendChild(b);}
+    b.textContent=bodyWord("drawer_"+Tb.key);
+    if(!p){p=document.createElement("div");p.id="drawer_"+Tb.key;p.className="crpanel";p.setAttribute("role","tabpanel");p.setAttribute("aria-labelledby",b.id);host.appendChild(p);}
+    Tb.groups.forEach(G=>{let d=$("group_"+G.key);
+      if(!d){d=document.createElement("details");d.id="group_"+G.key;d.className="crdrawer";
+        const s=document.createElement("summary"),nm=document.createElement("span"),said=document.createElement("span");nm.className="crdn";said.className="crds";s.appendChild(nm);s.appendChild(said);d.appendChild(s);
+        G.rows.forEach(([l,r])=>{const a=$(l),c=$(r);if(a)d.appendChild(a);if(c)d.appendChild(c);});
+        const slot=document.createElement("div");slot.id=crSlotId(G.key);slot.className="bodyb";d.appendChild(slot);p.appendChild(d);
+        d.addEventListener("toggle",()=>{if(d.open)Tb.groups.forEach(o=>{const x=$("group_"+o.key);if(x&&x!==d)x.open=false;});});}
+      d.querySelector(".crdn").textContent=bodyWord("group_"+G.key);slots[G.key]=$(crSlotId(G.key));});});
+  const lb=$("crLooksLb");if(lb)lb.hidden=true;   /* the tabs' and drawers' names stand where the one heading stood */
+  crShowTab(crTab);return slots;}
+/* what each closed drawer says: a word or two and, where a colour is the choice, a dot of it; where the table says nothing
+   for a group, "changed" once any choice it offers is off its standard value */
+/* a choice may need something of the body before it is offered (today: a jaw, which the round head has none of). One table, so a new need
+   is one line here and the rows, the word "changed" and the way back all follow it. A choice not offered is kept as he left it. */
+const BODYNEED={jaw:b=>b.face!=="round"};
+function bodyRowShown(r,b){const f=r.needs&&BODYNEED[r.needs];return !f||!!f(b);}
+function crDrawerSay(){const b=bodyChoicesOf(look.body);crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;const said=d.querySelector(".crds");if(!said)return;
+    let v={};try{v=G.say?G.say(look)||{}:{};}catch(e){}
+    const ch=bodyRows("person").some(r=>(r.group||"build")===G.key&&bodyRowShown(r,b)&&b[r.key]!==r.def);
+    said.textContent=[v.text||"",ch?bodyWord("drawer_changed"):""].filter(Boolean).join(" · ");
+    const rb=$("reset_"+G.key);if(rb)rb.hidden=!ch;
+    if(v.dot&&/^#[0-9a-fA-F]{6}$/.test(v.dot)){const o=document.createElement("span");o.className="crdot";o.style.background=v.dot;o.setAttribute("aria-hidden","true");said.appendChild(o);}});}
 function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a world with no 3D camera never shows the body, so offers no builder */
   bodyCss();look.body=bodyChoicesOf(look.body);
-  let box=$("bodyRows");if(!box){box=document.createElement("div");box.id="bodyRows";box.className="bodyb";
-    const after=$("rowStyle"),host=after&&after.parentNode;
-    if(host)after.insertAdjacentElement("afterend",box);
-    else{const cr=$("creator");if(!cr)return;cr.insertBefore(box,$("begin")||null);}}
-  box.textContent="";
-  const head=document.createElement("p");head.className="crsec";head.textContent=bodyWord("title");box.appendChild(head);
+  const slots=crDrawers();if(!slots)return;
+  Object.keys(slots).forEach(k=>{slots[k].textContent="";});
   const big=el=>{el.style.minHeight="44px";el.style.minWidth="44px";return el;};
-  const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});pvDraw();};
-  bodyRows("person").forEach(row=>{const id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
+  const set=(k,v)=>{look.body=bodyChoicesOf({...look.body,[k]:v});
+    if(k==="face"){buildBodyRows();pvDraw();const b=document.querySelector('#creator [data-choice="face"][data-word="'+look.body.face+'"]');if(b)b.focus();}else pvDraw();};
+  bodyRows("person").forEach(row=>{if(!bodyRowShown(row,look.body))return;   /* a choice the round head has no use for is not offered on it */
+    const box=slots[row.group]||slots.build,id="body_"+row.key,lb=document.createElement("label");lb.id=id+"_lb";lb.textContent=bodyWord(row.key);box.appendChild(lb);
     if(row.kind==="measure"){lb.htmlFor=id;
       const wrap=document.createElement("div");wrap.className="row";
       const inp=document.createElement("input");inp.type="range";inp.id=id;inp.min=String(row.min);inp.max=String(row.max);inp.step=String(row.step||0.05);
@@ -6532,7 +6649,9 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
       wrap.appendChild(inp);box.appendChild(wrap);}
     else{const wrap=document.createElement("div");wrap.className="row";wrap.setAttribute("role","group");wrap.setAttribute("aria-labelledby",lb.id);
       row.list.forEach(w=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.choice=row.key;b.dataset.word=w;
-        b.textContent=bodyWord(row.key+"_"+w);b.setAttribute("aria-pressed",look.body[row.key]===w?"true":"false");
+        if(row.swatch&&/^#[0-9a-fA-F]{6}$/.test(w)){b.className="sw";b.style.background=w;b.setAttribute("aria-label",bodyWord(row.key)+" "+w);}   /* a colour is offered as a dot of it */
+        else b.textContent=bodyWord(row.key+"_"+w);
+        b.setAttribute("aria-pressed",look.body[row.key]===w?"true":"false");
         b.addEventListener("click",()=>{set(row.key,w);[...wrap.children].forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));});
         wrap.appendChild(b);});
       box.appendChild(wrap);}});
@@ -6544,7 +6663,15 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
     tr.textContent="";
     [["turnL",-1],["turnR",1]].forEach(([k,s])=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.turn=String(s);
       b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);});}
-  bodySpin();}
+  /* a drawer with nothing to show in it (its rows hidden by this world, and none from the table) is not shown */
+  /* each drawer that holds rows of the table ends with a way back to how its choices started, shown once one has changed */
+  crGroups().forEach(G=>{const mine=bodyRows("person").filter(r=>(r.group||"build")===G.key);if(!mine.length||!slots[G.key].children.length)return;
+    const b=big(document.createElement("button"));b.type="button";b.className="opt crreset";b.id="reset_"+G.key;b.textContent="↺ "+bodyWord("reset");
+    b.addEventListener("click",()=>{const o={...look.body};mine.forEach(r=>{if(bodyRowShown(r,look.body))o[r.key]=r.def;});look.body=bodyChoicesOf(o);buildBodyRows();pvDraw();const s=$("group_"+G.key);if(s){const f=s.querySelector("summary");if(f)f.focus();}});
+    slots[G.key].appendChild(b);});
+  crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;
+    d.hidden=!(slots[G.key].children.length||G.rows.some(([,r])=>{const e=$(r);return e&&!e.hidden;}));});
+  crDrawerSay();bodySpin();}
 $("pvtog").addEventListener("click",()=>{const bx=$("pvbox");bx.classList.toggle("dark");
   $("pvtog").textContent=bx.classList.contains("dark")?"☀️":"🌙";});
 /* Every return to the street goes through here. A save that booted straight into an
