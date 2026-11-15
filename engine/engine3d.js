@@ -1661,19 +1661,24 @@ const HAIRPART={
   /* LONG: it grows from the whole scalp, parts down the middle of the crown and falls by its own weight: a curtain each
      side of the face that leaves the brow, the eyes and the jaw open and comes to rest on the front of the shoulder, and
      a sheet behind from the crown to the shoulder blades. Its length past the shoulders is what names it. The scalp under
-     it is painted, so no skin shows between locks; each lock is one tapered ribbon from the parting over the skull and
-     down, wide in its fall and thin at its tip, a little different from its neighbour in width, length and shade */
+     it is painted, so no skin shows between locks; over the paint the hair lies as one mass, fullest on top and at the
+     crown, and the locks lie on that mass: each one tapered ribbon from the parting over the head and down, close to the
+     head while it is on it, wide in its fall and thin at its tip, a little different from its neighbour in width, length
+     and shade */
   long(M){M.ears.forEach(e=>{e.visible=false;});   /* long hair falls over his ears */
     const{part,r,hc}=M;
     let sd=7031;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd/4294967296;};
     const V=(x,y,z)=>new THREE.Vector3(x*r,hc+y*r,z*r);
     const back=x=>-(1.21*Math.sqrt(Math.max(0.05,1-(x/1.43)*(x/1.43)))+0.14);   /* where his back is, behind his shoulders, at this far from his middle */
-    const lock=(P,wid,thk,col,tip)=>{const cv=new THREE.CatmullRomCurve3(P.map(p=>V(p[0],p[1],p[2]))),N=18,K=8,pos=[],idx=[];
+    const lock=(P,wid,thk,col,tip)=>{const cv=new THREE.CatmullRomCurve3(P.map(p=>V(p[0],p[1],p[2]))),N=18,K=8,pos=[],idx=[],H=new THREE.Vector3(0,hc,0);
       for(let i=0;i<=N;i++){const t=i/N,c=cv.getPoint(t),T=cv.getTangent(t).normalize();
         const o=new THREE.Vector3(c.x,Math.max(0,c.y-hc),c.z);if(o.lengthSq()<1e-9)o.set(0,1,0);o.normalize();
         const n=o.clone().addScaledVector(T,-o.dot(T));if(n.lengthSq()<1e-6)n.set(0,0,-1);n.normalize();const b=new THREE.Vector3().crossVectors(T,n);
-        const f=Math.min(1,0.35+t*4)*(t>0.72?1-(1-tip)*(t-0.72)/0.28:1),w=wid*r*f,k=thk*r*Math.min(1,0.5+t*3)*(t>0.8?1-0.6*(t-0.8)/0.2:1);
-        for(let j=0;j<K;j++){const a=j/K*Math.PI*2;pos.push(c.x+n.x*k*Math.cos(a)+b.x*w*Math.sin(a),c.y+n.y*k*Math.cos(a)+b.y*w*Math.sin(a),c.z+n.z*k*Math.cos(a)+b.z*w*Math.sin(a));}}
+        const f=Math.min(1,0.35+t*4)*(t>0.72?1-(1-tip)*(t-0.72)/0.28:1),w=wid*r*f,k=thk*r*(0.45+0.55*hsm(0.2,0.55,t))*(t>0.8?1-0.6*(t-0.8)/0.2:1);
+        const L=c.distanceTo(H),wr=hsm(0.55,0.3,t);   /* on the head (wr 1) the ribbon is bent round the head's centre across its width; hanging free (wr 0) it is flat */
+        for(let j=0;j<K;j++){const a=j/K*Math.PI*2,p=c.clone().addScaledVector(b,w*Math.sin(a)),d=p.clone().sub(H),l=d.length();
+          if(l>1e-6)p.copy(H).addScaledVector(d,1+(L/l-1)*wr);const m=n.clone().lerp(d.normalize(),wr).normalize();
+          pos.push(p.x+m.x*k*Math.cos(a),p.y+m.y*k*Math.cos(a),p.z+m.z*k*Math.cos(a));}}
       for(let i=0;i<N;i++)for(let j=0;j<K;j++){const a=i*K+j,b2=i*K+(j+1)%K,c2=a+K,d=b2+K;idx.push(a,c2,b2,b2,c2,d);}
       const e0=cv.getPoint(0),e1=cv.getPoint(1);pos.push(e0.x,e0.y,e0.z,e1.x,e1.y,e1.z);const A=(N+1)*K,B=A+1;
       for(let j=0;j<K;j++){idx.push(A,j,(j+1)%K);idx.push(B,N*K+(j+1)%K,N*K+j);}
@@ -1686,17 +1691,53 @@ const HAIRPART={
        too far back (balding, he said, most on a head with a jaw). So the temples' hair comes down to about the top of his
        cheekbone, beside his eye, and no lower; and on a head with a jaw, whose paint is moved down to its lower eyes less at
        the sides than in front, the temples are brought down by the difference */
-    {const hl=hairEdge(HAIRLINE),cheek=0.36;
-    M.lay((x,y,z)=>{const top=0.8-0.22*Math.min(1,Math.abs(x)/0.6),az=Math.atan2(Math.abs(x),z)*180/Math.PI,under=hsm(70,84,az),
+    const hl=hairEdge(HAIRLINE),cheek=0.36,line=(x,z)=>{const top=0.8-0.22*Math.min(1,Math.abs(x)/0.6),az=Math.atan2(Math.abs(x),z)*180/Math.PI,under=hsm(70,84,az),
         temple=Math.min(hl(x,z),cheek)-M.brow*(1-hsm(-0.1,0.5,z)),
         front=z>0.7?top:z>0.6?temple+(top-temple)*(z-0.6)/0.1:temple;
-      return hsm(-0.015,0.015,y-(front*(1-under)-0.6*under));});}
+      return front*(1-under)-0.6*under;};
+    M.lay((x,y,z)=>hsm(-0.015,0.015,y-line(x,z)));
+    /* THE HAIR OVER THE TOP IS ONE MASS, AND HAS VOLUME. Every hair from the brow back is combed over the crown before it
+       parts into locks, so on the head it lies as one mass: fullest on top and at the crown, where the most hair lies one
+       over another, thinner down the sides where the locks take it, and thinning to nothing at the hairline, where only its
+       first row lies. Until 2026-11-15 there was only paint in front of the locks' roots, and the locks stood off the skull
+       behind it, so from the side the outline stepped down in front of them. The mass is a shell, as the short cap's is.
+       Its thickness grows with how far a spot lies behind the hairline, walked from the spot towards the middle of his face
+       until the hair ends (so the steep line at his temples thins it as gently as the line over his brow, and no rim stands
+       at its edge), and with how high on his head the spot is. The parting is a shallow groove in it and a darker line on its
+       sheet, and the sheet's strands run out from the parting to each side and a little back, as the hair is combed */
+    const edge=(x,y,z)=>{const l=Math.hypot(x,y,z);return y/l-line(x/l,z/l);},   /* how far into the hair a spot is, as the paint has it, for a spot as a shell is handed it (moved down with the brow, not yet a unit) */
+      above=(x,y,z)=>{const l=Math.hypot(x,y,z);x/=l;y/=l;z/=l;return edge(x,y+M.brow*hsm(-0.1,0.5,z),z);},
+      fromLine=(x,y,z)=>{const l=Math.hypot(x,y,z);x/=l;y/=l;z/=l;let e0=above(x,y,z);if(e0<=0)return 0;
+        const th=Math.acos(Math.max(-1,Math.min(1,z))),q=Math.sin(th);if(q<1e-4)return 0;
+        for(let s=0.04;s<0.42&&s<th;s+=0.04){const a=Math.sin(th-s)/q,b=Math.sin(s)/q,e1=above(a*x,a*y,a*z+b);
+          if(e1<=0)return s-0.04*e1/(e1-e0);e0=e1;}
+        return 0.42;};
+    const mass=(x,y,z)=>{const yt=y-M.brow*hsm(-0.1,0.5,z),groove=1-0.5*Math.exp(-Math.pow(x/0.05,2))*hsm(-0.5,-0.2,z)*hsm(0.6,0.85,yt);
+        const up=hsm(0.15,0.75,yt),crown=hsm(0.1,-0.4,z);
+        return hsm(0,0.35,fromLine(x,yt,z))*(0.025+up*(0.09+0.03*crown))*groove;},
+      rise=(x,y,z)=>hairRise(4*(edge(x,y,z)-0.015),mass(x,y,z));   /* it rises where the paint is wholly hair, and below that it is under the skin at once, so no edge of it shows through the skull */
+    const shell=M.shell(rise,{tex:(g,w,h)=>{const rnd=hairRnd(29),dk=shadeHex(M.hair,-0.13),lt=shadeHex(M.hair,0.08);g.lineWidth=1.5;
+        for(let i=0;i<420;i++){const s=rnd()<0.5?-1:1,u=rnd()*w,v=h/2+s*rnd()*h*0.45,l=h*(0.1+0.22*rnd());
+          g.globalAlpha=0.25+0.3*rnd();g.strokeStyle=i%3?dk:lt;g.beginPath();g.moveTo(u,v);g.lineTo(u+0.3*l,v+s*l);g.stroke();}
+        const pg=g.createLinearGradient(w*0.3,0,w*0.62,0);pg.addColorStop(0,"rgba(0,0,0,0)");pg.addColorStop(0.25,"rgba(0,0,0,0.35)");pg.addColorStop(0.8,"rgba(0,0,0,0.35)");pg.addColorStop(1,"rgba(0,0,0,0)");
+        g.globalAlpha=1;g.strokeStyle=pg;g.lineWidth=2.5;g.beginPath();g.moveTo(w*0.3,h/2);g.lineTo(w*0.62,h/2);g.stroke();},seg:72,rows:48});
+    /* where no hair grows the shell lies a tenth of a radius under his skin, and even there it showed through his face in
+       the preview as specks: so the shell keeps only the triangles with a corner where hair is */
+    {const g=shell.geometry,p=g.attributes.position,ix=g.index.array,v=new THREE.Vector3(),under=[],keep=[];
+      for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();under.push(rise(v.x,v.y+M.brow*hsm(-0.1,0.5,v.z),v.z)<=0.9);}
+      for(let t=0;t<ix.length;t+=3)if(!(under[ix[t]]&&under[ix[t+1]]&&under[ix[t+2]]))keep.push(ix[t],ix[t+1],ix[t+2]);
+      g.setIndex(keep);}
+    const over=(x,y,z)=>{const l=Math.hypot(x,y,z);x/=l;y/=l;z/=l;return M.face(x,y,z)+Math.max(0.9,rise(x,y+M.brow*hsm(-0.1,0.5,z),z))-1;};   /* how far out the mass's surface is along a direction, in head radii, as M.shell sets it */
     /* what is seen between the curtains, behind his neck: the underside of the sheet, in shadow */
     {const g=new THREE.CylinderGeometry(1,1,1,16,1,true,Math.PI*0.5,Math.PI);
       const m=part("head",g,"hair",shadeHex(M.hair,-0.14),0,hc-1.75*r,-0.1*r,[0.95*r,2.1*r,0.95*r]);m.material.side=THREE.DoubleSide;}
-    /* a lock by where it leaves the head (the way round from his face, 0, to the back of his head, pi) */
+    /* a lock by where it leaves the head (the way round from his face, 0, to the back of his head, pi). Where it is on
+       his head it lies on the mass: its root and the points over his head are lifted onto the mass's surface, it is thin
+       there and bent round the head across its width (a flat ribbon's edges stood off a round head and bunched at the
+       parting), and it takes its full thickness and lies flat once it hangs free of the head */
     const fall=(az,sx,kind,nw)=>{const dx=Math.sin(az)*sx,dz=Math.cos(az),R=1.07,zr=kind==="back"?-0.3:0.62-0.5*az/Math.PI*2;
       const P=[kind==="back"?[dx*0.12,1.02,zr+dz*0.12]:[0.02*sx,0.98,zr]];[0.38,0.75,1.12].forEach(a=>{const k=1-a/1.3;P.push([dx*Math.sin(a)*R,Math.cos(a)*R+0.02,zr*k+dz*Math.sin(a)*R]);});
+      for(let i=0;i<4;i++){const p=P[i],l=Math.hypot(p[0],p[1],p[2]),s=over(p[0],p[1],p[2])+0.005;if(l<s)P[i]=p.map(v=>v*s/l);}
       const len=rnd(),wj=0.9+rnd()*0.25;let wid,tip=0.35;
       if(kind==="front"){P.push([dx*1.1,-0.35,dz*1.1+0.02],[sx*1.0,-1.05,Math.max(dz*1.1+0.02,0)+0.08],[sx*0.92,-1.75,0.9],[sx*0.84,-2.25-0.3*len,1.0]);wid=0.3;}   /* it falls straight past his jaw by its own weight, and only the shoulder brings it forward */
       else if(kind==="side"){const xe=0.98+0.1*len;P.push([dx*1.12,-0.4,dz*1.1-0.08],[sx*1.08,-1.15,-0.95],[sx*xe,-1.9,back(xe)+0.02],[sx*xe*0.96,-2.85-0.3*len,back(xe)-0.02]);wid=0.34;}
