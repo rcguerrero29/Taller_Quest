@@ -15216,6 +15216,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                that one changed and put back by the drawer's way back); the head with a jaw picked again (each choice where he
                left it, in his look and in its control, the drawer saying "changed", its way back shown); and the way back
                pressed (each choice where a new character starts). A drawer that cannot be walked is named, and is a red.
+               While the round head is picked, each choice is still in his look where he left it (2026-11-15), as a save made
+               then keeps it, and not only once a head with a jaw is picked again.
                The round head is the face row's first word, as a new character starts; the head with a jaw is its next */
             let walked = 0, walkedRows = 0;
             { const W2 = await qp.evaluate(() => { const rows = bodyRows('person'), FR = rows.find(r => r.key === 'face');
@@ -15257,6 +15259,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (short.length) { short.forEach(r => q('on the ' + W2.jawed + ' head, in ' + where + ', his ' + r.name + ' taken to its end ' + (r.kind === 'measure' ? 'with the keyboard' : 'by a tap') + ' is ' + s1.rows[r.key].kept + ', where its end is ' + end(r))); continue; } }
                 await face(W2.round); const s2 = await st();
                 needs.forEach(r => { if (s2.rows[r.key].row) q('back on the ' + W2.round + ' head, ' + where + ' still offers his ' + r.name + ', which that head has no use for'); });
+                needs.forEach(r => { const k = s2.rows[r.key].kept; if (String(k) !== String(end(r))) q('back on the ' + W2.round + ' head, his ' + r.name + ' is ' + k + ' in his look, where he left it at ' + end(r) + ' on the ' + W2.jawed + ' head: a choice the round head has no use for is not kept while that head is picked, so a save made then loses it'); });
                 if (s2.said.includes(CH)) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' says "' + s2.said + '": a choice it does not show is counted as changed');
                 if (s2.back) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' shows its way back');
                 if (keep) { await qp.focus('#body_' + keep.key); await qp.keyboard.press('End'); await rafs(qp);
@@ -15273,7 +15276,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   needs.forEach(r => { if (String(s4.rows[r.key].kept) !== String(r.def)) q('the way back in ' + where + ', pressed on the ' + W2.jawed + ' head, leaves his ' + r.name + ' at ' + s4.rows[r.key].kept + ', where a new character starts at ' + r.def); });
                   if (s4.said.includes(CH)) q('after the way back in ' + where + ', it still says "' + s4.said + '"'); }
                 await fresh(); walked++; walkedRows += needs.length; } }
-            if (walked && !QP.length) say(1, 'a choice the round head has no use for, walked for each of the ' + walkedRows + ' that need a jaw, in ' + walked + ' drawer(s): kept as he left it, not counted as changed, not put back by the way back while it is not offered');
+            if (walked && !QP.length) say(1, 'a choice the round head has no use for, walked for each of the ' + walkedRows + ' that need a jaw, in ' + walked + ' drawer(s): kept as he left it while the round head is picked and when a head with a jaw comes back, not counted as changed, not put back by the way back while it is not offered');
             if (!QP.length) say(1, 'the creator on a phone: ' + S0.tabs.length + ' tabs, one panel shown, the arrows along them; every drawer opened by a tap and by Enter, one at a time; the drawer of his hair names his style, ' + resets + ' drawers say "changed" and go back by their way back; his preview and the tabs stay in view with ' + scrolled + ' panel(s) scrolled to the foot');
           }
           if (Q.errs.length) q('the creator threw "' + Q.errs[0] + '"');
