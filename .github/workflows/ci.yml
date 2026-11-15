@@ -236,7 +236,8 @@ jobs:
   # 182 s, 286 s and more than 300 s on 2026-11-12). One world failing does not stop the other two.
   gauge:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 35 min: test/gauge.js runs its world in three parts one after another, each stopped at 480 s (24 min), plus setup
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -267,7 +268,8 @@ jobs:
   # PART: the oven world
   horno:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 35 min: test/horno.js runs the oven world in three parts one after another, each stopped at 480 s (24 min), plus setup
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
