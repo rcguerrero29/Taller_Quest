@@ -14762,6 +14762,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
            P · HIS HAIRLINE: over the middle of his brow the hair starts lower on a head with a jaw than on the round head,
                counted from his eyes, for every style that has hair (from 2026-11-15; until then a style painted on the skin, the
                buzz, and one that stands off it, the short cap); and the hairline's measure moves where it starts.
+           S · LONG HAIR HAS VOLUME OVER THE TOP (2026-11-15): from each side, its outline over his head stands above the bald
+               head's from his hairline back to his crown, and grows gradually from the hairline with no step.
            Q · THE CREATOR ON A PHONE (390 by 844): one tab for each of the table's tabs, exactly one panel shown, the arrows
                moving along the tabs; each drawer opened by a tap and by Enter, opening one shutting the others of its tab; a
                shut drawer saying what is chosen in it (the style of hair by its name; "changed" once a choice in it is off
@@ -14771,14 +14773,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
            R · WHAT HE COSTS: a body for every style on every shape of head, with a beard, is made without an error and is no
                more than BODYTRIS triangles (measured on mq-v265: the heaviest, the braids with a beard on a head with a jaw,
                about 40,700; the braids alone 37,604, the next heaviest 22,636). */
-      /* K, L, M, N, O, P AND R ARE ASKED IN THE GAME'S OWN WORLD ONLY (2026-11-14). They make his body with the engine's own makers
+      /* K, L, M, N, O, P, R AND S ARE ASKED IN THE GAME'S OWN WORLD ONLY (2026-11-14). They make his body with the engine's own makers
          (bodySkeleton, bodyMake) from a look this check writes in full (skin, hair, shirt, clothes, pattern, style, every choice of
          the body), and ask nothing of the street, the camera, the light or the creator: the pack files of any world load before
          the engine (each shell's script order), so none can declare a name the engine declares, and what they make is the engine's
          alone. Run in every world, they gave the same answer at about 20 s each time. The body a world actually draws is still
          asked in every world: by D, F and the camera's look beside K (his hair, ears, neck, eyes and face on its own street).
          `--index index.html`, the game, is the run that asks them (the engine's own part of the public check) */
-      if (path.resolve(file) !== path.resolve(root, 'index.html')) say(1, 'his hair, head and face made by the engine alone (K to R) are asked in the game\'s own world, index.html, and not again in this one: the world cannot change what the engine makes from a look the check writes in full');
+      if (path.resolve(file) !== path.resolve(root, 'index.html')) say(1, 'his hair, head and face made by the engine alone (K to S) are asked in the game\'s own world, index.html, and not again in this one: the world cannot change what the engine makes from a look the check writes in full');
       else { const K = await page4(doc, null, null, true);
         try { const R = await K.p.evaluate(() => { const P = [], N = [];
             if (typeof HAIRSTYLES === 'undefined' || !Array.isArray(HAIRSTYLES) || !HAIRSTYLES.length) { P.push('the engine keeps no list of the styles of hair his body can wear, so his hair, head and face were not asked'); return { P, N }; }
@@ -14960,6 +14962,38 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (!(Math.abs(hi - lo) > 0.05)) P.push('with the hair "' + st + '" on the ' + face + ' head, moving the hairline from one end to the other moves where his hair starts by ' + (isFinite(hi - lo) ? Math.abs(hi - lo).toFixed(3) : 'nothing measurable') + ' of a radius');
                   N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } }
               N.push('the hairline over the middle of his brow, in radii above his eyes, on the ' + [ROUND, ...JAWED].join(' / ') + ' head (a head with a jaw at most 0.17 above the round head for the buzz and the short cap, 0.25 for the rest): ' + tops.join('; ')); }
+            /* ---- S · LONG HAIR HAS VOLUME OVER THE TOP, GROWING GRADUALLY FROM HIS HAIRLINE (the owner's rule, 2026-11-15) ----
+               From the side, as a portrait shows it: his outline over the top of his head, from his face (0 degrees) over his crown
+               (90) to his nape, traced by lines cast from outside his head toward the line through his ears, in slices beside his
+               middle on the side looked at (out to a quarter of a radius), the outermost of his hair and of his skull; the lift is
+               his hair's outline above his skull's. His hairline is where his skull, in the middle, is first painted his hair's
+               colour. From 12 degrees behind his hairline to his crown (110) the lift is at least 0.02 of a radius, or his hair
+               lies flat on his scalp there and the volume stops short of the hairline; and it never rises by more than 0.045 of a
+               radius within 4 degrees, or there is a step. Measured 2026-11-15: this long hair rises at most 0.034 within 4
+               degrees and is never flat; the long hair before its volume (commit cc436c4) lies flat from 12 degrees behind its
+               hairline and steps up 0.050 to 0.067 within 4 degrees, on every head and from each side */
+            if (!HAIRSTYLES.includes('long')) P.push('his body cannot wear long hair, so its volume over the top was not asked');
+            else { const hairRGB = rgbOf(LOOK.hair), skinRGB = rgbOf(LOOK.skin), near = (c, a) => Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]), STEP = 2, CROWN = 110, said = [];
+              for (const face of FACES.length ? FACES : [null]) { const X = make('long', face ? { face } : {}), sk = skullOf(X), r = X.userData.r, hairs = parts(X, wears('hair')), rc = new THREE.Raycaster(), where = 'with the hair "long" on the ' + (face || 'only') + ' head, ';
+                const im = sheet(sk), d = im && im.getContext('2d').getImageData(0, 0, im.width, im.height).data;
+                /* the outermost of `list` on a line toward the line through his ears, `deg` round from his face, at x0 to one side */
+                const hit = (list, x0, deg) => { const a = deg * Math.PI / 180, o = sk.localToWorld(new THREE.Vector3(x0, 3 * Math.sin(a), 3 * Math.cos(a)).multiplyScalar(r)), e = sk.localToWorld(new THREE.Vector3(x0, 0, 0).multiplyScalar(r));
+                  rc.set(o, e.sub(o).normalize()); rc.far = 3 * r; const h = rc.intersectObjects(list, false)[0]; return h ? { rho: 3 - h.distance / r, uv: h.uv } : null; };
+                const painted = uv => { if (!d || !uv) return false; const x = Math.min(im.width - 1, Math.floor(uv.x * im.width)), y = Math.min(im.height - 1, Math.floor((sk.material.map.flipY ? 1 - uv.y : uv.y) * im.height)), k = 4 * (y * im.width + x);
+                  return near([d[k], d[k + 1], d[k + 2]], hairRGB) < near([d[k], d[k + 1], d[k + 2]], skinRGB); };
+                for (const s of [-1, 1]) { const side = s < 0 ? 'facing right' : 'facing left', lift = [], at = []; let hl = null, flat = null, steep = 0, sat = 0, top = 0, tat = 0;
+                  for (let deg = 0; deg <= 170; deg += STEP) { let H = -1, S = -1;
+                    for (const x0 of [0, 0.08, 0.16, 0.24]) { const k = hit([sk], x0 * s, deg), h = hit(hairs, x0 * s, deg); if (k) { S = Math.max(S, k.rho); if (!x0 && hl === null && deg > 10 && painted(k.uv)) hl = deg; } if (h) H = Math.max(H, h.rho); }
+                    at.push(deg); lift.push(S > 0 && H > 0 ? Math.max(0, H - S) : 0); }
+                  if (hl === null || !hairs.length) { P.push(where + side + ', no hairline or no hair over his head could be found from the side, so its volume over the top was not asked'); continue; }
+                  const i0 = at.indexOf(hl), ic = at.indexOf(CROWN);
+                  for (let i = i0; i <= ic; i++) { if (at[i] - hl >= 12 && lift[i] < 0.02 && flat === null) flat = at[i]; if (i + 2 < lift.length && lift[i + 2] - lift[i] > steep) { steep = lift[i + 2] - lift[i]; sat = at[i]; } }
+                  for (let i = i0; i < lift.length; i++) if (lift[i] > top) { top = lift[i]; tat = at[i]; }
+                  if (flat !== null) P.push(where + side + ', from the side his hair lies flat on his scalp ' + (flat - hl) + ' degrees behind his hairline (' + lift[at.indexOf(flat)].toFixed(3) + ' of a radius above it), so the volume over the top stops short of his hairline instead of thinning to it');
+                  if (steep > 0.045) P.push(where + side + ', from the side his hair over the top steps up ' + steep.toFixed(3) + ' of a radius within 4 degrees, ' + (sat - hl) + ' degrees behind his hairline, where its volume grows gradually back from the hairline');
+                  said.push((face || 'only') + ' ' + side + ': hairline ' + hl + ' degrees, lift every 4 degrees to the crown ' + lift.slice(i0, ic + 1).filter((x, i) => i % 2 === 0).map(x => x.toFixed(2)).join(' ') + ', steepest ' + steep.toFixed(3) + ' within 4 degrees, fullest ' + top.toFixed(2) + ' at ' + tat); }
+                free(X); }
+              N.push('long hair\'s volume over the top, from the side (in radii above the bald head): ' + said.join('; ')); }
             /* ---- R · what he costs ---- */
             { let worst = 0, at = '', n = 0;
               for (const face of FACES.length ? FACES : [null]) for (const st of HAIRSTYLES) for (const bd of [BR ? BR.def : null, KINDS[0] || null]) { let X;
@@ -15063,6 +15097,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    6 · FROM THE SIDE, SOME OF HIS NECK SHOWS under a head with a jaw, even when small: half of what one of his eyes
                        shows facing you. The round head is a ball today and is not asked.
                    7 · Each from his right AND from his left, on every head the face row offers (2, 3, 5; 6 on the heads with a jaw).
+                   8 · Long hair's volume over the top: S above (the body the engine makes); and it is asked 2 and 3 here as every
+                       style is.
                    9 · FACING YOU, HIS EYES: on the round head, without bangs each eye at least half of what it shows bald, as
                        before; with bangs, which may cover most of both and at times one whole eye, only that some of them shows
                        (a tenth of the two).
