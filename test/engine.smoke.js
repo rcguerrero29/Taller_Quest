@@ -14741,8 +14741,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                colour or a shade of it, for two hair colours far apart; and from the game's camera, facing you, right, away and
                left, hair of his colour shows round his head for every style that has any (the bald head has none, and its
                paint is next to nothing). A save with a style his body cannot wear lands on one it can (asked with the save, I).
-           L · HIS EARS: the bald head and the buzz have nothing standing off the head; long hair hides both ears; every other
-               style leaves two ears, one each side, showing to the camera from each side; and each ear lies ON his head for
+           L · HIS EARS: the bald head and the buzz have nothing standing off the head; and, read from how far each style
+               reaches (HAIRREACH, from 2026-11-15), hair that covers his ears hides both, hair that leaves them showing leaves
+               two, one each side, showing to the camera from each side, and hair that may cover them is counted only; and each ear lies ON his head for
                every end of where it sits, how big it is and how far it stands off, each kind of ear, on each shape of head:
                some of it touching the skin and most of it outside it (not floating, not sunk).
            M · HIS HEAD: the round head is the ball it was, every point of its skin one radius from its centre; every other shape
@@ -14836,10 +14837,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (s1 !== s2) P.push('the hair "' + st + '" is not the same twice: made twice from the same look, at another moment and with other random numbers, it comes out different, so his hair would change each time his body is made');
               const hp = parts(X, wears('hair'));
               HAS[st] = { parts: hp.length };
-              /* L · the ears: hidden by hair that falls or stands over them, two showing otherwise, one each side */
+              /* L · the ears, read from the style's reach (HAIRREACH, engine/engine.js; the owner's rule, 2026-11-15): hair that
+                 covers them hides them, hair that leaves them showing leaves two, one each side, and hair that may cover them is
+                 not asked. Until then long, curly and afro were named here by hand */
               const ears = parts(X, wears('ear')), sides = [1, -1].map(sd => ears.filter(o => o.visible && Math.sign(o.getWorldPosition(new THREE.Vector3()).x) === sd).length);
-              if (['long', 'curly', 'afro'].includes(st)) { if (ears.some(o => o.visible)) P.push('with the hair "' + st + '", ' + ears.filter(o => o.visible).length + ' part(s) of his ears show through it, where that hair falls over them'); }
-              else if (sides.some(n => !n)) P.push('with the hair "' + st + '" he has ' + sides.filter(Boolean).length + ' ear(s), where he has one each side');
+              const reach = typeof HAIRREACH === 'object' && HAIRREACH && HAIRREACH[st] ? HAIRREACH[st].ears : null;
+              if (!['show', 'may', 'cover'].includes(reach)) P.push('the hair "' + st + '" does not say whether it leaves his ears showing, may cover them or covers them, so his ears under it were not asked');
+              else if (reach === 'cover') { if (ears.some(o => o.visible)) P.push('with the hair "' + st + '", ' + ears.filter(o => o.visible).length + ' part(s) of his ears show through it, where that hair covers them'); }
+              else if (reach === 'show' && sides.some(n => !n)) P.push('with the hair "' + st + '" he has ' + sides.filter(Boolean).length + ' ear(s), where that hair leaves one showing each side');
               free(X);
               /* his colour, for two colours of hair far apart: every part of his hair is that colour or a shade of it */
               for (const hair of [LOOK.hair, TEAL]) { const Y = make(st, {}, { hair }), want = hsv(...rgbOf(hair));
@@ -14988,6 +14993,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                  look as it booted, kl, before anything here touched it) */
               set(kl.style, {}, 'down'); const A0 = grab(), eye = eyeOf(A0);
               if (!(eye >= 4)) { P.push('his eyes could not be found on the screen facing you (' + eye + ' pixels of the larger), so his hair, ears, neck and eyes were not measured in the camera'); return { P, N }; }
+              /* 1 · EVERY STYLE SAYS HOW FAR ITS HAIR REACHES (HAIRREACH, engine/engine.js; the owner's rule, 2026-11-15), as a real
+                 cut does: whether it leaves his ears showing (show), may cover them (may) or covers them (cover), and whether it
+                 has bangs, which may lie over most of both his eyes and at times one whole eye. The checks of his ears and his face
+                 below read it, so a style that does not say is a red, and is not asked; a reach for a style his body cannot wear is
+                 a red too */
+              const REACH = typeof HAIRREACH === 'object' && HAIRREACH ? HAIRREACH : null, WAYS = ['show', 'may', 'cover'];
+              const reachOf = st => { const q = REACH && Object.prototype.hasOwnProperty.call(REACH, st) ? REACH[st] : null; return q && WAYS.includes(q.ears) && typeof q.bangs === 'boolean' ? q : null; };
+              if (!REACH) P.push('the engine keeps no word of how far each style of hair reaches (whether it leaves his ears showing, may cover them or covers them, and whether it has bangs), so his ears and his face were not asked under any style');
+              else { HAIRSTYLES.filter(st => !reachOf(st)).forEach(st => P.push('the hair "' + st + '" does not say how far it reaches (whether it leaves his ears showing, may cover them or covers them, and whether it has bangs), so his ears and his face under it were not asked'));
+                Object.keys(REACH).filter(st => !HAIRSTYLES.includes(st)).forEach(st => P.push('how far each style of hair reaches is said for the hair "' + st + '", which his body cannot wear')); }
               /* K · from each side, hair of his colour for every style that has hair */
               const SIDES = [['down', 'facing you'], ['right', 'facing right'], ['up', 'facing away'], ['left', 'facing left']], seen = [];
               /* his ear with nothing over it, from each side: the bald head's; "shows" is at least a third of that */
@@ -14998,11 +15013,13 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               for (const st of HAIRSTYLES) { const has = st !== 'bald', row = [];
                 for (const [d, said] of SIDES) { set(st, {}, d); if (!T3.bodyOn) { P.push('with the hair "' + st + '", ' + said + ', he is not a jointed body in the camera, so his hair was not looked for'); continue; }
                   const A = grab(), n = hairPx(A); row.push(n);
-                  /* L · his ears, from the side: long hair hides them, every other style shows the one on that side */
-                  if (d === 'right' || d === 'left') { const e = painted(o => o.userData.wears === 'ear', A);
-                    if (['long', 'curly', 'afro'].includes(st)) { if (e > 0) P.push('with the hair "' + st + '", ' + said + ', ' + e + ' pixels of his ear show through it'); }
-                    else if (e < bare[d] / 3) P.push('with the hair "' + st + '", ' + said + ', his ear hardly shows: ' + Math.max(0, e) + ' pixels of it, where with no hair over it it shows in ' + bare[d]);
-                    row.push('ear ' + e); }
+                  /* L · 4 · his ear, from the side, read from the style's reach: hair that covers his ears hides the one on that side
+                     wholly; hair that leaves them showing shows at least a third of it, as the bald head does (the line kept since
+                     mq-v265); hair that may cover them is counted only */
+                  if (d === 'right' || d === 'left') { const e = painted(o => o.userData.wears === 'ear', A), q = reachOf(st);
+                    if (q && q.ears === 'cover') { if (e > 0) P.push('with the hair "' + st + '", ' + said + ', ' + e + ' pixels of his ear show through it, where that hair covers his ears'); }
+                    else if (q && q.ears === 'show' && e < bare[d] / 3) P.push('with the hair "' + st + '", ' + said + ', his ear hardly shows: ' + Math.max(0, e) + ' pixels of it, where with no hair over it it shows in ' + bare[d] + ', and that hair leaves his ears showing');
+                    row.push('ear ' + e + (q ? ' (' + q.ears + ')' : '')); }
                   if (has && n < eye) P.push('with the hair "' + st + '", ' + said + ', his hair does not show in the game\'s camera: ' + n + ' pixels of his hair\'s colour round his head, fewer than one of his eyes shows (' + eye + ')'); }
                 seen.push(st + ' ' + row.join('/')); }
               N.push('his hair in the camera (facing you, right, away, left; pixels of hair, and of the ear on that side), an eye ' + eye + ', a bare ear ' + bare.right + '/' + bare.left + ': ' + seen.join('; '));

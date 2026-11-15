@@ -955,8 +955,18 @@ const BODYCHOICE=Object.freeze([
    the creator), so the body reads it and has no hair choice of its own. HAIRSTYLES is every style the body can wear; a
    look's style is cleaned to one of them where it is read (hairStyleOf): the card's `beard`, which is a beard and not a
    haircut, is short hair on the body, and its beard is the body's own choice (beardOf); anything else is short hair too.
-   A style added later is a word here and its function in HAIRPART (engine/engine3d.js) */
+   A style added later is a word here, its function in HAIRPART (engine/engine3d.js) and its reach in HAIRREACH below */
 const HAIRSTYLES=Object.freeze(["cap","long","curly","buzz","spiky","pony","afro","mohawk","braids","flat","buns","edgar","fade","mullet","broccoli","bald"]);
+/* HOW FAR EACH STYLE'S HAIR REACHES, as a real cut does (the owner's rule, 2026-11-15: his head is checked the way a real
+   head looks). `ears`: show where the cut leaves his ears showing, may where its length may fall over them, cover where
+   it covers them. `bangs`: true where a fringe may lie over his eyes, most of both and at times one whole eye. Data for the
+   checks of his face (test/engine.smoke.js, grep "HAIRREACH"), which ask each style what its reach allows; nothing is drawn
+   from it, and a style with no reach here is a red there */
+const HAIRREACH=Object.freeze(Object.fromEntries(Object.entries({
+  cap:["show",false],long:["cover",false],curly:["may",false],buzz:["show",false],spiky:["show",false],pony:["show",false],
+  afro:["cover",false],mohawk:["show",false],braids:["may",false],flat:["show",false],buns:["show",false],edgar:["show",true],
+  fade:["show",false],mullet:["show",false],broccoli:["show",true],bald:["show",false]
+}).map(([k,[ears,bangs]])=>[k,Object.freeze({ears,bangs})])));
 const hairStyleOf=lk=>{const s=lk&&typeof lk.style==="string"?lk.style:"";return HAIRSTYLES.includes(s)?s:"cap";};
 /* a beard on the body: where the body's own choice says so, or where the look's style is the card's `beard` */
 const beardOf=lk=>!!lk&&((lk.style==="beard")||(bodyChoicesOf(lk.body).beard!=="none"));
