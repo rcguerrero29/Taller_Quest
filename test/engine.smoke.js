@@ -15081,8 +15081,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    1 · EACH STYLE SAYS HOW FAR IT REACHES (beside K, above): what it allows is read from it here.
                    2 · FROM THE SIDE, HIS EYE, NOSE, MOUTH AND CHIN SHOW: below his eye, down to his chin, hair lies over no more
                        than a tenth of his face in front of his eye (his cheek there, his nose, his mouth and his chin: a stray
-                       lock's edge, not a lock); his nose shows at least half of what it shows bald; and without bangs his eye shows
-                       at least half (with bangs his eye is not asked: a fringe may lie over it).
+                       lock's edge, not a lock); his nose shows at least half of what it shows bald (with bangs, the part of it below
+                       his eye: a fringe may lie over the rows of his eye, and the bridge of his nose is in them); and without bangs
+                       his eye shows at least half (with bangs his eye is not asked: a fringe may lie over it).
                    3 · AT HIS TEMPLE THE HAIR STARTS AT THE OUTER CORNER OF HIS EYE OR BEHIND IT, AND IN FRONT OF HIS EAR: in the
                        rows of his eye, without bangs, hair in front of the eye's outer corner is no more than a quarter of what
                        the eye shows; and where a style has hair at the side of his head at eye level, between his eye and the back
@@ -15221,7 +15222,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     for (const st of HAIRSTYLES) { if (st === 'bald') continue; const q = reachOf(st); if (!q) continue; const said = [];
                       for (const d of ['right', 'left']) { if (!ok(d)) continue; const b = B[d], c = frame(st, { face }, d);
                         if (!c) { P.push('with the hair "' + st + '" on the ' + face + ' head, facing ' + d + ', he is not a jointed body in the camera, so his face was not asked'); continue; }
-                        const ff = over(b, c, FACE), es = count(c, EYE) / b.eye.n, ns = count(c, NOSE) / b.nose, sf = sideFace(b, c) / Math.max(1, b.face || (b.face = sideFace(b, b.c)));
+                        /* with bangs, which may lie over the rows of his eye, his nose is asked below his eye only (its bridge is in those rows) */
+                        const noseBelow = x => { let n = 0; for (let j = 0; j < x.length; j++) if (x[j] === NOSE && ((j / W) | 0) < b.eye.y0) n++; return n; }, nb0 = q.bangs ? noseBelow(b.c) : 0;
+                        const ff = over(b, c, FACE), es = count(c, EYE) / b.eye.n, ns = q.bangs && nb0 >= 10 ? noseBelow(c) / nb0 : count(c, NOSE) / b.nose, sf = sideFace(b, c) / Math.max(1, b.face || (b.face = sideFace(b, b.c)));
                         /* in the rows of his eye: hair in front of the outer corner, and the hair nearest his eye behind it; his ear's front */
                         const tol = Math.max(2, Math.round(0.04 * rpx)); let fwd = 0, near = null, back = null;
                         const earFront = b.ear.n ? (b.front > 0 ? b.ear.x1 : b.ear.x0) : null, earBack = b.ear.n ? (b.front > 0 ? b.ear.x0 : b.ear.x1) : null;
