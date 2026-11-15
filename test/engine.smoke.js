@@ -14120,8 +14120,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                        facing you at least 85% of his card's share, and facing right at least 60% of it (the side of a head
                        is half hair, and that is a face from the side; under the old cap of hair it was half of the card's).
                        From 2026-11-14 this share is asked of the style a new character starts with only: every other style is
-                       asked, in the game's camera below (D, beside K), that his eyes show facing you and from the side some of
-                       his face does, each against the bald head, and those numbers are printed, count-only, for every style;
+                       asked, in the game's camera below (D, beside K), what a real head shows (from 2026-11-15, read from how
+                       far each style reaches), each against the bald head, and those numbers are printed, count-only, for
+                       every style;
                      · AT NIGHT AS BRIGHT AS HIS CARD: at ten at night, the mean brightness of his shirt and of his skin each
                        at least 80% of the card's own, and no more than 125% of it.
                    Nothing measured is a red: a frame that shows fewer than 50 pixels of his shirt, or of his head, says so. */
@@ -14747,18 +14748,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                every end of where it sits, how big it is and how far it stands off, each kind of ear, on each shape of head:
                some of it touching the skin and most of it outside it (not floating, not sunk).
            M · HIS HEAD: the round head is the ball it was, every point of its skin one radius from its centre; every other shape
-               has a chin below the ball and is deeper front to back than it is wide, and from the side shows a neck under it;
+               has a chin below the ball and is deeper front to back than it is wide, and from the side, from each side, shows a
+               neck under it (in the camera, D);
                and on every shape his eyes, brows, nose and mouth lie on his face, each standing a little proud of the skin and
                inside the outline of his head seen from in front, at both ends of every measure of them and for each mouth.
            N · EVERY ROW MOVES WHAT IT NAMES: each measure of the table at its two ends makes a different body, and each word of
                an option a body different from each other word's; a row that shows only on some hair or with a beard is asked
                on each style in turn with one; a colour row's colour is the colour of the part it names (eyecol the eyes,
                browcol the brows, tiecol the braids' ties), and in the creator each colour is offered as a dot of it.
-           O · HIS BEARD: none draws no hair at all on a bald head; each kind draws one, and no two kinds the same; and none of
-               them covers his eyes from the camera facing you, on any shape of head.
+           O · HIS BEARD: none draws no hair at all on a bald head; each kind draws one, and no two kinds the same; and in the
+               camera (D) each covers what that kind of beard covers and leaves his eyes, nose and mouth showing, on any shape
+               of head.
            P · HIS HAIRLINE: over the middle of his brow the hair starts lower on a head with a jaw than on the round head,
-               counted from his eyes, for a style painted on the skin (the buzz) and one that stands off it (the short cap); and
-               the hairline's measure moves where it starts.
+               counted from his eyes, for every style that has hair (from 2026-11-15; until then a style painted on the skin, the
+               buzz, and one that stands off it, the short cap); and the hairline's measure moves where it starts.
            Q · THE CREATOR ON A PHONE (390 by 844): one tab for each of the table's tabs, exactly one panel shown, the arrows
                moving along the tabs; each drawer opened by a tap and by Enter, opening one shutting the others of its tab; a
                shut drawer saying what is chosen in it (the style of hair by its name; "changed" once a choice in it is off
@@ -14926,24 +14929,37 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             /* ---- P · the hairline over his brow, counted from his eyes, in head radii ---- */
             { const HL = row('hairline'); if (!HL) P.push('his hair has no hairline to move, so where it starts was not asked at its ends');
               const hairRGB = rgbOf(LOOK.hair), skinRGB = rgbOf(LOOK.skin), near = (c, a) => Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
-              const brow = (st, body) => { const X = make(st, body), sk = skullOf(X), r = X.userData.r, eyes = parts(X, wears('eye'));
+              const brow = (st, body, wide) => { const w = wide || 0.06, X = make(st, body), sk = skullOf(X), r = X.userData.r, eyes = parts(X, wears('eye'));
                 const eyeY = eyes.reduce((s, o) => s + (o.position.y - sk.position.y), 0) / Math.max(1, eyes.length) / r; let low = Infinity;
                 const im = sheet(sk), uv = sk.geometry.attributes.uv, p = sk.geometry.attributes.position, v = new THREE.Vector3();
                 if (im && uv) { const d = im.getContext('2d').getImageData(0, 0, im.width, im.height).data;
-                  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (Math.abs(v.x) > 0.06 * r || v.z <= 0 || v.y / r <= eyeY) continue;
+                  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (Math.abs(v.x) > w * r || v.z <= 0 || v.y / r <= eyeY) continue;
                     const x = Math.min(im.width - 1, Math.floor(uv.getX(i) * im.width)), y = Math.min(im.height - 1, Math.floor((sk.material.map.flipY ? 1 - uv.getY(i) : uv.getY(i)) * im.height)), k = 4 * (y * im.width + x), c = [d[k], d[k + 1], d[k + 2]];
                     if (near(c, hairRGB) < near(c, skinRGB)) low = Math.min(low, v.y / r); } }
-                parts(X, wears('hair')).forEach(o => outOf(X, o, 4000).forEach(q => { if (Math.abs(q.x) < 0.06 && q.z > 0 && q.y > eyeY && q.o > 0.003) low = Math.min(low, q.y); }));
+                parts(X, wears('hair')).forEach(o => outOf(X, o, 4000).forEach(q => { if (Math.abs(q.x) < w && q.z > 0 && q.y > eyeY && q.o > 0.003) low = Math.min(low, q.y); }));
                 free(X); return low - eyeY; };
               /* the allowance (0.17 of a radius) is what the eye took as the same brow when the two heads were set side by side on
                  2026-11-13: a line brought down until the number matched sat on his brows. Half the drop (0.58 and 0.51 against 0.34
                  and 0.32) is still red. */
-              for (const st of ['buzz', 'cap']) { if (!HAIRSTYLES.includes(st)) continue;
-                const f = {}; for (const face of [ROUND, ...JAWED.slice(0, 1)]) { f[face] = brow(st, { face }); if (!isFinite(f[face])) P.push('on the ' + face + ' head, the hair "' + st + '" has no hair over the middle of his brow to measure'); }
-                if (JAWED.length && isFinite(f[ROUND]) && isFinite(f[JAWED[0]]) && !(f[JAWED[0]] <= f[ROUND] + 0.17)) P.push('with the hair "' + st + '", on the ' + JAWED[0] + ' head his hair starts ' + f[JAWED[0]].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': his brow is taller on a head with a jaw, which reads as his hair going');
-                if (HL) for (const face of [ROUND, ...JAWED.slice(0, 1)]) { const lo = brow(st, { face, hairline: HL.min }), hi = brow(st, { face, hairline: HL.max });
+              /* 3 · FROM 2026-11-15 EVERY STYLE THAT HAS HAIR, ON EVERY HEAD WITH A JAW (the owner's rule: on every head his hair starts
+                 near his brow, so he does not look as if he is losing it); until then the buzz and the short cap, on the first head
+                 with a jaw. The hairline's measure at its two ends is asked of those two, as before. A parting down the middle (the
+                 buns) leaves the middle of his brow bare, so where no hair is found over the middle the strip beside it is read,
+                 and where none is found there either it is a red. A style new to this check is given 0.25: on a head with a jaw
+                 the measure moves a row of its skull at a time (about 0.07 of a radius; the long hair, the ponytail and the buzz
+                 all read 0.50 there on 2026-11-15), so it is red only where its brow is taller by more than a row past what the
+                 eye took as the same brow (measured that day: the flat top 0.33, the spiky 0.28, the mohawk 0.23, the long hair
+                 0.20, the mullet, the buns and the ponytail 0.18) */
+              const tops = [];
+              for (const st of HAIRSTYLES) { if (st === 'bald') continue;
+                const f = {}; for (const face of [ROUND, ...JAWED]) { f[face] = brow(st, { face }); if (!isFinite(f[face])) f[face] = brow(st, { face }, 0.15); if (!isFinite(f[face])) P.push('on the ' + face + ' head, the hair "' + st + '" has no hair over the middle of his brow to measure'); }
+                const allow = ['buzz', 'cap'].includes(st) ? 0.17 : 0.25;
+                JAWED.forEach(jf => { if (isFinite(f[ROUND]) && isFinite(f[jf]) && !(f[jf] <= f[ROUND] + allow)) P.push('with the hair "' + st + '", on the ' + jf + ' head his hair starts ' + f[jf].toFixed(2) + ' of a radius above his eyes and on the round head ' + f[ROUND].toFixed(2) + ': his brow is taller on a head with a jaw, which reads as his hair going'); });
+                tops.push(st + ' ' + [ROUND, ...JAWED].map(fc => isFinite(f[fc]) ? f[fc].toFixed(2) : '?').join('/'));
+                if (HL && ['buzz', 'cap'].includes(st)) for (const face of [ROUND, ...JAWED.slice(0, 1)]) { const lo = brow(st, { face, hairline: HL.min }), hi = brow(st, { face, hairline: HL.max });
                   if (!(Math.abs(hi - lo) > 0.05)) P.push('with the hair "' + st + '" on the ' + face + ' head, moving the hairline from one end to the other moves where his hair starts by ' + (isFinite(hi - lo) ? Math.abs(hi - lo).toFixed(3) : 'nothing measurable') + ' of a radius');
-                  N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } } }
+                  N.push('the hairline, "' + st + '" on the ' + face + ' head: ' + (isFinite(f[face]) ? f[face].toFixed(2) : '?') + ' of a radius above his eyes, ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) + ' over the measure'); } }
+              N.push('the hairline over the middle of his brow, in radii above his eyes, on the ' + [ROUND, ...JAWED].join(' / ') + ' head (a head with a jaw at most 0.17 above the round head for the buzz and the short cap, 0.25 for the rest): ' + tops.join('; ')); }
             /* ---- R · what he costs ---- */
             { let worst = 0, at = '', n = 0;
               for (const face of FACES.length ? FACES : [null]) for (const st of HAIRSTYLES) for (const bd of [BR ? BR.def : null, KINDS[0] || null]) { let X;
@@ -14958,7 +14974,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         } catch (e) { say(0, 'his hair, head and face could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
         await K.ctx.close(); }
       /* the same body in the game's own 3D camera, the clock at noon and no season's face paint: K's four sides, L's ears from
-         each side, M's neck and O's eyes. His look is the hues of D (a violet hair, an orange skin, a green shirt); a part asked
+         each side, and D's face, neck and beards (2026-11-15). His look is the hues of D (a violet hair, an orange skin, a green shirt); a part asked
          for is painted a magenta no street has for one frame, and what turns magenta is that part as the camera shows it, in
          front of everything else. One of his eyes facing you is the yardstick of "shows", as it is in F */
       { const K2 = await page4(doc, null, null, true);
@@ -15023,66 +15039,197 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (has && n < eye) P.push('with the hair "' + st + '", ' + said + ', his hair does not show in the game\'s camera: ' + n + ' pixels of his hair\'s colour round his head, fewer than one of his eyes shows (' + eye + ')'); }
                 seen.push(st + ' ' + row.join('/')); }
               N.push('his hair in the camera (facing you, right, away, left; pixels of hair, and of the ear on that side), an eye ' + eye + ', a bare ear ' + bare.right + '/' + bare.left + ': ' + seen.join('; '));
-              /* D · HIS FACE UNDER EVERY STYLE BUT THE ONE HE STARTS WITH (2026-11-14). The style a new character starts with is
-                 held to his card's share of skin (D, above); every other style is asked what a person looks for in a face, each
-                 against the same eye or the same face on the bald head, from the same camera, so no number of the card's or of
-                 another style's comes into it:
-                   · FACING YOU, HIS EYES SHOW: each eye at least half of what that eye shows on the bald head. Half, because an eye
-                     half under a fringe still reads as an eye and one more than half under it reads as covered;
-                   · FACING RIGHT, THE EYE ON THAT SIDE SHOWS, by the same half;
-                   · FACING RIGHT, SOME OF HIS FACE SHOWS: his skin in front of his hair, row by row of his head (in front of the
-                     foremost hair in that row, and in the front half of the bald head's outline, so his ear is not his face), at
-                     least a third of the skin the bald head shows in that front half. A third, because an eye, a nose and a cheek
-                     in front of the hair are about a third of the front of a head; a nose alone out of a curtain of hair is not a
-                     face.
-                 His head is what turns magenta when every part on his head is painted so (the parts the head joint carries); in that
-                 outline, a pixel of the frame as it is drawn is skin or hair by its hue (D's hues). Nothing to measure is a red. */
-              { const START = kl.style, skH = (() => { const q = new THREE.Color(LOOK.skin); return hsv(q.r * 255, q.g * 255, q.b * 255)[0]; })();
-                /* read in the square round where he stands only (the box his hair is counted in, above), not the whole screen */
-                const bx0 = Math.max(0, Math.floor(box.cx - box.sq)), by0 = Math.max(0, Math.floor(box.cy - box.sq)), W = Math.min(E.W, Math.ceil(box.cx + box.sq)) - bx0, H = Math.min(E.H, Math.ceil(box.cy + box.sq)) - by0;
-                const gb = () => { draw3d(); const gl = T3.renderer.getContext(), px = new Uint8Array(W * H * 4); gl.readPixels(bx0, by0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
-                const mask = f => { const kept = []; T3.body.traverse(o => { if (o.isMesh && o.userData.base && f(o)) { kept.push([o, o.userData.base, o.material.map]); o.userData.base = new THREE.Color('#FF00FF'); o.material.map = null; o.material.needsUpdate = true; } });
-                  let F; try { F = gb(); } finally { kept.forEach(([o, c, m]) => { o.userData.base = c; o.material.map = m; o.material.needsUpdate = true; }); }
-                  const m = new Uint8Array(W * H); if (!kept.length) return null; for (let i = 0; i < m.length; i++) m[i] = mag(F.px, i * 4) ? 1 : 0; return m; };
-                /* the pixels of a part that show: magenta when it is painted so, and not magenta as the frame is drawn */
-                const shown = (f, A) => { const m = mask(f); if (!m) return -1; let n = 0; for (let i = 0; i < m.length; i++) if (m[i] && !mag(A.px, i * 4)) n++; return n; };
-                const onHead = o => o.parent && o.parent.name === 'head';
-                const eyes2 = A => [0, 1].map(i => { let k = 0; return shown(o => o.userData.wears === 'eye' && k++ === i, A); });
+              /* D · HIS FACE AS A REAL HEAD SHOWS IT, UNDER EVERY STYLE BUT THE ONE HE STARTS WITH (the owner's rule, 2026-11-15; until
+                 then a third of the bald head's face from the side). The style a new character starts with is held to his card's
+                 share of skin (D, above); every other style, and every beard, is asked what a real head shows, each against the
+                 bald head of the same shape from the same side, in the same camera, so no number of the card's or of another
+                 style's comes into it. Each catches only a clear break; his eye on pictures judges the rest.
+                   1 · EACH STYLE SAYS HOW FAR IT REACHES (beside K, above): what it allows is read from it here.
+                   2 · FROM THE SIDE, HIS EYE, NOSE, MOUTH AND CHIN SHOW: below his eye, down to his chin, hair lies over no more
+                       than a tenth of his face in front of his eye (his cheek there, his nose, his mouth and his chin: a stray
+                       lock's edge, not a lock); his nose shows at least half of what it shows bald; and without bangs his eye shows
+                       at least half (with bangs his eye is not asked: a fringe may lie over it).
+                   3 · AT HIS TEMPLE THE HAIR STARTS AT THE OUTER CORNER OF HIS EYE OR BEHIND IT, AND IN FRONT OF HIS EAR: in the
+                       rows of his eye, without bangs, hair in front of the eye's outer corner is no more than a quarter of what
+                       the eye shows; and where a style has hair at the side of his head at eye level, between his eye and the back
+                       of his ear, the hair nearest his eye is in front of his ear (a style whose hair may cover or covers his ears
+                       has hair there). Over his brow, on every head, his hair starts as near his brow as on the round head: the
+                       hairline, with the head's own measures, in P above (the body the engine makes).
+                   5 · HIS BEARD, ON THE BALD HEAD: from each side a full beard (and the card's style "beard", where the world
+                       offers it) covers at least a quarter of his jaw; facing you a full beard and a goatee cover at least half of
+                       his chin, a goatee at least a fifth of his upper lip (it grows round his mouth) and a moustache at least a
+                       third of it; and each kind leaves his eye and his nose showing from each side (half of what they show with no
+                       beard), and facing you his eyes (nine tenths, as before), his nose and his mouth (half).
+                   6 · FROM THE SIDE, SOME OF HIS NECK SHOWS under a head with a jaw, even when small: half of what one of his eyes
+                       shows facing you. The round head is a ball today and is not asked.
+                   7 · Each from his right AND from his left, on every head the face row offers (2, 3, 5; 6 on the heads with a jaw).
+                   9 · FACING YOU, HIS EYES: on the round head, without bangs each eye at least half of what it shows bald, as
+                       before; with bangs, which may cover most of both and at times one whole eye, only that some of them shows
+                       (a tenth of the two).
+                 HOW IT IS MEASURED. The game's own camera, its picture of his head enlarged ZK times (the camera's view offset: the
+                 same camera, the same rays, the same part hiding another, only more pixels to each: an eye from the side is three to
+                 seven pixels at the game's size, and a third of it was a pixel). Each frame twice: as drawn, and his body again on a
+                 layer of its own over black with every part unlit in one pure colour, so each pixel is the part in front there
+                 (where two parts meet the pixel is neither). Hair is a part of hair, or his skull where its paint is his hair's hue.
+                 The regions of his face (in front of his eye below it; his chin; his upper lip; his jaw) are cut
+                 on the bald head's skull in its own measures, from where its eye, nose and mouth are, and drawn in colours of their
+                 own; a style's hair over a region is the share of the bald head's pixels of it that are hair in the style's frame.
+                 Nothing to measure (an eye, a region, his neck or his head not found) is a red, never a pass. Every number is
+                 printed, count-only, per style, head and side. */
+              { const START = kl.style;
                 const hueIs = (px, i, h0) => { const [h, s, v] = hsv(px[i], px[i + 1], px[i + 2]); return s > 0.25 && v > 40 && Math.abs(((h - h0) + 540) % 360 - 180) < 22; };
-                /* the bald head, the yardstick of each */
-                set('bald', {}, 'down'); const bDown = eyes2(gb());
-                set('bald', {}, 'right'); const bA = gb(), bSide = eyes2(bA), bH = mask(onHead) || new Uint8Array(W * H);
-                const near = bSide[0] >= bSide[1] ? 0 : 1;
-                /* which way his face points on the screen, and the middle of the bald head's outline in each row */
-                const rows = {}; let hx = 0, hn = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (bH[y * W + x]) { const r = rows[y] = rows[y] || [x, x]; r[0] = Math.min(r[0], x); r[1] = Math.max(r[1], x); hx += x; hn++; }
-                let ex = 0, en = 0; { let k = 0; const em = mask(o => o.userData.wears === 'eye' && k++ === near) || []; for (let i = 0; i < em.length; i++) if (em[i]) { ex += i % W; en++; } }
-                const front = en && hn ? Math.sign(ex / en - hx / hn) : 0;
-                const faceOf = (A, Hm) => { const hairFront = {}; let n = 0;
-                  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const j = y * W + x; if (Hm[j] && hueIs(A.px, j * 4, hh)) hairFront[y] = hairFront[y] === undefined ? x : (front > 0 ? Math.max(hairFront[y], x) : Math.min(hairFront[y], x)); }
-                  for (let y = 0; y < H; y++) { const r = rows[y]; if (!r) continue; const mid = (r[0] + r[1]) / 2;
-                    for (let x = 0; x < W; x++) { const j = y * W + x; if (!Hm[j] || (x - mid) * front <= 0 || (hairFront[y] !== undefined && (x - hairFront[y]) * front <= 0)) continue; if (hueIs(A.px, j * 4, skH)) n++; } }
-                  return n; };
-                const bFace = faceOf(bA, bH), pct = x => Math.round(x * 100) + '%', read = [];
-                if (!(Math.min(...bDown) >= 4 && bSide[near] >= 4)) P.push('his eyes could not be found on the screen on the bald head (' + bDown.join(' and ') + ' pixels facing you, ' + bSide[near] + ' facing right), so whether each style\'s hair leaves his eyes showing was not asked');
-                else if (!front || !(bFace >= 20)) P.push('his face could not be found on the screen from the side on the bald head (' + bFace + ' pixels of skin in front of the middle of his head), so whether each style leaves some of his face showing was not asked');
-                else for (const st of HAIRSTYLES) { if (st === 'bald') continue;
-                  set(st, {}, 'down'); if (!T3.bodyOn) { P.push('with the hair "' + st + '", facing you, he is not a jointed body in the camera, so his eyes were not looked for'); continue; }
-                  const e = eyes2(gb());
-                  set(st, {}, 'right'); const A = gb(), es = eyes2(A)[near], fc = faceOf(A, mask(onHead) || new Uint8Array(W * H));
-                  const rd = e.map((v, i) => Math.max(0, v) / bDown[i]), rs = Math.max(0, es) / bSide[near], rf = fc / bFace;
-                  read.push(st + (st === START ? ' (the start)' : '') + ': eyes ' + rd.map(pct).join('/') + ', side eye ' + pct(rs) + ', side face ' + pct(rf));
-                  if (st === START) continue;   /* held to his card's share, in D */
-                  rd.forEach((r, i) => { if (r < 0.5) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + Math.max(0, e[i]) + ' pixels of it show, where on the bald head it shows in ' + bDown[i]); });
-                  if (rs < 0.5) P.push('facing right with the hair "' + st + '", his hair hides the eye on that side: ' + Math.max(0, es) + ' pixels of it show, where on the bald head it shows in ' + bSide[near]);
-                  if (rf < 1 / 3) P.push('facing right with the hair "' + st + '", his hair hides his face: ' + fc + ' pixels of his skin show in front of his hair, ' + pct(rf) + ' of the ' + bFace + ' the bald head shows there, where a face from the side is at least a third of it'); }
-                N.push('his face under each style, against the bald head (an eye facing you ' + bDown.join('/') + ', the eye on the side ' + bSide[near] + ', the face from the side ' + bFace + ' pixels): ' + read.join('; ')); }
-              /* M · from the side, a neck under a head with a jaw; O · facing you, no beard covers his eyes */
-              const FR = bodyRows('person').find(r => r.key === 'face'), BR = bodyRows('person').find(r => r.key === 'beard');
-              for (const face of FR ? FR.list : []) { set('bald', { face }, 'right'); const A = grab(), n = painted(o => o.parent && o.parent.name === 'neck', A);
-                if (face !== FR.def && n < eye) P.push('on the ' + face + ' head, facing right, his neck does not show: ' + Math.max(0, n) + ' pixels of it, where one of his eyes shows in ' + eye);
-                const eyes = {}; for (const w of BR ? BR.list : []) { set('bald', { face, beard: w }, 'down'); eyes[w] = eyeOf(grab()); }
-                if (BR) BR.list.filter(w => w !== BR.def).forEach(w => { if (eyes[w] < 0.9 * eyes[BR.def]) P.push('on the ' + face + ' head, facing you, the beard "' + w + '" covers his eyes: one of them shows in ' + eyes[w] + ' pixels, where with no beard it shows in ' + eyes[BR.def]); });
-                N.push('on the ' + face + ' head: the neck facing right ' + n + ' pixels; an eye facing you ' + Object.entries(eyes).map(([w, v]) => w + ' ' + v).join(', ')); }
+                const FR = bodyRows('person').find(r => r.key === 'face'), BR = bodyRows('person').find(r => r.key === 'beard');
+                const FACES = FR && FR.kind === 'option' ? FR.list.slice() : [], ROUND = FR ? FR.def : null, KINDS = BR && BR.kind === 'option' ? BR.list.filter(w => w !== BR.def) : [];
+                const offered = (T().styles || []).some(s => s[0] === 'beard');   /* the card's style "beard", where the world offers it */
+                if (!FACES.length) P.push('his head offers no shape in the face row, so his face from the side was not asked');
+                const cam = T3.cam, gl = T3.renderer.getContext(), DW = gl.drawingBufferWidth, DH = gl.drawingBufferHeight, ZK = 4;
+                let RX = 0, RY = 0, RW = DW, RH = DH;
+                const readA = () => { draw3d(); const px = new Uint8Array(RW * RH * 4); gl.readPixels(RX, RY, RW, RH, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+                const MATS = {};
+                /* his body as this frame stands, drawn again alone: code(o) is [r,g,b] of 0s and 1s, a Float32Array of a colour for each
+                   point of its shape (the regions of his face), or null for black */
+                const coded = code => { const r = T3.renderer, sc = T3.scene, kept = [], bg = sc.background, ml = cam.layers.mask;
+                  T3.body.traverse(o => { if (!o.isMesh) return; kept.push([o, o.material, o.visible]); if (o.userData.shadow) { o.visible = false; return; }
+                    let c = code(o) || [0, 0, 0], k;
+                    if (c instanceof Float32Array) { o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); k = 'vc' + o.material.side; o.material = MATS[k] || (MATS[k] = new THREE.MeshBasicMaterial({ vertexColors: true, side: o.material.side })); }
+                    else { k = c.join('') + o.material.side; o.material = MATS[k] || (MATS[k] = new THREE.MeshBasicMaterial({ color: new THREE.Color(c[0], c[1], c[2]), side: o.material.side })); }
+                    o.layers.enable(7); });
+                  const px = new Uint8Array(RW * RH * 4);
+                  try { sc.background = new THREE.Color(0, 0, 0); cam.layers.set(7); r.render(sc, cam); gl.readPixels(RX, RY, RW, RH, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+                  finally { kept.forEach(([o, m, v]) => { o.material = m; o.visible = v; o.layers.disable(7); if (o.geometry.getAttribute('color')) o.geometry.deleteAttribute('color'); }); sc.background = bg; cam.layers.mask = ml; }
+                  return px; };
+                /* which pure colour each pixel is: 1 red, 2 green, 3 yellow, 4 blue, 5 magenta, 6 cyan, 7 white; 0 black; 255 neither */
+                const pure = px => { const n = px.length / 4, c = new Uint8Array(n);
+                  for (let j = 0; j < n; j++) { const i = j * 4, a = px[i], b = px[i + 1], d = px[i + 2], lo = v => v <= 40, hi = v => v >= 215;
+                    if (lo(a) && lo(b) && lo(d)) continue; c[j] = (hi(a) || lo(a)) && (hi(b) || lo(b)) && (hi(d) || lo(d)) ? (hi(a) ? 1 : 0) + (hi(b) ? 2 : 0) + (hi(d) ? 4 : 0) : 255; }
+                  return c; };
+                const HEAD = { skin: [1, 0, 0], eye: [0, 1, 0], nose: [1, 1, 0], hair: [0, 0, 1], mouth: [1, 0, 1], ear: [0, 1, 1] }, NECK = [1, 1, 1];
+                const SKIN = 1, EYE = 2, NOSE = 3, HAIR = 4, MOUTH = 5, EAR = 6, NECKC = 7, PAINT = 8;   /* PAINT: his skull, painted his hair's hue */
+                const onHead = o => o.parent && o.parent.name === 'head';
+                const sideOf = o => Math.sign(T3.body.worldToLocal(o.getWorldPosition(new THREE.Vector3())).x);
+                const nearest = w => { let best = null; T3.body.traverse(o => { if (o.isMesh && o.visible && onHead(o) && o.userData.wears === w) { const d = o.getWorldPosition(new THREE.Vector3()).distanceTo(cam.position); if (!best || d < best[1]) best = [o, d]; } }); return best ? sideOf(best[0]) : 0; };
+                /* a frame of his head: c, what each pixel is (from the near side, the near eye and ear only; facing you, both) */
+                const frame = (st, body, d) => { set(st, body, d); const A = readA(); if (!T3.bodyOn) return null;
+                  const ne = d === 'down' ? 0 : nearest('eye'), nr = d === 'down' ? 0 : nearest('ear');
+                  const c = pure(coded(o => o.parent && o.parent.name === 'neck' ? NECK : !onHead(o) ? null : o.userData.wears === 'eye' ? (!ne || sideOf(o) === ne ? HEAD.eye : null) : o.userData.wears === 'ear' ? (!nr || sideOf(o) === nr ? HEAD.ear : null) : HEAD[o.userData.wears] || null));
+                  for (let j = 0; j < c.length; j++) if (c[j] === SKIN && hueIs(A, j * 4, hh)) c[j] = PAINT;
+                  return c; };
+                const isHair = v => v === HAIR || v === PAINT;
+                /* the regions of his face on the bald head's skull, in its own measures (head radii from its centre; y up, z forward):
+                   in front of the outer corner of his eye and below it, down to his chin (FRONT); his chin, below his mouth (CHIN);
+                   his upper lip, between his nose and his mouth (LIP); his jaw, the side of his face from his mouth down, behind the
+                   corner of his eye (JAW). Painted on the skull's points; his eyes, nose and mouth stay in front of it, black */
+                const REG = { CHIN: [1, 0, 0], LIP: [0, 1, 0], JAW: [0, 0, 1], FRONT: [1, 1, 0] }, RC = { 1: 'CHIN', 2: 'LIP', 4: 'JAW', 3: 'FRONT' };
+                const regions = () => { const sk = T3.body.getObjectByName('head').children.find(o => o.isMesh && o.userData.wears === 'skin'), r = T3.body.userData.skel.head;
+                  const inSk = o => { const p = o.geometry.attributes.position, v = new THREE.Vector3(), min = new THREE.Vector3(9, 9, 9), max = new THREE.Vector3(-9, -9, -9);
+                    for (let i = 0; i < p.count; i++) { sk.worldToLocal(o.localToWorld(v.fromBufferAttribute(p, i))).divideScalar(r); min.min(v); max.max(v); }
+                    return { min, max, mid: min.clone().add(max).multiplyScalar(0.5) }; };
+                  const parts = w => { const a = []; T3.body.traverse(o => { if (o.isMesh && onHead(o) && o.userData.wears === w) a.push(o); }); return a; };
+                  const eyes = parts('eye').map(inSk), noses = parts('nose').map(inSk), mouths = parts('mouth').map(inSk);
+                  if (!eyes.length || !noses.length) return null;
+                  const ez = Math.min(...eyes.map(e => e.min.z)), ey = Math.min(...eyes.map(e => e.min.y)), nb = Math.min(...noses.map(n => n.min.y));
+                  const my = mouths.length ? mouths[0].mid.y : nb - 0.12;
+                  const p = sk.geometry.attributes.position, v = new THREE.Vector3(), col = new Float32Array(p.count * 3); let chin = 9;
+                  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).divideScalar(r); if (v.z > 0.2 && Math.abs(v.x) < 0.35) chin = Math.min(chin, v.y); }
+                  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).divideScalar(r); let k = null;
+                    if (v.y < my - 0.06 && v.y > chin - 0.02 && Math.abs(v.x) < 0.35 && v.z > 0.2) k = 'CHIN';
+                    else if (v.y > my + 0.03 && v.y < nb && Math.abs(v.x) < 0.25 && v.z > 0.3) k = 'LIP';
+                    else if (v.y < my + 0.1 && v.y > chin - 0.02 && Math.abs(v.x) > 0.3 && v.z > -0.3 && v.z < ez) k = 'JAW';
+                    else if (v.z > ez && v.y < ey && v.y > chin - 0.02) k = 'FRONT';
+                    const q = k ? REG[k] : [0, 0, 0]; col[i * 3] = q[0]; col[i * 3 + 1] = q[1]; col[i * 3 + 2] = q[2]; }
+                  const c = pure(coded(o => o === sk ? col : null)), m = new Uint8Array(c.length); for (let j = 0; j < c.length; j++) m[j] = RC[c[j]] ? c[j] : 0; return m; };
+                const pct = x => Math.round(x * 100) + '%', LINES = [];
+                try {
+                  for (const face of FACES) {
+                    /* the crop: his head (every part on it) from each side and facing you, bald, at the game's size, with room round it */
+                    cam.clearViewOffset(); RX = 0; RY = 0; RW = DW; RH = DH;
+                    let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+                    for (const d of ['right', 'left', 'down']) { const c = frame('bald', { face }, d); if (!c) continue;
+                      for (let j = 0; j < c.length; j++) if (c[j] && c[j] !== NECKC && c[j] !== 255) { const x = j % DW, y = (j / DW) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }
+                    if (!(x1 - x0 >= 8 && y1 - y0 >= 8)) { P.push('on the ' + face + ' head his head could not be found on the screen (' + Math.max(0, x1 - x0 + 1) + ' by ' + Math.max(0, y1 - y0 + 1) + ' pixels), so his face from the side was not asked on it'); continue; }
+                    const hw = x1 - x0 + 1, hg = y1 - y0 + 1, cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2 - 0.15 * hg;
+                    cam.setViewOffset(DW * ZK, DH * ZK, cx * ZK - DW / 2, (DH - cy) * ZK - DH / 2, DW, DH);
+                    RW = Math.min(DW, Math.ceil(hw * 1.9) * ZK); RH = Math.min(DH, Math.ceil(hg * 2.2) * ZK); RX = Math.round((DW - RW) / 2); RY = Math.round((DH - RH) / 2);
+                    const W = RW, H = RH, at = j => [j % W, (j / W) | 0];
+                    /* the bald head from each side and facing you: the yardstick */
+                    const B = {};
+                    for (const d of ['right', 'left', 'down']) { const c = frame('bald', { face }, d); if (!c) { P.push('on the ' + face + ' head, bald, ' + (d === 'down' ? 'facing you' : 'facing ' + d) + ', he is not a jointed body in the camera, so his face was not asked'); continue; }
+                      const g = regions(); const box = id => { let n = 0, a = 1e9, b = -1, e = 1e9, f = -1, sx = 0; for (let j = 0; j < c.length; j++) if (c[j] === id) { const [x, y] = at(j); n++; a = Math.min(a, x); b = Math.max(b, x); e = Math.min(e, y); f = Math.max(f, y); sx += x; } return { n, x0: a, x1: b, y0: e, y1: f, cx: n ? sx / n : NaN }; };
+                      let hx = 0, hn = 0; for (let j = 0; j < c.length; j++) if (c[j] && c[j] !== NECKC && c[j] !== 255) { hx += j % W; hn++; }
+                      const eye = box(EYE), ear = box(EAR), front = d === 'down' ? 0 : Math.sign(eye.cx - hx / Math.max(1, hn)), reg = {};
+                      if (g) for (let j = 0; j < g.length; j++) if (g[j]) reg[RC[g[j]]] = (reg[RC[g[j]]] || 0) + 1;
+                      B[d] = { c, g, eye, ear, nose: box(NOSE).n, mouth: box(MOUTH).n, neck: box(NECKC).n, skin: box(SKIN), front, eb: front > 0 ? eye.x0 : eye.x1, reg, hx: hx / Math.max(1, hn) }; }
+                    const bD = B.down, rpx = bD && bD.skin.n ? (bD.skin.x1 - bD.skin.x0) / 2 : NaN;
+                    /* how much of a region of the bald head's face, from this side, is hair in frame c */
+                    const over = (b, c, names) => { let n = 0, h = 0; for (let j = 0; j < c.length; j++) if (b.g && b.g[j] && names.includes(RC[b.g[j]])) { n++; if (isHair(c[j])) h++; } return { n, h, s: n ? h / n : NaN }; };
+                    const count = (c, id) => { let n = 0; for (let j = 0; j < c.length; j++) if (c[j] === id) n++; return n; };
+                    const FACE = ['FRONT', 'CHIN', 'LIP'], SKINS = [SKIN, NOSE, MOUTH];
+                    /* the share of his face from the side before 2026-11-15, printed and no longer asked: his skin in front of the
+                       foremost hair in each row of his head, in the front half of the bald head's outline, against the bald head's */
+                    const sideFace = (b, c) => { const rows = {}; for (let j = 0; j < b.c.length; j++) if (b.c[j] && b.c[j] !== NECKC && b.c[j] !== 255) { const [x, y] = at(j), q = rows[y] = rows[y] || [x, x]; q[0] = Math.min(q[0], x); q[1] = Math.max(q[1], x); }
+                      const hf = {}; for (let j = 0; j < c.length; j++) if (isHair(c[j])) { const [x, y] = at(j); hf[y] = hf[y] === undefined ? x : (b.front > 0 ? Math.max(hf[y], x) : Math.min(hf[y], x)); }
+                      let n = 0; for (let j = 0; j < c.length; j++) { if (!SKINS.includes(c[j])) continue; const [x, y] = at(j), q = rows[y]; if (!q || (x - (q[0] + q[1]) / 2) * b.front <= 0 || (hf[y] !== undefined && (x - hf[y]) * b.front <= 0)) continue; n++; }
+                      return n; };
+                    const ok = d => { const b = B[d]; if (!b) return false;
+                      const fr = over(b, b.c, FACE).n, why = !(b.eye.n >= 20) ? 'his eye (' + b.eye.n + ' pixels)' : !b.front ? 'which way his face points' : !(b.nose >= 20) ? 'his nose (' + b.nose + ' pixels)' : !(fr >= 20) ? 'his face in front of his eye, below it (' + fr + ' pixels)' : null;
+                      if (why) { if (!b.said) P.push('on the ' + face + ' head, bald, facing ' + d + ', ' + why + ' could not be found on the screen, so whether each style and beard leaves his face showing from that side was not asked'); b.said = true; return false; }
+                      return true; };
+                    /* 6 · his neck from each side, under a head with a jaw */
+                    const eye1 = bD ? bD.eye.n / 2 : NaN;
+                    if (face !== ROUND) for (const d of ['right', 'left']) { const b = B[d]; if (!b) continue;
+                      if (!(eye1 >= 20)) P.push('on the ' + face + ' head his eyes could not be found facing you, so whether his neck shows from the side was not asked');
+                      else if (!(b.neck >= eye1 / 2)) P.push('on the ' + face + ' head, facing ' + d + ', his neck does not show: ' + b.neck + ' pixels of it, where half of one of his eyes facing you is ' + Math.round(eye1 / 2));
+                      LINES.push('the neck on the ' + face + ' head facing ' + d + ' ' + b.neck + ' (half an eye ' + Math.round(eye1 / 2) + ')'); }
+                    /* 2 and 3 · each style from each side; 9 · facing you on the round head */
+                    const row = [];
+                    for (const st of HAIRSTYLES) { if (st === 'bald') continue; const q = reachOf(st); if (!q) continue; const said = [];
+                      for (const d of ['right', 'left']) { if (!ok(d)) continue; const b = B[d], c = frame(st, { face }, d);
+                        if (!c) { P.push('with the hair "' + st + '" on the ' + face + ' head, facing ' + d + ', he is not a jointed body in the camera, so his face was not asked'); continue; }
+                        const ff = over(b, c, FACE), es = count(c, EYE) / b.eye.n, ns = count(c, NOSE) / b.nose, sf = sideFace(b, c) / Math.max(1, b.face || (b.face = sideFace(b, b.c)));
+                        /* in the rows of his eye: hair in front of the outer corner, and the hair nearest his eye behind it; his ear's front */
+                        const tol = Math.max(2, Math.round(0.04 * rpx)); let fwd = 0, near = null, back = null;
+                        const earFront = b.ear.n ? (b.front > 0 ? b.ear.x1 : b.ear.x0) : null, earBack = b.ear.n ? (b.front > 0 ? b.ear.x0 : b.ear.x1) : null;
+                        for (let j = 0; j < c.length; j++) { if (!isHair(c[j])) continue; const [x, y] = at(j); if (y < b.eye.y0 || y > b.eye.y1) continue; const a = (x - b.eb) * b.front;
+                          if (a > tol) fwd++; else if (a <= 0 && earBack !== null && a >= (earBack - b.eb) * b.front && (near === null || a > near)) near = a; }
+                        const ef = earFront === null ? null : (earFront - b.eb) * b.front, side = (st === START ? '' : '') + 'facing ' + d;
+                        said.push(d + ': hair over his face below his eye ' + pct(ff.s) + ', eye ' + pct(es) + ', nose ' + pct(ns) + ', at his temple ' + fwd + ' px in front of his eye, the hair nearest his eye at eye level ' + (near === null ? 'none' : (near / rpx).toFixed(2)) + ' (his ear\'s front ' + (ef === null ? '?' : (ef / rpx).toFixed(2)) + '), side face ' + pct(sf));
+                        if (st === START) continue;   /* held to his card's share, in D */
+                        const w = 'with the hair "' + st + '" on the ' + face + ' head, ' + side + ', ';
+                        if (ff.s > 0.1) P.push(w + 'his hair hangs over his face in front of his eye: ' + pct(ff.s) + ' of his cheek, nose, mouth and chin below his eye is under hair, where below his eye no hair comes in front of it');
+                        if (ns < 0.5) P.push(w + 'his hair hides his nose: ' + pct(ns) + ' of it shows');
+                        if (!q.bangs && es < 0.5) P.push(w + 'his hair hides his eye: ' + pct(es) + ' of it shows, and this hair has no bangs to lie over it');
+                        if (!q.bangs && fwd > b.eye.n / 4) P.push(w + 'the hair at his temple comes in front of the outer corner of his eye: ' + fwd + ' pixels of it, where his eye shows in ' + b.eye.n + ', and this hair has no bangs');
+                        if (ef !== null && near !== null && near < ef - tol) P.push(w + 'the hair at his temple starts behind the front of his ear, so he looks as if he were losing his hair there');
+                        if (near === null && q.ears !== 'show') P.push(w + 'no hair grows at his temple, between his eye and his ear, where this hair ' + (q.ears === 'cover' ? 'covers' : 'may cover') + ' his ears'); }
+                      if (face === ROUND && bD) { const c = frame(st, { face }, 'down');
+                        if (c && bD.eye.n >= 20) { const e = [0, 0], z = [0, 0], mid = bD.hx; for (let j = 0; j < c.length; j++) { if (c[j] === EYE) e[(j % W) < mid ? 0 : 1]++; if (bD.c[j] === EYE) z[(j % W) < mid ? 0 : 1]++; }
+                          const r = e.map((v, i) => v / Math.max(1, z[i])); said.push('facing you: eyes ' + r.map(pct).join('/'));
+                          if (st !== START && z[0] >= 10 && z[1] >= 10) { if (!q.bangs) r.forEach((v, i) => { if (v < 0.5) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + pct(v) + ' of it shows, and this hair has no bangs to lie over it'); });
+                            else if ((e[0] + e[1]) < (z[0] + z[1]) / 10) P.push('facing you with the hair "' + st + '", his bangs hide both his eyes: ' + pct((e[0] + e[1]) / (z[0] + z[1])) + ' of them shows, where bangs leave some of them showing'); } } }
+                      row.push(st + (st === START ? ' (the start)' : '') + (q.bangs ? ' (bangs)' : '') + ' ' + said.join('; ')); }
+                    LINES.push('on the ' + face + ' head, against the bald head (an eye from the right ' + (B.right ? B.right.eye.n : '?') + ', from the left ' + (B.left ? B.left.eye.n : '?') + ', facing you ' + (bD ? bD.eye.n : '?') + ' pixels, at ' + ZK + ' times the game\'s size): ' + row.join(' | '));
+                    /* 5 · each beard on the bald head, and the card's style "beard" */
+                    const brow = [];
+                    for (const w of KINDS.concat(offered ? ['the style'] : [])) { const said = [], full = w === 'beard' || w === 'the style', who = w === 'the style' ? 'the card\'s style "beard"' : 'the beard "' + w + '"';
+                      for (const d of ['right', 'left', 'down']) { if (d !== 'down' && !ok(d)) continue; const b = B[d]; if (!b) continue; const c = w === 'the style' ? frame('beard', { face }, d) : frame('bald', { face, beard: w }, d); if (!c) continue;
+                        const sd = d === 'down' ? 'facing you' : 'facing ' + d, es = count(c, EYE) / Math.max(1, b.eye.n), ns = count(c, NOSE) / Math.max(1, b.nose), cov = k => over(b, c, k);
+                        const chin = cov(['CHIN']), jaw = cov(['JAW']), lip = cov(['LIP']);
+                        said.push(sd + ': ' + (d === 'down' ? 'chin ' + pct(chin.s) + ', upper lip ' + pct(lip.s) + ', mouth ' + pct(count(c, MOUTH) / Math.max(1, b.mouth)) : 'jaw ' + pct(jaw.s)) + ', eye' + (d === 'down' ? 's ' : ' ') + pct(es) + ', nose ' + pct(ns));
+                        const h = 'on the ' + face + ' head, ' + sd + ', ' + who + ' ';
+                        if (es < (d === 'down' ? 0.9 : 0.5)) P.push(h + 'covers his eye' + (d === 'down' ? 's' : '') + ': ' + pct(es) + ' of ' + (d === 'down' ? 'them' : 'it') + ' shows, where with no beard it is all');
+                        if (ns < 0.5) P.push(h + 'covers his nose: ' + pct(ns) + ' of it shows');
+                        if (d === 'down') { if (!(b.mouth >= 10)) P.push('on the ' + face + ' head, bald, facing you, his mouth could not be found on the screen (' + b.mouth + ' pixels), so whether a beard leaves it showing was not asked');
+                          else if (count(c, MOUTH) < b.mouth / 2) P.push(h + 'covers his mouth: ' + pct(count(c, MOUTH) / b.mouth) + ' of it shows, where a beard leaves his mouth showing');
+                          if (full || w === 'goatee') { if (!(chin.n >= 20)) P.push('on the ' + face + ' head, facing you, his chin could not be found on the screen, so whether ' + who + ' covers it was not asked'); else if (chin.s < 0.5) P.push(h + 'leaves his chin bare: ' + pct(chin.s) + ' of it is under it'); }
+                          if (w === 'goatee' || w === 'moustache') { const need = w === 'moustache' ? 1 / 3 : 1 / 5;
+                            if (!(lip.n >= 20)) P.push('on the ' + face + ' head, facing you, his upper lip could not be found on the screen, so whether ' + who + ' covers it was not asked');
+                            else if (lip.s < need) P.push(h + (w === 'moustache' ? 'leaves his upper lip bare: ' + pct(lip.s) + ' of it is under it, where a moustache is the hair on his upper lip' : 'does not grow round his mouth: ' + pct(lip.s) + ' of his upper lip is under it, where a goatee grows on his chin and round his mouth')); } }
+                        else if (full) { if (!(jaw.n >= 20)) P.push('on the ' + face + ' head, ' + sd + ', his jaw could not be found on the screen, so whether ' + who + ' covers it was not asked'); else if (jaw.s < 0.25) P.push(h + 'leaves his jaw bare: ' + pct(jaw.s) + ' of it is under it'); } }
+                      brow.push(w + ' ' + said.join('; ')); }
+                    LINES.push('the beards on the ' + face + ' head: ' + brow.join(' | '));
+                  }
+                } finally { cam.clearViewOffset(); Object.values(MATS).forEach(m => m.dispose()); }
+                LINES.forEach(l => N.push('his face as a real head shows it: ' + l)); }
               /* HIS BODY IS MADE AGAIN WHEN HIS LOOK CHANGES (2026-11-14), on the street and in the creator's preview: each thing a
                  player can change in his look changed alone, and the body then standing on the street, and the one in the preview,
                  are each the body made afresh from his look as it now is (the clock and the random numbers held while they are
