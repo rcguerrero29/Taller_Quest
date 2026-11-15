@@ -15066,7 +15066,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                  player can change in his look changed alone, and the body then standing on the street, and the one in the preview,
                  are each the body made afresh from his look as it now is (the clock and the random numbers held while they are
                  made); the look before and after must make two different bodies, or the change had nothing to show and is a red.
-                 Among them the card's style "beard", which is the short cap with a beard, against the short cap itself */
+                 Among them the card's style "beard", which is the short cap with a beard, against the short cap itself.
+                 Each change is asked twice: handed over as another look, and (2026-11-15) made as the creator and the chair make
+                 it, in the one look he has (engine/engine.js, grep "function buildSwatches", "function buildOpts" and
+                 "const set=(k,v)"): a colour, his clothes or his style written into that look, and a row of his body put back
+                 through bodyChoicesOf with his other rows as they were. A body made again only when it is handed another look
+                 passes the first and is a red in the second */
               { const kr = Math.random, kn = Date.now;
                 const hold = () => { let s = 7; Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => 1.8e12; };
                 const back = () => { Math.random = kr; Date.now = kn; };
@@ -15081,6 +15086,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const base = saveLook({ ...look, ...LOOK, style: saveLook({}).style, body: {} });
                 const CHG = [['his skin', { skin: '#8D5524' }], ['his hair\'s colour', { hair: '#2A9D8F' }], ['his shirt', { shirt: '#B03A48' }], ['his clothes', { outfit: 'formal' }],
                   ['the style of his hair', { style: 'afro' }], ['his beard', { body: { beard: 'goatee' } }], ['the shape of his head', { body: { face: 'oval' } }], ['the width of his nose', { body: { nosew: 1.5 } }]];
+                /* the change as the creator makes it, in the look it is handed: what is not his body written in (look[part]=col,
+                   look[key]=val), and his body's rows put back through bodyChoicesOf, his other rows as they were */
+                const inPlace = (lk, ch) => { const { body, ...top } = ch; Object.assign(lk, top); if (body) lk.body = bodyChoicesOf({ ...lk.body, ...body }); };
                 const said = [];
                 for (const [what, ch] of [...CHG, ['the card\'s style "beard" (the short cap with a beard) to the short cap', null]]) {
                   const a = ch ? base : saveLook({ ...base, style: 'beard' }), b = ch ? saveLook({ ...base, ...ch }) : saveLook({ ...base, style: 'cap' });
@@ -15089,8 +15097,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   for (const [where, show] of [['on the street', onStreet], ['in the creator\'s preview', inPreview]]) { const s0 = show(a), s1 = show(b);
                     if (s0 === null || s1 === null) { P.push('his body could not be found ' + where + ', so whether it is made again when ' + what + ' changes was not asked'); continue; }
                     if (s0 !== fa) P.push('with his look as it starts, his body ' + where + ' is not the body his look makes');
-                    else if (s1 !== fb) P.push('changing ' + what + ', his body ' + where + ' stays as it was: it is not made again from his new look'); } said.push(what); }
-                N.push('his body made again on the street and in the preview when each of these changes: ' + said.join(', ')); }
+                    else if (s1 !== fb) P.push('changing ' + what + ', his body ' + where + ' stays as it was: it is not made again from his new look');
+                    /* the same change made in the one look, as the creator makes it: his look as it starts, shown, then changed where it is and shown again */
+                    const one = saveLook(a), t0 = show(one); inPlace(one, ch || { style: 'cap' }); const t1 = show(one);
+                    if (t0 === null || t1 === null) P.push('his body could not be found ' + where + ' with his look changed where it is, as the creator changes it, so whether it is made again when ' + what + ' changes there was not asked');
+                    else if (t0 !== fa) P.push('with his look as it starts, held in the one look the creator changes, his body ' + where + ' is not the body his look makes');
+                    else if (t1 !== fb) P.push('changing ' + what + ' as the creator changes it, in his one look, his body ' + where + ' stays as it was: it is not made again from his look as it now is'); }
+                  said.push(what); }
+                N.push('his body made again on the street and in the preview when each of these changes, handed over as another look and changed in his one look as the creator changes it: ' + said.join(', ')); }
             } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = kd; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
             return { P, N }; });
           R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
