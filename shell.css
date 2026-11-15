@@ -460,7 +460,11 @@
 #adoptName,#renName{width:100%; box-sizing:border-box; font-size:1rem; padding:10px 12px; margin:8px 0 12px; border-radius:10px; border:1px solid var(--line); background:var(--bubble); color:var(--ink);}
 #adoptGo,#adoptX,#cmdSit,#cmdDown,#cmdStay,#cmdCome,#cmdFollow,#cmdRen,#cmdReh,#renGo,#renX{flex:1;}
 #tpNote,#wdNote{font-size:.8rem; color:var(--muted); margin:4px 0 10px;}
-#tpqr{display:block; margin:0 auto 12px; width:190px; height:190px; image-rendering:pixelated; background:#FFF; border-radius:10px;}
+/* The pass's code has no size here: the engine draws it a whole number of screen pixels a square, as large as this panel
+   has room for, and writes that size on it (engine/engine.js, grep "THE PASS'S PANEL OPENS"). #tpBig is the line the panel
+   says in the code's place when a game is too big for one. */
+#tpqr{display:block; margin:0 auto 12px; image-rendering:pixelated; background:#FFF; border-radius:10px;}
+#tpBig{font-size:.9rem; line-height:1.4; margin:0 0 12px; padding:12px; border-radius:10px; background:var(--chip); color:var(--ink);}
 
 /* A control a generated shell switches off for good. The engine clears `hidden` on some HUD buttons on every
    checkTalk (#cmd, the paw), so `hidden` cannot keep one away; this can, whatever the engine writes. El Horno's
