@@ -37,7 +37,20 @@ function findChromium() {
 (async () => {
   const args = process.argv.slice(2);
   const idx = args[args.indexOf('--index') + 1];
-  if (!args.includes('--index') || !idx) { console.error('usage: node test/engine.smoke.js --index <path to an index.html>'); process.exit(2); }
+  if (!args.includes('--index') || !idx) { console.error('usage: node test/engine.smoke.js --index <path to an index.html> [--part map|body|rest]'); process.exit(2); }
+  /* ONE PART OF THIS FILE, WHEN ASKED (2026-11-14). A run of every check against a world with a 3D camera took 386 to 476 s
+     of the 480 s the gauge and the oven world allow it (test/gauge.js, test/horno.js), and a limit raised each time the
+     checks grow is a check that wants splitting, not a longer rope. Measured whole on 2026-11-14, section by section, on
+     a busy machine: in the gauge's furniture world 476 s, of which the map opened in every place 137 s and the bodies of
+     the person and the dog 184 s. Measured in parts the same day, the map, the bodies and the rest: the gauge in 3D 104,
+     146 and 135 s; its furniture world 120, 135 and 133 s; the oven world 98, 133 and 130 s. `--part map`, `--part body` and `--part rest` each ask only their own checks, after the same
+     page is opened, and the three together ask exactly what the whole file asks; with no `--part`, the whole file, as
+     before (the engine's own part of the public check). The parts are cut where the file's own sections are, and no
+     section reads what another declared (the only one that did, the first section's flat letters, is read through `r`
+     below, and is null where that section was not asked). A word that is not one of the three is a red, not a run */
+  const part = args.includes('--part') ? args[args.indexOf('--part') + 1] : null;
+  if (part !== null && !['map', 'body', 'rest'].includes(part)) { console.error('FAIL — this file was asked for the part ' + JSON.stringify(part === undefined ? '' : part) + ', which is not one of map, body, rest, so nothing was asked'); process.exit(2); }
+  const runs = w => part === null || part === w;
   const exe = findChromium();
   if (!exe) { console.error('No Chromium found. Set CHROMIUM_PATH, or install one of: ' + CANDIDATES.join(', ')); process.exit(1); }
   const root = path.resolve(__dirname, '..'), file = path.resolve(root, idx);
@@ -70,6 +83,18 @@ function findChromium() {
   const boot = async p => { await p.waitForFunction(() => document.readyState === 'complete' && document.fonts.status === 'loaded', null, { timeout: 30000 }); await rafs(p); };
   const rafs = (p, n = 2) => p.evaluate(n => new Promise(r => { let k = 0; const t = setTimeout(r, 400); const f = () => { if (++k >= n) { clearTimeout(t); r(); } else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n);
   const until = (p, fn, arg, ms = 5000) => p.waitForFunction(fn, arg, { timeout: ms }).then(() => true, () => false);
+  /* A CONTROL OF THE CREATOR IS REACHED AS A PERSON REACHES IT (2026-11-14). In a world that takes the body the creator's rows sit
+     in drawers under tabs (CRTABS, engine/engine.js), and a control in a shut drawer cannot be tapped: a check that tapped it
+     straight away waited half a minute and threw, and the rest of this file never ran (found on a world that takes the body; the
+     public game does not, so nothing here showed it). reach(p, sel) taps the control's tab where its panel is hidden and its
+     drawer's name where the drawer is shut, and waits for the drawer to be open; in a world with no tabs or drawers it does
+     nothing. False where there is no such control */
+  const reach = async (p, sel) => { const w = await p.evaluate(sel => { const e = document.querySelector(sel); if (!e) return null;
+      const pn = e.closest('[role=tabpanel]'), d = e.closest('details'); return { tab: pn && pn.hidden ? pn.getAttribute('aria-labelledby') : null, d: d && !d.open ? d.id : null }; }, sel);
+    if (!w) return false;
+    if (w.tab) { await p.click('#' + w.tab); await rafs(p, 1); }
+    if (w.d) { await p.click('#' + w.d + ' > summary'); await until(p, id => { const d = document.getElementById(id); return !!d && d.open; }, w.d, 3000); await rafs(p, 1); }
+    return true; };
   /* HIS CARD, WITH HIS BODY HELD OFF. A world that names `person` in its own BODYTAKE sees the person you steer, up close in the
      3D camera, as a jointed body, and his card is not drawn there (engine/engine3d.js, grep "THE JOINTED BODY"). A check that
      finds him by his card asks it of the card, as he is seen from afar in that world: cardOn(p, what) holds the body off on
@@ -99,7 +124,9 @@ function findChromium() {
      after boot (measured on the library shell: 12 of 12 against 13 of 13). This sleep is the time passing, so it stays. */
   await page.waitForTimeout(1500);
   let fails = [];
+  let r = null;   /* the first section's findings and the letters still flat, read again by the closing line */
 
+  if (runs('rest')) {   /* ---- the part `rest`, first stretch (its sections keep their own indent) ---- */
   /* ---- in-scene text has a floor (Rosa's 3D note) ----
      Text painted into the world is authored in tile units and the camera decides how big it lands:
      measured on a phone, one unit is about a CSS pixel, so a glyph authored at 5.5 arrives around
@@ -1135,7 +1162,7 @@ function findChromium() {
     if (stray.length) P.push('storage keys outside the prefix "' + pfx + '": ' + stray.join(', '));
     return { P, stillFlat: Object.keys(flat).sort().map(g => g + '×' + flat[g]) };
   }, idx);
-  const r = r0.P; r.stillFlat = r0.stillFlat;
+  r = r0.P; r.stillFlat = r0.stillFlat;
   fails.push(...r.filter(l => !/^COUNT-ONLY: /.test(l)));
   r.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
@@ -4801,7 +4828,7 @@ function findChromium() {
         const s2 = await step(pk.out, pk.x, pk.y);
         if (s2.x !== pk.x || s2.y !== pk.y) { out.push('petals (#284): from the loose petals at (' + pk.hx + ',' + pk.hy + ') the arrow key ' + KEY[pk.out] + ' did not walk the hero back out to ' + at + ' — he is at (' + s2.x + ',' + s2.y + '), so nothing was looked at'); return out; }
       }
-      const res = await page.evaluate(([pk, CROSS]) => {
+      const res = await byCard(page, 'the petals under the hero', () => page.evaluate(([pk, CROSS]) => {   /* his card, as he is seen from afar, where a world takes his body (2026-11-14) */
         const P = [], at = '(' + pk.x + ',' + pk.y + ') in ' + pk.wid, w = WORLDS[pk.wid];
         const mine = PETALS.filter(p => p.w === pk.wid && p.x === pk.x && p.y === pk.y);
         if (!mine.length) { P.push('petals (#284): the hero walked into the loose petals at (' + pk.hx + ',' + pk.hy + ') and back out to ' + at + ' with the arrow keys, ' + CROSS + ' times, and nothing was dropped on ' + at + ' — his shoes carried nothing off the heap (' + PETALS.length + ' drop(s) in all), so there was nothing to look for'); return P; }
@@ -4915,7 +4942,7 @@ function findChromium() {
           window.__p284.drew3d = drew3d;
         }
         return P;
-      }, [pk, CROSS]);
+      }, [pk, CROSS]));
       out.push(...res);
     } finally {
       await page.evaluate(() => { const K = window.__p284; if (!K) return; const w = WORLDS[K.wid];
@@ -6066,6 +6093,8 @@ function findChromium() {
   });
   fails.push(...bearings);
 
+  }
+  if (runs('map')) {   /* ---- the part `map` ---- */
   /* ---- WHEREVER THE MAP OPENS IT SHOWS WHERE YOU ARE, AND THE EDGE ARROW WAITS TO BE TURNED ON ----
      Two rules, each asked of the screen a person is looking at, never of the function that ought to produce it:
        · the caption under the map says "◉ you are here", so wherever the map opens the ◉ is drawn where you are — in
@@ -8785,6 +8814,8 @@ function findChromium() {
     MN.forEach(l => fails.push(l));
     MP.forEach(l => fails.push(l));
   }
+  }
+  if (runs('rest')) {   /* ---- the part `rest`, second stretch ---- */
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
@@ -10069,7 +10100,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      footprint (tram on, tram off, no hero), and inside where they overlap, how many pixels moved
      when each of the two was taken away. Raw renders after one draw3d, because draw3d re-places the
      tram each frame and would undo the toggles. */
-  const onRoof = await page.evaluate(() => {
+  const onRoof = await byCard(page, 'the hero over the trolley\'s roof', () => page.evaluate(() => {   /* his card, as he is seen from afar, where a world takes his body (2026-11-14) */
     const P = [];
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
     if (!L) return P;
@@ -10122,7 +10153,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.d; T3.yaw = keep.yaw;
     camSet(keep.cam); sizeCanvas(); document.getElementById('world').hidden = true;
     return P;
-  });
+  }));
   fails.push(...onRoof.filter(l => !/^COUNT-ONLY: /.test(l)));
   onRoof.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
 
@@ -12512,7 +12543,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const b = [...document.querySelectorAll('#row' + part[0].toUpperCase() + part.slice(1) + ' button')]
             .find(x => !(x.getAttribute('aria-label') || '').toLowerCase().endsWith(' ' + def.toLowerCase()));
           return b ? b.getAttribute('aria-label') : null; }, { part, def: D[part] });
-        if (want) await pp.click('button[aria-label="' + want + '"]');
+        if (want) { const sel = '#row' + part[0].toUpperCase() + part.slice(1) + ' button[aria-label="' + want + '"]'; await reach(pp, sel); await pp.click(sel); }
       }
       await pp.click('#begin');
       await until(pp, () => !document.getElementById('world').hidden, null, 2400); await rafs(pp);
@@ -12562,66 +12593,70 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const settle = async () => { let none = await grab('ref'), still = -1;
       for (let i = 0; i < 12 && !none; i++) { none = await grab('ref2'); still = await diff('ref', 'ref2'); if (still === 0) break; await grab('ref'); }
       return { none, still }; };
-    let env = await setup();
-    if (env.none) { P32.push(env.none + ', so no stranger was drawn anywhere — nothing was measured'); env.cams = []; }
-    const short = t => t === null ? '(none)' : t === '@big' ? 'six strings of a megabyte each' : (t.length > 90 ? t.slice(0, 60) + '… (' + t.length + ' characters)' : t);
-    if (!env.cams.length) P32.push('this game offers no camera in Settings, so no stranger was drawn anywhere — nothing was measured');
-    for (const cam of env.cams) {
-      const got = await camTo(cam);
-      if (got !== cam) { P32.push('the ' + cam + ' button in Settings did not switch the camera (it is ' + got + '), so the ' + cam + ' camera was not measured'); continue; }
-      /* the control: the default stranger, twice, with nothing changed between */
-      await put(JSON.stringify(env.def));
-      const c0 = await settle();
-      if (c0.none) { P32.push('in the ' + cam + ' camera ' + c0.none + ', so nothing was measured'); continue; }
-      if (c0.still !== 0) { P32.push('in the ' + cam + ' camera the frame changed by ' + c0.still + ' pixels with nothing changed — the world would not hold still, so nothing was measured'); continue; }
-      /* is a stranger's LOOK on screen here? A stranger in your clothes must be drawn differently from one in the
-         default. Planted: with the body not drawn at all, "stranger or no stranger" still differed by the name label
-         over his head, and every hostile case passed while measuring nothing. */
-      await put(JSON.stringify(env.mine)); await grab('yours');
-      const shows = await diff('ref', 'yours'), yoursDiffer = shows;
-      if (!shows) {
-        if (cam === 'iso') N32.push('COUNT-ONLY: the iso camera draws no other player yet (#32\'s second half waits for multiplayer), so there it was measured only that no stranger breaks the street');
-        else { P32.push('in the ' + cam + ' camera a stranger in your clothes is drawn exactly like one in the default, so a stranger\'s look cannot be seen there and nothing was measured'); continue; }
-      }
-      for (const [label, text] of HOSTILE) {
-        pErr.length = 0;
-        await put(text); await grab('case');
-        const n = await diff('case', 'ref'), errs = pErr.slice();
-        const mineToo = shows > 0 && yoursDiffer > 0 && (await diff('case', 'yours')) === 0;
-        if (errs.length) P32.push('with a stranger ' + label + ' beside you, the page threw ' + errs.length + ' time(s) in the ' + cam + ' camera: ' + errs[0] + ' — their look was ' + short(text));
-        if (mineToo) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn wearing YOUR clothes — a stranger who sends nothing must look like the game\'s default, never like you');
-        else if (n) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn differently (' + (n < 0 ? 'unreadable' : n + ' pixels') + ') from a stranger who sent no look — what their device sent reached the drawing, where a saved look would have been made safe first: ' + short(text));
-        /* and the street comes back when they leave */
-        await put(JSON.stringify(env.def)); await grab('after');
-        const back = await diff('after', 'ref');
-        if (back) {
-          const all = await pp.evaluate(() => window.__p32.size('ref'));
-          P32.push('after a stranger ' + label + ' walked away, the ' + cam + ' camera did not come back: ' + (back < 0 ? 'nothing could be read' : back + ' of its ' + all + ' pixels stay wrong') + ' until a reload' + (back > all / 2 ? ' — the screen is frozen' : ''));
-          env = await setup();
-          if ((await camTo(cam)) !== cam) break;
-          await put(JSON.stringify(env.def)); await settle();
-          await put(JSON.stringify(env.mine)); await grab('yours');
+    /* A FENCE (2026-11-14): a throw anywhere below (a control that cannot be reached, a page that will not boot) is this check's
+       red, said in its own words, and the rest of the file still runs; until then one throw here ended the whole file */
+    try {
+      let env = await setup();
+      if (env.none) { P32.push(env.none + ', so no stranger was drawn anywhere — nothing was measured'); env.cams = []; }
+      const short = t => t === null ? '(none)' : t === '@big' ? 'six strings of a megabyte each' : (t.length > 90 ? t.slice(0, 60) + '… (' + t.length + ' characters)' : t);
+      if (!env.cams.length) P32.push('this game offers no camera in Settings, so no stranger was drawn anywhere — nothing was measured');
+      for (const cam of env.cams) {
+        const got = await camTo(cam);
+        if (got !== cam) { P32.push('the ' + cam + ' button in Settings did not switch the camera (it is ' + got + '), so the ' + cam + ' camera was not measured'); continue; }
+        /* the control: the default stranger, twice, with nothing changed between */
+        await put(JSON.stringify(env.def));
+        const c0 = await settle();
+        if (c0.none) { P32.push('in the ' + cam + ' camera ' + c0.none + ', so nothing was measured'); continue; }
+        if (c0.still !== 0) { P32.push('in the ' + cam + ' camera the frame changed by ' + c0.still + ' pixels with nothing changed — the world would not hold still, so nothing was measured'); continue; }
+        /* is a stranger's LOOK on screen here? A stranger in your clothes must be drawn differently from one in the
+           default. Planted: with the body not drawn at all, "stranger or no stranger" still differed by the name label
+           over his head, and every hostile case passed while measuring nothing. */
+        await put(JSON.stringify(env.mine)); await grab('yours');
+        const shows = await diff('ref', 'yours'), yoursDiffer = shows;
+        if (!shows) {
+          if (cam === 'iso') N32.push('COUNT-ONLY: the iso camera draws no other player yet (#32\'s second half waits for multiplayer), so there it was measured only that no stranger breaks the street');
+          else { P32.push('in the ' + cam + ' camera a stranger in your clothes is drawn exactly like one in the default, so a stranger\'s look cannot be seen there and nothing was measured'); continue; }
         }
-      }
-      if (shows) {
-        /* any real colour stays allowed: one of this game's own swatches that is not the default */
-        for (const part of ['shirt', 'skin', 'hair']) {
-          const hex = (env.swatch[part] || []).find(c => c.toLowerCase() !== String(env.def[part]).toLowerCase());
-          if (!hex) { N32.push('COUNT-ONLY: this game has no ' + part + ' swatch but the default, so a stranger\'s own ' + part + ' colour was not tried'); continue; }
-          await put(JSON.stringify({ [part]: hex })); await grab('real');
-          if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose a real ' + part + ' colour, ' + hex + ' (one of this game\'s own swatches), was drawn exactly like one in the default — either the colour was thrown away, and any real colour must stay allowed, or his ' + part + ' cannot be seen from here, and then nothing about ' + part + 's was measured in this camera');
+        for (const [label, text] of HOSTILE) {
+          pErr.length = 0;
+          await put(text); await grab('case');
+          const n = await diff('case', 'ref'), errs = pErr.slice();
+          const mineToo = shows > 0 && yoursDiffer > 0 && (await diff('case', 'yours')) === 0;
+          if (errs.length) P32.push('with a stranger ' + label + ' beside you, the page threw ' + errs.length + ' time(s) in the ' + cam + ' camera: ' + errs[0] + ' — their look was ' + short(text));
+          if (mineToo) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn wearing YOUR clothes — a stranger who sends nothing must look like the game\'s default, never like you');
+          else if (n) P32.push('in the ' + cam + ' camera a stranger ' + label + ' was drawn differently (' + (n < 0 ? 'unreadable' : n + ' pixels') + ') from a stranger who sent no look — what their device sent reached the drawing, where a saved look would have been made safe first: ' + short(text));
+          /* and the street comes back when they leave */
+          await put(JSON.stringify(env.def)); await grab('after');
+          const back = await diff('after', 'ref');
+          if (back) {
+            const all = await pp.evaluate(() => window.__p32.size('ref'));
+            P32.push('after a stranger ' + label + ' walked away, the ' + cam + ' camera did not come back: ' + (back < 0 ? 'nothing could be read' : back + ' of its ' + all + ' pixels stay wrong') + ' until a reload' + (back > all / 2 ? ' — the screen is frozen' : ''));
+            env = await setup();
+            if ((await camTo(cam)) !== cam) break;
+            await put(JSON.stringify(env.def)); await settle();
+            await put(JSON.stringify(env.mine)); await grab('yours');
+          }
         }
-        /* and a hair style or a pattern this game's creator offers */
-        for (const [key, list, def] of [['style', env.styles, env.def.style], ['pattern', env.patterns, env.def.pattern]]) {
-          const pick = list.find(v => v !== def);
-          if (!pick) { N32.push('COUNT-ONLY: this game\'s creator offers no ' + key + ' but the default, so a stranger\'s own ' + key + ' was not tried'); continue; }
-          await put(JSON.stringify({ [key]: pick })); await grab('real');
-          if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose the ' + key + ' "' + pick + '", which this game\'s creator offers, was drawn exactly like one with the default ' + key + ' — either it was thrown away, or it cannot be seen from here and nothing about it was measured in this camera');
+        if (shows) {
+          /* any real colour stays allowed: one of this game's own swatches that is not the default */
+          for (const part of ['shirt', 'skin', 'hair']) {
+            const hex = (env.swatch[part] || []).find(c => c.toLowerCase() !== String(env.def[part]).toLowerCase());
+            if (!hex) { N32.push('COUNT-ONLY: this game has no ' + part + ' swatch but the default, so a stranger\'s own ' + part + ' colour was not tried'); continue; }
+            await put(JSON.stringify({ [part]: hex })); await grab('real');
+            if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose a real ' + part + ' colour, ' + hex + ' (one of this game\'s own swatches), was drawn exactly like one in the default — either the colour was thrown away, and any real colour must stay allowed, or his ' + part + ' cannot be seen from here, and then nothing about ' + part + 's was measured in this camera');
+          }
+          /* and a hair style or a pattern this game's creator offers */
+          for (const [key, list, def] of [['style', env.styles, env.def.style], ['pattern', env.patterns, env.def.pattern]]) {
+            const pick = list.find(v => v !== def);
+            if (!pick) { N32.push('COUNT-ONLY: this game\'s creator offers no ' + key + ' but the default, so a stranger\'s own ' + key + ' was not tried'); continue; }
+            await put(JSON.stringify({ [key]: pick })); await grab('real');
+            if (!(await diff('real', 'ref'))) P32.push('in the ' + cam + ' camera a stranger who chose the ' + key + ' "' + pick + '", which this game\'s creator offers, was drawn exactly like one with the default ' + key + ' — either it was thrown away, or it cannot be seen from here and nothing about it was measured in this camera');
+          }
         }
+        await put(undefined);
       }
-      await put(undefined);
-    }
-    if (pp) await pp.close();
+    } catch (e) { P32.push('the check could not be asked to the end, so what follows the step that broke was not measured: ' + String(e && e.message || e).split('\n')[0]); }
+    if (pp && !pp.isClosed()) await pp.close();
     await pctx.close();
     fails.push(...[...new Set(N32)], ...[...new Set(P32)].map(m => 'another player: ' + m));
   }
@@ -13655,7 +13690,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const hp = await page.evaluate(lk => { const A = window.__apron, keep = { ...look }; try { return A.still(() => { look = { ...lk }; pvDraw(); return A.hash(A.pv()); }); } finally { look = keep; pvDraw(); } }, c0.look);
           if (h0 !== hp) say(0, 'in a world that turns the apron on, None in the creator\'s preview is not the everyday clothes of a world that does not: turning the apron on changed None'); }
         else say(1, 'this world turns the apron on itself, so None could not be held against a world that does not');
-        await ap.locator('#rowOutfit button', { hasText: 'Apron' }).click();
+        await reach(ap, '#rowOutfit button'); await ap.locator('#rowOutfit button', { hasText: 'Apron' }).click();
         const c1 = await row();
         if (c1.outfit !== 'apron' || c1.pressed[c1.labels.indexOf('Apron')] !== 'true') say(0, 'pressing Apron in the creator leaves the look saying "' + c1.outfit + '", with the buttons ' + JSON.stringify(c1.pressed));
         /* the person's own paint, and how much of it the apron changes */
@@ -13842,6 +13877,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...AP, ...AN);
   }
 
+  }
+  if (runs('body')) {   /* ---- the part `body`: the person's and the dog's jointed bodies ---- */
   /* ---- THE PERSON YOU STEER STANDS AS A JOINTED BODY, ONLY WHERE THE WORLD ASKS (mq-v259) ----
      A world that names `person` in its own `BODYTAKE` list sees the person you steer, up close in the 3D camera, as a body of
      rounded parts hung on a skeleton of named joints (engine/engine3d.js, grep "THE JOINTED BODY"); farther than BODYNEAR
@@ -14081,7 +14118,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                        card's shirt stands for both) within 15% of the card's widest, either way;
                      · HIS FACE SHOWS: of his head (the skin and hair above the middle of his shirt), the share that is skin,
                        facing you at least 85% of his card's share, and facing right at least 60% of it (the side of a head
-                       is half hair, and that is a face from the side; under the old cap of hair it was half of the card's);
+                       is half hair, and that is a face from the side; under the old cap of hair it was half of the card's).
+                       From 2026-11-14 this share is asked of the style a new character starts with only: every other style is
+                       asked, in the game's camera below (D, beside K), that his eyes show facing you and from the side some of
+                       his face does, each against the bald head, and those numbers are printed, count-only, for every style;
                      · AT NIGHT AS BRIGHT AS HIS CARD: at ten at night, the mean brightness of his shirt and of his skin each
                        at least 80% of the card's own, and no more than 125% of it.
                    Nothing measured is a red: a frame that shows fewer than 50 pixels of his shirt, or of his head, says so. */
@@ -14117,7 +14157,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const F = {}, CUTS = typeof HAIRSTYLES === 'object' && Array.isArray(HAIRSTYLES) ? HAIRSTYLES.slice() : [], START = saveLook({}).style;
               if (!CUTS.length) P.push('the engine keeps no list of the styles of hair his body can wear, so whether his face shows under each was not asked');
               else if (!CUTS.includes(START)) P.push('a new character starts with the hair "' + START + '", which is not one his body can wear (' + CUTS.join(', ') + ')');
-              const FRAMES = CUTS.flatMap(c => [[c, 12, 'down'], [c, 12, 'right']].concat(c === START ? [[c, 22, 'down']] : []));
+              /* from 2026-11-14 the share of his card is asked of the style he starts with only (every other style is asked in the camera
+                 beside K, below), so only its frames are made, and the afro and the cap facing you, for the fuller hair */
+              const FRAMES = !CUTS.includes(START) ? [] : [[START, 12, 'down'], [START, 12, 'right'], [START, 22, 'down'], ...['afro', 'cap'].filter(c => c !== START && CUTS.includes(c)).map(c => [c, 12, 'down'])];
               try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
                 for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: {} }); hour = h; dir = d;
@@ -14139,9 +14181,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (ok.includes('12down') && ok.includes('12right')) N.push('his face' + hairSaid(cut) + ': ' + pct(at3('12down').body.share) + ' of his head skin facing you (his card ' + pct(at3('12down').card.share) + '), ' + pct(at3('12right').body.share) + ' facing right (his card ' + pct(at3('12right').card.share) + ')');
               if (ok.includes('12down')) { const f = at3('12down'), r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
                 if (cut === START && (r < 0.85 || r > 1.15)) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
-                if (hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
+                if (cut === START && hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
-                if (hs < 0.6) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
+                if (cut === START && hs < 0.6) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
                   if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');
@@ -14722,7 +14764,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
            R · WHAT HE COSTS: a body for every style on every shape of head, with a beard, is made without an error and is no
                more than BODYTRIS triangles (measured on mq-v265: the heaviest, the braids with a beard on a head with a jaw,
                about 40,700; the braids alone 37,604, the next heaviest 22,636). */
-      { const K = await page4(doc, null, null, true);
+      /* K, L, M, N, O, P AND R ARE ASKED IN THE GAME'S OWN WORLD ONLY (2026-11-14). They make his body with the engine's own makers
+         (bodySkeleton, bodyMake) from a look this check writes in full (skin, hair, shirt, clothes, pattern, style, every choice of
+         the body), and ask nothing of the street, the camera, the light or the creator: the pack files of any world load before
+         the engine (each shell's script order), so none can declare a name the engine declares, and what they make is the engine's
+         alone. Run in every world, they gave the same answer at about 20 s each time. The body a world actually draws is still
+         asked in every world: by D, F and the camera's look beside K (his hair, ears, neck, eyes and face on its own street).
+         `--index index.html`, the game, is the run that asks them (the engine's own part of the public check) */
+      if (path.resolve(file) !== path.resolve(root, 'index.html')) say(1, 'his hair, head and face made by the engine alone (K to R) are asked in the game\'s own world, index.html, and not again in this one: the world cannot change what the engine makes from a look the check writes in full');
+      else { const K = await page4(doc, null, null, true);
         try { const R = await K.p.evaluate(() => { const P = [], N = [];
             if (typeof HAIRSTYLES === 'undefined' || !Array.isArray(HAIRSTYLES) || !HAIRSTYLES.length) { P.push('the engine keeps no list of the styles of hair his body can wear, so his hair, head and face were not asked'); return { P, N }; }
             if (typeof THREE === 'undefined') { N.push('this shell has no 3D camera, so his body is never shown and his hair, head and face were not asked'); return { P, N }; }
@@ -14952,6 +15002,59 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (has && n < eye) P.push('with the hair "' + st + '", ' + said + ', his hair does not show in the game\'s camera: ' + n + ' pixels of his hair\'s colour round his head, fewer than one of his eyes shows (' + eye + ')'); }
                 seen.push(st + ' ' + row.join('/')); }
               N.push('his hair in the camera (facing you, right, away, left; pixels of hair, and of the ear on that side), an eye ' + eye + ', a bare ear ' + bare.right + '/' + bare.left + ': ' + seen.join('; '));
+              /* D · HIS FACE UNDER EVERY STYLE BUT THE ONE HE STARTS WITH (2026-11-14). The style a new character starts with is
+                 held to his card's share of skin (D, above); every other style is asked what a person looks for in a face, each
+                 against the same eye or the same face on the bald head, from the same camera, so no number of the card's or of
+                 another style's comes into it:
+                   · FACING YOU, HIS EYES SHOW: each eye at least half of what that eye shows on the bald head. Half, because an eye
+                     half under a fringe still reads as an eye and one more than half under it reads as covered;
+                   · FACING RIGHT, THE EYE ON THAT SIDE SHOWS, by the same half;
+                   · FACING RIGHT, SOME OF HIS FACE SHOWS: his skin in front of his hair, row by row of his head (in front of the
+                     foremost hair in that row, and in the front half of the bald head's outline, so his ear is not his face), at
+                     least a third of the skin the bald head shows in that front half. A third, because an eye, a nose and a cheek
+                     in front of the hair are about a third of the front of a head; a nose alone out of a curtain of hair is not a
+                     face.
+                 His head is what turns magenta when every part on his head is painted so (the parts the head joint carries); in that
+                 outline, a pixel of the frame as it is drawn is skin or hair by its hue (D's hues). Nothing to measure is a red. */
+              { const START = saveLook({}).style, skH = (() => { const q = new THREE.Color(LOOK.skin); return hsv(q.r * 255, q.g * 255, q.b * 255)[0]; })();
+                /* read in the square round where he stands only (the box his hair is counted in, above), not the whole screen */
+                const bx0 = Math.max(0, Math.floor(box.cx - box.sq)), by0 = Math.max(0, Math.floor(box.cy - box.sq)), W = Math.min(E.W, Math.ceil(box.cx + box.sq)) - bx0, H = Math.min(E.H, Math.ceil(box.cy + box.sq)) - by0;
+                const gb = () => { draw3d(); const gl = T3.renderer.getContext(), px = new Uint8Array(W * H * 4); gl.readPixels(bx0, by0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px); return { W, H, px }; };
+                const mask = f => { const kept = []; T3.body.traverse(o => { if (o.isMesh && o.userData.base && f(o)) { kept.push([o, o.userData.base, o.material.map]); o.userData.base = new THREE.Color('#FF00FF'); o.material.map = null; o.material.needsUpdate = true; } });
+                  let F; try { F = gb(); } finally { kept.forEach(([o, c, m]) => { o.userData.base = c; o.material.map = m; o.material.needsUpdate = true; }); }
+                  const m = new Uint8Array(W * H); if (!kept.length) return null; for (let i = 0; i < m.length; i++) m[i] = mag(F.px, i * 4) ? 1 : 0; return m; };
+                /* the pixels of a part that show: magenta when it is painted so, and not magenta as the frame is drawn */
+                const shown = (f, A) => { const m = mask(f); if (!m) return -1; let n = 0; for (let i = 0; i < m.length; i++) if (m[i] && !mag(A.px, i * 4)) n++; return n; };
+                const onHead = o => o.parent && o.parent.name === 'head';
+                const eyes2 = A => [0, 1].map(i => { let k = 0; return shown(o => o.userData.wears === 'eye' && k++ === i, A); });
+                const hueIs = (px, i, h0) => { const [h, s, v] = hsv(px[i], px[i + 1], px[i + 2]); return s > 0.25 && v > 40 && Math.abs(((h - h0) + 540) % 360 - 180) < 22; };
+                /* the bald head, the yardstick of each */
+                set('bald', {}, 'down'); const bDown = eyes2(gb());
+                set('bald', {}, 'right'); const bA = gb(), bSide = eyes2(bA), bH = mask(onHead) || new Uint8Array(W * H);
+                const near = bSide[0] >= bSide[1] ? 0 : 1;
+                /* which way his face points on the screen, and the middle of the bald head's outline in each row */
+                const rows = {}; let hx = 0, hn = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (bH[y * W + x]) { const r = rows[y] = rows[y] || [x, x]; r[0] = Math.min(r[0], x); r[1] = Math.max(r[1], x); hx += x; hn++; }
+                let ex = 0, en = 0; { let k = 0; const em = mask(o => o.userData.wears === 'eye' && k++ === near) || []; for (let i = 0; i < em.length; i++) if (em[i]) { ex += i % W; en++; } }
+                const front = en && hn ? Math.sign(ex / en - hx / hn) : 0;
+                const faceOf = (A, Hm) => { const hairFront = {}; let n = 0;
+                  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const j = y * W + x; if (Hm[j] && hueIs(A.px, j * 4, hh)) hairFront[y] = hairFront[y] === undefined ? x : (front > 0 ? Math.max(hairFront[y], x) : Math.min(hairFront[y], x)); }
+                  for (let y = 0; y < H; y++) { const r = rows[y]; if (!r) continue; const mid = (r[0] + r[1]) / 2;
+                    for (let x = 0; x < W; x++) { const j = y * W + x; if (!Hm[j] || (x - mid) * front <= 0 || (hairFront[y] !== undefined && (x - hairFront[y]) * front <= 0)) continue; if (hueIs(A.px, j * 4, skH)) n++; } }
+                  return n; };
+                const bFace = faceOf(bA, bH), pct = x => Math.round(x * 100) + '%', read = [];
+                if (!(Math.min(...bDown) >= 4 && bSide[near] >= 4)) P.push('his eyes could not be found on the screen on the bald head (' + bDown.join(' and ') + ' pixels facing you, ' + bSide[near] + ' facing right), so whether each style\'s hair leaves his eyes showing was not asked');
+                else if (!front || !(bFace >= 20)) P.push('his face could not be found on the screen from the side on the bald head (' + bFace + ' pixels of skin in front of the middle of his head), so whether each style leaves some of his face showing was not asked');
+                else for (const st of HAIRSTYLES) { if (st === 'bald') continue;
+                  set(st, {}, 'down'); if (!T3.bodyOn) { P.push('with the hair "' + st + '", facing you, he is not a jointed body in the camera, so his eyes were not looked for'); continue; }
+                  const e = eyes2(gb());
+                  set(st, {}, 'right'); const A = gb(), es = eyes2(A)[near], fc = faceOf(A, mask(onHead) || new Uint8Array(W * H));
+                  const rd = e.map((v, i) => Math.max(0, v) / bDown[i]), rs = Math.max(0, es) / bSide[near], rf = fc / bFace;
+                  read.push(st + (st === START ? ' (the start)' : '') + ': eyes ' + rd.map(pct).join('/') + ', side eye ' + pct(rs) + ', side face ' + pct(rf));
+                  if (st === START) continue;   /* held to his card's share, in D */
+                  rd.forEach((r, i) => { if (r < 0.5) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + Math.max(0, e[i]) + ' pixels of it show, where on the bald head it shows in ' + bDown[i]); });
+                  if (rs < 0.5) P.push('facing right with the hair "' + st + '", his hair hides the eye on that side: ' + Math.max(0, es) + ' pixels of it show, where on the bald head it shows in ' + bSide[near]);
+                  if (rf < 1 / 3) P.push('facing right with the hair "' + st + '", his hair hides his face: ' + fc + ' pixels of his skin show in front of his hair, ' + pct(rf) + ' of the ' + bFace + ' the bald head shows there, where a face from the side is at least a third of it'); }
+                N.push('his face under each style, against the bald head (an eye facing you ' + bDown.join('/') + ', the eye on the side ' + bSide[near] + ', the face from the side ' + bFace + ' pixels): ' + read.join('; ')); }
               /* M · from the side, a neck under a head with a jaw; O · facing you, no beard covers his eyes */
               const FR = bodyRows('person').find(r => r.key === 'face'), BR = bodyRows('person').find(r => r.key === 'beard');
               for (const face of FR ? FR.list : []) { set('bald', { face }, 'right'); const A = grab(), n = painted(o => o.parent && o.parent.name === 'neck', A);
@@ -14959,6 +15062,35 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const eyes = {}; for (const w of BR ? BR.list : []) { set('bald', { face, beard: w }, 'down'); eyes[w] = eyeOf(grab()); }
                 if (BR) BR.list.filter(w => w !== BR.def).forEach(w => { if (eyes[w] < 0.9 * eyes[BR.def]) P.push('on the ' + face + ' head, facing you, the beard "' + w + '" covers his eyes: one of them shows in ' + eyes[w] + ' pixels, where with no beard it shows in ' + eyes[BR.def]); });
                 N.push('on the ' + face + ' head: the neck facing right ' + n + ' pixels; an eye facing you ' + Object.entries(eyes).map(([w, v]) => w + ' ' + v).join(', ')); }
+              /* HIS BODY IS MADE AGAIN WHEN HIS LOOK CHANGES (2026-11-14), on the street and in the creator's preview: each thing a
+                 player can change in his look changed alone, and the body then standing on the street, and the one in the preview,
+                 are each the body made afresh from his look as it now is (the clock and the random numbers held while they are
+                 made); the look before and after must make two different bodies, or the change had nothing to show and is a red.
+                 Among them the card's style "beard", which is the short cap with a beard, against the short cap itself */
+              { const kr = Math.random, kn = Date.now;
+                const hold = () => { let s = 7; Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => 1.8e12; };
+                const back = () => { Math.random = kr; Date.now = kn; };
+                const hashA = (a, h) => { for (let i = 0; i < a.length; i += 3) h = Math.imul(h ^ Math.round(a[i] * 1e3), 16777619) >>> 0; return h; };
+                const sigOf = X => { if (!X) return null; const s = []; X.traverse(o => { if (!o.isMesh) return; let h = hashA(o.geometry.attributes.position.array, 2166136261); o.updateMatrix(); o.matrix.elements.forEach(v => { h = Math.imul(h ^ Math.round(v * 1e4), 16777619) >>> 0; });   /* where the part sits and how it is scaled (his nose is a ball scaled to his measures) */
+                    const im = o.material && o.material.map && o.material.map.image; if (im && im.getContext) h = hashA(im.getContext('2d').getImageData(0, 0, im.width, im.height).data, h);
+                    s.push([o.parent && o.parent.name, o.userData.wears, o.visible ? 1 : 0, (o.userData.base || o.material.color).getHexString(), h].join(':')); }); return s.join('|'); };
+                const fresh = lk => { hold(); try { const C = bodyChoicesOf(lk.body), X = bodyMake(bodySkeleton('person', C), lk, C), s = sigOf(X); X.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); return s; } finally { back(); } };
+                const onStreet = lk => { look = lk; dir = 'down'; hold(); try { draw3d(); } finally { back(); } return T3.bodyOn ? sigOf(T3.body) : null; };
+                const pvc = document.createElement('canvas'); pvc.width = 120; pvc.height = 160;
+                const inPreview = lk => { hold(); let ok; try { ok = typeof t3BodyPreview === 'function' && t3BodyPreview(pvc, lk, 0); } finally { back(); } return ok && T3.pv ? sigOf(T3.pv.body) : null; };
+                const base = saveLook({ ...look, ...LOOK, style: saveLook({}).style, body: {} });
+                const CHG = [['his skin', { skin: '#8D5524' }], ['his hair\'s colour', { hair: '#2A9D8F' }], ['his shirt', { shirt: '#B03A48' }], ['his clothes', { outfit: 'formal' }],
+                  ['the style of his hair', { style: 'afro' }], ['his beard', { body: { beard: 'goatee' } }], ['the shape of his head', { body: { face: 'oval' } }], ['the width of his nose', { body: { nosew: 1.5 } }]];
+                const said = [];
+                for (const [what, ch] of [...CHG, ['the card\'s style "beard" (the short cap with a beard) to the short cap', null]]) {
+                  const a = ch ? base : saveLook({ ...base, style: 'beard' }), b = ch ? saveLook({ ...base, ...ch }) : saveLook({ ...base, style: 'cap' });
+                  const fa = fresh(a), fb = fresh(b);
+                  if (fa === fb) { P.push('changing ' + what + ' makes no other body even when it is made afresh, so whether the street and the preview make his body again for it was not asked'); continue; }
+                  for (const [where, show] of [['on the street', onStreet], ['in the creator\'s preview', inPreview]]) { const s0 = show(a), s1 = show(b);
+                    if (s0 === null || s1 === null) { P.push('his body could not be found ' + where + ', so whether it is made again when ' + what + ' changes was not asked'); continue; }
+                    if (s0 !== fa) P.push('with his look as it starts, his body ' + where + ' is not the body his look makes');
+                    else if (s1 !== fb) P.push('changing ' + what + ', his body ' + where + ' stays as it was: it is not made again from his new look'); } said.push(what); }
+                N.push('his body made again on the street and in the preview when each of these changes: ' + said.join(', ')); }
             } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = kd; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
             return { P, N }; });
           R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
@@ -15061,6 +15193,53 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (after.shown) q('the way back in ' + where + ' still shows once everything in it is back where it started');
               const s2 = await said(gr.key); if ((s2 || '').includes(CH)) q('after the way back, ' + where + ' still says "' + s2 + '"'); }
             if (!resets) q('no drawer of the creator was changed and put back, so its way back was not asked');
+            /* A CHOICE THE HEAD HAS NO USE FOR IS KEPT (2026-11-14), walked as a person walks it, in each drawer that holds a
+               choice needing a jaw: from a new character's round head, a head with a jaw picked and that choice taken to its
+               end with the keyboard; the round head picked again (the choice gone from the drawer, the drawer saying nothing
+               changed and showing no way back; where the drawer has a measure the round head keeps, that one changed and put
+               back by the drawer's way back); the head with a jaw picked again (the choice where he left it, the drawer saying
+               "changed", its way back shown); and the way back pressed (the choice where a new character starts). The round
+               head is the face row's first word, as a new character starts; the head with a jaw is its next */
+            let walked = 0;
+            { const W2 = await qp.evaluate(() => { const rows = bodyRows('person'), FR = rows.find(r => r.key === 'face');
+                if (!FR || FR.kind !== 'option') return null; const tabOf = g => (CRTABS.find(t => t.groups.some(x => x.key === g)) || {}).key;
+                const groups = [...new Set(rows.filter(r => r.needs === 'jaw').map(r => r.group || 'build'))];
+                const named = r => r && { ...r, name: bodyWord(r.key).toLowerCase() };
+                return { round: FR.def, jawed: FR.list.find(w => w !== FR.def), faceGroup: FR.group || 'build', faceTab: tabOf(FR.group || 'build'),
+                  groups: groups.map(g => ({ g, tab: tabOf(g), need: named(rows.find(r => (r.group || 'build') === g && r.needs === 'jaw' && r.kind === 'measure')), keep: named(rows.find(r => (r.group || 'build') === g && !r.needs && r.kind === 'measure')) })).filter(x => x.need) }; });
+              const fresh = () => qp.evaluate(() => { look = saveLook({ ...look, body: {} }); buildBodyRows(); if (typeof crDrawerSay === 'function') crDrawerSay(); });
+              if (!W2 || !W2.jawed) q('his head offers no shape with a jaw, so whether a choice the round head has no use for is kept was not asked');
+              else if (!W2.groups.length) q('no measure of his needs a jaw, so whether one the round head has no use for is kept was not asked');
+              else for (const { g, tab, need, keep } of W2.groups) {
+                const where = 'the drawer "' + await qp.evaluate(k => { const e = document.querySelector('#group_' + k + ' .crdn'); return e ? e.textContent.trim() : k; }, g) + '"';
+                const st = () => qp.evaluate(([g, k]) => { const i = document.getElementById('body_' + k), r = document.getElementById('reset_' + g), d = document.querySelector('#group_' + g + ' .crds');
+                  return { row: !!i && i.getBoundingClientRect().height > 0, val: i ? i.value : null, kept: look.body[k], said: d ? d.textContent.trim() : '', back: !!r && !r.hidden && r.getBoundingClientRect().height > 0 }; }, [g, need.key]);
+                const open = async (t, k) => { await qp.click('#crtab_' + t); await rafs(qp, 1); if (!(await qp.evaluate(k => { const d = document.getElementById('group_' + k); return !!d && d.open; }, k))) await drawerAct(qp, 'group_' + k, () => qp.click('#group_' + k + ' > summary')); };
+                const face = async w => { await open(W2.faceTab, W2.faceGroup); await qp.click('#group_' + W2.faceGroup + ' [data-choice="face"][data-word="' + w + '"]'); await rafs(qp); await open(tab, g); };
+                await fresh(); await rafs(qp);
+                await face(W2.round); const s0 = await st();
+                if (s0.row) { q('on the ' + W2.round + ' head, ' + where + ' offers his ' + need.name + ', a choice that needs a jaw'); continue; }
+                await face(W2.jawed);
+                if (!(await st()).row) { q('on the ' + W2.jawed + ' head, ' + where + ' does not offer his ' + need.name); continue; }
+                await qp.focus('#body_' + need.key); await qp.keyboard.press('End'); await rafs(qp); const s1 = await st();
+                if (String(s1.kept) !== String(need.max)) { q('on the ' + W2.jawed + ' head, his ' + need.name + ' taken to its end with the keyboard is ' + s1.kept + ', where its end is ' + need.max); continue; }
+                await face(W2.round); const s2 = await st();
+                if (s2.row) q('back on the ' + W2.round + ' head, ' + where + ' still offers his ' + need.name + ', which that head has no use for');
+                if (s2.said.includes(CH)) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' says "' + s2.said + '": a choice it does not show is counted as changed');
+                if (s2.back) q('back on the ' + W2.round + ' head, with nothing it shows changed, ' + where + ' shows its way back');
+                if (keep) { await qp.focus('#body_' + keep.key); await qp.keyboard.press('End'); await rafs(qp);
+                  if (!(await st()).back) q('on the ' + W2.round + ' head, with his ' + keep.name + ' changed, ' + where + ' shows no way back');
+                  else { await qp.click('#reset_' + g); await rafs(qp); } }
+                await face(W2.jawed); const s3 = await st();
+                if (!s3.row) q('on the ' + W2.jawed + ' head again, ' + where + ' does not offer his ' + need.name);
+                else if (String(s3.kept) !== String(need.max) || Number(s3.val) !== need.max) q('on the ' + W2.jawed + ' head again, his ' + need.name + ' is ' + s3.kept + ' (the drawer shows ' + s3.val + '), where he left it at ' + need.max + (keep ? ', after the drawer\'s way back was pressed on the ' + W2.round + ' head' : '') + ': a choice the round head has no use for was not kept');
+                if (!s3.said.includes(CH)) q('on the ' + W2.jawed + ' head again, with his ' + need.name + ' where he left it, ' + where + ' says "' + s3.said + '", not "' + CH + '"');
+                if (!s3.back) q('on the ' + W2.jawed + ' head again, with his ' + need.name + ' changed, ' + where + ' shows no way back');
+                else { await qp.click('#reset_' + g); await rafs(qp); const s4 = await st();
+                  if (String(s4.kept) !== String(need.def)) q('the way back in ' + where + ', pressed on the ' + W2.jawed + ' head, leaves his ' + need.name + ' at ' + s4.kept + ', where a new character starts at ' + need.def);
+                  if (s4.said.includes(CH)) q('after the way back in ' + where + ', it still says "' + s4.said + '"'); }
+                await fresh(); walked++; } }
+            if (walked && !QP.length) say(1, 'a choice the round head has no use for, walked in ' + walked + ' drawer(s): kept as he left it, not counted as changed, not put back by the way back while it is not offered');
             if (!QP.length) say(1, 'the creator on a phone: ' + S0.tabs.length + ' tabs, one panel shown, the arrows along them; every drawer opened by a tap and by Enter, one at a time; the drawer of his hair names his style, ' + resets + ' drawers say "changed" and go back by their way back; his preview and the tabs stay in view with ' + scrolled + ' panel(s) scrolled to the foot');
           }
           if (Q.errs.length) q('the creator threw "' + Q.errs[0] + '"');
@@ -15755,6 +15934,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...DP, ...DN);
   }
 
+  }
+  if (runs('rest')) {   /* ---- the part `rest`, last stretch ---- */
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
@@ -16534,6 +16715,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...new Set(WN), ...new Set(WD.map(m => 'the engine\'s own words: ' + m)));   /* a sentence once, however often a screen was read */
   }
 
+  }
+  if (part !== null) console.log('  COUNT-ONLY: this run asked the part "' + part + '" of test/engine.smoke.js only; the other two parts are asked by runs of their own');
   await page.setViewportSize({ width: 480, height: 900 });
   await browser.close();
   /* COUNT-ONLY lines are what a check SAW, not what it found — "2 flights walked in 15 worlds",
@@ -16552,5 +16735,5 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254, #256): ' +
       Object.entries(kinds).map(([k, n]) => n + ' ' + k).join(', ') + ' — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 2).join(' | ')); }
   if (fails.length) { console.log('FAIL (' + idx + ')\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : 'nothing') + '.');
+  console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r && r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : r ? 'nothing' : 'not asked in this part') + '.');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
