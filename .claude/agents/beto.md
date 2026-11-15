@@ -186,7 +186,7 @@ the *rendered label* rather than the key (`engine.js:3980`, saved at `:503`).
   engine merged masa → tortilla → taco with nothing in `engine/` touched. *(Applied 2026-09-14 from
   crew run 8.)*
 - **The jointed body is made whole again whenever its key changes, and the key is written twice.**
-  `t3Body` and `t3BodyPreview` (`engine/engine3d.js`, grep `key=[look.skin,` and `key=[lk.skin,`) each
+  `t3Body` and `t3BodyPreview` (`engine/engine3d.js`, grep `Ch=bodyChoicesOf(look.body),key=` and `Ch=bodyChoicesOf(lk.body),key=`) each
   join the look's colours, `outfit`, `hairStyleOf`, `beardOf` and the cleaned choices, which on
   2026-11-13 is everything `bodyMake` reads from a look. Anything `bodyMake` starts to read goes into
   both keys, or the street or the preview keeps the old body all session. Only a world whose own
