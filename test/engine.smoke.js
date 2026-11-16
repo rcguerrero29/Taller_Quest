@@ -14780,12 +14780,30 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                there every row is offered; the rest of the builder is asked on that head */
             const FACE = pre.rows.find(r => r.key === 'face' && r.kind === 'option'), JAWED = FACE ? FACE.list.filter(w => w !== FACE.def) : [];
             const offered = () => p.evaluate(rows => rows.filter(r => document.querySelector('#creator [data-choice="' + r.key + '"]')).map(r => r.key), pre.rows);
+            /* mq-v270, WHICH SHAPES OF HEAD ANSWER A ROW: a row's `needs` names a list of shapes (HEADNEEDS, the engine's own table);
+               the row is offered on those shapes and on no other. The rows only the starting head answers (its eyes', nose's and
+               mouth's heights, its chin's shadow) are asked here, on that head: one slider each, named in both languages, moved by
+               the keyboard, kept in his look. An engine with no such table is read as before: a row that needs anything needs a jaw */
+            const NEEDS = (await p.evaluate(() => typeof HEADNEEDS !== 'undefined' && HEADNEEDS ? JSON.parse(JSON.stringify(HEADNEEDS)) : null)) || { jaw: JAWED };
+            const F0 = FACE ? FACE.def : null, takes = (r, f) => !r.needs || (NEEDS[r.needs] || []).includes(f), whose = r => (NEEDS[r.needs] || []).join(' and ') || 'no';
+            pre.rows.filter(r => r.needs && !NEEDS[r.needs]).forEach(r => P.push('his ' + r.key + ' needs "' + r.needs + '", which names no list of head shapes, so no head offers it'));
             { const on = await offered();
-              pre.rows.forEach(r => { if (r.needs && on.includes(r.key)) P.push('on the ' + (FACE ? FACE.def : 'first') + ' head, which has no jaw, the builder offers his ' + r.key + ', which only a head with a jaw has');
-                if (!r.needs && !on.includes(r.key)) P.push('the builder\'s control for ' + r.key + ': no control'); });
-              if (pre.rows.some(r => r.needs)) { if (!JAWED.length) P.push('some of his choices need a head with a jaw, and the builder offers no shape of head that has one');
+              pre.rows.forEach(r => { if (!takes(r, F0) && on.includes(r.key)) P.push('on the ' + (F0 || 'first') + ' head the builder offers his ' + r.key + ', which only the ' + whose(r) + ' head answers');
+                if (takes(r, F0) && !on.includes(r.key)) P.push('the builder\'s control for ' + r.key + ': no control'); });
+              for (const r of pre.rows.filter(r => r.needs && takes(r, F0) && on.includes(r.key) && r.kind === 'measure')) {
+                await reveal(sel(r.key));
+                const q = await p.evaluate(([k, r]) => { const e = document.querySelector('#creator [data-choice="' + k + '"]'), W = {}; for (const lg of ['en', 'es']) { lang = lg; applyLang(); const e2 = document.querySelector('#creator [data-choice="' + k + '"]'); W[lg] = e2 && e2.labels && e2.labels.length ? e2.labels[0].textContent.trim() : ''; } lang = 'en'; applyLang();
+                  const e3 = document.querySelector('#creator [data-choice="' + k + '"]'); return { one: !!e3 && e3.type === 'range' && +e3.min === r.min && +e3.max === r.max, W, step: e3 ? +e3.step : NaN }; }, [r.key, r]);
+                if (!q.one) P.push('on the ' + F0 + ' head his ' + r.key + ' is not one slider from ' + r.min + ' to ' + r.max);
+                if (!q.W.en || !q.W.es || q.W.en === r.key || q.W.en === q.W.es) P.push('on the ' + F0 + ' head his ' + r.key + ' is named ' + JSON.stringify(q.W.en) + ' in English and ' + JSON.stringify(q.W.es) + ' in Spanish, where it has a name of its own in each');
+                await reveal(sel(r.key)); await p.focus(sel(r.key)); await p.keyboard.press('ArrowRight'); await rafs(p);
+                const now = await p.evaluate(k => look.body ? look.body[k] : undefined, r.key);
+                if (!(q.step > 0 && typeof now === 'number' && Math.abs(now - (r.def + q.step)) < 1e-6)) P.push('on the ' + F0 + ' head, one press of the right arrow on his ' + r.key + ' leaves it at ' + now + ', where it moves one step up from ' + r.def + ' to ' + (r.def + q.step));
+                await p.keyboard.press('ArrowLeft'); await rafs(p); }
+              if (pre.rows.some(r => !takes(r, F0))) { if (!JAWED.length) P.push('some of his choices need another shape of head, and the builder offers none');
                 else { await reveal(sel('face', JAWED[0])); await p.click(sel('face', JAWED[0])); await rafs(p);
-                  const on2 = await offered(); pre.rows.filter(r => r.needs && !on2.includes(r.key)).forEach(r => P.push('on the ' + JAWED[0] + ' head the builder does not offer his ' + r.key + ', which a head with a jaw has')); } } }
+                  const on2 = await offered(); pre.rows.forEach(r => { if (takes(r, JAWED[0]) && !on2.includes(r.key)) P.push('on the ' + JAWED[0] + ' head the builder does not offer his ' + r.key + ', which that head answers');
+                    if (!takes(r, JAWED[0]) && on2.includes(r.key)) P.push('on the ' + JAWED[0] + ' head the builder offers his ' + r.key + ', which only the ' + whose(r) + ' head answers'); }); } } }
             /* every control: present, its kind, labelled in both languages (a colour is offered as a dot of it, so its words are
                its name to a screen reader, aria-label, and not its text) */
             const L = await p.evaluate(rows => { const out = { missing: [], words: {} }, label = el => { if (el.labels && el.labels.length) return el.labels[0].textContent.trim();
@@ -14797,7 +14815,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else if (r.kind === 'option' && c.map(b => b.dataset.word).join() !== r.list.join()) out.missing.push(r.key + ': buttons for ' + c.map(b => b.dataset.word).join(', ') + ', where it offers ' + r.list.join(', ')); }
                   c.forEach(el => { out.words[lg][r.key + (el.dataset.word ? ' ' + el.dataset.word : '')] = { label: label(el), text: el.dataset.word ? (el.getAttribute('aria-label') || el.textContent).trim() : '' }; }); });
                 [...document.querySelectorAll('#pvTurn button')].forEach((b, i) => { out.words[lg]['the button that turns him ' + (i ? 'right' : 'left')] = { label: 'x', text: b.textContent.trim() }; }); }
-              lang = 'en'; applyLang(); return out; }, pre.rows);
+              lang = 'en'; applyLang(); return out; }, pre.rows.filter(r => takes(r, JAWED[0] || F0)));
             L.missing.forEach(m => P.push('the builder\'s control for ' + m));
             if (Object.keys(L.words.en).filter(k => /^the button that turns/.test(k)).length !== 2) P.push('the builder has no two buttons to turn him by hand');
             Object.keys(L.words.en).forEach(k => { const e = L.words.en[k], s = L.words.es[k] || { label: '', text: '' }, key = k.split(' ')[0];
@@ -15131,14 +15149,28 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 free(X); }
               N.push('his ears asked on ' + n + ' ear(s) of ' + (FACES.length || 1) + ' shape(s) of head: the farthest any came off the skin ' + worstGap.toFixed(3) + ' of a radius (0.02 is floating), the most of one under it ' + Math.round(worstIn * 100) + '% (60% is sunk)'); }
             /* ---- M · his head: the ball, the chin, the depth; and his face on it ---- */
+            const MST = {};
             for (const face of FACES) { const X = make('bald', { face }), sk = skullOf(X), r = X.userData.r;
               if (!sk) { P.push('on the ' + face + ' head there is no skull to measure'); free(X); continue; }
               const p = sk.geometry.attributes.position, v = new THREE.Vector3(); let dev = 0, x0 = 9, x1 = -9, y0 = 9, z0 = 9, z1 = -9;
               for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); dev = Math.max(dev, Math.abs(v.length() / r - 1)); x0 = Math.min(x0, v.x / r); x1 = Math.max(x1, v.x / r); y0 = Math.min(y0, v.y / r); z0 = Math.min(z0, v.z / r); z1 = Math.max(z1, v.z / r); }
-              if (face === ROUND) { if (dev > 1e-3) P.push('the round head is no longer the ball his card has: its skin is off a ball by up to ' + (dev * 100).toFixed(1) + '% of its radius'); }
+              /* how wide he is at the jaw: the widest of his skin between half and seven tenths of a radius under his head's centre */
+              let wj = 0; for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (v.y / r < -0.5 && v.y / r > -0.7) wj = Math.max(wj, Math.abs(v.x) / r); }
+              MST[face] = { dev, wj, y0 };
+              /* mq-v270: the round head has a skull under it. It is no longer a ball (off one by 3% of its radius or more: a jaw
+                 and a chin) and it stays the roundest head: within 16% of a ball, and nearer a ball and fuller at the jaw than
+                 every other shape (asked after the loop). (Written first as "narrower at the jaw than a ball": measured, the
+                 blend is wider there, 0.85 of a radius against a ball's 0.80, so that sentence asked for the wrong thing) */
+              if (face === ROUND) { if (!(dev >= 0.03)) P.push('the round head is a plain ball again: its skin is off a ball by ' + (dev * 100).toFixed(1) + '% of its radius, where a skull under it gives it a jaw and a chin (3% or more)');
+                if (!(dev <= 0.16)) P.push('the round head is off a ball by ' + (dev * 100).toFixed(1) + '% of its radius, where it stays round (16% at most)');
+ }
               else { if (!(y0 < -1.02)) P.push('the ' + face + ' head has no chin below the ball: its lowest point is ' + (-y0).toFixed(2) + ' of a radius under its centre, where the round head\'s is 1');
                 if (!(z1 - z0 > x1 - x0)) P.push('the ' + face + ' head is ' + (x1 - x0).toFixed(2) + ' wide and only ' + (z1 - z0).toFixed(2) + ' deep, where a head is deeper front to back than it is wide'); }
               free(X); }
+            if (MST[ROUND]) { FACES.filter(f => f !== ROUND && MST[f]).forEach(f => {
+                if (!(MST[ROUND].dev < MST[f].dev)) P.push('the round head is off a ball by ' + (MST[ROUND].dev * 100).toFixed(1) + '% of its radius and the ' + f + ' head by ' + (MST[f].dev * 100).toFixed(1) + '%, where the round head is the rounder');
+                if (!(MST[ROUND].wj > MST[f].wj)) P.push('the round head is ' + MST[ROUND].wj.toFixed(2) + ' of a radius wide at the jaw and the ' + f + ' head ' + MST[f].wj.toFixed(2) + ', where the round head is the fuller there'); });
+              N.push('his head off a ball, and its width at the jaw: ' + FACES.filter(f => MST[f]).map(f => f + ' ' + (MST[f].dev * 100).toFixed(1) + '% and ' + MST[f].wj.toFixed(2)).join('; ')); }
             { const FM = ['eyesize', 'eyegap', 'noselen', 'nosew', 'noseout', 'mouthw'].map(k => [k, row(k)]), MR = row('mouth');
               FM.filter(([, r]) => !r).forEach(([k]) => P.push('his face has no measure ' + k + ', so it was not asked at its ends'));
               const cases = []; FACES.forEach(face => { FM.filter(([, r]) => r).forEach(([k, r]) => [r.min, r.max].forEach(v => cases.push([face, { [k]: v }, 'with his ' + say(k) + ' at its ' + (v === r.min ? 'least' : 'most') + ' (' + v + ')'])));
@@ -15163,7 +15195,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               /* made with the clock and the random numbers held, so a body that differs is one the row changed and not the moment */
               const sigAt = (c, k, v) => { hold(7, 1.8e12); try { const X = make(c.st, { ...c.b, [k]: v }), s = sig(X); free(X); return s; } finally { back(); } };
               let asked = 0;
-              for (const r of ROWS) { const ctx = CTX.filter(c => !(r.needs && isRound(c)));
+              const answers = (r, c) => !r.needs || (typeof HEADNEEDS !== 'undefined' && HEADNEEDS[r.needs] ? HEADNEEDS[r.needs].includes(c.b.face || ROUND) : !isRound(c));   /* mq-v270: on the shapes of head that answer the row */
+              for (const r of ROWS) { const ctx = CTX.filter(c => answers(r, c));
                 if (r.kind === 'measure') { let moved = false;
                   for (const c of ctx) { asked++; if (sigAt(c, r.key, r.min) !== sigAt(c, r.key, r.max)) { moved = true; break; } }
                   if (!moved) P.push('moving his ' + say(r.key) + ' from one end to the other (' + r.min + ' to ' + r.max + ') changes nothing on his body, with any style of hair, head or beard'); }
@@ -15273,11 +15306,13 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                curls reads under it on every head (the final review of 2026-11-15). T4: what stays of the broccoli: the
                80th percentile of the lift over his brow, the share of the hair's points past 60 degrees from his face that lie within 0.05 of
                his skin (the faded sides, the hair's own flat part), and the share of his skull painted his hair's colour, each to
-               BROCPIN. A head with no pinned numbers is a failure. Measured 2026-11-15 on the code before this change */
+               BROCPIN. A head with no pinned numbers is a failure. Measured 2026-11-15 on the code before this change; the round head's
+               pins measured again 2026-11-16 (mq-v270), when it took a skull's basis and its hair came down the brow with its eyes: the
+               afro's lift, height, width and low reach, and the share of the broccoli cut's skull painted his hair's colour */
             { const AFROEDGE = 0.05, TOL = 0.03, LOWTOL = 0.1, BROWTOL = 0.07, DEG = 180 / Math.PI, BIN1 = 5, BIN3 = 6,
-                AFROPIN = {round: {'lift': 0.718, 'top': 1.693, 'half': 1.491, 'low': {'left': -0.22, 'right': -0.22, 'behind': -0.498}}, oval: {'lift': 0.747, 'top': 1.714, 'half': 1.409, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}, square: {'lift': 0.747, 'top': 1.714, 'half': 1.411, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}}, BROCPIN = {round: {'brow': 0.249, 'sides': 0.808, 'paint': 0.248}, oval: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}, square: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}}, BROCCURL = {round: 0.0163, oval: 0.0156, square: 0.0156}, BROCROUND = {round: {front: 0.0226, side: 0.0551, above: 0.0431}, oval: {front: 0.0074, side: 0.0385, above: 0.0403}, square: {front: 0.0072, side: 0.0385, above: 0.0437}};
+                AFROPIN = {round: {'lift': 0.717, 'top': 1.710, 'half': 1.423, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.438}}, oval: {'lift': 0.747, 'top': 1.714, 'half': 1.409, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}, square: {'lift': 0.747, 'top': 1.714, 'half': 1.411, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}}, BROCPIN = {round: {'brow': 0.307, 'sides': 0.795, 'paint': 0.361}, oval: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}, square: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}}, BROCCURL = {round: 0.0163, oval: 0.0156, square: 0.0156}, BROCROUND = {round: {front: 0.0226, side: 0.0551, above: 0.0431}, oval: {front: 0.0074, side: 0.0385, above: 0.0403}, square: {front: 0.0072, side: 0.0385, above: 0.0437}};
               const az = p => Math.atan2(p.x, p.z) * DEG, el = p => Math.atan2(p.y, Math.hypot(p.x, p.z)) * DEG, fin = v => typeof v === 'number' && isFinite(v);
-              const mine = (st, face) => { const X = make(st, face ? { face } : {}), pts = []; parts(X, wears('hair')).forEach(o => pts.push(...outOf(X, o, 8000))); return { X, pts }; };
+              const mine = (st, face) => { const X = make(st, { ...(face ? { face } : {}), chinshade: 0 }), pts = [];   /* no chin shadow: the paint counted below is his hair's */ parts(X, wears('hair')).forEach(o => pts.push(...outOf(X, o, 8000))); return { X, pts }; };
               const FS = FACES.length ? FACES : [null], noPin = tb => FS.filter(f => tb[f || ''] === undefined);
               if (!HAIRSTYLES.includes('afro') || !HAIRSTYLES.includes('broccoli')) P.push('his body cannot wear the afro or the broccoli cut, so their shapes were not asked');
               else if ([noPin(AFROPIN), noPin(BROCPIN), noPin(BROCCURL), noPin(BROCROUND)].some(a => a.length)) P.push('the shapes of his head (' + FS.join(', ') + ') are not all pinned for what stays of the afro and the broccoli cut (missing: ' + [...new Set([...noPin(AFROPIN), ...noPin(BROCPIN), ...noPin(BROCCURL), ...noPin(BROCROUND)])].join(', ') + '), so they were not asked');
