@@ -1633,6 +1633,11 @@ function findChromium() {
       if (!shrunk['a laptop\'s window (1366x768)'] || !shrunk['a laptop\'s window (1366x768)'].includes('count')) say('at a laptop\'s window four signs side by side all stay in full words (' + JSON.stringify(shrunk['a laptop\'s window (1366x768)']) + '), where two that would touch shrink to their gold count');
       else {
         await sp.setViewportSize({ width: 1366, height: 768 }); await setStock(STOCK2);
+        /* the signs of the kitchen before (the full kitchen, whose crowded columns NAME their pieces) stay on screen until the
+           loop has counted the new stock: wait for that count, then two frames for the signs to be dressed from it, before any
+           shrunk sign is read (a leftover one was read on main once, 2026-11-16, and named three pieces) */
+        await sp.waitForFunction(() => !KSIGN.stale, null, { timeout: 4000 }).catch(() => {});
+        await sp.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
         await sp.waitForFunction(() => [...document.querySelectorAll('[data-ksign]')].some(e => !e.hidden && e.dataset.form === 'count'), null, { timeout: 4000 }).catch(() => {});
         const C = (await signs()).find(s => s.form === 'count');
         if (C && !/^\d+$/.test(C.text)) say('a sign shrunk to its count still shows ' + JSON.stringify(C.text) + ', where it is the count alone');
