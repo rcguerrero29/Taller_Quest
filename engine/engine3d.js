@@ -1417,7 +1417,13 @@ function bodyMake(skel,lk,build){
   if(REAL){const r0=skel.head,lift=0.25*C.neckl,fwd=0.15;J.head.position.y+=lift*r0;J.head.position.z+=fwd*r0;
     const a=new THREE.Vector3(0,-0.02*H,-0.04*r0),b2=new THREE.Vector3(0,hd[1]+(lift+0.2)*r0,(fwd-0.14)*r0),d=b2.clone().sub(a),L=d.length();
     part("neck",cap(0.34*C.neckw*r0,L),"skin",lk.skin,(a.x+b2.x)/2,(a.y+b2.y)/2,(a.z+b2.z)/2).quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
-  else part("neck",cap(0.045*H*C.neckw,hd[1]),"skin",lk.skin,0,hd[1]/2,0);
+  else{   /* the round head sits ROUNDNECK of a radius up on its post, so a little of his neck shows under his chin (mq-v270) */
+    const lift=ROUNDNECK*skel.head,nr=0.045*H*C.neckw;J.head.position.y+=lift;
+    part("neck",cap(nr,hd[1]+lift),"skin",lk.skin,0,(hd[1]+lift)/2,0);
+    /* his chin's shadow on the top of his neck: three bands, darkest right under the chin, as dark as he chose (chinshade) */
+    if(C.chinshade>0){const top=hd[1]+lift-0.24*skel.head,bh=0.06*skel.head,sk=new THREE.Color(lk.skin);
+      [1,0.6,0.28].forEach((o,i)=>{const a=Math.min(1,1.25*C.chinshade*o),m=part("neck",new THREE.CylinderGeometry(nr*1.04,nr*1.04,bh,20,1,true),"shade","#"+sk.clone().multiplyScalar(1-0.55*a).getHexString(),0,top-bh*(i+0.5),0);
+        m.material.side=THREE.DoubleSide;});}}
   /* the head sits on its joint, its centre 0.7 of a radius above it. The eyes sit where the card has them, a little above the
      middle of the face; the nose under them and between them, a shade off his skin and standing a little proud of the face,
      so it is seen from the front by its colour and from the side by its shape. The hair is the cut's (BODYPART.cut) */
@@ -1429,17 +1435,20 @@ function bodyMake(skel,lk,build){
      in radii. Round is the ball his card has. Every other shape is one head built as a skull is (headSkull), set by its
      row of HEADSET and by his own measures: how wide the jaw, how long the chin. Everything on the head (his eyes, brows,
      nose and ears, the paint, every shell of hair and the beard) is set on this surface, so it follows the shape */
-  const face=REAL?headSkull(HEADSET[C.face],C):HEADSHAPE.round,eyeY=REAL?0.05:0.47,noseY=REAL?-0.3:0.22;M.face=face;M.real=REAL;
-  M.brow=(REAL?0.42:0)-(C.hairline-1)*0.4;   /* on a head with a jaw the eyes sit lower by this much, and its hair starts lower with them, so the brow is as tall as the round head's */
+  /* ON THE ROUND HEAD the eyes, the nose and the mouth each sit at a height of his own choosing (eyeh, noseh, mouthh: half a
+     radius for a whole step of the choice, 1 being where ROUNDFACE puts them), and his hair starts lower or higher with his eyes */
+  const eh=REAL?0:(C.eyeh-1)*0.5,nh=REAL?0:(C.noseh-1)*0.5,mh=REAL?0:(C.mouthh-1)*0.5;
+  const face=REAL?headSkull(HEADSET[C.face],C):HEADSHAPE.round,eyeY=REAL?0.05:ROUNDFACE.eye+eh,noseY=REAL?-0.3:ROUNDFACE.nose+nh;M.face=face;M.real=REAL;
+  M.brow=(REAL?0.42:Math.max(0,ROUNDFACE.brow-eh))-(C.hairline-1)*0.4;   /* on a head with a jaw the eyes sit lower by this much, and its hair starts lower with them, so the brow is as tall as the round head's */
   /* where the skin is for a spot given from in front (x across, y up) or from the side (y up, z forward) */
   const frontZ=(x,y)=>{let z=1;for(let i=0;i<10;i++){const l=Math.hypot(x,y,z),R=face(x/l,y/l,z/l);z=Math.sqrt(Math.max(0.01,R*R-x*x-y*y));}return z;};
   const sideX=(y,z)=>{let x=1;for(let i=0;i<10;i++){const l=Math.hypot(x,y,z),R=face(x/l,y/l,z/l);x=Math.sqrt(Math.max(0.01,R*R-y*y-z*z));}return x;};
   const seam=(g,sw,sh)=>{const p=g.attributes.position,n=g.attributes.normal,a=new THREE.Vector3(),b=new THREE.Vector3();   /* the sheet's two edges meet under his chin: one normal there, so no line shows; and at each pinch */
     for(let i=0;i<=sw;i++)[i,sh*(sw+1)+i].forEach(k=>{a.fromBufferAttribute(p,k).normalize();n.setXYZ(k,a.x,a.y,a.z);});
     for(let j=0;j<=sh;j++){const i0=j*(sw+1),i1=i0+sw;a.fromBufferAttribute(n,i0);b.fromBufferAttribute(n,i1);a.add(b).normalize();n.setXYZ(i0,a.x,a.y,a.z);n.setXYZ(i1,a.x,a.y,a.z);}};
-  {const g=new THREE.SphereGeometry(1,REAL?64:40,REAL?44:28);g.rotateZ(Math.PI/2);const p=g.attributes.position,v=new THREE.Vector3();
+  {const g=new THREE.SphereGeometry(1,64,44);g.rotateZ(Math.PI/2);const p=g.attributes.position,v=new THREE.Vector3();
     for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();v.multiplyScalar(face(v.x,v.y,v.z)*r);p.setXYZ(i,v.x,v.y,v.z);}
-    g.computeVertexNormals();seam(g,REAL?64:40,REAL?44:28);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
+    g.computeVertexNormals();seam(g,64,44);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
   M.r=r;M.hc=hc;M.hair=lk.hair;
   /* PAINT IS LAID IN LAYERS: every call adds one and the sheet is painted afresh from them all, lowest `z` first, so the
      hair's paint and the beard's (z 1, over the hair's) do not undo each other whichever is called first. Paint that grows
@@ -1470,6 +1479,7 @@ function bodyMake(skel,lk,build){
       for(let i=0;i<w;i++){const ph=2*Math.PI*(i+0.5)/w,a=fn(x,-Math.cos(ph)*st,Math.sin(ph)*st);if(!(a>0))continue;
         const k=4*(j*w+i),q=a>1?1:a;d[k]+=(R-d[k])*q;d[k+1]+=(G-d[k+1])*q;d[k+2]+=(B-d[k+2])*q;}}
     g.putImageData(im,0,0);},0,0,z,face);
+  if(!REAL&&C.chinshade>0)M.lay((x,y,z)=>chinShade(x,y,z,C.chinshade),"#"+new THREE.Color(lk.skin).multiplyScalar(0.5).getHexString(),0,true);   /* his chin's shadow, under any beard's paint */
   /* HAIR THAT STANDS OFF THE HEAD AS ONE MASS is a shell: one skin over the skull, pushed out as far as the hair is long.
      fn(x,y,z) answers, for a direction from the head's centre, how far out the hair's surface is in head radii; 1 or less is
      no hair there, and the shell is under the skin: the answer should fall smoothly through 1 at the hairline (hairRise), so
@@ -1518,7 +1528,7 @@ function bodyMake(skel,lk,build){
   /* his nose: a bridge that starts narrow between his eyes and widens and stands further off the face down to its tip,
      in his skin a shade warmer, so it is seen from the front by its shape's shadow and from the side by its outline.
      How long, how wide and how far it stands out are his */
-  {const top=eyeY+0.02,bot=noseY-0.07-(C.noselen-1)*0.25,cy=(top+bot)/2,hh=(top-bot)/2,g=new THREE.SphereGeometry(1,12,10),p=g.attributes.position;
+  {const top=(REAL?eyeY+0.02:ROUNDFACE.eye+0.02+nh),bot=noseY-0.07-(C.noselen-1)*0.25,cy=(top+bot)/2,hh=(top-bot)/2,g=new THREE.SphereGeometry(1,12,10),p=g.attributes.position;
     for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),t=(1-y)/2,w=0.42+0.58*Math.pow(t,1.6);p.setXYZ(i,x*w,y,z>0?z*(0.3+0.7*Math.pow(t,1.3)):z*0.3);}
     g.computeVertexNormals();
     const c=new THREE.Color(lk.skin).lerp(new THREE.Color(nose(lk.skin)),0.55);
@@ -1527,7 +1537,7 @@ function bodyMake(skel,lk,build){
   /* his mouth, under his nose: a line of a deeper, warmer shade of his skin lying on the face, straight or turned up at
      its ends in a smile, as wide as he chose; or none, as his card has none. A beard grows round it, so where it is, with
      the foot of his nose, is kept as directions from the head's centre (M.lips: its height, and how far round its corners are) */
-  const mouthY=REAL?-0.66:noseY-0.3,mouthW=0.17*C.mouthw;M.lips.mouth=mouthY/Math.hypot(mouthY,frontZ(0,mouthY));M.lips.half=Math.atan2(mouthW,frontZ(mouthW,mouthY));
+  const mouthY=REAL?-0.66:ROUNDFACE.mouth+mh,mouthW=0.17*C.mouthw;M.lips.mouth=mouthY/Math.hypot(mouthY,frontZ(0,mouthY));M.lips.half=Math.atan2(mouthW,frontZ(mouthW,mouthY));
   if(C.mouth!=="none"){const my=mouthY,w=mouthW,col="#"+new THREE.Color(nose(lk.skin)).multiplyScalar(0.62).getHexString();
     if(C.mouth==="smile"){const arc=1.1,R=w/Math.sin(arc/2),m=part("head",new THREE.TorusGeometry(R*r,0.02*r,6,14,arc),"mouth",col,0,hc+(my+R-0.02)*r,(frontZ(0,my)-0.012)*r);m.rotation.z=-(Math.PI/2+arc/2);}
     else part("head",new THREE.SphereGeometry(r,10,6),"mouth",col,0,hc+my*r,(frontZ(0,my)-0.012)*r,[w,0.022,0.03]);}
@@ -1573,7 +1583,29 @@ const headSkull=(S,C)=>{C=C||{};const jw=C.jaw||1,cl=C.chin||1,kw=C.skullw||1,kd
       const m=zb+P.bk,h=z>m?zf-m:P.bk;if(W>1e-4&&h>1e-4)f=Math.pow(Math.pow(Math.abs(x)/W,P.n)+Math.pow(Math.abs(z-m)/h,P.n),1/P.n);}
     const hh=Math.max(0,Math.min(1,0.5+0.5*(f-c)/P.k));return f+(c-f)*hh-P.k*hh*(1-hh);};
   return (x,y,z)=>{let t=2.4;while(t>0.2&&val(x*t,y*t,z*t)>1)t-=0.04;let a=t,b=t+0.04;for(let i=0;i<14;i++){const m=(a+b)/2;if(val(x*m,y*m,z*m)>1)b=m;else a=m;}return a;};};
-const HEADSHAPE={round:()=>1};
+/* THE ROUND HEAD HAS A SKULL UNDER IT (mq-v270; the owner's goal confirmed 2026-11-16). It is the ball blended ROUNDK of the
+   way toward a head built as a skull is, on a setting rounder than the oval's (fuller cheeks, a wider jaw and chin), so it
+   stays the roundest head and has a soft jaw and a chin. Its surface is worked out once, on a grid of directions (ROUNDTAB),
+   and read from it after: the round head is the one a new character starts with, and making it must stay quick. It sits
+   ROUNDNECK of a radius up on its neck, and its eyes, nose and mouth start at ROUNDFACE (heights in radii from the head's
+   centre; `brow` is how much lower its hair starts than on the plain ball). To give another shape of head more or less of
+   a skull, or its own heights, these are the numbers */
+const ROUNDSET=Object.freeze({cheek:0.92,jaw:0.82,gon:-0.74,chinw:0.48,chin:-1.0,n:2.4}),ROUNDK=0.35,ROUNDNECK=0.25,
+  ROUNDFACE=Object.freeze({eye:0.12,nose:-0.13,mouth:-0.43,brow:0.15});
+let ROUNDTAB=null;const RTW=256,RTH=128;
+const roundTab=()=>{if(ROUNDTAB)return ROUNDTAB;const f=headSkull(ROUNDSET,{}),T=new Float32Array((RTW+1)*(RTH+1));
+  for(let j=0;j<=RTH;j++){const th=Math.PI*j/RTH,y=Math.cos(th),q=Math.sin(th);
+    for(let i=0;i<=RTW;i++){const ph=2*Math.PI*i/RTW;T[j*(RTW+1)+i]=1+ROUNDK*(f(Math.sin(ph)*q,y,Math.cos(ph)*q)-1);}}
+  return ROUNDTAB=T;};
+const HEADSHAPE={round:(x,y,z)=>{const T=roundTab(),l=Math.hypot(x,y,z)||1;let u=Math.atan2(x/l,z/l)/(2*Math.PI);if(u<0)u+=1;
+  const fu=u*RTW,fv=Math.acos(Math.max(-1,Math.min(1,y/l)))/Math.PI*RTH,i=Math.min(RTW-1,Math.floor(fu)),j=Math.min(RTH-1,Math.floor(fv)),a=fu-i,b=fv-j,W=RTW+1;
+  return (T[j*W+i]*(1-a)+T[j*W+i+1]*a)*(1-b)+(T[(j+1)*W+i]*(1-a)+T[(j+1)*W+i+1]*a)*b;}};
+/* his chin's shadow on the round head, on the skin: how much of it lies at a spot, 0 to 1, for a strength S. It starts at
+   the lower edge of his jaw (from the jaw's corner forward and across under the chin, as seen from the front), darkest at
+   that edge and gone a quarter of a radius below it, reaching less far toward the corner */
+const chinShade=(x,y,z,S)=>{if(!(z>0)||!(S>0))return 0;const ax=Math.abs(x);if(ax>0.83)return 0;
+  const yE=ax<0.25?-0.68-0.026*(1-ax/0.25):-0.52-0.16*Math.pow((0.821-ax)/0.571,0.8),reach=0.26*hsm(0.82,0.3,ax)*(0.75+0.25*hsm(0.45,0.1,ax));
+  if(!(reach>0.004))return 0;const t=(yE-y)/reach;return t<-0.1||t>1?0:Math.min(1,0.9*S)*hsm(-0.1,0,t)*Math.pow(1-Math.max(0,t),1.1);};
 const BODYPART={
   /* the arms. LONG: his shirt's sleeve to the wrist, as his card's arms are all shirt. SHORT: a sleeve of his shirt over the
      top of the upper arm, and below it the arm bare, a little thinner than the sleeve was, to the hand */
