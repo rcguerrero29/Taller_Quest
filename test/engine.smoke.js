@@ -6976,9 +6976,15 @@ function findChromium() {
           const real = { drawPlanMarks, planMarks, drawMark, random: Math.random };
           try {
             if (typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); }
-            /* the ◉ on the first street the plan draws, and the paper where no street is drawn */
-            const panels = planPanels(), pn = panels[0], PW = Math.max(...panels.map(q => q.ox + WORLDS[q.world].W)), PH = Math.max(...panels.map(q => q.oy + WORLDS[q.world].H)), t = src.width / PW;
+            /* the ◉ on the first street the plan draws, and the paper where no street is drawn. THE PLAN'S SCALE IS READ ONCE THE
+               PLAN IS DRAWN (2026-11-16): drawing it is what gives its canvas its size, and a plan not yet opened is still the
+               300 px every canvas starts at. Read before, on a plan 115 tiles wide the scale came out 2.6 px a tile where the
+               sheet was drawn at 10, so the tiles asked for as bare paper were the top left corner of the sheet, with a
+               building on it: the paper read 200 where the sheet's own is 224, and one more tile of width took the ring
+               from 40.4 apart from it to 39.8, a red about no colour anybody had chosen */
+            const panels = planPanels(), pn = panels[0], PW = Math.max(...panels.map(q => q.ox + WORLDS[q.world].W)), PH = Math.max(...panels.map(q => q.oy + WORLDS[q.world].H));
             world = pn.world; px = fx = WORLDS[pn.world].W >> 1; py = fy = WORLDS[pn.world].H >> 1; mapDest = null; drawTown();
+            const t = src.width / PW;
             const d0 = g.getImageData(0, 0, src.width, src.height).data, vs = [];
             for (let i = 0; i < d0.length; i += 4) if (isV(d0[i], d0[i + 1], d0[i + 2])) vs.push([d0[i], d0[i + 1], d0[i + 2]]);
             out.dot = median(vs);
@@ -7403,7 +7409,15 @@ function findChromium() {
                 if (off.name !== null && on.name !== null && off.name !== on.name) MP.push('A screen reader hears the edge arrow\'s switch called “' + off.name + '” off and “' + on.name + '” on, and then hears its state as well (' + where + '): its name changes with its state, so the state is said twice');
               }
               /* 16 */
-              const offKeys = new Set(off.words.map(q => q.key)), fresh = on.words.filter(q => !offKeys.has(q.key));
+              /* THE LINE IS THE NEW WORDS THAT SAY WHEN THE ARROW SHOWS, NOT EVERY WORD THAT CHANGED (2026-11-16). The line's room
+                 comes out of the plan's height, and a pack that shows its plan through a window of its own may say something
+                 else once that window is shorter: a count of what lies past its edge went from 13 to 12, was taken for the
+                 line, and was "still there" once somewhere was chosen, with the line itself hidden as it should be. So where
+                 any of the new words are the line's own (the game's arrowHint, else the engine's in this language), only
+                 those are followed; where none are, every new word is, as before, and the naming check below says so */
+              const offKeys = new Set(off.words.map(q => q.key)), fresh0 = on.words.filter(q => !offKeys.has(q.key));
+              const hintSays = await p.evaluate(() => { const t = (T().plan || {}).arrowHint, d = typeof uiDef === 'function' ? uiDef('plan', 'arrowHint') : ''; return String(typeof t === 'string' && t ? t : d || '').replace(/\s+/g, ' ').trim(); });
+              const own16 = hintSays ? fresh0.filter(q => q.t === hintSays) : [], fresh = own16.length ? own16 : fresh0;
               if (!fresh.length) { MP.push('I turned the edge arrow on with nowhere chosen (' + where + ') and nothing in the map says that it only shows once I\'ve got a destination');
                 await press(p); await mapShut(p); continue; }
               const a1 = await p.evaluate(lineNow, fresh.map(q => q.key)), named = await p.evaluate(() => { const t = (T().plan || {}).arrowHint; return typeof t === 'string' ? t : null; });
