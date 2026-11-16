@@ -1618,13 +1618,27 @@ const hairRise=(e,t)=>e<=0?1+e:1+t;   /* a shell's answer: `e` is the height abo
 const hsm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const hairEdge=K=>(x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;let i=1;while(i<K.length-1&&K[i][0]<a)i++;
   const A=K[i-1],B=K[i],t=Math.max(0,Math.min(1,(a-A[0])/(B[0]-A[0])));return A[1]+(B[1]-A[1])*t*t*(3-2*t);};
+/* hairCurve: a hairline as hairEdge's, from the same list, drawn as one smooth curve through its points (a monotone cubic:
+   it never overshoots a point and turns no corner at one), where hairEdge eases flat into every point. A line that runs
+   across his brow and down by his temple drawn with hairEdge goes straight across and turns a corner; with this it arches */
+const hairCurve=K=>{const n=K.length,d=[],m=new Array(n).fill(0);
+  for(let i=0;i<n-1;i++)d.push((K[i+1][1]-K[i][1])/(K[i+1][0]-K[i][0]));
+  for(let i=1;i<n-1;i++)if(d[i-1]*d[i]>0){const w1=2*(K[i+1][0]-K[i][0])+(K[i][0]-K[i-1][0]),w2=(K[i+1][0]-K[i][0])+2*(K[i][0]-K[i-1][0]);m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]);}
+  return (x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;let i=1;while(i<n-1&&K[i][0]<a)i++;
+    const A=K[i-1],B=K[i],h=B[0]-A[0],t=Math.max(0,Math.min(1,(a-A[0])/h)),t2=t*t,t3=t2*t;
+    return (2*t3-3*t2+1)*A[1]+(t3-2*t2+t)*h*m[i-1]+(-2*t3+3*t2)*B[1]+(t3-t2)*h*m[i];};};
+const AFROFRONT=[[0,0.76],[25,0.73],[45,0.63],[60,0.46],[72,0.22],[83,0.05],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]];
+const AFROBROW=0.72;
+/* the broccoli cut's hairline: HAIRLINE with its brow lifted into an arch and its temples rounded, drawn with hairCurve; from
+   70 degrees round (the sideburn, the line over the ear and behind it) it is HAIRLINE's, and it follows his ear as HAIRLINE does */
+const BROCFRONT=[[0,0.71],[25,0.69],[45,0.6],[58,0.4],[70,0.02],[80,-0.16],[92,-0.16],[104,-0.02],[125,-0.3],[150,-0.46],[180,-0.48]];
 const HAIRLINE=[[0,0.7],[30,0.69],[48,0.56],[60,0.3],[70,0.02],[80,-0.16],[92,-0.16],[104,-0.02],[125,-0.3],[150,-0.46],[180,-0.48]];
 /* THE LINE ROUND HIS EAR IS CUT ROUND HIS EAR. HAIRLINE's side (the sideburn, the line over the ear and the line behind it)
    was drawn for an ear whose middle sits 0.1 below the middle of the head, as on a head with a jaw. The round head's ears
    sit higher (0.27 above), and there the sideburn hung past the lobe and the hair came down all round the ear. So the
    side of the line is drawn from where his ear is (M.earY, set where the ears are set): it comes up or down with the ear,
    and his brow and his nape stay where they are */
-const hairLine=M=>{const base=hairEdge(HAIRLINE),d=(typeof M.earY==="number"?M.earY:-0.1)+0.1;
+const hairLine=(M,K,mk)=>{const base=(mk||hairEdge)(K||HAIRLINE),d=(typeof M.earY==="number"?M.earY:-0.1)+0.1;
   return Math.abs(d)<1e-6?base:(x,z)=>{const a=Math.atan2(Math.abs(x),z)*180/Math.PI;return base(x,z)+d*hsm(62,80,a)*hsm(140,118,a);};};
 const hairRnd=s=>()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};
 const hairLumps=(seed,n,size)=>{const rnd=hairRnd(seed),ga=Math.PI*(3-Math.sqrt(5)),P=[];
@@ -1875,11 +1889,12 @@ const HAIRPART={
      shell, as round as it is picked out, its surface only just uneven, drawn with small tight curls; the hairline, the
      temples and the nape are paint, so no skin shows at its roots */
   afro(M){M.ears.forEach(e=>{e.visible=false;});   /* hair this full stands over his ears */
-    const line=hairEdge([[0,0.72],[35,0.69],[55,0.58],[68,0.4],[78,0.08],[95,0],[125,-0.28],[150,-0.44],[180,-0.46]]),lump=hairLumps(1337,110,0.15);   /* at the temple the hairline stays above his eye until it turns down in front of his ear, as a temple does: hair this thick growing beside the eye would stand between it and anyone to his side */
+    const line=hairCurve(AFROFRONT),lump=hairLumps(1337,110,0.15);   /* at the temple the hairline stays above his eye until it turns down in front of his ear, as a temple does: hair this thick growing beside the eye would stand between it and anyone to his side */
     const cy=0.2,cz=-0.08,rho=1+0.5*M.C.hairvol;
     M.lay((x,y,z)=>hsm(0,0.05,y-line(x,z)),shadeHex(M.hair,-0.14));
-    M.shell((x,y,z)=>{const e=y-line(x,z),b=y*cy+z*cz,R=b+Math.sqrt(b*b-cy*cy-cz*cz+rho*rho);   /* the ball's surface along this direction */
-      return hairRise(e,hsm(0,0.14+0.34*hsm(0.15,0.7,z),e)*(R*(0.97+0.04*lump(x,y,z))-1));},{tex:hairGrain("curl",M.hair,11,0.6),seg:72,rows:48});},   /* over his face it comes out of the hairline more slowly than at the sides and back, so its rim stands above his brow, not on his eyes */
+    M.shell((x,y,z)=>{const L=line(x,z),e=y-L,b=y*cy+z*cz,R=b+Math.sqrt(b*b-cy*cy-cz*cz+rho*rho),   /* the ball's surface along this direction */
+        u=L>AFROBROW?e*(1-AFROBROW)/(1-L):e,s=hsm(0.15,0.7,z),k=hsm(30,60,Math.atan2(Math.abs(x),z)*180/Math.PI);   /* where the arch lifts the line above the brow's old height, the hair comes out of it a little faster, so over the top it is as long as before and no dent runs back from the arch */
+      return hairRise(e,hsm(0,0.14+0.34*s+0.16*(1-s)*k,u)*(R*(0.97+0.04*lump(x,y,z))-1));},{tex:hairGrain("curl",M.hair,11,0.6),seg:72,rows:48});},   /* over his face it comes out of the hairline more slowly than at the sides and back, so its rim stands above his brow, not on his eyes; at the sides and back (k: 30 to 60 degrees round from his face and on) it comes out more gradually still, so its lower edge curves in under it */
   /* /HAIR:afro */
   /* HAIR:mohawk */
   /* MOHAWK: the sides shaved to stubble (paint) and one strip of long hair left down the middle from above the brow over
@@ -2087,12 +2102,15 @@ const HAIRPART={
   /* /HAIR:mullet */
   /* HAIR:broccoli */
   /* THE BROCCOLI CUT. The sides and the back are faded to the skin, as a taper fade's are, and the top is left long and
-     curly, so it stands up and out over the faded sides as a head of big loose curls, fullest over the brow. The fade is
-     paint; the top is one shell that swells where a curl is, drawn with curls */
-  broccoli(M){const line=hairLine(M),lump=hairLumps(77,30,0.3);
+     curly, so it stands up and out over the faded sides as a head of big loose curls, in a round dome. The fade is
+     paint; the top is one shell drawn with curls: it stands out to a ball 1.1 head radii across its radius, centred 0.2 above
+     the head's middle and 0.08 behind it (bb and Rb: the ball's surface along each direction, as the afro's is found), a
+     little further where a curl is, all of it scaled by the hair's height and fullness. Its line over the brow is an arch
+     with rounded temples (BROCFRONT), as the afro's is */
+  broccoli(M){const line=hairLine(M,BROCFRONT,hairCurve),lump=hairLumps(77,30,0.3);
     M.lay((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z);return e<=0?0:Math.max(hsm(0,0.04,e)*f,hsm(0.02,0.5,e));},shadeHex(M.hair,-0.24));
-    M.shell((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z),m=Math.max(hsm(0,0.09,e)*f,hsm(0.36,0.66,y));
-      return e<=0?0.97+e:0.97+0.03*hsm(0,0.3,m)+m*M.C.hairvol*(0.13+0.2*lump(x,y,z)+0.06*hsm(0.1,0.8,z));},{tex:hairGrain("curl",M.hair,41),seg:84,rows:56});},
+    M.shell((x,y,z)=>{const e=y-line(x,z),f=hsm(0.15,0.55,z),m=Math.max(hsm(0,0.09,e)*f,hsm(0.36,0.66,y)),bb=y*0.2+z*-0.08,Rb=bb+Math.sqrt(bb*bb-0.0464+1.21);
+      return e<=0?0.97+e:0.97+0.03*hsm(0,0.3,m)+m*M.C.hairvol*((Rb-1)*(0.93+0.3*lump(x,y,z))+0.06*hsm(0.1,0.8,z));},{tex:hairGrain("curl",M.hair,41),seg:84,rows:56});},
   /* /HAIR:broccoli */
   /* HAIR:bald */
   /* BALD is a head with no hair on it: nothing stands off it and its outline is his skull's. A shaved scalp still shows
