@@ -14422,7 +14422,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const FRAMES = !CUTS.includes(START) ? [] : [[START, 12, 'down'], [START, 12, 'right'], [START, 22, 'down'], ...['afro', 'cap'].filter(c => c !== START && CUTS.includes(c)).map(c => [c, 12, 'down'])];
               try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
-                for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: {} }); hour = h; dir = d;
+                /* body: no shadow under his chin (mq-v270): a pixel of it reads as his hair's colour where the hair is dark, and this asks how much of his head his HAIR hides */
+                for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: { chinshade: 0 } }); hour = h; dir = d;
                   const Bf = grab(), on = T3.bodyOn;
                   t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; const Cf = grab();
                   t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); }; const Ef = grab();
