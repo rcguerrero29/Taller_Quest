@@ -1592,7 +1592,7 @@ const headSkull=(S,C)=>{C=C||{};const jw=C.jaw||1,cl=C.chin||1,kw=C.skullw||1,kd
    size makes the other heads, as its neck makes him taller. To give another shape of head more or less of
    a skull, or its own heights, these are the numbers */
 const ROUNDSET=Object.freeze({cheek:0.92,jaw:0.82,gon:-0.74,chinw:0.48,chin:-1.0,n:2.4}),ROUNDK=0.35,ROUNDNECK=0.25,ROUNDSIZE=1.1,
-  ROUNDFACE=Object.freeze({eye:0.12,nose:-0.13,mouth:-0.43,brow:0.15});
+  ROUNDFACE=Object.freeze({eye:0.12,nose:-0.13,mouth:-0.43,brow:0.12});
 let ROUNDTAB=null;const RTW=256,RTH=128;
 const roundTab=()=>{if(ROUNDTAB)return ROUNDTAB;const f=headSkull(ROUNDSET,{}),T=new Float32Array((RTW+1)*(RTH+1));
   for(let j=0;j<=RTH;j++){const th=Math.PI*j/RTH,y=Math.cos(th),q=Math.sin(th);
