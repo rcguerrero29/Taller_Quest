@@ -14443,7 +14443,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (cut === START && (r < 0.85 || r > 1.15)) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
                 if (cut === START && hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
-                if (cut === START && hs < 0.6) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
+                /* 0.4 from mq-v270 (it was 0.6): the head a new character starts with has a skull under it, its face and ears sit lower and its hair comes down with them, so from the side less of it is skin; the owner saw it and set the rule again from the new head (2026-11-16) */
+                if (cut === START && hs < 0.4) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
                   if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');

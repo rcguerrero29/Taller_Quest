@@ -1360,7 +1360,7 @@ function bodySkeleton(kind,build){const s=SKELETONS[kind],J={},b=bodyBuildOf(bui
     const[x,y,z]=Array.isArray(o)&&o.length===3&&o.every(v=>typeof v==="number"&&isFinite(v)&&Math.abs(v)<1)?o:j.slice(1);
     J[n]=[j[0],x*W,y*H,z*H];});
   const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.limbs*H;});
-  return {...s,joints:J,limb,head:s.head*b.head*H,stride:s.stride*H,lift:s.lift*H,drop:s.drop*H,build:b};}
+  return {...s,joints:J,limb,head:s.head*b.head*(build&&typeof build.face==="string"&&build.face!=="round"&&HEADSET[build.face]?1:ROUNDSIZE)*H,stride:s.stride*H,lift:s.lift*H,drop:s.drop*H,build:b};}   /* the round head is ROUNDSIZE larger: a neck under it made him taller, and his head keeps the cards' share of him */
 /* THE ONE MAKER: joints as Object3Ds named for themselves, and on each the part it carries, each part saying what it wears.
    Every size is read off the skeleton (its joints, its limbs, its head) and the build it was made for, never typed here
    apart from the share of a part that overlaps the next, so the parts meet at the joints whatever the build.
@@ -1588,9 +1588,10 @@ const headSkull=(S,C)=>{C=C||{};const jw=C.jaw||1,cl=C.chin||1,kw=C.skullw||1,kd
    stays the roundest head and has a soft jaw and a chin. Its surface is worked out once, on a grid of directions (ROUNDTAB),
    and read from it after: the round head is the one a new character starts with, and making it must stay quick. It sits
    ROUNDNECK of a radius up on its neck, and its eyes, nose and mouth start at ROUNDFACE (heights in radii from the head's
-   centre; `brow` is how much lower its hair starts than on the plain ball). To give another shape of head more or less of
+   centre; `brow` is how much lower its hair starts than on the plain ball), and it is ROUNDSIZE as large as his own choice of
+   size makes the other heads, as its neck makes him taller. To give another shape of head more or less of
    a skull, or its own heights, these are the numbers */
-const ROUNDSET=Object.freeze({cheek:0.92,jaw:0.82,gon:-0.74,chinw:0.48,chin:-1.0,n:2.4}),ROUNDK=0.35,ROUNDNECK=0.25,
+const ROUNDSET=Object.freeze({cheek:0.92,jaw:0.82,gon:-0.74,chinw:0.48,chin:-1.0,n:2.4}),ROUNDK=0.35,ROUNDNECK=0.25,ROUNDSIZE=1.1,
   ROUNDFACE=Object.freeze({eye:0.12,nose:-0.13,mouth:-0.43,brow:0.15});
 let ROUNDTAB=null;const RTW=256,RTH=128;
 const roundTab=()=>{if(ROUNDTAB)return ROUNDTAB;const f=headSkull(ROUNDSET,{}),T=new Float32Array((RTW+1)*(RTH+1));
