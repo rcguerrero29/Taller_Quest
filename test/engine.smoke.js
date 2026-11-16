@@ -185,7 +185,7 @@ function findChromium() {
 
   /* IDXNAME is passed IN because the flat list below is per game and the page cannot know which
      index it is — see the #39 block. Nothing else in here reads it. */
-  const r0 = await page.evaluate((IDXNAME) => {
+  const r0 = await page.evaluate(async (IDXNAME) => {
     const P = [];
     const walk = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
     const firstWalkable = w => { for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (walk(w, x, y)) return [x, y]; return null; };
@@ -468,6 +468,7 @@ function findChromium() {
     {
       const cr = document.getElementById('creator'), hid = cr.hidden;
       cr.hidden = false;
+      await Promise.resolve();   /* a world that takes the engine's customizing panel opens it as a dialog one beat after it is shown (grep "THE CUSTOMIZING PANEL A WORLD TAKES"): that beat, before it is measured */
       const head = cr.querySelector('.crhead'), body = cr.querySelector('.crbody');
       if (!head || !body) P.push('#130: the create-your-character panel is not split into a header and its choices');
       else {

@@ -6761,8 +6761,11 @@ let crDlg=null,crOpener=null;
 function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
   /* a browser with no modal dialog, or one that cannot adopt the panel's styles (Safari 15.4 to 16.3 has the dialog and not
      the sheet), keeps the creator exactly as before: a dialog without its styles would scroll twice and could hide Done */
-  if(typeof HTMLDialogElement==="undefined"||typeof HTMLDialogElement.prototype.showModal!=="function")return;
-  try{const s=new CSSStyleSheet();s.replaceSync(PANELCSS);document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];}catch(e){return;}
+  if(typeof HTMLDialogElement==="undefined"||typeof HTMLDialogElement.prototype.showModal!=="function"||!("adoptedStyleSheets" in document))return;
+  /* the sheet is made now and adopted the first time the panel opens: a page whose panel is never opened carries nothing more
+     than it did, and a check that reads the page as it boots (a pack's paper) sees no sheet of the panel's */
+  let sheet=null;try{sheet=new CSSStyleSheet();sheet.replaceSync(PANELCSS);}catch(e){return;}
+  const adopt=()=>{if(sheet&&!document.adoptedStyleSheets.includes(sheet))try{document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];}catch(e){}};
   const d=document.createElement("dialog");d.className="crdialog";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
   cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;
   const bar=document.createElement("div"),t=$("crTitle"),n=$("crNote");bar.className="crbar";
@@ -6797,7 +6800,7 @@ function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr
     if(chairOpen){$("begin").click();return;}
     const top=lastTop,f=lastFocus;   /* at a new game: again, where he was */
     requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open){d.showModal();cr.scrollTop=top;lastTop=top;(f&&f.isConnected&&d.contains(f)?f:t).focus({preventScroll:true});requestAnimationFrame(pinned);}}catch(e){}});});
-  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;try{d.showModal();}catch(e){}opened();}
+  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;adopt();try{d.showModal();}catch(e){}opened();}
     else if(cr.hidden&&d.open){d.close();const o=crOpener;crOpener=null;if(o&&o.isConnected&&o.offsetParent!==null)try{o.focus({preventScroll:true});}catch(e){}}};
   new MutationObserver(sync).observe(cr,{attributes:true,attributeFilter:["hidden"]});sync();}
 /* ---------- the chair (the owner asked to change outfit
