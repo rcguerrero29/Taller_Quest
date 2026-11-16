@@ -6757,14 +6757,14 @@ const PANELCSS="dialog.crdialog{margin:8px auto auto;padding:0;border:0;backgrou
   "@media (max-width:599px){dialog.crdialog{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
   "dialog.crdialog>.creator{height:100svh;max-height:100svh;border-radius:0;}"+
   "dialog.crdialog .crfoot{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
-let crDlg=null,crOpener=null;
+let crDlg=null,crOpener=null,crSheet=null;
 function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
   /* a browser with no modal dialog, or one that cannot adopt the panel's styles (Safari 15.4 to 16.3 has the dialog and not
      the sheet), keeps the creator exactly as before: a dialog without its styles would scroll twice and could hide Done */
   if(typeof HTMLDialogElement==="undefined"||typeof HTMLDialogElement.prototype.showModal!=="function"||!("adoptedStyleSheets" in document))return;
   /* the sheet is made now and adopted the first time the panel opens: a page whose panel is never opened carries nothing more
      than it did, and a check that reads the page as it boots (a pack's paper) sees no sheet of the panel's */
-  let sheet=null;try{sheet=new CSSStyleSheet();sheet.replaceSync(PANELCSS);}catch(e){return;}
+  let sheet=null;try{sheet=new CSSStyleSheet();sheet.replaceSync(PANELCSS);}catch(e){return;}crSheet=sheet;   /* named, so a check of a pack's paper can tell it from a paper */
   const adopt=()=>{if(sheet&&!document.adoptedStyleSheets.includes(sheet))try{document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];}catch(e){}};
   const d=document.createElement("dialog");d.className="crdialog";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
   cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;

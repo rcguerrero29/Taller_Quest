@@ -5541,7 +5541,8 @@ function findChromium() {
        instead of writing a <style> into the page, which style-src 'self' refuses. This asks for the sheet
        the engine says it applied (PAPER_SHEET) and falls back to a <style id="paperSkin">, so every check
        below reads the OUTCOME on either engine. How the sheet got there is the policy guards' business. */
-    const adopted = [...(document.adoptedStyleSheets || [])];
+    /* the customizing panel's own sheet (crSheet, adopted the first time a world that takes it opens it) is not a paper */
+    const adopted = [...(document.adoptedStyleSheets || [])].filter(s => !(typeof crSheet !== 'undefined' && crSheet && s === crSheet));
     const ps = (typeof PAPER_SHEET !== 'undefined' && PAPER_SHEET) || (document.getElementById('paperSkin') || {}).sheet || null;
 
     /* ---- A PACK THAT DECLARES NOTHING MUST GET NOTHING. Meridian's path, and the one that keeps
