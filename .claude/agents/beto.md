@@ -193,6 +193,14 @@ the *rendered label* rather than the key (`engine.js:3980`, saved at `:503`).
   `BODYTAKE` names `person` builds one; Meridian does not, so the tests add the list themselves (grep
   `__bodytake.js` in `test/engine.smoke.js`). *(Applied 2026-11-14.)*
 
+- **A modal dialog does not stop the engine's keys, and an observed flag opens it one beat late.** A key pressed inside a
+  `showModal()` dialog still reaches the `window` keydown listener (`engine/engine.js`, grep `if(kitHandKey(e))return`), where
+  the kitchen hand, the kitchen's tools and the reader each `preventDefault()` an Escape before `keyForWorld` is asked, and a
+  prevented keydown fires no `cancel`. And a dialog opened by a MutationObserver on `hidden` opens a microtask after the flag:
+  whatever scrolls or measures in the same task as `hidden=false` reads a box that does not exist yet. *(Applied 2026-11-16 on
+  the owner's yes, from the review of the customizing panel; every claim in it was then measured: the panel's check went red on
+  each before the fixes.)*
+
 ## A distinction your RULE/CHOICE cut does not give you
 
 **Predicate versus query.** *"Is the player near a stop"* and *"where is the next stop ahead of this

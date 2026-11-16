@@ -130,6 +130,16 @@ picture that is really against the engine gets fixed twice or not at all.
 — F2, F4, F5, F6, F7, F8 — were the shared reader's and not [cooking world]'s, and she worked that out
 only after measuring. Her refusal to edit code or file issues is untouched.)*
 
+
+**Before a press counts, ask the page what is under the finger.** A scripted press aimed at a control's centre lands on
+whatever is drawn there: a pinned button, a pinned preview, a hidden tab's empty box. The result is then a fact about your
+script, not the game. Before counting any press, ask what is at that point. If it is not the control, scroll the way a
+person would until it shows; if it never shows, that is the finding. And a run your script set up in a way no person can (a
+focus placed by code, a scroll set by code) is a run to name out loud, never to count. *(The moment: 2026-11-16, run e4e4.
+My click on the Beard drawer's name started the game, because the name lay under "Badge in". My drag began on a slider in a
+hidden tab and closed the chair. Eight runs that began with a focus my script placed did not show the reset that eighteen
+runs a person can make all showed.)* *(Applied 2026-11-16 on his yes, lesson ledger row 193.)*
+
 ## Some things are true for less than a second
 
 *Applied 2026-09-11 from your own post-flight, the trolley-boarding review.*
