@@ -8850,11 +8850,16 @@ function findChromium() {
           await p.evaluate(() => { openChair((typeof GRW === 'function' && GRW().barberNpc) || null); }); await rafs(p); await rafs(p);
           let S = await fsNow();
           if (!S.el) FP.push('opening the barber\'s chair in full screen left full screen, where full screen stays while he customizes');
-          await p.evaluate(() => { const c = [...document.querySelectorAll('#creator .opt[aria-pressed]')].filter(b => b.getAttribute('aria-pressed') !== 'true' && b.offsetParent); if (c[0]) c[0].id = c[0].id || '__fsPick'; });
-          const pick = await p.evaluate(() => { const e = document.getElementById('__fsPick') || [...document.querySelectorAll('#creator .opt[aria-pressed]')].find(b => b.getAttribute('aria-pressed') !== 'true' && b.offsetParent); return e ? '#' + e.id : null; });
-          if (!pick) FP.push('the barber\'s chair in full screen shows no choice that is not already chosen, so a press on one was not asked');
-          else { const h1 = await press(pick), took = await until(p, s => document.querySelector(s).getAttribute('aria-pressed') === 'true', pick, 1500);
-            if (h1 !== 'it' || !took) FP.push('in full screen, a press on one of the barber\'s chair\'s choices ' + (h1 !== 'it' ? 'lands on ' + h1 + ', not on the choice' : 'lands on it but does not choose it') + ': the chair does not answer in full screen'); }
+          /* a choice a person can see and press: not chosen, shown, and not inside a drawer that is shut (in a world whose chair has
+             drawers, the town's, a choice in a shut drawer has a box of its own but a press where it stands lands on the drawer's name) */
+          /* where no loose choice shows (a chair whose choices all sit in drawers), a tab not chosen is pressed instead */
+          const pick = await p.evaluate(() => { const seen = b => b.offsetParent && !b.closest('details:not([open])') && b.getBoundingClientRect().height > 0;
+            let e = [...document.querySelectorAll('#creator .opt[aria-pressed]')].find(b => b.getAttribute('aria-pressed') !== 'true' && seen(b)), at = 'aria-pressed', what = 'choices';
+            if (!e) { e = [...document.querySelectorAll('#creator .crtab[aria-selected]')].find(b => b.getAttribute('aria-selected') !== 'true' && seen(b)); at = 'aria-selected'; what = 'tabs'; }
+            if (!e) return null; if (!e.id) e.id = '__fsPick'; return { sel: '#' + e.id, at, what }; });
+          if (!pick) FP.push('the barber\'s chair in full screen shows no choice or tab that is not already chosen, so a press on one was not asked');
+          else { const h1 = await press(pick.sel), took = await until(p, ([s, a]) => document.querySelector(s).getAttribute(a) === 'true', [pick.sel, pick.at], 1500);
+            if (h1 !== 'it' || !took) FP.push('in full screen, a press on one of the barber\'s chair\'s ' + pick.what + ' ' + (h1 !== 'it' ? 'lands on ' + h1 + ', not on it' : 'lands on it but does not choose it') + ': the chair does not answer in full screen'); }
           const h2 = await press('#begin'), shut = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 2000); await rafs(p); S = await fsNow();
           if (h2 !== 'it' || !shut) FP.push('in full screen, Done in the barber\'s chair ' + (h2 !== 'it' ? 'lies under ' + h2 + ', which takes the press' : 'is pressed and the chair stays open'));
           else if (!S.el || !S.cls) FP.push('Done in the barber\'s chair in full screen gives back the street out of full screen (the browser\'s full screen ' + S.el + ', the view\'s ' + S.cls + '), where it gives it back still in full screen');
