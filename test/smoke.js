@@ -958,6 +958,10 @@ const CANDIDATES = [
   if (!boarded.cont || !boarded.label.includes('Traveler')) fails.push('boarding did not restore the save: ' + JSON.stringify(boarded));
 
   // ---- 6. Front-profile 2.5D, TILES metadata, and the dog program ----
+  /* boarding reloads the page, and the Continue button waited for above shows as engine.js runs, before the engine's last file
+     (engine3d.js) has loaded: on a slow machine the 3D camera was then asked before it existed ("3D camera did not render:
+     missing", once on CI, 2026-11-16). Wait for it by name; if it never comes the check below still says missing */
+  await page.waitForFunction(() => typeof draw3d === 'function', null, { timeout: 15000 }).catch(() => {});
   const front = await page.evaluate(() => {
     const out = {};
     // TILES: every solid glyph (content SOLIDX included) carries a numeric lift
