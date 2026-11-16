@@ -9,8 +9,9 @@
    ========================================================= */
 /* WHERE THE READER STANDS (sprint 6; his confirmed goal of 2026-10-31, point 1: a kitchen place's page opened in full screen
    stays inside the view). The reader is a panel OUTSIDE #vp, at the top of the page, and has always been: a quest hides #world,
-   and a document handed over in a quest must not go with it. In full screen the browser shows #vp and what is inside it and
-   nothing else, so a page outside it could only be seen by leaving full screen, which resized the canvas and left the room
+   and a document handed over in a quest must not go with it. In full screen #vp fills the screen over the rest of the page (its .fs
+   class; from 2026-11-16 the page itself is the browser's full-screen element), so a page outside it could only be seen by
+   leaving full screen, which resized the canvas and left the room
    dark. So, and only for a kitchen place's page opened while #vp is full screen, the reader stands INSIDE #vp for as long as
    the page is open; every other page, and every other moment, finds it where it always was. It goes home when the page is put
    down, when a card or a quest takes the screen, and when full screen is left. A page, the keys and the quest card are
