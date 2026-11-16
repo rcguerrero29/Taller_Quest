@@ -14462,7 +14462,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const G = await page4(shellHtml);
         try { const R = await G.p.evaluate(html => { const P = [], cr = document.getElementById('creator'), pv = document.getElementById('pv');
             if (cr.hidden) { P.push('the creator could not be opened, so whether it shows anything new was not asked'); return P; }
-            const extra = [...cr.querySelectorAll('[data-choice],input[type=range],#bodyRows,#pvBody,#pvTurn')];
+            const extra = [...cr.querySelectorAll('[data-choice],input[type=range],#bodyRows,#pvBody,#pvTurn,#pvPause')];
             if (extra.length) P.push('in a world that has not asked for the body, the creator shows ' + extra.length + ' control(s) for the body anyway');
             /* mq-v265: and its creator is the one it had, not the tabs and drawers of a world that takes the body: no tab, no
                drawer, the heading over the choices shown, and each row of the page where the page puts it, in the body of the
@@ -14994,6 +14994,104 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   said.push((face || 'only') + ' ' + side + ': hairline ' + hl + ' degrees, lift every 4 degrees to the crown ' + lift.slice(i0, ic + 1).filter((x, i) => i % 2 === 0).map(x => x.toFixed(2)).join(' ') + ', steepest ' + steep.toFixed(3) + ' within 4 degrees, fullest ' + top.toFixed(2) + ' at ' + tat); }
                 free(X); }
               N.push('long hair\'s volume over the top, from the side (in radii above the bald head): ' + said.join('; ')); }
+            /* ---- T · THE AFRO'S LOWER EDGE AND THE BROCCOLI CUT'S ROUND TOP (the owner's goals, 2026-11-15) ----
+               Read from the hair's own mesh, in head radii in the skull's frame (outOf), on every shape of head, with nothing
+               timed or random. T1: the afro's lower edge, round each side (60 to 120 degrees from his face) and behind (past
+               140): the most the hair stands out of his skin in each 5 degrees of elevation (read at 20 starting points a quarter
+               of a degree apart, the median kept), and the rise from one slice to the
+               next, the first slice counted as a rise from his skin (0) one slice below it; the steepest rise per degree, over
+               the slices until the lift reaches 0.6, is at most AFROEDGE. A slice missing inside that range, a lift that is
+               not a number, or fewer than 8 slices of 5 degrees compared is a failure of its own. T2: what stays of the afro: its most lift,
+               height, half-width (to 0.06: a gentler rise at the sides narrows it a little) and, in each of the three sectors, the
+               lowest point where the hair stands at or above his skin (its hairline), to 0.1, each to AFROPIN (and both ears
+               covered). T3: the broccoli's curly top, the outermost point of the hair in each 6 degrees round the middle of a
+               view (front, side, above; slabs two thirds of a radius thick, a third either side of the middle, above y 0.3), the arc kept whole (the front and the
+               side never across the gap below, the view from above all the way round): its rms distance from the best ellipse
+               with its axes along the view's (centre and two half-axes), in a share of the outline's mean radius, at most
+               BROCROUND for that head and view (1.1 times the domed top's own value, measured at the default fullness on
+               2026-11-16; the domed top's worst is 0.0501, the round head from the side; before the dome the round head was 0.0711
+               from the side and 0.0564 from above, and every one of the nine bounds fails it). A flat top, a shelf or a lump all count; the egg and the square head keep their
+               proportions. The curls, on the surface: over the curly top (hair above y 0.3 standing 0.02 out of his skin) each
+               point's lift less the mean lift of the hair within 8 degrees of it, rms, at least 0.95 of the domed top's (BROCCURL) on
+               each head; the measure is mostly the dome's own slope, so the margin is small, and a top with no curls or half its
+               curls reads under it on every head (the final review of 2026-11-15). T4: what stays of the broccoli: the
+               80th percentile of the lift over his brow, the share of the hair's points past 60 degrees from his face that lie within 0.05 of
+               his skin (the faded sides, the hair's own flat part), and the share of his skull painted his hair's colour, each to
+               BROCPIN. A head with no pinned numbers is a failure. Measured 2026-11-15 on the code before this change */
+            { const AFROEDGE = 0.05, TOL = 0.03, LOWTOL = 0.1, BROWTOL = 0.07, DEG = 180 / Math.PI, BIN1 = 5, BIN3 = 6,
+                AFROPIN = {round: {'lift': 0.718, 'top': 1.693, 'half': 1.491, 'low': {'left': -0.22, 'right': -0.22, 'behind': -0.498}}, oval: {'lift': 0.747, 'top': 1.714, 'half': 1.409, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}, square: {'lift': 0.747, 'top': 1.714, 'half': 1.411, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}}, BROCPIN = {round: {'brow': 0.249, 'sides': 0.808, 'paint': 0.248}, oval: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}, square: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}}, BROCCURL = {round: 0.0163, oval: 0.0156, square: 0.0156}, BROCROUND = {round: {front: 0.0226, side: 0.0551, above: 0.0431}, oval: {front: 0.0074, side: 0.0385, above: 0.0403}, square: {front: 0.0072, side: 0.0385, above: 0.0437}};
+              const az = p => Math.atan2(p.x, p.z) * DEG, el = p => Math.atan2(p.y, Math.hypot(p.x, p.z)) * DEG, fin = v => typeof v === 'number' && isFinite(v);
+              const mine = (st, face) => { const X = make(st, face ? { face } : {}), pts = []; parts(X, wears('hair')).forEach(o => pts.push(...outOf(X, o, 8000))); return { X, pts }; };
+              const FS = FACES.length ? FACES : [null], noPin = tb => FS.filter(f => tb[f || ''] === undefined);
+              if (!HAIRSTYLES.includes('afro') || !HAIRSTYLES.includes('broccoli')) P.push('his body cannot wear the afro or the broccoli cut, so their shapes were not asked');
+              else if ([noPin(AFROPIN), noPin(BROCPIN), noPin(BROCCURL), noPin(BROCROUND)].some(a => a.length)) P.push('the shapes of his head (' + FS.join(', ') + ') are not all pinned for what stays of the afro and the broccoli cut (missing: ' + [...new Set([...noPin(AFROPIN), ...noPin(BROCPIN), ...noPin(BROCCURL), ...noPin(BROCROUND)])].join(', ') + '), so they were not asked');
+              else for (const face of FS) {
+                const F = face || 'only', A = mine('afro', face), B = mine('broccoli', face), ap = AFROPIN[F], bp = BROCPIN[F], said = [], lumpy = [];
+                try {
+                  if (A.pts.length < 1000 || B.pts.length < 1000) { P.push('on the ' + F + ' head the afro or the broccoli cut has no mesh to measure (' + A.pts.length + ' and ' + B.pts.length + ' points), so their shapes were not asked'); continue; }
+                  /* T1 and the low reach of T2 */
+                  const SEC = { left: p => { const a = az(p); return a < -60 && a > -120; }, right: p => { const a = az(p); return a > 60 && a < 120; }, behind: p => Math.abs(az(p)) > 140 };
+                  for (const k in SEC) { const where = k === 'behind' ? 'from behind' : 'from the ' + k + ' side', S = A.pts.filter(SEC[k]), bins = {};
+                    if (S.some(p => !fin(p.o) || !fin(p.y))) { P.push('the afro\'s hair ' + where + ' on the ' + F + ' head has a height that is not a number, so its lower edge was not asked'); continue; }
+                    if (!S.length) { P.push('the afro has no hair ' + where + ' on the ' + F + ' head to measure its lower edge'); continue; }
+                    /* the slices are read at 20 starting points a quarter of a degree apart and the median steepness kept, as the
+                       shell's own rings of points sit every 5 degrees and would otherwise fall on a slice's edge by rounding */
+                    const slice = off => { const bins = {}; S.forEach(p => { const b = Math.floor((el(p) + off) / BIN1); bins[b] = Math.max(bins[b] === undefined ? -9 : bins[b], p.o); });
+                      const ks = Object.keys(bins).map(Number).sort((a, b) => a - b); let prevV = 0, prevB = ks[0] - 1, n = 0, steep = 0, at = null, gap = null;
+                      for (const b of ks) { const v = bins[b]; if (b !== prevB + 1) { gap = Math.round((prevB + 1) * BIN1 - off); break; }
+                        const d = (v - prevV) / BIN1; n++; if (d > steep) { steep = d; at = Math.round(b * BIN1 - off); } if (v >= 0.6) break; prevV = v; prevB = b; }
+                      return { n, steep, at, gap }; };
+                    const runs = Array.from({ length: 20 }, (_, i) => slice(0.125 + 0.25 * i)).sort((a, b) => a.steep - b.steep), mid = runs[10];
+                    const gap = (runs.find(r => r.gap !== null) || {}).gap ?? null, n = Math.min(...runs.map(r => r.n)), steep = mid.steep, at = mid.at;
+                    if (gap !== null) P.push('the afro has no hair in the slice at ' + gap + ' degrees of elevation ' + where + ' on the ' + F + ' head, inside the range of its lower edge, so the edge was not measured');
+                    else if (n < 8) P.push('only ' + n + ' slices of the afro\'s lower edge ' + where + ' on the ' + F + ' head could be compared, fewer than 8');
+                    else if (steep > AFROEDGE) P.push('the afro\'s lower edge turns sharply into his neck ' + where + ' on the ' + F + ' head: the hair stands ' + steep.toFixed(3) + ' of a radius further out of his skin for each degree up, at ' + at + ' degrees of elevation, where a rounded edge rises by at most ' + AFROEDGE);
+                    const low = Math.min(...S.filter(p => p.o > -0.005).map(p => p.y)); if (Math.abs(low - ap.low[k]) > LOWTOL) P.push('the afro\'s hair ' + where + ' on the ' + F + ' head reaches down to ' + low.toFixed(3) + ' of a radius, where it reached ' + ap.low[k] + ': where its lower edge sits is meant to stay');
+                    said.push(k + ' ' + steep.toFixed(3) + ' (' + n + ' slices, lowest ' + low.toFixed(3) + ')'); }
+                  /* T2 */
+                  const lift = Math.max(...A.pts.map(p => p.o)), top = Math.max(...A.pts.map(p => p.y)), half = Math.max(...A.pts.map(p => Math.abs(p.x)));
+                  [['most lift', lift, ap.lift, TOL], ['height', top, ap.top, TOL], ['width', half, ap.half, 0.06]].forEach(([w, v, want, tol]) => { if (!fin(v) || Math.abs(v - want) > tol) P.push('the afro\'s ' + w + ' on the ' + F + ' head is ' + v.toFixed(3) + ' of a radius, where it was ' + want + ': its size and height are meant to stay'); });
+                  const ears = parts(A.X, wears('ear')); if (!ears.length || ears.some(o => o.visible)) P.push('with the afro on the ' + F + ' head, ' + (ears.length ? 'one of his ears shows through it' : 'his ears could not be found') + ', where the afro covers his ears');
+                  /* T3 */
+                  const view = { front: p => Math.abs(p.z) < 0.33 && p.y > 0.3 && [p.x, p.y], side: p => Math.abs(p.x) < 0.33 && p.y > 0.3 && [p.z, p.y], above: p => p.y > 0.3 && [p.x, p.z] };
+                  /* the outermost of a list of points in each 6 degrees round the middle of his head, in a view; null where there is none */
+                  const ringOf = (pts, v) => { const ring = new Array(60).fill(null); pts.map(view[v]).filter(Boolean).forEach(q => { const b = Math.min(59, Math.floor((Math.atan2(q[1], q[0]) * DEG + 180) / BIN3)), r = Math.hypot(q[0], q[1]); if (!(ring[b] >= r)) ring[b] = r; }); return ring; };
+                  /* the best ellipse with its axes along the view's axes (centre and two half-axes), found by a fixed search (Nelder-Mead from the outline's box), and the outline's rms distance from it as a share of its mean radius */
+                  const ellipse = O => { const cost = q => { const [cx, cy, ha, hb] = q; if (!(ha > 0.05 && hb > 0.05)) return 1e9; let s = 0; for (const [x, y] of O) { const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-9; s += (d - 1 / Math.sqrt((dx / d / ha) ** 2 + (dy / d / hb) ** 2)) ** 2; } return s / O.length; };
+                    const xs = O.map(o => o[0]), ys = O.map(o => o[1]), x0 = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2, (Math.max(...xs) - Math.min(...xs)) / 2 + 0.1, (Math.max(...ys) - Math.min(...ys)) / 2 + 0.1];
+                    let V = [x0, ...x0.map((_, i) => x0.map((w, j) => j === i ? w + 0.15 : w))].map(q => ({ q, c: cost(q) }));
+                    for (let it = 0; it < 600; it++) { V.sort((a, b) => a.c - b.c); const cen = x0.map((_, j) => V.slice(0, 4).reduce((s, v) => s + v.q[j], 0) / 4), mv = (t) => { const q = cen.map((w, j) => w + t * (V[4].q[j] - w)); return { q, c: cost(q) }; };
+                      const R = mv(-1); if (R.c < V[0].c) { const E = mv(-2); V[4] = E.c < R.c ? E : R; } else if (R.c < V[3].c) V[4] = R; else { const C = mv(R.c < V[4].c ? -0.5 : 0.5); if (C.c < Math.min(R.c, V[4].c)) V[4] = C; else V = V.map((v, i) => i ? (q => ({ q, c: cost(q) }))(v.q.map((w, j) => V[0].q[j] + 0.5 * (w - V[0].q[j]))) : v); } }
+                    V.sort((a, b) => a.c - b.c); const [cx, cy] = V[0].q; return { rms: Math.sqrt(V[0].c) / (O.reduce((s, [x, y]) => s + Math.hypot(x - cx, y - cy), 0) / O.length), ha: V[0].q[2], hb: V[0].q[3] }; };
+                  for (const v in view) { const where = v === 'above' ? 'from above' : 'from the ' + v, H = ringOf(B.pts, v);
+                    if (H.filter(r => r !== null).length < 10) { P.push('the broccoli cut on the ' + F + ' head has too few points ' + where + ' to measure its outline (' + H.filter(r => r !== null).length + ' slices)'); continue; }
+                    /* the outline in order, starting just after its widest gap; from above there is none */
+                    let gs = -1, gl = 0; for (let i = 0; i < 60; i++) if (H[i] === null) { let l = 0; while (l < 60 && H[(i + l) % 60] === null) l++; if (l > gl) { gl = l; gs = i; } }
+                    const rot = gl ? Array.from({ length: 60 }, (_, i) => (gs + gl + i) % 60) : H.map((_, i) => i); let run = [], best = [];
+                    rot.forEach(i => { if (H[i] === null) { run = []; } else { run.push(i); if (run.length > best.length) best = run.slice(); } });
+                    const closed = v === 'above', idx = closed ? H.map((_, i) => i) : best;
+                    if (closed ? H.some(r => r === null) : idx.length < 20) { P.push('the broccoli cut\'s outline ' + where + ' on the ' + F + ' head is broken (' + (closed ? H.filter(r => r === null).length + ' empty slices' : 'its longest arc is ' + idx.length + ' slices') + '), so its roundness was not asked'); continue; }
+                    const E = ellipse(idx.map(i => { const t = (i + 0.5) * BIN3 / DEG - Math.PI; return [H[i] * Math.cos(t), H[i] * Math.sin(t)]; }));
+                    if (!E || !fin(E.rms)) { P.push('the broccoli cut\'s outline ' + where + ' on the ' + F + ' head has no ellipse to compare with, so its roundness was not asked'); continue; }
+                    if (!(E.rms <= BROCROUND[F][v])) P.push('the broccoli cut\'s curly top is not round ' + where + ' on the ' + F + ' head: its outline strays ' + E.rms.toFixed(4) + ' of its radius from the nearest ellipse, where a rounder top strays at most ' + BROCROUND[F][v]);
+                    lumpy.push(v + ' ' + E.rms.toFixed(4) + ' (' + idx.length + ' slices)'); }
+                  /* the curls, on the surface: over the curly top (hair above y 0.3 standing out of his skin), each point's lift less the mean lift of the hair points within 8 degrees of it, rms */
+                  { const T = B.pts.filter(p => p.y > 0.3 && p.o > 0.02), dirs = T.map(p => { const L = Math.hypot(p.x, p.y, p.z); return [p.x / L, p.y / L, p.z / L]; }), cs = Math.cos(8 / DEG); let ss = 0;
+                    if (T.length < 200) { P.push('the broccoli cut on the ' + F + ' head has too little curly top to measure its curls (' + T.length + ' points)'); }
+                    else { for (let i = 0; i < T.length; i++) { let s = 0, n = 0; for (let j = 0; j < T.length; j++) if (dirs[i][0] * dirs[j][0] + dirs[i][1] * dirs[j][1] + dirs[i][2] * dirs[j][2] >= cs) { s += T[j].o; n++; } ss += (T[i].o - s / n) ** 2; }
+                      const curls = Math.sqrt(ss / T.length), wantC = BROCCURL[F];
+                      if (!fin(curls) || !(curls >= 0.95 * wantC)) P.push('the broccoli cut\'s curls are gone on the ' + F + ' head: its curly top is smooth to ' + (fin(curls) ? curls.toFixed(4) : 'nothing') + ' of a radius, less than the ' + (0.95 * wantC).toFixed(4) + ' (0.95 of ' + wantC + ', the domed top\'s) a curly top keeps');
+                      lumpy.push('curls ' + curls.toFixed(4) + ' (' + T.length + ' points)'); } }
+                  /* T4 */
+                  const brow = B.pts.filter(p => p.z > 0.5 && p.y > 0.3).map(p => p.o).sort((a, b) => a - b), past = B.pts.filter(p => Math.abs(az(p)) > 60), sk = skullOf(B.X), im = sheet(sk);
+                  if (brow.length < 20 || past.length < 20 || !im) P.push('the broccoli cut on the ' + F + ' head has no brow (' + brow.length + ' points), no hair past 60 degrees (' + past.length + ') or no painted skull to measure, so what stays was not asked');
+                  else { const dd = im.getContext('2d').getImageData(0, 0, im.width, im.height).data, hr = rgbOf(LOOK.hair), sr = rgbOf(LOOK.skin); let hn = 0, tn = 0;
+                    for (let i = 0; i < dd.length; i += 16) { tn++; if (Math.hypot(dd[i] - hr[0], dd[i + 1] - hr[1], dd[i + 2] - hr[2]) < Math.hypot(dd[i] - sr[0], dd[i + 1] - sr[1], dd[i + 2] - sr[2])) hn++; }
+                    const flat = past.filter(p => p.o <= 0.05).length / past.length, b80 = brow[Math.floor(0.8 * (brow.length - 1))];
+                    [['the curls over his brow stand (80th percentile)', b80, bp.brow, BROWTOL], ['the share of the hair past 60 degrees from his face that lies flat on his skin (the faded sides) is', flat, bp.sides, TOL], ['the share of his skull painted his hair\'s colour is', hn / tn, bp.paint, TOL]].forEach(([w, v, want, tol]) => { if (!fin(v) || Math.abs(v - want) > tol) P.push('on the ' + F + ' head the broccoli cut\'s ' + w + ' ' + v.toFixed(3) + ', where it was ' + want + ': its faded sides and the curls over his brow are meant to stay'); });
+                    lumpy.push('brow p80 ' + b80.toFixed(3) + ' (' + brow.length + ' points), faded share ' + flat.toFixed(3) + ' of ' + past.length + ' points, paint ' + (hn / tn).toFixed(3)); }
+                  N.push('afro, ' + F + ' head, steepest rise per degree: ' + said.join(', ') + '; lift ' + lift.toFixed(3) + ', top ' + top.toFixed(3) + ', half ' + half.toFixed(3) + '; broccoli lumps/curls: ' + lumpy.join(', '));
+                } finally { free(A.X); free(B.X); } } }
             /* ---- R · what he costs ---- */
             { let worst = 0, at = '', n = 0;
               for (const face of FACES.length ? FACES : [null]) for (const st of HAIRSTYLES) for (const bd of [BR ? BR.def : null, KINDS[0] || null]) { let X;
@@ -15325,6 +15423,105 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (K2.errs.length) say(0, 'the page that looks at his hair, ears, neck and eyes threw "' + K2.errs[0] + '"');
         } catch (e) { say(0, 'his hair, ears, neck and eyes could not be looked at in the camera: ' + String(e && e.message || e).split('\n')[0]); }
         await K2.ctx.close(); }
+      /* ---- U · THE PAUSE FOR THE TURNING PREVIEW (the owner's goal, 2026-11-15) ----
+         In a world that takes the body, with motion allowed, the preview turns on its own while the creator is open; a third
+         button, #pvPause, stops that and starts it again. Any way of building it passes: one that keeps the frame loop running
+         while he is held, or one that stops it and starts it again (nothing is redrawn while nothing moves: the recommended
+         one). The frames are driven by hand (requestAnimationFrame is replaced by a queue, each frame given its own time, the
+         clock started above any real frame, one frame to settle before the first reading), and the angle (BODYPV.ang) is read
+         across frames. Asked: he turns by himself to begin with; the pause is a BUTTON between the two that turn him, worded
+         from the engine's own body words (pause while he turns, spin while he is held), its words alone saying what a press does
+         (it is never also marked pressed, which would announce "Keep turning, pressed" while he stands still); in both
+         languages and both states, on a phone and at 1280 pixels, each of the three is at least 44 pixels each way, on the
+         screen, not over its neighbour, in one row, and the pause as tall as the smaller neighbour; pressed, he holds his
+         angle over frames, even one of 3 seconds, and the two buttons that turn him still turn him an eighth of a turn each;
+         pressed again, the first frame of 10 ms after that long one turns him on by no more than 0.01 (a clock left stale
+         would turn him 0.08) and he keeps turning; held, the menu rebuilt by a change of language and by a choice of head shape
+         keeps him held (5 frames, no turn, the button still saying spin); the menu opened again, from the intro and from the
+         barber's chair or the closet (openChair) while he was held, turns him, the button saying pause; and for a person who
+         asked for reduced motion there is no pause button and his angle does not move over half a second, with the two buttons.
+         A world that does not take the body, or has no 3D camera, has nothing to pause: it is not asked, and says so. */
+      let UCAN = true; { const U0 = await page4(doc); try { UCAN = await U0.p.evaluate(() => typeof BODYON !== 'undefined' && !!BODYON && typeof THREE !== 'undefined' && !(typeof CAMS !== 'undefined' && !CAMS.includes('3d'))); } catch (e) { UCAN = true; } await U0.ctx.close(); }
+      if (!UCAN) say(1, 'this world does not take the body in a 3D camera, so it has no turning preview and the pause was not asked');
+      else {
+      { const geo = p => p.evaluate(() => { const out = [], el = () => document.getElementById('pvPause');
+          const read = () => [...document.getElementById('pvTurn').children].map(b => { const r = b.getBoundingClientRect(); return { id: b.id || ('turn' + b.dataset.turn), l: r.left, r: r.right, t: r.top, w: r.width, h: r.height }; });
+          const chk = lab => { const bs = read(), vw = innerWidth; if (bs.length !== 3) { out.push(lab + ': ' + bs.length + ' buttons under his preview, not three'); return; }
+            bs.forEach(b => { if (b.w < 44 || b.h < 44) out.push(lab + ': the button ' + b.id + ' is ' + Math.round(b.w) + ' by ' + Math.round(b.h) + ' pixels, smaller than a finger\'s 44'); if (b.l < 0 || b.r > vw) out.push(lab + ': the button ' + b.id + ' is off the screen (' + Math.round(b.l) + ' to ' + Math.round(b.r) + ' of ' + vw + ')'); });
+            const s = bs.slice().sort((a, b) => a.l - b.l); for (let i = 1; i < 3; i++) if (s[i].l < s[i - 1].r - 0.5) out.push(lab + ': the button ' + s[i].id + ' lies over ' + s[i - 1].id);
+            if (Math.max(...bs.map(b => b.t)) - Math.min(...bs.map(b => b.t)) > 8) out.push(lab + ': the three buttons are not in one row');
+            const pz = bs.find(b => b.id === 'pvPause'); if (pz && pz.h < Math.min(...bs.filter(b => b.id !== 'pvPause').map(b => b.h)) - 0.5) out.push(lab + ': the pause button is shorter than the buttons that turn him'); };
+          for (const lg of ['en', 'es']) { lang = lg; applyLang(); if (!el()) { out.push('no #pvPause in ' + lg); continue; }
+            if (el().textContent.includes(bodyWord('spin'))) el().click(); chk(innerWidth + ' px, ' + lg + ', turning');
+            el().click(); chk(innerWidth + ' px, ' + lg + ', held'); const e2 = el(); if (e2 && !e2.textContent.includes(bodyWord('spin'))) out.push(innerWidth + ' px, ' + lg + ', held: the pause button says "' + e2.textContent.trim() + '", not the word that turns him again ("' + bodyWord('spin') + '")'); if (e2) e2.click(); }
+          lang = 'en'; applyLang(); return out; });
+        const U = await page4(doc);
+        try { const p = U.p, P = [];
+          await p.evaluate(() => { window.__q = []; window.__t = performance.now() + 1000; window.requestAnimationFrame = cb => (window.__q.push(cb), window.__q.length);
+            window.__tick = (n, ms) => { for (let i = 0; i < n; i++) { const q = window.__q.splice(0); window.__t += ms; q.forEach(f => f(window.__t)); } return BODYPV.ang; }; });
+          const queued = await until(p, () => window.__q.length > 0, null, 3000);
+          const ang = (n, ms) => p.evaluate(([n, ms]) => window.__tick(n, ms), [n, ms]), click = sel => p.evaluate(s => document.querySelector(s).click(), sel);
+          const st = () => p.evaluate(() => { const b = document.getElementById('pvPause'); return { tag: b && b.tagName, on: b && b.getAttribute('aria-pressed'), text: b && b.textContent.trim(), pause: bodyWord('pause'), spin: bodyWord('spin') }; });
+          if (!queued) P.push('with motion allowed, his preview in the creator is not drawn frame by frame, so the pause was not asked');
+          else { await ang(1, 16); const a0 = await ang(0, 0), a1 = await ang(5, 100);
+            if (!(a1 - a0 > 0.3)) P.push('with motion allowed, he does not turn by himself in the menu: ' + (a1 - a0).toFixed(3) + ' radians in 5 frames of 100 ms, where he turns 0.4');
+            const B = await p.evaluate(() => { const tr = document.getElementById('pvTurn'); return tr ? { order: [...tr.children].map(x => x.id || ('turn' + x.dataset.turn)) } : null; });
+            if (!B) P.push('the menu has no row of buttons under the preview');
+            else if (B.order.indexOf('pvPause') < 0) P.push('the menu has no button to pause his turning: ' + B.order.length + ' buttons under his preview (' + B.order.join(', ') + '), where a third, #pvPause, sits between the two that turn him');
+            else {
+              if (B.order.join() !== 'turn-1,pvPause,turn1') P.push('the pause button is not between the two that turn him: the buttons run ' + B.order.join(', '));
+              (await geo(p)).forEach(m => P.push('on a phone, ' + m));
+              const W = await p.evaluate(() => { const o = {}; for (const lg of ['en', 'es']) { lang = lg; applyLang(); o[lg] = { pause: bodyWord('pause'), spin: bodyWord('spin') }; } lang = 'en'; applyLang(); return o; });
+              ['en', 'es'].forEach(lg => { if (W[lg].pause === 'pause' || W[lg].spin === 'spin') P.push('the pause button has no word in ' + (lg === 'en' ? 'English' : 'Spanish') + ' for ' + (W[lg].pause === 'pause' ? 'pause' : 'turn again')); });
+              if (W.en.pause === W.es.pause || W.en.spin === W.es.spin) P.push('the pause button\'s words are the same in English and Spanish');
+              let s = await st();
+              if (s.tag !== 'BUTTON') P.push('the pause is a ' + s.tag + ', not a button');
+              if (s.on !== null || !s.text.includes(s.pause)) P.push('while he turns, the pause button says "' + s.text + '" and is aria-pressed "' + s.on + '", where it says "' + s.pause + '" and is not marked pressed');
+              /* held */
+              await click('#pvPause'); const h0 = await ang(0, 0), h1 = await ang(5, 100); s = await st();
+              if (Math.abs(h1 - h0) > 1e-9) P.push('pressed, the pause button does not hold him: he turned ' + (h1 - h0).toFixed(3) + ' radians over 5 more frames of 100 ms');
+              if (s.on !== null || !s.text.includes(s.spin)) P.push('while he is held, the pause button says "' + s.text + '" and is aria-pressed "' + s.on + '", where it says "' + s.spin + '" and is not marked pressed');
+              /* held, the menu rebuilt: by a change of language, and by a choice of head shape */
+              for (const [what, how] of [['a change of language', () => { lang = 'es'; applyLang(); }], ['a choice of head shape', () => { const b = [...document.querySelectorAll('#creator [data-choice="face"]')].find(x => x.dataset.word !== look.body.face); if (b) b.click(); }]]) {
+                await p.evaluate(`(${how})()`); const g0 = await ang(0, 0), g1 = await ang(5, 100), gs = await st();
+                if (Math.abs(g1 - g0) > 1e-9 || !gs.text.includes(gs.spin)) P.push('held, the menu rebuilt by ' + what + ' lets him go: he turned ' + (g1 - g0).toFixed(3) + ' radians over 5 frames of 100 ms and the button says "' + gs.text + '", where he stays still and it says "' + gs.spin + '"'); }
+              await p.evaluate(() => { lang = 'en'; applyLang(); });
+              await click('#pvTurn [data-turn="1"]'); const t1 = await ang(3, 100); await click('#pvTurn [data-turn="-1"]'); const t2 = await ang(3, 100), h2 = await ang(1, 3000);
+              if (Math.abs(t1 - h0 - Math.PI / 4) > 1e-6 || Math.abs(t2 - h0) > 1e-6) P.push('held, the buttons that turn him do not turn him an eighth of a turn each: ' + (t1 - h0).toFixed(3) + ' and then ' + (t2 - t1).toFixed(3) + ' radians, where each is 0.785');
+              if (Math.abs(h2 - t2) > 1e-9) P.push('held, a frame of 3 seconds turns him ' + (h2 - t2).toFixed(3) + ' radians');
+              /* started again: the first frame of 10 ms after that long one turns him on by no more than a frame's worth */
+              await click('#pvPause'); const r1 = await ang(1, 10), r2 = await ang(4, 100); s = await st();
+              if (!(r1 - h2 >= 0 && r1 - h2 <= 0.01 + 1e-9)) P.push('started again, he does not turn on from where he was by a frame\'s worth: ' + (r1 - h2).toFixed(3) + ' radians in the first frame of 10 ms, where he turns 0.008 at most (a clock left stale turns him 0.08)');
+              if (!(r2 - r1 > 0.25)) P.push('started again, he does not keep turning: ' + (r2 - r1).toFixed(3) + ' radians in 4 frames of 100 ms, where he turns 0.32');
+              if (s.on !== null || !s.text.includes(s.pause)) P.push('started again, the pause button says "' + s.text + '" and is aria-pressed "' + s.on + '", where it says "' + s.pause + '" and is not marked pressed');
+              /* the menu opened again: held, closed, opened */
+              await click('#pvPause'); await ang(2, 100); await p.evaluate(() => { document.getElementById('creator').hidden = true; window.__tick(2, 100); });
+              await p.evaluate(() => { document.querySelector('.classes button').click(); }); const q = await until(p, () => window.__q.length > 0, null, 2000);
+              await ang(1, 16); const o0 = await ang(0, 0), o1 = await ang(5, 100); s = await st();
+              if (!q || !(o1 - o0 > 0.3)) P.push('the menu opened again after he was held does not turn him: ' + (o1 - o0).toFixed(3) + ' radians in 5 frames of 100 ms, where he turns 0.4');
+              if (s.on !== null || !s.text.includes(s.pause)) P.push('the menu opened again after he was held shows the pause button saying "' + s.text + '", aria-pressed "' + s.on + '", where it says "' + s.pause + '" and is not marked pressed');
+              /* the barber's chair or the closet (openChair), the only way back into the menu once the game has begun, while he was held */
+              await click('#pvPause'); await ang(2, 100); await p.evaluate(() => { const b = document.getElementById('begin'); if (b) b.click(); window.__tick(2, 100); openChair(null); });
+              const cq = await until(p, () => window.__q.length > 0, null, 2000); await ang(1, 16); const c0 = await ang(0, 0), c1 = await ang(5, 100); s = await st();
+              if (!cq || !(c1 - c0 > 0.3)) P.push('the barber\'s chair opened after he was held does not turn him: ' + (c1 - c0).toFixed(3) + ' radians in 5 frames of 100 ms, where he turns 0.4');
+              if (!s.text || !s.text.includes(s.pause)) P.push('the barber\'s chair opened after he was held shows the pause button saying "' + s.text + '", where it says "' + s.pause + '"'); } }
+          if (P.length) P.forEach(m => say(0, m)); else say(1, 'the pause for the turning preview: held across frames, and turning again from where he was');
+          if (U.errs.length) say(0, 'the menu that pauses his turning threw "' + U.errs[0] + '"');
+        } catch (e) { say(0, 'the pause for his turning preview could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+        await U.ctx.close();
+        const U3 = await page4(doc, { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+        try { const has = await U3.p.evaluate(() => !!document.getElementById('pvPause'));
+          if (has) { const g = await geo(U3.p); g.forEach(m => say(0, 'on a laptop, ' + m)); if (!g.length) say(1, 'on a laptop 1280 pixels wide the three buttons are the size of a finger, in a row, in both languages and both states'); }
+          else say(0, 'on a laptop 1280 pixels wide the menu has no button to pause his turning'); } catch (e) { say(0, 'the laptop menu could not be asked about the pause: ' + String(e && e.message || e).split('\n')[0]); }
+        await U3.ctx.close(); }
+      { const U2 = await page4(doc, { reducedMotion: 'reduce' });
+        const still = await U2.p.evaluate(async () => { const a = BODYPV.ang; await new Promise(r => setTimeout(r, 500)); return Math.abs(BODYPV.ang - a) < 1e-9; }).catch(() => false);
+        try { const n = await U2.p.evaluate(() => ({ pause: document.querySelectorAll('#pvPause').length, turn: document.querySelectorAll('#pvTurn [data-turn]').length, all: document.querySelectorAll('#pvTurn button').length, body: !!document.getElementById('pvBody') }));
+          if (!n.body || n.turn !== 2) say(0, 'for a person who asked for reduced motion, the menu has ' + n.turn + ' buttons that turn him, where it has two (and his body ' + (n.body ? 'is' : 'is not') + ' in the preview), so the pause was not asked');
+          else if (n.pause || n.all !== 2) say(0, 'for a person who asked for reduced motion, the menu has a pause button (' + n.all + ' buttons under his preview), where he stays still and has none');
+          else if (!still) say(0, 'for a person who asked for reduced motion, he turns by himself in the menu, where he stays still');
+          else say(1, 'for a person who asked for reduced motion, he stays still with the two buttons and no pause button'); } catch (e) { say(0, 'the reduced-motion menu could not be asked about the pause: ' + String(e && e.message || e).split('\n')[0]); }
+        await U2.ctx.close(); } }
       /* ---- Q · the creator's tabs and drawers on a phone, driven by taps and keys as a person drives them ---- */
       { const Q = await page4(doc, { reducedMotion: 'reduce' }); const qp = Q.p, QP = [], q = m => QP.push('on a phone, ' + m);
         try {

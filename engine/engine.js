@@ -767,7 +767,7 @@ const UIDEF={
   zoomIn:"Zoom in",zoomOut:"Zoom out",
   body:{title:"Your body",preview:"Your body, as it will look in the street",height:"Height",width:"Width of shoulders and hips",limbs:"Thickness of arms and legs",
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
-    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",
+    beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",pause:"Pause turning",spin:"Keep turning",
     jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
     eyesize:"Size of the eyes",eyegap:"Space between the eyes",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
     mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Mustache",beardlen:"Length of the beard",
@@ -825,7 +825,7 @@ const UIDEF={
   zoomIn:"Acercar",zoomOut:"Alejar",
   body:{title:"Tu cuerpo",preview:"Tu cuerpo, como se verá en la calle",height:"Estatura",width:"Ancho de hombros y cadera",limbs:"Grosor de brazos y piernas",
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
-    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",
+    beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",pause:"Pausar el giro",spin:"Seguir girando",
     jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",neckw:"Grosor del cuello",neckl:"Largo del cuello",cheeks:"Ancho de los pómulos",crown:"Altura del cráneo",skullw:"Ancho del cráneo",skulld:"Profundidad del cráneo",
     eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
     mouth:"Boca",mouth_line:"Línea",mouth_smile:"Sonrisa",mouth_none:"Sin boca",mouthw:"Ancho de la boca",beard_goatee:"Candado",beard_moustache:"Bigote",beardlen:"Largo de la barba",
@@ -964,7 +964,7 @@ const HAIRSTYLES=Object.freeze(["cap","long","curly","buzz","spiky","pony","afro
    from it, and a style with no reach here is a red there */
 const HAIRREACH=Object.freeze(Object.fromEntries(Object.entries({
   cap:["show",false],long:["cover",false],curly:["may",false],buzz:["show",false],spiky:["show",false],pony:["show",false],
-  afro:["cover",false],mohawk:["show",false],braids:["may",false],flat:["show",false],buns:["show",false],edgar:["show",true],
+  afro:["cover",false],mohawk:["show",false],braids:["may",false],flat:["show",false],buns:["show",false],edgar:["may",true],
   fade:["show",false],mullet:["show",false],broccoli:["show",true],bald:["show",false]
 }).map(([k,[ears,bangs]])=>[k,Object.freeze({ears,bangs})])));
 const hairStyleOf=lk=>{const s=lk&&typeof lk.style==="string"?lk.style:"";return HAIRSTYLES.includes(s)?s:"cap";};
@@ -6550,11 +6550,12 @@ function pvDraw(){const g=$("pv").getContext("2d");g.setTransform(1.6,0,0,1.6,5,
    THE PREVIEW is his body, turning: drawn by the 3D camera's renderer into a canvas of its own in the preview's box
    (t3BodyPreview, engine/engine3d.js), beside his card, which stays: up close he is his body, and farther off, and to
    everyone else, he is still his card, so a player sees both as he builds. It turns by itself, slowly, unless the player has
-   asked for reduced motion, and two buttons turn him by hand either way. Where the 3D cannot draw, the 2D preview stays.
+   asked for reduced motion, and two buttons turn him by hand either way; where he turns by himself a third, between them, stops
+   him and starts him again (BODYPV.hold, cleared each time the menu opens). Where the 3D cannot draw, the 2D preview stays.
    A world that does not take the body builds none of this: its creator, its preview and its looks are as they were. A world
    that takes it but has no 3D camera (no 3D library on its page) never shows the body, so it is offered no builder either;
    its saves still keep the choices, cleaned, so a look carried to a world with the camera keeps them. */
-const BODYPV={ang:0,spin:0,t:0};
+const BODYPV={ang:0,spin:0,t:0,hold:false};   /* hold: the person stopped him turning (the pause button); cleared each time the creator opens */
 const bodyWords=()=>{const t=T(),w=t&&t.body;return (w&&typeof w==="object"&&w)||uiDef("body")||{};};
 const bodyWord=k=>{const w=bodyWords()[k];return typeof w==="string"&&w?w:String(k).replace(/_/g," ");};   /* a word nobody names reads as its key */
 let BODYCSS=null;
@@ -6570,11 +6571,12 @@ function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(
   box.insertBefore(c,box.firstChild);box.style.display="flex";box.style.alignItems="flex-end";   /* his body and his card side by side */
   return c;}
 function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
-  const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;
+  const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;const q=$("pvPause");if(q)q.hidden=!ok;   /* where the 3D cannot draw, there is nothing to pause */
   c.setAttribute("aria-label",bodyWord("preview"));return ok;}
 const bodyStill=()=>{try{return window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
-function bodySpin(){if(BODYPV.spin||bodyStill())return;BODYPV.t=0;
+function bodySpin(){if(BODYPV.spin||bodyStill()||BODYPV.hold)return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
+    if(BODYPV.hold||bodyStill()){BODYPV.spin=0;return;}   /* held, or reduced motion asked for while the menu is open: nothing is drawn and no frame is asked for until he is started again */
     if(BODYPV.t)BODYPV.ang+=Math.min(0.1,(now-BODYPV.t)/1000)*0.8;BODYPV.t=now;bodyPvDraw();BODYPV.spin=requestAnimationFrame(step);};
   BODYPV.spin=requestAnimationFrame(step);}
 /* ---- THE CREATOR'S TABS AND DRAWERS (mq-v265): where the world takes the body, the creator's choices are sorted ----
@@ -6655,14 +6657,20 @@ function buildBodyRows(){if(!BODYON||typeof THREE==="undefined")return;   /* a w
         b.addEventListener("click",()=>{set(row.key,w);[...wrap.children].forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));});
         wrap.appendChild(b);});
       box.appendChild(wrap);}});
-  /* the two buttons that turn him by hand, under the preview */
+  /* the buttons under the preview: turn left, the pause (only where he turns by himself), turn right */
   const pv=$("pvbox"),pvp=pv&&pv.parentNode;
   if(pvp){let tr=$("pvTurn");if(!tr){tr=document.createElement("div");tr.id="pvTurn";tr.className="pvturn";
       tr.style.display="flex";tr.style.gap="8px";tr.style.justifyContent="center";tr.style.flexBasis="100%";tr.style.marginTop="6px";
       pvp.style.flexWrap="wrap";pvp.appendChild(tr);}
     tr.textContent="";
     [["turnL",-1],["turnR",1]].forEach(([k,s])=>{const b=big(document.createElement("button"));b.type="button";b.className="opt";b.dataset.turn=String(s);
-      b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);});}
+      b.textContent=(s<0?"↺ ":"")+bodyWord(k)+(s>0?" ↻":"");b.addEventListener("click",()=>{BODYPV.ang+=s*Math.PI/4;bodyPvDraw();});tr.appendChild(b);
+      /* between the two: the pause, only where he turns by himself. Held, the frame loop stops; started again, he turns on from where he is */
+      if(s<0&&!bodyStill()){const q=big(document.createElement("button"));q.type="button";q.className="opt";q.id="pvPause";
+        const say=()=>{q.textContent=bodyWord(BODYPV.hold?"spin":"pause");};say();   /* its words say what a press will do, so it is not also marked pressed */
+        q.addEventListener("click",()=>{BODYPV.hold=!BODYPV.hold;say();
+          if(BODYPV.hold){if(BODYPV.spin)cancelAnimationFrame(BODYPV.spin);BODYPV.spin=0;}else bodySpin();});
+        tr.appendChild(q);}});}
   /* a drawer with nothing to show in it (its rows hidden by this world, and none from the table) is not shown */
   /* each drawer that holds rows of the table ends with a way back to how its choices started, shown once one has changed */
   crGroups().forEach(G=>{const mine=bodyRows("person").filter(r=>(r.group||"build")===G.key);if(!mine.length||!slots[G.key].children.length)return;
@@ -6688,7 +6696,7 @@ function enterWorld(fresh){
 }
 document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("click",()=>{
   cls=b.querySelector("b").textContent;look.shirt=SHIRTS[b.dataset.c]||look.shirt;
-  $("intro").hidden=true;$("creator").hidden=false;
+  $("intro").hidden=true;$("creator").hidden=false;BODYPV.hold=false;
   buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
 }));
 /* ---------- the chair (the owner asked to change outfit
@@ -6702,7 +6710,7 @@ function buildPaintRow(){const row=$("rowPaint"),lb=$("lbPaint");if(!row)return;
 /* `how`, from the closet (grep "THE CLOSET"): its own title, its own way out and what is said after, and no person's line.
    Left out, the chair is exactly the barber's. */
 let chairHow=null;
-function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;
+function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;BODYPV.hold=false;
   $("crTitle").textContent=(how&&how.title)||t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
   const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
   buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
