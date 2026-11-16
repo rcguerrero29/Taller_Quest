@@ -5275,8 +5275,8 @@ function droneSound(kind,dir){
   (up?[2,4]:[4,2]).forEach((n,i)=>musVoice(deg(n),t0+0.14+i*0.09,0.2,"triangle",0.045,d.bright));
   if(up)DRONE.note=4;}
 /* ---- the card: what is under the drone, in words. Read-only in this slice. ----
-   A child of #vp, because #vp is what goes fullscreen (the fsbtn handler) and anything outside it
-   vanishes there. NOT a `.settings` panel, because worldCovered() would stop drawing the world under
+   A child of #vp, because in full screen #vp fills the screen over the rest of the page (its .fs class; the
+   fsbtn handler) and anything outside it is hidden under it. NOT a `.settings` panel, because worldCovered() would stop drawing the world under
    it. Every word goes in through textContent and every style through the CSSOM (el.style.cssText),
    which a strict style-src still allows (measured 2026-09-30; #256). */
 function droneName(){return droneOwnName()||droneGameName();}
@@ -6327,7 +6327,7 @@ $("treat").addEventListener("click",()=>{
 let wasFs=false;
 function exitFsForCard(){wasFs=$("vp").classList.contains("fs");readerSeat(false);   /* a card or a page takes the screen: the reader stands where it always did */
   if(wasFs){$("vp").classList.remove("fs");document.body.classList.remove("noscroll");
-    if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});setTimeout(sizeCanvas,60);}}
+    if(document.fullscreenElement){fsLive=false;document.exitFullscreen().catch(()=>{});}setTimeout(sizeCanvas,60);}}
 function restoreFs(){if(wasFs){$("vp").classList.add("fs");document.body.classList.add("noscroll");setTimeout(sizeCanvas,60);}}
 let qFirst=false,npcHeld=null;   /* the document the person on screen is holding out, if any */
 function questStart(qi){cur=qi;curQ=AQ()[qi];node=curQ.start;qLvl0=lvlIdx();runXP=0;qFirst=qa[qi]===undefined;exitFsForCard();$("world").hidden=true;$("card").hidden=false;held=null;nodeShow();}
@@ -6709,8 +6709,11 @@ function buildPaintRow(){const row=$("rowPaint"),lb=$("lbPaint");if(!row)return;
     b.addEventListener("click",()=>{alePick.hero=i;alePersist();[...row.children].forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");pvDraw();if(typeof aleRowBuild==="function")aleRowBuild();});row.appendChild(b);});}
 /* `how`, from the closet (grep "THE CLOSET"): its own title, its own way out and what is said after, and no person's line.
    Left out, the chair is exactly the barber's. */
-let chairHow=null;
+let chairHow=null,chairFs=false;
+/* in full screen the chair stays in full screen (the owner's goal of 2026-11-15): the world is hidden behind it, so the page
+   is let scroll while it is open, as in a window, and held still again on the way out if the view still fills the screen */
 function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;BODYPV.hold=false;
+  chairFs=$("vp").classList.contains("fs");if(chairFs)document.body.classList.remove("noscroll");
   $("crTitle").textContent=(how&&how.title)||t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
   const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
   buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
@@ -6723,6 +6726,7 @@ function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;BODYPV
 function closeChair(){const t=T();chairOpen=false;$("creator").hidden=true;$("lbName").hidden=false;$("heroname").hidden=false;$("begin").textContent=t.begin;
   const note=$("crNote");if(note)note.hidden=true;
   const how=chairHow;chairHow=null;
+  if(chairFs&&$("vp").classList.contains("fs")){document.body.classList.add("noscroll");setTimeout(sizeCanvas,60);}chairFs=false;
   save();showWorld();applyCtl();hud();checkTalk();
   if(how){if(how.after)toast(how.after,2800);}
   else if(t.chairAfter)toast(sayAs(GRW().barberNpc,t.chairAfter),2800);}
@@ -8712,14 +8716,26 @@ let admin=false,brush="#";
 $("fsbtn").addEventListener("click",()=>{
   const vp=$("vp"),fs=vp.classList.toggle("fs");
   document.body.classList.toggle("noscroll",fs);
-  if(fs&&vp.requestFullscreen)vp.requestFullscreen().catch(()=>{});
-  else if(!fs&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  /* the WHOLE PAGE goes full screen, not the view: in full screen a browser takes no input on anything outside the element it
+     shows, and the barber's chair and the closet open outside the view, so in full screen they showed and answered nothing,
+     Done included (the owner's goal of 2026-11-15). With the page itself in full screen nothing is outside it; the view
+     still fills the screen by its own class, as on a phone, which has no browser full screen at all */
+  const root=document.documentElement;
+  if(fs&&root.requestFullscreen)root.requestFullscreen().catch(()=>{});
+  else if(!fs&&document.fullscreenElement){fsLive=false;document.exitFullscreen().catch(()=>{});}
   /* a kitchen page open when full screen is entered goes inside the view, and one open when it is left goes back out (sprint 6) */
   if(fs){if(kitNow&&$("reader")&&!$("reader").hidden&&$("reader").dataset.kit)readerSeat(true);}else readerSeat(false);
   docBesideV=null;
   setTimeout(sizeCanvas,80);
 });
-document.addEventListener("fullscreenchange",()=>{setTimeout(sizeCanvas,80);});
+/* the browser's own way out (Escape, or a swipe on a tablet) tells the page only by this event: the view's full-screen class
+   and the page held still go with it, and a kitchen page inside the view goes home, so ONE press of the button goes back in
+   (it took two, the first only taking the class off). Leaving by the button or by a card took the class off already */
+let fsLive=false;   /* the browser's full screen is on and the game did not ask to leave it: set when it is entered, cleared when the game itself leaves */
+document.addEventListener("fullscreenchange",()=>{
+  if(document.fullscreenElement)fsLive=true;
+  else{if(fsLive&&$("vp").classList.contains("fs")){$("vp").classList.remove("fs");document.body.classList.remove("noscroll");readerSeat(false);docBesideV=null;}fsLive=false;}
+  setTimeout(sizeCanvas,80);});
 try{admin=localStorage.getItem(SK("admin"))==="1";}catch(e){}
 function applyAdmin(){
   $("brushes").hidden=!admin;

@@ -8816,6 +8816,54 @@ function findChromium() {
   }
   }
   if (runs('rest')) {   /* ---- the part `rest`, second stretch ---- */
+  /* ---- FS · THE BARBER'S CHAIR IN FULL SCREEN (the owner's goal of 2026-11-15, the closet working in full screen) ----
+     The chair (and the closet, which opens it) used to open OUTSIDE the element the browser had put in full screen, and
+     Chromium takes no input on anything outside it: the panel showed, and every press, tap and key landed on <html>, Done
+     included, until Escape. Asked here with real input, on this shell at a laptop's 1280 by 800: the full-screen button
+     pressed with the mouse enters full screen; the chair opened there keeps full screen; a press on one of its choices
+     lands on that choice (elementFromPoint) and chooses it; Done, pressed the same way, closes it and gives back the street
+     still in full screen; and after the browser's own way out (Escape, which the page sees as exitFullscreen), the
+     full-screen state is gone at once, so ONE press of the button goes back in (it took two). A shell with no full-screen
+     button or no chair says so and is not asked. */
+  { const FP = [], ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), p = await ctx.newPage(), errs = [];
+    p.on('pageerror', e => errs.push(String(e.message).split('\n')[0]));
+    try {
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await p.goto('file://' + file); await boot(p);
+      await p.click('.classes button'); await p.click('#begin');
+      const inWorld = await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p);
+      const has = await p.evaluate(() => !!document.getElementById('fsbtn') && typeof openChair === 'function' && !!document.getElementById('creator'));
+      const press = async sel => { const b = await p.evaluate(s => { const e = typeof s === 'string' ? document.querySelector(s) : null; if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+        if (!b) return null; const hit = await p.evaluate(([x, y, s]) => { const e = document.elementFromPoint(x, y), t = document.querySelector(s); return !!e && !!t && (e === t || t.contains(e)) ? 'it' : (e ? e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') : 'nothing'); }, [b.x, b.y, sel]);
+        await p.mouse.click(b.x, b.y); return hit; };
+      const fsNow = () => p.evaluate(() => ({ el: !!document.fullscreenElement, cls: document.getElementById('vp').classList.contains('fs'), noscroll: document.body.classList.contains('noscroll') }));
+      if (!inWorld || !has) fails.push('COUNT-ONLY: this shell ' + (!inWorld ? 'did not reach its world' : 'has no full-screen button or no chair') + ', so the chair in full screen was not asked');
+      else {
+        const h0 = await press('#fsbtn'), inFs = await until(p, () => !!document.fullscreenElement, null, 2000); await rafs(p);
+        if (h0 !== 'it' || !inFs) FP.push('the full-screen button pressed with the mouse ' + (h0 !== 'it' ? 'was not under the pointer (' + h0 + ' was)' : 'did not enter full screen') + ', so the chair in full screen was not asked');
+        else {
+          await p.evaluate(() => { openChair((typeof GRW === 'function' && GRW().barberNpc) || null); }); await rafs(p); await rafs(p);
+          let S = await fsNow();
+          if (!S.el) FP.push('opening the barber\'s chair in full screen left full screen, where full screen stays while he customizes');
+          await p.evaluate(() => { const c = [...document.querySelectorAll('#creator .opt[aria-pressed]')].filter(b => b.getAttribute('aria-pressed') !== 'true' && b.offsetParent); if (c[0]) c[0].id = c[0].id || '__fsPick'; });
+          const pick = await p.evaluate(() => { const e = document.getElementById('__fsPick') || [...document.querySelectorAll('#creator .opt[aria-pressed]')].find(b => b.getAttribute('aria-pressed') !== 'true' && b.offsetParent); return e ? '#' + e.id : null; });
+          if (!pick) FP.push('the barber\'s chair in full screen shows no choice that is not already chosen, so a press on one was not asked');
+          else { const h1 = await press(pick), took = await until(p, s => document.querySelector(s).getAttribute('aria-pressed') === 'true', pick, 1500);
+            if (h1 !== 'it' || !took) FP.push('in full screen, a press on one of the barber\'s chair\'s choices ' + (h1 !== 'it' ? 'lands on ' + h1 + ', not on the choice' : 'lands on it but does not choose it') + ': the chair does not answer in full screen'); }
+          const h2 = await press('#begin'), shut = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 2000); await rafs(p); S = await fsNow();
+          if (h2 !== 'it' || !shut) FP.push('in full screen, Done in the barber\'s chair ' + (h2 !== 'it' ? 'lies under ' + h2 + ', which takes the press' : 'is pressed and the chair stays open'));
+          else if (!S.el || !S.cls) FP.push('Done in the barber\'s chair in full screen gives back the street out of full screen (the browser\'s full screen ' + S.el + ', the view\'s ' + S.cls + '), where it gives it back still in full screen');
+          else if (!S.noscroll) FP.push('Done in the barber\'s chair in full screen gives back the street with the page able to scroll under the view');
+          /* the browser's own way out, then ONE press back in */
+          await p.evaluate(() => document.fullscreenElement && document.exitFullscreen()); const out = await until(p, () => !document.fullscreenElement, null, 2000); await rafs(p); await rafs(p); S = await fsNow();
+          if (!out) FP.push('full screen could not be left the browser\'s way, so the press back in was not asked');
+          else { if (S.cls || S.noscroll) FP.push('after the browser\'s own way out of full screen (Escape), the view still fills the window as if in full screen (its class ' + S.cls + ', the page held still ' + S.noscroll + ')');
+            const h3 = await press('#fsbtn'), back = await until(p, () => !!document.fullscreenElement, null, 2000); await rafs(p); S = await fsNow();
+            if (h3 !== 'it' || !back || !S.cls) FP.push('after Escape, one press of the full-screen button does not go back into full screen (the browser\'s ' + S.el + ', the view\'s ' + S.cls + '), where one press is enough'); } } }
+      if (errs.length) FP.push('the page threw while the chair in full screen was asked: ' + errs[0]);
+      if (!FP.length && inWorld && has) fails.push('COUNT-ONLY: the barber\'s chair in full screen: entered with a real press, a choice and Done answer, the street comes back in full screen, and after Escape one press goes back in');
+    } catch (e) { FP.push('the chair in full screen could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+    await ctx.close(); FP.forEach(l => fails.push(l)); }
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
