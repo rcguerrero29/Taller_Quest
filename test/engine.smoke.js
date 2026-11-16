@@ -8921,6 +8921,17 @@ function findChromium() {
       /* the strip above the pinned title: with the middle scrolled halfway, 10 px under the panel's top edge is the title bar's */
       if (scroller && d && d.open) { scroller.scrollTop = scroller.scrollHeight / 2; const pr = cr.getBoundingClientRect(), bar = cr.querySelector('.crbar'), h = document.elementFromPoint((pr.left + pr.right) / 2, pr.top + cr.clientTop + 10);
         out.strip = !bar ? 'the panel has no title bar' : h && (h === bar || bar.contains(h)) ? null : 'under ' + (h ? h.tagName.toLowerCase() + (h.id ? '#' + h.id : h.className ? '.' + String(h.className).split(' ')[0] : '') : 'nothing'); }
+      /* the strip under the main button (rosa, run 2026-11-16-claude-e4e4): with the middle at ten places from its top to its
+         end, a press between the main button and the panel's bottom edge lands on the button or its foot, never on a choice;
+         and while the middle can scroll on down, the foot says so (its "more" shadow) */
+      if (scroller && d && d.open) { const go = document.getElementById('begin'), foot = go && go.closest('.crfoot'), hits = []; let moreWrong = 0;
+        for (let i = 0; i <= 9; i++) { scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) * i / 9; scroller.dispatchEvent(new Event('scroll'));   /* the browser's own scroll event comes a frame later: sent here, as it will be */
+          const pr = cr.getBoundingClientRect(), br = go.getBoundingClientRect(), bottom = Math.min(pr.bottom - cr.clientTop, vh);
+          for (const y of [br.bottom + 3, (br.bottom + bottom) / 2, bottom - 3]) { if (y <= br.bottom || y >= bottom) continue;
+            const h = document.elementFromPoint((br.left + br.right) / 2, y); if (!h || !((foot && foot.contains(h)) || go.contains(h) || h === go)) hits.push(h ? (h.id || h.textContent.trim().slice(0, 20) || h.tagName.toLowerCase()) : 'nothing'); }
+          const more = scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1; if (foot && foot.classList.contains('more') !== more) moreWrong++; }
+        out.under = hits.length ? hits.length + ' press(es) under the main button land on ' + [...new Set(hits)].slice(0, 3).map(x => '"' + x + '"').join(', ') : null;
+        out.more = !foot ? 'the main button has no foot of its own' : moreWrong ? 'in ' + moreWrong + ' of 10 places the foot does not say whether the middle goes on' : null; }
       if (scroller) scroller.scrollTop = 0; out.ends = ends;
       /* every control a person can reach: the drawers of the tab shown are opened for the count by the test's own hand, and put
          back; a shut drawer's own name counts, the rest of a shut drawer does not */
@@ -8953,6 +8964,8 @@ function findChromium() {
           if (R.modal && R.strip) say(lg, where + ', with its middle scrolled halfway, 10 px under the panel\'s top edge is ' + R.strip + ', where the title bar holds the panel\'s top');
           if (R.modal && R.focus !== 'crTitle') say(lg, where + ', the keyboard\'s place is on ' + (R.focus || 'nothing') + ' as the panel opens, where it goes to the title');
           if (R.modal && R.counted < 5) say(lg, where + ', only ' + R.counted + ' controls were found to measure, so their size was hardly asked');
+          if (R.modal && R.under) say(lg, where + ', with the middle scrolled, ' + R.under + ', where a press under the main button lands on its foot');
+          if (R.modal && R.more) say(lg, where + ', ' + R.more);
           if (R.modal) { /* a press outside it reaches nothing behind, and Tab stays inside */
             const out = await p.evaluate(() => { const d = document.getElementById('creator').closest('dialog'), r = d.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
               const pts = [[4, vh - 4], [vw - 4, vh - 4], [4, 4]].filter(([x, y]) => x < r.left || x > r.right || y < r.top || y > r.bottom);
@@ -8960,18 +8973,39 @@ function findChromium() {
             if (out.length) say(lg, where + ', a press outside the panel lands on ' + out[0] + ' behind it');
             /* past the panel's last control, Tab may go to the browser's own bar, which the page sees as focus on its body or
                root: that is not a control behind the panel. Anything else outside the panel is */
-            let left = null; for (let i = 0; i < 20 && !left; i++) { await p.keyboard.press('Tab'); left = await p.evaluate(() => { const a = document.activeElement, d = document.getElementById('creator').closest('dialog'); return a && d && !d.contains(a) && a !== document.body && a !== document.documentElement ? (a.tagName.toLowerCase() + (a.id ? '#' + a.id : '')) : null; }); }
-            if (left) say(lg, where + ', the Tab key leaves the panel for ' + left + ' behind it'); } };
+            /* and each place the Tab key stops is at least partly in view, not wholly under the pinned top or foot (rosa) */
+            let left = null, hidden = []; for (let i = 0; i < 20 && !left; i++) { await p.keyboard.press('Tab'); const q = await p.evaluate(() => { const a = document.activeElement, d = document.getElementById('creator').closest('dialog');
+                if (!a || !d || a === document.body || a === document.documentElement) return {}; if (!d.contains(a)) return { left: a.tagName.toLowerCase() + (a.id ? '#' + a.id : '') };
+                const r = a.getBoundingClientRect(), ix = Math.min(6, r.width / 4), iy = Math.min(6, r.height / 4), pts = [[(r.left + r.right) / 2, (r.top + r.bottom) / 2], [r.left + ix, r.top + iy], [r.right - ix, r.top + iy], [r.left + ix, r.bottom - iy], [r.right - ix, r.bottom - iy]];
+                const seen = pts.some(([x, y]) => { const h = document.elementFromPoint(x, y); return h && (h === a || a.contains(h)); });
+                return seen || !(r.width > 0) ? {} : { hidden: a.id || (a.getAttribute('aria-label') || a.textContent || a.tagName).trim().slice(0, 20) }; });
+              left = q.left || null; if (q.hidden) hidden.push(q.hidden); }
+            if (left) say(lg, where + ', the Tab key leaves the panel for ' + left + ' behind it');
+            if (hidden.length) say(lg, where + ', ' + hidden.length + ' of the Tab key\'s stops are wholly hidden under what is pinned: ' + [...new Set(hidden)].slice(0, 3).map(x => '"' + x + '"').join(', ')); } };
         for (const lg of ['en', 'es']) {
           await p.evaluate(l => { lang = l; applyLang(); }, lg);
           /* a new game */
           await p.evaluate(() => { const c = document.getElementById('creator'), d = c.closest('dialog'); if (d && d.open) d.close(); c.hidden = true; document.getElementById('world').hidden = true; document.getElementById('intro').hidden = false; });
           await pressAt('.classes button'); await until(p, () => !document.getElementById('creator').hidden, null, 2000); await rafs(p);
           await look(lg, 'at a new game', vw < 600);
-          /* Escape, twice, with nothing pressed between (Chrome closes a dialog itself on the second): the panel stays */
-          await p.keyboard.press('Escape'); await rafs(p); await p.keyboard.press('Escape'); await rafs(p); await rafs(p);
+          /* Escape, twice, with nothing pressed between (Chrome closes a dialog itself on the second): the panel stays, and stays
+             where he was, its scroll and the keyboard's place kept (rosa) */
+          await p.evaluate(() => { const c = document.getElementById('creator'); c.scrollTop = (c.scrollHeight - c.clientHeight) * 0.4; }); await rafs(p);
+          await p.keyboard.press('Tab'); await rafs(p);
+          const was = await p.evaluate(() => { const a = document.activeElement; return { top: document.getElementById('creator').scrollTop, at: a && (a.id || (a.textContent || '').trim().slice(0, 20)) }; });
+          await p.keyboard.press('Escape'); await rafs(p); await p.keyboard.press('Escape'); await rafs(p); await rafs(p); await rafs(p);
           if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden && (!document.getElementById('creator').closest('dialog') || !!document.querySelector('dialog:modal')))))
             say(lg, 'at a new game, Escape pressed twice closed the panel or left it shown with no dialog open, where it does nothing there (the game has not begun)');
+          else { const now = await p.evaluate(() => { const a = document.activeElement; return { top: document.getElementById('creator').scrollTop, at: a && (a.id || (a.textContent || '').trim().slice(0, 20)) }; });
+            if (Math.abs(now.top - was.top) > 2 || now.at !== was.at) say(lg, 'at a new game, Escape pressed twice moved him: the middle from ' + Math.round(was.top) + ' to ' + Math.round(now.top) + ' px, the keyboard\'s place from "' + was.at + '" to "' + now.at + '", where it leaves him where he was'); }
+          /* opening and shutting each drawer of the tab shown does not move the main button (rosa) */
+          { const ds = await p.evaluate(() => [...document.querySelectorAll('#creator details.crdrawer')].filter(x => x.offsetParent !== null).map(x => x.id).filter(Boolean)); let moved = 0, most = 0;
+            const at = () => p.evaluate(() => document.getElementById('begin').getBoundingClientRect().top);
+            for (const id of ds.slice(0, 4)) { await p.evaluate(() => { document.getElementById('creator').scrollTop = 0; }); const t0 = await at();
+              await p.evaluate(i => document.querySelector('#' + i + ' > summary').click(), id); await rafs(p); const t1 = await at();
+              await p.evaluate(i => document.querySelector('#' + i + ' > summary').click(), id); await rafs(p);
+              if (Math.abs(t1 - t0) > 1) { moved++; most = Math.max(most, Math.abs(t1 - t0)); } }
+            if (moved) say(lg, 'at a new game, opening a drawer moves the main button (' + moved + ' of ' + Math.min(4, ds.length) + ' drawers, by up to ' + Math.round(most) + ' px), where it stays at the foot'); }
           /* a tap on the dimmed outside (his confirmed answer of 2026-11-16): nothing at a new game. A phone's panel has no outside */
           const outside = () => p.evaluate(() => { const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight, d = document.getElementById('creator').closest('dialog');
             const r = (d && d.open ? d : document.getElementById('creator')).getBoundingClientRect(); return r.left > 8 ? { x: 4, y: vh / 2 } : r.right < vw - 8 ? { x: vw - 4, y: vh / 2 } : r.bottom < vh - 8 ? { x: vw / 2, y: vh - 4 } : null; });

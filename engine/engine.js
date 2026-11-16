@@ -6736,7 +6736,16 @@ const PANELCSS="dialog.crdialog{margin:8px auto auto;padding:0;border:0;backgrou
   "dialog.crdialog::backdrop{background:rgba(16,12,20,.55);}"+
   "html:has(dialog.crdialog[open]){overflow:hidden;}"+
   /* the panel's own top padding moves into the title bar, so nothing slides through a bare strip above the pinned bar */
-  "dialog.crdialog>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding-top:0;}"+
+  /* three parts that do not move: the panel always as tall as it may be, a column whose foot (Done, in a strip of the panel's
+     own colour) is pushed to its bottom, so opening a drawer never moves Done and nothing can be pressed under it (rosa, run
+     2026-11-16-claude-e4e4); the browser scrolls the keyboard's place clear of the pinned top and foot (scroll padding, kept in
+     step with their heights) */
+  "dialog.crdialog{height:calc(100svh - 16px);}"+
+  "dialog.crdialog>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;height:100%;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding-top:0;padding-bottom:0;display:flex;flex-direction:column;scroll-padding-top:var(--crtop-h,0px);scroll-padding-bottom:var(--crfoot-h,0px);}"+
+  "dialog.crdialog>.creator>*{flex-shrink:0;}"+
+  "dialog.crdialog .crfoot{position:sticky;bottom:0;z-index:4;margin-top:auto;background:var(--surface);padding:10px 0 20px;transition:box-shadow .15s;}"+
+  "dialog.crdialog .crfoot.more{box-shadow:0 -10px 12px -8px rgba(20,16,30,.32);}"+
+  "dialog.crdialog .crfoot #begin{position:static;box-shadow:none;width:100%;margin:0;}"+
   "dialog.crdialog>.creator .crhead{display:contents;}"+
   "dialog.crdialog .crbar{position:sticky;top:0;z-index:4;background:var(--surface);padding:20px 0 6px;}"+
   "dialog.crdialog .crbar #crTitle:focus{outline:none;}dialog.crdialog .crbar #crTitle:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}"+
@@ -6746,7 +6755,8 @@ const PANELCSS="dialog.crdialog{margin:8px auto auto;padding:0;border:0;backgrou
   "dialog.crdialog>.creator .sw{width:44px;height:44px;}"+
   "dialog.crdialog>.creator .pvbox{padding-right:56px;}dialog.crdialog>.creator .pvtog{width:44px;height:44px;top:4px;right:4px;font-size:1rem;}"+
   "@media (max-width:599px){dialog.crdialog{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
-  "dialog.crdialog>.creator{height:100svh;max-height:100svh;border-radius:0;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
+  "dialog.crdialog>.creator{height:100svh;max-height:100svh;border-radius:0;}"+
+  "dialog.crdialog .crfoot{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
 let crDlg=null,crOpener=null;
 function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
   /* a browser with no modal dialog, or one that cannot adopt the panel's styles (Safari 15.4 to 16.3 has the dialog and not
@@ -6757,10 +6767,22 @@ function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr
   cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;
   const bar=document.createElement("div"),t=$("crTitle"),n=$("crNote");bar.className="crbar";
   if(t){t.tabIndex=-1;bar.appendChild(t);}if(n)bar.appendChild(n);cr.insertBefore(bar,cr.firstChild);
-  if(typeof ResizeObserver!=="undefined")new ResizeObserver(()=>{cr.style.setProperty("--crbar-h",bar.offsetHeight+"px");}).observe(bar);
+  /* the foot: Done in a strip of its own at the panel's bottom */
+  const go=$("begin"),foot=document.createElement("div");foot.className="crfoot";if(go){go.parentNode.insertBefore(foot,go);foot.appendChild(go);}else cr.appendChild(foot);
+  /* the heights of what is pinned, for the preview's place under the bar and the browser's scroll padding; and the foot's
+     shadow, shown only while the middle can scroll on down, so a list that goes on under Done says so */
+  const pinned=()=>{const pv=cr.classList.contains("drawers")?cr.querySelector(".preview"):null;
+    cr.style.setProperty("--crbar-h",bar.offsetHeight+"px");cr.style.setProperty("--crtop-h",(bar.offsetHeight+(pv?pv.offsetHeight:0))+"px");
+    cr.style.setProperty("--crfoot-h",foot.offsetHeight+"px");foot.classList.toggle("more",cr.scrollTop+cr.clientHeight<cr.scrollHeight-1);};
+  if(typeof ResizeObserver!=="undefined"){const ro=new ResizeObserver(pinned);ro.observe(bar);ro.observe(foot);ro.observe(cr);const pv=cr.querySelector(".preview");if(pv)ro.observe(pv);
+    const body=cr.querySelector(".crbody");if(body)ro.observe(body);}
+  cr.addEventListener("scroll",pinned,{passive:true});cr.addEventListener("toggle",pinned,true);
+  /* where he was, kept while it is open: the browser shutting it itself at a new game (a second Escape) gives it back as it was */
+  let lastTop=0,lastFocus=null;cr.addEventListener("scroll",()=>{if(d.open)lastTop=cr.scrollTop;},{passive:true});
+  d.addEventListener("focusin",e=>{lastFocus=e.target;});
   /* opened: the panel starts at its own top (#126), set here because a reset in the same task as `hidden=false` (openChair's)
      acts on a dialog not yet open, a box with no layout; and the keyboard's place goes to the title */
-  const opened=()=>{cr.scrollTop=0;if(t)t.focus({preventScroll:true});};
+  const opened=()=>{cr.scrollTop=0;lastTop=0;if(t)t.focus({preventScroll:true});requestAnimationFrame(pinned);};
   d.addEventListener("cancel",e=>{e.preventDefault();if(chairOpen&&!cr.hidden)$("begin").click();});
   /* a tap on the dimmed outside does what Done does in the chair and the closet, and nothing at a new game (the owner's
      confirmed answer of 2026-11-16, as every other panel's dark outside does): only a press that starts and ends on the
@@ -6772,7 +6794,9 @@ function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr
   /* closed by the browser itself: a `close` queued by our own close() and dispatched after the panel was opened again finds it
      open, and does nothing; otherwise Done in the chair, or the panel again at a new game */
   d.addEventListener("close",()=>{if(cr.hidden||d.open)return;
-    if(chairOpen)$("begin").click();else requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open){d.showModal();opened();}}catch(e){}});});
+    if(chairOpen){$("begin").click();return;}
+    const top=lastTop,f=lastFocus;   /* at a new game: again, where he was */
+    requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open){d.showModal();cr.scrollTop=top;lastTop=top;(f&&f.isConnected&&d.contains(f)?f:t).focus({preventScroll:true});requestAnimationFrame(pinned);}}catch(e){}});});
   const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;try{d.showModal();}catch(e){}opened();}
     else if(cr.hidden&&d.open){d.close();const o=crOpener;crOpener=null;if(o&&o.isConnected&&o.offsetParent!==null)try{o.focus({preventScroll:true});}catch(e){}}};
   new MutationObserver(sync).observe(cr,{attributes:true,attributeFilter:["hidden"]});sync();}
