@@ -355,8 +355,9 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST` (the outfits a
-world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7) — and a template part's `link`
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST PANELTAKE` (the outfits a
+world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7; the customizing panel the
+engine builds, §7) — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
@@ -697,6 +698,12 @@ own colours on a skeleton of 19 named joints, his feet flat on the ground standi
 square he is his card again, and everyone else keeps theirs. To move a joint by hand, `const BODYREST={knee_l:[0,-0.19,0]};`
 (its rest place from its parent, in squares, three numbers each under 1; anything else is ignored). Saying nothing is the card,
 exactly as before. The skeleton, the maker and the walk are `engine/engine3d.js`, grep `THE JOINTED BODY`.
+
+**One line opens the creator as the engine's customizing panel** (mq-v269): `const PANELTAKE=["creator"];` in a pack file the
+page loads before `engine/boot.js`. The creator (a new game, the barber's chair, a closet) then opens as the browser's own modal
+dialog: the page behind dimmed and inert, the title pinned at the top, the main button at the foot, every control at least 44 by
+44, Escape doing what Done does except at a new game, and on a phone the screen's whole height. Saying nothing is the creator
+exactly as before. `engine/engine.js`, grep `THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE`.
 
 **One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file

@@ -8881,11 +8881,16 @@ function findChromium() {
      in English and Spanish, with real presses and keys: at a new game and in the chair, the panel is the open modal dialog
      and a press outside it reaches nothing behind; with its middle scrolled to the end, the title and the main button are
      both wholly on the screen and a press on each lands on it; every control shown in it is at least 44 by 44; twenty Tab
-     presses never leave it; on a phone it takes the screen's whole height, and on a laptop it stands within 8 px of the top
-     with 8 px to spare at the bottom; Escape does nothing at a new game and does what Done does in the chair; and on a laptop,
-     in full screen entered with a real press, a press on a choice and on Done answers and the street comes back in full
-     screen. A world that does not name it opens the creator as before, not in a dialog. A world that declares PANELTAKE
-     itself is asked as it stands. */
+     presses never leave it (the browser's own bar, which the page sees as its body, is not behind it); on a phone it takes
+     the screen's whole height, and on a laptop it stands within 8 px of the top with 8 px to spare at the bottom, 560 px wide
+     at most; with its middle scrolled halfway, 10 px under its top edge is the pinned title bar; as it opens the keyboard's
+     place is the title, and closed it goes back to what opened it; Escape, even twice, does nothing at a new game, and does
+     what Done does in the chair, a page left open behind it included; the chair opened again after it was scrolled down and
+     closed starts at its own top, and opened in the beat after Done it stays open; after every close no dialog is left open;
+     and on a laptop, in full screen entered with a real press, a press on a choice and on Done answers and the street comes
+     back in full screen. The controls are counted with the shown tab's drawers opened by the test's own hand, a shut
+     drawer's name included. A world that does not name it opens the creator as before, not in a dialog. A world that declares
+     PANELTAKE itself is asked as it stands. Beto's review of run 2026-11-16-claude-e4e4 found what the first version did not ask. */
   { const NP = [], shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
     const href = require('url').pathToFileURL(file).href, packAt = new URL('__paneltake.js', href).href;
     const plain = await (async () => { const c = await browser.newContext({ viewport: { width: 1280, height: 800 } }), q = await c.newPage();
@@ -8912,11 +8917,22 @@ function findChromium() {
       const scroller = [cr, ...cr.querySelectorAll('*')].find(e => { const s = getComputedStyle(e); return /(auto|scroll)/.test(s.overflowY) && e.scrollHeight > e.clientHeight + 1; }) || null;
       const ends = []; for (const at of ['top', 'end']) { if (scroller) scroller.scrollTop = at === 'top' ? 0 : scroller.scrollHeight;
         ends.push({ at, title: hit(document.getElementById('crTitle')), main: hit(document.getElementById('begin')) }); }
+      /* the strip above the pinned title: with the middle scrolled halfway, 10 px under the panel's top edge is the title bar's */
+      if (scroller && d && d.open) { scroller.scrollTop = scroller.scrollHeight / 2; const pr = cr.getBoundingClientRect(), bar = cr.querySelector('.crbar'), h = document.elementFromPoint((pr.left + pr.right) / 2, pr.top + cr.clientTop + 10);
+        out.strip = !bar ? 'the panel has no title bar' : h && (h === bar || bar.contains(h)) ? null : 'under ' + (h ? h.tagName.toLowerCase() + (h.id ? '#' + h.id : h.className ? '.' + String(h.className).split(' ')[0] : '') : 'nothing'); }
       if (scroller) scroller.scrollTop = 0; out.ends = ends;
-      const shown = e => e.offsetParent !== null && !e.closest('details:not([open])') && !e.closest('[hidden]') && e.getBoundingClientRect().width > 0;
+      /* every control a person can reach: the drawers of the tab shown are opened for the count by the test's own hand, and put
+         back; a shut drawer's own name counts, the rest of a shut drawer does not */
+      const shut = [...cr.querySelectorAll('details:not([open])')].filter(x => x.offsetParent !== null); shut.forEach(x => { x.open = true; });
+      const inShut = e => { const x = e.closest('details:not([open])'); return !!x && !(e.tagName === 'SUMMARY' && e.parentElement === x); };
+      const shown = e => e.offsetParent !== null && !inShut(e) && !e.closest('[hidden]') && e.getBoundingClientRect().width > 0;
       out.small = [...cr.querySelectorAll('button, input, select, summary, [role="tab"]')].filter(shown).map(e => { const r = e.getBoundingClientRect();
         return { w: r.width, h: r.height, name: e.id || (e.getAttribute('aria-label') || e.textContent || e.tagName).trim().slice(0, 24) }; }).filter(s => s.w < 43.5 || s.h < 43.5);
+      out.counted = [...cr.querySelectorAll('button, input, select, summary, [role="tab"]')].filter(shown).length;
+      shut.forEach(x => { x.open = false; });
+      out.focus = document.activeElement ? (document.activeElement.id || document.activeElement.tagName.toLowerCase()) : null;
       return out; };
+    const modalLeft = p => p.evaluate(() => !!document.querySelector('dialog:modal'));
     const sizes = [[390, 844, 'a phone'], [1280, 800, 'a laptop']];
     const variants = [['the panel, no body', 'const PANELTAKE=["creator"];\n'], ...(plain.three ? [['the panel and the body', 'const PANELTAKE=["creator"];\nconst BODYTAKE=["person"];\n']] : [])];
     if (plain.err) NP.push('the shell could not be opened to read its own lists: ' + plain.err);
@@ -8932,6 +8948,10 @@ function findChromium() {
           if (R.small.length) say(lg, where + ', ' + R.small.length + ' control(s) are smaller than 44 by 44: ' + R.small.slice(0, 4).map(s => '"' + s.name + '" ' + Math.round(s.w) + ' by ' + Math.round(s.h)).join(', '));
           if (phoneWhole && (R.box.t > 0.5 || R.box.b < R.vh - 0.5)) say(lg, where + ', on a phone the panel stands from ' + Math.round(R.box.t) + ' to ' + Math.round(R.box.b) + ' px, where it takes the screen\'s whole height (0 to ' + R.vh + ')');
           if (!phoneWhole && (R.box.t < -0.5 || R.box.t > 8.5 || R.box.b > R.vh - 7.5)) say(lg, where + ', on a laptop the panel stands from ' + Math.round(R.box.t) + ' to ' + Math.round(R.box.b) + ' px of ' + R.vh + ', where it stands within 8 px of the top with 8 px to spare at the bottom');
+          if (!phoneWhole && R.box.r - R.box.l > 560.5) say(lg, where + ', on a laptop the panel is ' + Math.round(R.box.r - R.box.l) + ' px wide, where it is 560 at most');
+          if (R.modal && R.strip) say(lg, where + ', with its middle scrolled halfway, 10 px under the panel\'s top edge is ' + R.strip + ', where the title bar holds the panel\'s top');
+          if (R.modal && R.focus !== 'crTitle') say(lg, where + ', the keyboard\'s place is on ' + (R.focus || 'nothing') + ' as the panel opens, where it goes to the title');
+          if (R.modal && R.counted < 5) say(lg, where + ', only ' + R.counted + ' controls were found to measure, so their size was hardly asked');
           if (R.modal) { /* a press outside it reaches nothing behind, and Tab stays inside */
             const out = await p.evaluate(() => { const d = document.getElementById('creator').closest('dialog'), r = d.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
               const pts = [[4, vh - 4], [vw - 4, vh - 4], [4, 4]].filter(([x, y]) => x < r.left || x > r.right || y < r.top || y > r.bottom);
@@ -8947,14 +8967,39 @@ function findChromium() {
           await p.evaluate(() => { const c = document.getElementById('creator'), d = c.closest('dialog'); if (d && d.open) d.close(); c.hidden = true; document.getElementById('world').hidden = true; document.getElementById('intro').hidden = false; });
           await pressAt('.classes button'); await until(p, () => !document.getElementById('creator').hidden, null, 2000); await rafs(p);
           await look(lg, 'at a new game', vw < 600);
-          await p.keyboard.press('Escape'); await rafs(p);
-          if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden))) say(lg, 'at a new game, Escape closed the panel, where it does nothing there (the game has not begun)');
-          await p.evaluate(() => document.getElementById('begin').click()); await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p);
-          /* the barber's chair */
-          await p.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null)); await rafs(p); await rafs(p);
+          /* Escape, twice, with nothing pressed between (Chrome closes a dialog itself on the second): the panel stays */
+          await p.keyboard.press('Escape'); await rafs(p); await p.keyboard.press('Escape'); await rafs(p); await rafs(p);
+          if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden && (!document.getElementById('creator').closest('dialog') || !!document.querySelector('dialog:modal')))))
+            say(lg, 'at a new game, Escape pressed twice closed the panel or left it shown with no dialog open, where it does nothing there (the game has not begun)');
+          await p.evaluate(() => document.getElementById('begin').scrollIntoView({ block: 'center' })); await pressAt('#begin'); await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p);
+          if (await modalLeft(p)) say(lg, 'at a new game, Done began the game and left a dialog open over it');
+          const chair = () => p.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null));
+          /* the barber's chair, opened from the full-screen button with the keyboard's place on it */
+          await p.evaluate(() => { const f = document.getElementById('fsbtn'); if (f) f.focus(); }); await chair(); await rafs(p); await rafs(p);
           await look(lg, 'in the barber\'s chair', vw < 600);
           await p.keyboard.press('Escape'); const shut = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 1500);
-          if (!shut) { say(lg, 'in the barber\'s chair, Escape does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); } }
+          if (!shut) { say(lg, 'in the barber\'s chair, Escape does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); }
+          else { if (await modalLeft(p)) say(lg, 'in the barber\'s chair, Escape shut it and left a dialog open over the street');
+            const back = await p.evaluate(() => document.activeElement && document.activeElement.id); if (await p.evaluate(() => !!document.getElementById('fsbtn'))) { if (back !== 'fsbtn') say(lg, 'in the barber\'s chair, closed, the keyboard\'s place is on ' + (back || 'nothing') + ', where it goes back to what opened it (the full-screen button)'); } }
+          /* opened again after it was scrolled to its end and closed by a real press on Done: it starts at its own top (#126) */
+          await chair(); await rafs(p); await rafs(p);
+          await p.evaluate(() => { const c = document.getElementById('creator'); c.scrollTop = c.scrollHeight; });
+          await p.evaluate(() => document.getElementById('begin').scrollIntoView({ block: 'center' })); await pressAt('#begin'); await until(p, () => document.getElementById('creator').hidden, null, 1500); await rafs(p);
+          await chair(); await rafs(p); await rafs(p);
+          const top = await p.evaluate(() => document.getElementById('creator').scrollTop);
+          if (top > 1) say(lg, 'in the barber\'s chair, opened again after it was scrolled down and closed, it opens ' + Math.round(top) + ' px down, where it starts at its own top');
+          /* with a page left open behind it (the reader), Escape still does what Done does */
+          await p.evaluate(() => { const r = document.getElementById('reader'); if (r) r.hidden = false; });
+          await p.keyboard.press('Escape'); const shut2 = await until(p, () => document.getElementById('creator').hidden, null, 1500);
+          if (!shut2) { say(lg, 'in the barber\'s chair with a page left behind it, Escape does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); }
+          await p.evaluate(() => { const r = document.getElementById('reader'); if (r) r.hidden = true; });
+          /* opened again in the beat after Done: the close of the one before must not shut the new one */
+          await chair(); await rafs(p);
+          await p.evaluate(async () => { document.getElementById('begin').click(); await Promise.resolve(); openChair((typeof GRW === 'function' && GRW().barberNpc) || null); });
+          await rafs(p); await rafs(p); await rafs(p);
+          if (await p.evaluate(() => document.getElementById('creator').hidden)) say(lg, 'in the barber\'s chair, opened again in the beat after Done, it shut itself, where it stays open');
+          await p.evaluate(() => document.getElementById('begin').click()); await rafs(p);
+          if (await modalLeft(p)) say(lg, 'after the barber\'s chair was closed, a dialog was left open over the street'); }
         if (vw >= 600) { /* full screen, entered with a real press */
           await p.evaluate(() => { lang = 'en'; applyLang(); });
           await pressAt('#fsbtn'); const inFs = await until(p, () => !!document.fullscreenElement, null, 2000);
@@ -8968,7 +9013,8 @@ function findChromium() {
             else { await pressAt(pick.sel); if (!(await until(p, ([s, a]) => document.querySelector(s).getAttribute(a) === 'true', [pick.sel, pick.a], 1500))) NP.push(at + ', in full screen a press on the panel\'s ' + (pick.a === 'aria-pressed' ? 'choice' : 'tab') + ' does not choose it'); }
             await p.evaluate(() => document.getElementById('begin').scrollIntoView({ block: 'center' })); await pressAt('#begin');
             const back = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 2000), fsOn = await p.evaluate(() => !!document.fullscreenElement && document.getElementById('vp').classList.contains('fs'));
-            if (!back) NP.push(at + ', in full screen Done in the panel does not close it'); else if (!fsOn) NP.push(at + ', in full screen Done in the panel gives back the street out of full screen'); } }
+            if (!back) NP.push(at + ', in full screen Done in the panel does not close it'); else if (!fsOn) NP.push(at + ', in full screen Done in the panel gives back the street out of full screen');
+            else if (await modalLeft(p)) NP.push(at + ', in full screen Done closed the panel and left a dialog open over the street'); } }
         if (W.errs.length) NP.push(at + ', the page threw "' + W.errs[0] + '"');
       } catch (e) { NP.push(at + ', the panel could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
       finally { if (W) await W.ctx.close(); } }

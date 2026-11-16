@@ -6162,6 +6162,7 @@ function keyForWorld(e){
   return e.key!=="Enter"&&e.key!==" ";
 }
 window.addEventListener("keydown",e=>{
+  if(crDlg&&crDlg.open)return;   /* the customizing panel a world takes is a modal dialog with keys of its own: none of the world's keys below (the hand, the kitchen's tools, the reader) may eat its Escape (grep "THE CUSTOMIZING PANEL A WORLD TAKES") */
   const t2=e.target; /* typing a dog's name is not walking — "shadow" has a w, an a, an s and a d */
   if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"))return;
   if(kitBuildReady&&kitBuildKey(e))return;   /* the kitchen builder's keys, only while its bar stands (grep "THE KITCHEN BUILDER") */
@@ -6703,7 +6704,7 @@ document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("clic
    A world that names "creator" in its own `PANELTAKE` list (`const PANELTAKE=["creator"];`, in a pack file loaded before
    engine/boot.js, read by its bare name as BODYTAKE is) opens the creator, at a new game, in the barber's chair and in a
    closet, as the browser's own MODAL DIALOG, built here once for every world that takes it:
-     · THE DIALOG. #creator is moved, as it stands, into a <dialog class="crpanel"> at boot. It opens with showModal() the
+     · THE DIALOG. #creator is moved, as it stands, into a <dialog class="crdialog"> at boot. It opens with showModal() the
        moment #creator is shown and closes the moment it is hidden (a MutationObserver on its `hidden`), so every way in and
        out the engine already has (a class picked, openChair, Done, closeChair) opens and closes it with no change of its own.
        A modal dialog stands in the browser's top layer, over a page in full screen too, and makes the page behind it inert:
@@ -6729,32 +6730,42 @@ function panelAudit(){if(typeof PANELTAKE==="undefined")return [];
   if(!Array.isArray(PANELTAKE))return ["PANELTAKE is "+say(PANELTAKE)+", not a list of panels such as [\"creator\"], so this world takes no panel from the engine"];
   const bad=PANELTAKE.filter(p=>p!=="creator");
   return bad.length?["PANELTAKE names "+bad.slice(0,3).map(say).join(", ")+(bad.length>3?" and more":"")+": not a panel this engine builds (creator), so nothing is taken for "+(bad.length>1?"them":"it")]:[];}
-const PANELCSS="dialog.crpanel{margin:8px auto auto;padding:0;border:0;background:transparent;width:calc(100vw - 32px);max-width:560px;max-height:calc(100svh - 16px);overflow:visible;color:inherit;}"+
-  "dialog.crpanel::backdrop{background:rgba(16,12,20,.55);}"+
-  "html:has(dialog.crpanel[open]){overflow:hidden;}"+
-  "dialog.crpanel>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;}"+
-  "dialog.crpanel>.creator .crhead{display:contents;}"+
-  "dialog.crpanel .crbar{position:sticky;top:0;z-index:4;background:var(--surface);padding:2px 0 6px;}"+
-  "dialog.crpanel .crbar #crTitle:focus{outline:none;}dialog.crpanel .crbar #crTitle:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}"+
-  "dialog.crpanel>.creator.drawers .preview{top:var(--crbar-h,0px);}"+
-  "dialog.crpanel>.creator button,dialog.crpanel>.creator summary,dialog.crpanel>.creator input[type=text]{min-height:44px;}"+
-  "dialog.crpanel>.creator .opt{min-height:44px;min-width:44px;}"+
-  "dialog.crpanel>.creator .sw{width:44px;height:44px;}"+
-  "dialog.crpanel>.creator .pvbox{padding-right:56px;}dialog.crpanel>.creator .pvtog{width:44px;height:44px;top:4px;right:4px;font-size:1rem;}"+
-  "@media (max-width:599px){dialog.crpanel{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
-  "dialog.crpanel>.creator{height:100svh;max-height:100svh;border-radius:0;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
+/* the dialog is `crdialog`, not `crpanel`, which already names each tab's panel inside the creator (beto, run 2026-11-16-claude-e4e4) */
+const PANELCSS="dialog.crdialog{margin:8px auto auto;padding:0;border:0;background:transparent;width:calc(100vw - 32px);max-width:560px;max-height:calc(100svh - 16px);overflow:visible;color:inherit;}"+
+  "dialog.crdialog::backdrop{background:rgba(16,12,20,.55);}"+
+  "html:has(dialog.crdialog[open]){overflow:hidden;}"+
+  /* the panel's own top padding moves into the title bar, so nothing slides through a bare strip above the pinned bar */
+  "dialog.crdialog>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding-top:0;}"+
+  "dialog.crdialog>.creator .crhead{display:contents;}"+
+  "dialog.crdialog .crbar{position:sticky;top:0;z-index:4;background:var(--surface);padding:20px 0 6px;}"+
+  "dialog.crdialog .crbar #crTitle:focus{outline:none;}dialog.crdialog .crbar #crTitle:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}"+
+  "dialog.crdialog>.creator.drawers .preview{top:var(--crbar-h,0px);}"+
+  "dialog.crdialog>.creator button,dialog.crdialog>.creator summary,dialog.crdialog>.creator input[type=text]{min-height:44px;}"+
+  "dialog.crdialog>.creator .opt{min-height:44px;min-width:44px;}"+
+  "dialog.crdialog>.creator .sw{width:44px;height:44px;}"+
+  "dialog.crdialog>.creator .pvbox{padding-right:56px;}dialog.crdialog>.creator .pvtog{width:44px;height:44px;top:4px;right:4px;font-size:1rem;}"+
+  "@media (max-width:599px){dialog.crdialog{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
+  "dialog.crdialog>.creator{height:100svh;max-height:100svh;border-radius:0;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
 let crDlg=null,crOpener=null;
 function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
-  try{const s=new CSSStyleSheet();s.replaceSync(PANELCSS);document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];}catch(e){}
-  const d=document.createElement("dialog");d.className="crpanel";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
+  /* a browser with no modal dialog, or one that cannot adopt the panel's styles (Safari 15.4 to 16.3 has the dialog and not
+     the sheet), keeps the creator exactly as before: a dialog without its styles would scroll twice and could hide Done */
+  if(typeof HTMLDialogElement==="undefined"||typeof HTMLDialogElement.prototype.showModal!=="function")return;
+  try{const s=new CSSStyleSheet();s.replaceSync(PANELCSS);document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];}catch(e){return;}
+  const d=document.createElement("dialog");d.className="crdialog";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
   cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;
   const bar=document.createElement("div"),t=$("crTitle"),n=$("crNote");bar.className="crbar";
   if(t){t.tabIndex=-1;bar.appendChild(t);}if(n)bar.appendChild(n);cr.insertBefore(bar,cr.firstChild);
   if(typeof ResizeObserver!=="undefined")new ResizeObserver(()=>{cr.style.setProperty("--crbar-h",bar.offsetHeight+"px");}).observe(bar);
+  /* opened: the panel starts at its own top (#126), set here because a reset in the same task as `hidden=false` (openChair's)
+     acts on a dialog not yet open, a box with no layout; and the keyboard's place goes to the title */
+  const opened=()=>{cr.scrollTop=0;if(t)t.focus({preventScroll:true});};
   d.addEventListener("cancel",e=>{e.preventDefault();if(chairOpen&&!cr.hidden)$("begin").click();});
-  d.addEventListener("close",()=>{if(cr.hidden)return;
-    if(chairOpen)$("begin").click();else requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open)d.showModal();}catch(e){}});});
-  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;try{d.showModal();}catch(e){}if(t)t.focus({preventScroll:true});}
+  /* closed by the browser itself: a `close` queued by our own close() and dispatched after the panel was opened again finds it
+     open, and does nothing; otherwise Done in the chair, or the panel again at a new game */
+  d.addEventListener("close",()=>{if(cr.hidden||d.open)return;
+    if(chairOpen)$("begin").click();else requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open){d.showModal();opened();}}catch(e){}});});
+  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;try{d.showModal();}catch(e){}opened();}
     else if(cr.hidden&&d.open){d.close();const o=crOpener;crOpener=null;if(o&&o.isConnected&&o.offsetParent!==null)try{o.focus({preventScroll:true});}catch(e){}}};
   new MutationObserver(sync).observe(cr,{attributes:true,attributeFilter:["hidden"]});sync();}
 /* ---------- the chair (the owner asked to change outfit
