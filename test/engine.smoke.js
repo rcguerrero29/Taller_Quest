@@ -8885,7 +8885,8 @@ function findChromium() {
      the screen's whole height, and on a laptop it stands within 8 px of the top with 8 px to spare at the bottom, 560 px wide
      at most; with its middle scrolled halfway, 10 px under its top edge is the pinned title bar; as it opens the keyboard's
      place is the title, and closed it goes back to what opened it; Escape, even twice, does nothing at a new game, and does
-     what Done does in the chair, a page left open behind it included; the chair opened again after it was scrolled down and
+     what Done does in the chair, a page left open behind it included; on a laptop a tap on the dimmed outside does nothing
+     at a new game and does what Done does in the chair (his confirmed answer of 2026-11-16); the chair opened again after it was scrolled down and
      closed starts at its own top, and opened in the beat after Done it stays open; after every close no dialog is left open;
      and on a laptop, in full screen entered with a real press, a press on a choice and on Done answers and the street comes
      back in full screen. The controls are counted with the shown tab's drawers opened by the test's own hand, a shut
@@ -8971,6 +8972,11 @@ function findChromium() {
           await p.keyboard.press('Escape'); await rafs(p); await p.keyboard.press('Escape'); await rafs(p); await rafs(p);
           if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden && (!document.getElementById('creator').closest('dialog') || !!document.querySelector('dialog:modal')))))
             say(lg, 'at a new game, Escape pressed twice closed the panel or left it shown with no dialog open, where it does nothing there (the game has not begun)');
+          /* a tap on the dimmed outside (his confirmed answer of 2026-11-16): nothing at a new game. A phone's panel has no outside */
+          const outside = () => p.evaluate(() => { const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight, d = document.getElementById('creator').closest('dialog');
+            const r = (d && d.open ? d : document.getElementById('creator')).getBoundingClientRect(); return r.left > 8 ? { x: 4, y: vh / 2 } : r.right < vw - 8 ? { x: vw - 4, y: vh / 2 } : r.bottom < vh - 8 ? { x: vw / 2, y: vh - 4 } : null; });
+          if (vw >= 600) { const o = await outside(); if (o) { await p.mouse.click(o.x, o.y); await rafs(p); await rafs(p);
+              if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden))) say(lg, 'at a new game, a tap on the dimmed outside closed the panel, where it does nothing there'); } }
           await p.evaluate(() => document.getElementById('begin').scrollIntoView({ block: 'center' })); await pressAt('#begin'); await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p);
           if (await modalLeft(p)) say(lg, 'at a new game, Done began the game and left a dialog open over it');
           const chair = () => p.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null));
@@ -8993,6 +8999,12 @@ function findChromium() {
           await p.keyboard.press('Escape'); const shut2 = await until(p, () => document.getElementById('creator').hidden, null, 1500);
           if (!shut2) { say(lg, 'in the barber\'s chair with a page left behind it, Escape does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); }
           await p.evaluate(() => { const r = document.getElementById('reader'); if (r) r.hidden = true; });
+          /* a tap on the dimmed outside does what Done does in the chair (his confirmed answer of 2026-11-16) */
+          if (vw >= 600) { await chair(); await rafs(p); await rafs(p); const o = await outside();
+            if (!o) say(lg, 'in the barber\'s chair on a laptop, the panel leaves no outside to tap');
+            else { await p.mouse.click(o.x, o.y); const gone = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 1500);
+              if (!gone) { say(lg, 'in the barber\'s chair, a tap on the dimmed outside does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); }
+              else if (await modalLeft(p)) say(lg, 'in the barber\'s chair, a tap outside shut it and left a dialog open over the street'); } }
           /* opened again in the beat after Done: the close of the one before must not shut the new one */
           await chair(); await rafs(p);
           await p.evaluate(async () => { document.getElementById('begin').click(); await Promise.resolve(); openChair((typeof GRW === 'function' && GRW().barberNpc) || null); });

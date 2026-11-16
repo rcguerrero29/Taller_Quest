@@ -6717,7 +6717,8 @@ document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("clic
        small height, its foot padded by the phone's safe area. Every control in it is at least 44 by 44.
      · KEYS. Escape does what Done does in the chair and the closet, and nothing at a new game (the dialog's cancel, stopped);
        if the browser closes it anyway (Chrome does on a second Escape with no press between), the same is done, and at a new
-       game it opens again. In full screen the browser's first Escape leaves full screen, as everywhere. Opened, the keyboard's
+       game it opens again; a tap on the dimmed outside does the same as Escape there. In full screen the browser's first
+       Escape leaves full screen, as everywhere. Opened, the keyboard's
        place goes to the title; closed, back to what opened it, where that still shows.
      · THE STYLES. An adopted sheet (a <style> written into the page is refused by its policy), using the world's own colours
        and lettering through the variables its page already sets.
@@ -6761,6 +6762,13 @@ function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr
      acts on a dialog not yet open, a box with no layout; and the keyboard's place goes to the title */
   const opened=()=>{cr.scrollTop=0;if(t)t.focus({preventScroll:true});};
   d.addEventListener("cancel",e=>{e.preventDefault();if(chairOpen&&!cr.hidden)$("begin").click();});
+  /* a tap on the dimmed outside does what Done does in the chair and the closet, and nothing at a new game (the owner's
+     confirmed answer of 2026-11-16, as every other panel's dark outside does): only a press that starts and ends on the
+     backdrop itself, which the browser hands to the dialog, never one that began inside the panel and was let go outside */
+  let downOut=false;
+  const outOf=e=>{if(e.target!==d)return false;const r=cr.getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;};
+  d.addEventListener("pointerdown",e=>{downOut=outOf(e);});
+  d.addEventListener("click",e=>{const was=downOut;downOut=false;if(was&&outOf(e)&&chairOpen&&!cr.hidden)$("begin").click();});
   /* closed by the browser itself: a `close` queued by our own close() and dispatched after the panel was opened again finds it
      open, and does nothing; otherwise Done in the chair, or the panel again at a new game */
   d.addEventListener("close",()=>{if(cr.hidden||d.open)return;
