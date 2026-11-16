@@ -6162,6 +6162,7 @@ function keyForWorld(e){
   return e.key!=="Enter"&&e.key!==" ";
 }
 window.addEventListener("keydown",e=>{
+  if(crDlg&&crDlg.open)return;   /* the customizing panel a world takes is a modal dialog with keys of its own: none of the world's keys below (the hand, the kitchen's tools, the reader) may eat its Escape (grep "THE CUSTOMIZING PANEL A WORLD TAKES") */
   const t2=e.target; /* typing a dog's name is not walking — "shadow" has a w, an a, an s and a d */
   if(t2&&(t2.tagName==="INPUT"||t2.tagName==="TEXTAREA"))return;
   if(kitBuildReady&&kitBuildKey(e))return;   /* the kitchen builder's keys, only while its bar stands (grep "THE KITCHEN BUILDER") */
@@ -6699,6 +6700,109 @@ document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("clic
   $("intro").hidden=true;$("creator").hidden=false;BODYPV.hold=false;
   buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
 }));
+/* ---- THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE (mq-v269; item 17 of the plan, goals confirmed 2026-11-16) ----
+   A world that names `creator` in its own `PANELTAKE` list (`const PANELTAKE=["creator"];`, in a pack file loaded before
+   engine/boot.js, read by its bare name as BODYTAKE is) opens the creator, at a new game, in the barber's chair and in a
+   closet, as the browser's own MODAL DIALOG, built here once for every world that takes it:
+     · THE DIALOG. #creator is moved, as it stands, into a <dialog class="crdialog"> at boot. It opens with showModal() the
+       moment #creator is shown and closes the moment it is hidden (a MutationObserver on its `hidden`), so every way in and
+       out the engine already has (a class picked, openChair, Done, closeChair) opens and closes it with no change of its own.
+       A modal dialog stands in the browser's top layer, over a page in full screen too, and makes the page behind it inert:
+       no press, key or Tab reaches it, and its backdrop dims it.
+     · THREE PARTS. The title and the note are moved into a bar pinned at the top of the panel, the preview and the tabs are
+       pinned under that bar where the world takes the body (as before), and the main button rides the foot (as before); the
+       panel itself is still what scrolls, so whatever scrolled it before scrolls it now.
+     · SIZES. On a laptop it stands 8 px from the top with 8 px to spare at the bottom (the screen's small height, the one with
+       a phone browser's bars showing), 560 px wide at most and 16 px from each side; on a phone it takes the screen's whole
+       small height, its foot padded by the phone's safe area. Every control in it is at least 44 by 44.
+     · KEYS. Escape does what Done does in the chair and the closet, and nothing at a new game (the dialog's cancel, stopped);
+       if the browser closes it anyway (Chrome does on a second Escape with no press between), the same is done, and at a new
+       game it opens again; a tap on the dimmed outside does the same as Escape there. In full screen the browser's first
+       Escape leaves full screen, as everywhere. Opened, the keyboard's
+       place goes to the title; closed, back to what opened it, where that still shows.
+     · THE STYLES. An adopted sheet (a <style> written into the page is refused by its policy), using the world's own colours
+       and lettering through the variables its page already sets.
+   A world that says nothing, or a list that does not name `creator`, opens the creator exactly as before. test/engine.smoke.js,
+   grep "THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE". */
+const PANELON=typeof PANELTAKE!=="undefined"&&Array.isArray(PANELTAKE)&&PANELTAKE.includes("creator");
+/* what a world may say in PANELTAKE, checked at boot as OUTFITTAKE is: a list written wrong takes nothing, and says so once */
+function panelAudit(){if(typeof PANELTAKE==="undefined")return [];
+  const say=v=>typeof v==="string"?JSON.stringify(v.slice(0,24)):v===null?"null":Array.isArray(v)?"a list":typeof v==="object"?"an object":typeof v==="function"?"a function":String(v);
+  if(!Array.isArray(PANELTAKE))return ["PANELTAKE is "+say(PANELTAKE)+", not a list of panels such as [\"creator\"], so this world takes no panel from the engine"];
+  const bad=PANELTAKE.filter(p=>p!=="creator");
+  return bad.length?["PANELTAKE names "+bad.slice(0,3).map(say).join(", ")+(bad.length>3?" and more":"")+": not a panel this engine builds (creator), so nothing is taken for "+(bad.length>1?"them":"it")]:[];}
+/* the dialog is `crdialog`, not `crpanel`, which already names each tab's panel inside the creator (beto, run 2026-11-16-claude-e4e4) */
+const PANELCSS="dialog.crdialog{margin:8px auto auto;padding:0;border:0;background:transparent;width:calc(100vw - 32px);max-width:560px;max-height:calc(100svh - 16px);overflow:visible;color:inherit;}"+
+  "dialog.crdialog::backdrop{background:rgba(16,12,20,.55);}"+
+  "html:has(dialog.crdialog[open]){overflow:hidden;}"+
+  /* the panel's own top padding moves into the title bar, so nothing slides through a bare strip above the pinned bar */
+  /* three parts that do not move: the panel always as tall as it may be, a column whose foot (Done, in a strip of the panel's
+     own colour) is pushed to its bottom, so opening a drawer never moves Done and nothing can be pressed under it (rosa, run
+     2026-11-16-claude-e4e4); the browser scrolls the keyboard's place clear of the pinned top and foot (scroll padding, kept in
+     step with their heights) */
+  "dialog.crdialog{height:calc(100svh - 16px);}"+
+  "dialog.crdialog>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;height:100%;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding-top:0;padding-bottom:0;display:flex;flex-direction:column;scroll-padding-top:var(--crtop-h,0px);scroll-padding-bottom:var(--crfoot-h,0px);}"+
+  "dialog.crdialog>.creator>*{flex-shrink:0;}"+
+  "dialog.crdialog .crfoot{position:sticky;bottom:0;z-index:4;margin-top:auto;background:var(--surface);padding:10px 0 20px;transition:box-shadow .15s;}"+
+  "dialog.crdialog .crfoot.more{box-shadow:0 -10px 12px -8px rgba(20,16,30,.32);}"+
+  "dialog.crdialog .crfoot #begin{position:static;box-shadow:none;width:100%;margin:0;}"+
+  "dialog.crdialog>.creator .crhead{display:contents;}"+
+  "dialog.crdialog .crbar{position:sticky;top:0;z-index:4;background:var(--surface);padding:20px 0 6px;}"+
+  "dialog.crdialog .crbar #crTitle:focus{outline:none;}dialog.crdialog .crbar #crTitle:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}"+
+  "dialog.crdialog>.creator.drawers .preview{top:var(--crbar-h,0px);}"+
+  "dialog.crdialog>.creator button,dialog.crdialog>.creator summary,dialog.crdialog>.creator input[type=text]{min-height:44px;}"+
+  "dialog.crdialog>.creator .opt{min-height:44px;min-width:44px;}"+
+  "dialog.crdialog>.creator .sw{width:44px;height:44px;}"+
+  "dialog.crdialog>.creator .pvbox{padding-right:56px;}dialog.crdialog>.creator .pvtog{width:44px;height:44px;top:4px;right:4px;font-size:1rem;}"+
+  "@media (max-width:599px){dialog.crdialog{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
+  "dialog.crdialog>.creator{height:100svh;max-height:100svh;border-radius:0;}"+
+  "dialog.crdialog .crfoot{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
+let crDlg=null,crOpener=null,crSheet=null;
+function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
+  /* a browser with no modal dialog, or one that cannot adopt the panel's styles (Safari 15.4 to 16.3 has the dialog and not
+     the sheet), keeps the creator exactly as before: a dialog without its styles would scroll twice and could hide Done */
+  if(typeof HTMLDialogElement==="undefined"||typeof HTMLDialogElement.prototype.showModal!=="function"||!("adoptedStyleSheets" in document))return;
+  /* the sheet is made now and adopted the first time the panel opens: a page whose panel is never opened carries nothing more
+     than it did, and a check that reads the page as it boots (a pack's paper) sees no sheet of the panel's */
+  let sheet=null;try{sheet=new CSSStyleSheet();sheet.replaceSync(PANELCSS);}catch(e){return;}crSheet=sheet;   /* named, so a check of a pack's paper can tell it from a paper */
+  const adopt=()=>{if(sheet&&!document.adoptedStyleSheets.includes(sheet))try{document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];}catch(e){}};
+  const d=document.createElement("dialog");d.className="crdialog";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
+  cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;
+  const bar=document.createElement("div"),t=$("crTitle"),n=$("crNote");bar.className="crbar";
+  if(t){t.tabIndex=-1;bar.appendChild(t);}if(n)bar.appendChild(n);cr.insertBefore(bar,cr.firstChild);
+  /* the foot: Done in a strip of its own at the panel's bottom */
+  const go=$("begin"),foot=document.createElement("div");foot.className="crfoot";if(go){go.parentNode.insertBefore(foot,go);foot.appendChild(go);}else cr.appendChild(foot);
+  /* the heights of what is pinned, for the preview's place under the bar and the browser's scroll padding; and the foot's
+     shadow, shown only while the middle can scroll on down, so a list that goes on under Done says so */
+  const pinned=()=>{const pv=cr.classList.contains("drawers")?cr.querySelector(".preview"):null;
+    cr.style.setProperty("--crbar-h",bar.offsetHeight+"px");cr.style.setProperty("--crtop-h",(bar.offsetHeight+(pv?pv.offsetHeight:0))+"px");
+    cr.style.setProperty("--crfoot-h",foot.offsetHeight+"px");foot.classList.toggle("more",cr.scrollTop+cr.clientHeight<cr.scrollHeight-1);};
+  if(typeof ResizeObserver!=="undefined"){const ro=new ResizeObserver(pinned);ro.observe(bar);ro.observe(foot);ro.observe(cr);const pv=cr.querySelector(".preview");if(pv)ro.observe(pv);
+    const body=cr.querySelector(".crbody");if(body)ro.observe(body);}
+  cr.addEventListener("scroll",pinned,{passive:true});cr.addEventListener("toggle",pinned,true);
+  /* where he was, kept while it is open: the browser shutting it itself at a new game (a second Escape) gives it back as it was */
+  let lastTop=0,lastFocus=null;cr.addEventListener("scroll",()=>{if(d.open)lastTop=cr.scrollTop;},{passive:true});
+  d.addEventListener("focusin",e=>{lastFocus=e.target;});
+  /* opened: the panel starts at its own top (#126), set here because a reset in the same task as `hidden=false` (openChair's)
+     acts on a dialog not yet open, a box with no layout; and the keyboard's place goes to the title */
+  const opened=()=>{cr.scrollTop=0;lastTop=0;if(t)t.focus({preventScroll:true});requestAnimationFrame(pinned);};
+  d.addEventListener("cancel",e=>{e.preventDefault();if(chairOpen&&!cr.hidden)$("begin").click();});
+  /* a tap on the dimmed outside does what Done does in the chair and the closet, and nothing at a new game (the owner's
+     confirmed answer of 2026-11-16, as every other panel's dark outside does): only a press that starts and ends on the
+     backdrop itself, which the browser hands to the dialog, never one that began inside the panel and was let go outside */
+  let downOut=false;
+  const outOf=e=>{if(e.target!==d)return false;const r=cr.getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;};
+  d.addEventListener("pointerdown",e=>{downOut=outOf(e);});
+  d.addEventListener("click",e=>{const was=downOut;downOut=false;if(was&&outOf(e)&&chairOpen&&!cr.hidden)$("begin").click();});
+  /* closed by the browser itself: a `close` queued by our own close() and dispatched after the panel was opened again finds it
+     open, and does nothing; otherwise Done in the chair, or the panel again at a new game */
+  d.addEventListener("close",()=>{if(cr.hidden||d.open)return;
+    if(chairOpen){$("begin").click();return;}
+    const top=lastTop,f=lastFocus;   /* at a new game: again, where he was */
+    requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open){d.showModal();cr.scrollTop=top;lastTop=top;(f&&f.isConnected&&d.contains(f)?f:t).focus({preventScroll:true});requestAnimationFrame(pinned);}}catch(e){}});});
+  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;adopt();try{d.showModal();}catch(e){}opened();}
+    else if(cr.hidden&&d.open){d.close();const o=crOpener;crOpener=null;if(o&&o.isConnected&&o.offsetParent!==null)try{o.focus({preventScroll:true});}catch(e){}}};
+  new MutationObserver(sync).observe(cr,{attributes:true,attributeFilter:["hidden"]});sync();}
 /* ---------- the chair (the owner asked to change outfit
    and haircut after the start, at a small barber) — the creator reopens over the world with the name locked;
    what you pick is saved on the way out. In season the calavera looks sit in the same panel. ---------- */
@@ -9594,6 +9698,7 @@ arrivalsOnRails().forEach(function(m){mqwarn("arrival",m,true);});
 troAudit().forEach(function(m){mqwarn("trolley",m,true);});
 buildAudit().forEach(function(m){mqwarn("builder",m,true);});
 outfitAudit().forEach(function(m){mqwarn("outfit",m,true);});
+panelAudit().forEach(function(m){mqwarn("panel",m,true);});panelInit();   /* the customizing panel a world takes (grep "THE CUSTOMIZING PANEL A WORLD TAKES") */
 if(buildOK())droneRow();
 const SV=loadSave();
 if(SV&&SV.n){$("continueBtn").hidden=false;
