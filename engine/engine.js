@@ -6699,6 +6699,64 @@ document.querySelectorAll(".classes button").forEach(b=>b.addEventListener("clic
   $("intro").hidden=true;$("creator").hidden=false;BODYPV.hold=false;
   buildSwatches();buildOpts("rowStyle",T().styles,"style");buildOpts("rowOutfit",T().outfits,"outfit");if(T().patterns)buildOpts("rowPattern",T().patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
 }));
+/* ---- THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE (mq-v269; the owner's confirmed goals of 2026-11-16, item 17) ----
+   A world that names "creator" in its own `PANELTAKE` list (`const PANELTAKE=["creator"];`, in a pack file loaded before
+   engine/boot.js, read by its bare name as BODYTAKE is) opens the creator, at a new game, in the barber's chair and in a
+   closet, as the browser's own MODAL DIALOG, built here once for every world that takes it:
+     · THE DIALOG. #creator is moved, as it stands, into a <dialog class="crpanel"> at boot. It opens with showModal() the
+       moment #creator is shown and closes the moment it is hidden (a MutationObserver on its `hidden`), so every way in and
+       out the engine already has (a class picked, openChair, Done, closeChair) opens and closes it with no change of its own.
+       A modal dialog stands in the browser's top layer, over a page in full screen too, and makes the page behind it inert:
+       no press, key or Tab reaches it, and its backdrop dims it.
+     · THREE PARTS. The title and the note are moved into a bar pinned at the top of the panel, the preview and the tabs are
+       pinned under that bar where the world takes the body (as before), and the main button rides the foot (as before); the
+       panel itself is still what scrolls, so whatever scrolled it before scrolls it now.
+     · SIZES. On a laptop it stands 8 px from the top with 8 px to spare at the bottom (the screen's small height, the one with
+       a phone browser's bars showing), 560 px wide at most and 16 px from each side; on a phone it takes the screen's whole
+       small height, its foot padded by the phone's safe area. Every control in it is at least 44 by 44.
+     · KEYS. Escape does what Done does in the chair and the closet, and nothing at a new game (the dialog's cancel, stopped);
+       if the browser closes it anyway (Chrome does on a second Escape with no press between), the same is done, and at a new
+       game it opens again. In full screen the browser's first Escape leaves full screen, as everywhere. Opened, the keyboard's
+       place goes to the title; closed, back to what opened it, where that still shows.
+     · THE STYLES. An adopted sheet (a <style> written into the page is refused by its policy), using the world's own colours
+       and lettering through the variables its page already sets.
+   A world that says nothing, or a list that does not name "creator", opens the creator exactly as before. test/engine.smoke.js,
+   grep "THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE". */
+const PANELON=typeof PANELTAKE!=="undefined"&&Array.isArray(PANELTAKE)&&PANELTAKE.includes("creator");
+/* what a world may say in PANELTAKE, checked at boot as OUTFITTAKE is: a list written wrong takes nothing, and says so once */
+function panelAudit(){if(typeof PANELTAKE==="undefined")return [];
+  const say=v=>typeof v==="string"?JSON.stringify(v.slice(0,24)):v===null?"null":Array.isArray(v)?"a list":typeof v==="object"?"an object":typeof v==="function"?"a function":String(v);
+  if(!Array.isArray(PANELTAKE))return ["PANELTAKE is "+say(PANELTAKE)+", not a list of panels such as [\"creator\"], so this world takes no panel from the engine"];
+  const bad=PANELTAKE.filter(p=>p!=="creator");
+  return bad.length?["PANELTAKE names "+bad.slice(0,3).map(say).join(", ")+(bad.length>3?" and more":"")+": not a panel this engine builds (creator), so nothing is taken for "+(bad.length>1?"them":"it")]:[];}
+const PANELCSS="dialog.crpanel{margin:8px auto auto;padding:0;border:0;background:transparent;width:calc(100vw - 32px);max-width:560px;max-height:calc(100svh - 16px);overflow:visible;color:inherit;}"+
+  "dialog.crpanel::backdrop{background:rgba(16,12,20,.55);}"+
+  "html:has(dialog.crpanel[open]){overflow:hidden;}"+
+  "dialog.crpanel>.creator{position:static;inset:auto;margin:0;width:auto;max-width:none;max-height:calc(100svh - 16px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;}"+
+  "dialog.crpanel>.creator .crhead{display:contents;}"+
+  "dialog.crpanel .crbar{position:sticky;top:0;z-index:4;background:var(--surface);padding:2px 0 6px;}"+
+  "dialog.crpanel .crbar #crTitle:focus{outline:none;}dialog.crpanel .crbar #crTitle:focus-visible{outline:3px solid var(--accent,#7C3AED);outline-offset:2px;}"+
+  "dialog.crpanel>.creator.drawers .preview{top:var(--crbar-h,0px);}"+
+  "dialog.crpanel>.creator button,dialog.crpanel>.creator summary,dialog.crpanel>.creator input[type=text]{min-height:44px;}"+
+  "dialog.crpanel>.creator .opt{min-height:44px;min-width:44px;}"+
+  "dialog.crpanel>.creator .sw{width:44px;height:44px;}"+
+  "dialog.crpanel>.creator .pvbox{padding-right:56px;}dialog.crpanel>.creator .pvtog{width:44px;height:44px;top:4px;right:4px;font-size:1rem;}"+
+  "@media (max-width:599px){dialog.crpanel{margin:0;width:100vw;max-width:100vw;height:100svh;max-height:100svh;}"+
+  "dialog.crpanel>.creator{height:100svh;max-height:100svh;border-radius:0;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}}";
+let crDlg=null,crOpener=null;
+function panelInit(){if(!PANELON||crDlg)return;const cr=$("creator");if(!cr||!cr.parentNode)return;
+  try{const s=new CSSStyleSheet();s.replaceSync(PANELCSS);document.adoptedStyleSheets=[...document.adoptedStyleSheets,s];}catch(e){}
+  const d=document.createElement("dialog");d.className="crpanel";d.id="crDialog";d.setAttribute("aria-labelledby","crTitle");
+  cr.parentNode.insertBefore(d,cr);d.appendChild(cr);crDlg=d;
+  const bar=document.createElement("div"),t=$("crTitle"),n=$("crNote");bar.className="crbar";
+  if(t){t.tabIndex=-1;bar.appendChild(t);}if(n)bar.appendChild(n);cr.insertBefore(bar,cr.firstChild);
+  if(typeof ResizeObserver!=="undefined")new ResizeObserver(()=>{cr.style.setProperty("--crbar-h",bar.offsetHeight+"px");}).observe(bar);
+  d.addEventListener("cancel",e=>{e.preventDefault();if(chairOpen&&!cr.hidden)$("begin").click();});
+  d.addEventListener("close",()=>{if(cr.hidden)return;
+    if(chairOpen)$("begin").click();else requestAnimationFrame(()=>{try{if(!cr.hidden&&!d.open)d.showModal();}catch(e){}});});
+  const sync=()=>{if(!cr.hidden&&!d.open){crOpener=document.activeElement;try{d.showModal();}catch(e){}if(t)t.focus({preventScroll:true});}
+    else if(cr.hidden&&d.open){d.close();const o=crOpener;crOpener=null;if(o&&o.isConnected&&o.offsetParent!==null)try{o.focus({preventScroll:true});}catch(e){}}};
+  new MutationObserver(sync).observe(cr,{attributes:true,attributeFilter:["hidden"]});sync();}
 /* ---------- the chair (the owner asked to change outfit
    and haircut after the start, at a small barber) — the creator reopens over the world with the name locked;
    what you pick is saved on the way out. In season the calavera looks sit in the same panel. ---------- */
@@ -9594,6 +9652,7 @@ arrivalsOnRails().forEach(function(m){mqwarn("arrival",m,true);});
 troAudit().forEach(function(m){mqwarn("trolley",m,true);});
 buildAudit().forEach(function(m){mqwarn("builder",m,true);});
 outfitAudit().forEach(function(m){mqwarn("outfit",m,true);});
+panelAudit().forEach(function(m){mqwarn("panel",m,true);});panelInit();   /* the customizing panel a world takes (grep "THE CUSTOMIZING PANEL A WORLD TAKES") */
 if(buildOK())droneRow();
 const SV=loadSave();
 if(SV&&SV.n){$("continueBtn").hidden=false;

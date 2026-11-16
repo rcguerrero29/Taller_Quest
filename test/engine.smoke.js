@@ -8874,6 +8874,110 @@ function findChromium() {
       if (!FP.length && inWorld && has) fails.push('COUNT-ONLY: the barber\'s chair in full screen: entered with a real press, a choice and Done answer, the street comes back in full screen, and after Escape one press goes back in');
     } catch (e) { FP.push('the chair in full screen could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
     await ctx.close(); FP.forEach(l => fails.push(l)); }
+  /* ---- PN · THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE (his confirmed goals of 2026-11-16, item 17 of the plan) ----
+     A world that names "creator" in its own `PANELTAKE` list opens the creator (a new game, the barber's chair, a closet) as
+     the browser's own modal dialog, built by the engine. Asked here in two worlds made from this shell, one with the panel and
+     not the body (choices in rows) and one with both (tabs and drawers), at a phone's 390 by 844 and a laptop's 1280 by 800,
+     in English and Spanish, with real presses and keys: at a new game and in the chair, the panel is the open modal dialog
+     and a press outside it reaches nothing behind; with its middle scrolled to the end, the title and the main button are
+     both wholly on the screen and a press on each lands on it; every control shown in it is at least 44 by 44; twenty Tab
+     presses never leave it; on a phone it takes the screen's whole height, and on a laptop it stands within 8 px of the top
+     with 8 px to spare at the bottom; Escape does nothing at a new game and does what Done does in the chair; and on a laptop,
+     in full screen entered with a real press, a press on a choice and on Done answers and the street comes back in full
+     screen. A world that does not name it opens the creator as before, not in a dialog. A world that declares PANELTAKE
+     itself is asked as it stands. */
+  { const NP = [], shellHtml = fs.readFileSync(file, 'utf8'), bootTag = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
+    const href = require('url').pathToFileURL(file).href, packAt = new URL('__paneltake.js', href).href;
+    const plain = await (async () => { const c = await browser.newContext({ viewport: { width: 1280, height: 800 } }), q = await c.newPage();
+      try { await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort()); await q.goto(href); await boot(q);
+        return await q.evaluate(() => ({ panel: typeof PANELTAKE === 'undefined' ? null : JSON.stringify(PANELTAKE), body: typeof BODYTAKE === 'undefined' ? null : JSON.stringify(BODYTAKE), three: typeof THREE !== 'undefined' })); }
+      catch (e) { return { err: String(e && e.message || e).split('\n')[0] }; } finally { await c.close(); } })();
+    const ownPanel = plain.panel !== null && plain.panel !== undefined, ownBody = plain.body !== null && plain.body !== undefined;
+    /* a world: the shell as it stands where it declares the lists itself, else the lists declared before the engine as a world does */
+    const world = async (vw, vh, decl) => { const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 }), p = await ctx.newPage(), errs = [];
+      p.on('pageerror', e => errs.push(String(e.message).split('\n')[0]));
+      const doc = decl ? shellHtml.replace(bootTag, m => '<script src="__paneltake.js"></script>\n' + m) : shellHtml;
+      await ctx.route('**', r => { const u = r.request().url();
+        if (u === href) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
+        if (u === packAt) return r.fulfill({ body: decl || '', contentType: 'text/javascript; charset=utf-8' });
+        return u.startsWith('file://') ? r.continue() : r.abort(); });
+      await p.goto(href); await boot(p); return { ctx, p, errs }; };
+    /* what the panel is, as it stands now: read in the page */
+    const READ = () => { const cr = document.getElementById('creator'), d = cr && cr.closest('dialog'), de = document.documentElement, vw = de.clientWidth, vh = de.clientHeight, out = { vw, vh };
+      out.dialog = !!d; out.open = !!d && d.open; out.modal = !!d && d.open && d.matches(':modal');
+      const box = (d && d.open ? d : cr).getBoundingClientRect(); out.box = { t: box.top, b: box.bottom, l: box.left, r: box.right, h: box.height };
+      const hit = e => { if (!e) return 'missing'; const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return 'no size';
+        if (r.top < -0.5 || r.bottom > vh + 0.5 || r.left < -0.5 || r.right > vw + 0.5) return 'off the screen (' + Math.round(r.top) + ' to ' + Math.round(r.bottom) + ' of ' + vh + ' px)';
+        const h = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2); return h && (h === e || e.contains(h)) ? null : 'under ' + (h ? h.tagName.toLowerCase() + (h.id ? '#' + h.id : '') : 'nothing'); };
+      const scroller = [cr, ...cr.querySelectorAll('*')].find(e => { const s = getComputedStyle(e); return /(auto|scroll)/.test(s.overflowY) && e.scrollHeight > e.clientHeight + 1; }) || null;
+      const ends = []; for (const at of ['top', 'end']) { if (scroller) scroller.scrollTop = at === 'top' ? 0 : scroller.scrollHeight;
+        ends.push({ at, title: hit(document.getElementById('crTitle')), main: hit(document.getElementById('begin')) }); }
+      if (scroller) scroller.scrollTop = 0; out.ends = ends;
+      const shown = e => e.offsetParent !== null && !e.closest('details:not([open])') && !e.closest('[hidden]') && e.getBoundingClientRect().width > 0;
+      out.small = [...cr.querySelectorAll('button, input, select, summary, [role="tab"]')].filter(shown).map(e => { const r = e.getBoundingClientRect();
+        return { w: r.width, h: r.height, name: e.id || (e.getAttribute('aria-label') || e.textContent || e.tagName).trim().slice(0, 24) }; }).filter(s => s.w < 43.5 || s.h < 43.5);
+      return out; };
+    const sizes = [[390, 844, 'a phone'], [1280, 800, 'a laptop']];
+    const variants = [['the panel, no body', 'const PANELTAKE=["creator"];\n'], ...(plain.three ? [['the panel and the body', 'const PANELTAKE=["creator"];\nconst BODYTAKE=["person"];\n']] : [])];
+    if (plain.err) NP.push('the shell could not be opened to read its own lists: ' + plain.err);
+    else if (!bootTag.test(shellHtml)) NP.push('this shell loads no engine/boot.js, so a world\'s PANELTAKE could not be declared before the engine');
+    else for (const [vname, vdecl] of (ownPanel ? [['this world as it stands', null]] : variants.filter(v => !(ownBody && /body/.test(v[0]))))) for (const [vw, vh, sname] of sizes) {
+      const at = vname + ', on ' + sname + ' (' + vw + ' by ' + vh + ')'; let W = null;
+      try { W = await world(vw, vh, vdecl); const p = W.p;
+        const say = (lg, m) => NP.push(at + ', ' + (lg === 'es' ? 'in Spanish' : 'in English') + ', ' + m);
+        const pressAt = async sel => { const s = await p.evaluate(q => { const e = document.querySelector(q); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel); if (!s) return false; await p.mouse.click(s.x, s.y); return true; };
+        const look = async (lg, where, phoneWhole) => { const R = await p.evaluate(READ);
+          if (!R.modal) { say(lg, where + ', the panel is ' + (R.dialog ? 'in a dialog that is not open as a modal one' : 'not the browser\'s dialog') + ', so the page behind it can still take a press, a key or a scroll'); }
+          R.ends.forEach(E => { if (E.title) say(lg, where + ', with its middle scrolled to the ' + E.at + ', the title is ' + E.title); if (E.main) say(lg, where + ', with its middle scrolled to the ' + E.at + ', the main button is ' + E.main); });
+          if (R.small.length) say(lg, where + ', ' + R.small.length + ' control(s) are smaller than 44 by 44: ' + R.small.slice(0, 4).map(s => '"' + s.name + '" ' + Math.round(s.w) + ' by ' + Math.round(s.h)).join(', '));
+          if (phoneWhole && (R.box.t > 0.5 || R.box.b < R.vh - 0.5)) say(lg, where + ', on a phone the panel stands from ' + Math.round(R.box.t) + ' to ' + Math.round(R.box.b) + ' px, where it takes the screen\'s whole height (0 to ' + R.vh + ')');
+          if (!phoneWhole && (R.box.t < -0.5 || R.box.t > 8.5 || R.box.b > R.vh - 7.5)) say(lg, where + ', on a laptop the panel stands from ' + Math.round(R.box.t) + ' to ' + Math.round(R.box.b) + ' px of ' + R.vh + ', where it stands within 8 px of the top with 8 px to spare at the bottom');
+          if (R.modal) { /* a press outside it reaches nothing behind, and Tab stays inside */
+            const out = await p.evaluate(() => { const d = document.getElementById('creator').closest('dialog'), r = d.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+              const pts = [[4, vh - 4], [vw - 4, vh - 4], [4, 4]].filter(([x, y]) => x < r.left || x > r.right || y < r.top || y > r.bottom);
+              return pts.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e && (e === d || d.contains(e)) ? null : (e ? e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') : null); }).filter(Boolean); });
+            if (out.length) say(lg, where + ', a press outside the panel lands on ' + out[0] + ' behind it');
+            /* past the panel's last control, Tab may go to the browser's own bar, which the page sees as focus on its body or
+               root: that is not a control behind the panel. Anything else outside the panel is */
+            let left = null; for (let i = 0; i < 20 && !left; i++) { await p.keyboard.press('Tab'); left = await p.evaluate(() => { const a = document.activeElement, d = document.getElementById('creator').closest('dialog'); return a && d && !d.contains(a) && a !== document.body && a !== document.documentElement ? (a.tagName.toLowerCase() + (a.id ? '#' + a.id : '')) : null; }); }
+            if (left) say(lg, where + ', the Tab key leaves the panel for ' + left + ' behind it'); } };
+        for (const lg of ['en', 'es']) {
+          await p.evaluate(l => { lang = l; applyLang(); }, lg);
+          /* a new game */
+          await p.evaluate(() => { const c = document.getElementById('creator'), d = c.closest('dialog'); if (d && d.open) d.close(); c.hidden = true; document.getElementById('world').hidden = true; document.getElementById('intro').hidden = false; });
+          await pressAt('.classes button'); await until(p, () => !document.getElementById('creator').hidden, null, 2000); await rafs(p);
+          await look(lg, 'at a new game', vw < 600);
+          await p.keyboard.press('Escape'); await rafs(p);
+          if (!(await p.evaluate(() => !document.getElementById('creator').hidden && document.getElementById('intro').hidden))) say(lg, 'at a new game, Escape closed the panel, where it does nothing there (the game has not begun)');
+          await p.evaluate(() => document.getElementById('begin').click()); await until(p, () => !document.getElementById('world').hidden, null, 2400); await rafs(p);
+          /* the barber's chair */
+          await p.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null)); await rafs(p); await rafs(p);
+          await look(lg, 'in the barber\'s chair', vw < 600);
+          await p.keyboard.press('Escape'); const shut = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 1500);
+          if (!shut) { say(lg, 'in the barber\'s chair, Escape does not do what Done does (the chair stays open)'); await p.evaluate(() => document.getElementById('begin').click()); await rafs(p); } }
+        if (vw >= 600) { /* full screen, entered with a real press */
+          await p.evaluate(() => { lang = 'en'; applyLang(); });
+          await pressAt('#fsbtn'); const inFs = await until(p, () => !!document.fullscreenElement, null, 2000);
+          if (!inFs) NP.push(at + ', full screen was not entered with a real press, so the panel in full screen was not asked');
+          else { await p.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null)); await rafs(p); await rafs(p);
+            const pick = await p.evaluate(() => { const seen = b => b.offsetParent && !b.closest('details:not([open])') && b.getBoundingClientRect().height > 0;
+              let e = [...document.querySelectorAll('#creator .opt[aria-pressed]')].find(b => b.getAttribute('aria-pressed') !== 'true' && seen(b)), a = 'aria-pressed';
+              if (!e) { e = [...document.querySelectorAll('#creator .crtab[aria-selected]')].find(b => b.getAttribute('aria-selected') !== 'true' && seen(b)); a = 'aria-selected'; }
+              if (!e) return null; if (!e.id) e.id = '__pnPick'; e.scrollIntoView({ block: 'center' }); return { sel: '#' + e.id, a }; });
+            if (!pick) NP.push(at + ', in full screen the panel shows no choice or tab to press');
+            else { await pressAt(pick.sel); if (!(await until(p, ([s, a]) => document.querySelector(s).getAttribute(a) === 'true', [pick.sel, pick.a], 1500))) NP.push(at + ', in full screen a press on the panel\'s ' + (pick.a === 'aria-pressed' ? 'choice' : 'tab') + ' does not choose it'); }
+            await p.evaluate(() => document.getElementById('begin').scrollIntoView({ block: 'center' })); await pressAt('#begin');
+            const back = await until(p, () => document.getElementById('creator').hidden && !document.getElementById('world').hidden, null, 2000), fsOn = await p.evaluate(() => !!document.fullscreenElement && document.getElementById('vp').classList.contains('fs'));
+            if (!back) NP.push(at + ', in full screen Done in the panel does not close it'); else if (!fsOn) NP.push(at + ', in full screen Done in the panel gives back the street out of full screen'); } }
+        if (W.errs.length) NP.push(at + ', the page threw "' + W.errs[0] + '"');
+      } catch (e) { NP.push(at + ', the panel could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+      finally { if (W) await W.ctx.close(); } }
+    /* a world that does not name it opens the creator as before */
+    if (!ownPanel && !plain.err) { let W = null; try { W = await world(390, 844, null); await W.p.click('.classes button'); await rafs(W.p);
+        if (await W.p.evaluate(() => !!document.getElementById('creator').closest('dialog'))) NP.push('a world that does not name the panel in PANELTAKE opens the creator in a dialog anyway, where it opens as before'); }
+      catch (e) { NP.push('a world that does not name the panel could not be asked: ' + String(e && e.message || e).split('\n')[0]); } finally { if (W) await W.ctx.close(); } }
+    NP.forEach(l => fails.push('the customizing panel: ' + l));
+    if (!NP.length) fails.push('COUNT-ONLY: the customizing panel: ' + (ownPanel ? 'this world as it stands' : variants.length + ' world(s) made from this shell') + ' at a phone\'s and a laptop\'s size, in English and Spanish: a modal dialog, title and main button in view, every control 44 by 44, Tab kept inside, Escape as asked, and full screen answering'); }
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
