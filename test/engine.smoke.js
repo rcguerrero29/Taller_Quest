@@ -6976,9 +6976,15 @@ function findChromium() {
           const real = { drawPlanMarks, planMarks, drawMark, random: Math.random };
           try {
             if (typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); }
-            /* the ◉ on the first street the plan draws, and the paper where no street is drawn */
-            const panels = planPanels(), pn = panels[0], PW = Math.max(...panels.map(q => q.ox + WORLDS[q.world].W)), PH = Math.max(...panels.map(q => q.oy + WORLDS[q.world].H)), t = src.width / PW;
+            /* the ◉ on the first street the plan draws, and the paper where no street is drawn. THE PLAN'S SCALE IS READ ONCE THE
+               PLAN IS DRAWN (2026-11-16): drawing it is what gives its canvas its size, and a plan not yet opened is still the
+               300 px every canvas starts at. Read before, on a plan 115 tiles wide the scale came out 2.6 px a tile where the
+               sheet was drawn at 10, so the tiles asked for as bare paper were the top left corner of the sheet, with a
+               building on it: the paper read 200 where the sheet's own is 224, and one more tile of width took the ring
+               from 40.4 apart from it to 39.8, a red about no colour anybody had chosen */
+            const panels = planPanels(), pn = panels[0], PW = Math.max(...panels.map(q => q.ox + WORLDS[q.world].W)), PH = Math.max(...panels.map(q => q.oy + WORLDS[q.world].H));
             world = pn.world; px = fx = WORLDS[pn.world].W >> 1; py = fy = WORLDS[pn.world].H >> 1; mapDest = null; drawTown();
+            const t = src.width / PW;
             const d0 = g.getImageData(0, 0, src.width, src.height).data, vs = [];
             for (let i = 0; i < d0.length; i += 4) if (isV(d0[i], d0[i + 1], d0[i + 2])) vs.push([d0[i], d0[i + 1], d0[i + 2]]);
             out.dot = median(vs);
@@ -7403,7 +7409,15 @@ function findChromium() {
                 if (off.name !== null && on.name !== null && off.name !== on.name) MP.push('A screen reader hears the edge arrow\'s switch called “' + off.name + '” off and “' + on.name + '” on, and then hears its state as well (' + where + '): its name changes with its state, so the state is said twice');
               }
               /* 16 */
-              const offKeys = new Set(off.words.map(q => q.key)), fresh = on.words.filter(q => !offKeys.has(q.key));
+              /* THE LINE IS THE NEW WORDS THAT SAY WHEN THE ARROW SHOWS, NOT EVERY WORD THAT CHANGED (2026-11-16). The line's room
+                 comes out of the plan's height, and a pack that shows its plan through a window of its own may say something
+                 else once that window is shorter: a count of what lies past its edge went from 13 to 12, was taken for the
+                 line, and was "still there" once somewhere was chosen, with the line itself hidden as it should be. So where
+                 any of the new words are the line's own (the game's arrowHint, else the engine's in this language), only
+                 those are followed; where none are, every new word is, as before, and the naming check below says so */
+              const offKeys = new Set(off.words.map(q => q.key)), fresh0 = on.words.filter(q => !offKeys.has(q.key));
+              const hintSays = await p.evaluate(() => { const t = (T().plan || {}).arrowHint, d = typeof uiDef === 'function' ? uiDef('plan', 'arrowHint') : ''; return String(typeof t === 'string' && t ? t : d || '').replace(/\s+/g, ' ').trim(); });
+              const own16 = hintSays ? fresh0.filter(q => q.t === hintSays) : [], fresh = own16.length ? own16 : fresh0;
               if (!fresh.length) { MP.push('I turned the edge arrow on with nowhere chosen (' + where + ') and nothing in the map says that it only shows once I\'ve got a destination');
                 await press(p); await mapShut(p); continue; }
               const a1 = await p.evaluate(lineNow, fresh.map(q => q.key)), named = await p.evaluate(() => { const t = (T().plan || {}).arrowHint; return typeof t === 'string' ? t : null; });
@@ -14711,7 +14725,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* mq-v265: A DRAWER IS OPENED OR SHUT, AND THE NEXT STEP WAITS FOR IT TO HAVE HAPPENED. The browser tells a drawer it was
          opened a moment later (its toggle event), and only then does the creator shut the drawer's neighbours; a check that
          went on before that moment had a drawer it just opened shut under it by the one before (seen once in three runs on a
-         page that asked for reduced motion). drawerAct(p, id, act) does act and waits until the drawer named id has been told */
+         page that asked for reduced motion). drawerAct(p, id, act) does act and waits until the drawer named id has been told.
+         From mq-v270 the creator shuts the neighbours as the opening is seen, with no wait for that event (the check of two
+         presses in one go, in the creator's tabs below), so this wait no longer guards anything; it is kept as a settled
+         moment between steps */
       const drawerAct = async (p, id, act) => { const t0 = await p.evaluate(id => { if (!window.__tgOn) { window.__tgOn = true; window.__tg = {};
           document.addEventListener('toggle', e => { const k = e.target && e.target.id; if (k) window.__tg[k] = (window.__tg[k] || 0) + 1; }, true); } return window.__tg[id] || 0; }, id);
         await act(); await until(p, ([id, t0]) => (window.__tg[id] || 0) > t0, [id, t0], 3000); await rafs(p, 1); };
@@ -15859,6 +15876,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 await qp.focus(sm); await drawerAct(qp, d.id, () => qp.keyboard.press('Enter')); o = await openNow(t.id);
                 if (!o.includes(d.id)) q(where + ' does not open from the keyboard, Enter on its name');
                 else if (o.length > 1) q('opening ' + where + ' from the keyboard leaves ' + (o.length - 1) + ' other drawer(s) of its tab open beside it, where one is open at a time'); }
+              /* THE DRAWER PRESSED LAST IS THE ONE LEFT OPEN, HOWEVER FAST THE TWO PRESSES CAME (2026-11-17). The creator shut a
+                 drawer's neighbours when the browser told the drawer it had been opened (its toggle event), and the browser says
+                 so later, in a task of its own: a second drawer pressed before that task ran (on a busy page, in a suite that
+                 presses as fast as the page answers) was open by the time the first was told, and the first shut it. One open at
+                 a time has to mean the last one opened. Asked with two presses in one go, each a click on the drawer's own name
+                 made by the page's script, so no task can run between them, and then with the page left to settle. Written red
+                 on mq-v269, which left the first of the two open and the last shut */
+              if (D.length > 1) {
+                const two = await qp.evaluate(async ([a, b, tab]) => { const pn = document.getElementById(document.getElementById(tab).getAttribute('aria-controls')), all = () => [...pn.querySelectorAll('details.crdrawer')];
+                  const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 400); }); await new Promise(r => setTimeout(r, 60)); };   /* a frame, or 400 ms where none comes */
+                  all().forEach(d => { d.open = false; }); await settle();
+                  document.querySelector('#' + a + ' > summary').click(); document.querySelector('#' + b + ' > summary').click(); await settle();
+                  const open = all().filter(d => d.open).map(d => d.id); all().forEach(d => { d.open = false; }); await settle(); return open; }, [D[0].id, D[1].id, t.id]);
+                if (two.length !== 1 || two[0] !== D[1].id) q('under "' + t.name + '", "' + D[0].name + '" and then "' + D[1].name + '" pressed one straight after the other leaves ' + (two.length ? two.map(id => '"' + (D.find(x => x.id === id) || { name: id }).name + '"').join(' and ') : 'neither') + ' open, where the one pressed last is the one left open'); }
               /* his preview and the tabs stay in view: the last drawer open and whatever scrolls the panel scrolled to its foot */
               const last = D[D.length - 1]; if (!(await openNow(t.id)).includes(last.id)) await drawerAct(qp, last.id, () => qp.click('#' + last.id + ' > summary'));
               const v = await qp.evaluate(id => { const d = document.getElementById(id); let s = d.parentElement;

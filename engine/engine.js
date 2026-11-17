@@ -6608,6 +6608,20 @@ const crSlotId=k=>k==="build"?"bodyRows":"groupRows_"+k;
 let crTab=null;
 function crShowTab(k){crTab=CRTABS.some(t=>t.key===k)?k:CRTABS[0].key;
   CRTABS.forEach(t=>{const p=$("drawer_"+t.key),b=$("crtab_"+t.key),on=t.key===crTab;if(p)p.hidden=!on;if(b){b.setAttribute("aria-selected",on?"true":"false");b.tabIndex=on?0:-1;}});}
+/* ---- ONE DRAWER OPEN AT A TIME, AND IT IS THE ONE OPENED LAST (2026-11-17) ----
+   A tab's drawers shut their neighbours as one opens. That was done when the browser told the drawer it had been opened
+   (its toggle event), and the browser says so later, in a task of its own: a second drawer opened before that task ran
+   was already open when the first was told, and the first shut it, so the drawer pressed last was the one shut (seen on
+   a busy page, the first drawer told 36 ms after its press and the next press 20 ms after it). So the neighbours are
+   shut as the opening itself is seen, before anything else can happen: a watcher of the drawers' `open` in the tab's
+   panel, answered at the end of the very task that opened one. Of the drawers opened in one go, the last to GAIN `open`
+   is kept (setting it again on a drawer already open opens nothing, and is not counted). Nothing waits on the toggle
+   event. The engine already needs the watcher's kind to boot (the map's box, the panel), so there is no older way kept. */
+function crOneOpen(p){
+  const drawer=d=>d&&d.parentNode===p&&d.classList&&d.classList.contains("crdrawer");
+  new MutationObserver(recs=>{let last=null;recs.forEach(r=>{if(r.oldValue===null&&drawer(r.target)&&r.target.open)last=r.target;});
+    if(last)[...p.children].forEach(x=>{if(x!==last&&drawer(x)&&x.open)x.open=false;});})
+    .observe(p,{attributes:true,attributeFilter:["open"],attributeOldValue:true,subtree:true});}
 /* make the tabs and drawers once and move the page's rows into them; answers each group's own slot for the table's rows, by key */
 function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody"),pv=cr&&cr.querySelector(".preview");if(!host)return null;const slots={};
   cr.classList.add("drawers");
@@ -6617,13 +6631,12 @@ function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody"),
   CRTABS.forEach(Tb=>{let b=$("crtab_"+Tb.key),p=$("drawer_"+Tb.key);
     if(!b){b=document.createElement("button");b.type="button";b.id="crtab_"+Tb.key;b.className="crtab";b.setAttribute("role","tab");b.setAttribute("aria-controls","drawer_"+Tb.key);b.addEventListener("click",()=>crShowTab(Tb.key));bar.appendChild(b);}
     b.textContent=bodyWord("drawer_"+Tb.key);
-    if(!p){p=document.createElement("div");p.id="drawer_"+Tb.key;p.className="crpanel";p.setAttribute("role","tabpanel");p.setAttribute("aria-labelledby",b.id);host.appendChild(p);}
+    if(!p){p=document.createElement("div");p.id="drawer_"+Tb.key;p.className="crpanel";p.setAttribute("role","tabpanel");p.setAttribute("aria-labelledby",b.id);host.appendChild(p);crOneOpen(p);}
     Tb.groups.forEach(G=>{let d=$("group_"+G.key);
       if(!d){d=document.createElement("details");d.id="group_"+G.key;d.className="crdrawer";
         const s=document.createElement("summary"),nm=document.createElement("span"),said=document.createElement("span");nm.className="crdn";said.className="crds";s.appendChild(nm);s.appendChild(said);d.appendChild(s);
         G.rows.forEach(([l,r])=>{const a=$(l),c=$(r);if(a)d.appendChild(a);if(c)d.appendChild(c);});
-        const slot=document.createElement("div");slot.id=crSlotId(G.key);slot.className="bodyb";d.appendChild(slot);p.appendChild(d);
-        d.addEventListener("toggle",()=>{if(d.open)Tb.groups.forEach(o=>{const x=$("group_"+o.key);if(x&&x!==d)x.open=false;});});}
+        const slot=document.createElement("div");slot.id=crSlotId(G.key);slot.className="bodyb";d.appendChild(slot);p.appendChild(d);}
       d.querySelector(".crdn").textContent=bodyWord("group_"+G.key);slots[G.key]=$(crSlotId(G.key));});});
   const lb=$("crLooksLb");if(lb)lb.hidden=true;   /* the tabs' and drawers' names stand where the one heading stood */
   crShowTab(crTab);return slots;}
