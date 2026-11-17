@@ -703,7 +703,8 @@ exactly as before. The skeleton, the maker and the walk are `engine/engine3d.js`
 page loads before `engine/boot.js`. The creator (a new game, the barber's chair, a closet) then opens as the browser's own modal
 dialog: the page behind dimmed and inert, the title pinned at the top, the main button at the foot, every control at least 44 by
 44, Escape doing what Done does except at a new game, and on a phone the screen's whole height. Saying nothing is the creator
-exactly as before. `engine/engine.js`, grep `THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE`.
+exactly as before. `engine/engine.js`, grep `THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE`. Meridian takes it from mq-v271
+(`content/meridian/config.js`), at its new game and its barber's chair; `test/smoke.js` asks both at a phone's and a laptop's size.
 
 **One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file

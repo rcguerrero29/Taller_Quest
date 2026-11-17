@@ -1,6 +1,11 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
 const GAMEV="mq-v272";
+/* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
+   and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
+   bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
+   the page behind dimmed and still. Its single list of choices and its words are as they were. */
+const PANELTAKE=["creator"];
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
 /* default camera for this pack. TRUE 3D as of 2026-09-01 (the owner asked for 3D

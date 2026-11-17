@@ -8965,7 +8965,10 @@ function findChromium() {
     const variants = [['the panel, no body', 'const PANELTAKE=["creator"];\n'], ...(plain.three ? [['the panel and the body', 'const PANELTAKE=["creator"];\nconst BODYTAKE=["person"];\n']] : [])];
     if (plain.err) NP.push('the shell could not be opened to read its own lists: ' + plain.err);
     else if (!bootTag.test(shellHtml)) NP.push('this shell loads no engine/boot.js, so a world\'s PANELTAKE could not be declared before the engine');
-    else for (const [vname, vdecl] of (ownPanel ? [['this world as it stands', null]] : variants.filter(v => !(ownBody && /body/.test(v[0]))))) for (const [vw, vh, sname] of sizes) {
+    /* a world that takes the panel itself is asked as it stands, and where it does not take the body, once more with the
+       body declared before the engine, so the panel with tabs and drawers is still asked of this shell (mq-v271) */
+    const asked = ownPanel ? [['this world as it stands', null], ...(plain.three && !ownBody ? [['this world with the body too', 'const BODYTAKE=["person"];\n']] : [])] : variants.filter(v => !(ownBody && /body/.test(v[0])));
+    if (plain.err) {} else if (!bootTag.test(shellHtml)) {} else for (const [vname, vdecl] of asked) for (const [vw, vh, sname] of sizes) {
       const at = vname + ', on ' + sname + ' (' + vw + ' by ' + vh + ')'; let W = null;
       try { W = await world(vw, vh, vdecl); const p = W.p;
         const say = (lg, m) => NP.push(at + ', ' + (lg === 'es' ? 'in Spanish' : 'in English') + ', ' + m);
@@ -9085,7 +9088,7 @@ function findChromium() {
         if (await W.p.evaluate(() => !!document.getElementById('creator').closest('dialog'))) NP.push('a world that does not name the panel in PANELTAKE opens the creator in a dialog anyway, where it opens as before'); }
       catch (e) { NP.push('a world that does not name the panel could not be asked: ' + String(e && e.message || e).split('\n')[0]); } finally { if (W) await W.ctx.close(); } }
     NP.forEach(l => fails.push('the customizing panel: ' + l));
-    if (!NP.length) fails.push('COUNT-ONLY: the customizing panel: ' + (ownPanel ? 'this world as it stands' : variants.length + ' world(s) made from this shell') + ' at a phone\'s and a laptop\'s size, in English and Spanish: a modal dialog, title and main button in view, every control 44 by 44, Tab kept inside, Escape as asked, and full screen answering'); }
+    if (!NP.length) fails.push('COUNT-ONLY: the customizing panel: ' + (ownPanel ? 'this world as it stands' + (asked.length > 1 ? ', and with the body too,' : '') : variants.length + ' world(s) made from this shell') + ' at a phone\'s and a laptop\'s size, in English and Spanish: a modal dialog, title and main button in view, every control 44 by 44, Tab kept inside, Escape as asked, and full screen answering'); }
   /* ---- THE QUEST MARKER STANDS OVER A PERSON, IT DOES NOT PAINT ON ONE ----
      docs/BEAUTIFY.md's audit: "a solid red bar through the top of the skull", on ~20 people, on the
      one object docs/STORY.md records as meaning one thing forever. Two faults in one line of code
