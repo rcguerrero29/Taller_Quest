@@ -935,7 +935,7 @@ const BODYCHOICE=Object.freeze([
   {key:"noseout",kind:"measure",min:0.6,max:1.6,step:0.1,def:1,group:"nose"},      /* how far his nose stands out */
   {key:"mouth",kind:"option",list:["line","smile","none"],def:"line",group:"nose"},/* his mouth: a line, a smile, or none as his card has */
   {key:"mouthw",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"nose"},       /* how wide his mouth is */
-  /* the round head's own (mq-v271): how high his eyes, his nose and his mouth sit, each by itself, and how dark the shadow under his chin is */
+  /* the round head's own (mq-v272): how high his eyes, his nose and his mouth sit, each by itself, and how dark the shadow under his chin is */
   {key:"eyeh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"eyes",needs:"round"},
   {key:"noseh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},
   {key:"mouthh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},

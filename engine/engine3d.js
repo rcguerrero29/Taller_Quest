@@ -1417,7 +1417,7 @@ function bodyMake(skel,lk,build){
   if(REAL){const r0=skel.head,lift=0.25*C.neckl,fwd=0.15;J.head.position.y+=lift*r0;J.head.position.z+=fwd*r0;
     const a=new THREE.Vector3(0,-0.02*H,-0.04*r0),b2=new THREE.Vector3(0,hd[1]+(lift+0.2)*r0,(fwd-0.14)*r0),d=b2.clone().sub(a),L=d.length();
     part("neck",cap(0.34*C.neckw*r0,L),"skin",lk.skin,(a.x+b2.x)/2,(a.y+b2.y)/2,(a.z+b2.z)/2).quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
-  else{   /* the round head sits ROUNDNECK of a radius up on its post, so a little of his neck shows under his chin (mq-v271) */
+  else{   /* the round head sits ROUNDNECK of a radius up on its post, so a little of his neck shows under his chin (mq-v272) */
     const lift=ROUNDNECK*skel.head,nr=0.045*H*C.neckw;J.head.position.y+=lift;
     part("neck",cap(nr,hd[1]+lift),"skin",lk.skin,0,(hd[1]+lift)/2,0);
     /* his chin's shadow on the top of his neck: three bands, darkest right under the chin, as dark as he chose (chinshade) */
@@ -1583,7 +1583,7 @@ const headSkull=(S,C)=>{C=C||{};const jw=C.jaw||1,cl=C.chin||1,kw=C.skullw||1,kd
       const m=zb+P.bk,h=z>m?zf-m:P.bk;if(W>1e-4&&h>1e-4)f=Math.pow(Math.pow(Math.abs(x)/W,P.n)+Math.pow(Math.abs(z-m)/h,P.n),1/P.n);}
     const hh=Math.max(0,Math.min(1,0.5+0.5*(f-c)/P.k));return f+(c-f)*hh-P.k*hh*(1-hh);};
   return (x,y,z)=>{let t=2.4;while(t>0.2&&val(x*t,y*t,z*t)>1)t-=0.04;let a=t,b=t+0.04;for(let i=0;i<14;i++){const m=(a+b)/2;if(val(x*m,y*m,z*m)>1)b=m;else a=m;}return a;};};
-/* THE ROUND HEAD HAS A SKULL UNDER IT (mq-v271; the owner's goal confirmed 2026-11-16). It is the ball blended ROUNDK of the
+/* THE ROUND HEAD HAS A SKULL UNDER IT (mq-v272; the owner's goal confirmed 2026-11-16). It is the ball blended ROUNDK of the
    way toward a head built as a skull is, on a setting rounder than the oval's (fuller cheeks, a wider jaw and chin), so it
    stays the roundest head and has a soft jaw and a chin. Its surface is worked out once, on a grid of directions (ROUNDTAB),
    and read from it after: the round head is the one a new character starts with, and making it must stay quick. It sits
