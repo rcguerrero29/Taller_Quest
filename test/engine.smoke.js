@@ -14436,7 +14436,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const FRAMES = !CUTS.includes(START) ? [] : [[START, 12, 'down'], [START, 12, 'right'], [START, 22, 'down'], ...['afro', 'cap'].filter(c => c !== START && CUTS.includes(c)).map(c => [c, 12, 'down'])];
               try { faceLooks = () => null; moving = false;
                 wEl.hidden = false; camSet('3d'); sizeCanvas();
-                /* body: no shadow under his chin (mq-v270): a pixel of it reads as his hair's colour where the hair is dark, and this asks how much of his head his HAIR hides */
+                /* body: no shadow under his chin (mq-v271): a pixel of it reads as his hair's colour where the hair is dark, and this asks how much of his head his HAIR hides */
                 for (const [cut, h, d] of FRAMES) { look = saveLook({ ...look, ...LOOK, outfit: 'casual', pattern: 'plain', style: cut, body: { chinshade: 0 } }); hour = h; dir = d;
                   const Bf = grab(), on = T3.bodyOn;
                   t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; const Cf = grab();
@@ -14458,7 +14458,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (cut === START && (r < 0.85 || r > 1.15)) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
                 if (cut === START && hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
-                /* 0.4 from mq-v270 (it was 0.6): the head a new character starts with has a skull under it, its face and ears sit lower and its hair comes down with them, so from the side less of it is skin; the owner saw it and set the rule again from the new head (2026-11-16) */
+                /* 0.4 from mq-v271 (it was 0.6): the head a new character starts with has a skull under it, its face and ears sit lower and its hair comes down with them, so from the side less of it is skin; the owner saw it and set the rule again from the new head (2026-11-16) */
                 if (cut === START && hs < 0.4) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
               if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
@@ -14799,7 +14799,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                there every row is offered; the rest of the builder is asked on that head */
             const FACE = pre.rows.find(r => r.key === 'face' && r.kind === 'option'), JAWED = FACE ? FACE.list.filter(w => w !== FACE.def) : [];
             const offered = () => p.evaluate(rows => rows.filter(r => document.querySelector('#creator [data-choice="' + r.key + '"]')).map(r => r.key), pre.rows);
-            /* mq-v270, WHICH SHAPES OF HEAD ANSWER A ROW: a row's `needs` names a list of shapes (HEADNEEDS, the engine's own table);
+            /* mq-v271, WHICH SHAPES OF HEAD ANSWER A ROW: a row's `needs` names a list of shapes (HEADNEEDS, the engine's own table);
                the row is offered on those shapes and on no other. The rows only the starting head answers (its eyes', nose's and
                mouth's heights, its chin's shadow) are asked here, on that head: one slider each, named in both languages, moved by
                the keyboard, kept in his look. An engine with no such table is read as before: a row that needs anything needs a jaw */
@@ -15176,7 +15176,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               /* how wide he is at the jaw: the widest of his skin between half and seven tenths of a radius under his head's centre */
               let wj = 0; for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (v.y / r < -0.5 && v.y / r > -0.7) wj = Math.max(wj, Math.abs(v.x) / r); }
               MST[face] = { dev, wj, y0 };
-              /* mq-v270: the round head has a skull under it. It is no longer a ball (off one by 3% of its radius or more: a jaw
+              /* mq-v271: the round head has a skull under it. It is no longer a ball (off one by 3% of its radius or more: a jaw
                  and a chin) and it stays the roundest head: within 16% of a ball, and nearer a ball and fuller at the jaw than
                  every other shape (asked after the loop). (Written first as "narrower at the jaw than a ball": measured, the
                  blend is wider there, 0.85 of a radius against a ball's 0.80, so that sentence asked for the wrong thing) */
@@ -15214,7 +15214,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               /* made with the clock and the random numbers held, so a body that differs is one the row changed and not the moment */
               const sigAt = (c, k, v) => { hold(7, 1.8e12); try { const X = make(c.st, { ...c.b, [k]: v }), s = sig(X); free(X); return s; } finally { back(); } };
               let asked = 0;
-              const answers = (r, c) => !r.needs || (typeof HEADNEEDS !== 'undefined' && HEADNEEDS[r.needs] ? HEADNEEDS[r.needs].includes(c.b.face || ROUND) : !isRound(c));   /* mq-v270: on the shapes of head that answer the row */
+              const answers = (r, c) => !r.needs || (typeof HEADNEEDS !== 'undefined' && HEADNEEDS[r.needs] ? HEADNEEDS[r.needs].includes(c.b.face || ROUND) : !isRound(c));   /* mq-v271: on the shapes of head that answer the row */
               for (const r of ROWS) { const ctx = CTX.filter(c => answers(r, c));
                 if (r.kind === 'measure') { let moved = false;
                   for (const c of ctx) { asked++; if (sigAt(c, r.key, r.min) !== sigAt(c, r.key, r.max)) { moved = true; break; } }
@@ -15326,7 +15326,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                80th percentile of the lift over his brow, the share of the hair's points past 60 degrees from his face that lie within 0.05 of
                his skin (the faded sides, the hair's own flat part), and the share of his skull painted his hair's colour, each to
                BROCPIN. A head with no pinned numbers is a failure. Measured 2026-11-15 on the code before this change; the round head's
-               pins measured again 2026-11-16 (mq-v270), when it took a skull's basis and its hair came down the brow with its eyes: the
+               pins measured again 2026-11-16 (mq-v271), when it took a skull's basis and its hair came down the brow with its eyes: the
                afro's lift, height, width and low reach, and the share of the broccoli cut's skull painted his hair's colour */
             { const AFROEDGE = 0.05, TOL = 0.03, LOWTOL = 0.1, BROWTOL = 0.07, DEG = 180 / Math.PI, BIN1 = 5, BIN3 = 6,
                 AFROPIN = {round: {'lift': 0.717, 'top': 1.710, 'half': 1.423, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.438}}, oval: {'lift': 0.747, 'top': 1.714, 'half': 1.409, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}, square: {'lift': 0.747, 'top': 1.714, 'half': 1.411, 'low': {'left': -0.207, 'right': -0.207, 'behind': -0.523}}}, BROCPIN = {round: {'brow': 0.307, 'sides': 0.795, 'paint': 0.361}, oval: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}, square: {'brow': 0.379, 'sides': 0.755, 'paint': 0.428}}, BROCCURL = {round: 0.0163, oval: 0.0156, square: 0.0156}, BROCROUND = {round: {front: 0.0226, side: 0.0551, above: 0.0431}, oval: {front: 0.0074, side: 0.0385, above: 0.0403}, square: {front: 0.0072, side: 0.0385, above: 0.0437}};
