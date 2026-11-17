@@ -15211,6 +15211,32 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else if (!(cz > 0)) P.push(where + w + ' is not on his face: it lies on the back half of his head'); }); }
                 free(X); }
               N.push('his eyes, brows, nose and mouth asked in ' + checked + ' part(s) over ' + cases.length + ' faces'); }
+            /* ---- M2 · THE FEATURES KEEP THEIR ORDER (the owner's answer of 2026-11-17, from beto's review of run
+               2026-11-17-claude-e510) ----
+               On the round head the eyes, the nose and the mouth each have a height of his own choosing, and whatever the
+               choices say they keep their order: with every one of them at either end (and the nose at its longest), the
+               nose's top is no higher than the eyes, the mouth stands under the nose's foot, and a moustache he chose still
+               paints at least a third of what it paints on the face he starts with. Written red on mq-v271, where the mouth
+               raised to its end lay across the nose and a chosen moustache painted nothing at all */
+            if (ROUND && ['eyeh', 'noseh', 'mouthh'].every(k => row(k))) {
+              const ends = k => [row(k).min, row(k).max], NL = row('noselen'), sheetOf = X => { let sk = null; X.traverse(o => { if (o.isMesh && o.userData.painted) sk = o; }); return sk && sk.material.map && sk.material.map.image; };
+              const differs = (A, B) => { if (!A || !B) return -1; const a = A.getContext('2d').getImageData(0, 0, A.width, A.height).data, b = B.getContext('2d').getImageData(0, 0, B.width, B.height).data; let n = 0;
+                for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) n++; return n; };
+              const tache = body => { const X0 = make('bald', { ...body, face: ROUND, beard: 'none' }), X1 = make('bald', { ...body, face: ROUND, beard: 'moustache' }), n = differs(sheetOf(X0), sheetOf(X1)); free(X0); free(X1); return n; };
+              const BRK = row('beard'), hasTache = !!(BRK && BRK.list && BRK.list.includes('moustache')), base = hasTache ? tache({}) : 0;
+              if (hasTache && !(base > 0)) P.push('on the round head as he starts, a moustache he chose paints nothing on his skin, so whether it keeps its room was not asked');
+              let asked = 0;
+              for (const eyeh of ends('eyeh')) for (const noseh of ends('noseh')) for (const mouthh of ends('mouthh')) for (const noselen of NL ? [NL.def, NL.max] : [null]) {
+                const body = { face: ROUND, eyeh, noseh, mouthh, ...(noselen !== null ? { noselen } : {}) }, X = make('bald', body), r = X.userData.r, where = 'on the round head with his eyes at ' + eyeh + ', his nose at ' + noseh + ', his mouth at ' + mouthh + (noselen !== null ? ' and his nose ' + noselen + ' long' : '') + ', ';
+                X.updateMatrixWorld(true); const box = o => new THREE.Box3().setFromObject(o), eyes = parts(X, wears('eye')), nose = parts(X, wears('nose')), mouth = parts(X, wears('mouth'));
+                if (!eyes.length || !nose.length || !mouth.length) { P.push(where + 'his eyes, nose or mouth are missing, so their order was not asked'); free(X); continue; }
+                const eyeY = eyes.reduce((s, o) => s + box(o).getCenter(new THREE.Vector3()).y, 0) / eyes.length, nb = box(nose[0]), mb = mouth.map(box).reduce((a, q) => a.union(q));
+                const mouthY = mb.getCenter(new THREE.Vector3()).y; asked++;
+                if (nb.max.y > eyeY + 0.06 * r) P.push(where + 'the top of his nose stands ' + ((nb.max.y - eyeY) / r).toFixed(2) + ' of a radius above his eyes, where it is no higher than they are');
+                if (!(mouthY < nb.min.y)) P.push(where + 'his mouth lies ' + ((mouthY - nb.min.y) / r).toFixed(2) + ' of a radius above the foot of his nose, across it, where it stands under it');
+                free(X);
+                if (hasTache && base > 0) { const n = tache(body); if (!(n >= base / 3)) P.push(where + 'a moustache he chose paints ' + n + ' texel(s) of his skin, where on the face he starts with it paints ' + base + ': it has no room under his nose (a third of that at least)'); } }
+              N.push('his features\' order asked at every end of their heights: ' + asked + ' face(s)' + (hasTache ? ', the moustache ' + base + ' texels as he starts' : '')); }
             /* ---- N · every row moves what it names ---- */
             { const CTX = [{ st: HAIRSTYLES[0], b: {} }].concat(HAIRSTYLES.map((st, i) => ({ st, b: { ...(JAWED.length ? { face: JAWED[i % JAWED.length] } : {}), ...(KINDS.length ? { beard: KINDS[i % KINDS.length] } : {}) } })));
               const isRound = c => !c.b.face || c.b.face === ROUND;

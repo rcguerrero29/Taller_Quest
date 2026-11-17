@@ -939,7 +939,7 @@ const BODYCHOICE=Object.freeze([
   {key:"eyeh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"eyes",needs:"round"},
   {key:"noseh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},
   {key:"mouthh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},
-  {key:"chinshade",kind:"measure",min:0,max:1.4,step:0.1,def:1,group:"head",needs:"round"},
+  {key:"chinshade",kind:"measure",min:0,max:1.1,step:0.1,def:1,group:"head",needs:"round"},   /* 1.1: past it the face is no darker (the owner's answer of 2026-11-17) */
   {key:"ears",kind:"option",list:["round","pointed"],def:"round",group:"ears"},    /* the kind of ear he has (mq-v265) */
   {key:"earsize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"ears"},     /* how big his ears are */
   {key:"earup",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"ears"},       /* how high on his head his ears sit */
