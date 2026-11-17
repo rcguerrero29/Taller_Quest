@@ -106,25 +106,29 @@ const CANDIDATES = [
   // opens this panel over the world, where it cannot. Checked at a phone's height, with every row showing.
   {
     await page.setViewportSize({ width: 390, height: 560 });
-    const t2 = await page.evaluate(() => {
+    const t2 = await page.evaluate(async () => {
       const problems = [];
+      /* mq-v271: the chair opens as the engine's panel, a dialog shown a beat after it is asked for, so it is measured a frame
+         or two later (a timer where no frame comes); and the way out stands in the panel's own foot, which is what rides the
+         panel's bottom now */
+      const beat = async () => { for (let i = 0; i < 2; i++) await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 300); }); };
       const bl = (typeof BUILDS !== 'undefined' ? BUILDS : []).find(b => b.tpl === 'barberia'), who = GRW().barberNpc;
       if (!bl || !who) return problems;
       const keep = { world, px, py, season: seasonPick };
       seasonSet('muertos');
       const rm = WORLDS[bl.id], n = rm && rm.npcs.find(x => x.npc === who);
       if (n) {
-        world = bl.id; px = fx = n.x; py = fy = n.y + 1; moving = false; held = null; checkTalk(); $('talk').click();
+        world = bl.id; px = fx = n.x; py = fy = n.y + 1; moving = false; held = null; checkTalk(); $('talk').click(); await beat();
         const pnl = $('creator'), out = $('begin');
         if (pnl.hidden) problems.push('the chair did not open');
-        else { const cs = getComputedStyle(pnl), bs = getComputedStyle(out);
+        else { const cs = getComputedStyle(pnl), bs = getComputedStyle(out.closest('.crfoot') || out);
           const pr = pnl.getBoundingClientRect(), br = out.getBoundingClientRect();
           if (pr.bottom > window.innerHeight + 1) problems.push(`the chair's panel runs ${Math.round(pr.bottom - window.innerHeight)}px past the bottom of the screen`);
           if (br.bottom > window.innerHeight + 1) problems.push(`the way out of the chair sits ${Math.round(br.bottom - window.innerHeight)}px below the screen`);
           if (cs.overflowY !== 'auto' && cs.overflowY !== 'scroll') problems.push('the chair\'s panel does not scroll inside itself');
           if (bs.position !== 'sticky') problems.push('the way out of the chair does not ride the bottom of the panel');
           if (br.width < 40 || br.height < 20) problems.push('the way out of the chair has no size');
-          out.click(); if (!$('creator').hidden) problems.push('pressing the way out does not leave the chair'); }
+          out.click(); if (!$('creator').hidden) problems.push('pressing the way out does not leave the chair'); await beat(); }
 
         /* ---- AND THE CHAIR SURVIVES HER HAVING A QUEST ----
            For the whole life of this engine a person was ONE thing: checkTalk's chain is else-if and
@@ -149,9 +153,9 @@ const CANDIDATES = [
           else if (sb.hidden)
             problems.push('the barber has a quest and runs the chair, and only the quest is offered — the chair is gone until the quest is answered. checkTalk sets dataset.qi and deletes dataset.chatn, and dataset.chatn is the only thing the chair is dispatched from. The owner asked for that chair on 2026-09-07.');
           else {
-            sb.click();
+            sb.click(); await beat();
             if ($('creator').hidden) problems.push('the service button is showing beside the barber\'s quest and pressing it does not open the chair.');
-            else { $('begin').click(); }
+            else { $('begin').click(); await beat(); }
           }
           n.q = hadQ; checkTalk();
         }
@@ -161,6 +165,43 @@ const CANDIDATES = [
     });
     t2.forEach(m => fails.push(m));
     await page.setViewportSize({ width: 480, height: 900 });
+  }
+  /* ---- MERIDIAN'S NEW GAME AND BARBER'S CHAIR ARE THE CUSTOMIZING PANEL (the owner's goal confirmed 2026-11-16, step two) ----
+     At a phone's 390 by 844 and a laptop's 1280 by 800, in English and Spanish, at a new game and in the barber's chair:
+     the creator is open as the browser's modal dialog, so the page behind is dimmed and takes no press (on a laptop a
+     press beside the panel lands on the dialog's own backdrop, never on the page); the title is wholly on the screen;
+     and the main button is wholly on the screen, at least 44 px each way, and a press at its middle lands on it — with
+     the list at its top and scrolled to its end. Written red on mq-v270, where at a new game the start button reached
+     23 px below the screen at both sizes and was 41 px tall, and nothing was a dialog. The engine's own test asks the
+     rest of the panel of this world as it stands (its part PN). */
+  {
+    const READ = () => { const cr = document.getElementById('creator'), d = cr.closest('dialog'), go = document.getElementById('begin'), ti = document.getElementById('crTitle'), de = document.documentElement, vw = de.clientWidth, vh = de.clientHeight, out = [];
+      if (cr.hidden) return ['the creator is not open'];
+      const modal = !!d && d.open && d.matches(':modal');
+      if (!modal) out.push('the creator is not open as the browser\'s modal dialog, so the page behind it is not dimmed and can still take a press');
+      const on = (e, what) => { if (!e) return what + ' is missing'; const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return what + ' has no size';
+        if (r.bottom > vh + 0.5) return what + ' reaches ' + Math.round(r.bottom - vh) + ' px below the screen'; if (r.top < -0.5) return what + ' starts ' + Math.round(-r.top) + ' px above the screen';
+        if (r.left < -0.5 || r.right > vw + 0.5) return what + ' runs off the side of the screen';
+        const h = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2); return h && (h === e || e.contains(h)) ? null : what + ' lies under ' + (h ? (h.id ? '#' + h.id : h.tagName.toLowerCase()) : 'nothing') + ', which takes the press'; };
+      const sc = [cr, ...cr.querySelectorAll('*')].find(e => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1) || document.scrollingElement, was = sc.scrollTop;
+      for (const [at, y] of [['with the list at its top', 0], ['with the list scrolled to its end', sc.scrollHeight]]) { sc.scrollTop = y;
+        const t = on(ti, 'the title'), g = on(go, 'the main button'); if (t) out.push(at + ', ' + t); if (g) out.push(at + ', ' + g); }
+      sc.scrollTop = was;
+      if (go) { const r = go.getBoundingClientRect(); if (r.width < 43.5 || r.height < 43.5) out.push('the main button is ' + Math.round(r.width) + ' by ' + Math.round(r.height) + ' px, smaller than a finger\'s 44'); }
+      if (modal && vw >= 600) { const pr = d.getBoundingClientRect(); if (pr.left > 30) { const h = document.elementFromPoint(pr.left / 2, vh / 2); if (h !== d) out.push('a press beside the panel lands on ' + (h ? (h.id ? '#' + h.id : h.tagName.toLowerCase()) : 'nothing') + ', where the dimmed page takes none'); } }
+      return out; };
+    for (const [vw, vh, dev] of [[390, 844, 'a phone (390 by 844)'], [1280, 800, 'a laptop (1280 by 800)']]) for (const L of ['en', 'es']) {
+      const cx = await browser.newContext({ viewport: { width: vw, height: vh }, hasTouch: vw < 600 }), q = await cx.newPage(), where = 'on ' + dev + ', in ' + (L === 'es' ? 'Spanish' : 'English');
+      try { await q.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+        await q.goto(index); await q.waitForFunction(() => typeof applyLang === 'function' && !!document.querySelector('.classes button'), null, { timeout: 15000 });
+        await q.evaluate(l => { lang = l; applyLang(); }, L); await q.click('.classes button'); await q.waitForTimeout(400);
+        (await q.evaluate(READ)).forEach(m => fails.push('Meridian\'s new game, ' + where + ': ' + m));
+        await q.evaluate(() => document.getElementById('begin').click()); await q.waitForTimeout(400);
+        if (await q.evaluate(() => !document.getElementById('creator').hidden)) fails.push('Meridian\'s new game, ' + where + ': the main button does not start the game, so the barber\'s chair was not asked');
+        else { await q.evaluate(() => openChair((typeof GRW === 'function' && GRW().barberNpc) || null)); await q.waitForTimeout(400);
+          (await q.evaluate(READ)).forEach(m => fails.push('Meridian\'s barber\'s chair, ' + where + ': ' + m)); }
+      } catch (e) { fails.push('Meridian\'s new game and chair as the panel, ' + where + ', could not be asked: ' + String(e && e.message || e).split('\n')[0]); }
+      finally { await cx.close(); } }
   }
   // el trolley (owner, 2026-09-08): it runs a line nothing stands on, it comes on its own, it waits for anyone
   // crossing, and it comes when you stand at a stop. TROLLEYAT is content; the engine knows only the line.
