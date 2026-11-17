@@ -769,7 +769,7 @@ const UIDEF={
     head:"Head size",hang:"Shirt length",sleeves:"Sleeves",sleeves_long:"Long sleeves",sleeves_short:"Short sleeves",
     beard:"Beard",beard_none:"None",beard_beard:"Beard",turnL:"Turn left",turnR:"Turn right",pause:"Pause turning",spin:"Keep turning",
     jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
-    eyesize:"Size of the eyes",eyegap:"Space between the eyes",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
+    eyesize:"Size of the eyes",eyegap:"Space between the eyes",eyeh:"Eyes: higher or lower",noseh:"Nose: higher or lower",mouthh:"Mouth: higher or lower",chinshade:"Shadow under the chin",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
     mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Mustache",beardlen:"Length of the beard",
     eyecol:"Color of the eyes",browcol:"Color of the brows",browcol_hair:"As the hair",tiecol:"Color of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
     hairline:"Hairline: higher or lower",hairvol:"Height and fullness",braidlen:"Length of the braids",
@@ -827,7 +827,7 @@ const UIDEF={
     head:"Tamaño de la cabeza",hang:"Largo de la camisa",sleeves:"Mangas",sleeves_long:"Manga larga",sleeves_short:"Manga corta",
     beard:"Barba",beard_none:"Sin barba",beard_beard:"Barba",turnL:"Girar a la izquierda",turnR:"Girar a la derecha",pause:"Pausar el giro",spin:"Seguir girando",
     jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",neckw:"Grosor del cuello",neckl:"Largo del cuello",cheeks:"Ancho de los pómulos",crown:"Altura del cráneo",skullw:"Ancho del cráneo",skulld:"Profundidad del cráneo",
-    eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
+    eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",eyeh:"Ojos: más arriba o más abajo",noseh:"Nariz: más arriba o más abajo",mouthh:"Boca: más arriba o más abajo",chinshade:"Sombra bajo el mentón",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
     mouth:"Boca",mouth_line:"Línea",mouth_smile:"Sonrisa",mouth_none:"Sin boca",mouthw:"Ancho de la boca",beard_goatee:"Candado",beard_moustache:"Bigote",beardlen:"Largo de la barba",
     eyecol:"Color de los ojos",browcol:"Color de las cejas",browcol_hair:"Como el pelo",tiecol:"Color de las ligas de las trenzas",tiecol_shade:"Como el pelo, más oscuro",reset:"Volver a como empezó",
     hairline:"Nacimiento del pelo: más arriba o más abajo",hairvol:"Altura y volumen",braidlen:"Largo de las trenzas",
@@ -935,6 +935,11 @@ const BODYCHOICE=Object.freeze([
   {key:"noseout",kind:"measure",min:0.6,max:1.6,step:0.1,def:1,group:"nose"},      /* how far his nose stands out */
   {key:"mouth",kind:"option",list:["line","smile","none"],def:"line",group:"nose"},/* his mouth: a line, a smile, or none as his card has */
   {key:"mouthw",kind:"measure",min:0.6,max:1.5,step:0.1,def:1,group:"nose"},       /* how wide his mouth is */
+  /* the round head's own (mq-v272): how high his eyes, his nose and his mouth sit, each by itself, and how dark the shadow under his chin is */
+  {key:"eyeh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"eyes",needs:"round"},
+  {key:"noseh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},
+  {key:"mouthh",kind:"measure",min:0.8,max:1.6,step:0.05,def:1,group:"nose",needs:"round"},
+  {key:"chinshade",kind:"measure",min:0,max:1.1,step:0.1,def:1,group:"head",needs:"round"},   /* 1.1: past it the face is no darker (the owner's answer of 2026-11-17) */
   {key:"ears",kind:"option",list:["round","pointed"],def:"round",group:"ears"},    /* the kind of ear he has (mq-v265) */
   {key:"earsize",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"ears"},     /* how big his ears are */
   {key:"earup",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"ears"},       /* how high on his head his ears sit */
@@ -6639,7 +6644,10 @@ function crDrawers(){const cr=$("creator"),host=cr&&cr.querySelector(".crbody"),
    for a group, "changed" once any choice it offers is off its standard value */
 /* a choice may need something of the body before it is offered (today: a jaw, which the round head has none of). One table, so a new need
    is one line here and the rows, the word "changed" and the way back all follow it. A choice not offered is kept as he left it. */
-const BODYNEED={jaw:b=>b.face!=="round"};
+/* WHICH SHAPES OF HEAD ANSWER A CHOICE: a row's `needs` names a list here, and the row is offered while his head is one of that
+   list's. To offer a choice on another shape of head, add the shape to its list (and make the body's maker answer it there) */
+const HEADNEEDS=Object.freeze({jaw:Object.freeze(["oval","square"]),round:Object.freeze(["round"])});
+const BODYNEED=Object.freeze(Object.fromEntries(Object.keys(HEADNEEDS).map(k=>[k,b=>HEADNEEDS[k].includes(b.face)])));
 function bodyRowShown(r,b){const f=r.needs&&BODYNEED[r.needs];return !f||!!f(b);}
 function crDrawerSay(){const b=bodyChoicesOf(look.body);crGroups().forEach(G=>{const d=$("group_"+G.key);if(!d)return;const said=d.querySelector(".crds");if(!said)return;
     let v={};try{v=G.say?G.say(look)||{}:{};}catch(e){}
