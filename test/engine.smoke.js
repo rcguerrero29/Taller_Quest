@@ -14894,18 +14894,18 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                (his neck under a head with a jaw). First each style in turn with all of these together (a beard, every other one
                in the far colour, turned a further eighth each time), which finds the look a row shows in within a few tries;
                then, only where none of those showed it, each of them alone */
-            const CTX = [null, ...pre.styles.map((st, i) => ({ style: st, beard: withBeard, ...(far && i % 2 ? { hair: far } : {}), turn: i % 8 })),
+            const CTX = [null, { pattern: 'stripes' }, ...pre.styles.map((st, i) => ({ style: st, beard: withBeard, ...(far && i % 2 ? { hair: far } : {}), turn: i % 8 })),
               ...[1, 2, 3, 4, 5, 6, 7].map(turn => ({ turn })), ...pre.styles.map(st => ({ style: st, beard: withBeard }))].concat(far ? pre.styles.map(st => ({ style: st, beard: withBeard, hair: far })) : []);
             const putBack = r => p.evaluate(([k, v]) => { look = { ...look, body: bodyChoicesOf({ ...look.body, [k]: v }) }; buildBodyRows(); pvDraw(); }, [r.key, r.def]);
             for (const r of [...pre.rows.filter(r => r.key !== 'face' && onNow.includes(r.key)), ...pre.rows.filter(r => r.key === 'face')]) { const targets = r.kind === 'measure' ? [null] : r.list;
               let good = null;   /* the look in which the row's last word showed, tried first for the next */
               for (const w of targets) { const what = r.key + (w ? ' "' + w + '"' : '');
-                const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, style: look.style, hair: look.hair, beard: look.body ? look.body.beard : undefined }), r.key);
+                const before = await p.evaluate(k => ({ v: look.body ? look.body[k] : undefined, style: look.style, hair: look.hair, pattern: look.pattern, beard: look.body ? look.body.beard : undefined }), r.key);
                 if (w && before.v === w) continue;   /* the word already chosen is chosen again by the next pass */
                 let n = 0, after = null, at = null;
                 const ang0 = await p.evaluate(() => BODYPV.ang);
                 for (const cx of good ? [null, good, ...CTX.filter(c => c && c !== good)] : CTX) {
-                  if (cx) { await p.evaluate(([cx, k, v, a, b]) => { look = { ...look, style: cx.style || b.style, hair: cx.hair || b.hair, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: cx.beard || b.beard } : {}), [k]: v }) }; BODYPV.ang = a; buildBodyRows(); pvDraw(); }, [cx, r.key, before.v, ang0, before]);
+                  if (cx) { await p.evaluate(([cx, k, v, a, b]) => { look = { ...look, style: cx.style || b.style, hair: cx.hair || b.hair, pattern: cx.pattern || b.pattern, body: bodyChoicesOf({ ...look.body, ...(k !== 'beard' ? { beard: cx.beard || b.beard } : {}), [k]: v }) }; BODYPV.ang = a; buildBodyRows(); pvDraw(); }, [cx, r.key, before.v, ang0, before]);
                     for (let i = 0; i < (cx.turn || 0); i++) await p.click('#pvTurn [data-turn="1"]'); if (cx.turn) await rafs(p, 1); }
                   if (!(await reveal(sel(r.key, w)))) { after = null; break; }
                   /* the preview's pixels before, kept on the page and compared there (the same count as differ: a channel off by more than 24) */
@@ -15237,11 +15237,32 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 free(X);
                 if (hasTache && base > 0) { const n = tache(body); if (!(n >= base / 3)) P.push(where + 'a moustache he chose paints ' + n + ' texel(s) of his skin, where on the face he starts with it paints ' + base + ': it has no room under his nose (a third of that at least)'); } }
               N.push('his features\' order asked at every end of their heights: ' + asked + ' face(s)' + (hasTache ? ', the moustache ' + base + ' texels as he starts' : '')); }
+            /* ---- M3 · HIS CLOTHES' COLOURS, ON HIS CARD AND ON HIS BODY (mq-v273; the owner's confirmed goal of 2026-11-17) ----
+               Where the world takes the body, his trousers have a colour of their own and his shirt's pattern a second colour,
+               each a row of the body's table, and his shirt's pattern is drawn on his body too, not only on his card. Asked:
+               the card's legs are the trousers he chose; the card's stripes are the pattern colour he chose; with a patterned
+               shirt every part he wears as shirt is painted cloth, and with a plain one it is his shirt's own colour, as before.
+               Written red on mq-v272, which had neither row and drew no pattern on a body */
+            { const TR = row('trousers'), PC = row('patcol');
+              if (!TR || !PC) P.push('his trousers\' colour or his pattern\'s colour is not a choice of the body\'s table (' + [!TR && 'trousers', !PC && 'patcol'].filter(Boolean).join(', ') + ' missing), so his clothes\' colours were not asked');
+              else { const tHex = TR.list.find(x => /^#/.test(x) && x.toLowerCase() !== '#2e3547'), pHex = PC.list.find(x => /^#/.test(x) && x.toLowerCase() !== '#f4f1ea') || PC.list.find(x => /^#/.test(x));
+                const card = lk => { const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; const g = cv.getContext('2d'); g.scale(4, 4); drawPerson(g, 0, 0, lk, {}); return g.getImageData(0, 0, 128, 128).data; };   /* at four times, so a stripe a pixel tall has pixels of its own colour */
+                const at = (d, x, y) => { const i = ((y * 4 + 2) * 128 + x * 4 + 2) * 4; return [d[i], d[i + 1], d[i + 2]]; }, near = (c, hex) => { const w = new THREE.Color(hex); return Math.abs(c[0] - w.r * 255) + Math.abs(c[1] - w.g * 255) + Math.abs(c[2] - w.b * 255) < 12; };
+                const L0 = { ...look, ...LOOK, outfit: 'casual', pattern: 'stripes', shirt: '#8B5CF6' };
+                const legs = at(card({ ...L0, body: bodyChoicesOf({ trousers: tHex }) }), 12, 24);
+                if (!near(legs, tHex)) P.push('choosing ' + tHex + ' for his trousers, his card\'s legs are rgb(' + legs.join(',') + '), not that colour');
+                const d = card({ ...L0, body: bodyChoicesOf({ patcol: pHex }) }); let inked = false; for (let y = 9; y < 22; y++) for (let x = 9; x < 23; x++) if (near(at(d, x, y), pHex)) inked = true;
+                if (!inked) P.push('choosing ' + pHex + ' for his pattern\'s colour, no stripe on his card\'s shirt is that colour');
+                const X1 = make('cap', {}, { pattern: 'dots' }), S1 = parts(X1, wears('shirt')), X0 = make('cap', {}, { pattern: 'plain' }), S0 = parts(X0, wears('shirt'));
+                if (!S1.length) P.push('he wears no part as shirt, so the pattern on his body was not asked');
+                else if (!S1.every(o => o.material.map)) P.push('with a dotted shirt, ' + S1.filter(o => !o.material.map).length + ' of the ' + S1.length + ' part(s) he wears as shirt are plain cloth, where the pattern is drawn on his body as on his card');
+                if (S0.some(o => o.material.map)) P.push('with a plain shirt, part of his shirt is painted cloth, where a plain shirt is his shirt\'s own colour, as before');
+                free(X1); free(X0); N.push('his clothes\' colours: the card\'s trousers ' + tHex + ', its stripes ' + pHex + ', and the dotted shirt on ' + S1.length + ' part(s) of his body'); } }
             /* ---- N · every row moves what it names ---- */
             { const CTX = [{ st: HAIRSTYLES[0], b: {} }].concat(HAIRSTYLES.map((st, i) => ({ st, b: { ...(JAWED.length ? { face: JAWED[i % JAWED.length] } : {}), ...(KINDS.length ? { beard: KINDS[i % KINDS.length] } : {}) } })));
               const isRound = c => !c.b.face || c.b.face === ROUND;
               /* made with the clock and the random numbers held, so a body that differs is one the row changed and not the moment */
-              const sigAt = (c, k, v) => { hold(7, 1.8e12); try { const X = make(c.st, { ...c.b, [k]: v }), s = sig(X); free(X); return s; } finally { back(); } };
+              const sigAt = (c, k, v) => { hold(7, 1.8e12); try { const X = make(c.st, { ...c.b, [k]: v }, (ROWS.find(r => r.key === k) || {}).ink ? { pattern: 'stripes' } : undefined), s = sig(X); free(X); return s; } finally { back(); } };   /* mq-v273: a pattern's colour is asked on a patterned shirt */
               let asked = 0;
               const answers = (r, c) => !r.needs || (typeof HEADNEEDS !== 'undefined' && HEADNEEDS[r.needs] ? HEADNEEDS[r.needs].includes(c.b.face || ROUND) : !isRound(c));   /* mq-v272: on the shapes of head that answer the row */
               for (const r of ROWS) { const ctx = CTX.filter(c => answers(r, c));
@@ -15253,7 +15274,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     [...same].forEach(pr => { const [a, b] = pr.split('|'); if (S[a] !== S[b]) same.delete(pr); }); }
                   same.forEach(pr => { const [a, b] = pr.split('|'); P.push('his ' + say(r.key) + ' "' + a + '" and "' + b + '" make the same body, with any style of hair, head or beard: choosing one or the other changes nothing'); });
                   /* a colour row colours the part it names */
-                  if (r.swatch) { const w = r.key.replace(/col$/, ''); let found = false;
+                  if (r.swatch && r.ink) { /* mq-v273: a colour drawn as ink into a painted part (the pattern's colour): it shows in that part's paint */
+                    let found = false;
+                    for (const hex of r.list.filter(x => /^#[0-9a-f]{6}$/i.test(x))) { const want = new THREE.Color(hex), wr = [want.r, want.g, want.b].map(v => Math.round(v * 255));
+                      for (const c of ctx) { const X = make(c.st, { ...c.b, [r.key]: hex }, { pattern: 'stripes' }), ps = parts(X, o => o.userData.wears === r.ink && o.material.map && o.material.map.image); let hit = null;
+                        if (ps.length) { const im = ps[0].material.map.image, d = im.getContext('2d').getImageData(0, 0, im.width, im.height).data; hit = false;
+                          for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - wr[0]) + Math.abs(d[i + 1] - wr[1]) + Math.abs(d[i + 2] - wr[2]) < 12) { hit = true; break; } }
+                        free(X); if (hit !== null) { found = true; if (!hit) P.push('choosing ' + hex + ' for his ' + say(r.key) + ', with a striped shirt, no stripe of his ' + r.ink + ' is that colour'); break; } } }
+                    if (!found) P.push('with a striped shirt no part of him wears "' + r.ink + '" as painted cloth, so the colour row ' + say(r.key) + ' colours nothing'); }
+                  else if (r.swatch) { const w = r.key.replace(/col$/, ''); let found = false;
                     for (const hex of r.list.filter(x => /^#[0-9a-f]{6}$/i.test(x))) { let got = null;
                       for (const c of ctx) { const X = make(c.st, { ...c.b, [r.key]: hex }), ps = parts(X, wears(w)); if (ps.length) got = ps.map(o => '#' + (o.userData.base || o.material.color).getHexString()); free(X); if (got) break; }
                       if (got) { found = true; if (!got.some(g => g.toLowerCase() === hex.toLowerCase())) P.push('choosing ' + hex + ' for his ' + say(r.key) + ', his ' + w + ' is ' + [...new Set(got)].join(', ') + ' and not that colour'); } }
@@ -15736,6 +15765,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 const inPreview = lk => { hold(); let ok; try { ok = typeof t3BodyPreview === 'function' && t3BodyPreview(pvc, lk, 0); } finally { back(); } return ok && T3.pv ? sigOf(T3.pv.body) : null; };
                 const base = saveLook({ ...look, ...LOOK, style: kl.style, body: {} });
                 const CHG = [['his skin', { skin: '#8D5524' }], ['his hair\'s colour', { hair: '#2A9D8F' }], ['his shirt', { shirt: '#B03A48' }], ['his clothes', { outfit: 'formal' }],
+                  ['his shirt\'s pattern', { pattern: 'dots' }],   /* mq-v273: the pattern is drawn on his body too, so changing it alone makes him again (beto, run 2026-11-17-claude-b92c: red without it) */
                   ['the style of his hair', { style: 'afro' }], ['his beard', { body: { beard: 'goatee' } }], ['the shape of his head', { body: { face: 'oval' } }], ['the width of his nose', { body: { nosew: 1.5 } }]];
                 /* the change as the creator makes it, in the look it is handed: what is not his body written in (look[part]=col,
                    look[key]=val), and his body's rows put back through bodyChoicesOf, his other rows as they were */

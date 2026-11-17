@@ -1376,7 +1376,7 @@ function bodyMake(skel,lk,build){
   const root=new THREE.Group();root.name="body";const J={};
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
-  const trousers=lk.outfit==="formal"?"#23262E":"#2E3547";
+  const trousers=trousersOf({...lk,body:C});
   const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
     m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};m.layers.enable(1);   /* layer 1: drawn again through walls (t3BodyThrough) */
     m.material.stencilWrite=true;m.material.stencilRef=1;m.material.stencilZPass=THREE.ReplaceStencilOp;J[j].add(m);return m;};
@@ -1409,7 +1409,14 @@ function bodyMake(skel,lk,build){
   const hx=Math.abs(at("upleg_l")[0])+Lm.leg,tw=Math.abs(at("shoulder_l")[0]),td=tw*0.85;
   part("hips",new THREE.SphereGeometry(1,16,10),"trousers",trousers,0,0.01*H,0,[hx,0.07*H,td*0.9]);
   {const lo=-sp[1]-0.09*H*b.hang,hi=ch[1]+nk[1]+0.04*H,h=hi-lo;
-    part("spine",new THREE.CapsuleGeometry(1,3,6,20),"shirt",lk.shirt,0,(lo+hi)/2,0,[tw,h/5,td]);}
+    part("spine",new THREE.CapsuleGeometry(1,3,6,20),"shirt",lk.shirt,0,(lo+hi)/2,0,[tw,h/5,td]);
+    /* THE FORMAL OUTFIT'S COLLAR AND TIE, as his card draws them (mq-v273; the owner's answer of 2026-11-17): a white collar's
+       V from the top of his chest, and the card's wine tie down the middle of it to about half his shirt, lying on the front
+       of his torso where it is straight. Before, formal showed on a body only as darker trousers */
+    if(lk.outfit==="formal"){const top=hi-h/5,len=0.6*h,fz=td*1.004;
+      const v=new THREE.Shape();v.moveTo(-0.32*tw,0);v.lineTo(0.32*tw,0);v.lineTo(0,-0.42*len);v.closePath();
+      part("spine",new THREE.ShapeGeometry(v),"collar","#F2F1EA",0,top,fz);
+      part("spine",new THREE.BoxGeometry(0.13*tw,0.62*len,0.012*tw),"necktie","#8E2F3C",0,top-0.36*len,fz+0.006*tw);}}
   /* his neck. Under the round head it is the short post the card has, hidden by the ball. Under a head built as a skull it
      shows: the head sits forward and up on it, and it runs from the collar up and a little forward to the base of the skull,
      behind the jaw, about as thick as a neck is against the head (so he stands a little taller) */
@@ -1560,7 +1567,32 @@ function bodyMake(skel,lk,build){
      card's, so the camera's slant makes it the card's flat oval whichever way he faces */
   const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
   sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
+  shirtPaint(root,{...lk,body:C});
   root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;root.userData.choices=C;return root;}
+/* HIS SHIRT'S PATTERN ON HIS BODY, as on his card (mq-v273; the owner's confirmed goal of 2026-11-17). The card draws the
+   pattern in its 14 by 13 shirt; here the same drawing is laid round his body: the card's shirt is the FRONT half of his
+   torso, its left edge at his right side and its right edge at his left, its top at his collar and its foot at his hem.
+   Each part he wears as shirt is given its own coordinates for it, round its own length (the capsule's own put nine tenths
+   of the torso into a sliver of the picture): across, the way round from his back, through his front, to his back again;
+   up, from its lowest point to its highest. A pattern that repeats (stripes, dots, the flourish) is drawn twice round the
+   torso, front and back, and twice round each sleeve; a pattern a world names in SHIRT_ONCE is ONE mark (a badge, a stamp)
+   and is drawn once, on the front of the torso, where the card has it, the sleeves left plain. Plain draws nothing and the
+   shirt keeps its own colour, as before. Each body gets its own pictures, so nothing shared is undone when one is put away */
+const SHIRT_ONCE=new Set(["stamp","steps","spatter"]);
+function shirtPaint(root,lk){
+  const f=lk&&Object.prototype.hasOwnProperty.call(SHIRT_PATTERNS,lk.pattern)?SHIRT_PATTERNS[lk.pattern]:null;if(typeof f!=="function"||typeof document==="undefined")return;
+  const once=SHIRT_ONCE.has(lk.pattern),K=4,cw=28*K,chh=13*K;
+  const sheet=front=>{const cv=document.createElement("canvas");cv.width=cw;cv.height=chh;const g=cv.getContext("2d");g.fillStyle=lk.shirt;g.fillRect(0,0,cw,chh);
+    (front?[7]:[-7,7,21]).forEach(ox=>{g.save();g.scale(K,K);g.translate(ox,0);g.beginPath();g.rect(0,0,14,13);g.clip();f(g,0,0,14,13,lk);g.restore();});
+    const tx=new THREE.CanvasTexture(cv);tx.wrapS=THREE.RepeatWrapping;tx.magFilter=THREE.NearestFilter;return tx;};
+  const wrapUV=geo=>{const p=geo.attributes.position;let y0=Infinity,y1=-Infinity;for(let i=0;i<p.count;i++){const y=p.getY(i);if(y<y0)y0=y;if(y>y1)y1=y;}
+    const uv=new Float32Array(p.count*2);for(let i=0;i<p.count;i++){uv[2*i]=0.5+Math.atan2(p.getX(i),p.getZ(i))/(2*Math.PI);uv[2*i+1]=(p.getY(i)-y0)/Math.max(1e-6,y1-y0);}
+    geo.setAttribute("uv",new THREE.BufferAttribute(uv,2));};
+  let tile=null,mark=null;
+  root.traverse(o=>{if(!o.isMesh||!o.userData||o.userData.wears!=="shirt")return;const torso=o.parent&&o.parent.name==="spine";
+    if(once&&!torso)return;   /* a mark goes on his chest, not his sleeves */
+    wrapUV(o.geometry);o.material.map=once?(mark=mark||sheet(true)):(tile=tile||sheet(false));o.material.needsUpdate=true;
+    o.userData.base=new THREE.Color("#FFFFFF");o.material.color.set("#FFFFFF");o.userData.patterned=true;});}
 /* THE PART FUNCTIONS OF THE BODY'S OPTIONS (mq-v262), one for each option row of BODYCHOICE (engine/engine.js) that draws
    something, by the row's key. Each is handed what the maker knows (M: the joints, the skeleton, the look, the build, the
    maker's own `part`, `cap`, `bone` and `knob`) and the word chosen, and hangs its parts on the joints. A row with no
@@ -2210,7 +2242,8 @@ function t3Body(dt){
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
   /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
      made again when any of them, or a colour he wears, changes */
-  const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,hairStyleOf(look),beardOf(look),JSON.stringify(Ch)].join("|");
+  /* the pattern is in the key since mq-v273, when the body began to wear it (beto, run 2026-11-17-claude-b92c) */
+  const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,look.pattern,hairStyleOf(look),beardOf(look),JSON.stringify(Ch)].join("|");
   if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);t3Dispose(T3.body);T3.body=null;}
   if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
   if(!T3.body){T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}
@@ -2272,7 +2305,7 @@ function t3BodyPreview(cv,lk,ang){
       amb:new THREE.AmbientLight(0xffffff,DAY_AMB),sun:new THREE.DirectionalLight(0xfff2dd,DAY_SUN)};
       P.sun.position.set(14,22,8);P.scene.add(P.amb,P.sun);}
     if(!P.rt||P.rt.width!==W||P.rt.height!==Hh){if(P.rt)P.rt.dispose();P.rt=new THREE.WebGLRenderTarget(W,Hh,{samples:4});P.px=new Uint8Array(W*Hh*4);}
-    const Ch=bodyChoicesOf(lk.body),key=[lk.skin,lk.hair,lk.shirt,lk.outfit,hairStyleOf(lk),beardOf(lk),JSON.stringify(Ch)].join("|");
+    const Ch=bodyChoicesOf(lk.body),key=[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),JSON.stringify(Ch)].join("|");
     if(P.body&&P.body.userData.key!==key){P.scene.remove(P.body);t3Dispose(P.body);P.body=null;}
     if(!P.body){P.body=bodyMake(bodySkeleton("person",Ch),lk,Ch);P.body.userData.key=key;P.scene.add(P.body);}
     const B=P.body;B.rotation.set(0,ang||0,0);t3BodyPose(B,0,false);

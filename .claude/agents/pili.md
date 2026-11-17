@@ -211,6 +211,8 @@ arrow.** *(Applied 2026-09-14 from your own post-flight. And read Chema's entry 
 `docs/3D-LOG.md` before you spend a sixth fix on value: in the front camera the skull delivers zero
 pixels for a reason that is not colour at all.)*
 
+**A painted shadow is a colour, and it sits next to the hair.** Before approving any shadow painted on skin, take its luma on every skin in the palette and set it against every hair and beard in the palette; under 40 with a matching hue, the shadow is a beard. Give painted shadow its own hue (toward rose, away from hair's orange-brown) and cap its drop. And for any slider that places a feature, check its two ends against the neighbouring feature's default: a mouth that can reach the nose's height is an end no one should be offered. *(2026-11-17, the round head's review, run 2026-11-17-claude-e510. Applied 2026-11-17 by the session on his yes, lesson ledger row 195.)*
+
 **And a ground may carry an identity only where something non-colour repeats it.** On 2026-09-14 my
 own rule — *identify the four kitchens by ground, never by accent* — was followed exactly on a merge
 board and produced twenty tiles with one silhouette in four hues, on a board whose only verb is *are

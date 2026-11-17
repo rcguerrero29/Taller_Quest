@@ -771,7 +771,7 @@ const UIDEF={
     jaw:"Width of the jaw",chin:"Length of the jaw and chin",earsize:"Size of the ears",earup:"Ears: higher or lower",earback:"Ears: further back or forward",earangle:"Ears: how far they stand out",face:"Shape of the head",face_round:"Round",face_oval:"Oval",face_square:"Square",ears:"Ears",ears_round:"Round",ears_pointed:"Pointed",neckw:"Thickness of the neck",neckl:"Length of the neck",cheeks:"Width of the cheekbones",crown:"Height of the skull",skullw:"Width of the skull",skulld:"Depth of the skull",
     eyesize:"Size of the eyes",eyegap:"Space between the eyes",eyeh:"Eyes: higher or lower",noseh:"Nose: higher or lower",mouthh:"Mouth: higher or lower",chinshade:"Shadow under the chin",browthick:"Thickness of the brows",browtilt:"Slant of the brows",noselen:"Length of the nose",nosew:"Width of the nose",noseout:"How far the nose stands out",
     mouth:"Mouth",mouth_line:"Line",mouth_smile:"Smile",mouth_none:"None",mouthw:"Width of the mouth",beard_goatee:"Goatee",beard_moustache:"Mustache",beardlen:"Length of the beard",
-    eyecol:"Color of the eyes",browcol:"Color of the brows",browcol_hair:"As the hair",tiecol:"Color of the braids' ties",tiecol_shade:"As the hair, darker",reset:"Back to how it started",
+    eyecol:"Color of the eyes",browcol:"Color of the brows",browcol_hair:"As the hair",tiecol:"Color of the braids' ties",tiecol_shade:"As the hair, darker",trousers:"Color of the trousers",trousers_outfit:"As the outfit",patcol:"Color of the pattern",patcol_shirt:"As the shirt",reset:"Back to how it started",
     hairline:"Hairline: higher or lower",hairvol:"Height and fullness",braidlen:"Length of the braids",
     group_outfit:"Outfit",group_fit:"Fit",group_skin:"Skin",group_head:"Shape of the head",group_eyes:"Eyes and brows",group_nose:"Nose and mouth",group_ears:"Ears",group_beard:"Beard",
     group_cut:"Color and style",group_tune:"Hairline, fullness, length",group_build:"Build",group_neck:"Neck",
@@ -829,7 +829,7 @@ const UIDEF={
     jaw:"Ancho de la mandíbula",chin:"Largo de la mandíbula y el mentón",earsize:"Tamaño de las orejas",earup:"Orejas: más arriba o más abajo",earback:"Orejas: más atrás o más adelante",earangle:"Orejas: qué tanto sobresalen",face:"Forma de la cabeza",face_round:"Redonda",face_oval:"Ovalada",face_square:"Cuadrada",ears:"Orejas",ears_round:"Redondas",ears_pointed:"Puntiagudas",neckw:"Grosor del cuello",neckl:"Largo del cuello",cheeks:"Ancho de los pómulos",crown:"Altura del cráneo",skullw:"Ancho del cráneo",skulld:"Profundidad del cráneo",
     eyesize:"Tamaño de los ojos",eyegap:"Separación de los ojos",eyeh:"Ojos: más arriba o más abajo",noseh:"Nariz: más arriba o más abajo",mouthh:"Boca: más arriba o más abajo",chinshade:"Sombra bajo el mentón",browthick:"Grosor de las cejas",browtilt:"Inclinación de las cejas",noselen:"Largo de la nariz",nosew:"Ancho de la nariz",noseout:"Qué tanto sobresale la nariz",
     mouth:"Boca",mouth_line:"Línea",mouth_smile:"Sonrisa",mouth_none:"Sin boca",mouthw:"Ancho de la boca",beard_goatee:"Candado",beard_moustache:"Bigote",beardlen:"Largo de la barba",
-    eyecol:"Color de los ojos",browcol:"Color de las cejas",browcol_hair:"Como el pelo",tiecol:"Color de las ligas de las trenzas",tiecol_shade:"Como el pelo, más oscuro",reset:"Volver a como empezó",
+    eyecol:"Color de los ojos",browcol:"Color de las cejas",browcol_hair:"Como el pelo",tiecol:"Color de las ligas de las trenzas",tiecol_shade:"Como el pelo, más oscuro",trousers:"Color del pantalón",trousers_outfit:"Como el atuendo",patcol:"Color del estampado",patcol_shirt:"Como la camisa",reset:"Volver a como empezó",
     hairline:"Nacimiento del pelo: más arriba o más abajo",hairvol:"Altura y volumen",braidlen:"Largo de las trenzas",
     group_outfit:"Atuendo",group_fit:"Ajuste",group_skin:"Piel",group_head:"Forma de la cabeza",group_eyes:"Ojos y cejas",group_nose:"Nariz y boca",group_ears:"Orejas",group_beard:"Barba",
     group_cut:"Color y estilo",group_tune:"Nacimiento, volumen, largo",group_build:"Complexión",group_neck:"Cuello",
@@ -950,7 +950,15 @@ const BODYCHOICE=Object.freeze([
   {key:"hairline",kind:"measure",min:0.7,max:1.3,step:0.05,def:1,group:"tune"},    /* how high on his brow his hair starts */
   {key:"hairvol",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},     /* how tall or full the hair that stands off his head is (flat top, afro, curly, broccoli) */
   {key:"braidlen",kind:"measure",min:0.7,max:1.4,step:0.05,def:1,group:"tune"},    /* how long his braids are */
-  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"}   /* the braids' ties: a deeper shade of his hair, or a colour */
+  {key:"tiecol",kind:"option",swatch:true,list:["shade","#C0392B","#2F5D8A","#3F7A4A","#E0B030","#F2F2F2"],def:"shade",group:"tune"},   /* the braids' ties: a deeper shade of his hair, or a colour */
+  /* THE CLOTHES' COLOURS (mq-v273; the owner's confirmed goal of 2026-11-17, the first step in customizing clothes): his
+     trousers a colour of their own, where before the outfit chose it (`outfit`: navy everyday, charcoal formal, as before);
+     and the second colour his shirt's pattern is drawn in, where before it was a lighter or darker take on the shirt
+     (`shirt`, as before). Rows of the body's table, so only a world that takes the body offers them, a look elsewhere is
+     exactly what it was, and the next clothes choice is one more row. `ink` names the painted part the colour is drawn
+     into, for the rows whose colour is not a part's own */
+  {key:"trousers",kind:"option",swatch:true,list:["outfit","#23262E","#3B5B85","#B49A6A","#5A6B3A","#6A2A35","#E6DCC4","#1C1A20"],def:"outfit",group:"outfit"},
+  {key:"patcol",kind:"option",swatch:true,ink:"shirt",list:["shirt","#F4F1EA","#1C1A20","#F2C14E","#E8735A","#27B3B0","#D6246E","#9CCB3B"],def:"shirt",group:"outfit"}
 ].map(r=>Object.freeze(r.list?{...r,list:Object.freeze(r.list.slice())}:r)));
 /* a look's body choices, cleaned: every row of the table and nothing else. A measure must be a number, and is held to its
    range; an option must be one of its row's words; anything missing, of the wrong type or unknown is the row's default */
@@ -4610,11 +4618,23 @@ function faceLookFor(who,hero){const L=faceLooks();if(!L)return null;
    while fashion review waits; #82: flourishes, patterns and stripes to tell looks apart): drawn INSIDE the shirt's rounded rectangle, in a
    darker or paler take on the shirt's own colour so any shirt wears any pattern. `plain` is the default and draws nothing.
    A pack may add patterns: SHIRT_PATTERNS[id]=(g,x,y,w,h,lk)=>{...} and a row in T().patterns. */
+/* his trousers' colour and his pattern's ink (mq-v273): his own choice where the world takes the body and he made one, else
+   what they were before, from the outfit and the shirt */
+const trousersOf=lk=>{const t=lk&&lk.body&&lk.body.trousers;return typeof t==="string"&&/^#[0-9a-fA-F]{6}$/.test(t)?t:(lk&&lk.outfit==="formal"?"#23262E":"#2E3547");};
+const patInk=(lk,before)=>{const c=lk&&lk.body&&lk.body.patcol;return typeof c==="string"&&/^#[0-9a-fA-F]{6}$/.test(c)?c:before;};
 const SHIRT_PATTERNS={
-  stripes:(g,x,y,w,h,lk)=>{g.fillStyle=hexDark(lk.shirt,0.72);for(let i=1;i<=3;i++)g.fillRect(x,y+2+i*2.8,w,1.1);},
-  dots:(g,x,y,w,h,lk)=>{g.fillStyle="rgba(255,255,255,.55)";for(let r=0;r<3;r++)for(let c=0;c<3;c++){g.beginPath();g.arc(x+3+c*4+(r%2)*2,y+3.5+r*3.6,0.9,0,7);g.fill();}},
-  flourish:(g,x,y,w,h,lk)=>{g.fillStyle="rgba(255,255,255,.5)";[[7,4],[5,7],[9,7],[7,10],[7,7]].forEach(([dx,dy],i)=>{g.beginPath();g.ellipse(x+dx,y+dy,i<4?1.4:1,i<4?2:1,i<4?(i*Math.PI/2):0,0,7);g.fill();});
-    g.fillStyle=hexDark(lk.shirt,0.7);g.beginPath();g.arc(x+7,y+7,0.8,0,7);g.fill();}};
+  stripes:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,hexDark(lk.shirt,0.72));for(let i=1;i<=3;i++)g.fillRect(x,y+2+i*2.8,w,1.1);},
+  dots:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,"rgba(255,255,255,.55)");for(let r=0;r<3;r++)for(let c=0;c<3;c++){g.beginPath();g.arc(x+3+c*4+(r%2)*2,y+3.5+r*3.6,0.9,0,7);g.fill();}},
+  flourish:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,"rgba(255,255,255,.5)");[[7,4],[5,7],[9,7],[7,10],[7,7]].forEach(([dx,dy],i)=>{g.beginPath();g.ellipse(x+dx,y+dy,i<4?1.4:1,i<4?2:1,i<4?(i*Math.PI/2):0,0,7);g.fill();});
+    g.fillStyle=hexDark(lk.shirt,0.7);g.beginPath();g.arc(x+7,y+7,0.8,0,7);g.fill();},
+  /* THE CREW'S FIVE (mq-v273; the owner's pick of 2026-11-17 among the patterns the town's named people proposed): each
+     drawn in the pattern's colour where he chose one, else a take on the shirt's own. `stamp`, `steps` and `spatter` are one mark each
+     (SHIRT_ONCE, engine/engine3d.js: on a body, once, on the chest), `grid` and `fringe` repeat round him */
+  grid:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,hexDark(lk.shirt,0.72));[w/3,2*w/3].forEach(v=>g.fillRect(x+v-0.55,y,1.1,h));[h/3,2*h/3].forEach(v=>g.fillRect(x,y+v-0.55,w,1.1));},
+  stamp:(g,x,y,w,h,lk)=>{const c=patInk(lk,"rgba(255,255,255,.55)");g.save();g.translate(x+10.6,y+6);g.rotate(-0.21);g.strokeStyle=c;g.lineWidth=0.9;g.beginPath();g.arc(0,0,2.3,0,7);g.stroke();g.fillStyle=c;g.fillRect(-1.4,-0.45,2.8,0.9);g.restore();},
+  steps:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,hexDark(lk.shirt,0.72));for(let k=0;k<4;k++)g.fillRect(x+k*w/4,y+h-2*(k+1),w/4+0.2,2*(k+1));},
+  spatter:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,hexDark(lk.shirt,0.72));const d=(a,b,r)=>{g.beginPath();g.arc(x+a,y+b,r,0,7);g.fill();};d(4.5,4.5,1.6);g.fillRect(x+4.1,y+4.5,0.8,4);d(4.5,8.5,0.55);d(7.5,3,0.6);d(9.5,7,1.0);d(11.5,4.5,0.5);d(7.5,10,0.7);},   /* one throw of paint, the drip under its blot: added as a fifth on his word of 2026-11-17 */
+  fringe:(g,x,y,w,h,lk)=>{g.fillStyle=patInk(lk,"rgba(255,255,255,.55)");[3,6.5,10].forEach(by=>{g.fillRect(x,y+by,w,1);for(let k=0;k<7;k++){g.beginPath();g.moveTo(x+k*2,y+by+1);g.lineTo(x+k*2+2,y+by+1);g.lineTo(x+k*2+1,y+by+2.5);g.closePath();g.fill();}});}};
 /* #301: a pattern is looked up among the patterns this game HAS, never through the table's prototype — a saved look
    keeps any word, and `__proto__` or `valueOf` were "found" and called; the throw left a clip on the canvas and froze the
    picture for whoever boarded a Trolley Pass carrying it (test/engine.smoke.js, grep `#301`) */
@@ -4679,7 +4699,7 @@ function drawPerson(g,sx,sy,lk,o){
   if(lk&&lk.robot)return drawRobot(g,sx,sy,lk,o);
   o=o||{};const b=o.bob||o.idle||0,d=o.dir||"down",bh=b*0.5;
   g.fillStyle="rgba(0,0,0,.2)";g.beginPath();g.ellipse(sx+16,sy+28,8,3.5,0,0,7);g.fill();
-  g.fillStyle=lk.outfit==="formal"?"#23262E":"#2E3547";
+  g.fillStyle=trousersOf(lk);
   g.fillRect(sx+11,sy+20+b,4,7);g.fillRect(sx+17,sy+20-(o.moving?b:0),4,7);
   g.fillStyle=lk.shirt;
   g.beginPath();g.roundRect(sx+9,sy+9+bh,14,13,4);g.fill();
