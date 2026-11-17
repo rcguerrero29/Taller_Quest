@@ -2674,14 +2674,26 @@ function t3DogBodies(dt){
      · WHAT THEY ARE MADE FROM: npcWhimsy, the look their card is painted with (the theme's tint on the shirt included), so the
        body wears the card's colours. A change to the look makes the body again.
      · HOW THEY STAND AND WALK: t3BodyPose, the walk of the person you steer, its pace held to a person's (BODYSTEPS). Walking,
-       a body faces where it walks; standing, it faces the camera, as its card always does.
-     · THEIR SIGNS: the card's marks above the head (the mark of something to say, an emote) are painted where the card would
-       be, with the card itself left out, so they stand above the body as above the card.
-     · THROUGH A WALL: as their card, which a wall hides: only the person you steer is drawn through one (t3BodyThrough).
+       a body faces where it walks; standing, it faces the camera, as its card always does; at a window, it stands up against
+       its counter and faces the street (PEOPLEWIN).
+     · THEIR SIGNS: the card's marks (the mark of something to say, an emote) are painted by the card's own painter with the card
+       itself left out, lifted so they stand just above that body's head (PEOPLEMARK).
+     · THROUGH A WALL: as their card, which a wall hides: only the person you steer is drawn through one (t3BodyThrough), so
+       their parts are taken off the layer it draws again (t3PeopleMake).
    NOT DONE HERE: any pose but standing and walking (people have no other today); a body for a person no list names; and the
    people of the other cameras, which draw cards as before. */
 const PEOPLENEAR=8;   /* squares from the camera's focus within which a named person is a body, not a card */
 const PEOPLEMAX=12;   /* the most people who stand as bodies at once */
+/* THEIR MARKS ABOVE THEIR HEADS (the owner's word on the first pictures, 2026-11-17: the marks overlapped the bodies). A card's
+   mark is painted from 28 of its 32 pixels up (drawSayMark's lowest row, measured), which is beside a card's head and over a
+   body's: the twelve's bodies stand 1.00 to 1.15 tall, against 0.92 to 1.15 for their cards. So a body's marks are lifted until
+   their lowest row is PEOPLEMARKGAP above the top of that body, measured once when it is made (userData.top) */
+const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
+/* AT A WINDOW (the owner's word on the same pictures: a person at a window did not look right). A person who works inside a wall (`win`,
+   winAt in engine/engine.js) stands where the map puts them, in the middle of the square, and the 3D camera builds their counter
+   at the street edge of it (grep "a person at work inside this wall"): a body there stood whole above the counter, feet and all.
+   Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
+const PEOPLEWIN=0.2;
 const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),JSON.stringify(bodyChoicesOf(lk.body))].join("|");
 /* one body made each time the browser has a moment (requestIdleCallback; where it has none, the next tick), nearest first.
    A person who is no longer wanted when their turn comes is passed over */
@@ -2694,7 +2706,13 @@ function t3PeopleMake(){
     const e=wait.find(e=>on&&!on.has(e.n)&&T3.scene&&CW().npcs.includes(e.n));
     if(!e)return;
     try{const lk=npcWhimsy(e.n),Ch=bodyChoicesOf(lk.body),B=bodyMake(bodySkeleton("person",Ch),{...lk,body:Ch},Ch);
-      B.userData.key=e.key;B.visible=false;T3.scene.add(B);on.set(e.n,B);}
+      /* NOT THROUGH A WALL: the maker puts every part on layer 1, the layer t3BodyThrough draws again over the street so a wall
+         never hides the person you steer. Another person is hidden by a wall as their card is, so their parts leave it (found on
+         the first pictures, 2026-11-17: a body at a window was drawn over the counter in front of it) */
+      B.traverse(o=>o.layers.disable(1));
+      B.userData.key=e.key;B.visible=false;B.scale.setScalar(T3PERSON/0.92);B.updateMatrixWorld(true);
+      B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;   /* the top of this body, standing, at the street's scale */
+      T3.scene.add(B);on.set(e.n,B);}
     catch(err){t3Note("person's body",err);(T3.peopleBad||(T3.peopleBad=new Set())).add(e.n);}
     if(wait.length>1)T3.peopleWait=wait.filter(x=>x!==e),t3PeopleMake();});}
 function t3PeopleBodies(dt){
@@ -2711,13 +2729,15 @@ function t3PeopleBodies(dt){
   want.forEach(({n,x,y})=>{const key=peopleKey(npcWhimsy(n));let B=on.get(n);
     if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(n);B=null;}
     if(!B){wait.push({n,key});return;}   /* their card stands in until the body is made */
-    const lift=stairLift(w,Math.round(x),Math.round(y)),walking=!!n.mv;
+    const lift=stairLift(w,Math.round(x),Math.round(y)),walking=!!n.mv,win=!walking&&winAt(w,n.x,n.y),
+      open=win&&([[0,1],[0,-1],[1,0],[-1,0]].find(([dx,dy])=>!isSolidAt(world,n.x+dx,n.y+dy))||[0,1]);   /* the street side, as the counter is built */
     if(walking){const hx=n.mv[0]-n.x,hy=n.mv[1]-n.y;if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);}
+    else if(open)B.userData.yaw=Math.atan2(open[0],open[1]);
     else B.userData.yaw=Math.atan2(cam.x-(x+0.5),cam.z-(y+0.5));
     const S=B.userData.skel,at=B.userData.at,go=at?Math.hypot(x-at[0],y-at[1]):0;B.userData.at=[x,y];
     if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
       B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
-    B.visible=true;B.position.set(x+0.5,lift,y+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    B.visible=true;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     t3BodyPose(B,B.userData.phase||0,walking,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b)));
     shown.add(n);});
@@ -2729,8 +2749,8 @@ function t3Actors(){
   /* the other thing the dog leaves stands, like the ball, painted by the flat cameras' own painter (#267) — first
      in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
   decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
-  w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n);   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): his marks only */
-    list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,f:(g)=>{
+  w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n)&&T3.peopleOn.get(n);   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): their marks only, above the body's head */
+    list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,...(body?{h:Math.max(0,(body.userData.top||0)+PEOPLEMARKGAP-PEOPLEMARK*T3PERSON)}:{}),f:(g)=>{
     if(!body)drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     /* the SAME painter the flat cameras use, smaller and closer because this sprite has six pixels
        of headroom — see drawSayMark. It was its own copy of the fillText until 2026-09-15, which is

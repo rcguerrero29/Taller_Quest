@@ -16833,7 +16833,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const c = T3.cam.position; out.toCam = Math.atan2(c.x - (n.x + 0.5), c.z - (n.y + 0.5));
           /* the marks: something to say, while a body */
           n.doc = n.doc || 'probe'; frame(); out.marks = { card: painted.card, mark: painted.mark, body: look().body };
-          const top = new THREE.Box3().setFromObject(B).max.y; out.top = top; }
+          /* where the marks stand: the billboard painted for them is the one nearest their square (pulled toward the camera), and
+             a mark's lowest row is painted PEOPLEMARK of a person's height above the billboard's feet */
+          { const cx = n.x + 0.5, cz = n.y + 0.5, near = T3.pool.filter(q => q.live !== false && q.spr.visible && !q.spr.userData.hero && !q.spr.userData.mark && Math.hypot(q.spr.position.x - cx, q.spr.position.z - cz) < 0.45);
+            const top = new THREE.Box3().setFromObject(B).max.y;
+            out.markAt = near.length ? { foot: +(Math.min(...near.map(q => q.spr.position.y)) + (typeof PEOPLEMARK === 'number' ? PEOPLEMARK : 28 / 32) * T3PERSON).toFixed(3), top: +top.toFixed(3), n: near.length } : null; }
+          const top = new THREE.Box3().setFromObject(B).max.y; out.top = top;
+          /* through a wall: only the person you steer is drawn again over the street, on layer 1 (t3BodyThrough) */
+          let through = 0; B.traverse(o => { if (o.isMesh && o.layers.isEnabled(1)) through++; }); out.through = through;
+          /* the marks' height: the lowest row a mark is painted on, against the top of the body */ }
         return out;
       } finally { drawPerson = dp; drawSayMark = dm; drawEmote = de; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
         n.wnext = keep.wnext; n.mv = keep.mv; n.doc = keep.doc; n.fx = n.x; n.fy = n.y; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
@@ -16882,6 +16890,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!r.marks.body) say(0, 'on ' + dev + ', ' + who + ' with something to say is no longer a body');
           else { if (!r.marks.mark) say(0, 'on ' + dev + ', ' + who + ', a body with something to say, has no mark above their head');
             if (r.marks.card) say(0, 'on ' + dev + ', ' + who + '\'s card is painted under their mark while they stand as a body'); }
+          /* G · a wall hides them, as it hides their card: no part of their body is drawn again through walls */
+          if (!r.markAt) say(0, 'on ' + dev + ', no picture stands where ' + who + '\'s marks should be, so whether they are above the head could not be asked');
+          else if (r.markAt.foot < r.markAt.top) say(0, 'on ' + dev + ', ' + who + '\'s mark starts ' + r.markAt.foot + ' up, below the top of their head (' + r.markAt.top + '): it covers the body');
+          if (r.through) say(0, 'on ' + dev + ', ' + r.through + ' parts of ' + who + '\'s body are drawn again over the street like the person you steer, so a wall or a counter in front of them does not hide them');
           /* F · from afar, their card and no body */
           const f = await probe(p, who, (await p.evaluate(() => PEOPLENEAR + BODYHYST)) + 1.5);
           if (f.why) say(1, 'on ' + dev + ', ' + f.why + ', so ' + who + ' from afar was not asked');
