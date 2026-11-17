@@ -14723,7 +14723,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* mq-v265: A DRAWER IS OPENED OR SHUT, AND THE NEXT STEP WAITS FOR IT TO HAVE HAPPENED. The browser tells a drawer it was
          opened a moment later (its toggle event), and only then does the creator shut the drawer's neighbours; a check that
          went on before that moment had a drawer it just opened shut under it by the one before (seen once in three runs on a
-         page that asked for reduced motion). drawerAct(p, id, act) does act and waits until the drawer named id has been told */
+         page that asked for reduced motion). drawerAct(p, id, act) does act and waits until the drawer named id has been told.
+         From mq-v270 the creator shuts the neighbours as the opening is seen, with no wait for that event (the check of two
+         presses in one go, in the creator's tabs below), so this wait no longer guards anything; it is kept as a settled
+         moment between steps */
       const drawerAct = async (p, id, act) => { const t0 = await p.evaluate(id => { if (!window.__tgOn) { window.__tgOn = true; window.__tg = {};
           document.addEventListener('toggle', e => { const k = e.target && e.target.id; if (k) window.__tg[k] = (window.__tg[k] || 0) + 1; }, true); } return window.__tg[id] || 0; }, id);
         await act(); await until(p, ([id, t0]) => (window.__tg[id] || 0) > t0, [id, t0], 3000); await rafs(p, 1); };
@@ -15836,6 +15839,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 await qp.focus(sm); await drawerAct(qp, d.id, () => qp.keyboard.press('Enter')); o = await openNow(t.id);
                 if (!o.includes(d.id)) q(where + ' does not open from the keyboard, Enter on its name');
                 else if (o.length > 1) q('opening ' + where + ' from the keyboard leaves ' + (o.length - 1) + ' other drawer(s) of its tab open beside it, where one is open at a time'); }
+              /* THE DRAWER PRESSED LAST IS THE ONE LEFT OPEN, HOWEVER FAST THE TWO PRESSES CAME (2026-11-17). The creator shut a
+                 drawer's neighbours when the browser told the drawer it had been opened (its toggle event), and the browser says
+                 so later, in a task of its own: a second drawer pressed before that task ran (on a busy page, in a suite that
+                 presses as fast as the page answers) was open by the time the first was told, and the first shut it. One open at
+                 a time has to mean the last one opened. Asked with two presses in one go, each a click on the drawer's own name
+                 made by the page's script, so no task can run between them, and then with the page left to settle. Written red
+                 on mq-v269, which left the first of the two open and the last shut */
+              if (D.length > 1) {
+                const two = await qp.evaluate(async ([a, b, tab]) => { const pn = document.getElementById(document.getElementById(tab).getAttribute('aria-controls')), all = () => [...pn.querySelectorAll('details.crdrawer')];
+                  const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 400); }); await new Promise(r => setTimeout(r, 60)); };   /* a frame, or 400 ms where none comes */
+                  all().forEach(d => { d.open = false; }); await settle();
+                  document.querySelector('#' + a + ' > summary').click(); document.querySelector('#' + b + ' > summary').click(); await settle();
+                  const open = all().filter(d => d.open).map(d => d.id); all().forEach(d => { d.open = false; }); await settle(); return open; }, [D[0].id, D[1].id, t.id]);
+                if (two.length !== 1 || two[0] !== D[1].id) q('under "' + t.name + '", "' + D[0].name + '" and then "' + D[1].name + '" pressed one straight after the other leaves ' + (two.length ? two.map(id => '"' + (D.find(x => x.id === id) || { name: id }).name + '"').join(' and ') : 'neither') + ' open, where the one pressed last is the one left open'); }
               /* his preview and the tabs stay in view: the last drawer open and whatever scrolls the panel scrolled to its foot */
               const last = D[D.length - 1]; if (!(await openNow(t.id)).includes(last.id)) await drawerAct(qp, last.id, () => qp.click('#' + last.id + ' > summary'));
               const v = await qp.evaluate(id => { const d = document.getElementById(id); let s = d.parentElement;
