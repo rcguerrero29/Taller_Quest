@@ -706,6 +706,12 @@ dialog: the page behind dimmed and inert, the title pinned at the top, the main 
 exactly as before. `engine/engine.js`, grep `THE CUSTOMIZING PANEL A WORLD TAKES FROM THE ENGINE`. Meridian takes it from mq-v271
 (`content/meridian/config.js`), at its new game and its barber's chair; `test/smoke.js` asks both at a phone's and a laptop's size.
 
+**Clothes a world that takes the body can choose** (mq-v273): two rows of the body's table, the trousers' colour (`trousers`, "outfit" being
+today's navy or charcoal) and the second colour a shirt's pattern is drawn in (`patcol`); the shirt's pattern is drawn on the body
+too, a repeating one round the torso and sleeves, a one-mark one (`SHIRT_ONCE` in `engine/engine3d.js`) once on the chest; the
+formal outfit wears its collar and tie on the body as on the card; and five more patterns a world may list in its own `patterns`
+words: `grid`, `stamp`, `steps`, `spatter`, `fringe`. A world that lists none of them, and takes no body, draws what it drew before.
+
 **One line puts an apron on a person** (mq-v257): `const OUTFITTAKE=["apron"];` in a pack file the page loads
 before `engine/boot.js` (your `config.js` is one). The engine reads it once, as it loads, so a file
 loaded after `engine/boot.js` is never seen, and nothing says so. It is a list, not a word: `"apron"` on its own, `["Apron"]`

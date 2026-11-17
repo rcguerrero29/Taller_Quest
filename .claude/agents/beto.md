@@ -201,6 +201,8 @@ the *rendered label* rather than the key (`engine.js:3980`, saved at `:503`).
   the owner's yes, from the review of the customizing panel; every claim in it was then measured: the panel's check went red on
   each before the fixes.)*
 
+- **A bare number in the engine is often a measurement of something you are about to change.** `T3PERSON/0.92` (`engine/engine3d.js`, grep `T3PERSON/0.92`) is the round body's standing height of 2026-11 written as a literal; when the round head grew and rose, the body stood 11% taller than its card and nothing went red. Before resizing a body part, grep the old size's digits, and any constant that was zero for the shape you are changing. *(Applied 2026-11-17 by the session on his yes, lesson ledger row 194; proposed in run 2026-11-17-claude-e510, reviewing the round head.)*
+
 ## A distinction your RULE/CHOICE cut does not give you
 
 **Predicate versus query.** *"Is the player near a stop"* and *"where is the next stop ahead of this
