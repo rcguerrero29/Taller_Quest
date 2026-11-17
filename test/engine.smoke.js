@@ -16942,7 +16942,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (r.first.body || r.first.made) say(0, 'on ' + dev + ', ' + who + '\'s body was made in the very frame they came into view, not while the page was idle');
           if (!r.first.body && !r.first.card) say(0, 'on ' + dev + ', before ' + who + '\'s body was made, nothing stood in their place: their card did not stand in');
           /* C · the card's colours */
-          const miss = ['shirt', 'skin', 'hair'].filter(k => !r.cols.includes(r.lk[k]));
+          /* a style may paint its hair a shade off the card's paint (a short cut is darker), so a colour counts as worn when a part is
+             within 45 of it, summed over red, green and blue: a body in somebody else's colours is far past that */
+          const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), near2 = (a, b) => { const x = hex(a), y = hex(b); return Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45; };
+          const miss = ['shirt', 'skin', 'hair'].filter(k => !r.cols.some(c => near2(c, r.lk[k])));
           if (miss.length) say(0, 'on ' + dev + ', ' + who + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its parts are ' + r.cols.join(' '));
           /* D · facing where they walk, and the camera when they stand, and their legs moving as they walk */
           const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 0.05;
