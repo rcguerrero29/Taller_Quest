@@ -355,9 +355,9 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST PANELTAKE` (the outfits a
-world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7; the customizing panel the
-engine builds, §7) — and a template part's `link`
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST PEOPLETAKE PANELTAKE` (the outfits a
+world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7; the other people who stand
+as bodies, §7; the customizing panel the engine builds, §7) — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
@@ -698,6 +698,14 @@ own colours on a skeleton of 19 named joints, his feet flat on the ground standi
 square he is his card again, and everyone else keeps theirs. To move a joint by hand, `const BODYREST={knee_l:[0,-0.19,0]};`
 (its rest place from its parent, in squares, three numbers each under 1; anything else is ignored). Saying nothing is the card,
 exactly as before. The skeleton, the maker and the walk are `engine/engine3d.js`, grep `THE JOINTED BODY`.
+
+**One more line stands other people up as bodies** (mq-v274): `const PEOPLETAKE=["priya"];` beside `BODYTAKE=["person"]`, a list
+of people by their station's `npc` name. Within `PEOPLENEAR` (8) squares of the 3D camera's focus, at most `PEOPLEMAX` (12) at once
+and the nearest first, each is a body made from the look their card is painted with, their own body choices included (`body` in
+their look). A body is made while the page is idle, one at a time, and their card stands in until it is. Walking, a body faces
+where it walks; standing, it faces the camera, as a card does. Their marks (something to say, an emote) stay above them. A world
+that names nobody, or takes no person's body, draws every person as a card, exactly as before. `engine/engine3d.js`, grep
+`THE OTHER PEOPLE'S BODIES`; asked by `test/engine.smoke.js`, part `body`, at a phone's and a laptop's size.
 
 **One line opens the creator as the engine's customizing panel** (mq-v269): `const PANELTAKE=["creator"];` in a pack file the
 page loads before `engine/boot.js`. The creator (a new game, the barber's chair, a closet) then opens as the browser's own modal

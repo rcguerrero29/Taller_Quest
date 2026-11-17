@@ -2660,20 +2660,84 @@ function t3DogBodies(dt){
     t3DogPose(B,P,B.userData.phase||0,B.userData.still<DOGREST,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
     shown.add(cr);});
   T3.dogShown=shown;return shown;}
+/* ---- THE OTHER PEOPLE'S BODIES (mq-v274): a person a world names stands as a body, as you do ----
+   A world that names people in its own PEOPLETAKE list (engine/engine.js) sees each of them, near the camera's focus in the 3D
+   camera, as a jointed body made from their look, by the same maker as the body of the person you steer: their shirt, skin,
+   hair and style, their outfit, pattern and colours, and their own body choices (`body` in their look). Everyone else is a
+   card, as before, and a world that names nobody draws exactly what it drew before.
+   WHAT DECIDES IT, each in one place:
+     · WHO (t3PeopleBodies): a person of this world whose `npc` the list names, within PEOPLENEAR squares of the camera's focus
+       (and BODYHYST more once standing as a body, so the edge does not flicker). At most PEOPLEMAX at once, the nearest first.
+     · WHEN THEIR BODY IS MADE: a few at a time while the page is idle (t3PeopleMake, one body each time the browser says it
+       has a moment), the nearest first, so a street of them does not stall the frame they come into view in. Until it is
+       made, their card stands in, exactly as before.
+     · WHAT THEY ARE MADE FROM: npcWhimsy, the look their card is painted with (the theme's tint on the shirt included), so the
+       body wears the card's colours. A change to the look makes the body again.
+     · HOW THEY STAND AND WALK: t3BodyPose, the walk of the person you steer, its pace held to a person's (BODYSTEPS). Walking,
+       a body faces where it walks; standing, it faces the camera, as its card always does.
+     · THEIR SIGNS: the card's marks above the head (the mark of something to say, an emote) are painted where the card would
+       be, with the card itself left out, so they stand above the body as above the card.
+     · THROUGH A WALL: as their card, which a wall hides: only the person you steer is drawn through one (t3BodyThrough).
+   NOT DONE HERE: any pose but standing and walking (people have no other today); a body for a person no list names; and the
+   people of the other cameras, which draw cards as before. */
+const PEOPLENEAR=8;   /* squares from the camera's focus within which a named person is a body, not a card */
+const PEOPLEMAX=12;   /* the most people who stand as bodies at once */
+const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),JSON.stringify(bodyChoicesOf(lk.body))].join("|");
+/* one body made each time the browser has a moment (requestIdleCallback; where it has none, the next tick), nearest first.
+   A person who is no longer wanted when their turn comes is passed over */
+function t3PeopleMake(){
+  if(T3.peopleIdle)return;
+  const idle=typeof requestIdleCallback==="function"?f=>requestIdleCallback(f,{timeout:400}):f=>setTimeout(f,16);
+  T3.peopleIdle=true;
+  idle(()=>{T3.peopleIdle=false;
+    const wait=T3.peopleWait||[],on=T3.peopleOn;T3.peopleWait=[];
+    const e=wait.find(e=>on&&!on.has(e.n)&&T3.scene&&CW().npcs.includes(e.n));
+    if(!e)return;
+    try{const lk=npcWhimsy(e.n),Ch=bodyChoicesOf(lk.body),B=bodyMake(bodySkeleton("person",Ch),{...lk,body:Ch},Ch);
+      B.userData.key=e.key;B.visible=false;T3.scene.add(B);on.set(e.n,B);}
+    catch(err){t3Note("person's body",err);(T3.peopleBad||(T3.peopleBad=new Set())).add(e.n);}
+    if(wait.length>1)T3.peopleWait=wait.filter(x=>x!==e),t3PeopleMake();});}
+function t3PeopleBodies(dt){
+  const on=T3.peopleOn||(T3.peopleOn=new Map()),shown=new Set();
+  const drop=n=>{const B=on.get(n);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(n);};
+  if(!PEOPLEON.size){[...on.keys()].forEach(drop);T3.peopleShown=shown;return shown;}
+  const w=CW(),[qx,qy]=focusXY(),sc=T3PERSON/0.92,cam=T3.cam.position,wait=[];
+  const want=w.npcs.filter(n=>n.npc&&PEOPLEON.has(n.npc)&&!(T3.peopleBad&&T3.peopleBad.has(n))).map(n=>{
+      const x=n.fx===undefined?n.x:n.fx,y=n.fy===undefined?n.y:n.fy,d=Math.hypot(x-qx,y-qy),B=on.get(n);
+      return{n,x,y,d,ok:d<=PEOPLENEAR+(B&&B.visible?BODYHYST:0)};})
+    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,PEOPLEMAX);
+  const keep=new Set(want.map(e=>e.n));
+  [...on.keys()].forEach(n=>{if(keep.has(n))return;if(!w.npcs.includes(n))drop(n);else on.get(n).visible=false;});
+  want.forEach(({n,x,y})=>{const key=peopleKey(npcWhimsy(n));let B=on.get(n);
+    if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(n);B=null;}
+    if(!B){wait.push({n,key});return;}   /* their card stands in until the body is made */
+    const lift=stairLift(w,Math.round(x),Math.round(y)),walking=!!n.mv;
+    if(walking){const hx=n.mv[0]-n.x,hy=n.mv[1]-n.y;if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);}
+    else B.userData.yaw=Math.atan2(cam.x-(x+0.5),cam.z-(y+0.5));
+    const S=B.userData.skel,at=B.userData.at,go=at?Math.hypot(x-at[0],y-at[1]):0;B.userData.at=[x,y];
+    if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
+      B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
+    B.visible=true;B.position.set(x+0.5,lift,y+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    t3BodyLight(B);
+    t3BodyPose(B,B.userData.phase||0,walking,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b)));
+    shown.add(n);});
+  if(wait.length){T3.peopleWait=wait;t3PeopleMake();}
+  T3.peopleShown=shown;return shown;}
 function t3Actors(){
   const list=[];
   const w=CW();
   /* the other thing the dog leaves stands, like the ball, painted by the flat cameras' own painter (#267) — first
      in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
   decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
-  w.npcs.forEach(n=>list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,f:(g)=>{
-    drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
+  w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n);   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): his marks only */
+    list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,f:(g)=>{
+    if(!body)drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     /* the SAME painter the flat cameras use, smaller and closer because this sprite has six pixels
        of headroom — see drawSayMark. It was its own copy of the fillText until 2026-09-15, which is
        how "three engine sites" turned out to be four. */
     if(hasSay(n))drawSayMark(g,2,6,"bake");
     drawEmote(n,2,6); /* the trade is drawn BESIDE the mark here too, never instead of it */
-  }}));
+  }});});
   PEERS.forEach(p=>{if(p.w===world)list.push({x:p.x,y:p.y,f:g=>drawPerson(g,2,6,peerLook(p),{dir:t3ScreenDir(p.dir||"down"),who:p.id||p.name||"peer"})});});
   if(world===AW("dog"))list.push({x:DOG.fx,y:DOG.fy,fc:DOG,f:g=>drawDog(g,2,6)});
   if(world===AW("cat"))list.push({x:CAT.fx,y:CAT.fy,fc:CAT,f:g=>drawCat(g,2,6)});
@@ -2808,7 +2872,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Glow();
     t3Reveal();
     t3Trolley();   /* the car first: the people ask where it stands (t3Actors, tramBetween) */
-    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;t3DogBodies(T3.dogT?Math.min(0.25,(tn-T3.dogT)/1000):0);T3.dogT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
+    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;t3DogBodies(T3.dogT?Math.min(0.25,(tn-T3.dogT)/1000):0);T3.dogT=tn;t3PeopleBodies(T3.pplT?Math.min(0.25,(tn-T3.pplT)/1000):0);T3.pplT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
     t3Actors();
     t3DroneMarks();
     t3Petals();
