@@ -16882,7 +16882,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
             through = true; hide = false; const A = grab(); through = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
             Date = RD; performance.now = pn;
-            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (diff(A, B0, q)) over++; }
+            /* painted over: a pixel of theirs the step changes by more than 80 (red, green and blue summed). The step draws them again
+               over him under the two lights that step has, so a pixel of theirs it redraws can come out up to about 72 off with nothing
+               painted over it (measured on the gauge's own person, 2026-11-17); the person he steers painted over them is far past that */
+            const strong = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]) > 80;
+            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (strong(A, B0, q)) over++; }
             out.cases[k] = { body, over };
           } finally { Date = RD; performance.now = pn; if (planted) { const i = w.npcs.indexOf(planted); if (i >= 0) w.npcs.splice(i, 1); } }
         };
@@ -16969,7 +16973,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               else say(1, 'on ' + dev + ', with ' + k + ', ' + c.shows + ' pixels of them drawn over it (' + c.body + ' seen past it)'); continue; }
             const pc = c.body ? c.over / c.body : 0;
             if (!c.body) say(0, 'on ' + dev + ', with ' + k + ', no pixel of ' + who + '\'s body could be found on the screen, so whether it is covered could not be asked');
-            else if (pc > 0.06) say(0, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels (' + Math.round(pc * 100) + '%) are painted over by the step that draws the person you steer again over walls');
+            else if (pc > 0.02) say(0, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels (' + Math.round(pc * 100) + '%) are painted over by the step that draws the person you steer again over walls');
             else say(1, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels painted over'); }
           /* F · from afar, their card and no body */
           const f = await probe(p, who, (await p.evaluate(() => PEOPLENEAR + BODYHYST)) + 1.5);
