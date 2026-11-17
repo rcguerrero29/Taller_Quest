@@ -16839,13 +16839,77 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const top = new THREE.Box3().setFromObject(B).max.y;
             out.markAt = near.length ? { foot: +(Math.min(...near.map(q => q.spr.position.y)) + (typeof PEOPLEMARK === 'number' ? PEOPLEMARK : 28 / 32) * T3PERSON).toFixed(3), top: +top.toFixed(3), n: near.length } : null; }
           const top = new THREE.Box3().setFromObject(B).max.y; out.top = top;
-          /* through a wall: only the person you steer is drawn again over the street, on layer 1 (t3BodyThrough) */
-          let through = 0; B.traverse(o => { if (o.isMesh && o.layers.isEnabled(1)) through++; }); out.through = through;
           /* the marks' height: the lowest row a mark is painted on, against the top of the body */ }
         return out;
       } finally { drawPerson = dp; drawSayMark = dm; drawEmote = de; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
         n.wnext = keep.wnext; n.mv = keep.mv; n.doc = keep.doc; n.fx = n.x; n.fy = n.y; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
     }, [who, far]);
+    /* G'S PROBE: him one square farther from the camera than the named person ("him behind them"), and a card one square farther
+       than them with him one more square back ("a card behind them"). In each, three frames with time held: as drawn; with the step
+       that draws him again over walls (t3BodyThrough) held off; and that with their body hidden. Their pixels are where the last two
+       differ, and the pixels painted over are those of theirs where the first two differ */
+    const occl = (p, who) => p.evaluate(async who => {
+      const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
+      const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, dir, wnext: n.wnext, mv: n.mv };
+      const RD = Date, now0 = RD.now(), pn = performance.now.bind(performance), p0 = pn();
+      const tb = t3BodyThrough, tp = t3PeopleBodies; let hide = false, through = true;
+      const free = (x, y) => w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !stairLift(w, x, y);
+      const out = { cases: {} };
+      try {
+        n.mv = null; n.wnext = Infinity; n.fx = n.x; n.fy = n.y; moving = false; el.hidden = false; camSet('3d'); sizeCanvas();
+        t3BodyThrough = function () { if (through) return tb.apply(this, arguments); };
+        t3PeopleBodies = function () { const r = tp.apply(this, arguments); if (hide) { const B = T3.peopleOn.get(n); if (B) B.visible = false; } return r; };
+        const c3 = T3.renderer.domElement;
+        const grab = () => { draw3d(); const W = c3.width, H = c3.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, W, H).data; };
+        const diff = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]) > 24;
+        /* away from the camera, which looks along the map's y from its larger end (T3.yaw 0): y - 1. They are stood, for these frames
+           only, on the nearest free square with two free squares behind it, the grid's mark of them moved with them and put back */
+        const ax = [0, -1]; let spot = null, best = Infinity;
+        for (let y = 2; y < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - n.x) + Math.abs(y - n.y);
+          if (d < best && (free(x, y) || (x === n.x && y === n.y)) && free(x, y - 1) && free(x, y - 2) && free(x, y + 1)) { best = d; spot = [x, y]; } }
+        if (!spot) return { why: 'no free square with two free squares behind it in the world the game starts in, so the pixels were not asked' };
+        out.moved = { from: [n.x, n.y], to: spot };
+        w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = spot[0]; n.y = n.fy = spot[1]; w.grid[n.y][n.x] = 'N';
+        const run = async (k, me, card) => {
+          if (!free(me[0], me[1]) || (card && !free(card[0], card[1]))) { out.cases[k] = { why: 'no free square for ' + k + ' beside ' + who + ', so it was not asked' }; return; }
+          px = fx = me[0]; py = fy = me[1]; dir = 'up';
+          let planted = null; if (card) { const key = Object.keys(NPCLOOK).find(q => NPCLOOK[q] && !PEOPLEON.has(q));
+            planted = { key, x: card[0], y: card[1], fx: card[0], fy: card[1], q: [], wnext: Infinity, mv: null, face: 1 }; w.npcs.push(planted); }
+          try {
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            if (!(T3.peopleShown && T3.peopleShown.has(n))) { out.cases[k] = { why: who + ' was not a body with ' + k + ', so it was not asked' }; return; }
+            /* time held for the three frames, so the only differences are the ones asked */
+            Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
+            through = true; hide = false; const A = grab(); through = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
+            Date = RD; performance.now = pn;
+            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (diff(A, B0, q)) over++; }
+            out.cases[k] = { body, over };
+          } finally { Date = RD; performance.now = pn; if (planted) { const i = w.npcs.indexOf(planted); if (i >= 0) w.npcs.splice(i, 1); } }
+        };
+        await run('him one square behind them', [n.x + ax[0], n.y + ax[1]]);
+        /* behind a wall: they stand where a wall is between them and the camera, and he in front of it. The pixels of them that show
+           only because of the step that draws him again over walls are counted (`through`): their card would be hidden there */
+        { const wallish = (x, y) => { const g0 = w.grid[y] && w.grid[y][x], m = g0 && TILES[g0]; return !!m && (m.kind === 'wall' || m.kind === 'facade'); };
+          let ws = null, wb = Infinity;
+          for (let y = 0; y + 2 < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - out.moved.to[0]) + Math.abs(y - out.moved.to[1]);
+            if (d < wb && free(x, y) && wallish(x, y + 1) && free(x, y + 2)) { wb = d; ws = [x, y]; } }
+          if (!ws) out.cases['a wall between them and the camera'] = { why: 'no free square with a wall in front of it in the world the game starts in, so a wall was not asked' };
+          else { w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = ws[0]; n.y = n.fy = ws[1]; w.grid[n.y][n.x] = 'N';
+            px = fx = ws[0]; py = fy = ws[1] + 2; dir = 'up';
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            if (!(T3.peopleShown && T3.peopleShown.has(n))) out.cases['a wall between them and the camera'] = { why: who + ' was not a body behind a wall, so it was not asked' };
+            else { Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
+              through = true; hide = false; const A = grab(); hide = true; const Ah = grab(); through = false; hide = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
+              Date = RD; performance.now = pn;
+              let body = 0, shows = 0; for (let q = 0; q < A.length; q += 4) { const seen = diff(B0, M, q); if (seen) body++; else if (diff(A, Ah, q)) shows++; }
+              out.cases['a wall between them and the camera'] = { wall: true, body, shows }; }
+            w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = out.moved.to[0]; n.y = n.fy = out.moved.to[1]; w.grid[n.y][n.x] = 'N'; } }
+        await run('a card one square behind them and him behind it', [n.x + 2 * ax[0], n.y + 2 * ax[1]], [n.x + ax[0], n.y + ax[1]]);
+        return out;
+      } finally { if (out.moved) { w.grid[n.y][n.x] = w.rows[n.y][n.x]; [n.x, n.y] = out.moved.from; n.fx = n.x; n.fy = n.y; w.grid[n.y][n.x] = 'N'; }
+        Date = RD; performance.now = pn; t3BodyThrough = tb; t3PeopleBodies = tp; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; dir = keep.dir;
+        n.wnext = keep.wnext; n.mv = keep.mv; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
+    }, who);
     try {
       if (!own.three) say(1, 'this shell has no 3D camera, so nobody stands as a body here and nothing was asked');
       else if (!own.who) say(1, 'the world the game starts in has nobody with a name and a look, so nobody could be named');
@@ -16890,10 +16954,20 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!r.marks.body) say(0, 'on ' + dev + ', ' + who + ' with something to say is no longer a body');
           else { if (!r.marks.mark) say(0, 'on ' + dev + ', ' + who + ', a body with something to say, has no mark above their head');
             if (r.marks.card) say(0, 'on ' + dev + ', ' + who + '\'s card is painted under their mark while they stand as a body'); }
-          /* G · a wall hides them, as it hides their card: no part of their body is drawn again through walls */
+          /* E2 · their marks above their heads, not over them (the owner's word on the first pictures, 2026-11-17) */
           if (!r.markAt) say(0, 'on ' + dev + ', no picture stands where ' + who + '\'s marks should be, so whether they are above the head could not be asked');
           else if (r.markAt.foot < r.markAt.top) say(0, 'on ' + dev + ', ' + who + '\'s mark starts ' + r.markAt.foot + ' up, below the top of their head (' + r.markAt.top + '): it covers the body');
-          if (r.through) say(0, 'on ' + dev + ', ' + r.through + ' parts of ' + who + '\'s body are drawn again over the street like the person you steer, so a wall or a counter in front of them does not hide them');
+          /* G · in front of him, and behind a card: measured in pixels (Chema, run 2026-11-17-claude-5d3e: a check that counted parts
+             on a layer passed with both faults present) */
+          const o = await occl(p, who);
+          if (o.why) say(1, 'on ' + dev + ', ' + o.why);
+          else for (const [k, c] of Object.entries(o.cases)) { if (c.why) { say(1, 'on ' + dev + ', ' + c.why); continue; }
+            if (c.wall) { if (c.shows > 30) say(0, 'on ' + dev + ', with ' + k + ', ' + c.shows + ' pixels of ' + who + ' are drawn over the wall, where their card would be hidden: they are drawn again over walls like the person you steer');
+              else say(1, 'on ' + dev + ', with ' + k + ', ' + c.shows + ' pixels of them drawn over it (' + c.body + ' seen past it)'); continue; }
+            const pc = c.body ? c.over / c.body : 0;
+            if (!c.body) say(0, 'on ' + dev + ', with ' + k + ', no pixel of ' + who + '\'s body could be found on the screen, so whether it is covered could not be asked');
+            else if (pc > 0.06) say(0, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels (' + Math.round(pc * 100) + '%) are painted over by the step that draws the person you steer again over walls');
+            else say(1, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels painted over'); }
           /* F · from afar, their card and no body */
           const f = await probe(p, who, (await p.evaluate(() => PEOPLENEAR + BODYHYST)) + 1.5);
           if (f.why) say(1, 'on ' + dev + ', ' + f.why + ', so ' + who + ' from afar was not asked');

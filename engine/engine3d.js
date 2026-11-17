@@ -2284,6 +2284,13 @@ function t3BodyThrough(){
   T3.pool.forEach(p=>{if(p.live&&p.spr.visible&&!p.spr.userData.drone&&cam.position.distanceTo(p.spr.position)<me){
     const m=p.spr.material;near.push([p.spr,m.stencilWrite,m.stencilFunc]);m.stencilWrite=true;m.stencilFunc=THREE.EqualStencilFunc;m.stencilRef=1;
     m.stencilZPass=m.stencilZFail=m.stencilFail=THREE.KeepStencilOp;p.spr.layers.enable(1);}});
+  /* AND ANYONE STANDING AS A BODY NEARER THE CAMERA (THE OTHER PEOPLE'S BODIES, mq-v274), as a nearer card is: drawn again only
+     where he is, their ground shadow left out. Without it he stood on the head of anyone he walked behind (Chema, run
+     2026-11-17-claude-5d3e: 1,068 to 1,665 pixels of a body painted over on a laptop) */
+  (T3.peopleShown||new Set()).forEach(n=>{const P=T3.peopleOn&&T3.peopleOn.get(n);
+    if(!P||!P.visible||cam.position.distanceTo(P.position)>=me)return;
+    P.traverse(o=>{if(!o.isMesh||(o.userData&&o.userData.shadow))return;const m=o.material;near.push([o,m.stencilWrite,m.stencilFunc]);
+      m.stencilWrite=true;m.stencilFunc=THREE.EqualStencilFunc;m.stencilRef=1;m.stencilZPass=m.stencilZFail=m.stencilFail=THREE.KeepStencilOp;o.layers.enable(1);});});
   const bg=T3.scene.background;T3.scene.background=null;   /* a colour behind the scene clears the screen on every render: not this one */
   r.autoClear=false;r.clearDepth();cam.layers.set(1);
   try{r.render(T3.scene,cam);}
@@ -2679,7 +2686,8 @@ function t3DogBodies(dt){
      · THEIR SIGNS: the card's marks (the mark of something to say, an emote) are painted by the card's own painter with the card
        itself left out, lifted so they stand just above that body's head (PEOPLEMARK).
      · THROUGH A WALL: as their card, which a wall hides: only the person you steer is drawn through one (t3BodyThrough), so
-       their parts are taken off the layer it draws again (t3PeopleMake).
+       their parts are taken off the layer it draws again and leave no mark on the screen (t3PeopleMake); and one who stands
+       nearer the camera than he does is drawn again over him, only where he is, as a nearer card is (t3BodyThrough).
    NOT DONE HERE: any pose but standing and walking (people have no other today); a body for a person no list names; and the
    people of the other cameras, which draw cards as before. */
 const PEOPLENEAR=8;   /* squares from the camera's focus within which a named person is a body, not a card */
@@ -2709,7 +2717,10 @@ function t3PeopleMake(){
       /* NOT THROUGH A WALL: the maker puts every part on layer 1, the layer t3BodyThrough draws again over the street so a wall
          never hides the person you steer. Another person is hidden by a wall as their card is, so their parts leave it (found on
          the first pictures, 2026-11-17: a body at a window was drawn over the counter in front of it) */
-      B.traverse(o=>o.layers.disable(1));
+      B.traverse(o=>{o.layers.disable(1);if(o.material)o.material.stencilWrite=false;});
+      /* and their parts leave no mark on the screen: the nearer cards t3BodyThrough draws again over the person you steer are
+         drawn only where his parts marked it, so a body that marked it too was painted over by a card behind it (Chema, run
+         2026-11-17-claude-5d3e: a card one square behind a named body covered 2,006 to 2,570 of its pixels on a laptop) */
       B.userData.key=e.key;B.visible=false;B.scale.setScalar(T3PERSON/0.92);B.updateMatrixWorld(true);
       B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;   /* the top of this body, standing, at the street's scale */
       T3.scene.add(B);on.set(e.n,B);}
