@@ -16902,12 +16902,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
       const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, dir, wnext: n.wnext, mv: n.mv };
       const RD = Date, now0 = RD.now(), pn = performance.now.bind(performance), p0 = pn();
-      const tb = t3BodyThrough, tp = t3PeopleBodies; let hide = false, through = true;
+      const tb = t3BodyThrough, tp = t3PeopleBodies; let hide = false, through = true, bare = false;
       const free = (x, y) => w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !stairLift(w, x, y);
       const out = { cases: {} };
       try {
         n.mv = null; n.wnext = Infinity; n.fx = n.x; n.fy = n.y; moving = false; el.hidden = false; camSet('3d'); sizeCanvas();
-        t3BodyThrough = function () { if (through) return tb.apply(this, arguments); };
+        /* bare: the step runs, but hands it none of the people's bodies, so it paints the person you steer over all of them: what
+           "painted over" looks like, frame by frame */
+        t3BodyThrough = function () { if (!through) return; if (!bare) return tb.apply(this, arguments);
+          const ps = T3.peopleShown; T3.peopleShown = new Set(); try { return tb.apply(this, arguments); } finally { T3.peopleShown = ps; } };
         t3PeopleBodies = function () { const r = tp.apply(this, arguments); if (hide) { const B = T3.peopleOn.get(n); if (B) B.visible = false; } return r; };
         const c3 = T3.renderer.domElement;
         const grab = () => { draw3d(); const W = c3.width, H = c3.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, W, H).data; };
@@ -16930,13 +16933,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (!(T3.peopleShown && T3.peopleShown.has(n))) { out.cases[k] = { why: who + ' was not a body with ' + k + ', so it was not asked' }; return; }
             /* time held for the three frames, so the only differences are the ones asked */
             Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
-            through = true; hide = false; const A = grab(); through = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
+            through = true; hide = false; const A = grab(); bare = true; const Pv = grab(); bare = false; through = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
             Date = RD; performance.now = pn;
-            /* painted over: a pixel of theirs the step changes by more than 80 (red, green and blue summed). The step draws them again
-               over him under the two lights that step has, so a pixel of theirs it redraws can come out up to about 72 off with nothing
-               painted over it (measured on the gauge's own person, 2026-11-17); the person he steers painted over them is far past that */
-            const strong = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]) > 80;
-            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (strong(A, B0, q)) over++; }
+            /* painted over: a pixel of theirs that comes out as the frame where the step paints him over them all (Pv) has it, within 12,
+               and not as the frame where the step does not run (B0). The step draws them again over him under the two
+               lights it has, so a pixel of theirs it redraws can come out a shade off with nothing painted over it: up to 72 on the gauge's
+               own person and 95 on a town's, where a size of change alone could not tell the two apart (2026-11-18) */
+            const dist = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]);
+            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (diff(A, B0, q) && dist(A, Pv, q) <= 12) over++; }
             out.cases[k] = { body, over };
           } finally { Date = RD; performance.now = pn; if (planted) { const i = w.npcs.indexOf(planted); if (i >= 0) w.npcs.splice(i, 1); } }
         };
@@ -16998,7 +17002,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           /* C · the card's colours */
           /* a style may paint its hair a shade off the card's paint (a short cut is darker), so a colour counts as worn when a part is
              within 45 of it, summed over red, green and blue: a body in somebody else's colours is far past that */
-          const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), near2 = (a, b) => { const x = hex(a), y = hex(b); return Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45; };
+          /* or the same colour a shade darker or lighter, as a style paints it (a cap's grey hair a fifth darker, 2026-11-18): each of red,
+             green and blue the same share of the card's, between 0.55 and 1.2, within 0.07 of one another */
+          const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), near2 = (a, b) => { const x = hex(a), y = hex(b);
+            if (Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45) return true;
+            const r = x.map((v, i) => (v + 4) / (y[i] + 4)), m = (r[0] + r[1] + r[2]) / 3;
+            return m >= 0.55 && m <= 1.2 && r.every(v => Math.abs(v - m) <= 0.07); };
           const miss = ['shirt', 'skin', 'hair'].filter(k => !r.cols.some(c => near2(c, r.lk[k])));
           if (miss.length) say(0, 'on ' + dev + ', ' + who + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its parts are ' + r.cols.join(' '));
           /* D · facing where they walk, and the camera when they stand, and their legs moving as they walk */
