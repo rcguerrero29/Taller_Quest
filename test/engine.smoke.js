@@ -5915,6 +5915,16 @@ function findChromium() {
       const w = WORLDS[id];
       const n = (w.npcs || []).find(p2 => wanders(p2));
       if (!n) return;                                   /* nobody moves here: nobody can cork it */
+      /* A STEP UNDER WAY IS SET ASIDE FIRST (2026-11-18). From mq-v275 a walker claims the square it steps to when the step starts
+         (grep "THE SQUARE IS CLAIMED"), so one caught mid-step marks two squares. The page's own walkers keep walking until this
+         runs, so whichever of them is mid-step at that moment, the one moved below included, would leave a claim the audit reads
+         as somebody standing there: red on the gauge's library world now and then (Taller_Quest #93's CI, and again on this
+         branch's own run). Every walker of this world is held still for the audit, its claim given back, and all of it is put
+         back after */
+      const held = (w.npcs || []).filter(q => q.mv).map(q => { const [cx, cy] = q.mv, own = w.grid[cy] && w.grid[cy][cx];
+        if (own === 'N' && !w.npcs.some(m => m !== q && m.x === cx && m.y === cy)) w.grid[cy][cx] = w.rows[cy][cx];
+        const o = { q, mv: q.mv, mt: q.mt, fx: q.fx, fy: q.fy, cx, cy, own }; q.mv = null; q.mt = 0; q.fx = q.x; q.fy = q.y; return o; });
+      const unhold = () => held.forEach(o => { o.q.mv = o.mv; o.q.mt = o.mt; o.q.fx = o.fx; o.q.fy = o.fy; if (w.grid[o.cy]) w.grid[o.cy][o.cx] = o.own; });
       const ok = (x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]);
       const all = []; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (ok(x, y)) all.push([x, y]);
       const reach = (bx, by) => { const st = all.find(([x, y]) => !(x === bx && y === by));
@@ -5936,7 +5946,7 @@ function findChromium() {
           if (w.grid[y]) w.grid[y][x] = w.rows[y][x];
           n.x = ox; n.y = oy; if (w.grid[oy]) w.grid[oy][ox] = 'N';
         });
-      } finally { n.x = ox; n.y = oy; if (w.grid[oy]) w.grid[oy][ox] = 'N'; }
+      } finally { n.x = ox; n.y = oy; if (w.grid[oy]) w.grid[oy][ox] = 'N'; unhold(); }
       /* and the wanderer must never CHOOSE one, which is the half that fixes the player rather
          than the audit — an auditor that forgives a corked gap still leaves somebody standing in it */
       if (typeof wanderCuts === 'function') {
