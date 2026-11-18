@@ -5854,6 +5854,45 @@ function findChromium() {
      and ask the auditor each time. Not one sampled tile, and not a tile this test chose — the set
      is derived from the map. Red first at 35 of 35; the plant that restores the old reader still
      names "rigo in ex", which is the person the register predicted three days before the fix. */
+  /* ---- A WALKER CLAIMS ITS NEXT SQUARE WHEN IT STARTS THE STEP (mq-v275) ----
+     Chava's playtest of run 2026-11-17-claude-5d3e: a walker walked into the person you steer and stood inside them for over a
+     minute. The grid marked a walker's next square only when the step was done, so for the step's length the person you steer
+     could step onto it as well; and a walker could choose the square you are stepping off. Asked on the first walker of the
+     first world that has one with an open square beside it, its next step forced (Math.random held) toward each open side in
+     turn, with you two squares off, then with you stepping off a square beside it. Red on mq-v274: the square was not taken. */
+  const claims = await page.evaluate(() => {
+    const P = [];
+    if (typeof wanderUpdate !== 'function' || typeof wanders !== 'function') { P.push('COUNT-ONLY: the walker\'s claim: the engine has no wanderUpdate() or wanders(), so nothing was asked'); return P; }
+    const keep = { world, px, py, fx, fy, moving, rnd: Math.random, card: $('card').hidden, reader: $('reader').hidden };
+    let asked = 0;
+    try {
+      for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
+        for (const n of w.npcs || []) { if (!wanders(n) || n.mv) continue;
+          const open = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [n.x + dx, n.y + dy]).filter(([x, y]) => w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !DOORSET.has(w.rows[y][x]));
+          if (!open.length) continue;
+          world = id; $('card').hidden = true; $('reader').hidden = true; moving = false;
+          const far = (() => { for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (Math.abs(x - n.x) + Math.abs(y - n.y) >= 4 && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') return [x, y]; return null; })();
+          if (!far) continue;
+          const step = (r) => { const o = { x: n.x, y: n.y, hx: n.hx, hy: n.hy, wnext: n.wnext }; n.wnext = 0; Math.random = () => r; wanderUpdate(1); Math.random = keep.rnd;
+            const t = n.mv; let taken = null, solid = null;
+            if (t) { taken = w.grid[t[1]][t[0]] === 'N'; solid = isSolid(t[0], t[1]); if (taken) w.grid[t[1]][t[0]] = w.rows[t[1]][t[0]]; }
+            n.mv = null; n.mt = 0; n.wnext = o.wnext; return { t, taken, solid }; };
+          /* you two squares off (far), and the walker's step toward each side in turn */
+          px = fx = far[0]; py = fy = far[1];
+          const chosen = [];
+          for (let k = 0; k < 4; k++) { const r = step((k + 0.5) / 4); if (!r.t) continue; asked++; chosen.push(r.t);
+            if (!r.taken || !r.solid) { P.push('in ' + id + ', ' + (n.npc || n.key) + ' starting a step to (' + r.t + ') leaves that square open until the step is done, so the person you steer can step onto it as well and stand inside them'); break; } }
+          /* you stepping off a square it can step to (one it chose above), toward a square two off: it never chooses the square you
+             are leaving */
+          for (const [bx, by] of chosen) { fx = bx; fy = by; px = far[0]; py = far[1]; let bad = false;
+            for (let k = 0; k < 8 && !bad; k++) { const r = step((k + 0.5) / 8); if (r.t && r.t[0] === bx && r.t[1] === by) bad = true; }
+            if (bad) { P.push('in ' + id + ', ' + (n.npc || n.key) + ' chose the square (' + bx + ',' + by + ') the person you steer is still stepping off'); break; } }
+          if (asked) break; }
+        if (asked) break; }
+    } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; Math.random = keep.rnd; $('card').hidden = keep.card; $('reader').hidden = keep.reader; }
+    if (!asked) P.push('COUNT-ONLY: the walker\'s claim: no walker with an open square beside it, so nothing was asked');
+    return P; });
+  fails.push(...claims);
   const walled = await page.evaluate(() => {
     const P = [];
     if (typeof auditReach !== 'function' || typeof wanders !== 'function') {
