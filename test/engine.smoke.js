@@ -5864,6 +5864,9 @@ function findChromium() {
     const P = [];
     if (typeof wanderUpdate !== 'function' || typeof wanders !== 'function') { P.push('COUNT-ONLY: the walker\'s claim: the engine has no wanderUpdate() or wanders(), so nothing was asked'); return P; }
     const keep = { world, px, py, fx, fy, moving, rnd: Math.random, card: $('card').hidden, reader: $('reader').hidden };
+    /* every room as it stands, to prove this check leaves none of them changed (the next check reads the grid) */
+    const roomsNow = () => JSON.stringify(Object.keys(WORLDS).map(id => [id, WORLDS[id].grid.map(r => r.join('')), (WORLDS[id].npcs || []).map(q => [q.x, q.y, q.mv])]));
+    const before = roomsNow();
     let asked = 0;
     try {
       for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
@@ -5873,10 +5876,17 @@ function findChromium() {
           world = id; $('card').hidden = true; $('reader').hidden = true; moving = false;
           const far = (() => { for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (Math.abs(x - n.x) + Math.abs(y - n.y) >= 4 && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') return [x, y]; return null; })();
           if (!far) continue;
-          const step = (r) => { const o = { x: n.x, y: n.y, hx: n.hx, hy: n.hy, wnext: n.wnext }; n.wnext = 0; Math.random = () => r; wanderUpdate(1); Math.random = keep.rnd;
+          /* wanderUpdate moves every walker of the world whose time has come, not only this one, so each forced step saves the
+             whole grid and every walker first and puts them all back after: a walker left in the middle of a step, holding the
+             square it claimed, would be read by the next check as somebody standing there (the gauge's library world on
+             Taller_Quest #93's CI, 2026-11-18) */
+          const step = (r) => { const g0 = w.grid.map(row => row.slice()), s0 = w.npcs.map(q => ({ q, x: q.x, y: q.y, fx: q.fx, fy: q.fy, mv: q.mv, mt: q.mt, wnext: q.wnext, face: q.face }));
+            n.wnext = 0; Math.random = () => r;
+            try { wanderUpdate(1); } finally { Math.random = keep.rnd; }
             const t = n.mv; let taken = null, solid = null;
-            if (t) { taken = w.grid[t[1]][t[0]] === 'N'; solid = isSolid(t[0], t[1]); if (taken) w.grid[t[1]][t[0]] = w.rows[t[1]][t[0]]; }
-            n.mv = null; n.mt = 0; n.wnext = o.wnext; return { t, taken, solid }; };
+            if (t) { taken = w.grid[t[1]][t[0]] === 'N'; solid = isSolid(t[0], t[1]); }
+            g0.forEach((row, y) => { w.grid[y] = row; }); s0.forEach(o => Object.assign(o.q, { x: o.x, y: o.y, fx: o.fx, fy: o.fy, mv: o.mv, mt: o.mt, wnext: o.wnext, face: o.face }));
+            return { t, taken, solid }; };
           /* you two squares off (far), and the walker's step toward each side in turn */
           px = fx = far[0]; py = fy = far[1];
           const chosen = [];
@@ -5891,6 +5901,7 @@ function findChromium() {
         if (asked) break; }
     } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; Math.random = keep.rnd; $('card').hidden = keep.card; $('reader').hidden = keep.reader; }
     if (!asked) P.push('COUNT-ONLY: the walker\'s claim: no walker with an open square beside it, so nothing was asked');
+    if (roomsNow() !== before) P.push('the walker\'s claim: this check left a room changed (a square marked, or a walker moved or mid-step), so every check after it reads a world nobody is playing');
     return P; });
   fails.push(...claims);
   const walled = await page.evaluate(() => {
