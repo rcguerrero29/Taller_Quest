@@ -105,13 +105,16 @@ function findChromium() {
      grep "THE DOG'S BODY"), so cardOn holds every dog's body off as well, and works in a world that names only the dog */
   const cardOn = async (p, what) => { const held = await p.evaluate(() => {
       const man = typeof BODYON !== 'undefined' && BODYON && typeof t3Body === 'function', dog = typeof DOGBODYON !== 'undefined' && DOGBODYON && typeof t3DogBodies === 'function';
-      if ((!man && !dog) || window.__bodyKept || window.__dogKept) return false;
+      const ppl = typeof PEOPLEON !== 'undefined' && PEOPLEON.size > 0 && typeof t3PeopleBodies === 'function';   /* mq-v274: and the people a world names (THE OTHER PEOPLE'S BODIES) */
+      if ((!man && !dog && !ppl) || window.__bodyKept || window.__dogKept || window.__pplKept) return false;
       if (man) { window.__bodyKept = t3Body; t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; }
       if (dog) { window.__dogKept = t3DogBodies; t3DogBodies = () => { const s = new Set(); if (T3.dogOn) T3.dogOn.forEach(B => { B.visible = false; }); T3.dogShown = s; return s; }; }
+      if (ppl) { window.__pplKept = t3PeopleBodies; t3PeopleBodies = () => { const s = new Set(); if (T3.peopleOn) T3.peopleOn.forEach(B => { B.visible = false; }); T3.peopleShown = s; return s; }; }
       return true; });
     if (held) carded.add(what); return held; };
   const cardOff = async (p, held) => { if (held && !p.isClosed()) await p.evaluate(() => { if (window.__bodyKept) { t3Body = window.__bodyKept; delete window.__bodyKept; }
-      if (window.__dogKept) { t3DogBodies = window.__dogKept; delete window.__dogKept; } }); };
+      if (window.__dogKept) { t3DogBodies = window.__dogKept; delete window.__dogKept; }
+      if (window.__pplKept) { t3PeopleBodies = window.__pplKept; delete window.__pplKept; } }); };
   const byCard = async (p, what, run) => { const held = await cardOn(p, what); try { return await run(); } finally { await cardOff(p, held); } };
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [], warns = [];
@@ -16763,6 +16766,226 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       }
     } finally { for (const c of opened) await c.close(); }
     fails.push(...DP, ...DN);
+  }
+
+  /* ---- THE OTHER PEOPLE'S BODIES (mq-v274) ----
+     A world that names people in its own PEOPLETAKE list, and takes the person's body (BODYTAKE names `person`), sees each of
+     them near the camera's focus in the 3D camera as a jointed body made from their look, the card standing in until the body
+     is made while the page is idle (engine/engine3d.js, grep "THE OTHER PEOPLE'S BODIES"). A world that names nobody sees
+     every person as a card, as before.
+     Each sentence below is what a person would say if that part broke. The person asked is the first person of the world the
+     game starts in who has a name in NPCLOOK; the person you steer is put two squares from them, their wandering held, and
+     each frame drawn by the 3D camera's own draw3d. Asked on a phone and on a laptop. Red on the skeleton of mq-v274 (each
+     sentence seen red, with t3PeopleBodies written to do nothing, in a copy of the tree outside the repository). */
+  {
+    const PB = [], say = (k, m) => PB.push((k ? 'COUNT-ONLY: ' : '') + 'the other people\'s bodies: ' + m);
+    const pShell = fs.readFileSync(file, 'utf8'), pBoot = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
+    const pHref = require('url').pathToFileURL(file).href, pPack = new URL('__peopletake.js', pHref).href;
+    const own = await page.evaluate(() => ({ body: typeof BODYTAKE === 'undefined' ? null : JSON.stringify(BODYTAKE), ppl: typeof PEOPLETAKE === 'undefined' ? null : JSON.stringify(PEOPLETAKE),
+      three: typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d')),
+      who: ((WORLDS[PL.home] || { npcs: [] }).npcs.find(n => n.npc && lookOf(n)) || {}).npc || null }));   /* from the world the game starts in, wherever this page stands now */
+    const ownBody = own.body === null ? null : JSON.parse(own.body), ownPpl = own.ppl === null ? null : JSON.parse(own.ppl);
+    const opened = [];
+    const openWith = async (pack, vw) => { const ctx = await browser.newContext({ viewport: vw }); opened.push(ctx);
+      const p = await ctx.newPage(), err = []; p.on('pageerror', e => err.push(e.message));
+      const doc = pack ? pShell.replace(pBoot, m => '<script src="__peopletake.js"></script>\n' + m) : pShell;
+      await ctx.route('**', r => { const u = r.request().url();
+        if (u === pHref) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
+        if (pack && u === pPack) return r.fulfill({ body: pack, contentType: 'text/javascript; charset=utf-8' });
+        return u.startsWith('file://') ? r.continue() : r.abort(); });
+      await p.goto(pHref); await boot(p); return { p, err }; };
+    /* THE PROBE, on a page: the person `who` held still, the person you steer put `far` squares (or two) from them, the 3D camera on,
+       frames drawn with the cards' painters watched; returns what was seen, and puts everything back */
+    const probe = (p, who, far) => p.evaluate(async ([who, far]) => {
+      const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
+      const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, wnext: n.wnext, mv: n.mv, doc: n.doc, x: n.x, y: n.y };
+      /* whose mark is whose: a person's painter draws their card, then their mark, then their emote (drawEmote, which is handed the
+         person), so the marks drawn since the last emote belong to the person that emote names */
+      const painted = { card: 0, mark: 0 }, dp = drawPerson, dm = drawSayMark, de = drawEmote; let pend = 0;
+      drawPerson = function (g, sx, sy, lk, o) { pend = 0; if (o && o.who === who) painted.card++; return dp.apply(this, arguments); };
+      drawSayMark = function () { pend++; return dm.apply(this, arguments); };
+      drawEmote = function (q) { if (q === n) painted.mark += pend; pend = 0; return de.apply(this, arguments); };
+      try {
+        n.mv = null; n.mt = 0; n.wnext = Infinity; n.fx = n.x; n.fy = n.y;
+        /* a free square at the distance asked, the nearest such to them */
+        const want = far || 2; let at = null, best = Infinity;
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N' || stairLift(w, x, y)) continue;
+          const d = Math.hypot(x - n.x, y - n.y), e = Math.abs(d - want); if (d >= want - 0.01 && e < best) { best = e; at = [x, y]; } }
+        if (!at) return { why: 'no free square ' + want + ' squares from ' + who };
+        px = fx = at[0]; py = fy = at[1]; moving = false; el.hidden = false; camSet('3d'); sizeCanvas();
+        const frame = () => { painted.card = 0; painted.mark = 0; const ok = draw3d(); return ok; };
+        const seen = [];
+        const look = () => { const B = T3.peopleOn && T3.peopleOn.get(n); return { ok: !T3.fail, body: !!(B && B.visible && B.parent === T3.scene && T3.peopleShown && T3.peopleShown.has(n)), card: painted.card > 0, B }; };
+        frame(); const first = look(); first.made = T3.peopleOn ? T3.peopleOn.size : 0;   /* in that same moment: made while idle, so none yet */
+        /* the page's idle moments make the body: give it a few */
+        for (let k = 0; k < 12 && !look().body; k++) { await new Promise(r => setTimeout(r, 120)); frame(); }
+        const s = look(); seen.push(first, s);
+        const out = { first: { body: first.body, card: first.card, ok: first.ok, made: first.made }, now: { body: s.body, card: s.card, ok: s.ok }, made: T3.peopleOn ? T3.peopleOn.size : 0, on: typeof PEOPLEON === 'undefined' ? null : PEOPLEON.size };
+        if (s.body) { const B = s.B, lk = npcWhimsy(n), cols = new Set();
+          B.traverse(o => { if (o.isMesh && o.userData.base) cols.add('#' + o.userData.base.getHexString().toUpperCase()); });
+          out.cols = [...cols]; out.lk = { shirt: lk.shirt.toUpperCase(), skin: lk.skin.toUpperCase(), hair: lk.hair.toUpperCase() };
+          /* facing: walking right, walking toward the camera's +y, and standing */
+          const yaw = () => { t3PeopleBodies(0.016); return B.rotation.y; };
+          n.mv = [n.x + 1, n.y]; n.mt = 0.3; n.fx = n.x + 0.3; out.right = yaw();
+          n.mv = [n.x, n.y + 1]; n.fx = n.x; n.fy = n.y + 0.3; out.down = yaw();
+          const ph0 = B.userData.phase || 0; n.fy = n.y + 0.6; t3PeopleBodies(0.05); out.stepped = (B.userData.phase || 0) > ph0;
+          n.mv = null; n.fx = n.x; n.fy = n.y; out.stand = yaw();
+          const c = T3.cam.position; out.toCam = Math.atan2(c.x - (n.x + 0.5), c.z - (n.y + 0.5));
+          /* the marks: something to say, while a body */
+          n.doc = n.doc || 'probe'; frame(); out.marks = { card: painted.card, mark: painted.mark, body: look().body };
+          /* where the marks stand: the billboard painted for them is the one nearest their square (pulled toward the camera), and
+             a mark's lowest row is painted PEOPLEMARK of a person's height above the billboard's feet */
+          { const cx = n.x + 0.5, cz = n.y + 0.5, near = T3.pool.filter(q => q.live !== false && q.spr.visible && !q.spr.userData.hero && !q.spr.userData.mark && Math.hypot(q.spr.position.x - cx, q.spr.position.z - cz) < 0.45);
+            const top = new THREE.Box3().setFromObject(B).max.y;
+            out.markAt = near.length ? { foot: +(Math.min(...near.map(q => q.spr.position.y)) + (typeof PEOPLEMARK === 'number' ? PEOPLEMARK : 28 / 32) * T3PERSON).toFixed(3), top: +top.toFixed(3), n: near.length } : null; }
+          const top = new THREE.Box3().setFromObject(B).max.y; out.top = top;
+          /* the marks' height: the lowest row a mark is painted on, against the top of the body */ }
+        return out;
+      } finally { drawPerson = dp; drawSayMark = dm; drawEmote = de; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
+        n.wnext = keep.wnext; n.mv = keep.mv; n.doc = keep.doc; n.fx = n.x; n.fy = n.y; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
+    }, [who, far]);
+    /* G'S PROBE: him one square farther from the camera than the named person ("him behind them"), and a card one square farther
+       than them with him one more square back ("a card behind them"). In each, three frames with time held: as drawn; with the step
+       that draws him again over walls (t3BodyThrough) held off; and that with their body hidden. Their pixels are where the last two
+       differ, and the pixels painted over are those of theirs where the first two differ */
+    const occl = (p, who) => p.evaluate(async who => {
+      const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
+      const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, dir, wnext: n.wnext, mv: n.mv };
+      const RD = Date, now0 = RD.now(), pn = performance.now.bind(performance), p0 = pn();
+      const tb = t3BodyThrough, tp = t3PeopleBodies; let hide = false, through = true;
+      const free = (x, y) => w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !stairLift(w, x, y);
+      const out = { cases: {} };
+      try {
+        n.mv = null; n.wnext = Infinity; n.fx = n.x; n.fy = n.y; moving = false; el.hidden = false; camSet('3d'); sizeCanvas();
+        t3BodyThrough = function () { if (through) return tb.apply(this, arguments); };
+        t3PeopleBodies = function () { const r = tp.apply(this, arguments); if (hide) { const B = T3.peopleOn.get(n); if (B) B.visible = false; } return r; };
+        const c3 = T3.renderer.domElement;
+        const grab = () => { draw3d(); const W = c3.width, H = c3.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return g.getImageData(0, 0, W, H).data; };
+        const diff = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]) > 24;
+        /* away from the camera, which looks along the map's y from its larger end (T3.yaw 0): y - 1. They are stood, for these frames
+           only, on the nearest free square with two free squares behind it, the grid's mark of them moved with them and put back */
+        const ax = [0, -1]; let spot = null, best = Infinity;
+        for (let y = 2; y < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - n.x) + Math.abs(y - n.y);
+          if (d < best && (free(x, y) || (x === n.x && y === n.y)) && free(x, y - 1) && free(x, y - 2) && free(x, y + 1)) { best = d; spot = [x, y]; } }
+        if (!spot) return { why: 'no free square with two free squares behind it in the world the game starts in, so the pixels were not asked' };
+        out.moved = { from: [n.x, n.y], to: spot };
+        w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = spot[0]; n.y = n.fy = spot[1]; w.grid[n.y][n.x] = 'N';
+        const run = async (k, me, card) => {
+          if (!free(me[0], me[1]) || (card && !free(card[0], card[1]))) { out.cases[k] = { why: 'no free square for ' + k + ' beside ' + who + ', so it was not asked' }; return; }
+          px = fx = me[0]; py = fy = me[1]; dir = 'up';
+          let planted = null; if (card) { const key = Object.keys(NPCLOOK).find(q => NPCLOOK[q] && !PEOPLEON.has(q));
+            planted = { key, x: card[0], y: card[1], fx: card[0], fy: card[1], q: [], wnext: Infinity, mv: null, face: 1 }; w.npcs.push(planted); }
+          try {
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            if (!(T3.peopleShown && T3.peopleShown.has(n))) { out.cases[k] = { why: who + ' was not a body with ' + k + ', so it was not asked' }; return; }
+            /* time held for the three frames, so the only differences are the ones asked */
+            Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
+            through = true; hide = false; const A = grab(); through = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
+            Date = RD; performance.now = pn;
+            /* painted over: a pixel of theirs the step changes by more than 80 (red, green and blue summed). The step draws them again
+               over him under the two lights that step has, so a pixel of theirs it redraws can come out up to about 72 off with nothing
+               painted over it (measured on the gauge's own person, 2026-11-17); the person he steers painted over them is far past that */
+            const strong = (a, b, k) => Math.abs(a[k] - b[k]) + Math.abs(a[k + 1] - b[k + 1]) + Math.abs(a[k + 2] - b[k + 2]) > 80;
+            let body = 0, over = 0; for (let q = 0; q < A.length; q += 4) if (diff(B0, M, q)) { body++; if (strong(A, B0, q)) over++; }
+            out.cases[k] = { body, over };
+          } finally { Date = RD; performance.now = pn; if (planted) { const i = w.npcs.indexOf(planted); if (i >= 0) w.npcs.splice(i, 1); } }
+        };
+        await run('him one square behind them', [n.x + ax[0], n.y + ax[1]]);
+        /* behind a wall: they stand where a wall is between them and the camera, and he in front of it. The pixels of them that show
+           only because of the step that draws him again over walls are counted (`through`): their card would be hidden there */
+        { const wallish = (x, y) => { const g0 = w.grid[y] && w.grid[y][x], m = g0 && TILES[g0]; return !!m && (m.kind === 'wall' || m.kind === 'facade'); };
+          let ws = null, wb = Infinity;
+          for (let y = 0; y + 2 < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - out.moved.to[0]) + Math.abs(y - out.moved.to[1]);
+            if (d < wb && free(x, y) && wallish(x, y + 1) && free(x, y + 2)) { wb = d; ws = [x, y]; } }
+          if (!ws) out.cases['a wall between them and the camera'] = { why: 'no free square with a wall in front of it in the world the game starts in, so a wall was not asked' };
+          else { w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = ws[0]; n.y = n.fy = ws[1]; w.grid[n.y][n.x] = 'N';
+            px = fx = ws[0]; py = fy = ws[1] + 2; dir = 'up';
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            if (!(T3.peopleShown && T3.peopleShown.has(n))) out.cases['a wall between them and the camera'] = { why: who + ' was not a body behind a wall, so it was not asked' };
+            else { Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
+              through = true; hide = false; const A = grab(); hide = true; const Ah = grab(); through = false; hide = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
+              Date = RD; performance.now = pn;
+              let body = 0, shows = 0; for (let q = 0; q < A.length; q += 4) { const seen = diff(B0, M, q); if (seen) body++; else if (diff(A, Ah, q)) shows++; }
+              out.cases['a wall between them and the camera'] = { wall: true, body, shows }; }
+            w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = out.moved.to[0]; n.y = n.fy = out.moved.to[1]; w.grid[n.y][n.x] = 'N'; } }
+        await run('a card one square behind them and him behind it', [n.x + 2 * ax[0], n.y + 2 * ax[1]], [n.x + ax[0], n.y + ax[1]]);
+        return out;
+      } finally { if (out.moved) { w.grid[n.y][n.x] = w.rows[n.y][n.x]; [n.x, n.y] = out.moved.from; n.fx = n.x; n.fy = n.y; w.grid[n.y][n.x] = 'N'; }
+        Date = RD; performance.now = pn; t3BodyThrough = tb; t3PeopleBodies = tp; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; dir = keep.dir;
+        n.wnext = keep.wnext; n.mv = keep.mv; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
+    }, who);
+    try {
+      if (!own.three) say(1, 'this shell has no 3D camera, so nobody stands as a body here and nothing was asked');
+      else if (!own.who) say(1, 'the world the game starts in has nobody with a name and a look, so nobody could be named');
+      else if (!pBoot.test(pShell) && (own.body === null || own.ppl === null)) say(0, 'this shell loads no engine/boot.js, so the lists could not be declared before the engine');
+      else {
+        const who = (ownPpl && ownPpl.find(k => typeof k === 'string')) || own.who;
+        /* ---- A · a world that names nobody: the person's body taken, no list of people ---- */
+        if (ownPpl === null) {
+          const pack = own.body === null ? 'const BODYTAKE=["person"];\n' : '';
+          if (ownBody !== null && !(Array.isArray(ownBody) && ownBody.includes('person'))) say(1, 'this world\'s own BODYTAKE (' + own.body + ') does not name the person, so a world that names nobody was asked without the body');
+          const { p, err } = await openWith(pack, { width: 390, height: 844 });
+          const r = await probe(p, who);
+          if (r.why) say(0, 'in a world that names nobody, ' + r.why);
+          else { if (r.on) say(0, 'a world that names nobody in PEOPLETAKE still names ' + r.on + ' people as bodies');
+            if (r.now.body || r.made) say(0, 'in a world that names nobody, ' + who + ' stands in the 3D camera as a body anyway');
+            if (!r.now.card) say(0, 'in a world that names nobody, ' + who + ' has no card in the 3D camera'); }
+          err.forEach(m => say(0, 'the page of a world that names nobody threw: ' + m));
+        } else say(1, 'this world names its own people (' + own.ppl + '), so a world that names nobody was not asked here');
+        /* ---- B to F · a world that names them, on a phone and on a laptop ---- */
+        if (ownBody !== null && !(Array.isArray(ownBody) && ownBody.includes('person'))) say(1, 'this world\'s own BODYTAKE (' + own.body + ') does not name the person, so its people cannot be bodies, and that was not asked');
+        else for (const [dev, vw] of [['a phone', { width: 390, height: 844 }], ['a laptop', { width: 1280, height: 800 }]]) {
+          const pack = (own.body === null ? 'const BODYTAKE=["person"];\n' : '') + (ownPpl === null ? 'const PEOPLETAKE=' + JSON.stringify([who]) + ';\n' : '');
+          const { p, err } = await openWith(pack, vw);
+          const r = await probe(p, who);
+          if (r.why) { say(0, 'on ' + dev + ', ' + r.why + ', so whether they stand as a body could not be asked'); continue; }
+          if (!r.now.ok) { say(0, 'on ' + dev + ', the 3D camera could not draw, so whether ' + who + ' stands as a body could not be asked'); continue; }
+          /* B · a body up close, the card stood in until it was made, and not both */
+          if (!r.now.body) { say(0, 'on ' + dev + ', ' + who + ', named in PEOPLETAKE and two squares from you, is still a flat card in the 3D camera: no body stands there'); continue; }
+          if (r.now.card) say(0, 'on ' + dev + ', ' + who + ' is drawn twice: their card stands in the same place as their body');
+          if (r.first.body || r.first.made) say(0, 'on ' + dev + ', ' + who + '\'s body was made in the very frame they came into view, not while the page was idle');
+          if (!r.first.body && !r.first.card) say(0, 'on ' + dev + ', before ' + who + '\'s body was made, nothing stood in their place: their card did not stand in');
+          /* C · the card's colours */
+          /* a style may paint its hair a shade off the card's paint (a short cut is darker), so a colour counts as worn when a part is
+             within 45 of it, summed over red, green and blue: a body in somebody else's colours is far past that */
+          const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), near2 = (a, b) => { const x = hex(a), y = hex(b); return Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45; };
+          const miss = ['shirt', 'skin', 'hair'].filter(k => !r.cols.some(c => near2(c, r.lk[k])));
+          if (miss.length) say(0, 'on ' + dev + ', ' + who + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its parts are ' + r.cols.join(' '));
+          /* D · facing where they walk, and the camera when they stand, and their legs moving as they walk */
+          const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 0.05;
+          if (!near(r.right, Math.PI / 2)) say(0, 'on ' + dev + ', ' + who + ' walking to the right (+x) faces ' + r.right.toFixed(2) + ' rad, not the way they walk (' + (Math.PI / 2).toFixed(2) + ')');
+          if (!near(r.down, 0)) say(0, 'on ' + dev + ', ' + who + ' walking along +y faces ' + r.down.toFixed(2) + ' rad, not the way they walk (0)');
+          if (!near(r.stand, r.toCam)) say(0, 'on ' + dev + ', ' + who + ' standing faces ' + r.stand.toFixed(2) + ' rad, not the camera (' + r.toCam.toFixed(2) + '), as their card does');
+          if (!r.stepped) say(0, 'on ' + dev + ', ' + who + '\'s legs do not move while they walk');
+          /* E · their marks above them, with no card drawn under the marks */
+          if (!r.marks.body) say(0, 'on ' + dev + ', ' + who + ' with something to say is no longer a body');
+          else { if (!r.marks.mark) say(0, 'on ' + dev + ', ' + who + ', a body with something to say, has no mark above their head');
+            if (r.marks.card) say(0, 'on ' + dev + ', ' + who + '\'s card is painted under their mark while they stand as a body'); }
+          /* E2 · their marks above their heads, not over them (the owner's word on the first pictures, 2026-11-17) */
+          if (!r.markAt) say(0, 'on ' + dev + ', no picture stands where ' + who + '\'s marks should be, so whether they are above the head could not be asked');
+          else if (r.markAt.foot < r.markAt.top) say(0, 'on ' + dev + ', ' + who + '\'s mark starts ' + r.markAt.foot + ' up, below the top of their head (' + r.markAt.top + '): it covers the body');
+          /* G · in front of him, and behind a card: measured in pixels (Chema, run 2026-11-17-claude-5d3e: a check that counted parts
+             on a layer passed with both faults present) */
+          const o = await occl(p, who);
+          if (o.why) say(1, 'on ' + dev + ', ' + o.why);
+          else for (const [k, c] of Object.entries(o.cases)) { if (c.why) { say(1, 'on ' + dev + ', ' + c.why); continue; }
+            if (c.wall) { if (c.shows > 30) say(0, 'on ' + dev + ', with ' + k + ', ' + c.shows + ' pixels of ' + who + ' are drawn over the wall, where their card would be hidden: they are drawn again over walls like the person you steer');
+              else say(1, 'on ' + dev + ', with ' + k + ', ' + c.shows + ' pixels of them drawn over it (' + c.body + ' seen past it)'); continue; }
+            const pc = c.body ? c.over / c.body : 0;
+            if (!c.body) say(0, 'on ' + dev + ', with ' + k + ', no pixel of ' + who + '\'s body could be found on the screen, so whether it is covered could not be asked');
+            else if (pc > 0.02) say(0, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels (' + Math.round(pc * 100) + '%) are painted over by the step that draws the person you steer again over walls');
+            else say(1, 'on ' + dev + ', with ' + k + ', ' + c.over + ' of ' + who + '\'s ' + c.body + ' pixels painted over'); }
+          /* F · from afar, their card and no body */
+          const f = await probe(p, who, (await p.evaluate(() => PEOPLENEAR + BODYHYST)) + 1.5);
+          if (f.why) say(1, 'on ' + dev + ', ' + f.why + ', so ' + who + ' from afar was not asked');
+          else { if (f.now.body) say(0, 'on ' + dev + ', ' + who + ', farther from the camera\'s focus than PEOPLENEAR, is still a body');
+            if (!f.now.card) say(0, 'on ' + dev + ', ' + who + ', seen from afar, has no card'); }
+          say(1, 'on ' + dev + ', ' + who + ' stood as a body ' + r.top.toFixed(2) + ' tall, wearing ' + r.cols.length + ' colours');
+          err.forEach(m => say(0, 'the page that names ' + who + ' threw on ' + dev + ': ' + m));
+        }
+      }
+    } finally { for (const c of opened) await c.close(); }
+    fails.push(...PB);
   }
 
   }
