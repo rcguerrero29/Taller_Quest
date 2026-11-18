@@ -907,6 +907,12 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 const BODYKINDS=Object.freeze(["person","dog"]);
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
 const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
+/* WHICH OF A WORLD'S PEOPLE STAND AS BODIES (mq-v274). PEOPLETAKE is the world's own list of the people, by their name in
+   NPCLOOK (a station's `npc`), who stand in the 3D camera as bodies made from their look, as the person you steer does
+   (engine/engine3d.js, grep "THE OTHER PEOPLE'S BODIES"). Only where the world takes the person's body (BODYON); a name it
+   does not hold is nothing, and a world that says nothing has every one of its people as a card, as before: closed unless a
+   world opens it */
+const PEOPLEON=new Set(BODYON&&typeof PEOPLETAKE!=="undefined"&&Array.isArray(PEOPLETAKE)?PEOPLETAKE.filter(k=>typeof k==="string"&&k&&k!=="__proto__"):[]);
 const BODYCHOICE=Object.freeze([
   /* each row says where the creator shows it: `group`, one of the groups of CRTABS (grep "THE CREATOR'S TABS") */
   {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"build"},   /* how tall he is; his head stays the same share of him */
