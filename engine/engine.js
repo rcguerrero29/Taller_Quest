@@ -226,6 +226,9 @@ function wanderCuts(id){
   w._cuts=out;return out;}
 /* a person who wanders is a temporary obstacle; a person who never moves is furniture. The
    auditor needs to know the difference, and the grid only says "N", so ask the pack who is there. */
+/* a walker taken away in the middle of a step gives back the square it had claimed (mq-v275), unless somebody stands there */
+function wanderRelease(w,n){if(!w||!n||!n.mv)return;const[x,y]=n.mv;
+  if(w.grid[y]&&w.grid[y][x]==="N"&&!w.npcs.some(m=>m!==n&&m.x===x&&m.y===y))w.grid[y][x]=w.rows[y][x];}
 function whoAt(id,x,y){const w=WORLDS[id];if(!w)return null;
   return (w.npcs||[]).find(n=>n.x===x&&n.y===y)||null;}
 function wanderUpdate(dt){
@@ -260,11 +263,17 @@ function wanderUpdate(dt){
          the one that strands a player behind somebody's back. */
       &&!(wanderCuts(world)||new Set()).has(x+","+y)
       &&Math.abs(x-n.hx)+Math.abs(y-n.hy)<=WANDER_R
-      &&!(x===px&&y===py));
+      &&!(x===px&&y===py)
+      &&!(x===Math.round(fx)&&y===Math.round(fy)));   /* nor the square you are still standing on as you step off it (mq-v275) */
     if(!opts.length){n.wnext=now+2500;return;}
     const t=opts[(Math.random()*opts.length)|0];
     n.face=t[0]>n.x?1:t[0]<n.x?-1:n.face;
     n.mv=t;n.mt=0;
+    /* THE SQUARE IS CLAIMED WHEN THE STEP STARTS (mq-v275; Chava, run 2026-11-17-claude-5d3e: a walker walked into the person
+       you steer and then stood inside them for over a minute). The grid used to mark the square only when the step was done,
+       so for those WANDER_MS the person you steer could step onto it too; and once two share a square, the walker holds still
+       beside you (the conversation rule above) and never leaves. The old square stays marked until the step is done */
+    if(w.grid[t[1]])w.grid[t[1]][t[0]]="N";
   });
 }
 /* the free test, made deterministic: a person the pack placed with nowhere to step is a map
@@ -332,7 +341,7 @@ function addChill(c){ /* {name:{en,es},world,x,y,look} → chat NPC; returns key
   return key;}
 function removeChill(key){ /* the inverse addChill never had — a person the record placed goes home */
   for(const id of Object.keys(WORLDS)){const w=WORLDS[id],i=w.npcs.findIndex(n=>n.key===key);
-    if(i<0)continue;const n=w.npcs[i];w.npcs.splice(i,1);
+    if(i<0)continue;const n=w.npcs[i];wanderRelease(w,n);w.npcs.splice(i,1);
     if(w.grid[n.y]&&w.grid[n.y][n.x]==="N")w.grid[n.y][n.x]=w.rows[n.y][n.x]; /* the glyph the map had, not "." */
     delete CHILLN[key];delete NPCLOOK[key];delete CHILLEGG[key];return true;}
   return false;}
@@ -9400,7 +9409,7 @@ let nmPending=null,nmEdit=null;
 function despawnAt(gx,gy){ /* lift a custom creation off the map (record untouched) */
   const w=CW();
   const i=w.npcs.findIndex(n=>n.x===gx&&n.y===gy&&String(n.key).startsWith("~c"));
-  if(i>=0){w.grid[gy][gx]=w.rows[gy][gx];w.npcs.splice(i,1);return true;}
+  if(i>=0){wanderRelease(w,w.npcs[i]);w.grid[gy][gx]=w.rows[gy][gx];w.npcs.splice(i,1);return true;}
   return false;}
 function npcAt(gx,gy){
   const w=CW();
