@@ -1566,7 +1566,12 @@ function bodyMake(skel,lk,build){
   /* his shadow on the ground, as his card paints one under his feet: it does not move with the walk. Round, as wide as his
      card's, so the camera's slant makes it the card's flat oval whichever way he faces */
   const sh=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
-  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};sh.layers.enable(1);root.add(sh);
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};
+  /* NOT DRAWN AGAIN OVER THE STREET (mq-v276): the shadow lies on the ground in the street's own pass, where the street hides it as it
+     hides the ground. On layer 1, drawn again with him after the depth was cleared and after anyone nearer was drawn over him, it
+     darkened the head of anyone standing just in front of him (measured 2026-11-18: 3 to 10% of a named person's pixels; a card in
+     front of him the same) */
+  root.add(sh);
   shirtPaint(root,{...lk,body:C});
   root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;root.userData.choices=C;return root;}
 /* HIS SHIRT'S PATTERN ON HIS BODY, as on his card (mq-v273; the owner's confirmed goal of 2026-11-17). The card draws the
