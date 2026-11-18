@@ -74,23 +74,26 @@ go and play.
 
 ## How you play
 
-You have Chromium. Boot the real game and drive it:
+Boot the real game in Chromium: `NODE_PATH=/opt/node-tools/node_modules`, then
+`const {chromium}=require('playwright'); const b=await chromium.launch();` (no options were needed on 2026-11-17),
+and open the checkout your brief names as `file://<checkout>/index.html`. A world that must be served over http
+says how in its own test's header; open it there if the brief asks for it. Say which you played.
+*(Corrected 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 
-```js
-const {chromium}=require('playwright-core');
-const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,
-  args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});
-const p=await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});
-await p.goto('file://'+process.cwd()+'/index.html');
-```
-
-Scratch scripts go in the repo root as `*.tmp.js` and are **deleted when you finish**. Screenshot
-constantly and **look at the pictures**.
+Scratch scripts and pictures go in the folder your brief names, or else the session's scratchpad, never in a
+repository, so a playtest cannot leave a file behind. Screenshot constantly and **look at the pictures**.
+*(Corrected 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 
 **Do the wrong things.** Walk into walls. Press the button twice. Answer a quest badly on purpose,
 then well. Open a menu and press escape. Go somewhere before you are meant to. Leave the game
 sitting for a minute and come back. Try to reach a thing the long way round. A player who only
 does the intended thing finds nothing.
+
+**Keep one browser open for the whole session.**
+*Guidance, not a rule (the owner's word of 2026-11-17): it may not always apply; use judgment.*
+Use a small driver script that holds the page and runs each command file you drop beside it. Run any trace longer
+than two minutes in the background, so the tool's time limit does not cut it off. (Run 2026-11-17-claude-5d3e lost
+two traces before it did this.) *(Applied 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 
 ## What you report
 
@@ -129,6 +132,16 @@ of her life on the rail row, 4 run-overs — **of which only 1 was within five t
 different things. The FIRST attempt at that trace was worthless: the hero was parked on row 2, so the
 tram held for the entire nine minutes and never moved. Two words of printed position caught it.
 
+**Chase what walks.**
+*Guidance, not a rule (the owner's word of 2026-11-17): it may not always apply; use judgment.*
+On 2026-11-17 (run 2026-11-17-claude-5d3e), pacing near a walker's bench for 185 steps never put the walker on my
+square; stepping toward the walker each turn did it twice in 235 steps, and once the walker was in, it stayed inside
+me for over a minute. A walker's bug lives where its path and yours cross, so make them cross on purpose. Log both
+positions before and after every step, so you can say who moved last. And before you blame the game, check that your
+own path-finder could not have walked you into a standing person: try walking into one who stands still. The walker
+stepping onto the player's square is being fixed in its own small engine change; this lesson is for finding the next
+one. *(Applied 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
+
 ## When you conclude a thing is absent
 
 **When you conclude a thing is ABSENT, crop it at 3× before you say so.**
@@ -149,3 +162,8 @@ the end of the section his post-flight pointed at without naming an anchor. His 
 line and not a repeat of the one above: the 3× crop would not have saved him, because the error was
 upstream of the crop — the capture was of the wrong rectangle, not too small; the canvas read at the
 source found 447 colours.)*
+
+**A crop's numbers belong to one screen size.**
+*Guidance, not a rule (the owner's word of 2026-11-17): it may not always apply; use judgment.*
+On 2026-11-17 a crop sized for the phone, taken from a desktop-sized picture, came back blank. Print the image size
+before you crop. *(Applied 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
