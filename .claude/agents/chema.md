@@ -146,11 +146,16 @@ Read the code, do not trust this list — but these are the things that have alr
 
 - **Nearest filtering everywhere, mip pyramid kept — for the pixel art.** The jointed bodies' painted
   sheets (scalp, hair shells, plaits, a dog's coat; grep `minFilter=THREE.LinearFilter` in
-  `engine/engine3d.js`) are linear with no pyramid, and are drawn only within a few squares of the
-  camera; nobody has measured them, so measure before calling either right. Linear *blending* was the blur, not the
-  pyramid. Drop the pyramid and the far half of the street crawls. Mipmaps are asked for **only
-  under WebGL2** — a non-power-of-two texture with mipmaps renders black on a WebGL1 fallback, and
+  `engine/engine3d.js`) are linear with no pyramid, and are drawn wherever a body stands: the hero's within `BODYNEAR`
+  (3 squares, measured 2026-11-17, mq-v274) and a named person's (a world's `PEOPLETAKE`) within `PEOPLENEAR`
+  (8 squares, measured 2026-11-17, mq-v274) of the camera's focus (`engine/engine3d.js`, grep `BODYNEAR` and
+  `PEOPLENEAR`). Measured against a card of the same look in the same frame: edge energy 28–44 for the body, 20–46
+  for the card (measured 2026-11-17, mq-v274), so a body is not softer than the cards around it. Check both settings
+  against the code before relying on these numbers, and measure again if the sheets change.
+  Linear *blending* was the blur, not the pyramid. Drop the pyramid and the far half of the street crawls. Mipmaps
+  are asked for **only under WebGL2** — a non-power-of-two texture with mipmaps renders black on a WebGL1 fallback, and
   every texture here is sized to its world.
+  *(Corrected 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 - **A see-through pixel must not write depth.** Every prop is a picture on a card and most of the
   card is empty. `alphaTest` on every baked billboard, or people lose their quest marks near
   furniture and nothing on screen explains it.
@@ -160,10 +165,27 @@ Read the code, do not trust this list — but these are the things that have alr
 - **A wall gets a stub; an object gets glass.** Half a tree is not a cutaway, it is a missing tree.
 - **Materials are shared per glyph.** Make the treated copy once per PIECE and keep it beside the
   original. Edit one in place and a single tree fogs its whole row.
-- **The hero draws through walls on purpose** (#22, #92). Do not "fix" it. If you need the hero to
-  read as being behind something, draw that thing *after* the people with `depthWrite` off — same
-  pixel result, and #22 survives.
+- **The hero is drawn over walls on purpose** (#22, #92), and do not "fix" it. Where a world takes the body, the
+  hero is not a card: `t3BodyThrough` (`engine/engine3d.js`, grep `function t3BodyThrough`) clears depth after the
+  whole frame and draws him again, then draws again over him only what stands nearer the camera than he does and was
+  handed to that pass (today: the nearer cards and the nearer named bodies, without their ground shadow, and only
+  where his outline is). Anything else is painted over by him, whatever its depth or render order. So to make him
+  read as behind something, hand that thing to the same pass, drawn only where his outline is, and leave its ground
+  shadow out. *Learned 2026-11-17 (run 5d3e): a world's named bodies were taken off that pass so a counter could hide
+  a person at a window, and from then on the hero stood on the head of anyone he walked behind (1,068–1,665 pixels
+  in a wide frame); the nearer named bodies were handed back to the pass the same day.* *(Corrected 2026-11-18;
+  proposed in run 2026-11-17-claude-5d3e.)*
 - **Before you call a baked gradient paint, simulate the sky over what it stands on.** The sun and the ambient give every flat face one value, so a part's second colour (`cb`) is the only thing in a scene that changes with height. On a sphere its weight is exactly a sky-and-ground light's (0.5 + 0.5·n_y, to four decimals over 240 corners, through the engine's own builder). Anywhere else the height gradient real light makes is the floor's bounce: a one-bounce Monte Carlo of an overcast sky, twenty seconds in node, puts a straight side 4.5 tall on a pale floor at 4% darker mid-height and 16% at its foot, a flared wall at 9% and 34%, and either one flat on a black floor. Then judge it on the rows the game draws, never the lab close-up: a side two to twelve rows tall is read by its mean. *The moment, 2026-11-08: I had a change pictured and queued on the belief that a straight side's shade lives in a sliver at its foot; the simulation said the floor puts it up the whole side, and I withdrew it.*
+- **A part carries more than its layer: look for every mark it leaves before you take one away.**
+  *Guidance, not a rule (the owner's word of 2026-11-17): it may not always apply; use judgment.*
+  A body's part is on layer 1 (drawn again over walls) *and* marks the screen where it is drawn (`stencilWrite`,
+  `ReplaceStencilOp`, grep `ReplaceStencilOp` in `engine/engine3d.js`), and the redraw of nearer cards is limited to
+  those marks. On 2026-11-17 a world's named bodies were taken off the layer and kept the marks, so a card standing
+  between a named body and the hero was painted over that body (2,006–2,570 pixels in a wide frame). The check
+  written that day counted parts on the layer and passed with both faults present. Both faults were fixed the same
+  day, before that change was merged, so neither is a live bug. Next time, prove an occlusion change with the three
+  people in the frame: the hero one square behind a named body, and a card between a named body and the hero, each
+  red before the fix. *(Applied 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 
 ## What you never do
 
@@ -182,8 +204,11 @@ Read the code, do not trust this list — but these are the things that have alr
 top of `docs/crew/FLIGHT-NOTES.md`.*
 
 **`renderOrder` alone will not put anything after the people.** Every actor billboard is built
-`transparent:true` (`engine/engine3d.js:688`), so it always renders in three.js's transparent queue,
-which runs after the whole opaque queue no matter what `renderOrder` says. A piece you want painted
+`transparent:true` (`engine/engine3d.js`, grep `function t3Sprite`; line 1235 on 2026-11-18), so it always
+renders in three.js's transparent queue, which runs after the whole opaque queue no matter what `renderOrder` says.
+Where a world takes the body, the hero is not one of these billboards near the camera: he is a body (see the rule on
+drawing him over walls), and so are a world's named people (its `PEOPLETAKE`) near the camera.
+*(Corrected 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)* A piece you want painted
 over a person must join that queue too — `transparent:true` on **its own cloned copy** of the
 material, never the shared one. Opacity 1 is allowed and is usually right: glass is for a thing that
 would otherwise eat you, not for a thing that only reaches your shins.
@@ -204,6 +229,11 @@ axis, or the position attribute through `matrixWorld`.
 disc 0.048 tiles below a road it is resting on. And **a `Box3` over a whole group is satisfied by the
 group's biggest part** — the tram's *"wheels touch the ground"* guard returned 0.0000 with all four
 wheels deleted, because the skirt reaches the road. **Ask the part, and ask the vertices.**
+It is in the engine today: a named person's mark height is stored in `userData.top` (`engine/engine3d.js`, grep
+`userData.top`), read from `new THREE.Box3().setFromObject(B)`, which stood up to 0.031 above the real vertices
+(a person at a window: 1.098 against 1.067; measured 2026-11-17, mq-v274), harmless only because too high is the
+safe side. `setFromObject(B, true)` reads the vertices. Check `userData.top` and its source against the code before
+relying on these numbers. *(Corrected 2026-11-18; proposed in run 2026-11-17-claude-5d3e.)*
 
 **The moment:** asked whether a 12-segment wheel would strobe at a higher speed, you built a
 filmstrip rig that answered exactly that question and was irrelevant — the wheel was never rotating
