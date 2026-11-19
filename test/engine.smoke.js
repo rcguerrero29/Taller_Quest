@@ -1725,13 +1725,18 @@ function findChromium() {
         if (!(await some(4).then(() => true, () => false))) say('builder mode was turned off and the signs did not return');
       }
       await sp.evaluate(() => { admin = false; applyAdmin(); checkTalk(); });
-      /* 5c · THE LOOP: wanted, it looks every frame; not wanted, at most four times a second */
-      const looks = () => sp.evaluate(() => new Promise(res => { const o = kitSignLoop; let n = 0; kitSignLoop = function (ts) { n++; return o(ts); }; setTimeout(() => { kitSignLoop = o; res(n); }, 1000); }));
+      /* 5c · THE LOOP: wanted, it looks every frame; not wanted, at most four times a second. "Every frame" is counted against the
+         frames the page drew in the same second, not against a fixed 20: a busy machine draws fewer, and on 2026-11-19 a build
+         machine drew 19 while the loop followed each one, and a fixed 20 called that a fault */
+      const looks = () => sp.evaluate(() => new Promise(res => { const o = kitSignLoop; let n = 0, f = 0, on = true; kitSignLoop = function (ts) { n++; return o(ts); };
+        const tick = () => { if (!on) return; f++; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
+        setTimeout(() => { on = false; kitSignLoop = o; res({ n, f }); }, 1000); }));
       await some(4);
       const LW = await looks();
-      if (LW < 20) say('with the signs showing the loop looked only ' + LW + ' times in a second, where it follows every frame');
+      if (LW.f < 10) say('the page drew only ' + LW.f + ' frames in a second, too few to ask whether the signs\' loop follows every frame');
+      else if (LW.n < LW.f * 0.8) say('with the signs showing the loop looked only ' + LW.n + ' times in a second while the page drew ' + LW.f + ' frames, where it follows every frame');
       await sp.click('#kitBtn'); await none();
-      const LU = await looks();
+      const LU = (await looks()).n;
       if (LU > 5) say('with the Kitchen panel open (nothing wanted) the signs\' loop looked ' + LU + ' times in a second, where it looks at most four times a second');
       await sp.keyboard.press('Escape'); await some(4);
       /* 6 · A TAP: the panel narrowed to that place's use-soon things, soonest first, with its title; a pick opens the place; Escape and ✕ shut it */
