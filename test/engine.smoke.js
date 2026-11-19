@@ -16709,28 +16709,52 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (!(w[0] > 0)) said('the ' + kind + '\'s tail does not leave his rump: nothing of it is at its root');
                   else if (!(w[2] < w[0] * 0.6 && w[1] < w[0])) said('the ' + kind + '\'s tail does not taper: it is ' + w[0].toFixed(3) + ' across at his rump, ' + w[1].toFixed(3) + ' at its middle and ' + w[2].toFixed(3) + ' at its end'); }
                 finally { t3Dispose(B); } }
-              /* ---- I · sitting, lying down and howling (and howling while he sits or lies) are his body's own, up close, and his
-                       card is not drawn as well; each thing his body cannot do sends him back to his card that same frame, and
-                       he is a body again after ---- */
+              /* ---- I · every pose his card draws is his body's own, up close, and his card is not drawn as well (sitting, lying
+                       down and howling from mq-v264; digging, his hearts, over the bar and through the poles from mq-v278, the
+                       owner's confirmed goal of 2026-11-19); inside the tunnel neither is drawn; and he is a body again after ---- */
               const kg = gearPose;
               const asBody = [['sitting', c => { c.sit = true; }, c => { c.sit = false; }], ['lying down', c => { c.layT = Infinity; }, c => { c.layT = 0; }],
                 ['howling', c => { c.howlT = Infinity; }, c => { c.howlT = 0; }],
                 ['howling while he sits', c => { c.sit = true; c.howlT = Infinity; }, c => { c.sit = false; c.howlT = 0; }],
-                ['howling while he lies down', c => { c.layT = Infinity; c.howlT = Infinity; }, c => { c.layT = 0; c.howlT = 0; }]];
-              const asCard = [['digging', c => { c.digT = Infinity; }, c => { c.digT = 0; }],
+                ['howling while he lies down', c => { c.layT = Infinity; c.howlT = Infinity; }, c => { c.layT = 0; c.howlT = 0; }],
+                ['digging', c => { c.digT = Infinity; }, c => { c.digT = 0; }],
                 ['showing his hearts', c => { c.loveT = Infinity; }, c => { c.loveT = 0; }],
-                ['inside the agility tunnel', () => { gearPose = c => c === cr ? { hop: 0, hid: true, side: 0 } : kg(c); }, () => { gearPose = kg; }],
+                ['happy', c => { c.happyT = Infinity; }, c => { c.happyT = 0; }],
                 ['over the agility bar', () => { gearPose = c => c === cr ? { hop: 3, hid: false, side: 0 } : kg(c); }, () => { gearPose = kg; }],
                 ['through the weave poles', () => { gearPose = c => c === cr ? { hop: 0, hid: false, side: 1.5 } : kg(c); }, () => { gearPose = kg; }]];
+              const asNone = [['inside the agility tunnel', () => { gearPose = c => c === cr ? { hop: 0, hid: true, side: 0 } : kg(c); }, () => { gearPose = kg; }]];
               K.face(cr, 'right');
               try { for (const [what, on, off] of asBody) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
-                  if (!a.body) said('up close, ' + what + ', the dog is his flat card: no body ' + (/^howl/.test(what) ? 'howls' : what === 'sitting' ? 'sits' : 'lies') + ' there');
+                  if (!a.body) said('up close, ' + what + ', the dog is his flat card: no body stands there ' + what);
                   else if (a.card) said('up close, ' + what + ', the dog is drawn twice: his card stands in the same place as his body');
                   if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); }
-                for (const [what, on, off] of asCard) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
-                  if (a.body) said('the dog stays a body while ' + what + ', which his body cannot do');
-                  if (!a.card) said('while ' + what + ', the dog has no card either');
-                  if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.loveT = 0; }
+                for (const [what, on, off] of asNone) { on(cr); const a = K.show(cr); off(cr); const b = K.show(cr);
+                  if (a.body) said('the dog\'s body is drawn ' + what + ', where his card draws nothing of him');
+                  if (a.card) said('the dog\'s card is drawn ' + what + ', where it draws nothing of him');
+                  if (!b.body) said('after ' + what + ', the dog does not stand as a body again'); }
+                /* what each new pose does to his body, asked of its parts (mq-v278) */
+                { const B = K.bodyOf(cr), J = B && B.userData.joints, P0 = dogPose(cr), U = B && B.userData;
+                  if (!B) said('the dog has no body to ask his new poses of');
+                  else {
+                    const at = (P, t) => { dogHold(B, 'stand', false, t); dogMore(B, P, 'stand', t); return { l: J.fore_l.rotation.x, r: J.fore_r.rotation.x, head: J.neck.rotation.x }; };
+                    const d1 = at({ ...P0, dig: true, love: false, happy: false, lift: 0 }, 0), d2 = at({ ...P0, dig: true, love: false, happy: false, lift: 0 }, DOGDIG * Math.PI / 2), st = at({ ...P0, dig: false, love: false, happy: false, lift: 0 }, 0);
+                    if (!(Math.abs(d1.l - d2.l) > 0.2 && Math.abs(d1.r - d2.r) > 0.2)) said('digging, the dog\'s fore paws do not scrape: they move ' + Math.abs(d1.l - d2.l).toFixed(2) + ' and ' + Math.abs(d1.r - d2.r).toFixed(2) + ' over a quarter of a scrape');
+                    else if (!((d2.l - d1.l) * (d2.r - d1.r) < 0)) said('digging, the dog\'s fore paws scrape together, not turn about');
+                    if (!(d1.head > st.head + 0.3)) said('digging, the dog\'s head is not lowered to the ground');
+                    at({ ...P0, dig: true }, 400); if (!(U.dirt || []).every(d => d.visible)) said('digging, the dog throws up no earth');
+                    at({ ...P0, dig: false }, 400); if ((U.dirt || []).some(d => d.visible)) said('not digging, the dog still throws up earth');
+                    const hv = P => { at({ ...P0, dig: false, ...P }, 500); return (U.hearts || []).filter(h => h.visible).length; };
+                    if (hv({ love: true, happy: false }) !== 3) said('showing his love, the dog\'s body shows ' + hv({ love: true, happy: false }) + ' hearts, where his card shows three');
+                    if (hv({ love: false, happy: true }) !== 1) said('happy, the dog\'s body shows ' + hv({ love: false, happy: true }) + ' hearts, where his card shows one');
+                    if (hv({ love: false, happy: false }) !== 0) said('calm, the dog\'s body still shows hearts');
+                    { at({ ...P0, love: true }, 500); const head = J.head.getWorldPosition(new THREE.Vector3()), low = (U.hearts || []).filter(h => h.visible).map(h => h.getWorldPosition(new THREE.Vector3()).y).sort((a, b) => a - b)[0];
+                      if (!(low > head.y)) said('the dog\'s hearts are not over his head'); }
+                    const hp = at({ ...P0, dig: false, lift: DOGHOP }, 0), fl = J.fore_l.rotation.x, wl = J.wrist_l.rotation.x, hl = J.hind_l.rotation.x;
+                    if (!(fl < -0.5 && wl > 0.5 && hl > 0.5)) said('over the bar, the dog\'s legs are not tucked under him and stretched behind (fore ' + fl.toFixed(2) + ', wrist ' + wl.toFixed(2) + ', hind ' + hl.toFixed(2) + ')');
+                    void hp;
+                    gearPose = c => c === cr ? { hop: 6, hid: false, side: 0 } : kg(c); const up = K.show(cr), y6 = K.bodyOf(cr).position.y; gearPose = kg; K.show(cr); const y0 = K.bodyOf(cr).position.y;
+                    if (up.body && !(Math.abs((y6 - y0) - 6 * T3PERSON / 32) < 0.002)) said('over the bar the dog\'s body rises ' + (y6 - y0).toFixed(3) + ', where his card rises ' + (6 * T3PERSON / 32).toFixed(3));
+                    N.push('the dog\'s new poses (mq-v278): digging paws ' + d1.l.toFixed(2) + '/' + d2.l.toFixed(2) + ', head down ' + (d1.head - st.head).toFixed(2) + ', over the bar risen ' + (y6 - y0).toFixed(3)); } } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.loveT = cr.happyT = 0; }
               /* ---- J · any dog near the camera is a body, whether he follows you or not (mq-v264), and past DOGNEAR his card; past
                        DOGBODYMAX dogs, the nearest are bodies ---- */
               cr.follow = false; s = K.show(cr);
