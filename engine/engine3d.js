@@ -1272,7 +1272,8 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
     k=Math.min(k,Math.max(0,Math.min(1,Math.max(Math.abs(cr.fx-x),Math.abs(cr.fy-y))-0.5)));}
   return k;}
 /* ---- THE JOINTED BODY (mq-v259): the person you steer, up close, as a body of rounded parts on a skeleton ----
-   Every person in the 3D camera is a card that faces it. A world that names `person` in its own list, `const BODYTAKE=["person"];`
+   A person in the 3D camera is a card that faces it, unless a world makes them a body: the person you steer here, and from
+   mq-v274 the people a world names (grep "THE OTHER PEOPLE'S BODIES"), on the screens BODYSCREEN allows. A world that names `person` in its own list, `const BODYTAKE=["person"];`
    in a pack file the page loads before engine/boot.js (read once, as OUTFITTAKE is, by its bare name), sees the person it
    steers within BODYNEAR squares of the camera's focus as a body that stands and walks, his feet flat on the ground; farther
    off he is his card, as everyone else is. Silence is not consent: a world that says nothing, or writes the list some other
@@ -1558,6 +1559,15 @@ function bodyMake(skel,lk,build){
   bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,row.key==="beard"?(C.beard!=="none"?C.beard:beardOf(lk)?"beard":"none"):C[row.key]);});
   /* his hair, by the style his look keeps (hairStyleOf, engine/engine.js): one function a style, and nothing else draws hair */
   {const st=hairStyleOf(lk);root.userData.hair=st;(typeof HAIRPART[st]==="function"?HAIRPART[st]:HAIRPART.cap)(M);}
+  /* THE HARD HAT (mq-v277; Pili, run 2026-11-19-claude-b0d1: Meridian's Beto stood bare-headed as a body, his head the cook's,
+     between two crewmates who keep theirs as cards). A look with hat:"hard" wears it on its card (drawPerson, grep 'hat==="hard"')
+     and now on its body, at the card's proportions: a dome a little wider than the skull in the card's yellow, a brim round it
+     in the card's darker yellow, and a lighter ridge from brow to nape. Over the hair whatever its style; a style that stands
+     well off the head (an afro, curls) may show beneath it, which is a later ticket when such a person becomes a body */
+  if(lk.hat==="hard"){const r=M.r,hc=M.hc,y0=hc+0.12*r;
+    part("head",new THREE.SphereGeometry(1.12*r,24,10,0,Math.PI*2,0,Math.PI*0.5),"hat","#F2C230",0,y0,0);
+    part("head",new THREE.CylinderGeometry(1.3*r,1.3*r,0.06*r,28),"hat","#D9A81C",0,y0,0.05*r);
+    part("head",new THREE.TorusGeometry(1.13*r,0.07*r,6,18,Math.PI),"hat","#F7D768",0,y0,0).rotation.y=Math.PI/2;}
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
@@ -2685,7 +2695,7 @@ function t3DogBodies(dt){
        has a moment), the nearest first, so a street of them does not stall the frame they come into view in. Until it is
        made, their card stands in, exactly as before.
      · WHAT THEY ARE MADE FROM: npcWhimsy, the look their card is painted with (the theme's tint on the shirt included), so the
-       body wears the card's colours. A change to the look makes the body again.
+       body wears the card's colours, and its hard hat (mq-v277). A change to the look makes the body again.
      · HOW THEY STAND AND WALK: t3BodyPose, the walk of the person you steer, its pace held to a person's (BODYSTEPS). Walking,
        a body faces where it walks; standing, it faces the camera, as its card always does; at a window, it stands up against
        its counter and faces the street (PEOPLEWIN).
@@ -2708,7 +2718,7 @@ const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
    at the street edge of it (grep "a person at work inside this wall"): a body there stood whole above the counter, feet and all.
    Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
 const PEOPLEWIN=0.2;
-const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),JSON.stringify(bodyChoicesOf(lk.body))].join("|");
+const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].join("|");   /* the hat is in it from mq-v277 */
 /* one body made each time the browser has a moment (requestIdleCallback; where it has none, the next tick), nearest first.
    A person who is no longer wanted when their turn comes is passed over */
 function t3PeopleMake(){

@@ -17067,6 +17067,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           else { if (f.now.body) say(0, 'on ' + dev + ', ' + who + ', farther from the camera\'s focus than PEOPLENEAR, is still a body');
             if (!f.now.card) say(0, 'on ' + dev + ', ' + who + ', seen from afar, has no card'); }
           say(1, 'on ' + dev + ', ' + who + ' stood as a body ' + r.top.toFixed(2) + ' tall, wearing ' + r.cols.length + ' colours');
+          /* I · the card's hard hat on the body (mq-v277; Pili, run 2026-11-19-claude-b0d1): a look with hat:"hard" wears a hat the
+             card's yellow, one without wears none */
+          const hat = await p.evaluate(() => { const lk = { ...look, hat: 'hard' }, Ch = bodyChoicesOf(lk.body), parts = q => { const B = bodyMake(bodySkeleton('person', Ch), { ...q, body: Ch }, Ch), out = [];
+              B.traverse(o => { if (o.isMesh && o.userData.wears === 'hat') out.push('#' + o.userData.base.getHexString().toUpperCase()); }); t3Dispose(B); return out; };
+            return { on: parts(lk), off: parts({ ...look, hat: undefined }), key: peopleKey(lk) !== peopleKey({ ...lk, hat: undefined }) }; });
+          if (!hat.on.includes('#F2C230')) say(0, 'on ' + dev + ', a body made from a look with the hard hat wears no hat in the card\'s yellow (its hat parts: ' + (hat.on.join(' ') || 'none') + ')');
+          if (hat.off.length) say(0, 'on ' + dev + ', a body made from a look with no hat wears ' + hat.off.length + ' hat parts');
+          if (!hat.key) say(0, 'on ' + dev + ', putting the hard hat on a named person does not make their body again: the hat is not in the key their body is made from');
           err.forEach(m => say(0, 'the page that names ' + who + ' threw on ' + dev + ': ' + m));
         }
         /* ---- H · on which screens (BODYSCREEN, mq-v277): below the world's number every body is a card, at or above it a body.
