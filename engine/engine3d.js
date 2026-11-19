@@ -2344,7 +2344,7 @@ function t3BodyPreview(cv,lk,ang){
 /* ---- THE DOG'S BODY (mq-v263; any dog, and sitting, lying and howling, from mq-v264): a dog, up close, is a jointed body as you are ----
    A world that names `dog` in its own BODYTAKE list sees a dog near the person you steer, up close in the 3D camera,
    as a four-legged body made of the same kind of joints and parts as the person's, in the dog's own coat, markings, collar
-   and bandana. From farther off, and whenever he does anything but stand, walk and wag, he is his card, exactly as today.
+   and bandana, in every pose his card draws (from mq-v278). From farther off he is his card, exactly as today.
    A world that says nothing has none of this: every dog is his card in every camera.
    WHAT DECIDES IT, each in one place:
      · WHICH DOGS (t3DogBodies): a dog of this world whose kind runs the dog program (DOGK), whether or not he follows you (from mq-v264), within
@@ -2358,8 +2358,8 @@ function t3BodyPreview(cv,lk,ang){
      · HIS SHAPE: SKELETONS.dog, sized for his breed by DOGBUILDS, made by dogMake, his breed's markings by DOGPART.
      · HIS WALK: the person's own (t3BodyPose reads any skeleton's `legs`), four legs in a trot, the two diagonals together.
      · HIS LIGHT: t3BodyLight, as the person's, so at night he is as bright as the cards beside him.
-   NOT DONE HERE: sitting, lying, howling, digging, the agility course and the hearts as a body (he is his card for each); a
-   body for the star's own dog (DOG) or for any other animal; a choice of breed, markings or
+   NOT DONE HERE: a body for the star's own dog (DOG) or for any other animal (from mq-v278 every pose his card draws is
+   his body's: dogBodyWants); a choice of breed, markings or
    coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
@@ -2413,11 +2413,13 @@ const DOGBUILDS=Object.freeze({
   beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,chest:1,lie:1.12,ear:"drop",tail:"up"}),
   lab:Object.freeze({size:1.12,length:0.85,legs:1,head:0.92,neck:1,chest:1.1,lie:1.18,jaw:1.25,ear:"drop",tail:"out"}),
   chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.2,neck:1.4,chest:0.9,lie:1.06,jaw:0.85,ear:"up",tail:"curl"})});
-/* IS HE HELD PLAINLY ENOUGH TO BE A BODY this instant? Only standing, walking and wagging, calm or happy. Everything else
-   his card already draws, so everything else is his card: inside the tunnel, over the bar, through the poles, sitting,
-   lying, howling, digging, and the hearts. A pose added to dogPose later is the card's until it is named here */
+/* IS HE A BODY IN THIS POSE? From mq-v278, in every pose his card draws (the owner's confirmed goal of 2026-11-19): standing,
+   walking and wagging, sitting, lying and howling (mq-v264), and now digging, his hearts, and the agility course: over the bar
+   he is lifted with his legs tucked, through the poles his body takes the side step his record takes, and inside the tunnel
+   nothing of him is drawn, body or card, as his card is not. A pose added to dogPose later is the body's to draw: name it in
+   dogMore, or it is held as standing */
 function dogBodyWants(cr,P){
-  return !!cr&&!!P&&DOGK.has(cr.kind)&&!P.hid&&!P.lift&&!P.side&&!P.dig&&!P.love;}
+  return !!cr&&!!P&&DOGK.has(cr.kind);}
 /* HOW HE IS HELD, of the three ways his body knows (mq-v264): lying beats sitting, as on his card, and anything else is standing */
 function dogHeld(P){return P&&P.lay?"lay":P&&P.sit?"sit":"stand";}
 /* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */
@@ -2553,6 +2555,13 @@ function dogMake(skel,lk){
   {const c=document.createElement("canvas");c.width=c.height=32;const g=c.getContext("2d");g.fillStyle="#8B6FC8";g.font="26px serif";g.textAlign="center";g.textBaseline="middle";g.fillText("♪",16,17);
     const tx=new THREE.CanvasTexture(c);tx.magFilter=THREE.NearestFilter;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false}));
     sp.scale.setScalar(r*1.5);sp.visible=false;sp.userData={note:true};root.add(sp);root.userData.note=sp;}
+  /* his hearts (mq-v278), as his card shows them: one while he is happy, three rising while he shows his love (dogMore) */
+  {const c=document.createElement("canvas");c.width=c.height=32;const g=c.getContext("2d");g.fillStyle="#C4586B";g.font="24px serif";g.textAlign="center";g.textBaseline="middle";g.fillText("\u2764",16,17);
+    const tx=new THREE.CanvasTexture(c);tx.magFilter=THREE.NearestFilter;root.userData.hearts=[0,1,2].map(()=>{
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false}));sp.scale.setScalar(r*1.2);sp.visible=false;sp.userData={heart:true};root.add(sp);return sp;});}
+  /* the dirt he throws up digging (mq-v278): three crumbs in the card's earth colour, flying back from his fore paws (dogMore) */
+  root.userData.dirt=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.BoxGeometry(r*0.42,r*0.42,r*0.42),new THREE.MeshLambertMaterial({color:new THREE.Color("#6E5638")}));
+    m.visible=false;m.userData={dirt:true};root.add(m);return m;});
   if(typeof DOGPART[lk.kind]==="function")DOGPART[lk.kind](M);
   root.userData.joints=J;root.userData.skel=skel;root.userData.look=lk;return root;}
 /* EACH BREED'S COAT, PAINTED (mq-v263): the markings that lie in his fur, by his kind and by the part they lie on. Each is
@@ -2612,6 +2621,7 @@ function t3DogPose(B,P,phase,moving,groundAt){
   const held=dogHeld(P),howl=!!(P&&P.howl);
   t3BodyPose(B,phase,moving&&held==="stand",groundAt);
   dogHold(B,held,howl,P&&isFinite(P.t)?P.t:0);
+  dogMore(B,P,held,P&&isFinite(P.t)?P.t:0);
   const J=B.userData.joints,t1=J.tail_1,tip=J.tail_tip;if(!t1||!tip)return;
   /* turned about its own fore-and-aft line, the tip goes to his side by its height over that line times the sine; lying
      down it swings two fifths as far, as his card's does */
@@ -2651,6 +2661,36 @@ function dogHold(B,held,howl,t){
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}
+/* THE REST OF HIS POSES (mq-v278, the owner's confirmed goal of 2026-11-19: his body in every pose his card draws), laid over
+   the hold dogHold set, each read off the same pose and clock his card reads:
+     · DIGGING, standing: his head down to the ground and his fore paws scraping turn about, as fast as his card's paw
+       (DOGDIG), and three crumbs of earth flying back from them.
+     · OVER THE BAR: his fore legs tucked under his chest and his hind legs stretched out behind, as far as he is lifted
+       (the lift itself is his position, set in t3DogBodies, from the same arc his card rises on).
+     · HIS HEARTS: one over his head while he is happy, three rising and fading while he shows his love, as his card's do.
+   Through the poles nothing is held differently: his record takes the side step (gearSway), and his body stands where his
+   record is. Inside the tunnel he is not drawn at all (t3DogBodies). */
+const DOGJUMP=1;   /* how high his body rises over the bar, as a share of his card's arc: 1 is his card's height (the owner's word of
+                     2026-11-19: high enough for now; raise this one number for a higher jump, and his legs tuck by the same arc) */
+const DOGDIG=70;   /* ms a scrape of his fore paws takes a turn, his card's (drawBeagle's dig) */
+function dogMore(B,P,held,t){
+  const S=B.userData.skel,J=B.userData.joints,U=B.userData,px=0.92/32;if(!S||!J)return;
+  const dig=!!(P&&P.dig)&&held==="stand",hop=P&&isFinite(P.lift)&&P.lift>0?Math.min(1,P.lift/DOGHOP):0;
+  if(dig){const a=Math.sin(t/DOGDIG);J.neck.rotation.x+=0.55;J.head.rotation.x+=0.25;
+    [["fore_l","wrist_l",a],["fore_r","wrist_r",-a]].forEach(([hp,kn,k])=>{J[hp].rotation.x=-0.35+0.45*k;J[kn].rotation.x=0.55*(1-k)/2;});}
+  if(hop){S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.x=-1.4*hop;J[kn].rotation.x=1.9*hop;}
+      else{J[hp].rotation.x=1.2*hop;J[kn].rotation.x=-0.3*hop;}});}
+  B.updateWorldMatrix(true,true);
+  /* the hearts spread across the screen, as on his card: left and right along the camera's own right, whichever way he faces */
+  const hw=J.head.getWorldPosition(new THREE.Vector3()),sc=B.scale.x||1,cr=T3.cam?new THREE.Vector3(1,0,0).applyQuaternion(T3.cam.quaternion).setY(0).normalize():new THREE.Vector3(1,0,0);
+  (U.hearts||[]).forEach((h,i)=>{const love=!!(P&&P.love),show=love||(!!(P&&P.happy)&&i===0);h.visible=show;if(!show)return;
+    const at=love?[[-8,0],[0,-3],[8,1]][i]:[-5,1],rise=love?((t/150+i*30)%14)*0.5:0;
+    const w=hw.clone().addScaledVector(cr,at[0]*px*sc*1.6);w.y+=(S.head*2.1+(-at[1]+rise)*px)*sc;h.position.copy(B.worldToLocal(w));
+    h.material.opacity=love?0.45+0.55*Math.abs(Math.sin(t/260+i*1.9)):1;});
+  /* the earth flies up and out ahead of his scraping paws, where his card throws it, and falls back */
+  (U.dirt||[]).forEach((d,i)=>{d.visible=dig;if(!dig)return;const paw=J[i===1?"fpaw_r":"fpaw_l"];if(!paw)return;
+    const pp=B.worldToLocal(paw.getWorldPosition(new THREE.Vector3())),f=((t/300)+i/3)%1;
+    d.position.set(pp.x+(i-1)*3*px,0.02+f*(1-f)*4*0.16,pp.z+0.06+f*0.16);d.rotation.set(f*6,f*4,0);});}
 /* each frame, before the animals' cards are listed: which dogs stand as bodies, each where his record puts him, facing the
    way his last step went. Answers the set of dogs whose cards are not to be drawn (t3Actors). A dog's body is kept while he
    is in this world and hidden while he is his card, made again when his look changes, and thrown away when he leaves */
@@ -2675,7 +2715,9 @@ function t3DogBodies(dt){
     const at=B.userData.at,go=at?Math.hypot(cr.fx-at[0],cr.fy-at[1]):0;B.userData.at=[cr.fx,cr.fy];
     if(cr.moving&&go>0&&go<1&&dt>0){const n=Math.min(DOGSTEPS[1],Math.max(DOGSTEPS[0],go/dt/(2*S.stride*sc)));
       B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
-    B.visible=true;B.position.set(cr.fx+0.5,lift,cr.fy+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    /* inside the tunnel nothing of him shows, body or card, as his card shows nothing there; over the bar he rises on the
+       arc his card rises on (gearPose's hop, card pixels, one being T3PERSON/32 of a square) (mq-v278) */
+    B.visible=!P.hid;B.position.set(cr.fx+0.5,lift+(isFinite(P.lift)&&P.lift>0?P.lift*T3PERSON/32*DOGJUMP:0),cr.fy+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     /* he is walking from his first step until a moment after his last (DOGREST): his record says he moves only while
        each step lasts, and between two steps of one walk his legs would otherwise snap to standing and back */
