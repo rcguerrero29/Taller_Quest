@@ -355,9 +355,9 @@ became visible once a second world existed:
 **Optional — guarded by `typeof`, the engine simply does less without them:**
 `CAMDEF CAMERAS STAKES GROWTH SEASONS CHAPTERS ENDLESS INTERVIEW CRITTERS DOGNAMES EGGS CHATTER CHILL NPCACT TRV
 DECOR DECOART READS DOCS DOCUI BUILDTPL BUILDS TILEART TILEART_SIDE TILEMETA MAPCOL MAPDOT
-TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST PEOPLETAKE PANELTAKE` (the outfits a
+TOWNLBL DOORS DOORLOOK SOLIDX PETPASS PLACES FLOORS ANIMALS READERLOOK RECORDSRC HUDFACT TROLLEYAT OUTFITTAKE BODYTAKE BODYREST PEOPLETAKE BODYSCREEN PANELTAKE` (the outfits a
 world turns on, a list: §7; the jointed body of the person you steer and its joints moved by hand, §7; the other people who stand
-as bodies, §7; the customizing panel the engine builds, §7) — and a template part's `link`
+as bodies, §7; the screens on which the bodies stand, §7; the customizing panel the engine builds, §7) — and a template part's `link`
 (`{door:[dy,dx], landing:[x,y], exit:[x,y], interior:{rows, people, locs, arrive}}`, #10): the
 build stamps the interior as a world named after the lot and keys both doors by place
 (`PORTALSAT`), so one template can be stamped on many lots and every door opens — and, since `mq-v65`, **`STOREPFX`** (config.js): the prefix on
@@ -706,6 +706,12 @@ their look). A body is made while the page is idle, one at a time, and their car
 where it walks; standing, it faces the camera, as a card does. Their marks (something to say, an emote) stay above them. A world
 that names nobody, or takes no person's body, draws every person as a card, exactly as before. `engine/engine3d.js`, grep
 `THE OTHER PEOPLE'S BODIES`; asked by `test/engine.smoke.js`, part `body`, at a phone's and a laptop's size.
+
+**One number keeps the bodies off small screens** (mq-v277): `const BODYSCREEN=600;` beside `BODYTAKE`. On a screen whose shorter side
+is under that many CSS pixels (a phone), every body (the person you steer, the people `PEOPLETAKE` names, a dog) stays its card and
+the creator keeps its 2D preview; at or over it (a tablet, a laptop) they are bodies. Read every frame, so turning a tablet moves
+between the two. A world that says nothing has bodies on every screen. Meridian sets 480 from mq-v277, with `BODYTAKE=["person"]`
+and `PEOPLETAKE=["chuy","lupe","beto"]`. `engine/engine.js`, grep `ON WHICH SCREENS THE BODIES STAND`.
 
 **One line opens the creator as the engine's customizing panel** (mq-v269): `const PANELTAKE=["creator"];` in a pack file the
 page loads before `engine/boot.js`. The creator (a new game, the barber's chair, a closet) then opens as the browser's own modal

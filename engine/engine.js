@@ -916,6 +916,12 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 const BODYKINDS=Object.freeze(["person","dog"]);
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
 const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
+/* ON WHICH SCREENS THE BODIES STAND (mq-v277). BODYSCREEN is a world's own number: the shorter side of the screen, in CSS
+   pixels, below which every body (the person you steer, the people PEOPLETAKE names, a dog) stays its card, so a phone draws
+   only cards while a laptop draws bodies. Read every frame, so turning a tablet or resizing a window moves between the two. A
+   world that says nothing, or names no positive number, has its bodies on every screen, as before. Meridian sets it (the
+   owner's word of 2026-11-19: laptop and desktop first, phones last and in a round of their own) */
+function bodyScreenOK(){return typeof BODYSCREEN!=="number"||!(BODYSCREEN>0)||Math.min(innerWidth,innerHeight)>=BODYSCREEN;}
 /* WHICH OF A WORLD'S PEOPLE STAND AS BODIES (mq-v274). PEOPLETAKE is the world's own list of the people, by their name in
    NPCLOOK (a station's `npc`), who stand in the 3D camera as bodies made from their look, as the person you steer does
    (engine/engine3d.js, grep "THE OTHER PEOPLE'S BODIES"). Only where the world takes the person's body (BODYON); a name it
@@ -6613,8 +6619,14 @@ function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(
   return c;}
 function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
   const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;const q=$("pvPause");if(q)q.hidden=!ok;   /* where the 3D cannot draw, there is nothing to pause */
+  const tr=$("pvTurn");if(tr){tr.hidden=!ok;tr.style.display=ok?"flex":"none";}   /* its inline display would outrank hidden */   /* nor anything to turn (mq-v277; Lupe, run 2026-11-19-claude-b0d1: a phone under BODYSCREEN showed Turn left and Turn right, which turned nobody) */
   c.setAttribute("aria-label",bodyWord("preview"));return ok;}
 const bodyStill=()=>{try{return window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
+/* THE PREVIEW FOLLOWS THE WINDOW (mq-v277; Lupe, the same run): the street reads BODYSCREEN every frame, but the creator draws only on
+   a press, and its turning loop stops for good once the preview is hidden. So a window grown back over the line left the mirror
+   dark, and a press brought him back standing still under "Pause turning". While the creator is open, a change of the window's
+   size (a resize, full screen, turning a device) draws him again and, unless he is held or still motion is asked for, turns him */
+addEventListener("resize",()=>{const cr=$("creator");if(!BODYON||!cr||cr.hidden)return;if(bodyPvDraw()&&!BODYPV.hold)bodySpin();});
 function bodySpin(){if(BODYPV.spin||bodyStill()||BODYPV.hold)return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
     if(BODYPV.hold||bodyStill()){BODYPV.spin=0;return;}   /* held, or reduced motion asked for while the menu is open: nothing is drawn and no frame is asked for until he is started again */

@@ -1272,7 +1272,8 @@ function t3GearPull(cr){const w=WORLDS[cr.world];if(!w)return 1;let k=1;
     k=Math.min(k,Math.max(0,Math.min(1,Math.max(Math.abs(cr.fx-x),Math.abs(cr.fy-y))-0.5)));}
   return k;}
 /* ---- THE JOINTED BODY (mq-v259): the person you steer, up close, as a body of rounded parts on a skeleton ----
-   Every person in the 3D camera is a card that faces it. A world that names `person` in its own list, `const BODYTAKE=["person"];`
+   A person in the 3D camera is a card that faces it, unless a world makes them a body: the person you steer here, and from
+   mq-v274 the people a world names (grep "THE OTHER PEOPLE'S BODIES"), on the screens BODYSCREEN allows. A world that names `person` in its own list, `const BODYTAKE=["person"];`
    in a pack file the page loads before engine/boot.js (read once, as OUTFITTAKE is, by its bare name), sees the person it
    steers within BODYNEAR squares of the camera's focus as a body that stands and walks, his feet flat on the ground; farther
    off he is his card, as everyone else is. Silence is not consent: a world that says nothing, or writes the list some other
@@ -1558,6 +1559,15 @@ function bodyMake(skel,lk,build){
   bodyRows("person").forEach(row=>{if(row.kind==="option"&&typeof BODYPART[row.key]==="function")BODYPART[row.key](M,row.key==="beard"?(C.beard!=="none"?C.beard:beardOf(lk)?"beard":"none"):C[row.key]);});
   /* his hair, by the style his look keeps (hairStyleOf, engine/engine.js): one function a style, and nothing else draws hair */
   {const st=hairStyleOf(lk);root.userData.hair=st;(typeof HAIRPART[st]==="function"?HAIRPART[st]:HAIRPART.cap)(M);}
+  /* THE HARD HAT (mq-v277; Pili, run 2026-11-19-claude-b0d1: Meridian's Beto stood bare-headed as a body, his head the cook's,
+     between two crewmates who keep theirs as cards). A look with hat:"hard" wears it on its card (drawPerson, grep 'hat==="hard"')
+     and now on its body, at the card's proportions: a dome a little wider than the skull in the card's yellow, a brim round it
+     in the card's darker yellow, and a lighter ridge from brow to nape. Over the hair whatever its style; a style that stands
+     well off the head (an afro, curls) may show beneath it, which is a later ticket when such a person becomes a body */
+  if(lk.hat==="hard"){const r=M.r,hc=M.hc,y0=hc+0.2*r;   /* set high and back on the head, so its brim leaves the face to the street's camera, as the card does (Lupe) */
+    part("head",new THREE.SphereGeometry(1.12*r,24,10,0,Math.PI*2,0,Math.PI*0.5),"hat","#F2C230",0,y0,0);
+    part("head",new THREE.CylinderGeometry(1.24*r,1.24*r,0.06*r,28),"hat","#D9A81C",0,y0,-0.06*r);
+    part("head",new THREE.TorusGeometry(1.13*r,0.07*r,6,18,Math.PI),"hat","#F7D768",0,y0,0).rotation.y=Math.PI/2;}
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */
   if(lk.outfit==="apron"&&typeof OUTFITON!=="undefined"&&OUTFITON.has("apron")){const z=td+0.006*H;
@@ -2242,7 +2252,7 @@ function t3BodyPose(B,phase,moving,groundAt){
 /* each frame: is the person you steer a body here, and if he is, where he stands, which way he faces and how he steps.
    True when the body stands, so the card is not drawn as well (t3Actors) */
 function t3Body(dt){
-  if(!BODYON){T3.bodyOn=false;return false;}
+  if(!BODYON||!bodyScreenOK()){T3.bodyOn=false;if(T3.body)T3.body.visible=false;return false;}   /* a screen too small for bodies (BODYSCREEN): his card */
   const[qx,qy]=focusXY(),d=Math.hypot(fx-qx,fy-qy);
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
   /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
@@ -2308,7 +2318,7 @@ function t3BodyThrough(){
    street will. The body is made again only when the look changes. False where it cannot draw (no 3D library, a page whose
    3D failed, no WebGL): the creator then keeps its 2D preview */
 function t3BodyPreview(cv,lk,ang){
-  if(typeof THREE==="undefined"||T3.fail||!cv)return false;
+  if(typeof THREE==="undefined"||T3.fail||!cv||!bodyScreenOK())return false;   /* where no body stands (BODYSCREEN) the creator keeps its 2D preview */
   try{
     if(!T3.renderer)t3Init();
     const W=cv.width,Hh=cv.height;if(!W||!Hh)return false;
@@ -2648,6 +2658,7 @@ function t3DogBodies(dt){
   const on=T3.dogOn||(T3.dogOn=new Map()),shown=new Set();
   const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(cr);};
   if(!DOGBODYON){[...on.keys()].forEach(drop);T3.dogShown=shown;return shown;}
+  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.dogShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards, the bodies kept for a turn back */
   const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
   const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
       return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=DOGNEAR+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
@@ -2684,7 +2695,7 @@ function t3DogBodies(dt){
        has a moment), the nearest first, so a street of them does not stall the frame they come into view in. Until it is
        made, their card stands in, exactly as before.
      · WHAT THEY ARE MADE FROM: npcWhimsy, the look their card is painted with (the theme's tint on the shirt included), so the
-       body wears the card's colours. A change to the look makes the body again.
+       body wears the card's colours, and its hard hat (mq-v277). A change to the look makes the body again.
      · HOW THEY STAND AND WALK: t3BodyPose, the walk of the person you steer, its pace held to a person's (BODYSTEPS). Walking,
        a body faces where it walks; standing, it faces the camera, as its card always does; at a window, it stands up against
        its counter and faces the street (PEOPLEWIN).
@@ -2707,7 +2718,7 @@ const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
    at the street edge of it (grep "a person at work inside this wall"): a body there stood whole above the counter, feet and all.
    Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
 const PEOPLEWIN=0.2;
-const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),JSON.stringify(bodyChoicesOf(lk.body))].join("|");
+const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].join("|");   /* the hat is in it from mq-v277 */
 /* one body made each time the browser has a moment (requestIdleCallback; where it has none, the next tick), nearest first.
    A person who is no longer wanted when their turn comes is passed over */
 function t3PeopleMake(){
@@ -2735,6 +2746,7 @@ function t3PeopleBodies(dt){
   const on=T3.peopleOn||(T3.peopleOn=new Map()),shown=new Set();
   const drop=n=>{const B=on.get(n);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(n);};
   if(!PEOPLEON.size){[...on.keys()].forEach(drop);T3.peopleShown=shown;return shown;}
+  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.peopleShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards */
   const w=CW(),[qx,qy]=focusXY(),sc=T3PERSON/0.92,cam=T3.cam.position,wait=[];
   const want=w.npcs.filter(n=>n.npc&&PEOPLEON.has(n.npc)&&!(T3.peopleBad&&T3.peopleBad.has(n))).map(n=>{
       const x=n.fx===undefined?n.x:n.fx,y=n.fy===undefined?n.y:n.fy,d=Math.hypot(x-qx,y-qy),B=on.get(n);
