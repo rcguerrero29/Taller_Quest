@@ -8,11 +8,11 @@ const GAMEV="mq-v277";
 const PANELTAKE=["creator"];
 /* mq-v277: Meridian's bodies (the owner's goal confirmed 2026-11-19, #159): the person you steer stands as a jointed body up close,
    and so do the three of Meridian's people who share a name with the town's (Chuy, Lupe and Beto), each in Meridian's own card
-   look; everyone else stays a card, for now. Only on a screen whose shorter side is at least BODYSCREEN pixels, so a phone keeps
+   look; everyone else stays a card, for now. Only on a screen whose shorter side is at least BODYSCREEN pixels (480, his yes of 2026-11-19, so a laptop in an ordinary window clears it while every phone held upright stays under), so a phone keeps
    the cards until a round of its own (laptop and desktop first). */
 const BODYTAKE=["person"];
 const PEOPLETAKE=["chuy","lupe","beto"];
-const BODYSCREEN=600;
+const BODYSCREEN=480;
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
 /* default camera for this pack. TRUE 3D as of 2026-09-01 (the owner asked for 3D

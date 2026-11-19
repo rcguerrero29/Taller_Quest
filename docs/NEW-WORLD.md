@@ -710,7 +710,7 @@ that names nobody, or takes no person's body, draws every person as a card, exac
 **One number keeps the bodies off small screens** (mq-v277): `const BODYSCREEN=600;` beside `BODYTAKE`. On a screen whose shorter side
 is under that many CSS pixels (a phone), every body (the person you steer, the people `PEOPLETAKE` names, a dog) stays its card and
 the creator keeps its 2D preview; at or over it (a tablet, a laptop) they are bodies. Read every frame, so turning a tablet moves
-between the two. A world that says nothing has bodies on every screen. Meridian sets 600 from mq-v277, with `BODYTAKE=["person"]`
+between the two. A world that says nothing has bodies on every screen. Meridian sets 480 from mq-v277, with `BODYTAKE=["person"]`
 and `PEOPLETAKE=["chuy","lupe","beto"]`. `engine/engine.js`, grep `ON WHICH SCREENS THE BODIES STAND`.
 
 **One line opens the creator as the engine's customizing panel** (mq-v269): `const PANELTAKE=["creator"];` in a pack file the
