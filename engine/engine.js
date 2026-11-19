@@ -6352,7 +6352,12 @@ $("treat").addEventListener("click",()=>{
   else if(petTarget==="loro"){
     const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(DOGK.has(petTarget)){ /* a treat: the tail achieves liftoff, and he's FUELED */
-    const g2=petCrit;
+    const g2=petCrit,pe=g2?personaOf(g2):null;
+    /* HIS PERSONALITY, where the world asks for it (mq-v279): he is met now, and turns to you now, or, aloof, a while later;
+       patient, he turns and waits without the treat's joy; aloof, he does not take it yet. A line says why, so a dog that does
+       not do what you asked reads as himself and not as a fault */
+    if(pe){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);
+      if(pe!=="eager"){if(pe==="patient"){g2.sit=true;g2.next=wNow()+3200;}const ln=personaLine(g2,pe);if(ln)toast(ln,2600);return;}}
     if(g2){g2.sit=true;g2.next=wNow()+3200;g2.happyT=wNow()+2200;g2.layT=0;
       g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
       if(world===PL.park)PARK.t++;}
@@ -9048,6 +9053,42 @@ function spawnCustom(rec){
    session, no clock: fetch, treats, howls. Crossing back plays a little recap.
    The park holds the preview customization: bandanas, and adopting your own
    dog (who gets the full beagle program). All per-device, in `mqpark`. */
+/* ANIMAL PERSONALITIES (mq-v279; the owner's confirmed goals of 2026-11-19). Each animal draws
+   one of three reactions once, by chance, the first time it is asked, and keeps it: EAGER turns and comes to you at once,
+   PATIENT turns and waits, still, ALOOF ignores you a while. The chances are one table by kind, the engine's below, which a
+   world may replace with its own PERSONACHANCE (same shape, numbers out of any total). THE NUMBERS ARE A DESIGN, NOT A
+   MEASUREMENT: studies find pet personality varies one animal to the next and holds steady (cats along five factors, the
+   "Feline Five", 2017; dogs along sociability, boldness and play), but none gives the share of each type. When a study
+   does, change this table and nothing else. A world turns personalities on kind by kind in its own PERSONATAKE list
+   ("dog", "cat", "pigeon", "parrot", "hummingbird", "butterfly"); a world that says nothing has none, and every animal
+   reacts as it always has. A named dog's draw is kept with the park's picks (parkPrefs.persona), so it is the same dog on
+   every visit; a trait added later (playful, shy) comes with its own chances in a table of this shape. */
+const PERSONAS=Object.freeze(["eager","patient","aloof"]);
+const PERSONAWAIT=4000;   /* ms an aloof animal goes on ignoring you before it turns */
+const PERSONACHANCE_DEF=Object.freeze({dog:{eager:60,patient:30,aloof:10},cat:{eager:15,patient:30,aloof:55},
+  pigeon:{eager:35,patient:50,aloof:15},parrot:{eager:50,patient:30,aloof:20},hummingbird:{eager:10,patient:40,aloof:50},
+  butterfly:{eager:0,patient:40,aloof:60}});
+function personaChance(k){const w=typeof PERSONACHANCE==="object"&&PERSONACHANCE&&Object.prototype.hasOwnProperty.call(PERSONACHANCE,k)?PERSONACHANCE[k]:PERSONACHANCE_DEF[k];
+  return w&&typeof w==="object"?w:null;}
+function personaKind(cr){return !cr?null:DOGK.has(cr.kind)?"dog":cr.kind==="gato"?"cat":cr.kind==="colibri"?"hummingbird":cr.kind==="butterfly"?"butterfly":null;}
+function personaOn(k){return typeof PERSONATAKE!=="undefined"&&Array.isArray(PERSONATAKE)&&PERSONATAKE.includes(k);}
+/* one draw from the kind's chances; r, a number from 0 to 1, may be handed in so a check can hold it still */
+function personaDraw(k,r){const w=personaChance(k),n=p=>w&&isFinite(+w[p])?Math.max(0,+w[p]):0;let tot=0;PERSONAS.forEach(p=>{tot+=n(p);});
+  if(!(tot>0))return "patient";let x=(typeof r==="number"&&r>=0&&r<1?r:Math.random())*tot;
+  for(const p of PERSONAS){x-=n(p);if(x<0)return p;}return PERSONAS[PERSONAS.length-1];}
+/* the kept draws, cleaned where they are read: a name of at most 40 letters and one of the three words, in a map with no prototype */
+function personaClean(o){const m=Object.create(null);if(o&&typeof o==="object"&&!Array.isArray(o))
+  Object.keys(o).slice(0,64).forEach(k=>{const v=o[k];if(typeof k==="string"&&k.length<=40&&PERSONAS.includes(v))m[k]=v;});return m;}
+function personaOf(cr){const k=personaKind(cr);if(!k||!personaOn(k))return null;
+  if(PERSONAS.includes(cr.persona))return cr.persona;
+  const kept=cr.name&&parkPrefs.persona?parkPrefs.persona[cr.name]:undefined;
+  cr.persona=PERSONAS.includes(kept)?kept:personaDraw(k);
+  if(cr.name&&cr.name.length<=40&&kept!==cr.persona){if(!parkPrefs.persona)parkPrefs.persona=Object.create(null);parkPrefs.persona[cr.name]=cr.persona;parkPersist();}
+  return cr.persona;}
+/* a line in its personality's voice, from the world's own words (persona.<kind>.<reaction>, a list), {n} its name; none
+   when the world has no words for it, so the reaction still shows and nothing is said in a language the world did not give */
+function personaLine(cr,pe){const W=T().persona,k=personaKind(cr),L=W&&W[k]&&Array.isArray(W[k][pe])?W[k][pe]:null;
+  return L&&L.length?String(L[Math.floor(Math.random()*L.length)]).replace(/\{n\}/g,cr.name||""):null;}
 const parkPrefs={band:Object.create(null),collar:Object.create(null),dogs:[],train:{}};
 try{const p0=JSON.parse(localStorage.getItem(SK("park"))||"{}");
   if(p0&&typeof p0==="object"){
@@ -9062,6 +9103,7 @@ try{const p0=JSON.parse(localStorage.getItem(SK("park"))||"{}");
       parkPrefs.collar=cl;}
     parkPrefs.dogs=Array.isArray(p0.dogs)?p0.dogs.slice(0,24):[]; /* no adoption limit (owner) — just a sanity ceiling */
     parkPrefs.train=(p0.train&&typeof p0.train==="object")?p0.train:{};
+    if(p0.persona)parkPrefs.persona=personaClean(p0.persona);   /* the kept personalities (mq-v279): written only once one is drawn */
     /* #264: the star dog's kept name, and how many dogs have been stubborn about a new one. Neither is
        written until something happens to write it, so a game that never names a star stores exactly
        what it stored before. */
@@ -9383,6 +9425,7 @@ $("renGo").addEventListener("click",()=>{
   const old=c.name,star=c===starDog();
   if(parkPrefs.band[old]!==undefined){parkPrefs.band[n]=parkPrefs.band[old];delete parkPrefs.band[old];}
   if(parkPrefs.collar[old]!==undefined){parkPrefs.collar[n]=parkPrefs.collar[old];delete parkPrefs.collar[old];}
+  if(parkPrefs.persona&&parkPrefs.persona[old]!==undefined){parkPrefs.persona[n]=parkPrefs.persona[old];delete parkPrefs.persona[old];}   /* his personality goes with him (mq-v279) */
   /* #277: the alebrije look goes with the dog, like the bandana: the one chosen for it or, if nobody chose, the one
      its old name gave it, and any custom look over that. Nothing stays under the old name. A stopgap: the picks are
      kept by name until dogs are given ids that never change. */

@@ -2559,6 +2559,16 @@ function dogMake(skel,lk){
   {const c=document.createElement("canvas");c.width=c.height=32;const g=c.getContext("2d");g.fillStyle="#C4586B";g.font="24px serif";g.textAlign="center";g.textBaseline="middle";g.fillText("\u2764",16,17);
     const tx=new THREE.CanvasTexture(c);tx.magFilter=THREE.NearestFilter;root.userData.hearts=[0,1,2].map(()=>{
       const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false}));sp.scale.setScalar(r*1.2);sp.visible=false;sp.userData={heart:true};root.add(sp);return sp;});}
+  /* his thought bubble (mq-v279): a small white cloud with a bone in it, a picture and no words, shown while he stands
+     facing away, thinking of something of his own (dogAway) */
+  {const c=document.createElement("canvas");c.width=64;c.height=48;const g=c.getContext("2d");
+    g.fillStyle="#FFFFFF";g.strokeStyle="#5A5560";g.lineWidth=2;
+    g.beginPath();g.ellipse(34,20,26,16,0,0,7);g.fill();g.stroke();
+    g.beginPath();g.arc(12,40,4,0,7);g.fill();g.stroke();g.beginPath();g.arc(5,46,2,0,7);g.fill();
+    g.fillStyle="#E9DDC4";g.strokeStyle="#8A7A5C";g.fillRect(24,17,20,6);g.strokeRect(24,17,20,6);
+    [[24,17],[24,23],[44,17],[44,23]].forEach(([x,y])=>{g.beginPath();g.arc(x,y,4,0,7);g.fill();g.stroke();});
+    const tx=new THREE.CanvasTexture(c);tx.magFilter=THREE.NearestFilter;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false}));
+    sp.scale.set(r*3.2,r*2.4,1);sp.visible=false;sp.userData={bubble:true};root.add(sp);root.userData.bubble=sp;}
   /* the dirt he throws up digging (mq-v278): three crumbs in the card's earth colour, flying back from his fore paws (dogMore) */
   root.userData.dirt=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.BoxGeometry(r*0.42,r*0.42,r*0.42),new THREE.MeshLambertMaterial({color:new THREE.Color("#6E5638")}));
     m.visible=false;m.userData={dirt:true};root.add(m);return m;});
@@ -2670,6 +2680,12 @@ function dogHold(B,held,howl,t){
      · HIS HEARTS: one over his head while he is happy, three rising and fading while he shows his love, as his card's do.
    Through the poles nothing is held differently: his record takes the side step (gearSway), and his body stands where his
    record is. Inside the tunnel he is not drawn at all (t3DogBodies). */
+/* does he stand facing away (mq-v279)? Only where the world asks for a dog's personality, only standing idle (no step, no job,
+   not following you, not sitting, lying, digging, howling, on the course), and only until he is met, or while an aloof dog
+   is still ignoring you */
+function dogAway(cr,P,nw){if(typeof personaOf!=="function"||!personaOf(cr))return false;
+  if(cr.moving||cr.task||cr.follow||!P||P.sit||P.lay||P.dig||P.howl||P.hid||P.lift||P.side)return false;
+  return !cr.metT||nw<(cr.turnT||0);}
 const DOGJUMP=1;   /* how high his body rises over the bar, as a share of his card's arc: 1 is his card's height (the owner's word of
                      2026-11-19: high enough for now; raise this one number for a higher jump, and his legs tuck by the same arc) */
 const DOGDIG=70;   /* ms a scrape of his fore paws takes a turn, his card's (drawBeagle's dig) */
@@ -2687,6 +2703,9 @@ function dogMore(B,P,held,t){
     const at=love?[[-8,0],[0,-3],[8,1]][i]:[-5,1],rise=love?((t/150+i*30)%14)*0.5:0;
     const w=hw.clone().addScaledVector(cr,at[0]*px*sc*1.6);w.y+=(S.head*2.1+(-at[1]+rise)*px)*sc;h.position.copy(B.worldToLocal(w));
     h.material.opacity=love?0.45+0.55*Math.abs(Math.sin(t/260+i*1.9)):1;});
+  /* his thought bubble over his head and to one side, while he stands facing away (dogAway, set each frame by t3DogBodies) */
+  if(U.bubble){const on=!!U.away&&!(P&&(P.howl||P.love||P.happy));U.bubble.visible=on;
+    if(on){const w=hw.clone().addScaledVector(cr,S.head*2.2*sc);w.y+=S.head*3.2*sc;U.bubble.position.copy(B.worldToLocal(w));}}
   /* the earth flies up and out ahead of his scraping paws, where his card throws it, and falls back */
   (U.dirt||[]).forEach((d,i)=>{d.visible=dig;if(!dig)return;const paw=J[i===1?"fpaw_r":"fpaw_l"];if(!paw)return;
     const pp=B.worldToLocal(paw.getWorldPosition(new THREE.Vector3())),f=((t/300)+i/3)%1;
@@ -2710,6 +2729,13 @@ function t3DogBodies(dt){
     if(!B){B=dogMake(dogSkeleton(lk.kind),lk);B.userData.key=key;T3.scene.add(B);on.set(cr,B);}
     const S=B.userData.skel,lift=stairLift(w,Math.round(cr.fx),Math.round(cr.fy)),[hx,hy]=P.heading;
     if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);else if(B.userData.yaw===undefined)B.userData.yaw=Math.atan2(P.face<0?-1:1,0);
+    /* HIS PERSONALITY'S FIRST POSE (mq-v279, where the world asks for personalities): until he is met, and while an aloof dog
+       goes on ignoring you, standing idle he faces away from the camera, thinking of something of his own; once met he turns
+       to you, eager with a wag */
+    B.userData.away=dogAway(cr,P,nw);
+    if(B.userData.away){B.userData.yaw=Math.atan2(cr.fx+0.5-T3.cam.position.x,cr.fy+0.5-T3.cam.position.z);B.userData.turned=false;}
+    else if(cr.metT&&!B.userData.turned&&!cr.moving){B.userData.turned=true;B.userData.yaw=Math.atan2(px+0.5-(cr.fx+0.5),py+0.5-(cr.fy+0.5));
+      if(cr.persona==="eager"&&!(cr.happyT>nw))cr.happyT=nw+1500;}
     /* his pace follows his speed, held to a dog's (DOGSTEPS), as the person's is held to a person's: the ground he covered
        and the time it took are handed in, never read here; a jump (a door) is not walked */
     const at=B.userData.at,go=at?Math.hypot(cr.fx-at[0],cr.fy-at[1]):0;B.userData.at=[cr.fx,cr.fy];
