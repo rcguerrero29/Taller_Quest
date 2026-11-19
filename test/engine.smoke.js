@@ -16849,10 +16849,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       screen: typeof BODYSCREEN === 'undefined' ? null : BODYSCREEN,
       /* of the people the world names, the one who stands in the largest world: the most room to stand him behind them, a card
          between, or a wall in front. Not someone who keeps a window (an npc with win): their body stands against the counter
-         and faces the street (PEOPLEWIN), so there is no square two from them to stand him on (found 2026-11-19, run
-         against a world whose largest one has a window-keeper) */
+         and faces the street (PEOPLEWIN), so there is no square two from them to stand him on; and not someone who walks
+         (wanders): they are gone from the square the checks look at (both found 2026-11-19, run against a world whose largest
+         one has a window-keeper and a walker) */
       roomy: (() => { if (typeof PEOPLETAKE === 'undefined' || !Array.isArray(PEOPLETAKE)) return null; let best = null, most = -1;
-        for (const who of PEOPLETAKE) for (const id of Object.keys(WORLDS)) { const w = WORLDS[id]; if (!(w.npcs || []).some(q => q.npc === who && !q.win)) continue;
+        for (const who of PEOPLETAKE) for (const id of Object.keys(WORLDS)) { const w = WORLDS[id]; if (!(w.npcs || []).some(q => q.npc === who && !q.win && !(typeof wanders === 'function' && wanders(q)))) continue;
           let free = 0; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (!SOLID.has(w.grid[y][x])) free++;
           if (free > most) { most = free; best = who; } }
         return best; })() }));
