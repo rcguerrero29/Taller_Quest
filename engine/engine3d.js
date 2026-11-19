@@ -2560,7 +2560,7 @@ function dogMake(skel,lk){
     const tx=new THREE.CanvasTexture(c);tx.magFilter=THREE.NearestFilter;root.userData.hearts=[0,1,2].map(()=>{
       const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false}));sp.scale.setScalar(r*1.2);sp.visible=false;sp.userData={heart:true};root.add(sp);return sp;});}
   /* the dirt he throws up digging (mq-v278): three crumbs in the card's earth colour, flying back from his fore paws (dogMore) */
-  root.userData.dirt=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.BoxGeometry(r*0.28,r*0.28,r*0.28),new THREE.MeshLambertMaterial({color:new THREE.Color("#6E5638")}));
+  root.userData.dirt=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.BoxGeometry(r*0.42,r*0.42,r*0.42),new THREE.MeshLambertMaterial({color:new THREE.Color("#6E5638")}));
     m.visible=false;m.userData={dirt:true};root.add(m);return m;});
   if(typeof DOGPART[lk.kind]==="function")DOGPART[lk.kind](M);
   root.userData.joints=J;root.userData.skel=skel;root.userData.look=lk;return root;}
@@ -2676,17 +2676,19 @@ function dogMore(B,P,held,t){
   const dig=!!(P&&P.dig)&&held==="stand",hop=P&&isFinite(P.lift)&&P.lift>0?Math.min(1,P.lift/DOGHOP):0;
   if(dig){const a=Math.sin(t/DOGDIG);J.neck.rotation.x+=0.55;J.head.rotation.x+=0.25;
     [["fore_l","wrist_l",a],["fore_r","wrist_r",-a]].forEach(([hp,kn,k])=>{J[hp].rotation.x=-0.35+0.45*k;J[kn].rotation.x=0.55*(1-k)/2;});}
-  if(hop){S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.x=-1.0*hop;J[kn].rotation.x=1.4*hop;}
-      else{J[hp].rotation.x=0.9*hop;J[kn].rotation.x=-0.4*hop;}});}
+  if(hop){S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.x=-1.4*hop;J[kn].rotation.x=1.9*hop;}
+      else{J[hp].rotation.x=1.2*hop;J[kn].rotation.x=-0.3*hop;}});}
   B.updateWorldMatrix(true,true);
-  const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3())),top=hp.y+S.head*2.1;
+  /* the hearts spread across the screen, as on his card: left and right along the camera's own right, whichever way he faces */
+  const hw=J.head.getWorldPosition(new THREE.Vector3()),sc=B.scale.x||1,cr=T3.cam?new THREE.Vector3(1,0,0).applyQuaternion(T3.cam.quaternion).setY(0).normalize():new THREE.Vector3(1,0,0);
   (U.hearts||[]).forEach((h,i)=>{const love=!!(P&&P.love),show=love||(!!(P&&P.happy)&&i===0);h.visible=show;if(!show)return;
-    const at=love?[[-8,0],[0,-3],[8,1]][i]:[-5,1];
-    h.position.set(hp.x+at[0]*px,top-at[1]*px+(love?((t/150+i*30)%14)*0.5*px:0),hp.z);
+    const at=love?[[-8,0],[0,-3],[8,1]][i]:[-5,1],rise=love?((t/150+i*30)%14)*0.5:0;
+    const w=hw.clone().addScaledVector(cr,at[0]*px*sc*1.6);w.y+=(S.head*2.1+(-at[1]+rise)*px)*sc;h.position.copy(B.worldToLocal(w));
     h.material.opacity=love?0.45+0.55*Math.abs(Math.sin(t/260+i*1.9)):1;});
+  /* the earth flies up and out ahead of his scraping paws, where his card throws it, and falls back */
   (U.dirt||[]).forEach((d,i)=>{d.visible=dig;if(!dig)return;const paw=J[i===1?"fpaw_r":"fpaw_l"];if(!paw)return;
     const pp=B.worldToLocal(paw.getWorldPosition(new THREE.Vector3())),f=((t/300)+i/3)%1;
-    d.position.set(pp.x+(i-1)*2.5*px,Math.max(0.01,f*(1-f)*4*0.12),pp.z-f*0.3);d.rotation.set(f*6,f*4,0);});}
+    d.position.set(pp.x+(i-1)*3*px,0.02+f*(1-f)*4*0.16,pp.z+0.06+f*0.16);d.rotation.set(f*6,f*4,0);});}
 /* each frame, before the animals' cards are listed: which dogs stand as bodies, each where his record puts him, facing the
    way his last step went. Answers the set of dogs whose cards are not to be drawn (t3Actors). A dog's body is kept while he
    is in this world and hidden while he is his card, made again when his look changes, and thrown away when he leaves */
