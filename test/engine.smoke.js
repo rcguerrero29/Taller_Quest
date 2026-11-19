@@ -16759,7 +16759,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (!(fl < -0.5 && wl > 0.5 && hl > 0.5)) said('over the bar, the dog\'s legs are not tucked under him and stretched behind (fore ' + fl.toFixed(2) + ', wrist ' + wl.toFixed(2) + ', hind ' + hl.toFixed(2) + ')');
                     void hp;
                     gearPose = c => c === cr ? { hop: 6, hid: false, side: 0 } : kg(c); const up = K.show(cr), y6 = K.bodyOf(cr).position.y; gearPose = kg; K.show(cr); const y0 = K.bodyOf(cr).position.y;
-                    if (up.body && !(Math.abs((y6 - y0) - 6 * T3PERSON / 32) < 0.002)) said('over the bar the dog\'s body rises ' + (y6 - y0).toFixed(3) + ', where his card rises ' + (6 * T3PERSON / 32).toFixed(3));
+                    const J6 = 6 * T3PERSON / 32 * (typeof DOGJUMP === 'number' ? DOGJUMP : 1);
+                    if (up.body && !(Math.abs((y6 - y0) - J6) < 0.002)) said('over the bar the dog\'s body rises ' + (y6 - y0).toFixed(3) + ', where his card\'s arc and DOGJUMP lift him ' + J6.toFixed(3));
+                    if (!(typeof DOGJUMP === 'number' && DOGJUMP >= 1)) said('the dog\'s jump is set lower than his card\'s arc (DOGJUMP ' + DOGJUMP + ')');
                     N.push('the dog\'s new poses (mq-v278): digging paws ' + d1.l.toFixed(2) + '/' + d2.l.toFixed(2) + ', head down ' + (d1.head - st.head).toFixed(2) + ', over the bar risen ' + (y6 - y0).toFixed(3)); } } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.loveT = cr.happyT = 0; }
               /* ---- J · any dog near the camera is a body, whether he follows you or not (mq-v264), and past DOGNEAR his card; past
                        DOGBODYMAX dogs, the nearest are bodies ---- */

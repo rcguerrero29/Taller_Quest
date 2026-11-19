@@ -2670,6 +2670,8 @@ function dogHold(B,held,howl,t){
      · HIS HEARTS: one over his head while he is happy, three rising and fading while he shows his love, as his card's do.
    Through the poles nothing is held differently: his record takes the side step (gearSway), and his body stands where his
    record is. Inside the tunnel he is not drawn at all (t3DogBodies). */
+const DOGJUMP=1;   /* how high his body rises over the bar, as a share of his card's arc: 1 is his card's height (the owner's word of
+                     2026-11-19: high enough for now; raise this one number for a higher jump, and his legs tuck by the same arc) */
 const DOGDIG=70;   /* ms a scrape of his fore paws takes a turn, his card's (drawBeagle's dig) */
 function dogMore(B,P,held,t){
   const S=B.userData.skel,J=B.userData.joints,U=B.userData,px=0.92/32;if(!S||!J)return;
@@ -2715,7 +2717,7 @@ function t3DogBodies(dt){
       B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
     /* inside the tunnel nothing of him shows, body or card, as his card shows nothing there; over the bar he rises on the
        arc his card rises on (gearPose's hop, card pixels, one being T3PERSON/32 of a square) (mq-v278) */
-    B.visible=!P.hid;B.position.set(cr.fx+0.5,lift+(isFinite(P.lift)&&P.lift>0?P.lift*T3PERSON/32:0),cr.fy+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    B.visible=!P.hid;B.position.set(cr.fx+0.5,lift+(isFinite(P.lift)&&P.lift>0?P.lift*T3PERSON/32*DOGJUMP:0),cr.fy+0.5);B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     /* he is walking from his first step until a moment after his last (DOGREST): his record says he moves only while
        each step lasts, and between two steps of one walk his legs would otherwise snap to standing and back */
