@@ -16834,8 +16834,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const facing = () => { const B = K.bodyOf(cr); if (!B) return null; const y = B.userData.yaw, f = [Math.sin(y), Math.cos(y)], c = T3.cam.position, d = [c.x - (cr.fx + 0.5), c.z - (cr.fy + 0.5)];
                     return { toCam: (f[0] * d[0] + f[1] * d[1]) / Math.max(1e-6, Math.hypot(d[0], d[1])), away: !!B.userData.away, bubble: !!(B.userData.bubble && B.userData.bubble.visible) }; };
                   for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0;
+                    K.face(cr, 'toward');   /* his last step toward the camera, so only his personality can turn his back to it (the ball's check before leaves him facing away) */
                     K.show(cr); let f = facing();
                     if (!f) { said('with a personality, the dog has no body to ask'); break; }
+                    N.push('his personality: ' + pe + ' and not yet met, his facing against the camera ' + f.toCam.toFixed(2) + ' (his back to it is -1), yaw ' + K.bodyOf(cr).userData.yaw.toFixed(2) + ', away ' + f.away);
                     if (!f.away || !(f.toCam < -0.7)) said(pe + ' and not yet met, standing idle, the dog does not face away from the camera (his facing against the camera ' + f.toCam.toFixed(2) + ', where his back to it is -1)');
                     if (!f.bubble) said(pe + ' and not yet met, the dog shows no thought bubble');
                     petTarget = cr.kind; petCrit = cr; said2.length = 0; $('treat').click();
