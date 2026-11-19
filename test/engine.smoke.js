@@ -1725,13 +1725,18 @@ function findChromium() {
         if (!(await some(4).then(() => true, () => false))) say('builder mode was turned off and the signs did not return');
       }
       await sp.evaluate(() => { admin = false; applyAdmin(); checkTalk(); });
-      /* 5c · THE LOOP: wanted, it looks every frame; not wanted, at most four times a second */
-      const looks = () => sp.evaluate(() => new Promise(res => { const o = kitSignLoop; let n = 0; kitSignLoop = function (ts) { n++; return o(ts); }; setTimeout(() => { kitSignLoop = o; res(n); }, 1000); }));
+      /* 5c · THE LOOP: wanted, it looks every frame; not wanted, at most four times a second. "Every frame" is counted against the
+         frames the page drew in the same second, not against a fixed 20: a busy machine draws fewer, and on 2026-11-19 a build
+         machine drew 19 while the loop followed each one, and a fixed 20 called that a fault */
+      const looks = () => sp.evaluate(() => new Promise(res => { const o = kitSignLoop; let n = 0, f = 0, on = true; kitSignLoop = function (ts) { n++; return o(ts); };
+        const tick = () => { if (!on) return; f++; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
+        setTimeout(() => { on = false; kitSignLoop = o; res({ n, f }); }, 1000); }));
       await some(4);
       const LW = await looks();
-      if (LW < 20) say('with the signs showing the loop looked only ' + LW + ' times in a second, where it follows every frame');
+      if (LW.f < 10) say('the page drew only ' + LW.f + ' frames in a second, too few to ask whether the signs\' loop follows every frame');
+      else if (LW.n < LW.f * 0.8) say('with the signs showing the loop looked only ' + LW.n + ' times in a second while the page drew ' + LW.f + ' frames, where it follows every frame');
       await sp.click('#kitBtn'); await none();
-      const LU = await looks();
+      const LU = (await looks()).n;
       if (LU > 5) say('with the Kitchen panel open (nothing wanted) the signs\' loop looked ' + LU + ' times in a second, where it looks at most four times a second');
       await sp.keyboard.press('Escape'); await some(4);
       /* 6 · A TAP: the panel narrowed to that place's use-soon things, soonest first, with its title; a pick opens the place; Escape and ✕ shut it */
@@ -14523,10 +14528,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (ok.includes('12down') && ok.includes('12right')) N.push('his face' + hairSaid(cut) + ': ' + pct(at3('12down').body.share) + ' of his head skin facing you (his card ' + pct(at3('12down').card.share) + '), ' + pct(at3('12right').body.share) + ' facing right (his card ' + pct(at3('12right').card.share) + ')');
               if (ok.includes('12down')) { const f = at3('12down'), r = f.body.wide / f.card.wide, hs = f.body.share / Math.max(1e-6, f.card.share);
                 if (cut === START && (r < 0.85 || r > 1.15)) P.push('facing you, his body is ' + (r < 1 ? 'thinner' : 'wider') + ' than his card: his shirt and sleeves are ' + pct(r) + ' of the card\'s shirt across, so up close he reads as another person');
-                if (cut === START && hs < 0.85) P.push('facing you' + hairSaid(cut) + ', his hair hides his face: ' + pct(f.body.share) + ' of his head shows skin, where his card shows ' + pct(f.card.share)); }
+                /* WHETHER HIS HAIR HIDES HIS FACE is no longer asked here by the share of his head that is skin. Decided 2026-11-19:
+                   a short cut covers more of a round skull than of a flat card, so the share fell to 45% against the card's 55% in a
+                   world whose new character starts with the short cap of hair, while both his eyes showed whole. The face is asked by
+                   its parts instead, against what each style says its hair may cover (HAIRREACH; parts 2, 3 and 9 of the real-head
+                   check below), the start included; the share is still printed above */ }
               if (ok.includes('12right')) { const f = at3('12right'), hs = f.body.share / Math.max(1e-6, f.card.share);
-                /* 0.4 from mq-v272 (it was 0.6): the head a new character starts with has a skull under it, its face and ears sit lower and its hair comes down with them, so from the side less of it is skin; the owner saw it and set the rule again from the new head (2026-11-16) */
-                if (cut === START && hs < 0.4) P.push('facing right' + hairSaid(cut) + ', his head is all hair and no face: ' + pct(f.body.share) + ' of it shows skin, where his card shows ' + pct(f.card.share)); }
+                /* from the side too the share is printed, not asked (it was asked at 0.4 from mq-v272, the owner's rule of 2026-11-16, and
+                   at 0.6 before): his eye and his nose from each side are asked by their parts, 2 and 3 below (2026-11-19) */ void hs; }
               if (ok.includes('22down')) { const f = at3('22down');
                 [['lumShirt', 'shirt'], ['lumSkin', 'skin']].forEach(([m, w]) => { const r = f.body[m] / Math.max(1e-6, f.card[m]);
                   if (r < 0.8) P.push('at ten at night his body goes dark beside his card: his ' + w + ' is ' + pct(r) + ' as bright as the card\'s');
@@ -15631,9 +15640,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    7 · Each from his right AND from his left, on every head the face row offers (2, 3, 5; 6 on the heads with a jaw).
                    8 · Long hair's volume over the top: S above (the body the engine makes); and it is asked 2 and 3 here as every
                        style is.
-                   9 · FACING YOU, HIS EYES: on the round head, without bangs each eye at least half of what it shows bald, as
-                       before; with bangs, which may cover most of both and at times one whole eye, only that some of them shows
-                       (a tenth of the two).
+                   9 · FACING YOU, HIS EYES: on the round head, without bangs each eye at least nine tenths of what it shows bald
+                       (half until 2026-11-19, when every style without bangs showed both whole); with bangs, which may cover most of
+                       both and at times one whole eye, only that some of them shows (a tenth of the two). The style a new character
+                       starts with is asked too: until 2026-11-19 it was left to the share of skin above, which measured the skull's
+                       hair and not his face (the owner's yes that day).
                  HOW IT IS MEASURED. The game's own camera, its picture of his head enlarged ZK times (the camera's view offset: the
                  same camera, the same rays, the same part hiding another, only more pixels to each: an eye from the side is three to
                  seven pixels at the game's size, and a third of it was a pixel). Each frame twice: as drawn, and his body again on a
@@ -15778,7 +15789,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                         else if (!(bD.eye.n >= 20)) { if (!bD.said) P.push('on the ' + face + ' head, bald, facing you, his eyes could not be found on the screen (' + bD.eye.n + ' pixels), so whether each style leaves them showing was not asked'); bD.said = true; }
                         else { const e = [0, 0], z = [0, 0], mid = bD.hx; for (let j = 0; j < c.length; j++) { if (c[j] === EYE) e[(j % W) < mid ? 0 : 1]++; if (bD.c[j] === EYE) z[(j % W) < mid ? 0 : 1]++; }
                           const r = e.map((v, i) => v / Math.max(1, z[i])); said.push('facing you: eyes ' + r.map(pct).join('/'));
-                          if (st !== START && z[0] >= 10 && z[1] >= 10) { if (!q.bangs) r.forEach((v, i) => { if (v < 0.5) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + pct(v) + ' of it shows, and this hair has no bangs to lie over it'); });
+                          if (z[0] >= 10 && z[1] >= 10) { if (!q.bangs) r.forEach((v, i) => { if (v < 0.9) P.push('facing you with the hair "' + st + '", his hair hides his ' + (i ? 'second' : 'first') + ' eye: ' + pct(v) + ' of it shows, and this hair has no bangs to lie over it'); });
                             else if ((e[0] + e[1]) < (z[0] + z[1]) / 10) P.push('facing you with the hair "' + st + '", his bangs hide both his eyes: ' + pct((e[0] + e[1]) / (z[0] + z[1])) + ' of them shows, where bangs leave some of them showing'); } } }
                       row.push(st + (st === START ? ' (the start)' : '') + (q.bangs ? ' (bangs)' : '') + ' ' + said.join('; ')); }
                     LINES.push('on the ' + face + ' head, against the bald head (an eye from the right ' + (B.right ? B.right.eye.n : '?') + ', from the left ' + (B.left ? B.left.eye.n : '?') + ', facing you ' + (bD ? bD.eye.n : '?') + ' pixels, at ' + ZK + ' times the game\'s size): ' + row.join(' | '));
