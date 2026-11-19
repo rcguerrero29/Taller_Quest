@@ -16800,7 +16800,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else if (cm.some(o => base(o) !== hex(collar))) said('the ' + kind + '\'s collar is not the colour chosen for it (' + collar + ')');
                     const bm = meshes.filter(o => o.userData.wears === 'band');
                     if (band && !bm.length) said('the ' + kind + ' in the coat ' + coat + ' wears no bandana on his body, where ' + band + ' was given him');
-                    else if (band && bm.some(o => base(o) !== hex(band))) said('the ' + kind + '\'s bandana is not the colour given him (' + band + ')');
+                    else if (band && bm.filter(o => o.userData.band !== 'knot').some(o => base(o) !== hex(band))) said('the ' + kind + '\'s bandana is not the colour given him (' + band + ')');   /* its knot is a shade darker, as on his card */
                     if (!band && bm.some(o => o.visible)) said('the ' + kind + ' wears a bandana on his body where none was given him'); } finally { t3Dispose(B); } }
                 N.push('the adoption house\'s looks on the body: ' + n + ' breed and coat pairs, each with a bandana and a collar colour in turn'); }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
