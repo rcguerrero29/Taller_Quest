@@ -16271,11 +16271,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const dShell = fs.readFileSync(file, 'utf8'), dBoot = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
     const dHref = require('url').pathToFileURL(file).href, dPack = new URL('__dogtake.js', dHref).href;
     const opened = [];
+    /* a world that names its own list without the dog (Meridian names the person from mq-v277) is asked with its own list and
+       the dog added, its declaration rewritten where the world makes it: a second declaration before the engine would throw.
+       Until mq-v278 such a world was not asked at all, so from mq-v277 the dog's body went unasked in the public build */
     const openWith = async list => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 }); opened.push(ctx);
       const p = await ctx.newPage(), err = []; p.on('pageerror', e => err.push(e.message));
-      const doc = list === null ? dShell : dShell.replace(dBoot, m => '<script src="__dogtake.js"></script>\n' + m);
+      const rewrite = list !== null && own0 !== null, DECL = /const BODYTAKE\s*=\s*\[[^\]]*\]\s*;/;
+      const doc = list === null || rewrite ? dShell : dShell.replace(dBoot, m => '<script src="__dogtake.js"></script>\n' + m);
       await ctx.route('**', r => { const u = r.request().url();
         if (u === dHref) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
+        if (rewrite && u.startsWith('file://') && /\.js$/.test(u)) { let t = null; try { t = fs.readFileSync(require('url').fileURLToPath(u), 'utf8'); } catch (e) { t = null; }
+          if (t !== null && DECL.test(t)) return r.fulfill({ body: t.replace(DECL, 'const BODYTAKE=' + JSON.stringify(list) + ';'), contentType: 'text/javascript; charset=utf-8' }); }
         if (list !== null && u === dPack) return r.fulfill({ body: 'const BODYTAKE=' + JSON.stringify(list) + ';\n', contentType: 'text/javascript; charset=utf-8' });
         return u.startsWith('file://') ? r.continue() : r.abort(); });
       await p.goto(dHref); await boot(p); await p.evaluate((() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; }));   /* these checks ask how a body works, not on which screens a world shows one (BODYSCREEN, asked on its own below) */
@@ -16303,9 +16309,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
         /* the page that takes the dog's body */
         const takes = own0 !== null && Array.isArray(ownL) && ownL.includes('dog');
-        if (own0 !== null && !takes) say(1, 'this world\'s own BODYTAKE (' + own0 + ') does not name the dog, so a world that asks for his body was not asked here');
-        else {
-          const { p: dp, err: dErr } = await openWith(takes ? null : ['person', 'dog']);   /* a phone, as the person's section asks, the world as it stands where it names the dog */
+        if (own0 !== null && !takes) say(1, 'this world\'s own BODYTAKE (' + own0 + ') does not name the dog, so it is asked with the dog added to it');
+        {
+          const { p: dp, err: dErr } = await openWith(takes ? null : (Array.isArray(ownL) ? [...new Set([...ownL, 'person', 'dog'])] : ['person', 'dog']));   /* a phone, as the person's section asks, the world as it stands where it names the dog */
           const R = await dp.evaluate(([JN]) => { const K = window.__dk, P = [], N = [], said = s => P.push(s);
             K.hold();
             try {
@@ -16778,6 +16784,25 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (!q) { said('facing ' + f + ', the ball the dog carries is not at his mouth: it is drawn where his card would carry it'); continue; }
                   const m = B.userData.joints.mouth.getWorldPosition(new THREE.Vector3()), d = q.spr.position.distanceTo(m);
                   if (d > 0.02) said('facing ' + f + ', the ball the dog carries is ' + d.toFixed(2) + ' of a square from his mouth'); } finally { BALL = null; } }
+              /* ---- N · every breed and coat the adoption house offers, and every bandana and collar colour the accessories give,
+                       worn by the body as the card wears them (mq-v278, the owner's confirmed goal of 2026-11-19) ---- */
+              if (typeof BREEDS !== 'object' || !BREEDS) N.push('this world keeps no adoption breeds, so the looks it offers were not asked on the body');
+              else { const cols = typeof BANDCOLS !== 'undefined' && Array.isArray(BANDCOLS) ? BANDCOLS : [null], hex = c => new THREE.Color(c).getHexString();
+                let n = 0, i = 0;
+                for (const kind of Object.keys(BREEDS).filter(k => DOGK.has(k))) for (const coat of BREEDS[kind]) {
+                  const band = cols[i % cols.length], collar = cols[(i + 2) % cols.length] || '#2E5FA8'; i++;
+                  const lk = dogLookOf({ kind, c: coat, band, collar }), B = dogMake(dogSkeleton(lk.kind), lk), base = o => (o.userData.base || o.material.color).getHexString();
+                  try { const meshes = []; B.traverse(o => { if (o.isMesh && o.material && o.material.color) meshes.push(o); }); n++;
+                    const paint = (typeof DOGCARDPAINT === 'object' && DOGCARDPAINT[kind]) || { coat };
+                    if (!meshes.some(o => base(o) === hex(paint.coat || coat))) said('the ' + kind + ' in the coat ' + coat + ' from the adoption house wears no part in his card\'s coat colour');
+                    const cm = meshes.filter(o => o.userData.wears === 'collar');
+                    if (!cm.length) said('the ' + kind + ' in the coat ' + coat + ' has no collar on his body');
+                    else if (cm.some(o => base(o) !== hex(collar))) said('the ' + kind + '\'s collar is not the colour chosen for it (' + collar + ')');
+                    const bm = meshes.filter(o => o.userData.wears === 'band');
+                    if (band && !bm.length) said('the ' + kind + ' in the coat ' + coat + ' wears no bandana on his body, where ' + band + ' was given him');
+                    else if (band && bm.some(o => base(o) !== hex(band))) said('the ' + kind + '\'s bandana is not the colour given him (' + band + ')');
+                    if (!band && bm.some(o => o.visible)) said('the ' + kind + ' wears a bandana on his body where none was given him'); } finally { t3Dispose(B); } }
+                N.push('the adoption house\'s looks on the body: ' + n + ' breed and coat pairs, each with a bandana and a collar colour in turn'); }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }
