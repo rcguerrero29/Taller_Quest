@@ -1713,9 +1713,13 @@ const CANDIDATES = [
   // every door because the plane was 1 unit tall in a 1.1-unit wall.
   const doors3d = await page.evaluate(() => {
     const problems = [];
+    // these checks are of the hero drawn as a card, the way a phone draws them (BODYSCREEN, mq-v277): the shared page is 480
+    // wide and now gets the body, so it is held to cards here and put back at the end; the body's own drawing over walls
+    // and under nearer people is proven in test/engine.smoke.js (the people section)
+    const keepScreen = bodyScreenOK; bodyScreenOK = () => false;
     const before = { cam: camMode, world, px, py, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
     camSet('3d'); world = 'hq'; px = fx = 10; py = fy = 11; moving = false; held = null;
-    if (!draw3d() || T3.fail) { problems.push('3D did not render headless — the doors could not be checked'); return problems; }
+    if (!draw3d() || T3.fail) { problems.push('3D did not render headless — the doors could not be checked'); bodyScreenOK = keepScreen; return problems; }
     const w = CW();
     const solid = (x, y) => (x < 0 || y < 0 || x >= w.W || y >= w.H) ? true : SOLID.has(w.grid[y][x]); // off-map is a wall
     let want = 0;
@@ -1846,7 +1850,7 @@ const CANDIDATES = [
     if (glows < doors) problems.push(`${doors - glows} of hq's ${doors} doors do not say "this one opens" in 3D`);
     T3.yaw = before.yaw; camSet(before.cam);
     world = before.world; px = fx = before.px; py = fy = before.py; held = null; moving = false;
-    return problems;
+    bodyScreenOK = keepScreen; return problems;
   });
   fails.push(...doors3d);
 
