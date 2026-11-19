@@ -17093,7 +17093,22 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (!want && me) say(0, 'on ' + dev + ' (under BODYSCREEN ' + limit + '), the person you steer stands as a body where the world keeps cards');
             if (!want && !r.now.card) say(0, 'on ' + dev + ' (under BODYSCREEN ' + limit + '), ' + who + ' has no card');
             say(1, 'on ' + dev + ' (' + vw.width + '×' + vw.height + ', BODYSCREEN ' + limit + '): ' + who + ' a ' + (r.now.body ? 'body' : 'card') + ', the person you steer a ' + (me ? 'body' : 'card') + ', as the rule wants ' + (want ? 'bodies' : 'cards'));
-            err.forEach(m => say(0, 'the page that asks the screen rule threw on ' + dev + ': ' + m)); } }
+            err.forEach(m => say(0, 'the page that asks the screen rule threw on ' + dev + ': ' + m)); }
+          /* ---- J · the creator across the line (mq-v277; Lupe, run 2026-11-19-claude-b0d1): the creator draws only on a press, so a
+             window resized across BODYSCREEN with it open must draw it again: under the line no 3D preview and no turn buttons to
+             press for nobody; over it, the preview shown and turning, the turn buttons there; and back again ---- */
+          if (limit > 0) { const { p, err } = await openWith(pack, { width: 390, height: 844 }, true);
+            const opened = await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); return !!b; });
+            await rafs(p, 3);
+            const read = () => p.evaluate(() => { const c = document.getElementById('pvBody'), t = document.getElementById('pvTurn'), cr = document.getElementById('creator');
+              return { open: !!cr && !cr.hidden, shown: !!c && !c.hidden, turns: !!t && !t.hidden && getComputedStyle(t).display !== 'none', spin: !!(typeof BODYPV !== 'undefined' && BODYPV.spin) }; });
+            if (!opened || !(await read()).open) say(1, 'the creator could not be opened at a new game, so the creator across the line was not asked');
+            else { const steps = [['a phone', 390, 844, false], ['a laptop', 1280, 800, true], ['a phone again', 390, 844, false], ['a laptop again', 1280, 800, true]];
+              for (const [what, w, h, big] of steps) { await p.setViewportSize({ width: w, height: h }); await p.waitForTimeout(500); await rafs(p, 3); const c = await read();
+                if (big && !(c.shown && c.turns && c.spin)) say(0, 'with the creator open, on ' + what + ' (' + w + '×' + h + ', over BODYSCREEN), the 3D preview is ' + (c.shown ? 'shown' : 'not shown') + ', ' + (c.spin ? 'turning' : 'still') + ', and the turn buttons ' + (c.turns ? 'there' : 'missing') + ': it is not drawn again when the window crosses the line');
+                if (!big && (c.shown || c.turns)) say(0, 'with the creator open, on ' + what + ' (' + w + '×' + h + ', under BODYSCREEN), the creator still shows ' + [c.shown && 'the 3D preview', c.turns && 'turn buttons that turn nobody'].filter(Boolean).join(' and '));
+                if (big ? c.shown && c.turns && c.spin : !c.shown && !c.turns) say(1, 'with the creator open, on ' + what + ': ' + (big ? 'the 3D preview turning, the turn buttons there' : 'no 3D preview, no turn buttons') + ', as the rule wants'); } }
+            err.forEach(m => say(0, 'the page that asks the creator across the line threw: ' + m)); } }
       }
     } finally { for (const c of opened) await c.close(); }
     fails.push(...PB);

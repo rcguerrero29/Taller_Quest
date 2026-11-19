@@ -1564,9 +1564,9 @@ function bodyMake(skel,lk,build){
      and now on its body, at the card's proportions: a dome a little wider than the skull in the card's yellow, a brim round it
      in the card's darker yellow, and a lighter ridge from brow to nape. Over the hair whatever its style; a style that stands
      well off the head (an afro, curls) may show beneath it, which is a later ticket when such a person becomes a body */
-  if(lk.hat==="hard"){const r=M.r,hc=M.hc,y0=hc+0.12*r;
+  if(lk.hat==="hard"){const r=M.r,hc=M.hc,y0=hc+0.2*r;   /* set high and back on the head, so its brim leaves the face to the street's camera, as the card does (Lupe) */
     part("head",new THREE.SphereGeometry(1.12*r,24,10,0,Math.PI*2,0,Math.PI*0.5),"hat","#F2C230",0,y0,0);
-    part("head",new THREE.CylinderGeometry(1.3*r,1.3*r,0.06*r,28),"hat","#D9A81C",0,y0,0.05*r);
+    part("head",new THREE.CylinderGeometry(1.24*r,1.24*r,0.06*r,28),"hat","#D9A81C",0,y0,-0.06*r);
     part("head",new THREE.TorusGeometry(1.13*r,0.07*r,6,18,Math.PI),"hat","#F7D768",0,y0,0).rotation.y=Math.PI/2;}
   /* the apron, where the world turned it on, cut as his card's is: a bib from the waist up the chest and a skirt from the waist to the
      middle of his thighs, as wide as his hips, over the front of his shirt */

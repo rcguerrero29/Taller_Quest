@@ -6619,8 +6619,14 @@ function bodyPvCanvas(){let c=$("pvBody");if(c)return c;const box=$("pvbox");if(
   return c;}
 function bodyPvDraw(){const c=bodyPvCanvas();if(!c||typeof t3BodyPreview!=="function")return false;
   const ok=t3BodyPreview(c,look,BODYPV.ang);c.hidden=!ok;const q=$("pvPause");if(q)q.hidden=!ok;   /* where the 3D cannot draw, there is nothing to pause */
+  const tr=$("pvTurn");if(tr){tr.hidden=!ok;tr.style.display=ok?"flex":"none";}   /* its inline display would outrank hidden */   /* nor anything to turn (mq-v277; Lupe, run 2026-11-19-claude-b0d1: a phone under BODYSCREEN showed Turn left and Turn right, which turned nobody) */
   c.setAttribute("aria-label",bodyWord("preview"));return ok;}
 const bodyStill=()=>{try{return window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
+/* THE PREVIEW FOLLOWS THE WINDOW (mq-v277; Lupe, the same run): the street reads BODYSCREEN every frame, but the creator draws only on
+   a press, and its turning loop stops for good once the preview is hidden. So a window grown back over the line left the mirror
+   dark, and a press brought him back standing still under "Pause turning". While the creator is open, a change of the window's
+   size (a resize, full screen, turning a device) draws him again and, unless he is held or still motion is asked for, turns him */
+addEventListener("resize",()=>{const cr=$("creator");if(!BODYON||!cr||cr.hidden)return;if(bodyPvDraw()&&!BODYPV.hold)bodySpin();});
 function bodySpin(){if(BODYPV.spin||bodyStill()||BODYPV.hold)return;BODYPV.t=0;
   const step=now=>{if($("creator").hidden||!$("pvBody")||$("pvBody").hidden){BODYPV.spin=0;return;}
     if(BODYPV.hold||bodyStill()){BODYPV.spin=0;return;}   /* held, or reduced motion asked for while the menu is open: nothing is drawn and no frame is asked for until he is started again */
