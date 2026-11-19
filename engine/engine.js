@@ -916,6 +916,12 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 const BODYKINDS=Object.freeze(["person","dog"]);
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
 const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
+/* ON WHICH SCREENS THE BODIES STAND (mq-v277). BODYSCREEN is a world's own number: the shorter side of the screen, in CSS
+   pixels, below which every body (the person you steer, the people PEOPLETAKE names, a dog) stays its card, so a phone draws
+   only cards while a laptop draws bodies. Read every frame, so turning a tablet or resizing a window moves between the two. A
+   world that says nothing, or names no positive number, has its bodies on every screen, as before. Meridian sets it (the
+   owner's word of 2026-11-19: laptop and desktop first, phones last and in a round of their own) */
+function bodyScreenOK(){return typeof BODYSCREEN!=="number"||!(BODYSCREEN>0)||Math.min(innerWidth,innerHeight)>=BODYSCREEN;}
 /* WHICH OF A WORLD'S PEOPLE STAND AS BODIES (mq-v274). PEOPLETAKE is the world's own list of the people, by their name in
    NPCLOOK (a station's `npc`), who stand in the 3D camera as bodies made from their look, as the person you steer does
    (engine/engine3d.js, grep "THE OTHER PEOPLE'S BODIES"). Only where the world takes the person's body (BODYON); a name it

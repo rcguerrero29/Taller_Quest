@@ -14177,7 +14177,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }), errs = [];
         try { const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
           if (!(await withPack(ctx, src, how === 'late'))) { say(0, 'this shell loads no engine/boot.js, so a world that ' + what + ' could not be put beside the engine'); continue; }
-          await p.goto(href); await boot(p); await p.evaluate(kit);
+          await p.goto(href); await boot(p); await p.evaluate((() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; }));   /* these checks ask how a body works, not on which screens a world shows one (BODYSCREEN, asked on its own below) */
+          await p.evaluate(kit);
           const r = await p.evaluate(() => { const A = window.__apron;
             return { log: A.log(), list: typeof OUTFITTAKE === 'undefined' ? null : Array.isArray(OUTFITTAKE) ? OUTFITTAKE.slice() : typeof OUTFITTAKE,
               drawn: A.clock(() => A.diff(A.card(saveLook({ outfit: 'casual' }), { dir: 'down' }, A.own, 0), A.card(saveLook({ outfit: 'apron' }), { dir: 'down' }, A.own, 0))) }; });
@@ -14292,7 +14293,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (u === packAt) return r.fulfill({ body: 'const BODYTAKE=["person"];\n', contentType: 'text/javascript; charset=utf-8' });
         return u.startsWith('file://') ? r.continue() : r.abort(); });
       try {
-        await bp.goto(href); await boot(bp);
+        await bp.goto(href); await boot(bp); await bp.evaluate((() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; }));   /* these checks ask how a body works, not on which screens a world shows one (BODYSCREEN, asked on its own below) */
         const R = await bp.evaluate(([JOINTS, shows]) => { const P = [], N = []; const show = eval('(' + shows + ')');
           const s0 = show(); if (s0.why) { N.push(s0.why + ', so the body was not asked for in 3D'); return { P, N }; }
           const keep = { look: { ...look }, dir, moving, bob, fx, fy, px, py, fxy: focusXY };
@@ -14785,7 +14786,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             planted = at >= 0 && src.indexOf(PLANTAT, at + 1) < 0;
             return r.fulfill({ body: planted ? src.slice(0, at + PLANTAT.length) + plant + src.slice(at + PLANTAT.length) : src, contentType: 'text/javascript; charset=utf-8' }); }
           return u.startsWith('file://') ? r.continue() : r.abort(); });
-        await p.goto(href); await boot(p);
+        await p.goto(href); await boot(p); await p.evaluate((() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; }));   /* these checks ask how a body works, not on which screens a world shows one (BODYSCREEN, asked on its own below) */
         if (!street) { await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); }); await rafs(p); }   /* street: the page as it boots, the creator not opened */
         return { ctx, p, errs, planted: () => planted }; };
       /* mq-v265: A DRAWER IS OPENED OR SHUT, AND THE NEXT STEP WAITS FOR IT TO HAVE HAPPENED. The browser tells a drawer it was
@@ -16266,7 +16267,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (u === dHref) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
         if (list !== null && u === dPack) return r.fulfill({ body: 'const BODYTAKE=' + JSON.stringify(list) + ';\n', contentType: 'text/javascript; charset=utf-8' });
         return u.startsWith('file://') ? r.continue() : r.abort(); });
-      await p.goto(dHref); await boot(p); await p.evaluate(kitSrc); return { p, err }; };
+      await p.goto(dHref); await boot(p); await p.evaluate((() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; }));   /* these checks ask how a body works, not on which screens a world shows one (BODYSCREEN, asked on its own below) */
+      await p.evaluate(kitSrc); return { p, err }; };
     const has3d = p => p.evaluate(() => typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d')));
     try {
       if (!(await has3d(page))) say(1, 'this shell has no 3D camera, so no dog stands as a body here and nothing was asked');
@@ -16843,21 +16845,34 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const pHref = require('url').pathToFileURL(file).href, pPack = new URL('__peopletake.js', pHref).href;
     const own = await page.evaluate(() => ({ body: typeof BODYTAKE === 'undefined' ? null : JSON.stringify(BODYTAKE), ppl: typeof PEOPLETAKE === 'undefined' ? null : JSON.stringify(PEOPLETAKE),
       three: typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d')),
-      who: ((WORLDS[PL.home] || { npcs: [] }).npcs.find(n => n.npc && lookOf(n)) || {}).npc || null }));   /* from the world the game starts in, wherever this page stands now */
+      who: ((WORLDS[PL.home] || { npcs: [] }).npcs.find(n => n.npc && lookOf(n)) || {}).npc || null,   /* from the world the game starts in, wherever this page stands now */
+      screen: typeof BODYSCREEN === 'undefined' ? null : BODYSCREEN,
+      /* of the people the world names, the one who stands in the largest world: the most room to stand him behind them, a card
+         between, or a wall in front */
+      roomy: (() => { if (typeof PEOPLETAKE === 'undefined' || !Array.isArray(PEOPLETAKE)) return null; let best = null, most = -1;
+        for (const who of PEOPLETAKE) for (const id of Object.keys(WORLDS)) { const w = WORLDS[id]; if (!(w.npcs || []).some(q => q.npc === who)) continue;
+          let free = 0; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (!SOLID.has(w.grid[y][x])) free++;
+          if (free > most) { most = free; best = who; } }
+        return best; })() }));
     const ownBody = own.body === null ? null : JSON.parse(own.body), ownPpl = own.ppl === null ? null : JSON.parse(own.ppl);
     const opened = [];
-    const openWith = async (pack, vw) => { const ctx = await browser.newContext({ viewport: vw }); opened.push(ctx);
+    const openWith = async (pack, vw, keepScreen) => { const ctx = await browser.newContext({ viewport: vw }); opened.push(ctx);
       const p = await ctx.newPage(), err = []; p.on('pageerror', e => err.push(e.message));
       const doc = pack ? pShell.replace(pBoot, m => '<script src="__peopletake.js"></script>\n' + m) : pShell;
       await ctx.route('**', r => { const u = r.request().url();
         if (u === pHref) return r.fulfill({ body: doc, contentType: 'text/html; charset=utf-8' });
         if (pack && u === pPack) return r.fulfill({ body: pack, contentType: 'text/javascript; charset=utf-8' });
         return u.startsWith('file://') ? r.continue() : r.abort(); });
-      await p.goto(pHref); await boot(p); return { p, err }; };
+      await p.goto(pHref); await boot(p);
+      /* B to G ask how the bodies work, at a phone's size as at a laptop's; on which screens a world shows them is H's (BODYSCREEN) */
+      if (!keepScreen) await p.evaluate(() => { if (typeof bodyScreenOK === 'function') bodyScreenOK = () => true; });
+      return { p, err }; };
     /* THE PROBE, on a page: the person `who` held still, the person you steer put `far` squares (or two) from them, the 3D camera on,
        frames drawn with the cards' painters watched; returns what was seen, and puts everything back */
     const probe = (p, who, far) => p.evaluate(async ([who, far]) => {
-      const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
+      /* in whichever world they stand: this page is moved there for the frames, and back after */
+      const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who)); if (!wid) return { why: who + ' stands in no world' };
+      const w0 = world; world = wid; const w = CW(), n = w.npcs.find(q => q.npc === who);
       const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, wnext: n.wnext, mv: n.mv, doc: n.doc, x: n.x, y: n.y };
       /* whose mark is whose: a person's painter draws their card, then their mark, then their emote (drawEmote, which is handed the
          person), so the marks drawn since the last emote belong to the person that emote names */
@@ -16902,14 +16917,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           /* the marks' height: the lowest row a mark is painted on, against the top of the body */ }
         return out;
       } finally { drawPerson = dp; drawSayMark = dm; drawEmote = de; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
-        n.wnext = keep.wnext; n.mv = keep.mv; n.doc = keep.doc; n.fx = n.x; n.fy = n.y; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
+        n.wnext = keep.wnext; n.mv = keep.mv; n.doc = keep.doc; n.fx = n.x; n.fy = n.y; world = w0; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
     }, [who, far]);
     /* G'S PROBE: him one square farther from the camera than the named person ("him behind them"), and a card one square farther
        than them with him one more square back ("a card behind them"). In each, three frames with time held: as drawn; with the step
        that draws him again over walls (t3BodyThrough) held off; and that with their body hidden. Their pixels are where the last two
        differ, and the pixels painted over are those of theirs where the first two differ */
     const occl = (p, who) => p.evaluate(async who => {
-      const w = CW(), n = w.npcs.find(q => q.npc === who); if (!n) return { why: who + ' is not in the world the game starts in' };
+      /* in whichever world they stand: this page is moved there for the frames, and back after */
+      const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who)); if (!wid) return { why: who + ' stands in no world' };
+      const w0 = world; world = wid; const w = CW(), n = w.npcs.find(q => q.npc === who);
       const el = document.getElementById('world'), keep = { cam: camMode, hidden: el.hidden, fx, fy, px, py, moving, dir, wnext: n.wnext, mv: n.mv };
       const RD = Date, now0 = RD.now(), pn = performance.now.bind(performance), p0 = pn();
       const tb = t3BodyThrough, tp = t3PeopleBodies; let hide = false, through = true, bare = false;
@@ -16930,7 +16947,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const ax = [0, -1]; let spot = null, best = Infinity;
         for (let y = 2; y < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - n.x) + Math.abs(y - n.y);
           if (d < best && (free(x, y) || (x === n.x && y === n.y)) && free(x, y - 1) && free(x, y - 2) && free(x, y + 1)) { best = d; spot = [x, y]; } }
-        if (!spot) return { why: 'no free square with two free squares behind it in the world the game starts in, so the pixels were not asked' };
+        if (!spot) return { why: 'no free square with two free squares behind it in their world, so the pixels were not asked' };
         out.moved = { from: [n.x, n.y], to: spot };
         w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = spot[0]; n.y = n.fy = spot[1]; w.grid[n.y][n.x] = 'N';
         const run = async (k, me, card) => {
@@ -16961,7 +16978,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           let ws = null, wb = Infinity;
           for (let y = 0; y + 2 < w.H; y++) for (let x = 0; x < w.W; x++) { const d = Math.abs(x - out.moved.to[0]) + Math.abs(y - out.moved.to[1]);
             if (d < wb && free(x, y) && wallish(x, y + 1) && free(x, y + 2)) { wb = d; ws = [x, y]; } }
-          if (!ws) out.cases['a wall between them and the camera'] = { why: 'no free square with a wall in front of it in the world the game starts in, so a wall was not asked' };
+          if (!ws) out.cases['a wall between them and the camera'] = { why: 'no free square with a wall in front of it in their world, so a wall was not asked' };
           else { w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = ws[0]; n.y = n.fy = ws[1]; w.grid[n.y][n.x] = 'N';
             px = fx = ws[0]; py = fy = ws[1] + 2; dir = 'up';
             for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
@@ -16976,14 +16993,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         return out;
       } finally { if (out.moved) { w.grid[n.y][n.x] = w.rows[n.y][n.x]; [n.x, n.y] = out.moved.from; n.fx = n.x; n.fy = n.y; w.grid[n.y][n.x] = 'N'; }
         Date = RD; performance.now = pn; t3BodyThrough = tb; t3PeopleBodies = tp; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; dir = keep.dir;
-        n.wnext = keep.wnext; n.mv = keep.mv; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
+        n.wnext = keep.wnext; n.mv = keep.mv; world = w0; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; }
     }, who);
     try {
       if (!own.three) say(1, 'this shell has no 3D camera, so nobody stands as a body here and nothing was asked');
       else if (!own.who) say(1, 'the world the game starts in has nobody with a name and a look, so nobody could be named');
       else if (!pBoot.test(pShell) && (own.body === null || own.ppl === null)) say(0, 'this shell loads no engine/boot.js, so the lists could not be declared before the engine');
       else {
-        const who = (ownPpl && ownPpl.find(k => typeof k === 'string')) || own.who;
+        const who = own.roomy || (ownPpl && ownPpl.find(k => typeof k === 'string')) || own.who;
         /* ---- A · a world that names nobody: the person's body taken, no list of people ---- */
         if (ownPpl === null) {
           const pack = own.body === null ? 'const BODYTAKE=["person"];\n' : '';
@@ -17052,6 +17069,23 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           say(1, 'on ' + dev + ', ' + who + ' stood as a body ' + r.top.toFixed(2) + ' tall, wearing ' + r.cols.length + ' colours');
           err.forEach(m => say(0, 'the page that names ' + who + ' threw on ' + dev + ': ' + m));
         }
+        /* ---- H · on which screens (BODYSCREEN, mq-v277): below the world's number every body is a card, at or above it a body.
+           This world's own number if it sets one; else 600, put before the engine with the lists, as A to G put theirs ---- */
+        if (ownBody !== null && !(Array.isArray(ownBody) && ownBody.includes('person'))) say(1, 'this world takes no person\'s body, so on which screens the bodies stand was not asked');
+        else { const limit = own.screen === null ? 600 : own.screen;
+          const pack = (own.body === null ? 'const BODYTAKE=["person"];\n' : '') + (ownPpl === null ? 'const PEOPLETAKE=' + JSON.stringify([who]) + ';\n' : '') + (own.screen === null ? 'const BODYSCREEN=600;\n' : '');
+          if (!(limit > 0)) say(1, 'this world sets BODYSCREEN to ' + own.screen + ', which is no screen size, so every screen has bodies and that was not asked');
+          else for (const [dev, vw, want] of [['a phone', { width: 390, height: 844 }, Math.min(390, 844) >= limit], ['a laptop', { width: 1280, height: 800 }, Math.min(1280, 800) >= limit]]) {
+            const { p, err } = await openWith(pack, vw, true);
+            const r = await probe(p, who);
+            if (r.why) { say(1, 'on ' + dev + ', ' + r.why + ', so the screen rule was not asked'); continue; }
+            const me = await p.evaluate(() => !!(T3 && T3.bodyOn));
+            if (want && !r.now.body) say(0, 'on ' + dev + ' (' + vw.width + '×' + vw.height + ', at least BODYSCREEN ' + limit + '), ' + who + ' is a card where the world shows bodies');
+            if (!want && (r.now.body || r.made)) say(0, 'on ' + dev + ' (' + vw.width + '×' + vw.height + ', under BODYSCREEN ' + limit + '), ' + who + ' stands as a body where the world keeps cards');
+            if (!want && me) say(0, 'on ' + dev + ' (under BODYSCREEN ' + limit + '), the person you steer stands as a body where the world keeps cards');
+            if (!want && !r.now.card) say(0, 'on ' + dev + ' (under BODYSCREEN ' + limit + '), ' + who + ' has no card');
+            say(1, 'on ' + dev + ' (' + vw.width + '×' + vw.height + ', BODYSCREEN ' + limit + '): ' + who + ' a ' + (r.now.body ? 'body' : 'card') + ', the person you steer a ' + (me ? 'body' : 'card') + ', as the rule wants ' + (want ? 'bodies' : 'cards'));
+            err.forEach(m => say(0, 'the page that asks the screen rule threw on ' + dev + ': ' + m)); } }
       }
     } finally { for (const c of opened) await c.close(); }
     fails.push(...PB);

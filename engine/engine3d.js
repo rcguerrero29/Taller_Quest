@@ -2242,7 +2242,7 @@ function t3BodyPose(B,phase,moving,groundAt){
 /* each frame: is the person you steer a body here, and if he is, where he stands, which way he faces and how he steps.
    True when the body stands, so the card is not drawn as well (t3Actors) */
 function t3Body(dt){
-  if(!BODYON){T3.bodyOn=false;return false;}
+  if(!BODYON||!bodyScreenOK()){T3.bodyOn=false;if(T3.body)T3.body.visible=false;return false;}   /* a screen too small for bodies (BODYSCREEN): his card */
   const[qx,qy]=focusXY(),d=Math.hypot(fx-qx,fy-qy);
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
   /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
@@ -2308,7 +2308,7 @@ function t3BodyThrough(){
    street will. The body is made again only when the look changes. False where it cannot draw (no 3D library, a page whose
    3D failed, no WebGL): the creator then keeps its 2D preview */
 function t3BodyPreview(cv,lk,ang){
-  if(typeof THREE==="undefined"||T3.fail||!cv)return false;
+  if(typeof THREE==="undefined"||T3.fail||!cv||!bodyScreenOK())return false;   /* where no body stands (BODYSCREEN) the creator keeps its 2D preview */
   try{
     if(!T3.renderer)t3Init();
     const W=cv.width,Hh=cv.height;if(!W||!Hh)return false;
@@ -2648,6 +2648,7 @@ function t3DogBodies(dt){
   const on=T3.dogOn||(T3.dogOn=new Map()),shown=new Set();
   const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(cr);};
   if(!DOGBODYON){[...on.keys()].forEach(drop);T3.dogShown=shown;return shown;}
+  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.dogShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards, the bodies kept for a turn back */
   const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
   const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
       return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=DOGNEAR+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
@@ -2735,6 +2736,7 @@ function t3PeopleBodies(dt){
   const on=T3.peopleOn||(T3.peopleOn=new Map()),shown=new Set();
   const drop=n=>{const B=on.get(n);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(n);};
   if(!PEOPLEON.size){[...on.keys()].forEach(drop);T3.peopleShown=shown;return shown;}
+  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.peopleShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards */
   const w=CW(),[qx,qy]=focusXY(),sc=T3PERSON/0.92,cam=T3.cam.position,wait=[];
   const want=w.npcs.filter(n=>n.npc&&PEOPLEON.has(n.npc)&&!(T3.peopleBad&&T3.peopleBad.has(n))).map(n=>{
       const x=n.fx===undefined?n.x:n.fx,y=n.fy===undefined?n.y:n.fy,d=Math.hypot(x-qx,y-qy),B=on.get(n);
