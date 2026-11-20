@@ -2526,17 +2526,22 @@ function dogMake(skel,lk){
     /* THE INSIDE OF AN UPRIGHT EAR (mq-v282; the owner's word of 2026-11-20). A soft pink close to tan, lighter than the coat, in a
        shell set into the ear's open face, and a band of the coat's own shade round its rim, so the ear has an inside and a form */
     const inPink="#"+new THREE.Color(paint.coat).lerp(new THREE.Color("#F6D3C8"),0.7).getHexString(),rim=shadeHex(earCol,-0.12);
-    const upEar=(x,y,h,w0)=>{const m=part("head",new THREE.ConeGeometry(r*w0,r*h,4),"ear",earCol,sd*r*x,r*y,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);m.userData.upEar=true;
-      const e=part("head",new THREE.ConeGeometry(r*w0*1.06,r*h*0.96,4),"ear",rim,sd*r*(x+0.01),r*(y-0.03),-r*0.05,[1,1,0.3]);e.rotation.set(0,sd*0.55,-sd*0.62);e.userData.upEar=true;
-      const n=part("head",new THREE.ConeGeometry(r*w0*0.66,r*h*0.66,4),"ear",inPink,sd*r*(x+0.02),r*(y-0.1),r*0.11,[1,1,0.28]);n.rotation.set(0,sd*0.55,-sd*0.62);n.userData.upEar=true;n.userData.inside=true;return m;};
-    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0))upEar(0.7,1.12,1.45,0.68);
-    else if(b.ear==="up"){/* THE FOLDED EAR (mq-v282): it stands at its root as the other does, pink inside, and folds over at half its height,
-         the top half hanging forward and out, its back to the camera and its tip lowest, as a real ear folds */
-      upEar(0.66,0.78,0.78,0.6);
-      /* hinged at the top of the standing half (out 0.85, up 1.09, back 0.13 of his head), its top half tips forward and down over the
-         front of the ear, as a tipped ear folds: from the front the back of the flap covers the ear's top, its tip lowest */
-      const fa=new THREE.Vector3(sd*0.352,-0.553,0.755).normalize(),t=part("head",new THREE.ConeGeometry(r*0.52,r*0.82,4),"ear",earCol,sd*r*0.994,r*0.863,r*0.18,[1,1,0.4]);
-      t.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),fa);t.userData.fold=true;}
+    /* THE EAR'S SHAPE (mq-v282, after the owner's reference photographs of 2026-11-20). A real upright ear is a cupped leaf with a
+       rounded tip, not a pyramid: here a shell (the back half of a stretched sphere, both faces drawn) in the coat, and inside it a
+       smaller shell in the pink, so the cup shows its inside from the front and its back from behind. sec picks the band of the
+       shell from its root (theta from lo to hi of a half turn: 0 the tip, 1 the root), so the folded ear is the same leaf cut at
+       its middle, its lower half standing and its upper half tipped forward and down from the fold */
+    const shell=(col,w,h,d,lo,hi)=>{const g=new THREE.SphereGeometry(r,14,10,0,Math.PI,Math.PI*lo,Math.PI*(hi-lo));
+      /* tapered toward the tip, as a chihuahua's ear narrows to a soft point: an oval leaf read as a mouse's ear */
+      {const P=g.attributes.position;for(let k=0;k<P.count;k++){const t=(P.getY(k)/r+1)/2;P.setX(k,P.getX(k)*(1-0.62*Math.pow(t,1.6)));}P.needsUpdate=true;g.computeVertexNormals();}const m=part("head",g,"ear",col,0,0,0,[w,h,d]);m.material.side=THREE.DoubleSide;return m;};
+    const upEar=(x,y,lo)=>{const o=shell(earCol,0.66,1.12,0.34,lo,0.8),n=shell(inPink,0.5,0.94,0.22,Math.max(lo,0.08),0.8);   /* the root ends inside his skull, so no underside of the cup shows past his head */
+      [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});n.userData.inside=true;n.material.side=THREE.BackSide;return o;};   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
+    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0))upEar(0.72,1.15,0);
+    else if(b.ear==="up"){upEar(0.72,1.15,0.5);
+      /* the upper half, hinged at the middle of the leaf, tips forward and down over it, its back (the coat) to the camera */
+      const t=shell(earCol,0.66,1.12,0.34,0,0.5),fa=new THREE.Vector3(sd*0.35,-0.55,0.76).normalize();
+      t.position.set(sd*r*0.72,r*1.15,0);   /* the fold is the middle of the leaf, where both halves meet */t.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),fa);
+      t.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI));t.userData.fold=true;}
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
       const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
