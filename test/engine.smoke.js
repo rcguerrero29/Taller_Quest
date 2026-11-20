@@ -16868,7 +16868,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                    folded ear's tip hangs well below its fold, and its pink inside is bent with it; the inside is lighter and
                    pinker than the coat */
                 const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); const out = { coat: 0, pink: 0, up: 0, folded: 0, pinkFolded: 0, inside: null };
-                    B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return; const box = new THREE.Box3().setFromObject(o), h = box.max.y - box.min.y;
+                    B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return;
+                      /* its true top and bottom, point by point: a box round a leaning ear stands taller than the ear */
+                      const box = { max: { y: -Infinity }, min: { y: Infinity } }, Pp = o.geometry.attributes.position, v = new THREE.Vector3();
+                      for (let k = 0; k < Pp.count; k++) { v.fromBufferAttribute(Pp, k); o.localToWorld(v); if (v.y > box.max.y) box.max.y = v.y; if (v.y < box.min.y) box.min.y = v.y; }
+                      const h = box.max.y - box.min.y;
                       const tip = Array.isArray(o.userData.tip) ? o.localToWorld(new THREE.Vector3(...o.userData.tip)) : null, hangs = tip ? (box.max.y - tip.y) / Math.max(1e-6, h) : -1;
                       if (o.userData.inside) { out.pink++; out.inside = o.userData.base || o.material.color; if (hangs > 0.2) out.pinkFolded++; }
                       else { out.coat++; if (hangs > 0.2) out.folded++; else if (hangs >= 0 && hangs < 0.08) out.up++; } });
