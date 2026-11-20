@@ -1235,6 +1235,27 @@ const CANDIDATES = [
     out.exited = world === 'st';
     out.card = !document.getElementById('parkCard').hidden;
     out.starHome = star.world === 'st' && star.follow === false;
+    // the personality chosen at adoption (mq-v280): offered only where the world asks for it and gives its words; the chosen
+    // one is his, "surprise me" draws one, and both are kept; Meridian asks for none, so it is asked here with the switch held on
+    { const kpo = personaOn, U = UI[lang], had = Object.prototype.hasOwnProperty.call(U, 'personaPick'), kp = U.personaPick;
+      try {
+        adoptPaint(); out.peOff = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden;
+        U.personaPick = { label: 'P', eager: 'E', patient: 'Pa', aloof: 'A', surprise: 'S' }; adoptPaint();
+        out.peOffWords = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden;   /* the words alone do not ask for it */
+        personaOn = k => k === 'dog';
+        document.getElementById('adopt').click();
+        const row = document.getElementById('adoptPersona'), btn = k => row && row.querySelector('[data-pe="' + k + '"]');
+        out.peRow = !!row && !row.hidden && row.querySelectorAll('button').length === 4 && btn('surprise').getAttribute('aria-pressed') === 'true' && btn('aloof').textContent === 'A';
+        btn('aloof').click(); out.pePressed = btn('aloof').getAttribute('aria-pressed') === 'true' && btn('surprise').getAttribute('aria-pressed') === 'false';
+        adoptB = 'beagle'; adoptC = '#E8C46A'; document.getElementById('adoptName').value = 'Brisa'; document.getElementById('adoptGo').click();
+        const br = CRIT.find(c => c.name === 'Brisa');
+        out.peChosen = !!br && br.persona === 'aloof' && !!parkPrefs.persona && parkPrefs.persona.Brisa === 'aloof' && personaOf({ kind: 'beagle', name: 'Brisa' }) === 'aloof';
+        out.peStored = (JSON.parse(localStorage.getItem('mqpark') || '{}').persona || {}).Brisa === 'aloof';
+        document.getElementById('adopt').click(); btn('surprise').click();
+        document.getElementById('adoptName').value = 'Sol'; document.getElementById('adoptGo').click();
+        const so = CRIT.find(c => c.name === 'Sol'); out.peSurprise = !!so && PERSONAS.includes(so.persona) && (parkPrefs.persona || {}).Sol === so.persona;
+      } finally { personaOn = kpo; if (had) U.personaPick = kp; else delete U.personaPick; adoptPaint(); }
+      out.peOffAgain = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden; }
     document.getElementById('pkClose').click();
     // strings in both languages, each Meridian's own: the engine keeps words of its own beneath a world's now, and a word
     // read through them would answer for one Meridian dropped, so each is asked for as Meridian's own property
@@ -1249,7 +1270,7 @@ const CANDIDATES = [
   ['pkOk', 'lawnReach', 'waterBlocked', 'star', 'inPark', 'treatCounted', 'band', 'bandStored',
     'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneStar', 'sitOk', 'stayOk', 'comeOk',
     'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'starRenameOnly',
-    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'starHome', 'langOk'].forEach(k => {
+    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'starHome', 'langOk', 'peOff', 'peOffWords', 'peRow', 'pePressed', 'peChosen', 'peStored', 'peSurprise', 'peOffAgain'].forEach(k => {
     if (park[k] !== true) fails.push('park: ' + k + ' failed (' + JSON.stringify(park[k]) + ')');
   });
 

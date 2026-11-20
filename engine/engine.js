@@ -9291,7 +9291,21 @@ $("love").addEventListener("click",()=>{ /* a button to tell him you love him (a
 const BREEDS={beagle:["#E8C46A"],
   lab:["#E0C070","#6E4B2F","#33302C"],
   chi:["#C9975C","#EAD9BC","#33302C","#F2EDE4"]};
-let adoptB="beagle",adoptC="#E8C46A";
+let adoptB="beagle",adoptC="#E8C46A",adoptPe="surprise";
+/* THE PERSONALITY HE CHOOSES AT ADOPTION (mq-v280; the owner's confirmed goal of 2026-11-19). Where the world asks for the
+   personality of a dog (PERSONATAKE) and gives the words for the choice (personaPick: label, eager, patient, aloof,
+   surprise), the card offers the three and a choice to be surprised, drawn by chance as for any dog. The row is made here,
+   beside the coat row, so no shell needs a line of its own, and is hidden where the world does not ask or gives no words.
+   Its words are set as text, never as markup */
+function adoptPersonaRow(){const nm=$("adoptName"),box=nm&&nm.parentNode;if(!box)return null;let row=$("adoptPersona");
+  const W=T().personaPick,on=personaOn("dog")&&!!W&&typeof W==="object";
+  if(!row){if(!on)return null;const lb=document.createElement("label");lb.id="lbPersona";row=document.createElement("div");row.id="adoptPersona";row.className="optrow";
+    [...PERSONAS,"surprise"].forEach(k=>{const b=document.createElement("button");b.type="button";b.dataset.pe=k;b.addEventListener("click",()=>{adoptPe=k;adoptPaint();});row.appendChild(b);});
+    box.insertBefore(lb,nm);box.insertBefore(row,nm);}
+  const lb=$("lbPersona");row.hidden=!on;if(lb)lb.hidden=!on;if(!on)return row;
+  if(lb)lb.textContent=String(W.label||"");
+  row.querySelectorAll("button").forEach(b=>{b.textContent=String(W[b.dataset.pe]||b.dataset.pe);b.setAttribute("aria-pressed",b.dataset.pe===adoptPe?"true":"false");});
+  return row;}
 function adoptPaint(){
   document.querySelectorAll("#adoptBreeds button").forEach(b=>{
     b.textContent=(T().breeds||{})[b.dataset.b]||b.dataset.b;
@@ -9303,13 +9317,14 @@ function adoptPaint(){
     b.style.cssText="width:34px;height:34px;border-radius:50%;border:2px solid "+(c===adoptC?"var(--accent)":"var(--line)")+";background:"+c+";cursor:pointer;";
     b.addEventListener("click",()=>{adoptC=c;adoptPaint();});
     row.appendChild(b);});
+  adoptPersonaRow();
 }
 document.querySelectorAll("#adoptBreeds button").forEach(b=>b.addEventListener("click",()=>{
   adoptB=b.dataset.b;adoptC=BREEDS[adoptB][0];adoptPaint();}));
 $("adopt").addEventListener("click",()=>{ /* no limit — the city rehomes, it never deletes */
   $("adoptTitle").textContent=T().adoptAsk;$("adoptGo").textContent=T().adoptGo;$("adoptX").textContent=T().adoptX;
   $("lbBreed").textContent=T().adoptBreed;$("lbCoat").textContent=T().adoptColor;
-  adoptB="beagle";adoptC="#E8C46A";adoptPaint();
+  adoptB="beagle";adoptC="#E8C46A";adoptPe="surprise";adoptPaint();
   $("adoptName").value="";$("adoptP").hidden=false;$("adoptName").focus();
 });
 $("adoptGo").addEventListener("click",()=>{
@@ -9325,6 +9340,8 @@ $("adoptGo").addEventListener("click",()=>{
   const fr=pickFriend(); /* every pup gets one particular person in this city */
   CRIT.push({kind:adoptB,world:PL.park,x:ax,y:ay,fx:ax,fy:ay,c:adoptC,friend:fr,
     name:n,egg:eggFor(n),moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,home:[ax,ay]});
+  if(personaOn("dog")){const pe=PERSONAS.includes(adoptPe)?adoptPe:personaDraw("dog");CRIT[CRIT.length-1].persona=pe;   /* chosen, or drawn by chance for the surprise (mq-v280) */
+    if(!parkPrefs.persona)parkPrefs.persona=Object.create(null);parkPrefs.persona[n]=pe;}
   parkPrefs.dogs.push({n,x:ax,y:ay,k:adoptB,c:adoptC,friend:fr});parkPersist();
   toast(T().adoptDone(n),3200);
 });
