@@ -2369,10 +2369,10 @@ const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
    Infinity for no limit) and ANIMALMAX (at most DOGBODYCEIL, the adoption ceiling). A world that names neither keeps
    DOGNEAR and DOGBODYMAX, exactly as before. Where a world reaches past DOGNEAR, the bodies are made one a frame, the nearest
    first (DOGMAKEFRAME), so a park of 24 does not stall the frame you walk into it (24 at once took 120 thousandths); each
-   dog's card stands in until his body is made. Read through dogReach and dogMax, so a check can hold either */
+   dog's card stands in until his body is made. Read through dogBodyReach and dogBodyMax (named apart from dogReach, the tiles a dog can stand on), so a check can hold either */
 const DOGBODYCEIL=24,DOGMAKEFRAME=1;
-function dogReach(n){if(n===undefined&&typeof ANIMALREACH!=="undefined")n=ANIMALREACH;return typeof n==="number"&&n>0?n:DOGNEAR;}
-function dogMax(n){if(n===undefined&&typeof ANIMALMAX!=="undefined")n=ANIMALMAX;return typeof n==="number"&&n>0?Math.min(DOGBODYCEIL,Math.floor(n)):DOGBODYMAX;}
+function dogBodyReach(n){if(n===undefined&&typeof ANIMALREACH!=="undefined")n=ANIMALREACH;return typeof n==="number"&&n>0?n:DOGNEAR;}
+function dogBodyMax(n){if(n===undefined&&typeof ANIMALMAX!=="undefined")n=ANIMALMAX;return typeof n==="number"&&n>0?Math.min(DOGBODYCEIL,Math.floor(n)):DOGBODYMAX;}
 const DOGCOLLARLIE=0.55;   /* how far his collar tips down toward his throat, in radians */
 const DOGTUCK=[0.62,0.86];   /* at his hips: the share of his chest's depth below the spine, and of his ribs' width */
 const DOGUNDER=0.8;    /* how much of his barrel's roundness is left under his spine, standing: his legs are mostly in view under a little chest */
@@ -2760,9 +2760,9 @@ function t3DogBodies(dt){
   if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.dogShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards, the bodies kept for a turn back */
   const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
   const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
-      return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=dogReach()+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
-    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,dogMax());
-  const far=dogReach()>DOGNEAR;let made=0;   /* past DOGNEAR, the bodies are made a few a frame, the nearest first (mq-v283) */
+      return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=dogBodyReach()+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
+    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,dogBodyMax());
+  const far=dogBodyReach()>DOGNEAR;let made=0;   /* past DOGNEAR, the bodies are made a few a frame, the nearest first (mq-v283) */
   const keep=new Set(want.map(e=>e.cr));
   [...on.keys()].forEach(cr=>{if(keep.has(cr))return;if(cr.world!==world||!CRIT.includes(cr))drop(cr);else on.get(cr).visible=false;});
   want.forEach(({cr,P})=>{const lk=dogLookOf(cr),key=JSON.stringify(lk);let B=on.get(cr);
