@@ -1048,9 +1048,15 @@ const BODYPLAN=Object.freeze([
    a beagle; a colour must be a hex colour (saveCol, the look's own check) or it is the breed's first coat, the blue
    collar he starts with, or no bandana at all. The body reads a dog only through this, and its answer, as text, is the
    key a body is kept under */
+/* SHORT EARS THAT MAY BE CHOSEN (mq-v281; the owner's confirmed goal of 2026-11-19). The kinds whose upright ears may be worn
+   both up (as they always were) or mixed, one up and one folded over; mixed is kept on the dog and drawn on his card and his
+   body alike. A dog of any other kind wears his ears as his breed does */
+const EARKINDS=Object.freeze(["chi"]);
 function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
   const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
-  return{kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};}
+  const o={kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};
+  if(cr.ears==="mixed"&&EARKINDS.includes(kind))o.ears="mixed";   /* only where it is chosen, so every other look is what it was */
+  return o;}
 /* ANOTHER PLAYER'S LOOK (#32; the owner approved fixing the colour check). In multiplayer a
    stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
    data. It gets the save's own reading first — saveLook, the same function: a colour must be hex, a
@@ -4573,10 +4579,12 @@ function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opin
     g.beginPath();g.moveTo(cx+1.4,sy+19.3+dy);g.lineTo(cx+6.2,sy+19.5+dy);g.lineTo(cx+3.8,sy+22.2+dy);
     g.closePath();g.fill();}
   g.fillStyle=co;g.beginPath();g.arc(cx+5,sy+15.5+dy+hy,4.2,0,7);g.fill(); /* apple head */
-  g.beginPath();g.moveTo(cx+1.2,sy+13+dy+hy);g.lineTo(cx+2.2,sy+8+dy+hy);g.lineTo(cx+4.6,sy+11.6+dy+hy);g.closePath();g.fill();
+  const mixed=cr.ears==="mixed"&&EARKINDS.includes("chi");   /* one up and one folded over (mq-v281): the far ear hangs down behind his head */
+  if(mixed){g.beginPath();g.moveTo(cx+1.4,sy+12.4+dy+hy);g.lineTo(cx-1.4,sy+15.8+dy+hy);g.lineTo(cx+2.8,sy+14.2+dy+hy);g.closePath();g.fill();}
+  else{g.beginPath();g.moveTo(cx+1.2,sy+13+dy+hy);g.lineTo(cx+2.2,sy+8+dy+hy);g.lineTo(cx+4.6,sy+11.6+dy+hy);g.closePath();g.fill();}
   g.beginPath();g.moveTo(cx+5.6,sy+11.4+dy+hy);g.lineTo(cx+8.2,sy+7.6+dy+hy);g.lineTo(cx+9,sy+12.6+dy+hy);g.closePath();g.fill();
   g.fillStyle=dk;
-  g.beginPath();g.moveTo(cx+2.2,sy+12.2+dy+hy);g.lineTo(cx+2.7,sy+9.6+dy+hy);g.lineTo(cx+4,sy+11.4+dy+hy);g.closePath();g.fill();
+  if(!mixed){g.beginPath();g.moveTo(cx+2.2,sy+12.2+dy+hy);g.lineTo(cx+2.7,sy+9.6+dy+hy);g.lineTo(cx+4,sy+11.4+dy+hy);g.closePath();g.fill();}
   g.fillStyle="#26202B";
   if(lay&&!howl)g.fillRect(cx+4.4,sy+14.8+dy,1.8,0.6);
   else{g.fillRect(cx+3.6,sy+14.2+dy+hy,1.5,1.5);g.fillRect(cx+6.6,sy+14.2+dy+hy,1.5,1.5);} /* enormous eyes */
@@ -9180,6 +9188,7 @@ parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   const cr={kind:k,world:PL.park,x:d0.x|0,y:d0.y|0,fx:d0.x|0,fy:d0.y|0,
     c:hexOK(d0.c)?d0.c:"#E8C46A",friend:d0.friend,
     name:n,egg:eggFor(n),moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,home:[d0.x|0,d0.y|0]};
+  if(d0.e==="mixed"&&EARKINDS.includes(k))cr.ears="mixed";   /* his ears as chosen at adoption (mq-v281), read only as one known word */
   dogPlace(cr,d0);
   CRIT.push(cr);});
 parkPersist();
@@ -9291,7 +9300,18 @@ $("love").addEventListener("click",()=>{ /* a button to tell him you love him (a
 const BREEDS={beagle:["#E8C46A"],
   lab:["#E0C070","#6E4B2F","#33302C"],
   chi:["#C9975C","#EAD9BC","#33302C","#F2EDE4"]};
-let adoptB="beagle",adoptC="#E8C46A",adoptPe="surprise";
+let adoptB="beagle",adoptC="#E8C46A",adoptPe="surprise",adoptE="up";
+/* THE EARS HE CHOOSES (mq-v281): for a short-eared kind (EARKINDS), where the world gives the words (earPick: label, up, mixed),
+   the card offers both up, or one up and one folded; made beside the coat row as the personality row is, hidden otherwise */
+function adoptEarRow(){const nm=$("adoptName"),box=nm&&nm.parentNode;if(!box)return null;let row=$("adoptEars");
+  const W=T().earPick,on=EARKINDS.includes(adoptB)&&!!W&&typeof W==="object";
+  if(!row){if(!on)return null;const lb=document.createElement("label");lb.id="lbEars";row=document.createElement("div");row.id="adoptEars";row.className="optrow";
+    ["up","mixed"].forEach(k=>{const b=document.createElement("button");b.type="button";b.dataset.ear=k;b.addEventListener("click",()=>{adoptE=k;adoptPaint();});row.appendChild(b);});
+    const at=$("lbPersona")||nm;box.insertBefore(lb,at);box.insertBefore(row,at);}
+  const lb=$("lbEars");row.hidden=!on;if(lb)lb.hidden=!on;if(!on)return row;
+  if(lb)lb.textContent=String(W.label||"");
+  row.querySelectorAll("button").forEach(b=>{b.textContent=String(W[b.dataset.ear]||b.dataset.ear);b.setAttribute("aria-pressed",b.dataset.ear===adoptE?"true":"false");});
+  return row;}
 /* THE PERSONALITY HE CHOOSES AT ADOPTION (mq-v280; the owner's confirmed goal of 2026-11-19). Where the world asks for the
    personality of a dog (PERSONATAKE) and gives the words for the choice (personaPick: label, eager, patient, aloof,
    surprise), the card offers the three and a choice to be surprised, drawn by chance as for any dog. The row is made here,
@@ -9317,14 +9337,14 @@ function adoptPaint(){
     b.style.cssText="width:34px;height:34px;border-radius:50%;border:2px solid "+(c===adoptC?"var(--accent)":"var(--line)")+";background:"+c+";cursor:pointer;";
     b.addEventListener("click",()=>{adoptC=c;adoptPaint();});
     row.appendChild(b);});
-  adoptPersonaRow();
+  adoptEarRow();adoptPersonaRow();
 }
 document.querySelectorAll("#adoptBreeds button").forEach(b=>b.addEventListener("click",()=>{
   adoptB=b.dataset.b;adoptC=BREEDS[adoptB][0];adoptPaint();}));
 $("adopt").addEventListener("click",()=>{ /* no limit — the city rehomes, it never deletes */
   $("adoptTitle").textContent=T().adoptAsk;$("adoptGo").textContent=T().adoptGo;$("adoptX").textContent=T().adoptX;
   $("lbBreed").textContent=T().adoptBreed;$("lbCoat").textContent=T().adoptColor;
-  adoptB="beagle";adoptC="#E8C46A";adoptPe="surprise";adoptPaint();
+  adoptB="beagle";adoptC="#E8C46A";adoptPe="surprise";adoptE="up";adoptPaint();
   $("adoptName").value="";$("adoptP").hidden=false;$("adoptName").focus();
 });
 $("adoptGo").addEventListener("click",()=>{
@@ -9338,11 +9358,12 @@ $("adoptGo").addEventListener("click",()=>{
     !SOLID.has(w9.grid[y][x])&&!(x===px&&y===py)&&!CRIT.some(c=>c.world===PL.park&&c.x===x&&c.y===y))||PL.parkAdopt[0];
   const[ax,ay]=spot;
   const fr=pickFriend(); /* every pup gets one particular person in this city */
-  CRIT.push({kind:adoptB,world:PL.park,x:ax,y:ay,fx:ax,fy:ay,c:adoptC,friend:fr,
+  const ears=adoptE==="mixed"&&EARKINDS.includes(adoptB)&&T().earPick?"mixed":undefined;   /* his ears as chosen, only where they could be (mq-v281) */
+  CRIT.push({kind:adoptB,world:PL.park,x:ax,y:ay,fx:ax,fy:ay,c:adoptC,friend:fr,ears,
     name:n,egg:eggFor(n),moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,home:[ax,ay]});
   if(personaOn("dog")){const pe=PERSONAS.includes(adoptPe)?adoptPe:personaDraw("dog");CRIT[CRIT.length-1].persona=pe;   /* chosen, or drawn by chance for the surprise (mq-v280) */
     if(!parkPrefs.persona)parkPrefs.persona=Object.create(null);parkPrefs.persona[n]=pe;}
-  parkPrefs.dogs.push({n,x:ax,y:ay,k:adoptB,c:adoptC,friend:fr});parkPersist();
+  parkPrefs.dogs.push(ears?{n,x:ax,y:ay,k:adoptB,c:adoptC,friend:fr,e:ears}:{n,x:ax,y:ay,k:adoptB,c:adoptC,friend:fr});parkPersist();
   toast(T().adoptDone(n),3200);
 });
 $("adoptX").addEventListener("click",()=>{$("adoptP").hidden=true;});

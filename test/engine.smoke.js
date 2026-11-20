@@ -16855,6 +16855,21 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (f0 && (f0.away || f0.bubble)) said('in a world that does not ask for personalities, the dog faces away or thinks in a bubble anyway');
                 } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
               }
+              /* ---- P · the short ears he may choose (mq-v281): mixed is kept only for a short-eared kind and only as that word; on the
+                       body one of the two upright ears is folded over and hangs below his eye, and both up stays as it was ---- */
+              if (typeof EARKINDS === 'undefined') said('the engine keeps no list of the kinds whose ears may be chosen');
+              else {
+                if (dogLookOf({ kind: 'lab', ears: 'mixed' }).ears !== undefined) said('a lab, whose ears drop, keeps the mixed ears asked of him');
+                if (dogLookOf({ kind: 'chi', ears: 'evil' }).ears !== undefined) said('a chihuahua keeps ears that are not one of the known words');
+                if (dogLookOf({ kind: 'chi', ears: 'mixed' }).ears !== 'mixed') said('a chihuahua does not keep the mixed ears chosen for him');
+                if ('ears' in dogLookOf({ kind: 'chi' })) said('a chihuahua with no ears chosen has a look that is not what it was');
+                const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); const J = B.userData.joints, hy = J.head.getWorldPosition(new THREE.Vector3()).y, up = [], down = [];
+                    B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return; const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()); (c.y > hy ? up : down).push(o); });
+                    return { up: up.length, down: down.length }; } finally { t3Dispose(B); } };
+                const e0 = ears(dogLookOf({ kind: 'chi', c: '#C9975C' })), e1 = ears(dogLookOf({ kind: 'chi', c: '#C9975C', ears: 'mixed' }));
+                if (!(e0.up >= 2 && e0.down === 0)) said('a chihuahua with both ears up wears ' + e0.up + ' parts of ear above his eyes and ' + e0.down + ' below');
+                if (!(e1.down >= 1 && e1.up >= 1 && e1.up < e0.up)) said('a chihuahua with mixed ears does not wear one ear folded down and one up (' + e1.up + ' parts up, ' + e1.down + ' down)');
+                N.push('the chihuahua\'s ears: both up, ' + e0.up + ' parts above his eyes; mixed, ' + e1.up + ' up and ' + e1.down + ' folded down'); }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }
@@ -17507,6 +17522,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       'the office dog and his care pack': 'dog treatLb fredHeart fredUnlock carePackToast careHint carePack careEvents fredDoneToast retryNoteFred',
       'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone',
       'the animals\' personalities': 'persona personaPick',
+      'the dogs\' ears': 'earPick',
       'the cat': 'cat petCat', 'the pigeon': 'pigeon petPig', 'the parrot': 'loro petLoro', 'the street cat': 'gato petGato',
       'the butterflies and the hummingbird': 'mariposa colibri petFly petColi',
       'the barber\'s chair': 'chairTitle chairDone chairAfter',
