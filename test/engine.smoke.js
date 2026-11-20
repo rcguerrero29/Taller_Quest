@@ -16805,6 +16805,56 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else if (band && bm.filter(o => o.userData.band !== 'knot').some(o => base(o) !== hex(band))) said('the ' + kind + '\'s bandana is not the colour given him (' + band + ')');   /* its knot is a shade darker, as on his card */
                     if (!band && bm.some(o => o.visible)) said('the ' + kind + ' wears a bandana on his body where none was given him'); } finally { t3Dispose(B); } }
                 N.push('the adoption house\'s looks on the body: ' + n + ' breed and coat pairs, each with a bandana and a collar colour in turn'); }
+              /* ---- O · his personality (mq-v279, the owner's confirmed goals of 2026-11-19): drawn by chance from one table, kept,
+                       cleaned where it is read; where the world asks for it, he stands facing away with a thought bubble until met,
+                       and each reaction answers a treat its own way; where it does not, nothing changes ---- */
+              if (typeof personaDraw !== 'function' || typeof PERSONACHANCE_DEF !== 'object') said('the engine has no table of animal personalities to draw from');
+              else {
+                Object.entries(PERSONACHANCE_DEF).forEach(([k, w]) => { const t = PERSONAS.reduce((a, p) => a + (+w[p] || 0), 0); if (!(t > 0)) said('the ' + k + '\'s personality chances add up to nothing'); });
+                [['dog', 0, 'eager'], ['dog', 0.65, 'patient'], ['dog', 0.95, 'aloof'], ['cat', 0.9, 'aloof'], ['cat', 0.05, 'eager'], ['butterfly', 0.01, 'patient']].forEach(([k, r, want]) => {
+                  const got = personaDraw(k, r); if (got !== want) said('a ' + k + ' drawn at ' + r + ' is ' + got + ', where the table makes it ' + want); });
+                { const n = {}; for (let i = 0; i < 4000; i++) { const p = personaDraw('cat'); n[p] = (n[p] || 0) + 1; }
+                  if (!(n.aloof > n.patient && n.patient > n.eager)) said('four thousand cats drawn are not mostly aloof, then patient, then eager: ' + JSON.stringify(n));
+                  N.push('his personality: four thousand cats drawn by the table: ' + JSON.stringify(n)); }
+                { const c = personaClean({ Ok: 'eager', Bad: 'evil', ['x'.repeat(41)]: 'aloof', n5: 5, constructor: 'patient' });
+                  if (Object.getPrototypeOf(c) !== null) said('the kept personalities are read into an object with a prototype');
+                  if (c.Ok !== 'eager' || 'Bad' in c || 'n5' in c || Object.keys(c).some(k => k.length > 40)) said('the kept personalities are not cleaned where they are read: ' + JSON.stringify(Object.keys(c))); }
+                const kpo = personaOn, ktoast = toast, said2 = [];
+                try {
+                  personaOn = k => k === 'dog'; toast = m => { said2.push(String(m)); };
+                  const nm = 'Probe' + Math.floor(Math.random() * 1e6); cr.name = nm; cr.persona = undefined; cr.follow = false; cr.task = null; cr.moving = false; cr.metT = 0; cr.turnT = 0;
+                  const p1 = personaOf(cr), p2 = personaOf(cr);
+                  if (!PERSONAS.includes(p1) || p1 !== p2) said('his personality is not one drawn and kept (' + p1 + ', then ' + p2 + ')');
+                  if (!parkPrefs.persona || parkPrefs.persona[nm] !== p1) said('his personality is not kept with the park\'s picks under his name');
+                  /* the next visit: a fresh record of the same dog reads what was kept, five times, whatever a draw would give */
+                  else { const keep = parkPrefs.persona[nm]; parkPrefs.persona[nm] = 'aloof';
+                    const again = [0, 1, 2, 3, 4].map(() => personaOf({ kind: cr.kind, name: nm }));
+                    if (again.some(p => p !== 'aloof')) said('on another visit the same dog draws a new personality (' + again.join(', ') + '), where he keeps the one he had (aloof)');
+                    parkPrefs.persona[nm] = keep; }
+                  const facing = () => { const B = K.bodyOf(cr); if (!B) return null; const y = B.userData.yaw, f = [Math.sin(y), Math.cos(y)], c = T3.cam.position, d = [c.x - (cr.fx + 0.5), c.z - (cr.fy + 0.5)];
+                    return { toCam: (f[0] * d[0] + f[1] * d[1]) / Math.max(1e-6, Math.hypot(d[0], d[1])), away: !!B.userData.away, bubble: !!(B.userData.bubble && B.userData.bubble.visible) }; };
+                  for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0;
+                    K.face(cr, 'toward');   /* his last step toward the camera, so only his personality can turn his back to it (the ball's check before leaves him facing away) */
+                    K.show(cr); let f = facing();
+                    if (!f) { said('with a personality, the dog has no body to ask'); break; }
+                    N.push('his personality: ' + pe + ' and not yet met, his facing against the camera ' + f.toCam.toFixed(2) + ' (his back to it is -1), yaw ' + K.bodyOf(cr).userData.yaw.toFixed(2) + ', away ' + f.away);
+                    if (!f.away || !(f.toCam < -0.7)) said(pe + ' and not yet met, standing idle, the dog does not face away from the camera (his facing against the camera ' + f.toCam.toFixed(2) + ', where his back to it is -1)');
+                    if (!f.bubble) said(pe + ' and not yet met, the dog shows no thought bubble');
+                    petTarget = cr.kind; petCrit = cr; said2.length = 0; $('treat').click();
+                    K.show(cr); f = facing();
+                    if (pe === 'aloof') { if (!f.away) said('aloof, given a treat, the dog turns at once, where he goes on ignoring you a while');
+                      if (cr.sit) said('aloof, the dog sits for the treat'); }
+                    else { if (f.away) said(pe + ', given a treat, the dog goes on facing away');
+                      if (f.bubble) said(pe + ', met, the dog still shows his thought bubble'); }
+                    if (pe === 'patient' && !cr.sit) said('patient, given a treat, the dog does not sit and wait');
+                    if (pe === 'eager' && !(cr.happyT > wNow())) said('eager, given a treat, the dog is not happy');
+                    const W = T().persona, wantLine = pe !== 'eager' && W && W.dog && Array.isArray(W.dog[pe]) && W.dog[pe].length;
+                    if (wantLine && !said2.some(m => W.dog[pe].some(l => m === String(l).replace(/\{n\}/g, cr.name)))) said(pe + ', given a treat, no line in his personality\'s voice says why');
+                    if (pe === 'aloof') { cr.turnT = wNow() - 1; K.show(cr); if (facing().away) said('aloof, once his while of ignoring you is over, the dog still faces away'); } }
+                  personaOn = () => false; cr.metT = 0; cr.persona = undefined; K.show(cr); const f0 = facing();
+                  if (f0 && (f0.away || f0.bubble)) said('in a world that does not ask for personalities, the dog faces away or thinks in a bubble anyway');
+                } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
+              }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }
@@ -17456,6 +17506,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const FOR = {
       'the office dog and his care pack': 'dog treatLb fredHeart fredUnlock carePackToast careHint carePack careEvents fredDoneToast retryNoteFred',
       'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone',
+      'the animals\' personalities': 'persona',
       'the cat': 'cat petCat', 'the pigeon': 'pigeon petPig', 'the parrot': 'loro petLoro', 'the street cat': 'gato petGato',
       'the butterflies and the hummingbird': 'mariposa colibri petFly petColi',
       'the barber\'s chair': 'chairTitle chairDone chairAfter',
