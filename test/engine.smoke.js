@@ -16313,6 +16313,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         {
           const { p: dp, err: dErr } = await openWith(takes ? null : (Array.isArray(ownL) ? [...new Set([...ownL, 'person', 'dog'])] : ['person', 'dog']));   /* a phone, as the person's section asks, the world as it stands where it names the dog */
           const R = await dp.evaluate(([JN]) => { const K = window.__dk, P = [], N = [], said = s => P.push(s);
+            /* these checks ask the engine's own limits (DOGNEAR, DOGBODYMAX), whatever reach the world names (ANIMALREACH, ANIMALMAX,
+               mq-v283): they are held here, and the world's own named reach is asked in Q against the functions it really reads */
+            const own = typeof dogBodyReach === 'function' ? [dogBodyReach, dogBodyMax] : null;
+            if (own) { dogBodyReach = () => DOGNEAR; dogBodyMax = () => DOGBODYMAX; }
             K.hold();
             try {
               const at = K.spot();
@@ -16890,9 +16894,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                        each dog's card standing in until his body is made ---- */
               if (typeof dogBodyReach !== 'function' || typeof dogBodyMax !== 'function') said('the engine has no way for a world to say how far and how many dogs stand as bodies');
               else {
-                if (dogBodyReach(undefined) !== (typeof ANIMALREACH === 'undefined' ? DOGNEAR : dogBodyReach(ANIMALREACH))) said('a world that names no reach does not keep DOGNEAR');
-                if (dogBodyMax(100) !== DOGBODYCEIL || dogBodyMax(5) !== 5 || dogBodyMax(-1) !== DOGBODYMAX || dogBodyMax('x') !== DOGBODYMAX) said('the ceiling on dogs as bodies is not held (100 gives ' + dogBodyMax(100) + ', 5 gives ' + dogBodyMax(5) + ', -1 gives ' + dogBodyMax(-1) + ')');
-                if (dogBodyReach(Infinity) !== Infinity || dogBodyReach(0) !== DOGNEAR || dogBodyReach('far') !== DOGNEAR) said('the reach a world names is not read as asked');
+                if (own && own[0]() !== (typeof ANIMALREACH === 'undefined' ? DOGNEAR : own[0](ANIMALREACH))) said('a world that names no reach does not keep DOGNEAR');
+                if (own && (own[1]() !== (typeof ANIMALMAX === 'undefined' ? DOGBODYMAX : own[1](ANIMALMAX)))) said('the dogs at once a world names are not the ones it gets');
+                if (own && (own[1](100) !== DOGBODYCEIL || own[1](5) !== 5 || own[1](-1) !== DOGBODYMAX || own[1]('x') !== DOGBODYMAX)) said('the ceiling on dogs as bodies is not held (100 gives ' + own[1](100) + ', 5 gives ' + own[1](5) + ', -1 gives ' + own[1](-1) + ')');
+                if (own && (own[0](Infinity) !== Infinity || own[0](0) !== DOGNEAR || own[0]('far') !== DOGNEAR)) said('the reach a world names is not read as asked');
                 const kr = dogBodyReach, km = dogBodyMax, wv = CW(), [qx, qy] = focusXY(), spots = [];
                 for (let y = 0; y < wv.H && spots.length < 5; y++) for (let x = 0; x < wv.W && spots.length < 5; x++) {
                   if (SOLID.has(wv.grid[y][x]) || Math.hypot(x - qx, y - qy) <= DOGNEAR + BODYHYST + 1 || CRIT.some(c => c.world === world && Math.round(c.x) === x && Math.round(c.y) === y)) continue;
