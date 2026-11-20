@@ -16885,6 +16885,31 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (!e0.inside) said('a chihuahua\'s upright ear has no inside of its own');
                 else { const L = c => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b; if (!(L(e0.inside) > L(coat) && e0.inside.r >= e0.inside.b)) said('the inside of a chihuahua\'s ear is not lighter and pinker than his coat (#' + e0.inside.getHexString() + ' in a coat of #' + coat.getHexString() + ')'); }
                 N.push('the chihuahua\'s ears: both up, ' + e0.up + ' up of ' + e0.coat + ' pieces; mixed, ' + e1.up + ' up and ' + e1.folded + ' folded of ' + e1.coat + ' pieces; inside #' + (e0.inside ? e0.inside.getHexString() : 'none')); }
+              /* ---- Q · how far and how many (mq-v283): a world that names neither keeps DOGNEAR and DOGBODYMAX; one that reaches past
+                       DOGNEAR keeps every dog in the place a body, up to its ceiling, and makes them a few a frame, the nearest first,
+                       each dog's card standing in until his body is made ---- */
+              if (typeof dogBodyReach !== 'function' || typeof dogBodyMax !== 'function') said('the engine has no way for a world to say how far and how many dogs stand as bodies');
+              else {
+                if (dogBodyReach(undefined) !== (typeof ANIMALREACH === 'undefined' ? DOGNEAR : dogBodyReach(ANIMALREACH))) said('a world that names no reach does not keep DOGNEAR');
+                if (dogBodyMax(100) !== DOGBODYCEIL || dogBodyMax(5) !== 5 || dogBodyMax(-1) !== DOGBODYMAX || dogBodyMax('x') !== DOGBODYMAX) said('the ceiling on dogs as bodies is not held (100 gives ' + dogBodyMax(100) + ', 5 gives ' + dogBodyMax(5) + ', -1 gives ' + dogBodyMax(-1) + ')');
+                if (dogBodyReach(Infinity) !== Infinity || dogBodyReach(0) !== DOGNEAR || dogBodyReach('far') !== DOGNEAR) said('the reach a world names is not read as asked');
+                const kr = dogBodyReach, km = dogBodyMax, wv = CW(), [qx, qy] = focusXY(), spots = [];
+                for (let y = 0; y < wv.H && spots.length < 5; y++) for (let x = 0; x < wv.W && spots.length < 5; x++) {
+                  if (SOLID.has(wv.grid[y][x]) || Math.hypot(x - qx, y - qy) <= DOGNEAR + BODYHYST + 1 || CRIT.some(c => c.world === world && Math.round(c.x) === x && Math.round(c.y) === y)) continue;
+                  if (spots.some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) < 2)) continue; spots.push([x, y]); }
+                if (spots.length < 3) N.push('this world has too little room past DOGNEAR to plant far dogs, so their reach was not asked');
+                else { const far = spots.map(at => K.plant('beagle', at, { fx: at[0], fy: at[1], follow: false }));
+                  try {
+                    K.show(cr); if (far.some(c => { const B = K.bodyOf(c); return B && B.visible && T3.dogShown.has(c); })) said('a world that names no reach stands a dog past DOGNEAR as a body');
+                    dogBodyReach = () => Infinity; dogBodyMax = () => DOGBODYCEIL;
+                    K.show(cr); const first = far.filter(c => T3.dogShown.has(c)).length;
+                    if (first > DOGMAKEFRAME) said('reaching past DOGNEAR, ' + first + ' far dogs are made bodies in one frame, where ' + DOGMAKEFRAME + ' a frame are');
+                    far.forEach(c => { if (!T3.dogShown.has(c) && !K.drawn(c)) said('a far dog whose body is not made yet has no card standing in'); });
+                    for (let k = 0; k < far.length + 2; k++) K.show(cr);
+                    const all = far.filter(c => { const B = K.bodyOf(c); return B && B.visible && T3.dogShown.has(c); }).length;
+                    if (all !== far.length) said('reaching past DOGNEAR, ' + all + ' of ' + far.length + ' far dogs stand as bodies after their frames, where every one does');
+                    N.push('how far and how many: ' + far.length + ' dogs past DOGNEAR, ' + first + ' made in the first frame, ' + all + ' bodies after ' + (far.length + 2) + ' frames');
+                  } finally { dogBodyReach = kr; dogBodyMax = km; far.forEach(c => K.unplant(c)); K.show(cr); } } }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }

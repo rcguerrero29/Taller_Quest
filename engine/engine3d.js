@@ -2363,6 +2363,16 @@ function t3BodyPreview(cv,lk,ang){
    coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
+/* HOW FAR AND HOW MANY (mq-v283; the owner's confirmed goal of 2026-11-20). A dog's body is cheap to make (about 3 to 6
+   thousandths of a second) and cheap to draw (24 of them took a frame from 0.9 to 3.9 thousandths of a second on the test
+   machine), so a world may keep every dog in the place a body, however far from the camera: its own ANIMALREACH (squares;
+   Infinity for no limit) and ANIMALMAX (at most DOGBODYCEIL, the adoption ceiling). A world that names neither keeps
+   DOGNEAR and DOGBODYMAX, exactly as before. Where a world reaches past DOGNEAR, the bodies are made one a frame, the nearest
+   first (DOGMAKEFRAME), so a park of 24 does not stall the frame you walk into it (24 at once took 120 thousandths); each
+   dog's card stands in until his body is made. Read through dogBodyReach and dogBodyMax (named apart from dogReach, the tiles a dog can stand on), so a check can hold either */
+const DOGBODYCEIL=24,DOGMAKEFRAME=1;
+function dogBodyReach(n){if(n===undefined&&typeof ANIMALREACH!=="undefined")n=ANIMALREACH;return typeof n==="number"&&n>0?n:DOGNEAR;}
+function dogBodyMax(n){if(n===undefined&&typeof ANIMALMAX!=="undefined")n=ANIMALMAX;return typeof n==="number"&&n>0?Math.min(DOGBODYCEIL,Math.floor(n)):DOGBODYMAX;}
 const DOGCOLLARLIE=0.55;   /* how far his collar tips down toward his throat, in radians */
 const DOGTUCK=[0.62,0.86];   /* at his hips: the share of his chest's depth below the spine, and of his ribs' width */
 const DOGUNDER=0.8;    /* how much of his barrel's roundness is left under his spine, standing: his legs are mostly in view under a little chest */
@@ -2750,13 +2760,15 @@ function t3DogBodies(dt){
   if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.dogShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards, the bodies kept for a turn back */
   const[qx,qy]=focusXY(),nw=wNow(),t=Date.now(),w=CW(),sc=T3PERSON/0.92;
   const want=CRIT.filter(cr=>cr.world===world&&DOGK.has(cr.kind)).map(cr=>{const P=dogPose(cr,nw,t),d=Math.hypot(cr.fx-qx,cr.fy-qy);
-      return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=DOGNEAR+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
-    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,DOGBODYMAX);
+      return{cr,P,d,ok:dogBodyWants(cr,P)&&d<=dogBodyReach()+(on.has(cr)&&on.get(cr).visible?BODYHYST:0)};})
+    .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,dogBodyMax());
+  const far=dogBodyReach()>DOGNEAR;let made=0;   /* past DOGNEAR, the bodies are made a few a frame, the nearest first (mq-v283) */
   const keep=new Set(want.map(e=>e.cr));
   [...on.keys()].forEach(cr=>{if(keep.has(cr))return;if(cr.world!==world||!CRIT.includes(cr))drop(cr);else on.get(cr).visible=false;});
   want.forEach(({cr,P})=>{const lk=dogLookOf(cr),key=JSON.stringify(lk);let B=on.get(cr);
     if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(cr);B=null;}
-    if(!B){B=dogMake(dogSkeleton(lk.kind),lk);B.userData.key=key;T3.scene.add(B);on.set(cr,B);}
+    if(!B){if(far&&made>=DOGMAKEFRAME)return;   /* his card stands in until his turn to be made */
+      B=dogMake(dogSkeleton(lk.kind),lk);B.userData.key=key;T3.scene.add(B);on.set(cr,B);made++;}
     const S=B.userData.skel,lift=stairLift(w,Math.round(cr.fx),Math.round(cr.fy)),[hx,hy]=P.heading;
     if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);else if(B.userData.yaw===undefined)B.userData.yaw=Math.atan2(P.face<0?-1:1,0);
     /* HIS PERSONALITY'S FIRST POSE (mq-v279, where the world asks for personalities): until he is met, and while an aloof dog
