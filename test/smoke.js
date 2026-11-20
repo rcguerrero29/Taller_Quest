@@ -1253,7 +1253,7 @@ const CANDIDATES = [
         out.peStored = (JSON.parse(localStorage.getItem('mqpark') || '{}').persona || {}).Brisa === 'aloof';
         document.getElementById('adopt').click(); btn('surprise').click();
         document.getElementById('adoptName').value = 'Sol'; document.getElementById('adoptGo').click();
-        const so = CRIT.find(c => c.name === 'Sol'); out.peSurprise = !!so && PERSONAS.includes(so.persona) && parkPrefs.persona.Sol === so.persona;
+        const so = CRIT.find(c => c.name === 'Sol'); out.peSurprise = !!so && PERSONAS.includes(so.persona) && (parkPrefs.persona || {}).Sol === so.persona;
       } finally { personaOn = kpo; if (had) U.personaPick = kp; else delete U.personaPick; adoptPaint(); }
       out.peOffAgain = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden; }
     document.getElementById('pkClose').click();
