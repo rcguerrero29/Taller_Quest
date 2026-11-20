@@ -2519,8 +2519,14 @@ function dogMake(skel,lk){
   part("jaw",ball(r*0.36,10,6),"mouth","#3A1F2B",0,r*0.09,r*0.4*ml,[0.82*(b.jaw||1),0.34,1.05*ml]);
   const earCol=lk.kind==="beagle"?paint.coat:b.ear==="up"?paint.coat:shadeHex(paint.coat,-0.25);
   [1,-1].forEach(sd=>{
-    if(b.ear==="up"){const m=part("head",new THREE.ConeGeometry(r*0.55,r*1.75,4),"ear",earCol,sd*r*0.62,r*1.25,-r*0.05,[1,1,0.45]);m.rotation.set(0,0,-sd*0.4);
-      const n=part("head",new THREE.ConeGeometry(r*0.34,r*1.05,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.63,r*1.14,r*0.1,[1,1,0.3]);n.rotation.set(0,0,-sd*0.4);}
+    /* AN UPRIGHT EAR (mq-v281; the owner's confirmed goal of 2026-11-19): broad at the base and shorter than before, splayed
+       out from the skull and turned so its open face looks forward and out, as a chihuahua carries them; from the side the near
+       one shows its face and the far one its edge beside it, two ears where the old narrow pair read as one spike. With the
+       look's ears set to mixed (EARKINDS, engine/engine.js), his left ear is folded over and hangs down beside his skull */
+    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0)){const m=part("head",new THREE.ConeGeometry(r*0.68,r*1.45,4),"ear",earCol,sd*r*0.7,r*1.12,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);m.userData.upEar=true;
+      const n=part("head",new THREE.ConeGeometry(r*0.42,r*0.9,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.72,r*1.04,r*0.1,[1,1,0.3]);n.rotation.set(0,sd*0.55,-sd*0.62);n.userData.upEar=true;}
+    else if(b.ear==="up"){/* the folded ear: the same ear turned over and hanging down and out beside his skull, its tip lowest */
+      const m=part("head",new THREE.ConeGeometry(r*0.66,r*1.35,4),"ear",earCol,sd*r*1.12,r*0.08,r*0.02,[1,1,0.42]);m.rotation.set(0.15,sd*0.5,-sd*2.25);}
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
       const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
@@ -2667,7 +2673,9 @@ function dogHold(B,held,howl,t){
   if(J.jaw)J.jaw.rotation.x=howl?DOGJAW:0;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.wears==="eye"){if(u.open===undefined)u.open=o.scale.y;o.scale.y=u.open*(shut?0.22:1);}
-    if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}});
+    if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}
+    /* lying down, an upright ear relaxes back along his skull, as a resting dog lays his ears (mq-v281) */
+    if(u.upEar){if(u.restX===undefined)u.restX=o.rotation.x;o.rotation.x=u.restX+(held==="lay"&&!howl?-0.75:0);}});
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}

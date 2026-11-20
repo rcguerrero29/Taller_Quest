@@ -1256,6 +1256,24 @@ const CANDIDATES = [
         const so = CRIT.find(c => c.name === 'Sol'); out.peSurprise = !!so && PERSONAS.includes(so.persona) && (parkPrefs.persona || {}).Sol === so.persona;
       } finally { personaOn = kpo; if (had) U.personaPick = kp; else delete U.personaPick; adoptPaint(); }
       out.peOffAgain = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden; }
+    // the ears chosen at adoption (mq-v281): offered for a short-eared kind where the world gives the words; kept on the pup and in
+    // the save as one known word; for any other kind, or with no words, nothing is offered and nothing is kept
+    { const U = UI[lang], had = Object.prototype.hasOwnProperty.call(U, 'earPick'), kp = U.earPick;
+      try {
+        adoptB = 'chi'; adoptPaint(); out.earOff = !document.getElementById('adoptEars') || document.getElementById('adoptEars').hidden;
+        U.earPick = { label: 'Ears', up: 'Up', mixed: 'Mixed' };
+        document.getElementById('adopt').click(); adoptB = 'beagle'; adoptPaint();
+        out.earBeagle = !document.getElementById('adoptEars') || document.getElementById('adoptEars').hidden;
+        adoptB = 'chi'; adoptC = '#C9975C'; adoptPaint(); const row = document.getElementById('adoptEars'), btn = k => row && row.querySelector('[data-ear="' + k + '"]');
+        out.earRow = !!row && !row.hidden && btn('up').getAttribute('aria-pressed') === 'true' && btn('mixed').textContent === 'Mixed';
+        btn('mixed').click(); document.getElementById('adoptName').value = 'Pip'; document.getElementById('adoptGo').click();
+        const pip = CRIT.find(c => c.name === 'Pip'), rec = (JSON.parse(localStorage.getItem('mqpark') || '{}').dogs || []).find(d => d.n === 'Pip');
+        out.earChosen = !!pip && pip.ears === 'mixed' && dogLookOf(pip).ears === 'mixed' && !!rec && rec.e === 'mixed';
+        document.getElementById('adopt').click(); adoptB = 'lab'; adoptC = '#E0C070'; adoptE = 'mixed'; adoptPaint();
+        document.getElementById('adoptName').value = 'Toro'; document.getElementById('adoptGo').click();
+        const toro = CRIT.find(c => c.name === 'Toro'), rt = (JSON.parse(localStorage.getItem('mqpark') || '{}').dogs || []).find(d => d.n === 'Toro');
+        out.earNotLab = !!toro && toro.ears === undefined && !!rt && !('e' in rt);
+      } finally { if (had) U.earPick = kp; else delete U.earPick; adoptE = 'up'; adoptB = 'beagle'; adoptPaint(); } }
     document.getElementById('pkClose').click();
     // strings in both languages, each Meridian's own: the engine keeps words of its own beneath a world's now, and a word
     // read through them would answer for one Meridian dropped, so each is asked for as Meridian's own property
@@ -1270,7 +1288,7 @@ const CANDIDATES = [
   ['pkOk', 'lawnReach', 'waterBlocked', 'star', 'inPark', 'treatCounted', 'band', 'bandStored',
     'adopted', 'adoptStored', 'labAdopted', 'dupBlocked', 'oneStar', 'sitOk', 'stayOk', 'comeOk',
     'noLimit', 'friends', 'renamed', 'renDupBlocked', 'rehBtn', 'rehomed', 'starRenameOnly',
-    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'starHome', 'langOk', 'peOff', 'peOffWords', 'peRow', 'pePressed', 'peChosen', 'peStored', 'peSurprise', 'peOffAgain'].forEach(k => {
+    'agility', 'cocina', 'swipe3d', 'exited', 'card', 'starHome', 'langOk', 'peOff', 'peOffWords', 'peRow', 'pePressed', 'peChosen', 'peStored', 'peSurprise', 'peOffAgain', 'earOff', 'earBeagle', 'earRow', 'earChosen', 'earNotLab'].forEach(k => {
     if (park[k] !== true) fails.push('park: ' + k + ' failed (' + JSON.stringify(park[k]) + ')');
   });
 
