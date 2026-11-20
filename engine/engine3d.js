@@ -2524,24 +2524,31 @@ function dogMake(skel,lk){
        one shows its face and the far one its edge beside it, two ears where the old narrow pair read as one spike. With the
        look's ears set to mixed (EARKINDS, engine/engine.js), his left ear is folded over and hangs down beside his skull */
     /* THE INSIDE OF AN UPRIGHT EAR (mq-v282; the owner's word of 2026-11-20). A soft pink close to tan, lighter than the coat, in a
-       shell set into the ear's open face, and a band of the coat's own shade round its rim, so the ear has an inside and a form */
-    const inPink="#"+new THREE.Color(paint.coat).lerp(new THREE.Color("#F6D3C8"),0.7).getHexString(),rim=shadeHex(earCol,-0.12);
+       shell set into the ear's open face, so the ear has an inside and a form */
+    const inPink="#"+new THREE.Color(paint.coat).lerp(new THREE.Color("#F6D3C8"),0.7).getHexString();
     /* THE EAR'S SHAPE (mq-v282, after the owner's reference photographs of 2026-11-20). A real upright ear is a cupped leaf with a
-       rounded tip, not a pyramid: here a shell (the back half of a stretched sphere, both faces drawn) in the coat, and inside it a
-       smaller shell in the pink, so the cup shows its inside from the front and its back from behind. sec picks the band of the
-       shell from its root (theta from lo to hi of a half turn: 0 the tip, 1 the root), so the folded ear is the same leaf cut at
-       its middle, its lower half standing and its upper half tipped forward and down from the fold */
-    const shell=(col,w,h,d,lo,hi)=>{const g=new THREE.SphereGeometry(r,14,10,0,Math.PI,Math.PI*lo,Math.PI*(hi-lo));
-      /* tapered toward the tip, as a chihuahua's ear narrows to a soft point: an oval leaf read as a mouse's ear */
-      {const P=g.attributes.position;for(let k=0;k<P.count;k++){const t=(P.getY(k)/r+1)/2;P.setX(k,P.getX(k)*(1-0.62*Math.pow(t,1.6)));}P.needsUpdate=true;g.computeVertexNormals();}const m=part("head",g,"ear",col,0,0,0,[w,h,d]);m.material.side=THREE.DoubleSide;return m;};
-    const upEar=(x,y,lo)=>{const o=shell(earCol,0.66,1.12,0.34,lo,0.8),n=shell(inPink,0.5,0.94,0.22,Math.max(lo,0.08),0.8);   /* the root ends inside his skull, so no underside of the cup shows past his head */
-      [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});n.userData.inside=true;n.material.side=THREE.BackSide;return o;};   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
-    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0))upEar(0.72,1.15,0);
-    else if(b.ear==="up"){upEar(0.72,1.15,0.5);
-      /* the upper half, hinged at the middle of the leaf, tips forward and down over it, its back (the coat) to the camera */
-      const t=shell(earCol,0.66,1.12,0.34,0,0.5),fa=new THREE.Vector3(sd*0.35,-0.55,0.76).normalize();
-      t.position.set(sd*r*0.72,r*1.15,0);   /* the fold is the middle of the leaf, where both halves meet */t.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),fa);
-      t.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI));t.userData.fold=true;}
+       soft point, not a pyramid: a shell (the back half of a stretched sphere, both faces drawn) in the coat, tapered toward its
+       tip, and inside it a smaller shell in the pink, so the cup shows its inside from the front and its back from behind. Its
+       root ends inside his skull, so no underside of the cup shows past his head.
+       A FOLDED EAR IS THE SAME EAR, BENT: one piece, never two (two pieces read as a part floating over his head). Above the
+       fold line (EARFOLD of his head over the ear's middle) every point is carried round a short curve (EARCURL) and on, forward
+       and down, by EARBEND in all, the pink inside bent with the coat, so the standing half runs into the hanging half without
+       a seam and its tip hangs lowest in front. Where the ear's tip ends up is kept on it (userData.tip) for the checks */
+    const EARFOLD=0.3,EARCURL=0.16,EARBEND=2.35;
+    const shell=(col,w,h,d,lo,bend)=>{const g=new THREE.SphereGeometry(r,14,bend?24:10,0,Math.PI,Math.PI*lo,Math.PI*(0.8-lo)),P=g.attributes.position;
+      const y0=r*EARFOLD,R=r*EARCURL,A=EARBEND,Lc=R*A,sA=Math.sin(A),cA=Math.cos(A);let tip=null,top=-Infinity;
+      for(let k=0;k<P.count;k++){const t=(P.getY(k)/r+1)/2,oy=P.getY(k);
+        let x=P.getX(k)*(1-0.62*Math.pow(t,1.6))*w,y=oy*h,z=P.getZ(k)*d;   /* tapered toward the tip, then sized: the bend is made at its true size */
+        if(bend&&y>y0){const u=y-y0,rho=R+z;   /* the geometry's +z is the back of the ear; it folds toward -z, the front */
+          if(u<=Lc){const th=u/R;y=y0+rho*Math.sin(th);z=rho*Math.cos(th)-R;}
+          else{const e=u-Lc;y=y0+rho*sA+e*cA;z=rho*cA-R-e*sA;}}
+        P.setXYZ(k,x,y,z);if(oy>top){top=oy;tip=[x,y,z];}}
+      P.needsUpdate=true;g.computeVertexNormals();const m=part("head",g,"ear",col,0,0,0);m.material.side=THREE.DoubleSide;m.userData.tip=tip;return m;};
+    const upEar=(x,y,bend)=>{const o=shell(earCol,0.66,1.12,0.34,0,bend),n=shell(inPink,0.5,0.94,0.22,0.08,bend);
+      [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});
+      n.userData.inside=true;n.material.side=THREE.BackSide;   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
+      if(bend)o.userData.fold=true;return o;};
+    if(b.ear==="up")upEar(0.72,1.15,lk.ears==="mixed"&&sd<0);
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
       const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under

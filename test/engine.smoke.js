@@ -16863,18 +16863,24 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (dogLookOf({ kind: 'chi', ears: 'evil' }).ears !== undefined) said('a chihuahua keeps ears that are not one of the known words');
                 if (dogLookOf({ kind: 'chi', ears: 'mixed' }).ears !== 'mixed') said('a chihuahua does not keep the mixed ears chosen for him');
                 if ('ears' in dogLookOf({ kind: 'chi' })) said('a chihuahua with no ears chosen has a look that is not what it was');
-                /* by their parts (mq-v282): an upright ear points up; the folded one's top half points down; the inside of an upright
-                   ear is lighter and pinker than the coat, so the ear has an inside */
-                const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); let up = 0, down = 0, inside = null;
-                    B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return; const ax = new THREE.Vector3(0, 1, 0).applyQuaternion(o.getWorldQuaternion(new THREE.Quaternion()));
-                      if (ax.y > 0.3) up++; else if (ax.y < -0.3) down++; if (o.userData.inside) inside = o.userData.base || o.material.color; });
-                    return { up, down, inside }; } finally { t3Dispose(B); } };
+                /* by their parts (mq-v282): each ear is ONE piece in the coat with one pink inside (a folded ear made of two pieces read
+                   as a part floating over his head, the owner's word of 2026-11-20); an upright ear's tip is its highest point; a
+                   folded ear's tip hangs well below its fold, and its pink inside is bent with it; the inside is lighter and
+                   pinker than the coat */
+                const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); const out = { coat: 0, pink: 0, up: 0, folded: 0, pinkFolded: 0, inside: null };
+                    B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return; const box = new THREE.Box3().setFromObject(o), h = box.max.y - box.min.y;
+                      const tip = Array.isArray(o.userData.tip) ? o.localToWorld(new THREE.Vector3(...o.userData.tip)) : null, hangs = tip ? (box.max.y - tip.y) / Math.max(1e-6, h) : -1;
+                      if (o.userData.inside) { out.pink++; out.inside = o.userData.base || o.material.color; if (hangs > 0.2) out.pinkFolded++; }
+                      else { out.coat++; if (hangs > 0.2) out.folded++; else if (hangs >= 0 && hangs < 0.08) out.up++; } });
+                    return out; } finally { t3Dispose(B); } };
                 const coat = new THREE.Color('#C9975C'), e0 = ears(dogLookOf({ kind: 'chi', c: '#C9975C' })), e1 = ears(dogLookOf({ kind: 'chi', c: '#C9975C', ears: 'mixed' }));
-                if (!(e0.up >= 2 && e0.down === 0)) said('a chihuahua with both ears up wears ' + e0.up + ' parts of ear pointing up and ' + e0.down + ' pointing down');
-                if (!(e1.down >= 1 && e1.up >= 1)) said('a chihuahua with mixed ears does not wear one ear folded over and one up (' + e1.up + ' parts up, ' + e1.down + ' folded down)');
+                if (e0.coat !== 2 || e0.pink !== 2 || e1.coat !== 2 || e1.pink !== 2) said('a chihuahua\'s ears are not one piece each with one inside each: both up ' + e0.coat + ' pieces and ' + e0.pink + ' insides, mixed ' + e1.coat + ' and ' + e1.pink);
+                if (!(e0.up === 2 && e0.folded === 0)) said('a chihuahua with both ears up does not wear two ears whose tips are their highest points (' + e0.up + ' up, ' + e0.folded + ' folded)');
+                if (!(e1.up === 1 && e1.folded === 1)) said('a chihuahua with mixed ears does not wear one ear up and one folded over, its tip hanging below its fold (' + e1.up + ' up, ' + e1.folded + ' folded)');
+                else if (e1.pinkFolded !== 1) said('the inside of a chihuahua\'s folded ear is not folded with it');
                 if (!e0.inside) said('a chihuahua\'s upright ear has no inside of its own');
                 else { const L = c => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b; if (!(L(e0.inside) > L(coat) && e0.inside.r >= e0.inside.b)) said('the inside of a chihuahua\'s ear is not lighter and pinker than his coat (#' + e0.inside.getHexString() + ' in a coat of #' + coat.getHexString() + ')'); }
-                N.push('the chihuahua\'s ears: both up, ' + e0.up + ' parts up; mixed, ' + e1.up + ' up and ' + e1.down + ' folded down; inside #' + (e0.inside ? e0.inside.getHexString() : 'none')); }
+                N.push('the chihuahua\'s ears: both up, ' + e0.up + ' up of ' + e0.coat + ' pieces; mixed, ' + e1.up + ' up and ' + e1.folded + ' folded of ' + e1.coat + ' pieces; inside #' + (e0.inside ? e0.inside.getHexString() : 'none')); }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }
