@@ -2523,10 +2523,20 @@ function dogMake(skel,lk){
        out from the skull and turned so its open face looks forward and out, as a chihuahua carries them; from the side the near
        one shows its face and the far one its edge beside it, two ears where the old narrow pair read as one spike. With the
        look's ears set to mixed (EARKINDS, engine/engine.js), his left ear is folded over and hangs down beside his skull */
-    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0)){const m=part("head",new THREE.ConeGeometry(r*0.68,r*1.45,4),"ear",earCol,sd*r*0.7,r*1.12,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);m.userData.upEar=true;
-      const n=part("head",new THREE.ConeGeometry(r*0.42,r*0.9,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.72,r*1.04,r*0.1,[1,1,0.3]);n.rotation.set(0,sd*0.55,-sd*0.62);n.userData.upEar=true;}
-    else if(b.ear==="up"){/* the folded ear: the same ear turned over and hanging down and out beside his skull, its tip lowest */
-      const m=part("head",new THREE.ConeGeometry(r*0.66,r*1.35,4),"ear",earCol,sd*r*1.12,r*0.08,r*0.02,[1,1,0.42]);m.rotation.set(0.15,sd*0.5,-sd*2.25);}
+    /* THE INSIDE OF AN UPRIGHT EAR (mq-v282; the owner's word of 2026-11-20). A soft pink close to tan, lighter than the coat, in a
+       shell set into the ear's open face, and a band of the coat's own shade round its rim, so the ear has an inside and a form */
+    const inPink="#"+new THREE.Color(paint.coat).lerp(new THREE.Color("#F6D3C8"),0.7).getHexString(),rim=shadeHex(earCol,-0.12);
+    const upEar=(x,y,h,w0)=>{const m=part("head",new THREE.ConeGeometry(r*w0,r*h,4),"ear",earCol,sd*r*x,r*y,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);m.userData.upEar=true;
+      const e=part("head",new THREE.ConeGeometry(r*w0*1.06,r*h*0.96,4),"ear",rim,sd*r*(x+0.01),r*(y-0.03),-r*0.05,[1,1,0.3]);e.rotation.set(0,sd*0.55,-sd*0.62);e.userData.upEar=true;
+      const n=part("head",new THREE.ConeGeometry(r*w0*0.66,r*h*0.66,4),"ear",inPink,sd*r*(x+0.02),r*(y-0.1),r*0.11,[1,1,0.28]);n.rotation.set(0,sd*0.55,-sd*0.62);n.userData.upEar=true;n.userData.inside=true;return m;};
+    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0))upEar(0.7,1.12,1.45,0.68);
+    else if(b.ear==="up"){/* THE FOLDED EAR (mq-v282): it stands at its root as the other does, pink inside, and folds over at half its height,
+         the top half hanging forward and out, its back to the camera and its tip lowest, as a real ear folds */
+      upEar(0.66,0.78,0.78,0.6);
+      /* hinged at the top of the standing half (out 0.85, up 1.09, back 0.13 of his head), its top half tips forward and down over the
+         front of the ear, as a tipped ear folds: from the front the back of the flap covers the ear's top, its tip lowest */
+      const fa=new THREE.Vector3(sd*0.352,-0.553,0.755).normalize(),t=part("head",new THREE.ConeGeometry(r*0.52,r*0.82,4),"ear",earCol,sd*r*0.994,r*0.863,r*0.18,[1,1,0.4]);
+      t.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),fa);t.userData.fold=true;}
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
       const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
