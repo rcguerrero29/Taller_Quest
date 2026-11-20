@@ -6346,11 +6346,11 @@ $("treat").addEventListener("click",()=>{
     return;
   }
   if(petTarget==="cat"){CAT.sit=true;CAT.next=wNow()+3200;
-    const L=T().cat;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
+    const L=T().cat;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
   else if(petTarget==="pig"){PIG.peck=true;PIG.next=wNow()+2200;
-    const L=T().pigeon;toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
+    const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
   else if(petTarget==="loro"){
-    const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
+    const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(DOGK.has(petTarget)){ /* a treat: the tail achieves liftoff, and he's FUELED */
     const g2=petCrit,pe=g2?personaOf(g2):null;
     /* HIS PERSONALITY, where the world asks for it (mq-v279): he is met now, and turns to you now, or, aloof, a while later;
@@ -6363,17 +6363,17 @@ $("treat").addEventListener("click",()=>{
       if(world===PL.park)PARK.t++;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
-    toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}
+    if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
   else if(petTarget==="gato"){
     const g2=petCrit;
     if(g2){g2.sit=true;g2.next=wNow()+3200;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?eggLines(g2.egg,g2.name):T().gato;
-    toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
+    if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;
     if(g2){g2.sit=true;g2.moving=false;g2.next=wNow()+2600;} /* it pauses for you */
     const L=petTarget==="butterfly"?T().mariposa:T().colibri;
-    toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
+    if(Array.isArray(L)&&L.length)toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
 });
 /* ---------- quest overlay ---------- */
 let wasFs=false;
