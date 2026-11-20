@@ -2523,8 +2523,8 @@ function dogMake(skel,lk){
        out from the skull and turned so its open face looks forward and out, as a chihuahua carries them; from the side the near
        one shows its face and the far one its edge beside it, two ears where the old narrow pair read as one spike. With the
        look's ears set to mixed (EARKINDS, engine/engine.js), his left ear is folded over and hangs down beside his skull */
-    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0)){const m=part("head",new THREE.ConeGeometry(r*0.68,r*1.45,4),"ear",earCol,sd*r*0.7,r*1.12,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);
-      const n=part("head",new THREE.ConeGeometry(r*0.42,r*0.9,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.72,r*1.04,r*0.1,[1,1,0.3]);n.rotation.set(0,sd*0.55,-sd*0.62);}
+    if(b.ear==="up"&&!(lk.ears==="mixed"&&sd<0)){const m=part("head",new THREE.ConeGeometry(r*0.68,r*1.45,4),"ear",earCol,sd*r*0.7,r*1.12,-r*0.02,[1,1,0.42]);m.rotation.set(0,sd*0.55,-sd*0.62);m.userData.upEar=true;
+      const n=part("head",new THREE.ConeGeometry(r*0.42,r*0.9,4),"ear",shadeHex(paint.coat,-0.22),sd*r*0.72,r*1.04,r*0.1,[1,1,0.3]);n.rotation.set(0,sd*0.55,-sd*0.62);n.userData.upEar=true;}
     else if(b.ear==="up"){/* the folded ear: the same ear turned over and hanging down and out beside his skull, its tip lowest */
       const m=part("head",new THREE.ConeGeometry(r*0.66,r*1.35,4),"ear",earCol,sd*r*1.12,r*0.08,r*0.02,[1,1,0.42]);m.rotation.set(0.15,sd*0.5,-sd*2.25);}
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
@@ -2673,7 +2673,9 @@ function dogHold(B,held,howl,t){
   if(J.jaw)J.jaw.rotation.x=howl?DOGJAW:0;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.wears==="eye"){if(u.open===undefined)u.open=o.scale.y;o.scale.y=u.open*(shut?0.22:1);}
-    if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}});
+    if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}
+    /* lying down, an upright ear relaxes back along his skull, as a resting dog lays his ears (mq-v281) */
+    if(u.upEar){if(u.restX===undefined)u.restX=o.rotation.x;o.rotation.x=u.restX+(held==="lay"&&!howl?-0.75:0);}});
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}

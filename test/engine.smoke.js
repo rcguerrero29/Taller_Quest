@@ -16863,11 +16863,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 if (dogLookOf({ kind: 'chi', ears: 'evil' }).ears !== undefined) said('a chihuahua keeps ears that are not one of the known words');
                 if (dogLookOf({ kind: 'chi', ears: 'mixed' }).ears !== 'mixed') said('a chihuahua does not keep the mixed ears chosen for him');
                 if ('ears' in dogLookOf({ kind: 'chi' })) said('a chihuahua with no ears chosen has a look that is not what it was');
-                const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); const J = B.userData.joints, hy = J.head.getWorldPosition(new THREE.Vector3()).y, up = [], down = [];
+                const ears = lk => { const B = dogMake(dogSkeleton('chi'), lk); try { B.updateWorldMatrix(true, true); const J = B.userData.joints, hy = J.head.getWorldPosition(new THREE.Vector3()).y + 0.5 * B.userData.skel.head, up = [], down = [];   /* half his head over its joint: an upright ear stands well above it, a folded one hangs below */
                     B.traverse(o => { if (!o.isMesh || o.userData.wears !== 'ear') return; const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()); (c.y > hy ? up : down).push(o); });
                     return { up: up.length, down: down.length }; } finally { t3Dispose(B); } };
                 const e0 = ears(dogLookOf({ kind: 'chi', c: '#C9975C' })), e1 = ears(dogLookOf({ kind: 'chi', c: '#C9975C', ears: 'mixed' }));
-                if (!(e0.up >= 2 && e0.down === 0)) said('a chihuahua with both ears up wears ' + e0.up + ' parts of ear above his eyes and ' + e0.down + ' below');
+                if (!(e0.up >= 2 && e0.down === 0)) said('a chihuahua with both ears up wears ' + e0.up + ' parts of ear high on his head and ' + e0.down + ' low');
                 if (!(e1.down >= 1 && e1.up >= 1 && e1.up < e0.up)) said('a chihuahua with mixed ears does not wear one ear folded down and one up (' + e1.up + ' parts up, ' + e1.down + ' down)');
                 N.push('the chihuahua\'s ears: both up, ' + e0.up + ' parts above his eyes; mixed, ' + e1.up + ' up and ' + e1.down + ' folded down'); }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
