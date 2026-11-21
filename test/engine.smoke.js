@@ -2566,9 +2566,13 @@ function findChromium() {
             const v = new THREE.Vector3(col.x + 0.5, (b.lo + b.hi) / 2, col.y + 0.5 + dz).project(T3.cam), r = $('cv3').getBoundingClientRect();
             return { i: p.i, x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height, inside: Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95 }; }, [T.ID, c, kind, dz]);
           const tapAt = async (s, what, expect) => { if (!s.inside) { say(what + ': the place is off the picture, so its tap was not asked'); return null; }
-            await kp.mouse.click(s.x, s.y);
-            const got = await kp.evaluate(async ID => { await new Promise(res => { const t0 = performance.now(); const f = () => (!$('reader').hidden || performance.now() - t0 > 2000) ? res() : requestAnimationFrame(f); requestAnimationFrame(f); });
-              return { reader: !$('reader').hidden, kit: kitNow ? kitNow.i : null, title: $('docTitle').textContent }; }, T.ID);
+            /* a busy machine can miss the first tap's frame (the open issue on this check, red twice in pull requests that did not touch
+               it): where a page is wanted and nothing has opened after two seconds, the same point is tapped once more and waited for four
+               seconds more; a tap that is to open nothing is waited for two seconds, as before */
+            const wait = ms => kp.evaluate(async ([ID, ms]) => { await new Promise(res => { const t0 = performance.now(); const f = () => (!$('reader').hidden || performance.now() - t0 > ms) ? res() : requestAnimationFrame(f); requestAnimationFrame(f); });
+              return { reader: !$('reader').hidden, kit: kitNow ? kitNow.i : null, title: $('docTitle').textContent }; }, [T.ID, ms]);
+            await kp.mouse.click(s.x, s.y); let got = await wait(2000);
+            if (expect !== null && !got.reader) { await kp.mouse.click(s.x, s.y); got = await wait(4000); }
             if (expect === null) { if (got.reader) say(what + ': a page opened (' + got.title + ')'); }
             else if (!got.reader || got.kit !== expect) say(what + ': ' + (got.reader ? 'it opened place ' + got.kit + ' ("' + got.title + '")' : 'nothing opened'));
             if (got.reader) await putDown(got.kit === null ? 0 : got.kit);
@@ -16950,7 +16954,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else { B.userData.ear = 0.35; run(B, 0.35, EARSPRING.patient, 0.3); const z0 = Math.abs(d.rotation.z); run(B, 1, EARSPRING.patient, 1); const z1 = Math.abs(d.rotation.z);
                       if (!(z1 > z0 + 0.1)) said('pricked, a beagle\'s drop ear does not lift and spread (' + z0.toFixed(2) + ' at ease, ' + z1.toFixed(2) + ' pricked)');
                       const zs = []; for (let k = 0; k < 8; k++) { dogEars(B, { t: k * 16.67 }, 'stand', true, k * 0.4); zs.push(d.rotation.z); }
-                      if (!(Math.max(...zs) - Math.min(...zs) > 0.1)) said('trotting, a beagle\'s drop ears do not swing'); } }
+                      if (!(Math.max(...zs) - Math.min(...zs) > 0.1)) said('trotting, a beagle\'s drop ears do not swing');
+                      /* from its root (mq-v285): pricked, the root lifts; he listens toward what is beside him; alert, it shifts now and then */
+                      const root = d.parent, wy = () => { B.updateWorldMatrix(true, true); return root.getWorldPosition(new THREE.Vector3()).y; };
+                      if (!root || root.userData.earRoot === undefined) said('a beagle\'s drop ear does not hang from a root of its own');
+                      else { B.userData.earLook = 0; B.userData.ear = 0.35; run(B, 0.35, EARSPRING.patient, 0.5); const y0 = wy(); run(B, 1, EARSPRING.patient, 1); const y1 = wy();
+                        if (!(y1 > y0 + 0.002)) said('pricked, the root of a beagle\'s ear does not lift (' + (y1 - y0).toFixed(4) + ')');
+                        B.userData.earLook = 1; run(B, 1, EARSPRING.patient, 0.3); const yr = root.rotation.y; B.userData.earLook = -1; run(B, 1, EARSPRING.patient, 0.3); const yl = root.rotation.y;
+                        if (!(yr > 0.1 && yl < -0.1)) said('a beagle\'s ear does not turn toward what he listens to (' + yr.toFixed(2) + ' to his right, ' + yl.toFixed(2) + ' to his left)');
+                        const xs = []; for (let k = 0; k < 40; k++) { dogEars(B, { t: k * 120 }, 'stand', false, 0); xs.push(root.rotation.x); }
+                        if (!(Math.max(...xs) - Math.min(...xs) > 0.02)) said('alert, a beagle\'s ears do not shift back and forth as he listens');
+                        N.push('his ears from the root: lifted ' + (y1 - y0).toFixed(4) + ' when pricked, turned ' + yr.toFixed(2) + ' and ' + yl.toFixed(2) + ' toward each side'); } } }
                   finally { t3Dispose(B); } } }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
