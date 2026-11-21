@@ -4421,6 +4421,303 @@ function findChromium() {
   digging.out.forEach(l => console.log('  DIGGING: ' + l));
   fails.push(...digging.P);
 
+  /* ---- THE DOG'S IDLE ROUTINES, AND THE COURSE AT YOUR WORD (mq-v287) ----
+     What was asked, on 2026-11-20 and confirmed that day: an idle dog picks one of three modes by chance, his free whims half
+     the time and each of two set routines a quarter, his personality tipping the odds; the curious routine is a sniff, a
+     hole, a happy wag and back to normal, the lazy one a sit, a lie-down, a short howl and back to normal; each starts from
+     and returns to his normal stance; digging stays about 8% of what he does, as a probability; a check can pin a routine
+     and walk every pose in order; each game opts in. And a command sends him round the agility course, offered only in a
+     park with gear, his personality deciding how he answers; after the run he comes back and is given a treat, and a line
+     says so.
+     Asked by handing the engine a dog made here and a clock this check owns, never the page's, and reading what a person
+     would see, his pose (dogPose), never the table:
+       1 · PINNED, each routine walks its poses in the order asked, typed here and not read off ROUTINES, and leaves him
+           standing with no job.
+       2 · DIGGING IS ABOUT 8% OF HIS IDLE CHOICES, his free whims and both routines together: both rolls swept, the
+           mode's and the one after it, through dogIdle itself; a routine is walked to its end and a hole counted only
+           if he is seen digging. 7 to 9, for a dog with no personality and for each personality. And the modes come
+           up as asked: half, a quarter, a quarter with no personality; an eager dog leans to the curious routine, an
+           aloof one to the lazy.
+       3 · WHERE ROUTINES ARE OFF, an idle dog is his whim and nothing else: the same rolls leave the same dog, and not
+           one more number is drawn.
+       4 · A HAND ON HIM ENDS HIS ROUTINE at once: he is no longer sniffing, and he has no job.
+       5 · THE COMMAND IS OFFERED ONLY WHERE THE COURSE IS: beside a dog in the park with its gear, the button shows
+           with the world's word; in any other world, and in the park with its gear gone, it does not.
+       6 · HIS PERSONALITY ANSWERS, and a run he was sent on ends with him back beside you, fed, and a line that
+           names him.
+     Every real dog is parked off the map and put back; the rolls, the clocks, the words said, the park's counts, what he
+     has learned and where you stand are all put back. */
+  const routines = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof dogIdle !== 'function' || typeof ROUTINES !== 'object' || !ROUTINES || typeof routineOn !== 'function') { P.push('an idle dog has no routines to pick from: the engine has no dogIdle, so every idle moment is a free whim as it was'); return { P, out }; }
+    const K = [...DOGK][0], T0 = 5e6;
+    const openAt = (id, x, y) => { const w = WORLDS[id]; return x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && (TILES[w.rows[y][x]] || {}).kind !== 'gear' && !(typeof portalAt === 'function' && portalAt(id, x, y)); };
+    const spot = id => { const w = WORLDS[id]; for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (openAt(id, x, y)) return [x, y]; return null; };
+    const wid = WORLDS[PL.park] && spot(PL.park) ? PL.park : Object.keys(WORLDS).find(id => spot(id));
+    if (!wid) { P.push('this shell has no world to stand a dog in, so his routines could not be asked'); return { P, out }; }
+    const [x0, y0] = spot(wid);
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, ac: agilityCourse, pin: ROUTINEPIN,
+      park: JSON.stringify(PARK), train: JSON.stringify(parkPrefs.train || {}), decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0,
+      world, px, py, fx, fy, pt: petTarget, pc: petCrit, crit: CRIT.length };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]);
+    const made = o => Object.assign({ kind: K, name: 'Probe', world: wid, x: x0, y: y0, fx: x0, fy: y0, face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: 0, home: [x0, y0], task: null, holdT: 0, stayT: 0, moving: false, mt: 0 }, o);
+    const held = (d, now) => { const p = dogPose(d, now, now); return ['sit', 'lay', 'howl', 'dig', 'sniff', 'happy'].filter(k => p[k]).join('+') || 'normal'; };
+    const tidy = () => { DECALS.length = keep.decals; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; };
+    const said = [];
+    try {
+      window.setTimeout = () => 0; window.toast = m => { said.push(String(m)); }; window.musHowl = () => {};
+      real.forEach(([c]) => { c.world = '__frozen'; });
+
+      /* 1 · pinned, each routine walks its poses in order */
+      const WANT = { curious: ['sniff', 'dig', 'happy', 'normal'], lazy: ['sit', 'lay', 'lay+howl', 'normal'] };
+      const NAME = { curious: 'the curious routine (a sniff, a hole, a happy wag, back to normal)', lazy: 'the lazy routine (a sit, a lie-down, a short howl, back to normal)' };
+      const walk = (d, now) => { const seq = []; for (let k = 0; k < 4000 && d.task; k++) { const h = held(d, now); if (seq[seq.length - 1] !== h) seq.push(h); now += 50; dogStep(d, now); } return { seq, now }; };
+      routineOn = () => true; personaOn = () => false;
+      Object.keys(WANT).forEach(id => { const d = made({ sit: true });   /* found sitting: a routine starts from his normal stance all the same */
+        ROUTINEPIN = id; try { dogIdle(d, T0); } finally { ROUTINEPIN = keep.pin; }
+        if (!d.task || d.task.type !== 'routine' || d.task.id !== id) { P.push('pinned to ' + NAME[id] + ', an idle dog does not start it: he ' + (d.task ? 'sets off to ' + d.task.type : 'takes a free whim')); tidy(); return; }
+        const r = walk(d, T0); tidy();
+        out.push(id + ': ' + r.seq.join(', then ') + '; ' + ((r.now - T0) / 1000).toFixed(1) + ' s');
+        if (d.task) { P.push(NAME[id] + ' never ends: after ' + Math.round((r.now - T0) / 1000) + ' seconds he is still at it'); return; }
+        if (r.seq.join('>') !== WANT[id].join('>')) P.push('in ' + NAME[id] + ' he is seen ' + r.seq.join(', then ') + ', where what was asked is ' + WANT[id].join(', then '));
+        const end = held(d, r.now); if (end !== 'normal') P.push('after ' + NAME[id] + ' he is left ' + end + ' and not in his normal stance, so the routine after it would not start from standing'); });
+
+      /* 2 · digging is about 8% of his idle choices, and the modes come up as asked */
+      const tally = pe => { personaOn = pe ? (k => k === 'dog') : (() => false); routineOn = () => true;
+        const N = 60, M = 60, n = { free: 0, curious: 0, lazy: 0, dig: 0 };
+        for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { let c = 0; const r1 = (i + 0.5) / N, r2 = (j + 0.5) / M;
+          Math.random = () => { c++; return c === 1 ? r1 : c === 2 ? r2 : 0.5; };
+          const d = made({ persona: pe || undefined }); let now = T0, dug = false;
+          dogIdle(d, now);
+          const mode = d.task && d.task.type === 'routine' ? d.task.id : 'free'; n[mode]++;
+          if (mode === 'free') dug = d.digT > now;
+          else for (let k = 0; k < 4000 && d.task; k++) { if (dogPose(d, now, now).dig) dug = true; now += 100; dogStep(d, now); }
+          if (dug) n.dig++; tidy(); }
+        Math.random = keep.MR; const tot = N * M, pc = {}; Object.keys(n).forEach(k => { pc[k] = 100 * n[k] / tot; });
+        const who = pe ? (/^[aeiou]/.test(pe) ? 'an ' : 'a ') + pe + ' dog' : 'a dog with no personality';
+        out.push(who + ': free ' + pc.free.toFixed(1) + '% · curious ' + pc.curious.toFixed(1) + '% · lazy ' + pc.lazy.toFixed(1) + '% of his idle choices; a hole in ' + pc.dig.toFixed(1) + '%');
+        if (pc.dig < 7 || pc.dig > 9) P.push(who + ' digs in ' + pc.dig.toFixed(1) + '% of his idle choices, his free whims and both routines together; it is kept at about 8% (settled 2026-09-29, and as a probability on 2026-11-20)');
+        return { pc, who }; };
+      { const t = tally(null), want = { free: 50, curious: 25, lazy: 25 };
+        Object.keys(want).forEach(k => { if (Math.abs(t.pc[k] - want[k]) > 2) P.push(t.who + ' takes ' + (k === 'free' ? 'his free whims' : 'the ' + k + ' routine') + ' in ' + t.pc[k].toFixed(1) + '% of his idle choices, where ' + want[k] + '% was asked'); }); }
+      { const t = tally('eager'); if (!(t.pc.curious > t.pc.lazy + 5)) P.push(t.who + ' takes the curious routine in ' + t.pc.curious.toFixed(1) + '% of his idle choices and the lazy one in ' + t.pc.lazy.toFixed(1) + '%: his personality does not lean him to the curious routine'); }
+      { const t = tally('aloof'); if (!(t.pc.lazy > t.pc.curious + 5)) P.push(t.who + ' takes the lazy routine in ' + t.pc.lazy.toFixed(1) + '% of his idle choices and the curious one in ' + t.pc.curious.toFixed(1) + '%: his personality does not lean him to the lazy routine'); }
+      tally('patient');   /* no lean was asked of a patient dog; how often he digs is asked in the tally itself */
+
+      /* 3 · where routines are off, an idle dog is his whim and nothing else */
+      { routineOn = () => false; let differ = 0, more = 0;
+        for (let i = 0; i < 40; i++) { const r = (i + 0.5) / 40, sig = (f) => { let c = 0; Math.random = () => { c++; return c === 1 ? r : 0.5; };
+            const d = made(); f(d, T0); const s = [d.sit, d.layT, d.howlT, d.digT, d.sniffT || 0, d.next, d.task ? d.task.type : ''].join('|'); tidy(); return [s, c]; };
+          const a = sig(dogIdle), b = sig(dogWhim); if (a[0] !== b[0]) differ++; if (a[1] !== b[1]) more++; }
+        Math.random = keep.MR;
+        if (differ) P.push('in a world that has not turned routines on, ' + differ + ' of 40 rolls leave an idle dog doing something other than his whim does on the same roll');
+        if (more) P.push('in a world that has not turned routines on, an idle dog draws a different count of numbers than his whim alone on ' + more + ' of 40 rolls, so every roll after it lands elsewhere than it did');
+        if (typeof ROUTINETAKE !== 'undefined') out.push('this world declares ROUTINETAKE itself (' + JSON.stringify(ROUTINETAKE) + '), so a world that says nothing was asked by turning the switch off, not by a world that leaves it out'); }
+
+      /* 4 · a hand on him ends his routine at once */
+      const handed = (how, act) => { routineOn = () => true; personaOn = () => false; const d = made(); CRIT.push(d);
+        try { world = wid; px = fx = x0; py = fy = y0; ROUTINEPIN = 'curious'; try { dogIdle(d, wNow()); } finally { ROUTINEPIN = keep.pin; }
+          if (!d.task || !dogPose(d).sniff) { P.push('a dog could not be put into his curious routine, sniffing, so what ' + how + ' does to it was not asked'); return; }
+          act(d);
+          if (d.task && d.task.type === 'routine') P.push(how + ' while he is in a routine does not end it: he goes on with his ' + d.task.pose);
+          else if (dogPose(d).sniff) P.push(how + ' while he is sniffing ends his routine and leaves his nose on the ground');
+        } finally { CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); } };
+      handed('a treat', d => { petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); });
+      handed('telling him he is loved', d => { petTarget = d.kind; petCrit = d; document.getElementById('love').click(); });
+      handed('a command he obeys (sit)', () => { Math.random = () => 0; try { dogCmd('sit'); } finally { Math.random = keep.MR; } });
+
+      /* 5 and 6 · the course at your word */
+      const park = PL.park, btn = document.getElementById('cmdCourse'), gear = WORLDS[park] ? agilityCourse(park) : [];
+      if (typeof dogCmd !== 'function' || typeof courseOK !== 'function') P.push('there is no command that sends a dog round the course: the engine has no courseOK');
+      else if (!btn) out.push('this shell has no button for the course command, so where it is offered and how he answers were not asked');
+      else if (!gear.length) out.push('this pack lays no agility course, so the command for it was not asked');
+      else {
+        const w = WORLDS[park], me = spot(park), rs = dogReach({ world: park, x: me[0], y: me[1] });
+        let ds = null; for (let y = 0; y < w.H && !ds; y++) for (let x = 0; x < w.W && !ds; x++) { const dd = Math.abs(x - me[0]) + Math.abs(y - me[1]); if (dd >= 2 && dd <= 4 && rs[y * w.W + x] && openAt(park, x, y)) ds = [x, y]; }
+        if (!ds) P.push('there is nowhere in the park to stand a dog near you, so the course command could not be asked');
+        else {
+          const other = Object.keys(WORLDS).find(id => id !== park);
+          const dog = pe => { const d = made({ world: park, x: ds[0], y: ds[1], fx: ds[0], fy: ds[1], home: ds.slice(), persona: pe || undefined }); CRIT.push(d); return d; };
+          const gone = d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); };
+          const stand = wd => { world = wd; px = fx = me[0]; py = fy = me[1]; };
+          /* 5 · offered only where the course is */
+          { const d = dog(null); try { personaOn = () => false;
+              const offered = () => { document.getElementById('cmd').click(); const v = !btn.hidden && btn.textContent.trim().length > 0; document.getElementById('dogPX').click(); return v; };
+              stand(park); if (!offered()) P.push('beside a dog in the park, with its agility course there, the command to run the course is not offered');
+              agilityCourse = () => []; try { if (offered()) P.push('in a park with no agility gear the command to run the course is still offered'); } finally { agilityCourse = keep.ac; }
+              if (other) { stand(other); d.world = other; if (offered()) P.push('away from the park, in ' + other + ', the command to run the course is offered, where there is no course to run'); }
+            } finally { gone(d); } }
+          /* 6 · his personality answers, and the run ends with his treat. One answer, the eager dog's: on the worst roll he still
+             sets off at once. */
+          const answer = (pe, roll) => { personaOn = pe ? (k => k === 'dog') : (() => false); const d = dog(pe); stand(park); said.length = 0;
+            Math.random = () => roll; try { dogCmd('course'); } finally { Math.random = keep.MR; }
+            return { d, went: !!d.task && d.task.type === 'run', wait: d.task && d.task.wait ? d.task.wait - wNow() : 0, said: said.slice() }; };
+          { const a = answer('eager', 0.999), d = a.d;
+            try {
+              if (!a.went) P.push('sent round the course on the worst roll, an eager dog does not go: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else { if (a.wait > 250) P.push('sent round the course, an eager dog waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to go at once');
+                /* the run, on this check's clock, to its end: round the course, then back to you */
+                const jobs = [], fed0 = d.fedT, treats0 = PARK.t; let T = wNow(); said.length = 0;
+                for (let k = 0; k < 900 && d.task; k++) { if (jobs[jobs.length - 1] !== d.task.type) jobs.push(d.task.type); T += 100; dogStep(d, T); d.moving = false; d.fx = d.x; d.fy = d.y; }
+                out.push('sent round the course, an eager dog: ' + jobs.join(', then ') + '; he ends ' + (Math.abs(d.x - px) + Math.abs(d.y - py)) + ' step(s) from you' + (said.length ? ', and the line is "' + said[said.length - 1] + '"' : ''));
+                if (d.task) P.push('sent round the course, he is still at it after 90 seconds of his own clock');
+                else if (jobs.join('>') !== 'run>treat') P.push('sent round the course, his jobs are ' + (jobs.join(', then ') || 'none') + ', where he is to run it and then come back for his treat');
+                else { if (Math.abs(d.x - px) + Math.abs(d.y - py) > 1) P.push('after the course he was sent round, he does not come back to you: he stops ' + (Math.abs(d.x - px) + Math.abs(d.y - py)) + ' steps away');
+                  if (!said.some(m => m.includes('Probe') && !m.includes('{n}'))) P.push('after the course he was sent round, no line says he was given a treat by name' + (said.length ? ' (said: "' + said.join('" / "') + '")' : ' (nothing is said)'));
+                  if (!(d.fedT > (fed0 || 0))) P.push('after the course he was sent round, he is not fed: the treat the line speaks of was never his');
+                  if (PARK.t !== treats0 + 1) P.push('after the course he was sent round, the park counts ' + (PARK.t - treats0) + ' treats given, where one was'); } }
+            } finally { gone(d); tidy(); } }
+          { const a = answer('patient', 0.999);
+            try {
+              if (!a.went) P.push('sent round the course on the worst roll, a patient dog does not go: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait < 1000 || a.wait > 2500) P.push('sent round the course, a patient dog waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to go after a moment');
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer('aloof', 0.999);
+            try {
+              if (a.went) P.push('sent round the course on a high roll, an aloof dog goes, where half the time he is not to');
+              else if (a.said.length !== 1 || !a.said[0].includes('Probe') || a.said[0].includes('{n}')) P.push('sent round the course on a high roll, an aloof dog stays put and no single line of his own names him' + (a.said.length ? ' (said: "' + a.said.join('" / "') + '")' : ' (nothing is said)'));
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer('aloof', 0.001);
+            try {
+              if (!a.went) P.push('sent round the course on a low roll, an aloof dog does not go, where half the time he is to: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait < 3000 || a.wait > 5000) P.push('sent round the course, an aloof dog waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to take his own time');
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer(null, 0.999);
+            try { if (a.went) P.push('sent round the course on a high roll, a dog with no personality goes, where he is to answer it as he answers any command and stay put'); }
+            finally { gone(a.d); tidy(); } }
+          { const a = answer(null, 0.001);
+            try {
+              if (!a.went) P.push('sent round the course on a low roll, a dog with no personality does not go, where he is to answer it as he answers any command: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait > 250) P.push('sent round the course, a dog with no personality waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to go at once');
+            } finally { gone(a.d); tidy(); } }
+        }
+      }
+    } finally {
+      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; agilityCourse = keep.ac; ROUTINEPIN = keep.pin;
+      real.forEach(([c, wd]) => { c.world = wd; }); CRIT.length = Math.min(CRIT.length, keep.crit);
+      Object.assign(PARK, JSON.parse(keep.park)); parkPrefs.train = JSON.parse(keep.train); if (typeof parkPersist === 'function') parkPersist();
+      tidy(); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; petTarget = keep.pt; petCrit = keep.pc;
+      const dp = document.getElementById('dogP'); if (dp) dp.hidden = true;
+    }
+    return { P, out };
+  });
+  routines.out.forEach(l => console.log('  ROUTINES: ' + l));
+  fails.push(...routines.P.map(m => 'the dog\'s routines: ' + m));
+
+  /* ---- A POSE LASTS ITS OWN TIME, A BEAGLE SINGS LONGER, AND A TAIL RESTS LYING DOWN (mq-v287) ----
+     What was asked, on 2026-11-21 and confirmed that day: the poses last longer, each for a time drawn from a range, the
+     same in his free whims and in his routines (a sniff 3 to 5 seconds, a hole 2.5 to 3.5, a happy wag 3 to 4, a sit 4 to
+     6, lying down 6 to 10, the normal beat 1 to 1.5); a howl has a random length by breed, a beagle 2.5 to 5 seconds and
+     the others 1.2 to 2.5, and a beagle made happy sings about it 1 time in 3; and lying down his tail rests, with a
+     short wag of about a second and a half every 4 to 8 seconds, unless he is happy or shown he is loved.
+     Asked on a clock this check owns, of what a person sees (dogPose), the ranges typed here and not read off the engine:
+       1 · IN HIS ROUTINES, each pose is seen for a time inside its range, on a low roll and on a high one, and the two
+           are not alike.
+       2 · IN HIS FREE WHIMS, a nap, a hole and a song last inside the same ranges; a beagle's song is longer than
+           another breed's on the same roll.
+       3 · MADE HAPPY BY A TREAT, a beagle sings about 1 time in 3, the roll swept; another breed, not once.
+       4 · LYING DOWN, his tail is still most of the time: each wag lasts about a second and a half, the rests between
+           them 4 to 8 seconds and not all alike; happy, or shown he is loved, it wags without a rest; standing, it wags
+           as it always has.
+       5 · TOLD HE IS LOVED, his happy wag lasts 3 to 4 seconds, on a low roll and on a high one, and the two are not alike.
+     The rolls, the words said, the park's counts and where you stand are put back. */
+  const poseTimes = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof dogTime !== 'function' || typeof ROUTINES !== 'object' || typeof dogIdle !== 'function') { P.push('a pose has no time of its own: the engine has no dogTime, so every pose lasts the one fixed time it always did'); return { P, out }; }
+    const KS = [...DOGK], K = KS.includes('beagle') ? 'beagle' : KS[0], OTHER = KS.find(k => k !== 'beagle'), T0 = 5e6;
+    const wid = Object.keys(WORLDS).find(id => WORLDS[id]) , w0 = WORLDS[wid];
+    let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
+    if (!at0) { P.push('this shell has no world to stand a dog in, so how long his poses last could not be asked'); return { P, out }; }
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, pin: ROUTINEPIN, park: JSON.stringify(PARK), decals: DECALS.length,
+      things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, world, px, py, fx, fy, pt: petTarget, pc: petCrit };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]);
+    const made = o => Object.assign({ kind: K, name: 'Probe', world: wid, x: at0[0], y: at0[1], fx: at0[0], fy: at0[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: 0, home: at0.slice(), task: null, holdT: 0, stayT: 0, moving: false, mt: 0 }, o);
+    const held = (d, now) => { const p = dogPose(d, now, now); return ['sit', 'lay', 'howl', 'dig', 'sniff', 'happy'].filter(k => p[k]).join('+') || 'normal'; };
+    const tidy = () => { DECALS.length = keep.decals; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; };
+    const sec = ms => (ms / 1000).toFixed(1) + ' s';
+    /* the ranges asked, in ms */
+    const WANT = { sniff: [3000, 5000], dig: [2500, 3500], happy: [3000, 4000], sit: [4000, 6000], lay: [6000, 10000], normal: [1000, 1500] }, HOWL = { beagle: [2500, 5000], other: [1200, 2500] }, SLACK = 120;
+    const inside = (ms, r) => ms >= r[0] - SLACK && ms <= r[1] + SLACK;
+    try {
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      real.forEach(([c]) => { c.world = '__frozen'; });
+      routineOn = () => true; personaOn = () => false;
+
+      /* 1 · in his routines */
+      const NAMES = { sniff: 'a sniff', dig: 'a hole', happy: 'a happy wag', sit: 'a sit', lay: 'lying down', 'lay+howl': 'the lazy routine\'s short howl', normal: 'the normal beat' };
+      const timed = (id, roll) => { const d = made(), seq = []; let now = T0; Math.random = () => roll;
+        ROUTINEPIN = id; try { dogIdle(d, now); } finally { ROUTINEPIN = keep.pin; }
+        for (let k = 0; k < 8000 && d.task; k++) { const h = held(d, now); if (!seq.length || seq[seq.length - 1][0] !== h) seq.push([h, 0]); seq[seq.length - 1][1] += 25; now += 25; dogStep(d, now); }
+        Math.random = keep.MR; tidy(); return seq; };
+      Object.keys(ROUTINES).forEach(id => { const lo = timed(id, 0.02), hi = timed(id, 0.98);
+        if (!lo.length) { P.push('pinned to the ' + id + ' routine, an idle dog shows no pose at all, so how long each lasts could not be asked'); return; }
+        out.push('the ' + id + ' routine, low roll then high: ' + lo.map((s, i) => s[0] + ' ' + sec(s[1]) + '/' + (hi[i] ? sec(hi[i][1]) : '?')).join(' · '));
+        lo.forEach(([pose, ms], i) => { const range = pose === 'lay+howl' ? [(HOWL[K] || HOWL.other)[0], ((HOWL[K] || HOWL.other)[0] + (HOWL[K] || HOWL.other)[1]) / 2] : WANT[pose], other = hi[i];
+          if (!range) return;
+          [['a low roll', ms], ['a high roll', other && other[0] === pose ? other[1] : NaN]].forEach(([how, t]) => { if (!inside(t, range)) P.push('in the ' + id + ' routine, on ' + how + ', ' + NAMES[pose] + ' lasts ' + (isFinite(t) ? sec(t) : 'no time that could be read') + ', where ' + sec(range[0]) + ' to ' + sec(range[1]) + ' was asked'); });
+          if (other && other[0] === pose && !(other[1] - ms > (range[1] - range[0]) * 0.5)) P.push('in the ' + id + ' routine, ' + NAMES[pose] + ' lasts ' + sec(ms) + ' on a low roll and ' + sec(other[1]) + ' on a high one: its time is not drawn from its range, so every one is alike'); }); });
+
+      /* 2 · in his free whims: the band's roll first, the cone's roll held off, then the roll for the time */
+      const whim = (kind, band, roll) => { let c = 0; Math.random = () => { c++; return c === 1 ? band : c === 2 ? 0.5 : roll; }; const d = made({ kind }); dogWhim(d, T0); Math.random = keep.MR; tidy(); return d; };
+      [['a nap', 0.2, 'layT', WANT.lay], ['a hole', 0.93, 'digT', WANT.dig], ['a song', 0.5, 'howlT', HOWL[K] || HOWL.other]].forEach(([what, band, clock, range]) => {
+        const lo = whim(K, band, 0.02)[clock] - T0, hi = whim(K, band, 0.98)[clock] - T0;
+        out.push('a free whim, ' + what + ' (' + K + '): ' + sec(lo) + ' on a low roll, ' + sec(hi) + ' on a high one');
+        [['a low roll', lo], ['a high roll', hi]].forEach(([how, t]) => { if (!inside(t, range)) P.push('as a free whim, on ' + how + ', ' + what + ' lasts ' + (isFinite(t) && t > 0 ? sec(t) : 'no time at all') + ', where ' + sec(range[0]) + ' to ' + sec(range[1]) + ' was asked'); }); });
+      if (K !== 'beagle') out.push('this shell has no beagle, so a beagle\'s longer song was not asked');
+      else if (!OTHER) out.push('this shell has no breed but the beagle, so his song was not set beside another\'s');
+      else { const b = whim('beagle', 0.5, 0.5).howlT - T0, o = whim(OTHER, 0.5, 0.5).howlT - T0, lo = whim(OTHER, 0.5, 0.02).howlT - T0, hi = whim(OTHER, 0.5, 0.98).howlT - T0;
+        out.push('a song on the same roll: a beagle ' + sec(b) + ', a ' + OTHER + ' ' + sec(o));
+        if (!(b > o + 800)) P.push('on the same roll a beagle\'s song lasts ' + sec(b) + ' and a ' + OTHER + '\'s ' + sec(o) + ': the beagle is not the one known for long songs');
+        [lo, hi].forEach(t => { if (!inside(t, HOWL.other)) P.push('a ' + OTHER + '\'s song lasts ' + sec(t) + ', where ' + sec(HOWL.other[0]) + ' to ' + sec(HOWL.other[1]) + ' was asked for the breeds that are not beagles'); }); }
+
+      /* 3 · made happy by a treat, a beagle sings about 1 time in 3 */
+      const sings = kind => { const N = 60; let n = 0; const d = made({ kind }); CRIT.push(d);
+        try { world = wid; px = fx = at0[0]; py = fy = at0[1];
+          for (let i = 0; i < N; i++) { const r = (i + 0.5) / N; Math.random = () => r;   /* every roll the treat takes is this one, so whichever of them decides the song, it is swept */
+            d.howlT = 0; d.sit = false; d.task = null; petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); if (d.howlT > wNow()) n++; }
+        } finally { Math.random = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
+        return 100 * n / N; };
+      if (K === 'beagle') { const b = sings('beagle'); out.push('given a treat, a beagle sings ' + b.toFixed(0) + '% of the time' + (OTHER ? ', a ' + OTHER + ' ' + sings(OTHER).toFixed(0) + '%' : ''));
+        if (b < 28 || b > 39) P.push('given a treat, a beagle sings about it ' + b.toFixed(0) + '% of the time, where 1 time in 3 was asked');
+        if (OTHER) { const o = sings(OTHER); if (o > 0) P.push('given a treat, a ' + OTHER + ' sings about it ' + o.toFixed(0) + '% of the time, where only the beagle is known for it'); } }
+
+      /* 4 · lying down, his tail rests between short wags */
+      const tail = (o, secs) => { const d = made(o), on = []; for (let t = 0; t < secs * 1000; t += 50) on.push(Math.abs(dogPose(d, T0, 7e6 + t).wag) > 1e-6);
+        const sm = on.map((v, i) => v || !!on[i - 1] || !!on[i + 1]), runs = []; sm.forEach(v => { if (!runs.length || runs[runs.length - 1][0] !== v) runs.push([v, 0]); runs[runs.length - 1][1] += 50; }); return runs; };
+      { const runs = tail({ layT: Infinity }, 90), mid = runs.slice(1, -1), wags = mid.filter(r => r[0]).map(r => r[1]), rests = mid.filter(r => !r[0]).map(r => r[1]);
+        out.push('lying down for 90 s, his tail: ' + wags.length + ' wag(s) of ' + (wags.length ? sec(Math.min(...wags)) + ' to ' + sec(Math.max(...wags)) : 'no length') + ', rests of ' + (rests.length ? sec(Math.min(...rests)) + ' to ' + sec(Math.max(...rests)) : 'no length'));
+        if (runs.length === 1) P.push(runs[0][0] ? 'lying down, neither happy nor loved, his tail wags the whole 90 seconds without a rest' : 'lying down, his tail does not move once in 90 seconds, where a short wag now and then was asked');
+        else { if (wags.some(v => v < 1200 || v > 1800)) P.push('lying down, a wag of his tail lasts ' + sec(Math.min(...wags)) + ' to ' + sec(Math.max(...wags)) + ', where about a second and a half was asked');
+          if (rests.some(v => v < 3700 || v > 8300)) P.push('lying down, his tail rests ' + sec(Math.min(...rests)) + ' to ' + sec(Math.max(...rests)) + ' between wags, where 4 to 8 seconds was asked');
+          if (rests.length >= 3 && Math.max(...rests) - Math.min(...rests) < 300) P.push('lying down, every rest between two wags is the same ' + sec(rests[0]) + ': the wag comes like a clock, not now and then'); } }
+      [['happy', { layT: Infinity, happyT: Infinity }], ['shown he is loved', { layT: Infinity, loveT: Infinity }]].forEach(([what, o]) => { const runs = tail(o, 20);
+        if (runs.some(r => !r[0])) P.push('lying down and ' + what + ', his tail stops for ' + sec(Math.max(...runs.filter(r => !r[0]).map(r => r[1]))) + ', where it is to wag the whole time'); });
+      { const runs = tail({}, 20); if (runs.some(r => !r[0])) P.push('standing, his tail stops for ' + sec(Math.max(...runs.filter(r => !r[0]).map(r => r[1]))) + ', where it wags as it always has'); }
+
+      /* 5 · told he is loved, his happy wag lasts its own time, as a free whim's pose does: the love button on a low roll and
+         on a high one, the wag read off his pose on this check's clock from the moment of the click */
+      { const loved = roll => { const d = made(); CRIT.push(d); let seen = NaN;
+          try { world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => roll;
+            const n0 = wNow(); document.getElementById('love').click(); Math.random = keep.MR;
+            let now = n0; for (let k = 0; k < 800 && dogPose(d, now, now).happy; k++) now += 25; seen = now - n0;
+          } finally { Math.random = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
+          return seen; };
+        const lo = loved(0.02), hi = loved(0.98);
+        out.push('told he is loved, his happy wag: ' + sec(lo) + ' on a low roll, ' + sec(hi) + ' on a high one');
+        [['a low roll', lo], ['a high roll', hi]].forEach(([how, t]) => { if (!inside(t, WANT.happy)) P.push('told he is loved, on ' + how + ', his happy wag lasts ' + (isFinite(t) && t > 0 ? sec(t) : 'no time at all') + ', where ' + sec(WANT.happy[0]) + ' to ' + sec(WANT.happy[1]) + ' was asked'); });
+        if (!(hi - lo > (WANT.happy[1] - WANT.happy[0]) * 0.5)) P.push('told he is loved, his happy wag lasts ' + sec(lo) + ' on a low roll and ' + sec(hi) + ' on a high one: its time is not drawn from its range, so every one is alike'); }
+    } finally {
+      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; ROUTINEPIN = keep.pin;
+      real.forEach(([c, wd]) => { c.world = wd; }); Object.assign(PARK, JSON.parse(keep.park)); tidy();
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; petTarget = keep.pt; petCrit = keep.pc;
+    }
+    return { P, out };
+  });
+  poseTimes.out.forEach(l => console.log('  POSE TIMES: ' + l));
+  fails.push(...poseTimes.P.map(m => 'the dog\'s poses: ' + m));
+
   /* ---- OFF THE PARK HE HAS THINGS TO DO: HIS OWN STICK, AND WATER AT A RESTAURANT DOOR ----
      The owner, 2026-09-29, asked for other things to keep him busy: chasing a stick he throws himself, and
      other dog things, chasing another character, going to the bed in the office, howling
@@ -5116,6 +5413,9 @@ function findChromium() {
       tro: Object.assign({}, TRO), lastBump, petTarget, petCrit, ball: BALL, things: DOGTHINGS.slice(), visits: DOGVISIT.slice(), props: propEdits.length };
     const T0 = keep.PN.call(performance), D0 = keep.DN.call(Date);
     let T = T0, DT = 16.67, queue = [], prng = keep.MR;
+    /* where the world has turned the dog's idle routines on (mq-v287), an idle dog first rolls for his mode, and the rolls
+       below are aimed at his free whims: 0 is the first of his modes, the free one, whatever its share */
+    const FREE = typeof routineOn === 'function' && routineOn({ kind: [...DOGK][0] }) ? [0] : [];
     const real = CRIT.map(c => ({ c, world: c.world, next: c.next, stepT: c.stepT }));
     /* everybody's own clocks, which a romp sets on this check's T and the page then reads on the real one: kept, and put back */
     const people = []; Object.keys(WORLDS).forEach(id => (WORLDS[id].npcs || []).forEach(n => people.push([n, n.wnext, n.laughUntil])));
@@ -5206,8 +5506,12 @@ function findChromium() {
         const r = live(d, AFTER), fin = [d.x, d.y];
         if (r.first === null) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot ' + at(home) + ', for the whole ' + sec(AFTER) +
           ' that followed: every step he tried was further from home than a dog may wander. The owner asked why he gets stuck' };
-        if (r.first > c.p99) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
-          sec(c.p99) + '). Something rescued him late; nothing took him home when the activity ended' };
+        /* ...or than the beat his job may end in (mq-v287): his happy wag lasts up to 4 seconds, and a beagle who sings about it up
+           to 5, with under a second after either. Typed here, the times asked for on 2026-11-21, not read off the engine; still
+           half of what the stuck clock waits before it rescues him */
+        const ENDBEAT = 6000;
+        if (r.first > Math.max(c.p99, ENDBEAT)) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
+          sec(c.p99) + ') and than the longest beat a job ends in (' + sec(ENDBEAT) + '). Something rescued him late; nothing took him home when the activity ended' };
         if (r.jumps.length) return { fail: 'after ' + what + ' the dog jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot and did not walk it' };
         if (!free(r).some(p => md(p, home) <= c.reach)) return { fail: 'after ' + what + ' the dog never got back to his spot ' + at(home) + ': ' + sec(AFTER) + ' later he is at ' + at(fin) + ', ' + md(fin, home) + ' steps away' };
         if (r.last === null || AFTER - r.last > tail(c)) return { fail: 'after ' + what + ' the dog got home and then stood still for good at ' + at(fin) + ' — no step in the last ' + sec(AFTER - (r.last || 0)) };
@@ -5225,7 +5529,7 @@ function findChromium() {
           for (let y = 0; y < pw.H; y++) for (let x = 0; x < pw.W; x++) if ((TILES[pw.rows[y][x]] || {}).kind === 'gear') lay(park, x, y, '.');
           lay(park, spot[0], spot[1], '3'); return { wp: agilityCourse(park), own: false }; };
         const NOCOURSE = 'the park has no ground further from the dog\'s spot ' + at(ph) + ' than he wanders on his own, so no course can end where he would get stuck';
-        const runCourse = (d, until) => { queue = [0.01, 0.77, 0.5, 0.5, 0.5];   /* his next choice is a whim, and the whim is the course */
+        const runCourse = (d, until) => { queue = [0.01, ...FREE, 0.77, 0.5, 0.5, 0.5];   /* his next choice is a whim, and the whim is the course */
           tick();
           if (!d.task || d.task.type !== 'run') return 'the roll that means "run the course" did not send the dog round it (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') +
             ') — dogWhim\'s odds moved and this check has to be re-aimed';
@@ -5250,14 +5554,14 @@ function findChromium() {
         const NOPAL = 'no second dog can stand within the greeting\'s reach and further from the first one\'s spot than he wanders';
         report('a sniff', runs(() => { const b = pal(); if (!b) return { none: NOPAL };
           const d = made(park, ph); made(park, b); world = park; const you = aside(park, [ph, b]); px = fx = you[0]; py = fy = you[1];
-          queue = [0.01, 0.86, 0.5, 0.3]; tick();
+          queue = [0.01, ...FREE, 0.86, 0.5, 0.3]; tick();
           if (!d.task || d.task.type !== 'sniff') return { fail: 'the roll that means "greet the other dog" did not send him to sniff (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
           live(d, 30000, dd => !(dd.task && dd.task.type === 'sniff'));
           return after('greeting another dog', d, ph, c); }));
         ['chasing another dog', 'being chased by another dog'].forEach((what, k) => report('a chase, ' + (k ? 'the one who fled' : 'the chaser'), runs(() => {
           const b = pal(); if (!b) return { none: NOPAL };
           const d = made(park, ph), o = made(park, b); world = park; const you = aside(park, [ph, b]); px = fx = you[0]; py = fy = you[1];
-          queue = [0.01, 0.86, 0.5, 0.7, 0.5]; tick();
+          queue = [0.01, ...FREE, 0.86, 0.5, 0.7, 0.5]; tick();
           if (!d.task || d.task.type !== 'chase' || !o.task || o.task.type !== 'flee') return { fail: 'the roll that means "chase the other dog" did not start a chase (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
           const dog = k ? o : d;
           live(dog, 30000, dd => !(dd.task && (dd.task.type === 'chase' || dd.task.type === 'flee')));
@@ -5338,7 +5642,7 @@ function findChromium() {
         report('a romp', runs(() => {
           if (!pick) return { none: 'nobody stands, away from the park, where a dog could romp round them and finish further from his spot than he wanders' };
           const d = made(pick.wid, pick.h); world = pick.wid; const you = aside(pick.wid, [pick.h, [pick.n.x, pick.n.y]]); px = fx = you[0]; py = fy = you[1];
-          queue = [0.01, 0.86, 0.5, 0.5]; tick();
+          queue = [0.01, ...FREE, 0.86, 0.5, 0.5]; tick();
           if (!d.task || d.task.type !== 'romp') return { fail: 'the roll that means "romp round somebody" did not send him (he ' + (d.task ? 'set off to ' + d.task.type : 'did nothing') + ') — re-aim this check' };
           live(d, 60000, dd => !(dd.task && dd.task.type === 'romp'));
           return after('a romp round somebody\'s feet', d, pick.h, c2); }));
@@ -5440,7 +5744,7 @@ function findChromium() {
     const probe = (k, o) => Object.assign({ kind: k, name: 'Posed', world: '__probe', x: 0, y: 0, fx: 0, fy: 0, dx: 1, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
       moving: false, mt: 0, home: [0, 0], task: null }, o);
     const poses = [['sitting', { sit: true }], ['lying down', { layT: LONG }], ['howling', { howlT: LONG }], ['howling lying down', { layT: LONG, howlT: LONG }],
-      ['digging', { digT: LONG }], ['happy', { happyT: LONG }], ['told he is loved', { loveT: LONG }], ['facing the other way', { face: -1 }]];
+      ['digging', { digT: LONG }], ['sniffing', { sniffT: LONG }], ['happy', { happyT: LONG }], ['told he is loved', { loveT: LONG }], ['facing the other way', { face: -1 }]];
     const course = typeof agilityCourse === 'function' && PL.park ? agilityCourse(PL.park) : [];
     const piece = r => course.find(p => GEARROLE[(WORLDS[PL.park].rows[p[1]] || '')[p[0]]] === r), hur = piece('hurdle'), tun = piece('tunnel');
     if (hur) { const L = gearLine(PL.park, hur[0], hur[1]); poses.push(['over the hurdle\'s bar', { world: PL.park, task: { type: 'run' }, moving: true, x: hur[0], y: hur[1], fx: hur[0], fy: hur[1], dx: L[0], dy: L[1], mt: 1 }]); }
@@ -16766,6 +17070,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                 ['howling while he sits', c => { c.sit = true; c.howlT = Infinity; }, c => { c.sit = false; c.howlT = 0; }],
                 ['howling while he lies down', c => { c.layT = Infinity; c.howlT = Infinity; }, c => { c.layT = 0; c.howlT = 0; }],
                 ['digging', c => { c.digT = Infinity; }, c => { c.digT = 0; }],
+                ['sniffing the ground', c => { c.sniffT = Infinity; }, c => { c.sniffT = 0; }],
                 ['showing his hearts', c => { c.loveT = Infinity; }, c => { c.loveT = 0; }],
                 ['happy', c => { c.happyT = Infinity; }, c => { c.happyT = 0; }],
                 ['over the agility bar', () => { gearPose = c => c === cr ? { hop: 3, hid: false, side: 0 } : kg(c); }, () => { gearPose = kg; }],
@@ -16789,6 +17094,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (!(Math.abs(d1.l - d2.l) > 0.2 && Math.abs(d1.r - d2.r) > 0.2)) said('digging, the dog\'s fore paws do not scrape: they move ' + Math.abs(d1.l - d2.l).toFixed(2) + ' and ' + Math.abs(d1.r - d2.r).toFixed(2) + ' over a quarter of a scrape');
                     else if (!((d2.l - d1.l) * (d2.r - d1.r) < 0)) said('digging, the dog\'s fore paws scrape together, not turn about');
                     if (!(d1.head > st.head + 0.3)) said('digging, the dog\'s head is not lowered to the ground');
+                    /* sniffing (mq-v287): his nose let down as far as for a hole, working a little, and no earth thrown */
+                    { const quiet = { ...P0, dig: false, love: false, happy: false, lift: 0 }, nose = (P, t) => { const r = at(P, t); return { head: r.head, nod: J.head.rotation.x }; },
+                        s1 = nose({ ...quiet, sniff: true }, 0), s2 = nose({ ...quiet, sniff: true }, 110 * Math.PI / 2), s0 = nose({ ...quiet, sniff: false }, 0);
+                      if (!(s1.head > s0.head + 0.3)) said('sniffing, the dog\'s nose is not let down to the ground: his neck comes down by ' + (s1.head - s0.head).toFixed(2) + ', where for a hole it comes down by ' + (d1.head - st.head).toFixed(2));
+                      if (!(Math.abs(s2.nod - s1.nod) > 0.02)) said('sniffing, the dog\'s nose does not work: his head is as still as a statue\'s');
+                      if ((U.dirt || []).some(d => d.visible)) said('sniffing, the dog throws up earth, as if he were digging'); }
                     at({ ...P0, dig: true }, 400); if (!(U.dirt || []).every(d => d.visible)) said('digging, the dog throws up no earth');
                     at({ ...P0, dig: false }, 400); if ((U.dirt || []).some(d => d.visible)) said('not digging, the dog still throws up earth');
                     const hv = P => { at({ ...P0, dig: false, ...P }, 500); return (U.hearts || []).filter(h => h.visible).length; };
@@ -16804,7 +17115,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     const J6 = 6 * T3PERSON / 32 * (typeof DOGJUMP === 'number' ? DOGJUMP : 1);
                     if (up.body && !(Math.abs((y6 - y0) - J6) < 0.002)) said('over the bar the dog\'s body rises ' + (y6 - y0).toFixed(3) + ', where his card\'s arc and DOGJUMP lift him ' + J6.toFixed(3));
                     if (!(typeof DOGJUMP === 'number' && DOGJUMP >= 1)) said('the dog\'s jump is set lower than his card\'s arc (DOGJUMP ' + DOGJUMP + ')');
-                    N.push('the dog\'s new poses (mq-v278): digging paws ' + d1.l.toFixed(2) + '/' + d2.l.toFixed(2) + ', head down ' + (d1.head - st.head).toFixed(2) + ', over the bar risen ' + (y6 - y0).toFixed(3)); } } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.loveT = cr.happyT = 0; }
+                    N.push('the dog\'s new poses (mq-v278): digging paws ' + d1.l.toFixed(2) + '/' + d2.l.toFixed(2) + ', head down ' + (d1.head - st.head).toFixed(2) + ', over the bar risen ' + (y6 - y0).toFixed(3)); } } } finally { gearPose = kg; cr.sit = false; cr.layT = cr.howlT = cr.digT = cr.sniffT = cr.loveT = cr.happyT = 0; }
               /* ---- J · any dog near the camera is a body, whether he follows you or not (mq-v264), and past DOGNEAR his card; past
                        DOGBODYMAX dogs, the nearest are bodies ---- */
               cr.follow = false; s = K.show(cr);
@@ -16875,7 +17186,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     parkPrefs.persona[nm] = keep; }
                   const facing = () => { const B = K.bodyOf(cr); if (!B) return null; const y = B.userData.yaw, f = [Math.sin(y), Math.cos(y)], c = T3.cam.position, d = [c.x - (cr.fx + 0.5), c.z - (cr.fy + 0.5)];
                     return { toCam: (f[0] * d[0] + f[1] * d[1]) / Math.max(1e-6, Math.hypot(d[0], d[1])), away: !!B.userData.away, bubble: !!(B.userData.bubble && B.userData.bubble.visible) }; };
-                  for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0;
+                  for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0; cr.howlT = 0;   /* and not singing: a beagle given a treat may sing about it (mq-v287), and a song carried over is not standing idle */
                     K.face(cr, 'toward');   /* his last step toward the camera, so only his personality can turn his back to it (the ball's check before leaves him facing away) */
                     K.show(cr); let f = facing();
                     if (!f) { said('with a personality, the dog has no body to ask'); break; }
@@ -16895,7 +17206,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (pe === 'aloof') { cr.turnT = wNow() - 1; K.show(cr); if (facing().away) said('aloof, once his while of ignoring you is over, the dog still faces away'); } }
                   personaOn = () => false; cr.metT = 0; cr.persona = undefined; K.show(cr); const f0 = facing();
                   if (f0 && (f0.away || f0.bubble)) said('in a world that does not ask for personalities, the dog faces away or thinks in a bubble anyway');
-                } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
+                } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; cr.howlT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
               }
               /* ---- P · the short ears he may choose (mq-v281): mixed is kept only for a short-eared kind and only as that word; on the
                        body one of the two upright ears is folded over and hangs below his eye, and both up stays as it was ---- */
@@ -17649,7 +17960,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* what each word is for, where a world without that thing never asks for it */
     const FOR = {
       'the office dog and his care pack': 'dog treatLb fredHeart fredUnlock carePackToast careHint carePack careEvents fredDoneToast retryNoteFred',
-      'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone',
+      'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone cmdCourse courseTreat courseAloof',
       'the animals\' personalities': 'persona personaPick',
       'the dogs\' ears': 'earPick',
       'the cat': 'cat petCat', 'the pigeon': 'pigeon petPig', 'the parrot': 'loro petLoro', 'the street cat': 'gato petGato',
