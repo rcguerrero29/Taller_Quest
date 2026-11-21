@@ -3436,6 +3436,11 @@ function t3Glow(){ /* the light under every door breathes — same clock as the 
   const a=0.25+0.2*Math.sin(Date.now()/380);
   T3.glows.forEach(m=>{m.opacity=a;});
 }
+/* THE LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288; the owner's confirmed goal of 2026-11-21 on the leash and the
+   bridge). Its two ends are held these heights over the ground beneath them, the heights they always had on the street: on
+   the bridge's arching deck, on a stair and down a hole they ride the ground the bodies stand on (stairLift), where before
+   they were fixed over the street and sank into the deck. A leash held in the hand is a later step */
+const LEASHHAND=0.5,LEASHCOLLAR=0.35;
 function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
   const now=typeof wNow==="function"?wNow():performance.now(),dog=CRIT.find(c=>c.leashT>now&&c.world===world);   /* the world's clock, as the flat cameras read it */
   if(!dog){if(T3.leashLn)T3.leashLn.visible=false;return;}
@@ -3445,8 +3450,9 @@ function t3Leash(){ /* the blue leash exists in 3D too, while it's on */
     T3.scene.add(T3.leashLn);
   }
   const pos=T3.leashLn.geometry.attributes.position;
-  pos.setXYZ(0,fx+0.5,0.5,fy+0.5);
-  pos.setXYZ(1,dog.fx+0.5,0.35,dog.fy+0.5);
+  const w=CW(),ground=(x,y)=>w?stairLift(w,Math.round(x),Math.round(y)):0;
+  pos.setXYZ(0,fx+0.5,ground(fx,fy)+LEASHHAND,fy+0.5);
+  pos.setXYZ(1,dog.fx+0.5,ground(dog.fx,dog.fy)+LEASHCOLLAR,dog.fy+0.5);
   pos.needsUpdate=true;T3.leashLn.visible=true;
 }
 /* ↻ — the camera-flip wish from the iso playtest. QUARTER turns, four stops: N/E/S/W

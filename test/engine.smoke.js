@@ -4718,6 +4718,60 @@ function findChromium() {
   poseTimes.out.forEach(l => console.log('  POSE TIMES: ' + l));
   fails.push(...poseTimes.P.map(m => 'the dog\'s poses: ' + m));
 
+  /* ---- THE 3D LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288) ----
+     What was asked, on 2026-11-21 and confirmed that day: in the 3D camera the leash is lifted onto the bridge deck. Each
+     end sits as high over the ground beneath it as it does on the street (the hand's end half a square up, the collar's
+     end 0.35), on the arching deck as anywhere, read from the ground the bodies stand on; off the bridge nothing changes.
+     Before, both ends were fixed over the street, and on the deck the leash ran inside the planks where nobody could see
+     it. Asked of the line the 3D camera draws (its two points), for the person standing on a square of the bridge with
+     the dog on the leash two squares off it, then both on the street; the heights typed here. Where you stand, the dog,
+     the camera and the clock are put back. */
+  const leashDeck = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof t3Leash !== 'function' || typeof draw3d !== 'function' || typeof camSet !== 'function') { out.push('this shell has no 3D camera, so the leash in it was not asked'); return { P, out }; }
+    const HAND = 0.5, COLLAR = 0.35, SLACK = 0.005;
+    const open = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N';
+    const isDeck = (w, x, y) => (TILES[(w.rows[y] || '')[x]] || {}).kind === 'bridge';
+    let spot = null;
+    for (const id of Object.keys(WORLDS)) { const w = WORLDS[id];
+      for (let y = 0; y < w.H && !spot; y++) for (let x = 0; x < w.W && !spot; x++) { if (!isDeck(w, x, y) || !open(w, x, y)) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const tx = x + 2 * dx, ty = y + 2 * dy; if (open(w, tx, ty) && !isDeck(w, tx, ty)) { spot = { id, x, y, tx, ty }; break; } } }
+      if (spot) break; }
+    if (!spot) { out.push('this pack lays no bridge with ground beside it, so the leash on a deck was not asked'); return { P, out }; }
+    const street = (() => { for (const id of Object.keys(WORLDS)) { const w = WORLDS[id]; for (let y = 0; y < w.H; y++) for (let x = 0; x + 2 < w.W; x++)
+      if (open(w, x, y) && open(w, x + 2, y) && !isDeck(w, x, y) && !isDeck(w, x + 2, y) && stairLift(w, x, y) === 0 && stairLift(w, x + 2, y) === 0) return { id, x, y, tx: x + 2, ty: y }; } return null; })();
+    const dog = CRIT.find(c => isDog(c));
+    if (!dog) { out.push('this pack has no dog, so the leash was not asked'); return { P, out }; }
+    const keep = { world, px, py, fx, fy, moving, cam: camMode, hidden: document.getElementById('world').hidden, d: { world: dog.world, x: dog.x, y: dog.y, fx: dog.fx, fy: dog.fy, task: dog.task, next: dog.next, follow: dog.follow, leashT: dog.leashT } };
+    const ends = at => { world = at.id; px = fx = at.x; py = fy = at.y; moving = false;
+      Object.assign(dog, { world: at.id, x: at.tx, y: at.ty, fx: at.tx, fy: at.ty, task: null, next: Infinity, follow: false, leashT: wNow() + 1e7 });
+      draw3d(); const L = T3.leashLn; if (!L || !L.visible) return null;
+      const a = L.geometry.attributes.position, w = WORLDS[at.id];
+      return { hand: a.getY(0) - stairLift(w, at.x, at.y), collar: a.getY(1) - stairLift(w, at.tx, at.ty), handY: a.getY(0), deckTop: isDeck(w, at.x, at.y) ? stairLift(w, at.x, at.y) : null }; };
+    try {
+      document.getElementById('world').hidden = false; camSet('3d'); if (typeof sizeCanvas === 'function') sizeCanvas();
+      const d = ends(spot);
+      if (!d) P.push('with the dog on the leash, the 3D camera draws no leash at all');
+      else {
+        out.push('on the bridge deck in ' + spot.id + ': the hand\'s end ' + d.hand.toFixed(3) + ' over the deck, the collar\'s end ' + d.collar.toFixed(3) + ' over the ground under the dog');
+        if (Math.abs(d.hand - HAND) > SLACK) P.push('standing on the bridge with the dog on the leash, the leash leaves your hand ' + d.hand.toFixed(2) + ' of a square over the deck, where it is ' + HAND + ' over the ground everywhere' + (d.hand < 0.2 ? ': it runs inside the planks, where nobody can see it' : ''));
+        if (Math.abs(d.collar - COLLAR) > SLACK) P.push('with you on the bridge, the leash reaches the dog\'s collar ' + d.collar.toFixed(2) + ' of a square over the ground under him, where it is ' + COLLAR);
+        if (!(d.handY > d.deckTop)) P.push('standing on the bridge, the leash starts below the top of the deck');
+      }
+      if (!street) out.push('this pack has no flat ground three squares long, so the street\'s leash was not asked beside the deck\'s');
+      else { const e = ends(street);
+        if (!e) P.push('with the dog on the leash on flat ground, the 3D camera draws no leash at all');
+        else { out.push('on flat ground in ' + street.id + ': the hand\'s end ' + e.hand.toFixed(3) + ', the collar\'s end ' + e.collar.toFixed(3));
+          if (Math.abs(e.hand - HAND) > SLACK || Math.abs(e.collar - COLLAR) > SLACK) P.push('on flat ground the leash has moved: it leaves your hand ' + e.hand.toFixed(2) + ' up and reaches the collar ' + e.collar.toFixed(2) + ' up, where off the bridge nothing was to change (' + HAND + ' and ' + COLLAR + ')'); } }
+    } finally {
+      Object.assign(dog, keep.d); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
+      camSet(keep.cam); document.getElementById('world').hidden = keep.hidden; if (typeof sizeCanvas === 'function') sizeCanvas();
+    }
+    return { P, out };
+  });
+  leashDeck.out.forEach(l => console.log('  LEASH: ' + l));
+  fails.push(...leashDeck.P.map(m => 'the leash in 3D: ' + m));
+
   /* ---- OFF THE PARK HE HAS THINGS TO DO: HIS OWN STICK, AND WATER AT A RESTAURANT DOOR ----
      The owner, 2026-09-29, asked for other things to keep him busy: chasing a stick he throws himself, and
      other dog things, chasing another character, going to the bed in the office, howling
