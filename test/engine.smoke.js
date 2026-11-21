@@ -5506,8 +5506,12 @@ function findChromium() {
         const r = live(d, AFTER), fin = [d.x, d.y];
         if (r.first === null) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot ' + at(home) + ', for the whole ' + sec(AFTER) +
           ' that followed: every step he tried was further from home than a dog may wander. The owner asked why he gets stuck' };
-        if (r.first > c.p99) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
-          sec(c.p99) + '). Something rescued him late; nothing took him home when the activity ended' };
+        /* ...or than the beat his job may end in (mq-v287): his happy wag lasts up to 4 seconds, and a beagle who sings about it up
+           to 5, with under a second after either. Typed here, the times asked for on 2026-11-21, not read off the engine; still
+           half of what the stuck clock waits before it rescues him */
+        const ENDBEAT = 6000;
+        if (r.first > Math.max(c.p99, ENDBEAT)) return { fail: 'after ' + what + ' the dog stood still at ' + at(end) + ', ' + far + ' steps from his spot, for ' + sec(r.first) + ' before he moved — longer than 99 in 100 of a dog\'s own pauses (' +
+          sec(c.p99) + ') and than the longest beat a job ends in (' + sec(ENDBEAT) + '). Something rescued him late; nothing took him home when the activity ended' };
         if (r.jumps.length) return { fail: 'after ' + what + ' the dog jumped from ' + at(r.jumps[0].from) + ' to ' + at(r.jumps[0].to) + ' — he had a way home on foot and did not walk it' };
         if (!free(r).some(p => md(p, home) <= c.reach)) return { fail: 'after ' + what + ' the dog never got back to his spot ' + at(home) + ': ' + sec(AFTER) + ' later he is at ' + at(fin) + ', ' + md(fin, home) + ' steps away' };
         if (r.last === null || AFTER - r.last > tail(c)) return { fail: 'after ' + what + ' the dog got home and then stood still for good at ' + at(fin) + ' — no step in the last ' + sec(AFTER - (r.last || 0)) };
@@ -17182,7 +17186,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     parkPrefs.persona[nm] = keep; }
                   const facing = () => { const B = K.bodyOf(cr); if (!B) return null; const y = B.userData.yaw, f = [Math.sin(y), Math.cos(y)], c = T3.cam.position, d = [c.x - (cr.fx + 0.5), c.z - (cr.fy + 0.5)];
                     return { toCam: (f[0] * d[0] + f[1] * d[1]) / Math.max(1e-6, Math.hypot(d[0], d[1])), away: !!B.userData.away, bubble: !!(B.userData.bubble && B.userData.bubble.visible) }; };
-                  for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0;
+                  for (const pe of PERSONAS) { cr.persona = pe; cr.metT = 0; cr.turnT = 0; cr.sit = false; cr.happyT = 0; cr.howlT = 0;   /* and not singing: a beagle given a treat may sing about it (mq-v287), and a song carried over is not standing idle */
                     K.face(cr, 'toward');   /* his last step toward the camera, so only his personality can turn his back to it (the ball's check before leaves him facing away) */
                     K.show(cr); let f = facing();
                     if (!f) { said('with a personality, the dog has no body to ask'); break; }
@@ -17202,7 +17206,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (pe === 'aloof') { cr.turnT = wNow() - 1; K.show(cr); if (facing().away) said('aloof, once his while of ignoring you is over, the dog still faces away'); } }
                   personaOn = () => false; cr.metT = 0; cr.persona = undefined; K.show(cr); const f0 = facing();
                   if (f0 && (f0.away || f0.bubble)) said('in a world that does not ask for personalities, the dog faces away or thinks in a bubble anyway');
-                } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
+                } finally { personaOn = kpo; toast = ktoast; cr.persona = undefined; cr.metT = cr.turnT = 0; cr.sit = false; cr.happyT = 0; cr.howlT = 0; petTarget = null; petCrit = null; if (parkPrefs.persona) Object.keys(parkPrefs.persona).filter(k => /^Probe\d+$/.test(k)).forEach(k => { delete parkPrefs.persona[k]; }); }
               }
               /* ---- P · the short ears he may choose (mq-v281): mixed is kept only for a short-eared kind and only as that word; on the
                        body one of the two upright ears is folded over and hangs below his eye, and both up stays as it was ---- */

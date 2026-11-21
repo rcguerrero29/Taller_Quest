@@ -3946,9 +3946,10 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     const d=Math.abs(cr.x-tgt[0])+Math.abs(cr.y-tgt[1]);
     if(tk.phase==="go"&&d===0){BALL.phase="carried";BALL.dog=cr;tk.phase="return";return;}
     if(tk.phase==="return"&&d<=1){
-      BALL=null;cr.task=null;cr.sit=true;cr.next=dogHappy(cr,now)+600;dogGlad(cr,now);   /* the ball brought back: his happy wag for its own time, and a beagle often sings about it */
+      BALL=null;cr.task=null;cr.sit=true;
       if(cr.world===PL.park)PARK.f++;
       const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(Math.random()*L.length)],2600);
+      cr.next=dogHappy(cr,now)+600;dogGlad(cr,now);   /* the ball brought back: his happy wag for its own time, and a beagle often sings about it; drawn after the line's own roll, which is the one it always was */
       return;}
     if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
       if(BALL&&BALL.phase!=="carried")BALL.until=wDate()+4000;else BALL=null;}
@@ -6492,13 +6493,15 @@ $("treat").addEventListener("click",()=>{
        not do what you asked reads as himself and not as a fault */
     if(pe){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);
       if(pe!=="eager"){if(pe==="patient"){g2.sit=true;g2.next=wNow()+3200;}const ln=personaLine(g2,pe);if(ln)toast(ln,2600);return;}}
-    if(g2){g2.sit=true;g2.next=dogHappy(g2,wNow())+1000;g2.layT=0;   /* his happy wag for its own time (dogTime), then a beat before he moves on */
+    if(g2){g2.sit=true;g2.layT=0;
       g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
-      if(world===PL.park)PARK.t++;
-      dogGlad(g2,wNow());}   /* a beagle often sings about it */
+      if(world===PL.park)PARK.t++;}
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
-    if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
+    if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
+    /* his happy wag for its own time (dogTime), then a beat before he moves on; and a beagle often sings about it. Drawn
+       AFTER the treat's line: the rolls that pick the line are the ones they always were, and these come after them */
+    if(g2){g2.next=dogHappy(g2,wNow())+1000;dogGlad(g2,wNow());}}
   else if(petTarget==="gato"){
     const g2=petCrit;
     if(g2){g2.sit=true;g2.next=wNow()+3200;}
