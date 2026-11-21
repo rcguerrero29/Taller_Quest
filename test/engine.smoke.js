@@ -4495,16 +4495,15 @@ function findChromium() {
           else for (let k = 0; k < 4000 && d.task; k++) { if (dogPose(d, now, now).dig) dug = true; now += 100; dogStep(d, now); }
           if (dug) n.dig++; tidy(); }
         Math.random = keep.MR; const tot = N * M, pc = {}; Object.keys(n).forEach(k => { pc[k] = 100 * n[k] / tot; });
-        const who = pe ? 'an ' + pe + ' dog' : 'a dog with no personality';
+        const who = pe ? (/^[aeiou]/.test(pe) ? 'an ' : 'a ') + pe + ' dog' : 'a dog with no personality';
         out.push(who + ': free ' + pc.free.toFixed(1) + '% · curious ' + pc.curious.toFixed(1) + '% · lazy ' + pc.lazy.toFixed(1) + '% of his idle choices; a hole in ' + pc.dig.toFixed(1) + '%');
         if (pc.dig < 7 || pc.dig > 9) P.push(who + ' digs in ' + pc.dig.toFixed(1) + '% of his idle choices, his free whims and both routines together; it is kept at about 8% (settled 2026-09-29, and as a probability on 2026-11-20)');
         return { pc, who }; };
       { const t = tally(null), want = { free: 50, curious: 25, lazy: 25 };
         Object.keys(want).forEach(k => { if (Math.abs(t.pc[k] - want[k]) > 2) P.push(t.who + ' takes ' + (k === 'free' ? 'his free whims' : 'the ' + k + ' routine') + ' in ' + t.pc[k].toFixed(1) + '% of his idle choices, where ' + want[k] + '% was asked'); }); }
       { const t = tally('eager'); if (!(t.pc.curious > t.pc.lazy + 5)) P.push(t.who + ' takes the curious routine in ' + t.pc.curious.toFixed(1) + '% of his idle choices and the lazy one in ' + t.pc.lazy.toFixed(1) + '%: his personality does not lean him to the curious routine'); }
-      /* HANDOFF H1 · the same tally for the two personalities left, each as the eager one above is asked:
-           an aloof dog leans to the LAZY routine (lazy more than curious by over 5 points), and digs 7 to 9;
-           a patient dog digs 7 to 9 (no lean was asked of him, so none is checked). */
+      { const t = tally('aloof'); if (!(t.pc.lazy > t.pc.curious + 5)) P.push(t.who + ' takes the lazy routine in ' + t.pc.lazy.toFixed(1) + '% of his idle choices and the curious one in ' + t.pc.curious.toFixed(1) + '%: his personality does not lean him to the lazy routine'); }
+      tally('patient');   /* no lean was asked of a patient dog; how often he digs is asked in the tally itself */
 
       /* 3 · where routines are off, an idle dog is his whim and nothing else */
       { routineOn = () => false; let differ = 0, more = 0;
@@ -4525,9 +4524,8 @@ function findChromium() {
           else if (dogPose(d).sniff) P.push(how + ' while he is sniffing ends his routine and leaves his nose on the ground');
         } finally { CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); } };
       handed('a treat', d => { petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); });
-      /* HANDOFF H2 · the same for two more hands, each as the treat above:
-           telling him he is loved (the button with id love, with petTarget and petCrit set as for the treat);
-           a command he obeys (dogCmd('sit') with Math.random held at 0 so he obeys; put Math.random back to keep.MR after). */
+      handed('telling him he is loved', d => { petTarget = d.kind; petCrit = d; document.getElementById('love').click(); });
+      handed('a command he obeys (sit)', () => { Math.random = () => 0; try { dogCmd('sit'); } finally { Math.random = keep.MR; } });
 
       /* 5 and 6 · the course at your word */
       const park = PL.park, btn = document.getElementById('cmdCourse'), gear = WORLDS[park] ? agilityCourse(park) : [];
@@ -4570,12 +4568,29 @@ function findChromium() {
                   if (!(d.fedT > (fed0 || 0))) P.push('after the course he was sent round, he is not fed: the treat the line speaks of was never his');
                   if (PARK.t !== treats0 + 1) P.push('after the course he was sent round, the park counts ' + (PARK.t - treats0) + ' treats given, where one was'); } }
             } finally { gone(d); tidy(); } }
-          /* HANDOFF H3 · the other answers, each as the eager dog's above is asked (answer(personality, roll) gives went, wait and said):
-               a patient dog, worst roll (0.999): he goes, after a moment (wait between 1000 and 2500 ms);
-               an aloof dog, high roll (0.999): he does not go, and one line is said that names him (includes Probe, no {n} left);
-               an aloof dog, low roll (0.001): he goes, after his own wait (between 3000 and 5000 ms);
-               a dog with no personality (answer(null, ...)), high roll: he does not go; low roll: he goes at once (wait under 250 ms).
-             Take each dog off the map again with gone(d) in a finally, as above. */
+          { const a = answer('patient', 0.999);
+            try {
+              if (!a.went) P.push('sent round the course on the worst roll, a patient dog does not go: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait < 1000 || a.wait > 2500) P.push('sent round the course, a patient dog waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to go after a moment');
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer('aloof', 0.999);
+            try {
+              if (a.went) P.push('sent round the course on a high roll, an aloof dog goes, where half the time he is not to');
+              else if (a.said.length !== 1 || !a.said[0].includes('Probe') || a.said[0].includes('{n}')) P.push('sent round the course on a high roll, an aloof dog stays put and no single line of his own names him' + (a.said.length ? ' (said: "' + a.said.join('" / "') + '")' : ' (nothing is said)'));
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer('aloof', 0.001);
+            try {
+              if (!a.went) P.push('sent round the course on a low roll, an aloof dog does not go, where half the time he is to: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait < 3000 || a.wait > 5000) P.push('sent round the course, an aloof dog waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to take his own time');
+            } finally { gone(a.d); tidy(); } }
+          { const a = answer(null, 0.999);
+            try { if (a.went) P.push('sent round the course on a high roll, a dog with no personality goes, where he is to answer it as he answers any command and stay put'); }
+            finally { gone(a.d); tidy(); } }
+          { const a = answer(null, 0.001);
+            try {
+              if (!a.went) P.push('sent round the course on a low roll, a dog with no personality does not go, where he is to answer it as he answers any command: ' + (a.said[0] ? 'he says "' + a.said[0] + '"' : 'nothing happens'));
+              else if (a.wait > 250) P.push('sent round the course, a dog with no personality waits ' + Math.round(a.wait) + ' ms before he sets off, where he is to go at once');
+            } finally { gone(a.d); tidy(); } }
         }
       }
     } finally {
