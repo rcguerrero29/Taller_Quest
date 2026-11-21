@@ -2324,8 +2324,16 @@ const CANDIDATES = [
           if (![...wcols].some(c => { const v = c.split(',').map(Number); return Math.abs(v[0] - tgt[0]) < 10 && Math.abs(v[1] - tgt[1]) < 10 && Math.abs(v[2] - tgt[2]) < 10; })) problems.push('the wings have no darker edge in their own colour — cut paper has an edge all the way round');
           // colour round the eyes, as the owner suggested: a ring round the eye, wider than it, the pupil untouched
           const KB = ALEB_KIND.beagle; if (!KB || !KB.eye) problems.push('the star dog has no colour round the eyes');
-          else { alePick.animals[SN] = noWing; const ringed = dog(); const eye = KB.eye; delete KB.eye; const bare = dog(); KB.eye = eye;
-            let ring = 0, pupil = 0; for (let i = 0; i < a0.length; i++) { const x = i % 44 - 6 - 16 - eye[0] * (star.face || 1), y = Math.floor(i / 44) - 12 - eye[1], r = Math.hypot(x, y);
+          else { alePick.animals[SN] = noWing;
+            /* THE TWO PICTURES OF ONE STILL DOG. The world's clock (wNow) runs on between the two drawings even inside this one
+               call, and a pose of his that ended between them (a song, a sniff, a happy wag) moved his head, so the pictures
+               differed where the ring is not, and the check said the ring closed on his pupil (seen on two pull requests that
+               changed nothing of his). So both drawings are of a copy of him with every pose's clock stopped and no step under
+               way: only the ring differs between them */
+            const still = Object.assign({}, star, { moving: false, mt: 0, task: null, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0 });
+            const stillDog = () => bake(g => drawBeagle(g, still, 0, 0));
+            const ringed = stillDog(); const eye = KB.eye; delete KB.eye; const bare = stillDog(); KB.eye = eye;
+            let ring = 0, pupil = 0; for (let i = 0; i < a0.length; i++) { const x = i % 44 - 6 - 16 - eye[0] * (still.face || 1), y = Math.floor(i / 44) - 12 - eye[1], r = Math.hypot(x, y);
               const diff = ringed[i * 4] !== bare[i * 4] || ringed[i * 4 + 1] !== bare[i * 4 + 1] || ringed[i * 4 + 2] !== bare[i * 4 + 2]; if (!diff) continue; if (r < 1.3) pupil++; else if (r < eye[2] + 2.5) ring++; }
             if (ring < 8) problems.push('the ring round the star dog\'s eye paints nothing (' + ring + ')'); if (pupil) problems.push('the ring closes on the star dog\'s pupil — he goes blind at ten tiles'); }
           // the buttons: next cycles all five and comes back; random never repeats the current look
