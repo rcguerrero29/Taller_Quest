@@ -16255,7 +16255,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* his note: the pixels of the frame that are his note (the same frame with the note's paint made clear, which no hold
          undoes), and how many of them lie above the screen height of the point `top` (the top of his head, in the world) */
       K.note = (cr, top) => { const B = K.bodyOf(cr), n = B && B.userData.note; if (!n || !n.material) return null;
-        const a = grab(), o0 = n.material.opacity; n.material.opacity = 0; let b; try { b = grab(); } finally { n.material.opacity = o0; }
+        B.userData.earHold = true;   /* his ears move (mq-v284): held still while the two frames are compared, so only the note differs */
+        let a, b; const o0 = n.material.opacity; try { a = grab(); n.material.opacity = 0; b = grab(); } finally { n.material.opacity = o0; B.userData.earHold = false; }
         /* read in a window round him a fifth of the screen wide, from a tenth of its height under the top of his head to a tenth over it */
         const { W, H } = a, tp = top.clone().project(T3.cam), sx = (tp.x + 1) / 2 * W, sy = (tp.y + 1) / 2 * H; let all = 0, above = 0;
         for (let y = Math.max(0, Math.floor(sy - H * 0.1)); y < Math.min(H, sy + H * 0.1); y++) for (let x = Math.max(0, Math.floor(sx - W * 0.1)); x < Math.min(W, sx + W * 0.1); x++) {
@@ -16915,6 +16916,42 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     if (all !== far.length) said('reaching past DOGNEAR, ' + all + ' of ' + far.length + ' far dogs stand as bodies after their frames, where every one does');
                     N.push('how far and how many: ' + far.length + ' dogs past DOGNEAR, ' + first + ' made in the first frame, ' + all + ' bodies after ' + (far.length + 2) + ' frames');
                   } finally { dogBodyReach = kr; dogBodyMax = km; far.forEach(c => K.unplant(c)); K.show(cr); } } }
+              /* ---- R · his ears move (mq-v284): a folded ear's bend is laid again as he pricks it, one piece all the way; the spring
+                       pricks an eager dog fast and an aloof one slowly; a still ear costs nothing; a drop ear lifts when pricked and swings
+                       as he trots ---- */
+              if (typeof dogEars !== 'function' || typeof earBend !== 'function') said('the engine has no way to move a dog\'s ears');
+              else {
+                const hangs = o => { let top = -Infinity, bot = Infinity; const Pp = o.geometry.attributes.position, v = new THREE.Vector3();
+                  for (let k = 0; k < Pp.count; k++) { v.fromBufferAttribute(Pp, k); o.localToWorld(v); top = Math.max(top, v.y); bot = Math.min(bot, v.y); }
+                  const t = o.localToWorld(new THREE.Vector3(...o.userData.tip)); return (top - t.y) / Math.max(1e-6, top - bot); };
+                const mk = lk => { const B = dogMake(dogSkeleton(lk.kind), lk); B.updateWorldMatrix(true, true); return B; }, ears = B => { const a = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'ear') a.push(o); }); return a; };
+                const run = (B, aim, speed, secs, held, moving) => { const U = B.userData; U.earAim = aim; U.earSpeed = speed; U.dt = 1 / 60; U.twitchAt = Infinity; let hi = -Infinity;
+                  for (let k = 0; k < secs * 60; k++) { dogEars(B, { t: k * 16.67 }, held || 'stand', !!moving, k * 0.2); B.updateWorldMatrix(true, true); hi = Math.max(hi, U.ear); } return hi; };
+                { const B = mk(dogLookOf({ kind: 'chi', c: '#C9975C', ears: 'mixed' }));
+                  try { const f = ears(B).find(o => o.userData.foldable && !o.userData.inside), n0 = ears(B).length;
+                    if (!f) said('a chihuahua with mixed ears has no ear that can fold');
+                    else { const at = A => { earBend(f, A); B.updateWorldMatrix(true, true); return hangs(f); }, h0 = at(0), h1 = at(EARBEND), hm = at(EARBEND / 2);
+                      if (!(h0 < 0.08 && h1 > 0.2 && hm > h0 && hm < h1)) said('a folded ear does not go from standing to folded through the bends between (tip below its top: ' + [h0, hm, h1].map(x => x.toFixed(2)).join(', ') + ')');
+                      if (ears(B).length !== n0) said('a folded ear moving becomes more or fewer pieces');
+                      B.userData.ear = 0.35; B.userData.earV = 0; const hiE = run(B, 1, EARSPRING.eager, 0.5);
+                      if (!(B.userData.ear > 0.9)) said('an eager dog has not pricked his ears half a second after he is excited (' + B.userData.ear.toFixed(2) + ')');
+                      if (!(hiE > 1.0)) said('an eager dog\'s ears do not overshoot as they prick, so they move like a hinge, not an ear');
+                      if (!(f.userData.bend < EARBEND * 0.4)) said('pricked, the folded ear does not unfold (its bend ' + f.userData.bend.toFixed(2) + ' of ' + EARBEND + ')');
+                      run(B, 1, EARSPRING.eager, 1); const b2 = f.userData.bends; run(B, 1, EARSPRING.eager, 0.5);   /* settled, then half a second more */
+                      if (f.userData.bends !== b2) said('a still ear is laid again every frame (' + (f.userData.bends - b2) + ' times in half a second), where a still ear costs nothing');
+                      run(B, 1, EARSPRING.eager, 0.5, 'lay'); if (!(f.userData.bend > EARBEND * 0.9)) said('lying down, the folded ear does not fold back');
+                      B.userData.ear = 0.35; B.userData.earV = 0; run(B, 1, EARSPRING.aloof, 0.5); const aloofE = B.userData.ear;
+                      if (!(aloofE < 0.8)) said('an aloof dog pricks his ears as fast as an eager one (' + aloofE.toFixed(2) + ' after half a second)');
+                      N.push('his ears: a folded ear\'s tip below its top standing ' + h0.toFixed(2) + ', half ' + hm.toFixed(2) + ', folded ' + h1.toFixed(2) + '; eager pricked to ' + hiE.toFixed(2) + ' at most, aloof to ' + aloofE.toFixed(2) + ' in half a second'); } }
+                  finally { t3Dispose(B); } }
+                { const B = mk(dogLookOf({ kind: 'beagle', c: '#E8C46A' }));
+                  try { const d = ears(B).find(o => o.userData.dropEar);
+                    if (!d) said('a beagle has no drop ear to move');
+                    else { B.userData.ear = 0.35; run(B, 0.35, EARSPRING.patient, 0.3); const z0 = Math.abs(d.rotation.z); run(B, 1, EARSPRING.patient, 1); const z1 = Math.abs(d.rotation.z);
+                      if (!(z1 > z0 + 0.1)) said('pricked, a beagle\'s drop ear does not lift and spread (' + z0.toFixed(2) + ' at ease, ' + z1.toFixed(2) + ' pricked)');
+                      const zs = []; for (let k = 0; k < 8; k++) { dogEars(B, { t: k * 16.67 }, 'stand', true, k * 0.4); zs.push(d.rotation.z); }
+                      if (!(Math.max(...zs) - Math.min(...zs) > 0.1)) said('trotting, a beagle\'s drop ears do not swing'); } }
+                  finally { t3Dispose(B); } } }
               /* ---- M · a record that is not what it should be: dogLookOf cleans it, and the body is made from what it answers ---- */
               { const bad = [], dflt = dogLookOf({});
                 for (const k of ['cat', '', 5, null, '__proto__', 'constructor', 'toString', 'beagle ', 'LAB']) { const o = dogLookOf({ kind: k }); if (o.kind !== 'beagle') bad.push('the kind ' + JSON.stringify(k) + ' comes out a ' + o.kind); }
