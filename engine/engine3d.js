@@ -2228,7 +2228,7 @@ const HAIRPART={
 function t3BodyPose(B,phase,moving,groundAt){
   const S=B.userData.skel,J=B.userData.joints,gnd=groundAt||(()=>0);
   B.updateWorldMatrix(true,false);
-  J.hips.position.y=S.joints.hips[2]-(moving?S.drop*(0.6+0.4*Math.abs(Math.sin(phase))):0);
+  J.hips.position.y=S.joints.hips[2]-(moving?S.drop*(0.6+0.4*Math.abs(Math.sin(phase))):0)-(B.userData.crouch||0);   /* crouch: how far his hips are let down, his feet kept on the ground (bodyPetal) */
   J.hips.updateWorldMatrix(true,true);
   const inv=new THREE.Matrix4().copy(B.matrixWorld).invert(),sc=B.scale.y||1;
   S.legs.forEach(([hp,kn,an,off])=>{
@@ -2249,6 +2249,37 @@ function t3BodyPose(B,phase,moving,groundAt){
   S.arms.forEach(([sh,el,off])=>{const sw=moving?S.swing*Math.sin(phase+off):0,sd=sh.endsWith("_l")?1:-1;
     J[sh].rotation.set(-sw,0,sd*0.1);J[el].rotation.set(-0.15-(moving?0.25*Math.max(0,Math.sin(phase+off)):0),0,0);});
   B.updateWorldMatrix(true,true);}
+/* THE PETAL MOMENT, ON HIS BODY (mq-v286; the owner's wish of 2026-09-07, confirmed for his body on 2026-11-21). Standing still on
+   the bridge in season for a breath (petalMoment, engine/engine.js, which also says the line), his card raises a petal; his body
+   now does it as a person does: he bends his knees and his back and reaches down to the deck with his right hand (PETALBEND
+   ms), comes up with a petal between his fingers (PETALRISE ms), and holds it up before his face, his head tipped to look at it,
+   for as long as he stays. ms is the time since the moment began, below 0 when there is none: then he stands as before and the
+   petal is put away. pose() is his stance for this frame (t3BodyPose), run here after his hips are let down so his feet stay
+   on the ground. The petal is the card's own (petalShape): a fan from a narrow root to a notched tip, a rib down the middle,
+   in the bridge's petal colour, made the first time and carried on his right wrist */
+const PETALBEND=750,PETALRISE=650,PETALCROUCH=0.16;   /* his hips let down by about half their height: a squat, so a short arm reaches the deck */
+function petalMesh(B){const J=B.userData.joints,r=B.userData.skel.head||0.06,k=r*0.15,sh=new THREE.Shape();
+  sh.moveTo(0,0);sh.quadraticCurveTo(-1.9*k,1.6*k,-1.5*k,3.4*k);sh.lineTo(-0.5*k,4.2*k);sh.lineTo(0,3.6*k);sh.lineTo(0.5*k,4.2*k);sh.lineTo(1.5*k,3.4*k);sh.quadraticCurveTo(1.9*k,1.6*k,0,0);
+  const pal=typeof petalPal==="function"?petalPal():null,c=new THREE.Color(pal&&pal[3]||"#F28C1E"),m=new THREE.Mesh(new THREE.ShapeGeometry(sh,6),new THREE.MeshLambertMaterial({color:c.clone(),side:THREE.DoubleSide}));
+  const rib=new THREE.Mesh(new THREE.BoxGeometry(0.12*k,2.3*k,0.05*k),new THREE.MeshLambertMaterial({color:c.clone().multiplyScalar(0.62)}));rib.position.set(0,1.65*k,0.03*k);
+  rib.userData={wears:"petal",base:c.clone().multiplyScalar(0.62)};m.add(rib);m.userData={wears:"petal",base:c};
+  m.position.set(0,-0.03,0.015);m.rotation.set(Math.PI,0,0);J.wrist_r.add(m);return m;}
+function bodyPetal(B,ms,pose){const J=B.userData.joints;if(!J||!J.spine||!J.wrist_r){if(pose)pose();return;}
+  let p=B.userData.petal;
+  const k=ms<0?0:ms<PETALBEND?ms/PETALBEND:ms<PETALBEND+PETALRISE?1-(ms-PETALBEND)/PETALRISE:0,h=ms<PETALBEND?0:Math.min(1,(ms-PETALBEND)/PETALRISE),
+    e=x=>x*x*(3-2*x),K=e(k),H=e(h);
+  B.userData.crouch=PETALCROUCH*K;if(pose)pose();
+  J.spine.rotation.x=0.7*K;J.chest.rotation.x=0.3*K;J.neck.rotation.x=0;J.head.rotation.set(0.25*K+0.12*H,-0.5*H,-0.12*H);   /* down at the deck, then turned to the petal beside him */
+  if(ms<0){if(p)p.visible=false;B.updateWorldMatrix(true,true);return;}
+  if(!p)p=B.userData.petal=petalMesh(B);
+  /* reaching: his arm forward and down to the deck; holding: raised forward and out to his right, the petal at his ear, as the card holds it */
+  J.shoulder_r.rotation.set(-0.7*K-2.5*H,0,-0.1-0.5*H);J.elbow_r.rotation.set(-0.15-0.05*K,0,0);
+  p.visible=ms>=PETALBEND*0.95;p.rotation.set(Math.PI,0,0);B.updateWorldMatrix(true,true);
+  /* held up, the petal's face turns, as he raises it, to halfway between his eyes and the camera: he looks at it and so do you
+     (edge-on to the camera, a petal is a line) */
+  if(H>0){const q0=p.quaternion.clone(),at=J.head.getWorldPosition(new THREE.Vector3());
+    if(typeof T3!=="undefined"&&T3.cam)at.lerp(T3.cam.position,0.5);
+    p.lookAt(at);p.quaternion.copy(q0.slerp(p.quaternion.clone(),H));p.updateWorldMatrix(false,true);}}
 /* each frame: is the person you steer a body here, and if he is, where he stands, which way he faces and how he steps.
    True when the body stands, so the card is not drawn as well (t3Actors) */
 function t3Body(dt){
@@ -2272,7 +2303,9 @@ function t3Body(dt){
     B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
   B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(sc);
   t3BodyLight(B);
-  t3BodyPose(B,B.userData.phase||0,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
+  /* his stance, and over it the petal moment (mq-v286): from the moment the engine says it began, until he moves on */
+  const pm=typeof petalMoment!=="undefined"&&petalMoment&&!moving;if(pm){if(!B.userData.petalT)B.userData.petalT=Date.now();}else B.userData.petalT=0;
+  bodyPetal(B,pm?Date.now()-B.userData.petalT:-1,()=>t3BodyPose(B,B.userData.phase||0,moving,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z))));
   /* the card's rule, the body's too: a wall never hides the person you steer, unless he is down a hole or the drone is
      the one steered (t3Actors) — so draw3d draws him again over the street (t3BodyThrough) */
   B.userData.through=!DRONE.on&&lift>=0;
