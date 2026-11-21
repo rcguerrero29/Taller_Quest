@@ -3946,7 +3946,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     const d=Math.abs(cr.x-tgt[0])+Math.abs(cr.y-tgt[1]);
     if(tk.phase==="go"&&d===0){BALL.phase="carried";BALL.dog=cr;tk.phase="return";return;}
     if(tk.phase==="return"&&d<=1){
-      BALL=null;cr.task=null;cr.sit=true;cr.next=now+2400;cr.happyT=now+1800;
+      BALL=null;cr.task=null;cr.sit=true;cr.next=dogHappy(cr,now)+600;dogGlad(cr,now);   /* the ball brought back: his happy wag for its own time, and a beagle often sings about it */
       if(cr.world===PL.park)PARK.f++;
       const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(Math.random()*L.length)],2600);
       return;}
@@ -3962,9 +3962,10 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   if(tk.type==="treat"){ /* the course run at your word: back to you, and the treat is his (mq-v287). His spot stays his: he goes home after (dogDone) */
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
-    if(d<=1){cr.task=null;cr.sit=true;cr.face=Math.sign(px-cr.x)||cr.face;cr.happyT=now+2600;cr.next=now+3000;
+    if(d<=1){cr.task=null;cr.sit=true;cr.face=Math.sign(px-cr.x)||cr.face;cr.next=dogHappy(cr,now)+400;
       cr.fedT=now;cr.fseq=null;if(world===PL.park)PARK.t++;   /* fed, as by the treat button */
-      const ln=dogLine(T().courseTreat,cr);if(ln)toast("🦴 "+ln,3200);return;}
+      const ln=dogLine(T().courseTreat,cr);if(ln)toast("🦴 "+ln,3200);
+      dogGlad(cr,now);return;}   /* the course run, and a treat: a beagle often sings about it */
     if(!dogWalk(cr,px,py))cr.task=null;
     return;}
   if(tk.type==="home"){ /* back to his own spot, from where he may wander again — every job that ends far from it ends here (dogDone) */
@@ -4213,11 +4214,23 @@ const POSEPX={beagle:{lay:3,howl:-3,sniff:3},lab:{lay:3,howl:-3,sniff:3},chi:{la
      wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
      face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
 const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6]}; /* ms a swing and px: calm, then happy */
+/* LYING DOWN, HIS TAIL RESTS (mq-v287; the owner's confirmed goal of 2026-11-21 on the tail). It wags the whole time only
+   while he is happy or shown he is loved; otherwise it lies still and gives a short wag now and then: WAGLIE.ms long, the
+   next one WAGLIE.gap after the last, a time of its own each time. No dice are thrown here: his painters ask every frame,
+   and a roll taken in a painter would move every roll the game makes. The gap comes off his own count of wags, so it is
+   the same dog on the same clock every time, and a check can hold it still. tailWags answers whether this instant is
+   inside one of those short wags */
+const WAGLIE=Object.freeze({ms:1500,gap:Object.freeze([4000,8000])});
+function tailWags(cr,t){let w=cr.tailW;
+  if(!w||t>=w[0]+WAGLIE.ms||t<w[0]-WAGLIE.gap[1]){const n=w?w[1]+1:0,h=(Math.imul(n+1,2654435761)^Math.imul(((cr.x|0)*73+(cr.y|0)*151+17)|0,40503))>>>0;
+    w=cr.tailW=[t+WAGLIE.gap[0]+h%(WAGLIE.gap[1]-WAGLIE.gap[0]),n];}
+  return t>=w[0];}
 function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.now();
   const K=POSEPX[cr.kind]||{},W=DOGWAG[cr.kind]||DOGWAG.beagle,gp=gearPose(cr),lay=cr.layT>nw,howl=cr.howlT>nw,happy=cr.happyT>nw,
     sniff=cr.sniffT>nw&&!cr.sit&&!lay&&!howl&&!(cr.digT>nw);
-  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love:cr.loveT>nw,sniff,
-    drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
+  const love=cr.loveT>nw,rests=lay&&!happy&&!love&&!tailWags(cr,t);   /* lying down and neither happy nor loved, his tail lies still between its short wags */
+  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love,sniff,
+    drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
   if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;}
@@ -4228,12 +4241,29 @@ function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,
   R.body=R.drop-R.lift;R.head=R.drop+R.nod-R.lift;return R;}
 /* A SONG AND A HOLE, EACH IN ONE PLACE (mq-v287): what a howl and a dig do to him and to the world around him, lifted out of
    the whim with nothing changed, so a step of a routine howls and digs exactly as a whim does. ms is how long the song lasts */
+/* HOW LONG A POSE LASTS (mq-v287; the owner's confirmed goals of 2026-11-21 on the times of the poses and on the howl). Each
+   pose's time is drawn from its own range, in ms, so no two are alike, and the same ranges hold in his free whims and in his
+   routines. A howl's length is his breed's: a beagle is known for long songs, and the others keep a shorter one. And a beagle
+   often sings when he is made happy (DOGGLADHOWL, the share of those times; a breed not named there does not). All tables:
+   a study of what dogs really do changes numbers here and nothing else. */
+const DOGTIME=Object.freeze({sniff:[3000,5000],dig:[2500,3500],happy:[3000,4000],sit:[4000,6000],lay:[6000,10000],normal:[1000,1500]});
+const DOGHOWLTIME=Object.freeze({beagle:[2500,5000],other:[1200,2500]});
+const DOGGLADHOWL=Object.freeze({beagle:1/3});
+/* one draw of a pose's time for this dog; r, a number from 0 to 1, may be handed in so a check can hold it still */
+function dogTime(pose,cr,r){const k=pose==="howl"?(cr&&DOGHOWLTIME[cr.kind])||DOGHOWLTIME.other:DOGTIME[pose];
+  return k?k[0]+(k[1]-k[0])*(typeof r==="number"&&r>=0&&r<1?r:Math.random()):0;}
+/* his happy wag, for its own time: answers when it ends, so what follows it can be timed by it */
+function dogHappy(cr,now){cr.happyT=now+dogTime("happy",cr);return cr.happyT;}
+/* made happy (a treat taken, a ball brought back, the course run), a dog whose breed is known for it sings about it, as
+   often as DOGGLADHOWL says; a breed not named there draws nothing. r may be handed in for a check */
+function dogGlad(cr,now,r){const c=DOGGLADHOWL[cr.kind]||0;
+  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:Math.random())<c){dogHowl(cr,now);return true;}return false;}
 const DOGDIGBAND=Object.freeze([0.90,0.97]);   /* the band of the whim's roll that is a hole: its width is the share of his free choices that dig */
-function dogHowl(cr,now,ms){cr.howlT=now+ms;cr.next=now+ms+700;
+function dogHowl(cr,now,ms){if(!(ms>0))ms=dogTime("howl",cr);cr.howlT=now+ms;cr.next=now+ms+700;
   if(cr.world===PL.park)PARK.h++;
   try{musHowl();}catch(e){} /* an actual tiny howl, when the sound is on */
   if(Math.random()<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
-function dogDig(cr,now){cr.digT=now+1700;cr.next=now+2400; /* the rare nod to the puppy phase */
+function dogDig(cr,now,ms){if(!(ms>0))ms=dogTime("dig",cr);cr.digT=now+ms;cr.next=now+ms+700; /* the rare nod to the puppy phase */
   if(cr.world===PL.park)PARK.d++;
   const hx=cr.x,hy=cr.y,hw=cr.world;
   setTimeout(()=>DECALS.push({world:hw,x:hx,y:hy,kind:"hole",until:wDate()+34000}),1400);}
@@ -4274,8 +4304,8 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
      Away from the park the course's roll goes to his own stick or a restaurant door, and the greeting's
      to a romp with somebody near (2026-09-29; see `more to do away from the park` below), and each
      passes in its turn when it cannot happen. */
-  if(r<0.40){cr.layT=now+3800+Math.random()*3200;cr.sit=false;cr.next=cr.layT;}
-  else if(r<0.71)dogHowl(cr,now,2100);
+  if(r<0.40){cr.layT=now+dogTime("lay",cr);cr.sit=false;cr.next=cr.layT;}
+  else if(r<0.71)dogHowl(cr,now);
   else if(r<0.83){if(park){const wp=agilityCourse(cr.world);
     /* no gear, no course: the whim passes */
     if(wp.length){cr.task={type:"run",wp,i:0};cr.sit=false;cr.layT=0;}}
@@ -4310,14 +4340,17 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
                          share that include a hole. The free mode digs by its own band (DOGDIGBAND), so the curious
                          routine's hole is not certain: routineDigChance works out how often it must happen for the
                          total to come to DIGSHARE, for this dog's own chances, and when it does not happen he sniffs a
-                         little longer (the step's `or`). With the engine's numbers: free 50% of choices digging 7 in
+                         little longer (the step's `or`). How long each step lasts is its pose's own time (DOGTIME). With the engine's numbers: free 50% of choices digging 7 in
                          100, curious 25% digging 18 in 100, total 3.5% + 4.5% = 8%.
    A CHECK PINS A MODE in ROUTINEPIN: every idle then takes that mode, and a pinned routine takes every step's own pose
    (the hole included), so a check walks every pose in order. */
 const ROUTINEMODES=Object.freeze(["free","curious","lazy"]);
 const ROUTINES=Object.freeze({
-  curious:Object.freeze([{pose:"sniff",ms:2400},{pose:"dig",ms:1700,roll:"dig",or:{pose:"sniff",ms:1500}},{pose:"happy",ms:2200},{pose:"normal",ms:700}]),
-  lazy:Object.freeze([{pose:"sit",ms:2600},{pose:"lay",ms:4200},{pose:"howl",ms:1400,held:"lay"},{pose:"normal",ms:700}])});
+  curious:Object.freeze([{pose:"sniff"},{pose:"dig",roll:"dig",or:{pose:"sniff",part:0.5}},{pose:"happy"},{pose:"normal"}]),
+  lazy:Object.freeze([{pose:"sit"},{pose:"lay"},{pose:"howl",held:"lay",short:true},{pose:"normal"}])});
+/* how long this step lasts for this dog: its pose's own time (dogTime); `part` is a share of it (the sniff that stands in for
+   the hole is half a sniff), `short` draws from the lower half of the range (the lazy routine's howl is a short one) */
+function routineTime(cr,st){return dogTime(st.pose,cr,st.short?Math.random()*0.5:undefined)*(typeof st.part==="number"?st.part:1);}
 const ROUTINECHANCE_DEF=Object.freeze({dog:Object.freeze({free:50,curious:25,lazy:25})});
 const ROUTINETILT_DEF=Object.freeze({dog:Object.freeze({eager:Object.freeze({curious:10,lazy:-10}),patient:Object.freeze({}),aloof:Object.freeze({curious:-10,lazy:10})})});
 const DIGSHARE=0.08;
@@ -4341,10 +4374,10 @@ function routineDigChance(cr){const o=routineOdds(cr);
 /* his normal stance: on his feet, every pose's clock stopped. His wag and his hearts run out on their own */
 function dogNormal(cr){cr.sit=false;cr.layT=0;cr.howlT=0;cr.digT=0;cr.sniffT=0;}
 /* one step's pose, set on his record: the same clocks and the same words his whims and his commands set */
-function routinePose(cr,st,now){const ms=st.ms,p=st.pose;
+function routinePose(cr,st,now,ms){const p=st.pose;
   if(st.held==="lay")cr.layT=now+ms;else if(st.held==="sit")cr.sit=true;
   if(p==="sniff")cr.sniffT=now+ms;
-  else if(p==="dig"){dogDig(cr,now);cr.digT=now+ms;}
+  else if(p==="dig")dogDig(cr,now,ms);
   else if(p==="happy")cr.happyT=now+ms;
   else if(p==="sit")cr.sit=true;
   else if(p==="lay")cr.layT=now+ms;
@@ -4353,8 +4386,8 @@ function routinePose(cr,st,now){const ms=st.ms,p=st.pose;
 function routineStep(cr,tk,now){const steps=ROUTINES[tk.id]||[];tk.i++;
   dogNormal(cr);
   if(tk.i>=steps.length){cr.task=null;cr.next=now+400+Math.random()*900;return;}
-  let st=steps[tk.i];if(st.roll==="dig"&&!tk.dig)st=st.or||{pose:"normal",ms:0};
-  routinePose(cr,st,now);tk.pose=st.pose;tk.wait=now+st.ms;}
+  let st=steps[tk.i];if(st.roll==="dig"&&!tk.dig)st=st.or||{pose:"normal",part:0};
+  const ms=routineTime(cr,st);routinePose(cr,st,now,ms);tk.pose=st.pose;tk.wait=now+ms;}
 /* r, a number from 0 to 1, may be handed in for the hole's own roll */
 function routineStart(cr,id,now,r){const steps=ROUTINES[id];if(!steps||!steps.length)return false;
   cr.task={type:"routine",id,i:-1,pose:"normal",dig:ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:Math.random())<routineDigChance(cr)};
@@ -6459,9 +6492,10 @@ $("treat").addEventListener("click",()=>{
        not do what you asked reads as himself and not as a fault */
     if(pe){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);
       if(pe!=="eager"){if(pe==="patient"){g2.sit=true;g2.next=wNow()+3200;}const ln=personaLine(g2,pe);if(ln)toast(ln,2600);return;}}
-    if(g2){g2.sit=true;g2.next=wNow()+3200;g2.happyT=wNow()+2200;g2.layT=0;
+    if(g2){g2.sit=true;g2.next=dogHappy(g2,wNow())+1000;g2.layT=0;   /* his happy wag for its own time (dogTime), then a beat before he moves on */
       g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
-      if(world===PL.park)PARK.t++;}
+      if(world===PL.park)PARK.t++;
+      dogGlad(g2,wNow());}   /* a beagle often sings about it */
     const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
     if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);}   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
