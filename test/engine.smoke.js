@@ -17942,7 +17942,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     /* what each word is for, where a world without that thing never asks for it */
     const FOR = {
       'the office dog and his care pack': 'dog treatLb fredHeart fredUnlock carePackToast careHint carePack careEvents fredDoneToast retryNoteFred',
-      'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone',
+      'the dogs': 'ballLb ballNoRoom fetchYes fetchNo howl sniff chaseToast ripToast stickToast bowlToast beagleTreat loveLb loveLines leashLb leashToast parkArrive bandLb bandToast bandOff collarLb collarToast adoptLb adoptAsk adoptBreed adoptColor adoptGo adoptX adoptDone dupDog breeds cmdNo cmdOkSit cmdOkDown cmdOkStay cmdOkCome cmdTrained followOn followOff renameLb renameAsk renGo renameDone renameStub dogStubborn dogCameRound rehomeLb rehomeDone cmdCourse courseTreat courseAloof',
       'the animals\' personalities': 'persona personaPick',
       'the dogs\' ears': 'earPick',
       'the cat': 'cat petCat', 'the pigeon': 'pigeon petPig', 'the parrot': 'loro petLoro', 'the street cat': 'gato petGato',
