@@ -5061,9 +5061,18 @@ let alePick={hero:0,off:0,animals:{},custom:{}};
 try{const a0=JSON.parse(localStorage.getItem(SK("ale"))||"{}");if(a0&&typeof a0==="object")alePick={hero:a0.hero|0,off:a0.off|0,animals:(a0.animals&&typeof a0.animals==="object")?a0.animals:{},custom:(a0.custom&&typeof a0.custom==="object")?a0.custom:{}};}catch(e){}
 function alePersist(){mqStore(SK("ale"),JSON.stringify(alePick));}
 const aleHash=str=>{let h=2166136261>>>0;for(let i=0;i<String(str).length;i++){h^=String(str).charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;};
+/* A SAVED PICK IS CLEANED WHERE IT IS READ (mq-v289). An animal's pick is read from
+   the save under the animal's NAME, and a dog's name is typed in play. Read as it was saved, a pick that was not a number
+   named no look, and a dog named "constructor" or "toString" read the save's own machinery as his pick: either threw
+   here, inside whoever asked. One card's painter survives that; the 3D camera's frame, which now asks for every dog
+   (dogPaintCard, engine/engine3d.js), does not. So a pick counts only if it reads as a number, as it always did (its
+   whole part); anything else is as if nothing was saved, and the animal wears the look its name gives it. Every pick
+   that named a look before names the same look now */
+function alePickOf(k){if(!Object.prototype.hasOwnProperty.call(alePick.animals,k))return null;const v=alePick.animals[k];if(v===undefined)return null;
+  const n=Number(v);return isFinite(n)?Math.trunc(n):null;}
 function alebLookFor(kind,name){const L=alebLooks();if(!L)return null;
-  const k=name||kind,i=alePick.animals[k]!==undefined?alePick.animals[k]:(aleHash(k)+alePick.off),lk=L[((i%L.length)+L.length)%L.length];
-  const cu=alePick.custom&&alePick.custom[k];return cu?{...lk,...cu,id:lk.id}:lk;}
+  const k=name||kind,sv=alePickOf(k),i=sv!==null?sv:(aleHash(k)+alePick.off),lk=L[((i%L.length)+L.length)%L.length];
+  const cu=alePick.custom&&Object.prototype.hasOwnProperty.call(alePick.custom,k)&&alePick.custom[k];return cu&&lk?{...lk,...cu,id:lk.id}:lk;}
 const wildTmp={a:null,b:null};
 function wildScratch(which,W,H){let c=wildTmp[which];if(!c||c.width!==W||c.height!==H){c=wildTmp[which]=document.createElement("canvas");c.width=W;c.height=H;}return c;}
 /* the marks each kind has room for, where its wings root and where its eye is; cx is the sprite's centre column. A mark
