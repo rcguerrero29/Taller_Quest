@@ -3955,7 +3955,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     return;}
   if(tk.type==="come"){
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
-    if(d<=1){cr.task=null;cr.sit=true;cr.happyT=now+2200;cr.next=now+2600;
+    if(d<=1){cr.task=null;cr.sit=true;cr.next=dogHappy(cr,now)+400;
       cr.home=[cr.x,cr.y]; /* where you called him is where he stays, as when the whistle carries across the city (#268; the owner asked that he not wander off) */
       toast("🐶 "+(T().cmdOkCome||"!"),2400);return;}
     if(!dogWalk(cr,px,py))cr.task=null;
@@ -3979,7 +3979,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
        tube or halfway down the poles. Where that step is shut, he finishes on the piece, as he always did. */
     if(!wp){const out=!tk.out&&gearSide(cr.world,tk.wp,tk.wp.length-1,1);
       if(out&&!(cr.x===out[0]&&cr.y===out[1])&&dogWalk(cr,out[0],out[1])){tk.out=true;return;}
-      cr.task=tk.cmd?{type:"treat"}:null;cr.happyT=now+2200;return;}   /* sent on it (dogCmd), he comes back for his treat */
+      cr.task=tk.cmd?{type:"treat"}:null;dogHappy(cr,now);return;}   /* sent on it (dogCmd), he comes back for his treat */
     if(cr.x===wp[0]&&cr.y===wp[1]){tk.i++;return;}
     /* EACH PIECE TAKEN ALONG ITS LINE: first the tile before it, its run-up, then through it. Without this the
        shortest way in decides how he meets it, and from two tiles north or south of Meridian's hurdle that is
@@ -4005,7 +4005,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
       if(tk.phase==="go"){if(o.phase==="fly")return;
         o.phase="carried";tk.phase="back";tk.steps=0;return;}
       o.phase="ground";o.dog=null;o.fx=cr.x+0.34*cr.face;o.fy=cr.y+0.08;o.until=now+8000; /* put down beside him */
-      cr.task=null;cr.sit=true;cr.happyT=now+2600;cr.next=now+2800;
+      cr.task=null;cr.sit=true;cr.next=dogHappy(cr,now)+200;
       if(cr.world===world&&Math.random()<0.5&&T().stickToast)toast("🐶 "+T().stickToast,2400);
       return;}
     if(tk.phase==="back")cr.happyT=now+400;        /* the proud trot: tail up the whole way back */
@@ -4053,7 +4053,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     if(!dogWalk(cr,o.x,o.y))cr.task=null;
     return;}
   if(tk.type==="chase"||tk.type==="flee"){
-    if(now>tk.until){cr.task=null;cr.happyT=now+1800;return;}
+    if(now>tk.until){cr.task=null;dogHappy(cr,now);return;}
     if(tk.type==="chase"){const o=tk.other;
       if(!o||o.world!==cr.world){cr.task=null;return;}
       if(!dogWalk(cr,o.x,o.y)){cr.task=null;}return;}
@@ -4281,13 +4281,13 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
       .find(q=>{const w=WORLDS[cr.world];
         return w&&w.grid[q[1]]&&isLight(w.grid[q[1]][q[0]]);});
     if(near){propSet(cr.world,near[0],near[1],".");
-      cr.face=Math.sign(near[0]-cr.x)||cr.face;cr.happyT=now+2200;cr.sit=false;cr.layT=0;cr.next=now+2600;
+      cr.face=Math.sign(near[0]-cr.x)||cr.face;cr.sit=false;cr.layT=0;cr.next=dogHappy(cr,now)+400;
       if(cr.world===world)toast("🐶 "+(T().ripToast||"…"),2400);
       return;}}
   if(cr.friend&&cr.world===cr.friend.w){ /* beside the favorite person: mostly adoration */
     const f=(WORLDS[cr.world].npcs||[]).find(n=>n.key===cr.friend.key);
     if(f&&Math.abs(f.x-cr.x)+Math.abs(f.y-cr.y)<=2&&Math.random()<0.4){
-      cr.happyT=now+2200;cr.face=Math.sign(f.x-cr.x)||cr.face;cr.sit=true;cr.next=now+2800;return;}}
+      cr.face=Math.sign(f.x-cr.x)||cr.face;cr.sit=true;cr.next=dogHappy(cr,now)+600;return;}}
   const other=park?CRIT.find(o=>o!==cr&&isDog(o)&&o.world===PL.park&&!o.task
     &&Math.abs(o.x-cr.x)+Math.abs(o.y-cr.y)<=7):null;
   /* THE ODDS: one band of the roll each, in this order: a nap, a song, the course, the greeting, a
@@ -9420,8 +9420,8 @@ $("love").addEventListener("click",()=>{ /* a button to tell him you love him (a
   if(!DOGK.has(petTarget)||!petCrit)return;
   const c=petCrit;
   routineStop(c);
-  c.loveT=wNow()+2800;c.happyT=wNow()+2800;
-  c.sit=true;c.layT=0;c.next=wNow()+3000;
+  c.loveT=dogHappy(c,wNow());
+  c.sit=true;c.layT=0;c.next=c.loveT+200;
   try{musChirp();}catch(e){}
   const L=T().loveLines||[];if(L.length)toast("💗 "+L[Math.floor(Math.random()*L.length)],3200);
 });

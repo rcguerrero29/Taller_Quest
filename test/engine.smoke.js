@@ -4620,6 +4620,7 @@ function findChromium() {
        4 · LYING DOWN, his tail is still most of the time: each wag lasts about a second and a half, the rests between
            them 4 to 8 seconds and not all alike; happy, or shown he is loved, it wags without a rest; standing, it wags
            as it always has.
+       5 · TOLD HE IS LOVED, his happy wag lasts 3 to 4 seconds, on a low roll and on a high one, and the two are not alike.
      The rolls, the words said, the park's counts and where you stand are put back. */
   const poseTimes = await page.evaluate(() => {
     const P = [], out = [];
@@ -4694,6 +4695,19 @@ function findChromium() {
       [['happy', { layT: Infinity, happyT: Infinity }], ['shown he is loved', { layT: Infinity, loveT: Infinity }]].forEach(([what, o]) => { const runs = tail(o, 20);
         if (runs.some(r => !r[0])) P.push('lying down and ' + what + ', his tail stops for ' + sec(Math.max(...runs.filter(r => !r[0]).map(r => r[1]))) + ', where it is to wag the whole time'); });
       { const runs = tail({}, 20); if (runs.some(r => !r[0])) P.push('standing, his tail stops for ' + sec(Math.max(...runs.filter(r => !r[0]).map(r => r[1]))) + ', where it wags as it always has'); }
+
+      /* 5 · told he is loved, his happy wag lasts its own time, as a free whim's pose does: the love button on a low roll and
+         on a high one, the wag read off his pose on this check's clock from the moment of the click */
+      { const loved = roll => { const d = made(); CRIT.push(d); let seen = NaN;
+          try { world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => roll;
+            const n0 = wNow(); document.getElementById('love').click(); Math.random = keep.MR;
+            let now = n0; for (let k = 0; k < 800 && dogPose(d, now, now).happy; k++) now += 25; seen = now - n0;
+          } finally { Math.random = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
+          return seen; };
+        const lo = loved(0.02), hi = loved(0.98);
+        out.push('told he is loved, his happy wag: ' + sec(lo) + ' on a low roll, ' + sec(hi) + ' on a high one');
+        [['a low roll', lo], ['a high roll', hi]].forEach(([how, t]) => { if (!inside(t, WANT.happy)) P.push('told he is loved, on ' + how + ', his happy wag lasts ' + (isFinite(t) && t > 0 ? sec(t) : 'no time at all') + ', where ' + sec(WANT.happy[0]) + ' to ' + sec(WANT.happy[1]) + ' was asked'); });
+        if (!(hi - lo > (WANT.happy[1] - WANT.happy[0]) * 0.5)) P.push('told he is loved, his happy wag lasts ' + sec(lo) + ' on a low roll and ' + sec(hi) + ' on a high one: its time is not drawn from its range, so every one is alike'); }
     } finally {
       Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; ROUTINEPIN = keep.pin;
       real.forEach(([c, wd]) => { c.world = wd; }); Object.assign(PARK, JSON.parse(keep.park)); tidy();
