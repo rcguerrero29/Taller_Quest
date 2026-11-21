@@ -16255,7 +16255,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* his note: the pixels of the frame that are his note (the same frame with the note's paint made clear, which no hold
          undoes), and how many of them lie above the screen height of the point `top` (the top of his head, in the world) */
       K.note = (cr, top) => { const B = K.bodyOf(cr), n = B && B.userData.note; if (!n || !n.material) return null;
-        const a = grab(), o0 = n.material.opacity; n.material.opacity = 0; let b; try { b = grab(); } finally { n.material.opacity = o0; }
+        B.userData.earHold = true;   /* his ears move (mq-v284): held still while the two frames are compared, so only the note differs */
+        let a, b; const o0 = n.material.opacity; try { a = grab(); n.material.opacity = 0; b = grab(); } finally { n.material.opacity = o0; B.userData.earHold = false; }
         /* read in a window round him a fifth of the screen wide, from a tenth of its height under the top of his head to a tenth over it */
         const { W, H } = a, tp = top.clone().project(T3.cam), sx = (tp.x + 1) / 2 * W, sy = (tp.y + 1) / 2 * H; let all = 0, above = 0;
         for (let y = Math.max(0, Math.floor(sy - H * 0.1)); y < Math.min(H, sy + H * 0.1); y++) for (let x = Math.max(0, Math.floor(sx - W * 0.1)); x < Math.min(W, sx + W * 0.1); x++) {

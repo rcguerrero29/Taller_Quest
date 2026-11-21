@@ -2730,7 +2730,7 @@ function dogHold(B,held,howl,t){
      · an upright ear tips back a little at ease and stands when pricked;
      · a drop ear lifts and spreads a little when pricked, and swings as he trots */
 const EARSPRING=Object.freeze({eager:14,patient:8,aloof:3}),EARDAMP=0.45,EARTWITCH=[3000,7000],EARTWITCHKICK=0.25;
-function dogEars(B,P,held,moving,phase){const U=B.userData,dt=Math.min(0.05,Math.max(0,U.dt||0)),now=P&&isFinite(P.t)?P.t:0;
+function dogEars(B,P,held,moving,phase){const U=B.userData,dt=U.earHold?0:Math.min(0.05,Math.max(0,U.dt||0)),now=P&&isFinite(P.t)?P.t:0;   /* earHold: a check holds his ears where they are while it compares two frames */
   const aim=held==="lay"?0:(typeof U.earAim==="number"?U.earAim:0.35),k=U.earSpeed||EARSPRING.patient;
   let e=typeof U.ear==="number"?U.ear:aim,v=U.earV||0;
   if(dt>0){v+=(k*k*(aim-e)-2*EARDAMP*k*v)*dt;e+=v*dt;}
