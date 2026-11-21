@@ -2568,7 +2568,10 @@ function dogMake(skel,lk){
       if(bend)o.userData.fold=true;return o;};
     if(b.ear==="up")upEar(0.72,1.15,lk.ears==="mixed"&&sd<0);
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
-      const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);m.userData.dropEar=sd;coat(m,"ear",64,32);}});
+      /* hung from its root (mq-v285): a pivot where the flap meets his skull, so his ear can lift and turn from there as a dog's
+         does with the small muscles at its base, and the flap swings below it */
+      const root=new THREE.Object3D();root.position.set(sd*r*0.93,r*0.3,-r*0.3);root.userData={earRoot:sd,restY:r*0.3,r};J.head.add(root);
+      const m=part("head",ball(r,14,10),"ear",earCol,0,-r*0.8,0,[0.16,0.86,0.4]);J.head.remove(m);root.add(m);m.rotation.set(0.12,0,sd*0.16);m.userData.dropEar=sd;coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
      the paw joint, its sole on the ground (the joint's rest height under it) and a little ahead */
   skel.legs.forEach(([hp,kn,an])=>{
@@ -2741,7 +2744,16 @@ function dogEars(B,P,held,moving,phase){const U=B.userData,dt=U.earHold?0:Math.m
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.foldable){const A=EARBEND*(1-0.9*up);if(Math.abs((u.bend||0)-A)>0.01)earBend(o,A);}
     if(u.upEar&&held!=="lay")o.rotation.x+=-0.3*(1-Math.min(1,perk));
-    if(u.dropEar){const sd=u.dropEar,lift=Math.max(0,perk-0.5);o.rotation.set(0.12-0.35*lift,0,sd*(0.16+0.3*lift)+(moving?sd*0.12*Math.sin(phase*2):0));}});}
+    if(u.dropEar){const sd=u.dropEar,lift=Math.max(0,perk-0.5);o.rotation.set(0.12-0.35*lift,0,sd*(0.16+0.3*lift)+(moving?sd*0.12*Math.sin(phase*2):0));}});
+  /* AN EAR LISTENS FROM ITS ROOT (mq-v285; the owner's word of 2026-11-21). A dog moves an ear with the small muscles at its base:
+     the root of a drop ear lifts a little as he pricks it (EARROOTLIFT of his head), comes forward, and turns toward what he
+     listens to (U.earLook, the side it lies on, set by t3DogBodies); while he is alert it shifts back and forth now and then,
+     and the more excited he is, the harder it listens: further forward and turned further toward it */
+  const alert=Math.max(0,Math.min(1,(perk-0.4)/0.6)),look=typeof U.earLook==="number"&&isFinite(U.earLook)?Math.max(-1,Math.min(1,U.earLook)):0;
+  B.traverse(o=>{const u=o.userData;if(u.earRoot===undefined)return;const sd=u.earRoot,sway=alert*EARLISTEN*Math.sin(now/700+sd*1.7)*(0.5+0.5*Math.sin(now/2300));
+    o.position.y=u.restY+u.r*EARROOTLIFT*alert;
+    o.rotation.set(-EARFORWARD*alert+sway,look*EARTURN*alert*(look*sd>0?1:0.6),sd*0.22*alert);});}
+const EARROOTLIFT=0.16,EARFORWARD=0.45,EARTURN=0.7,EARLISTEN=0.12;
 /* THE REST OF HIS POSES (mq-v278, the owner's confirmed goal of 2026-11-19: his body in every pose his card draws), laid over
    the hold dogHold set, each read off the same pose and clock his card reads:
      · DIGGING, standing: his head down to the ground and his fore paws scraping turn about, as fast as his card's paw
@@ -2825,7 +2837,9 @@ function t3DogBodies(dt){
     {const pe=typeof personaOf==="function"?personaOf(cr):null,close=Math.hypot(cr.fx-px,cr.fy-py)<=2.5,
        excited=!!(P.howl||P.happy||P.love||(cr.metT&&nw-cr.metT<2500));
       let aim=excited?1:(close&&!B.userData.away?0.75:0.35);if(pe==="aloof")aim=Math.min(aim,0.55);
-      B.userData.earAim=aim;B.userData.earSpeed=EARSPRING[pe]||EARSPRING.patient;B.userData.dt=dt;}
+      B.userData.earAim=aim;B.userData.earSpeed=EARSPRING[pe]||EARSPRING.patient;B.userData.dt=dt;
+      /* which way he listens (mq-v285): toward you, from -1 (his left) to 1 (his right), as his head faces */
+      {const yw=B.userData.yaw||0,dx=px+0.5-(cr.fx+0.5),dz=py+0.5-(cr.fy+0.5),ang=Math.atan2(dx,dz)-yw;B.userData.earLook=Math.sin(ang);}}
     t3DogPose(B,P,B.userData.phase||0,B.userData.still<DOGREST,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
     shown.add(cr);});
   T3.dogShown=shown;return shown;}
