@@ -2800,14 +2800,18 @@ const EARROOTLIFT=0.16,EARFORWARD=0.45,EARTURN=0.7,EARLISTEN=0.12;
    not following you, not sitting, lying, digging, howling, on the course), and only until he is met, or while an aloof dog
    is still ignoring you */
 function dogAway(cr,P,nw){if(typeof personaOf!=="function"||!personaOf(cr))return false;
-  if(cr.moving||cr.task||cr.follow||!P||P.sit||P.lay||P.dig||P.howl||P.hid||P.lift||P.side)return false;
+  if(cr.moving||cr.task||cr.follow||!P||P.sit||P.lay||P.dig||P.sniff||P.howl||P.hid||P.lift||P.side)return false;
   return !cr.metT||nw<(cr.turnT||0);}
 const DOGJUMP=1;   /* how high his body rises over the bar, as a share of his card's arc: 1 is his card's height (the owner's word of
                      2026-11-19: high enough for now; raise this one number for a higher jump, and his legs tuck by the same arc) */
+const DOGSNIFF=[0.7,0.3,0.06];   /* sniffing, in radians: his neck let down, his head tipped down, and how far his nose bobs */
 const DOGDIG=70;   /* ms a scrape of his fore paws takes a turn, his card's (drawBeagle's dig) */
 function dogMore(B,P,held,t){
   const S=B.userData.skel,J=B.userData.joints,U=B.userData,px=0.92/32;if(!S||!J)return;
   const dig=!!(P&&P.dig)&&held==="stand",hop=P&&isFinite(P.lift)&&P.lift>0?Math.min(1,P.lift/DOGHOP):0;
+  /* his nose to the ground (mq-v287, dogPose's sniff, a step of his routines): his neck and head let down as far as for a
+     hole and a little more, and his nose working, a small quick bob, as his card's head bobs */
+  if(P&&P.sniff&&held==="stand"&&!dig){J.neck.rotation.x+=DOGSNIFF[0];J.head.rotation.x+=DOGSNIFF[1]+DOGSNIFF[2]*Math.sin(t/110);}
   if(dig){const a=Math.sin(t/DOGDIG);J.neck.rotation.x+=0.55;J.head.rotation.x+=0.25;
     [["fore_l","wrist_l",a],["fore_r","wrist_r",-a]].forEach(([hp,kn,k])=>{J[hp].rotation.x=-0.35+0.45*k;J[kn].rotation.x=0.55*(1-k)/2;});}
   if(hop){S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.x=-1.4*hop;J[kn].rotation.x=1.9*hop;}
@@ -2869,7 +2873,7 @@ function t3DogBodies(dt){
     /* how pricked his ears should be (mq-v284, dogEars), and how fast he pricks them, by his personality */
     {const pe=typeof personaOf==="function"?personaOf(cr):null,close=Math.hypot(cr.fx-px,cr.fy-py)<=2.5,
        excited=!!(P.howl||P.happy||P.love||(cr.metT&&nw-cr.metT<2500));
-      let aim=excited?1:(close&&!B.userData.away?0.75:0.35);if(pe==="aloof")aim=Math.min(aim,0.55);
+      let aim=excited?1:(P.sniff||(close&&!B.userData.away)?0.75:0.35);   /* nose down on a scent, his ears are as keen as when you stand near (mq-v287) */if(pe==="aloof")aim=Math.min(aim,0.55);
       B.userData.earAim=aim;B.userData.earSpeed=EARSPRING[pe]||EARSPRING.patient;B.userData.dt=dt;
       /* which way he listens (mq-v285): toward you, from -1 (his left) to 1 (his right), as his head faces */
       {const yw=B.userData.yaw||0,dx=px+0.5-(cr.fx+0.5),dz=py+0.5-(cr.fy+0.5),ang=Math.atan2(dx,dz)-yw;B.userData.earLook=Math.sin(ang);}}
