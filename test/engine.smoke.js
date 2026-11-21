@@ -14411,6 +14411,39 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (sunk) P.push('walking along, a foot goes into the ground in ' + sunk + ' frame(s)');
               if (arm > 20) P.push('walking, his arms swing ' + Math.round(arm) + ' degrees from hanging straight down, a run\'s swing, not a walk\'s');
               if (leg > 25) P.push('walking, his legs reach ' + Math.round(leg) + ' degrees from straight down, a run\'s stride, not a walk\'s'); }
+            /* D · THE PETAL MOMENT, ON HIS BODY (mq-v286): still on the bridge in season, his card raises a petal and says the
+                   line (petalMoment); his body squats and reaches to the deck, comes up with a petal and holds it up by his face,
+                   turning his head to look at it. Swept by the time the moment has run (bodyPetal), never by the clock: at the
+                   bottom of the reach his hand is below half its standing height, his feet still on the ground, and the petal is in
+                   his hand; held up, his hand is at his head's height, the petal at it, and his head turned toward it more than
+                   when he stands; over, he stands as he stood, the petal put away. Then through the frame (t3Body), as the engine
+                   says the moment began: a moment begun 3 seconds ago shows him holding it, and a step ends it. */
+            { if (typeof bodyPetal !== 'function') P.push('his body has no petal moment, so on the bridge in season his card raises a petal and his body stands there');
+              else { const pose = () => t3BodyPose(B, 0, false), hy = n => at(n).y - B.position.y, JH = B.getObjectByName('head');
+                const petalAt = () => { const q = B.userData.petal; if (!q || !q.visible) return null; q.updateWorldMatrix(true, true); const c = new THREE.Box3().setFromObject(q).getCenter(new THREE.Vector3()); return c; };
+                const looks = c => { const h = at('head'), f = new THREE.Vector3(0, 0, 1).applyQuaternion(JH.getWorldQuaternion(new THREE.Quaternion())); return f.dot(c.clone().sub(h).normalize()); };
+                const grounded = when => feet.forEach((f, i) => { const h = sole(f) - B.position.y; if (Math.abs(h) > 0.01) P.push(when + ', his ' + (i ? 'right' : 'left') + ' foot is ' + (h > 0 ? 'off' : 'in') + ' the ground by ' + Math.abs(h).toFixed(3)); });
+                bodyPetal(B, -1, pose); const w0 = hy('wrist_r'), h0 = hy('head'), sp0 = B.getObjectByName('spine').rotation.x;
+                bodyPetal(B, PETALBEND, pose);
+                if (!(hy('wrist_r') < w0 * 0.5)) P.push('reaching for the petal, his hand comes down only to ' + Math.round(hy('wrist_r') / w0 * 100) + '% of its standing height, nowhere near the deck');
+                grounded('reaching for the petal');
+                if (!petalAt()) P.push('at the bottom of his reach there is no petal in his hand');
+                bodyPetal(B, PETALBEND + PETALRISE + 1500, pose); const c = petalAt(), wh = hy('wrist_r');
+                if (!c) P.push('holding the petal up, there is no petal in his hand');
+                else { if (wh < 0.85 * h0) P.push('holding the petal up, his hand is at ' + Math.round(wh / h0 * 100) + '% of his head\'s height, not up by his face');
+                  if (Math.abs(c.y - B.position.y - h0) > 0.25 * h0) P.push('holding the petal up, the petal is not at his head\'s height');
+                  const held = looks(c); bodyPetal(B, -1, pose); const stood = looks(c);
+                  if (!(held > stood + 0.2)) P.push('holding the petal up, his head is not turned to look at it (' + held.toFixed(2) + ' against ' + stood.toFixed(2) + ' standing)'); }
+                bodyPetal(B, -1, pose);
+                if (B.userData.petal && B.userData.petal.visible) P.push('the moment over, the petal is still in his hand');
+                if (Math.abs(hy('wrist_r') - w0) > 0.002 || Math.abs(hy('head') - h0) > 0.002 || B.getObjectByName('spine').rotation.x !== sp0) P.push('the moment over, he does not stand as he stood before it');
+                grounded('the moment over');
+                const kp = { pm: petalMoment, mv: moving };
+                try { moving = false; petalMoment = true; t3Body(); B.userData.petalT = Date.now() - 3000; t3Body();
+                  if (!petalAt() || hy('wrist_r') < 0.85 * hy('head')) P.push('in the frame, a petal moment begun 3 seconds ago does not show him holding the petal up');
+                  moving = true; t3Body();
+                  if (petalAt() || B.userData.petalT) P.push('in the frame, a step does not end the petal moment');
+                } finally { petalMoment = kp.pm; moving = kp.mv; t3Body(); } } }
             /* C · A WALL BETWEEN HIM AND THE CAMERA DOES NOT HIDE HIM, as it never hides his card: his parts painted one colour
                    for a frame, counted on the screen with no wall, then with a wall-sized block standing between him and the
                    camera, taller than the line from the camera over his head.
