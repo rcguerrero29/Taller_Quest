@@ -2453,6 +2453,19 @@ const DOGCARDPAINT=Object.freeze({beagle:Object.freeze({body:"#F6F2E8",coat:"#E8
    His body is painted as his card is: the beagle white with his lemon markings (DOGCARDPAINT, DOGPART), every other
    breed all over in his coat ("coat"). Simple rounded parts, the outline first: a barrel as long and as deep as the card's
    body, a skull and a muzzle as the card's head, the legs as thick as the card's, the tail the card's sickle */
+/* A FOLDED EAR IS ONE EAR, BENT (mq-v282), and from mq-v284 its bend may move: earBend lays the ear's points, kept unbent in
+   userData.earRest, over the fold by the angle A. Above the fold line (EARFOLD of his head over the ear's middle) each point is
+   carried round a short curve (EARCURL) and on, forward and down; A of 0 is the ear standing straight, EARBEND the ear folded
+   over. Where the tip ends up is kept (userData.tip) for the checks, and how many times the ear was laid (userData.bends), so a
+   check can see that a still ear costs nothing */
+const EARFOLD=0.3,EARCURL=0.16,EARBEND=2.35;
+function earBend(m,A){const rest=m.userData.earRest,r=m.userData.earR;if(!rest||!r)return;
+  const P=m.geometry.attributes.position,y0=r*EARFOLD,R=r*EARCURL,Lc=R*Math.max(1e-6,A),sA=Math.sin(A),cA=Math.cos(A);let tip=null,top=-Infinity;
+  for(let k=0;k<P.count;k++){let x=rest[k*3],y=rest[k*3+1],z=rest[k*3+2];const oy=y;
+    if(A>0&&y>y0){const u=y-y0,rho=R+z;   /* the geometry's +z is the back of the ear; it folds toward -z, the front */
+      if(u<=Lc){const th=u/R;y=y0+rho*Math.sin(th);z=rho*Math.cos(th)-R;}else{const e=u-Lc;y=y0+rho*sA+e*cA;z=rho*cA-R-e*sA;}}
+    P.setXYZ(k,x,y,z);if(oy>top){top=oy;tip=[x,y,z];}}
+  P.needsUpdate=true;m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();m.userData.tip=tip;m.userData.bend=A;m.userData.bends=(m.userData.bends||0)+1;}
 function dogMake(skel,lk){
   const root=new THREE.Group();root.name="dogbody";const J={};
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
@@ -2544,23 +2557,18 @@ function dogMake(skel,lk){
        fold line (EARFOLD of his head over the ear's middle) every point is carried round a short curve (EARCURL) and on, forward
        and down, by EARBEND in all, the pink inside bent with the coat, so the standing half runs into the hanging half without
        a seam and its tip hangs lowest in front. Where the ear's tip ends up is kept on it (userData.tip) for the checks */
-    const EARFOLD=0.3,EARCURL=0.16,EARBEND=2.35;
-    const shell=(col,w,h,d,lo,bend)=>{const g=new THREE.SphereGeometry(r,14,bend?24:10,0,Math.PI,Math.PI*lo,Math.PI*(0.8-lo)),P=g.attributes.position;
-      const y0=r*EARFOLD,R=r*EARCURL,A=EARBEND,Lc=R*A,sA=Math.sin(A),cA=Math.cos(A);let tip=null,top=-Infinity;
-      for(let k=0;k<P.count;k++){const t=(P.getY(k)/r+1)/2,oy=P.getY(k);
-        let x=P.getX(k)*(1-0.62*Math.pow(t,1.6))*w,y=oy*h,z=P.getZ(k)*d;   /* tapered toward the tip, then sized: the bend is made at its true size */
-        if(bend&&y>y0){const u=y-y0,rho=R+z;   /* the geometry's +z is the back of the ear; it folds toward -z, the front */
-          if(u<=Lc){const th=u/R;y=y0+rho*Math.sin(th);z=rho*Math.cos(th)-R;}
-          else{const e=u-Lc;y=y0+rho*sA+e*cA;z=rho*cA-R-e*sA;}}
-        P.setXYZ(k,x,y,z);if(oy>top){top=oy;tip=[x,y,z];}}
-      P.needsUpdate=true;g.computeVertexNormals();const m=part("head",g,"ear",col,0,0,0);m.material.side=THREE.DoubleSide;m.userData.tip=tip;return m;};
+    const shell=(col,w,h,d,lo,bend)=>{const g=new THREE.SphereGeometry(r,14,bend?24:10,0,Math.PI,Math.PI*lo,Math.PI*(0.8-lo)),P=g.attributes.position,rest=new Float32Array(P.count*3);
+      for(let k=0;k<P.count;k++){const t=(P.getY(k)/r+1)/2;   /* tapered toward the tip, then sized: the bend is made at its true size */
+        rest[k*3]=P.getX(k)*(1-0.62*Math.pow(t,1.6))*w;rest[k*3+1]=P.getY(k)*h;rest[k*3+2]=P.getZ(k)*d;}
+      const m=part("head",g,"ear",col,0,0,0);m.material.side=THREE.DoubleSide;m.userData.earRest=rest;m.userData.earR=r;
+      earBend(m,bend?EARBEND:0);if(bend)m.userData.foldable=true;return m;};
     const upEar=(x,y,bend)=>{const o=shell(earCol,0.66,1.12,0.34,0,bend),n=shell(inPink,0.5,0.94,0.22,0.08,bend);
       [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});
       n.userData.inside=true;n.material.side=THREE.BackSide;   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
       if(bend)o.userData.fold=true;return o;};
     if(b.ear==="up")upEar(0.72,1.15,lk.ears==="mixed"&&sd<0);
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
-      const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);coat(m,"ear",64,32);}});
+      const m=part("head",ball(r,14,10),"ear",earCol,sd*r*0.93,-r*0.5,-r*0.3,[0.16,0.86,0.4]);m.rotation.set(0.12,0,sd*0.16);m.userData.dropEar=sd;coat(m,"ear",64,32);}});
   /* the legs: each from its top joint to its middle joint and on to the paw, in the body's paint, and the paw an oval under
      the paw joint, its sole on the ground (the joint's rest height under it) and a little ahead */
   skel.legs.forEach(([hp,kn,an])=>{
@@ -2670,6 +2678,7 @@ function t3DogPose(B,P,phase,moving,groundAt){
   t3BodyPose(B,phase,moving&&held==="stand",groundAt);
   dogHold(B,held,howl,P&&isFinite(P.t)?P.t:0);
   dogMore(B,P,held,P&&isFinite(P.t)?P.t:0);
+  dogEars(B,P,held,moving,phase);
   const J=B.userData.joints,t1=J.tail_1,tip=J.tail_tip;if(!t1||!tip)return;
   /* turned about its own fore-and-aft line, the tip goes to his side by its height over that line times the sine; lying
      down it swings two fifths as far, as his card's does */
@@ -2711,6 +2720,28 @@ function dogHold(B,held,howl,t){
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}
+/* HIS EARS MOVE (mq-v284; the owner's confirmed goals of 2026-11-20). Each dog's ears carry one number, how pricked they are
+   (userData.ear, 0 laid back, 1 pricked), sprung toward the aim t3DogBodies sets each frame: pricked when he howls, is happy,
+   shows his love or has just been met; pricked a little when you stand near and he is not facing away; at ease otherwise; laid
+   back lying down. The spring is a little loose (EARDAMP), so an ear overshoots and settles as a real one does, and its speed is
+   his personality (EARSPRING): an eager dog pricks fast, an aloof one slowly and never all the way. Now and then an ear twitches.
+   On the ears, by kind:
+     · a folded ear unfolds as he pricks it (earBend, re-laid only when its bend moves, so a still ear costs nothing);
+     · an upright ear tips back a little at ease and stands when pricked;
+     · a drop ear lifts and spreads a little when pricked, and swings as he trots */
+const EARSPRING=Object.freeze({eager:14,patient:8,aloof:3}),EARDAMP=0.45,EARTWITCH=[3000,7000],EARTWITCHKICK=0.25;
+function dogEars(B,P,held,moving,phase){const U=B.userData,dt=Math.min(0.05,Math.max(0,U.dt||0)),now=P&&isFinite(P.t)?P.t:0;
+  const aim=held==="lay"?0:(typeof U.earAim==="number"?U.earAim:0.35),k=U.earSpeed||EARSPRING.patient;
+  let e=typeof U.ear==="number"?U.ear:aim,v=U.earV||0;
+  if(dt>0){v+=(k*k*(aim-e)-2*EARDAMP*k*v)*dt;e+=v*dt;}
+  if(U.twitchAt===undefined)U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);
+  if(dt>0&&now>=U.twitchAt){if(held!=="lay")v+=k*EARTWITCHKICK;U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);}
+  if(Math.abs(e-aim)<0.002&&Math.abs(v)<0.002){e=aim;v=0;}
+  U.ear=e;U.earV=v;const perk=Math.max(0,Math.min(1.15,e)),up=Math.max(0,Math.min(1,(perk-0.4)/0.6));
+  B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
+    if(u.foldable){const A=EARBEND*(1-0.9*up);if(Math.abs((u.bend||0)-A)>0.01)earBend(o,A);}
+    if(u.upEar&&held!=="lay")o.rotation.x+=-0.3*(1-Math.min(1,perk));
+    if(u.dropEar){const sd=u.dropEar,lift=Math.max(0,perk-0.5);o.rotation.set(0.12-0.35*lift,0,sd*(0.16+0.3*lift)+(moving?sd*0.12*Math.sin(phase*2):0));}});}
 /* THE REST OF HIS POSES (mq-v278, the owner's confirmed goal of 2026-11-19: his body in every pose his card draws), laid over
    the hold dogHold set, each read off the same pose and clock his card reads:
      · DIGGING, standing: his head down to the ground and his fore paws scraping turn about, as fast as his card's paw
@@ -2790,6 +2821,11 @@ function t3DogBodies(dt){
     /* he is walking from his first step until a moment after his last (DOGREST): his record says he moves only while
        each step lasts, and between two steps of one walk his legs would otherwise snap to standing and back */
     B.userData.still=cr.moving?0:(B.userData.still===undefined?Infinity:B.userData.still+(dt>0?dt:0));
+    /* how pricked his ears should be (mq-v284, dogEars), and how fast he pricks them, by his personality */
+    {const pe=typeof personaOf==="function"?personaOf(cr):null,close=Math.hypot(cr.fx-px,cr.fy-py)<=2.5,
+       excited=!!(P.howl||P.happy||P.love||(cr.metT&&nw-cr.metT<2500));
+      let aim=excited?1:(close&&!B.userData.away?0.75:0.35);if(pe==="aloof")aim=Math.min(aim,0.55);
+      B.userData.earAim=aim;B.userData.earSpeed=EARSPRING[pe]||EARSPRING.patient;B.userData.dt=dt;}
     t3DogPose(B,P,B.userData.phase||0,B.userData.still<DOGREST,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
     shown.add(cr);});
   T3.dogShown=shown;return shown;}
