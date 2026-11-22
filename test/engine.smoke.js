@@ -6823,6 +6823,134 @@ function findChromium() {
   leashDeck.out.forEach(l => console.log('  LEASH: ' + l));
   fails.push(...leashDeck.P.map(m => 'the leash in 3D: ' + m));
 
+  /* ---- FASTER BODIES: THE HEAD PAINTED ONCE, AND BODIES KEPT BETWEEN ROOMS (mq-v293) ----
+     What was asked, confirmed on 2026-11-22: making a person's body is faster, because the paint on the head (the skin, the
+     hair that lies on it, a beard's shadow) is painted once, after all its layers are known, and not again for every layer;
+     a body looks exactly as before, pixel for pixel. And a room's named people keep their bodies when he leaves it, so coming
+     back shows them as bodies from the first frame, no card standing in; kept bodies are bounded, the one shown longest ago
+     thrown away first, and a body whose look changed while he was away is made again. Asked of bodies made here from looks
+     typed here (their pictures' fingerprints taken from mq-v292, before the change), of the world's own people, and of eight
+     people stood, for these frames only, in each of four rooms; the numbers typed here. Every frame is drawn by draw3d; the
+     page's idle moments are run at once, so the bodies are made when the frame asks. Where you stand, the camera, the
+     people and every list touched are put back. */
+  const fastBodies = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof THREE === 'undefined' || typeof bodyMake !== 'function' || typeof t3PeopleBodies !== 'function' || typeof draw3d !== 'function' || typeof camSet !== 'function' || typeof PEOPLEON === 'undefined') {   /* a world with no 3D camera loads no 3D library: nothing here to make */ out.push('this shell has no bodies in a 3D camera, so faster bodies were not asked'); return { P, out }; }
+    const ONCE = 1, KEEP = 24, BACK = 1, ROOMS = 4, EACH = 8, FRAME = 1000 / 60;
+    const fnv = (a, h) => { h = 2166136261; for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 16777619) >>> 0; } return h; };
+    /* ---- 1 · PAINTED ONCE, THE SAME PIXELS ---- */
+    const base = { skin: '#C68B59', hair: '#2B1B12', shirt: '#3C6E9F', outfit: 'casual', pattern: 'plain' };
+    /* the look, and the fingerprints of its head's paint and of its parts as mq-v292 made them (measured 2026-11-22, before the change) */
+    const TYPED = [
+      ['cap hair and a beard', { ...base, style: 'cap', body: { beard: 'beard' } }, 3743275805, 2459211004],
+      ['braids and a beard', { ...base, style: 'braids', body: { beard: 'beard' } }, 3217614645, 2700081884],
+      ['a mullet and a beard', { ...base, style: 'mullet', body: { beard: 'beard' } }, 914405977, 4036678401],
+      ['a bald head and a beard', { ...base, style: 'bald', body: { beard: 'beard' } }, 3548820805, 1360020201],
+      ['a fade, an oval face and a goatee', { ...base, style: 'fade', body: { face: 'oval', beard: 'goatee' } }, 184842813, 3171321598],
+      ['a mullet, a square face and a moustache', { ...base, style: 'mullet', body: { face: 'square', beard: 'moustache' } }, 1616035617, 389615295]];
+    const gc = HTMLCanvasElement.prototype.getContext, RD = Date, pn = performance.now.bind(performance);
+    const make = lk => { const Ch = bodyChoicesOf(lk.body); let sheets = 0, B = null, ms = null;
+      HTMLCanvasElement.prototype.getContext = function () { if (this.width === 256 && this.height === 128) sheets++; return gc.apply(this, arguments); };
+      try { const t0 = pn(); B = bodyMake(bodySkeleton('person', Ch), lk, Ch); ms = pn() - t0; } finally { HTMLCanvasElement.prototype.getContext = gc; }
+      let skull = 0, sk = null; const parts = [];
+      B.traverse(o => { if (!o.isMesh) return; if (o.userData.painted) sk = o;
+        parts.push((o.userData.wears || '') + ':' + o.material.color.getHexString() + ':' + (o.userData.base ? o.userData.base.getHexString() : '') + ':' + (o.material.map ? o.material.map.image.width + 'x' + o.material.map.image.height : '') + ':' + o.visible); });
+      if (sk) { const c = sk.material.map.image; skull = fnv(c.getContext('2d').getImageData(0, 0, c.width, c.height).data); }
+      const r = { sheets, ms, skull, parts: fnv(new TextEncoder().encode(parts.join('|'))), painted: !!sk }; t3Dispose(B); return r; };
+    const times = [];
+    for (const [name, lk, wantSkull, wantParts] of TYPED) {
+      let r; try { r = make(lk); } catch (e) { P.push('a body with ' + name + ' could not be made at all (' + e.message + ')'); continue; }
+      out.push(name + ': its head painted ' + r.sheets + ' time(s), fingerprints ' + r.skull + ' / ' + r.parts + ', made in ' + r.ms.toFixed(1) + ' ms');
+      if (r.sheets > ONCE) P.push('making the body of a person with ' + name + ', the paint on their head is painted ' + r.sheets + ' times, where once is enough: the body takes longer to appear than it needs to');
+      if (!r.painted) P.push('a person with ' + name + ' has no paint on their head at all: the skin shows where their hair and beard lie');
+      else if (r.skull !== wantSkull) P.push('a person with ' + name + ' looks different from before: the paint on their head is not the paint mq-v292 laid (fingerprint ' + r.skull + ', where it was ' + wantSkull + ')');
+      if (r.parts !== wantParts) P.push('a person with ' + name + ' looks different from before: their parts or their colours are not those mq-v292 made (fingerprint ' + r.parts + ', where it was ' + wantParts + ')');
+      times.push([name, r.ms]); }
+    /* the world's own people: the person you steer and each named one, painted once too */
+    const own = [['the person you steer', look]];
+    [...PEOPLEON].forEach(k => { for (const id of Object.keys(WORLDS)) { const n = WORLDS[id].npcs.find(q => q.npc === k); if (n) { const lk = npcWhimsy(n); own.push(['a named person of this world (' + k.length + ' letters)', { ...lk, body: bodyChoicesOf(lk.body) }]); break; } } });
+    for (const [name, lk] of own) { let r; try { r = make(lk); } catch (e) { P.push('the body of ' + name + ' could not be made (' + e.message + ')'); continue; }
+      if (r.sheets > ONCE) P.push('making the body of ' + name + ', the paint on their head is painted ' + r.sheets + ' times, where once is enough');
+      times.push([name, r.ms]); }
+    if (!times.length) P.push('no body could be made, so how long one takes was not measured');
+    else { const slow = times.reduce((a, b) => b[1] > a[1] ? b : a); out.push('the slowest body to make: ' + slow[0] + ', ' + slow[1].toFixed(1) + ' ms, against a frame of ' + FRAME.toFixed(1) + ' ms' + (slow[1] > FRAME ? ': over a frame (reported, not asked)' : '')); }
+
+    /* ---- 2 · KEPT BETWEEN ROOMS ---- */
+    if (!BODYON) { out.push('this world takes no person\'s body, so bodies kept between rooms were not asked'); return { P, out }; }
+    const free = (w, x, y) => w.grid[y] && w.grid[y][x] !== undefined && !SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N' && !stairLift(w, x, y);
+    /* four rooms, each with a square for you and EACH free squares within three of it */
+    const rooms = [];
+    for (const id of Object.keys(WORLDS)) { if (rooms.length >= ROOMS) break; const w = WORLDS[id]; let got = null;
+      for (let y = 0; y < w.H && !got; y++) for (let x = 0; x < w.W && !got; x++) { if (!free(w, x, y)) continue; const sq = [];
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if ((dx || dy) && free(w, x + dx, y + dy)) sq.push([x + dx, y + dy]);
+        if (sq.length >= EACH) got = { id, at: [x, y], sq: sq.slice(0, EACH) }; }
+      if (got) rooms.push(got); }
+    if (rooms.length < ROOMS) { P.push('this world has ' + rooms.length + ' rooms with room for ' + EACH + ' people near you, under the ' + ROOMS + ' asked, so bodies kept between rooms were not measured'); return { P, out }; }
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, moving, cam: camMode, hidden: el.hidden, ok: bodyScreenOK, ric: window.requestIdleCallback, bm: bodyMake, dp: drawPerson,
+      on: T3.peopleOn, wait: T3.peopleWait, shown: T3.peopleShown, idle: T3.peopleIdle, tick: T3.pplTick, names: [...PEOPLEON], drone: DRONE.on };
+    const planted = [], keys = [];
+    let made = 0; const cards = new Set();
+    try {
+      el.hidden = false; camSet('3d'); if (typeof sizeCanvas === 'function') sizeCanvas(); DRONE.on = false;
+      bodyScreenOK = () => true; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; };
+      bodyMake = function () { made++; return keep.bm.apply(this, arguments); };
+      drawPerson = function (g, sx, sy, lk, o) { if (o && keys.includes(o.who)) cards.add(o.who); return keep.dp.apply(this, arguments); };
+      if (keep.on) keep.on.forEach(Bd => { Bd.visible = false; });   /* the world's own bodies, out of these frames; its next frame shows them again */
+      T3.peopleOn = new Map(); T3.peopleWait = []; T3.peopleShown = new Set(); T3.peopleIdle = false;
+      PEOPLEON.clear();
+      const shirts = ['#A23B3B', '#3B7A57', '#C9A227', '#5B4B8A', '#2E6F8E', '#B5651D', '#6B8E23', '#8B3A62'];
+      rooms.forEach((rm, i) => rm.sq.forEach(([x, y], j) => { const key = '__fb' + i + '_' + j; keys.push(key); PEOPLEON.add(key);
+        NPCLOOK[key] = { ...base, shirt: shirts[j], style: ['cap', 'buzz', 'pony', 'fade'][(i + j) % 4] }; if (typeof npcLookCache === 'object') delete npcLookCache[key];
+        const n = { key, npc: key, x, y, fx: x, fy: y, hx: x, hy: y, q: [], still: true, mv: null, mt: 0, wnext: Infinity, face: 1 }; WORLDS[rm.id].npcs.push(n); planted.push([rm.id, n]); rm.n = rm.n || []; rm.n.push(n); }));
+      const go = rm => { world = rm.id; px = fx = rm.at[0]; py = fy = rm.at[1]; moving = false; };
+      const frame = () => { cards.clear(); const t0 = pn(); draw3d(); return pn() - t0; };
+      const bodies = rm => rm.n.filter(n => T3.peopleShown.has(n) && T3.peopleOn.get(n) && T3.peopleOn.get(n).visible);
+      const visit = rm => { go(rm); for (let k = 0; k < 3; k++) frame(); return bodies(rm).length; };
+      const [A, B, C, D] = rooms;
+      const a1 = visit(A); if (a1 < EACH) P.push('standing among ' + EACH + ' named people, only ' + a1 + ' became bodies, so what is kept could not be asked');
+      const first = new Map(A.n.map(n => [n, T3.peopleOn.get(n)]));
+      visit(B);
+      /* back into the first room: its people as bodies in the first frame, and not one of them made again */
+      go(A); made = 0; const ms = frame(); const back = bodies(A).length, again = A.n.filter(n => T3.peopleOn.get(n) && T3.peopleOn.get(n) !== first.get(n)).length;
+      out.push('back in the first room: ' + back + ' of ' + EACH + ' people bodies in the first frame (' + ms.toFixed(1) + ' ms), ' + made + ' bodies made for it, ' + A.n.filter(n => cards.has(n.key)).length + ' cards');
+      if (back < EACH) P.push('coming back into a room, ' + (EACH - back) + ' of its ' + EACH + ' named people stood as cards in the first ' + (BACK === 1 ? 'frame' : BACK + ' frames') + ' back, where they were bodies when you left');
+      if (again || made) P.push('coming back into a room, ' + Math.max(again, made) + ' of its people\'s bodies were made again, where they were kept');
+      if (A.n.some(n => cards.has(n.key) && bodies(A).includes(n))) P.push('coming back into a room, a person who still had a body was also drawn as a card');
+      /* the bound: two more rooms. B was shown longest ago (A was shown again after it), so B goes first */
+      visit(C); visit(D);
+      const kept = T3.peopleOn.size, lost = rm => rm.n.filter(n => !T3.peopleOn.has(n)).length;
+      out.push('after four rooms of ' + EACH + ': ' + kept + ' bodies kept (the bound ' + KEEP + '); thrown away from each room: ' + [A, B, C, D].map(lost).join(', '));
+      if (kept > KEEP) P.push('after walking through ' + ROOMS + ' rooms of ' + EACH + ' named people, ' + kept + ' bodies are kept, more than ' + KEEP + ': the memory they take keeps growing with every room');
+      if (kept < KEEP) P.push('after walking through ' + ROOMS + ' rooms of ' + EACH + ' named people, only ' + kept + ' bodies are kept, fewer than ' + KEEP + ': rooms left recently will show cards again when he comes back');
+      if (lost(B) !== EACH || lost(A) || lost(C) || lost(D)) P.push('the bodies thrown away to stay within the bound were not those of the room seen longest ago: ' + [A, B, C, D].map(lost).join(', ') + ' were thrown away from the four rooms, where all ' + EACH + ' of the second room\'s were expected');
+      { let stray = 0; T3.scene.traverse(o => { if (o.name === 'body' && o !== T3.body && ![...T3.peopleOn.values()].includes(o) && !(keep.on && [...keep.on.values()].includes(o))) stray++; });
+        if (stray) P.push(stray + ' bodies thrown away are still in the scene, taking memory, though nobody is shown with them'); }
+      /* a look changed while he was away: made again, in the new clothes */
+      visit(C); const ch = D.n[0], old = T3.peopleOn.get(ch); NPCLOOK[ch.key] = { ...NPCLOOK[ch.key], shirt: '#F0F0F0' }; if (typeof npcLookCache === 'object') delete npcLookCache[ch.key];
+      visit(D); const nb = T3.peopleOn.get(ch);
+      if (!nb || nb === old) P.push('a person whose clothes changed while you were away still wears their old clothes when you come back: their kept body was not made again');
+      else { const torso = []; nb.traverse(o => { if (o.isMesh && o.userData.wears === 'shirt') torso.push(o.userData.base.getHexString()); });
+        if (!torso.includes(npcWhimsy(ch).shirt.slice(1).toLowerCase())) P.push('a person whose clothes changed while you were away came back in a body that does not wear the new shirt'); }
+      /* somebody gone from their room for good while he is away: their body is not kept for nothing */
+      const leaver = C.n[1], wc = WORLDS[C.id]; wc.npcs.splice(wc.npcs.indexOf(leaver), 1); frame();
+      if (T3.peopleOn.has(leaver)) P.push('a person who left their room for good keeps a body in memory, though they stand in no room');
+      wc.npcs.push(leaver);
+    } finally {
+      planted.forEach(([id, n]) => { const w = WORLDS[id], i = w.npcs.indexOf(n); if (i >= 0) w.npcs.splice(i, 1); });
+      if (T3.peopleOn && T3.peopleOn !== keep.on) T3.peopleOn.forEach(Bd => { if (Bd.parent) Bd.parent.remove(Bd); t3Dispose(Bd); });
+      keys.forEach(k => { delete NPCLOOK[k]; if (typeof npcLookCache === 'object') delete npcLookCache[k]; });
+      PEOPLEON.clear(); keep.names.forEach(k => PEOPLEON.add(k));
+      T3.peopleOn = keep.on; T3.peopleWait = keep.wait; T3.peopleShown = keep.shown; T3.peopleIdle = keep.idle; T3.pplTick = keep.tick;
+      bodyMake = keep.bm; drawPerson = keep.dp; bodyScreenOK = keep.ok; window.requestIdleCallback = keep.ric; DRONE.on = keep.drone;
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving;
+      camSet(keep.cam); el.hidden = keep.hidden; if (typeof sizeCanvas === 'function') sizeCanvas();
+    }
+    return { P, out };
+  });
+  fastBodies.out.forEach(l => console.log('  FASTER BODIES: ' + l));
+  fails.push(...fastBodies.P.map(m => 'faster bodies: ' + m));
+
   /* ---- OFF THE PARK HE HAS THINGS TO DO: HIS OWN STICK, AND WATER AT A RESTAURANT DOOR ----
      The owner, 2026-09-29, asked for other things to keep him busy: chasing a stick he throws himself, and
      other dog things, chasing another character, going to the bed in the office, howling
@@ -19580,7 +19708,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const frame = () => { painted.card = 0; painted.mark = 0; const ok = draw3d(); return ok; };
         const seen = [];
         const look = () => { const B = T3.peopleOn && T3.peopleOn.get(n); return { ok: !T3.fail, body: !!(B && B.visible && B.parent === T3.scene && T3.peopleShown && T3.peopleShown.has(n)), card: painted.card > 0, B }; };
-        frame(); const first = look(); first.made = T3.peopleOn ? T3.peopleOn.size : 0;   /* in that same moment: made while idle, so none yet */
+        /* in that same moment: made while idle, so none yet. Counted of the people of this world only: from mq-v293 the bodies of
+           the room the page stood in before are kept when it leaves (KEPT BETWEEN ROOMS), and are not made here */
+        frame(); const first = look(); first.made = T3.peopleOn ? [...T3.peopleOn.keys()].filter(q => w.npcs.includes(q)).length : 0;
         /* the page's idle moments make the body: give it a few */
         for (let k = 0; k < 12 && !look().body; k++) { await new Promise(r => setTimeout(r, 120)); frame(); }
         const s = look(); seen.push(first, s);
