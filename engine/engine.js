@@ -238,8 +238,14 @@ function wanderCuts(id){
 /* a walker taken away in the middle of a step gives back the square it had claimed (mq-v275), unless somebody stands there */
 function wanderRelease(w,n){if(!w||!n||!n.mv)return;const[x,y]=n.mv;
   if(w.grid[y]&&w.grid[y][x]==="N"&&!w.npcs.some(m=>m!==n&&m.x===x&&m.y===y))w.grid[y][x]=w.rows[y][x];}
-function whoAt(id,x,y){const w=WORLDS[id];if(!w)return null;
-  return (w.npcs||[]).find(n=>n.x===x&&n.y===y)||null;}
+/* EVERY "N" ON THE GRID HAS SOMEBODY BEHIND IT. A walker marks the square it is stepping onto when the step
+   starts (mq-v275), but stays at its old square until the step ends, so for those WANDER_MS there was an "N"
+   that nobody stood on. The readers that let a walker through (the reach audit, a door's step-out side) asked
+   whoAt, heard "nobody", and read the square as a wall: in a room whose one gap a walker was stepping into,
+   the audit reported the tiles behind the gap as cut off, a few runs in a hundred. So the square a walker is
+   stepping onto answers with that walker; somebody standing there still comes first. */
+function whoAt(id,x,y){const w=WORLDS[id];if(!w)return null;const L=w.npcs||[];
+  return L.find(n=>n.x===x&&n.y===y)||L.find(n=>n.mv&&n.mv[0]===x&&n.mv[1]===y)||null;}
 function wanderUpdate(dt){
   const w=CW();if(!w||!$("card").hidden||!$("reader").hidden)return;
   const now=wNow();
@@ -937,6 +943,12 @@ function bodyScreenOK(){return typeof BODYSCREEN!=="number"||!(BODYSCREEN>0)||Ma
    does not hold is nothing, and a world that says nothing has every one of its people as a card, as before: closed unless a
    world opens it */
 const PEOPLEON=new Set(BODYON&&typeof PEOPLETAKE!=="undefined"&&Array.isArray(PEOPLETAKE)?PEOPLETAKE.filter(k=>typeof k==="string"&&k&&k!=="__proto__"):[]);
+/* WHICH BODIES HAVE A LIGHT BODY STAND IN WHILE THEIR FULL BODY IS MADE (mq-v294; the owner's confirmed goal of 2026-11-22 on the
+   light stand-in body). LIGHTTAKE is the world's own list; `person` is every person PEOPLETAKE names, and the person you steer in
+   any frame his own body is not ready (engine/engine3d.js, grep "THE LIGHT STAND-IN"). Only where the world takes the person's
+   body (BODYON); a name it does not know is nothing, and a world that says nothing has their cards stand in, as before */
+const LIGHTKINDS=Object.freeze(["person"]);
+const LIGHTON=new Set(BODYON&&typeof LIGHTTAKE!=="undefined"&&Array.isArray(LIGHTTAKE)?LIGHTTAKE.filter(k=>LIGHTKINDS.includes(k)):[]);
 const BODYCHOICE=Object.freeze([
   /* each row says where the creator shows it: `group`, one of the groups of CRTABS (grep "THE CREATOR'S TABS") */
   {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"build"},   /* how tall he is; his head stays the same share of him */
