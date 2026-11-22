@@ -1493,11 +1493,17 @@ function bodyMake(skel,lk,build){
     for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();v.multiplyScalar(face(v.x,v.y,v.z)*r);p.setXYZ(i,v.x,v.y,v.z);}
     g.computeVertexNormals();seam(g,64,44);M.skull=part("head",g,"skin",lk.skin,0,hc,0);}
   M.r=r;M.hc=hc;M.hair=lk.hair;
-  /* PAINT IS LAID IN LAYERS: every call adds one and the sheet is painted afresh from them all, lowest `z` first, so the
+  /* PAINT IS LAID IN LAYERS: every call adds one, and the sheet is painted from them all, lowest `z` first, so the
      hair's paint and the beard's (z 1, over the hair's) do not undo each other whichever is called first. Paint that grows
-     from his face (`face`: the beard, round his nose and mouth) is laid where his face is, after the lowering below */
+     from his face (`face`: the beard, round his nose and mouth) is laid where his face is, after the lowering below.
+     PAINTED ONCE (mq-v293; the owner's confirmed goal of 2026-11-22 on faster bodies): until mq-v292 the sheet was painted
+     afresh from every layer each time a layer was added, so a head of three layers was painted three times and only the last
+     painting was kept. Now a call only adds its layer, and the sheet is painted once, by M.paint, after every part and every
+     style has laid its own (the end of bodyMake): the same layers in the same order on the same sheet, so the same pixels,
+     painted once. Nothing reads the sheet before then */
   M.paints=[];
-  M.scalp=(paint,w,h,z,face)=>{const m=M.skull;w=256;h=128;if(paint)M.paints.push({z:z||0,fn:paint,n:M.paints.length,face:!!face});
+  M.scalp=(paint,w,h,z,face)=>{if(paint)M.paints.push({z:z||0,fn:paint,n:M.paints.length,face:!!face});return M.skull;};
+  M.paint=()=>{const m=M.skull,w=256,h=128;if(!M.paints.length)return m;
     const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
     g.fillStyle=new THREE.Color(lk.skin).getStyle();g.fillRect(0,0,w,h);
     const layers=f=>M.paints.filter(L=>L.face===f).sort((a,b)=>a.z-b.z||a.n-b.n).forEach(L=>{g.save();g.fillStyle=new THREE.Color(lk.hair).getStyle();L.fn(g,w,h);g.restore();});
@@ -1611,6 +1617,7 @@ function bodyMake(skel,lk,build){
      darkened the head of anyone standing just in front of him (measured 2026-11-18: 3 to 10% of a named person's pixels; a card in
      front of him the same) */
   root.add(sh);
+  M.paint();   /* his head's sheet, painted once now that every layer is laid (PAINTED ONCE, above) */
   shirtPaint(root,{...lk,body:C});
   root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;root.userData.choices=C;return root;}
 /* HIS SHIRT'S PATTERN ON HIS BODY, as on his card (mq-v273; the owner's confirmed goal of 2026-11-17). The card draws the
@@ -3005,6 +3012,13 @@ function t3DogBodies(dt){
      · WHEN THEIR BODY IS MADE: a few at a time while the page is idle (t3PeopleMake, one body each time the browser says it
        has a moment), the nearest first, so a street of them does not stall the frame they come into view in. Until it is
        made, their card stands in, exactly as before.
+     · KEPT BETWEEN ROOMS (mq-v293; the owner's confirmed goal of 2026-11-22 on faster bodies): a body made in one room is kept,
+       hidden, when he leaves it, so walking back in shows its people as bodies from the first frame, with no card standing in.
+       Until mq-v292 leaving a room threw every body away, and coming back made them again one at a time, their cards first.
+       Bounded as the 3D scenes are (T3CACHE): at most PEOPLEKEEP bodies at once, and past it the bodies of other rooms are
+       thrown away, the one shown longest ago first; the people of the room he is in are never thrown away for it. A body
+       whose look changed while he was away is made again, as before, and the body of someone no longer in their room is
+       thrown away.
      · WHAT THEY ARE MADE FROM: npcWhimsy, the look their card is painted with (the theme's tint on the shirt included), so the
        body wears the card's colours, and its hard hat (mq-v277). A change to the look makes the body again.
      · HOW THEY STAND AND WALK: t3BodyPose, the walk of the person you steer, its pace held to a person's (BODYSTEPS). Walking,
@@ -3019,6 +3033,10 @@ function t3DogBodies(dt){
    people of the other cameras, which draw cards as before. */
 const PEOPLENEAR=8;   /* squares from the camera's focus within which a named person is a body, not a card */
 const PEOPLEMAX=12;   /* the most people who stand as bodies at once */
+/* the most bodies kept at once, shown or kept for a room he has left (KEPT BETWEEN ROOMS, above). The session's number, for the
+   owner's yes: a body was measured at about 1 MB, so 24 is about 24 MB, the people of the room he is in and of the room or two
+   before it (PEOPLEMAX of them stand at once) */
+const PEOPLEKEEP=24;
 /* THEIR MARKS ABOVE THEIR HEADS (the owner's word on the first pictures, 2026-11-17: the marks overlapped the bodies). A card's
    mark is painted from 28 of its 32 pixels up (drawSayMark's lowest row, measured), which is beside a card's head and over a
    body's: the twelve's bodies stand 1.00 to 1.15 tall, against 0.92 to 1.15 for their cards. So a body's marks are lifted until
@@ -3048,7 +3066,7 @@ function t3PeopleMake(){
       /* and their parts leave no mark on the screen: the nearer cards t3BodyThrough draws again over the person you steer are
          drawn only where his parts marked it, so a body that marked it too was painted over by a card behind it (Chema, run
          2026-11-17-claude-5d3e: a card one square behind a named body covered 2,006 to 2,570 of its pixels on a laptop) */
-      B.userData.key=e.key;B.visible=false;B.scale.setScalar(T3PERSON/0.92);B.updateMatrixWorld(true);
+      B.userData.key=e.key;B.userData.world=world;B.userData.seen=T3.pplTick||0;B.visible=false;B.scale.setScalar(T3PERSON/0.92);B.updateMatrixWorld(true);
       B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;   /* the top of this body, standing, at the street's scale */
       T3.scene.add(B);on.set(e.n,B);}
     catch(err){t3Note("person's body",err);(T3.peopleBad||(T3.peopleBad=new Set())).add(e.n);}
@@ -3063,8 +3081,16 @@ function t3PeopleBodies(dt){
       const x=n.fx===undefined?n.x:n.fx,y=n.fy===undefined?n.y:n.fy,d=Math.hypot(x-qx,y-qy),B=on.get(n);
       return{n,x,y,d,ok:d<=PEOPLENEAR+(B&&B.visible?BODYHYST:0)};})
     .filter(e=>e.ok).sort((a,b)=>a.d-b.d).slice(0,PEOPLEMAX);
-  const keep=new Set(want.map(e=>e.n));
-  [...on.keys()].forEach(n=>{if(keep.has(n))return;if(!w.npcs.includes(n))drop(n);else on.get(n).visible=false;});
+  const keep=new Set(want.map(e=>e.n)),tick=T3.pplTick=(T3.pplTick||0)+1;
+  /* not wanted this frame: hidden and kept, in this room or in the room they stand in (KEPT BETWEEN ROOMS); thrown away when
+     they stand in no room any more */
+  [...on.keys()].forEach(n=>{if(keep.has(n))return;const B=on.get(n),home=WORLDS[B.userData.world];
+    if(w.npcs.includes(n)){B.userData.world=world;B.visible=false;}
+    else if(home&&home.npcs.includes(n))B.visible=false;
+    else drop(n);});
+  /* past PEOPLEKEEP, the bodies of other rooms go, the one shown longest ago first */
+  if(on.size>PEOPLEKEEP){const away=[...on.keys()].filter(n=>!w.npcs.includes(n)).sort((a,b)=>on.get(a).userData.seen-on.get(b).userData.seen);
+    while(on.size>PEOPLEKEEP&&away.length)drop(away.shift());}
   want.forEach(({n,x,y})=>{const key=peopleKey(npcWhimsy(n));let B=on.get(n);
     if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(n);B=null;}
     if(!B){wait.push({n,key});return;}   /* their card stands in until the body is made */
@@ -3076,7 +3102,7 @@ function t3PeopleBodies(dt){
     const S=B.userData.skel,at=B.userData.at,go=at?Math.hypot(x-at[0],y-at[1]):0;B.userData.at=[x,y];
     if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
       B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
-    B.visible=true;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    B.visible=true;B.userData.seen=tick;B.userData.world=world;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     t3BodyPose(B,B.userData.phase||0,walking,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b)));
     shown.add(n);});
