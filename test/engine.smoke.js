@@ -6391,7 +6391,9 @@ function findChromium() {
     try {
       ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f; window[n] = function (g, cr, ...a) { drawn.add(cr); return f.call(this, g, cr, ...a); }; });
       if (keep.dd) drawDog = function (...a) { office++; officeG = a[0]; return keep.dd.apply(this, a); };
-      officeKeep0 = [Math.round(DOG.x), Math.round(DOG.y)];   /* the office dog's square when the check began: where he is held still in 7 */   /* the office dog's own painter, counted, and the billboard it painted him on */
+      /* where the office dog is held still in 7: the square his world puts him on (ANI), where he starts every game, in full view
+         of the camera there. Held where he happened to be when the check began, he once stood where 6 pixels of him showed */
+      { const home = typeof ANI === 'function' ? ANI('dog') : null; officeKeep0 = home && isFinite(home.x) && isFinite(home.y) ? [home.x | 0, home.y | 0] : [Math.round(DOG.x), Math.round(DOG.y)]; }   /* the office dog's own painter, counted, and the billboard it painted him on */
       Math.random = () => { if (inDogs) rolls++; return keep.MR(); };
       t3DogBodies = dt => { inDogs = true; try { return keep.kd(dt); } finally { inDogs = false; } };   /* the engine's own, watched for dice and nothing else */
       el.hidden = false; camSet('3d'); sizeCanvas(); moving = false;
