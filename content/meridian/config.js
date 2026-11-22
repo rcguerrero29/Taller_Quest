@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v291";
+const GAMEV="mq-v292";
 /* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
    and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
    bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
@@ -31,6 +31,13 @@ const BODYPAINT="card";
    Meridian's dogs pick, each time they are idle, between their free whims and two set routines (the engine's ROUTINES and
    its chances, ROUTINECHANCE_DEF). Meridian has not turned personalities on, so no dog's chances are tilted here. */
 const ROUTINETAKE=["dog"];
+/* THE AGILITY COURSE HAS A LIFE OF ITS OWN (mq-v292; the owner's confirmed answer of 2026-11-21 on the agility
+   course). Meridian's park takes all four parts. The parts are the engine's (grep "THE COURSE HAS A LIFE OF ITS OWN"):
+   each dog runs the course at a pace of his own, the weave is four poles that lean as he passes and that dogs go round
+   when they are not running it, the tunnel is entered by its two ends only and by no person, and now and then a jump
+   knocks the bar off, which stays down until you walk into it or come back into the park. Taking this line out puts
+   Meridian's park back exactly as it was. The numbers are the engine's (COURSELIFE_DEF); a world does not replace them. */
+const COURSETAKE=["pace","poles","tunnel","bar"];
 /* CURLED UP ASLEEP (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). Meridian's dogs sometimes lie
    down curled up, nose to tail, asleep: in about half of their naps and 1 time in 3 as the lazy routine's lie-down (the
    engine's CURLCHANCE_DEF), and a curled nap lasts 0 to 5 seconds longer (CURLLONGER; Meridian has no personalities, so

@@ -565,7 +565,14 @@ const SHAPES=(function(){
                  {s:"sph",x:0,y:0.65,z:sd*ZP,r:0.038,c:CAP},
                  {s:"box",x:0,y:BARH-0.035,z:sd*(ZP-0.045),w:0.06,h:0.04,d:0.05,c:CUP});});                /* the cup, inside, at the bar */
     const L=2*(ZP-0.02);                                                                                    /* the bar: one pole, taped in five */
-    for(let i=0;i<5;i++)parts.push({s:"cyl",x:0,y:BARH,z:-L/2+(i+0.5)*L/5,r:0.03,h:L/5+0.001,c:i%2?TAPE:FRAME,rx:Math.PI/2});
+    /* THE BAR FALLEN (mq-v292; the engine's own answer, gearBarDown, for a world that takes the bar): the same pole, the
+       same tape, lying on the ground just past the uprights on the side a dog lands, and askew, because a bar knocked
+       out of its cups does not come to rest square. The cups stand empty. Which way it lies askew is this hurdle's own
+       (seed), so two fallen bars in one park do not lie alike. */
+    const down=typeof gearBarDown==="function"&&gearBarDown(null,x,y),skew=down?(seed(x,y,2)?0.3:-0.3):0,sk=Math.sin(skew),ck=Math.cos(skew);
+    for(let i=0;i<5;i++){const t=-L/2+(i+0.5)*L/5;
+      parts.push(down?{s:"cyl",x:0.2+t*sk,y:0.032,z:t*ck,r:0.03,h:L/5+0.001,c:i%2?TAPE:FRAME,rx:Math.PI/2,ry:skew}
+                     :{s:"cyl",x:0,y:BARH,z:t,r:0.03,h:L/5+0.001,c:i%2?TAPE:FRAME,rx:Math.PI/2});}
     return turned(parts,runTurn(x,y));};
 
   /* TUNNEL (4) — a FULL tube, shut overhead, that a dog runs through and a person cannot fit in (the owner asked
@@ -596,19 +603,28 @@ const SHAPES=(function(){
 
   /* WEAVE POLES (5) — a steel base rail with feet across it, a socket for every pole, the poles, the tape. SIX, at
      GEARWEAVE's spacing (engine/engine.js), which is also where the dog weaves round them, so his line and these
-     poles are one set of numbers. White poles with the tape at the top, red and blue by turns: at 35 px a tile the
+     poles are one set of numbers; FOUR, wider apart, in a world that takes the poles (mq-v292, gearWeave). White poles with the tape at the top, red and blue by turns: at 35 px a tile the
      tops are what reads, and alternating them is what tells six poles from a fence. Seen down their own line (the
      quarter turn that looks along the run) they stand one behind another and read as one striped post — the mock
      says so plainly; the dog weaving left and right is what reads there. */
   const weavePoles=({x,y})=>{
-    const G=(typeof GEARWEAVE==="object"&&GEARWEAVE)||{n:6,gap:0.16},RAIL="#7A7F88",RAILD="#5E636B",POLE="#F2E8D8",TAPE=["#C0392B","#2E5FA8"],PH=0.66;
+    const G=(typeof gearWeave==="function"&&gearWeave())||(typeof GEARWEAVE==="object"&&GEARWEAVE)||{n:6,gap:0.16},RAIL="#7A7F88",RAILD="#5E636B",POLE="#F2E8D8",TAPE=["#C0392B","#2E5FA8"],PH=0.66;
     const parts=[{s:"box",x:0,y:0.018,z:0,w:0.96,h:0.035,d:0.07,c:RAIL}];
     [-0.46,0.46].forEach(fx=>parts.push({s:"box",x:fx,y:0.014,z:0,w:0.05,h:0.028,d:0.36,c:RAILD}));
-    for(let k=0;k<G.n;k++){const px=(k-(G.n-1)/2)*G.gap;
-      parts.push({s:"cyl",x:px,y:0.055,z:0,r:0.042,h:0.05,c:RAILD},
+    /* FOUR WHERE A WORLD TAKES THE POLES, AND EACH LEANS AS A DOG PASSES IT (mq-v292): the count and spacing are the
+       engine's (gearWeave), and so is how far each pole's top has moved this instant (gearLean, 0 with nobody passing).
+       A pole is sprung at its socket, so it leans from there as one piece, tape and cap with it: each part is set on
+       the leaning line and turned by the same angle. With no lean these are the parts they always were. */
+    for(let k=0;k<G.n;k++){const px=(k-(G.n-1)/2)*G.gap,lean=typeof gearLean==="function"?gearLean(null,x,y,k):0;
+      if(!lean){parts.push({s:"cyl",x:px,y:0.055,z:0,r:0.042,h:0.05,c:RAILD},
                  {s:"cyl",x:px,y:0.035+PH/2,z:0,r:0.03,h:PH,c:POLE},
                  {s:"cyl",x:px,y:0.035+PH-0.07,z:0,r:0.034,h:0.12,c:TAPE[k%2]},
-                 {s:"sph",x:px,y:0.04+PH,z:0,r:0.032,c:TAPE[k%2]});}
+                 {s:"sph",x:px,y:0.04+PH,z:0,r:0.032,c:TAPE[k%2]});continue;}
+      const a=Math.atan2(lean,PH),ca=Math.cos(a),sa=Math.sin(a),on=h=>({x:px,y:0.035+h*ca,z:h*sa});
+      parts.push({s:"cyl",x:px,y:0.055,z:0,r:0.042,h:0.05,c:RAILD},
+                 {s:"cyl",...on(PH/2),r:0.03,h:PH,c:POLE,rx:a},
+                 {s:"cyl",...on(PH-0.07),r:0.034,h:0.12,c:TAPE[k%2],rx:a},
+                 {s:"sph",...on(PH+0.005),r:0.032,c:TAPE[k%2]});}
     return turned(parts,runTurn(x,y));};
 
   /* ---------- PLANTER (b) — the marigold bed, raised, as Meridian built it ----------
