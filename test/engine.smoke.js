@@ -4718,6 +4718,463 @@ function findChromium() {
   poseTimes.out.forEach(l => console.log('  POSE TIMES: ' + l));
   fails.push(...poseTimes.P.map(m => 'the dog\'s poses: ' + m));
 
+  /* ---- CURLED UP ASLEEP: ONE MORE WAY HE LIES DOWN (mq-v290) ----
+     What was asked, and confirmed on 2026-11-21: a new pose, the dog lying down curled up, on his card and on his body, for
+     each breed; it shows in about half of his naps (the free whim's nap) and as the lazy routine's lie-down 1 time in 3;
+     curled up he is asleep, his eyes shut and his tail still, with not even the short wag a lying dog gives; what ends a
+     nap today ends the curl; and a pose his body does not know is never drawn as standing. Confirmed that evening as
+     built: both games take it; a patient or an aloof dog given a treat mid-nap stays curled; a commanded lie-down is never
+     curled; he curls to the side his card faces; what he wears for a season rides along. And asked that evening: a
+     curled nap lasts 0 to 5 seconds longer, by his personality; and the curl is a list of versions, one picked for each
+     curled nap, today's the first and only one.
+     Asked on a clock this check owns, of what a person sees (dogPose, his card's own pixels, his body's own joints), the
+     numbers typed here and not read off the engine's table:
+       1 · ABOUT HALF OF HIS NAPS: the nap's last roll swept, he is curled up in 45 to 55 naps of 100; and through his
+           idle choice with every roll he takes swept, for each breed, the same.
+       2 · THE LAZY ROUTINE'S LIE-DOWN, 1 TIME IN 3: the routine walked on every roll, its lie-down is curled up 28 to 39
+           times in 100; curled, it still lasts 6 to 10 seconds and the routine still ends with him standing. A world's
+           own numbers are heard, and a number that is not one falls back to the engine's.
+       3 · CURLED UP HE IS ASLEEP, each breed: for 30 seconds of clock he stays curled, lying, and his tail does not move
+           at all, where a dog lying stretched out on the same clock does wag; and when the nap is over he is up.
+       4 · ON HIS CARD, each breed: he is lower than lying stretched out, and not the same picture; his eye is shut (a thin
+           line); his bandana still shows; a seasonal look's ring round his eye is round his shut eye; facing left, his
+           card is the mirror of facing right.
+       5 · ON HIS BODY, each breed: his head is less than half as far from the tip of his tail as lying stretched out, his
+           back is bent to one side, his eyes are shut and his tail does not swing; no part of him goes into the ground
+           deeper than his paw is across; uncurled, he lies and stands exactly as he did before, his shadow too; and a pose
+           his body was never taught is handed back to his card, not stood up. Facing left he curls to his other side, as
+           far round; his fore paws are tucked in; an upright ear is laid further back than lying stretched out.
+       6 · A TREAT, HIS LOVE SHOWN AND A COMMAND END IT as each ends any nap; a song ends it for good, and so does a happy
+           wag or a song that comes while his nap goes on: once woken he lies stretched out for the rest of that nap;
+           and he is never curled while his happy wag goes on. Sent after a thrown ball he is up. A patient or an aloof
+           dog given a treat mid-nap stays curled up, as such a dog stays in any nap; an eager one wakes.
+       7 · A WORLD THAT HAS NOT TURNED IT ON has no curled dog and draws not one number for it; where it is on, its rolls
+           come after the nap's own, so a plain nap lasts what it always did on the same rolls and a curled one that plus
+           its own extra. The same for the lazy routine. And the engine's own switch is asked both ways, its list emptied
+           and filled for a moment, whichever way this world has it.
+       8 · A CURLED NAP LASTS A LITTLE LONGER: 0 to 5 seconds more than the same nap plain, on average least for an eager
+           dog, more for a patient one, most for an aloof one, and plain and even for a dog with no personality; a plain
+           nap is not made longer.
+       9 · THE VERSIONS OF THE CURL: with a list of two versions of this check's own, weighted 3 to 1, each is picked in
+           its share; each nap keeps the version it was picked in, and nothing is rolled while he is drawn; the pick is
+           the last roll; with one version not one more roll is taken.
+     The rolls, the words said, the park's counts, what he has learned, every dog made and where you stand are put back. */
+  const curled = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof dogCurl !== 'function' || typeof curlOn !== 'function' || typeof dogPose !== 'function' || typeof dogWhim !== 'function') { P.push('a dog has no curled-up pose: the engine has no dogCurl, so every nap is the one stretched-out lie-down it always was'); return { P, out }; }
+    const KS = [...DOGK], K = KS.includes('beagle') ? 'beagle' : KS[0], T0 = 5e6, D0 = 7e6;
+    const wid = Object.keys(WORLDS).find(id => WORLDS[id]), w0 = WORLDS[wid];
+    let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
+    if (!at0) { P.push('this shell has no world to stand a dog in, so his curled-up pose could not be asked'); return { P, out }; }
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, al: typeof alebLooks === 'function' ? alebLooks : null,
+      cv: typeof curlVersions === 'function' ? curlVersions : null, ball: typeof BALL !== 'undefined' ? BALL : null, ccOwn: typeof CURLCHANCE !== 'undefined',
+      park: JSON.stringify(PARK), decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, world, px, py, fx, fy, pt: petTarget, pc: petCrit, crit: CRIT.length };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]), mine = [];
+    const made = o => Object.assign({ kind: K, name: 'Probe', world: wid, x: at0[0], y: at0[1], fx: at0[0], fy: at0[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: 0, home: at0.slice(), task: null, holdT: 0, stayT: 0, moving: false, mt: 0 }, o);
+    const tidy = () => { DECALS.length = keep.decals; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; };
+    const sec = ms => (ms / 1000).toFixed(1) + ' s';
+    /* a dog who has just lain down until `till`, curled up by the engine's own door on the roll that always curls him; null if he would not */
+    const curlUp = (o, till) => { const d = made(o); d.layT = till; d.next = till; return dogCurl(d, 'nap', 0) ? d : null; };
+    try {
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      real.forEach(([c]) => { c.world = '__frozen'; });
+      curlOn = () => true; routineOn = () => true; personaOn = () => false;
+
+      /* 1 · about half of his naps. The whim's rolls, in the order it takes them: the band (a nap), the cone's held off,
+         then every roll after those is the one swept, so whichever of them decides the curl, it is swept */
+      const nap = (seq, o) => { let c = 0; Math.random = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; const d = made(o); try { dogWhim(d, T0); } finally { Math.random = keep.MR; tidy(); } return { d, c }; };
+      /* every roll swept at once: roll number c of try i is i + 1 written backwards in a base of its own (a prime: 2, 3,
+         5…) after the point, so each roll runs evenly through 0 to 1 on its own sequence and no two rolls move together */
+      const G = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29], back = (n, q) => { let f = 1, v = 0; while (n > 0) { f /= q; v += f * (n % q); n = Math.floor(n / q); } return v; },
+        swept = i => { let c = 0; return () => { const v = back(i + 1, G[c % G.length]); c++; return v; }; };
+      { const N = 200; let naps = 0, n = 0;
+        for (let i = 0; i < N; i++) { const p = dogPose(nap([0.2, 0.5, (i + 0.5) / N]).d, T0 + 1, D0); if (p.lay) naps++; if (p.lay && p.curl) n++; }
+        if (naps < N) P.push('on a roll that has always been a nap, an idle dog lies down only ' + naps + ' times in ' + N + ', so how often a nap is curled up could not be asked');
+        else { const pc = 100 * n / naps; out.push('of ' + naps + ' naps, the roll swept: curled up in ' + pc.toFixed(1) + '%');
+          if (pc < 45 || pc > 55) P.push('a napping dog is curled up in ' + pc.toFixed(0) + '% of his naps, where about half was asked'); } }
+      /* and through his idle choice (dogIdle: his mode, then the whim), every roll he takes swept, for each breed: about half
+         of all his naps, however he came to them */
+      for (const k of KS) { const N = 1000; let naps = 0, n = 0;
+        for (let i = 0; i < N; i++) { const d = made({ kind: k }); Math.random = swept(i); try { dogIdle(d, T0); } finally { Math.random = keep.MR; tidy(); }
+          if (d.task) continue; const p = dogPose(d, T0 + 1, D0); if (p.lay) { naps++; if (p.curl) n++; } }
+        if (naps < 100) { P.push('every roll swept, an idle ' + k + ' naps only ' + naps + ' times in ' + N + ', so how often his naps are curled up could not be asked'); continue; }
+        const pc = 100 * n / naps; out.push('the ' + k + ', idle, every roll swept: of ' + naps + ' naps curled up in ' + pc.toFixed(1) + '%');
+        if (pc < 45 || pc > 55) P.push('an idle ' + k + ' is curled up in ' + pc.toFixed(0) + '% of his naps, where about half was asked'); }
+
+      /* 2 · the lazy routine's lie-down, 1 time in 3 (the owner's confirmed number): the routine pinned and
+         walked to its end, every roll it takes the one swept; a lie-down is the step seen lying and not singing */
+      { const N = 120; let seen = 0, n = 0, sang = 0;
+        for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, d = made(); let now = T0, lay = false, cu = false; Math.random = () => r;
+          ROUTINEPIN = 'lazy'; try { dogIdle(d, now); } finally { ROUTINEPIN = keep.pin; }
+          for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay = true; if (p.curl) cu = true; } if (p.howl && p.curl) sang++; now += 100; dogStep(d, now); }
+          Math.random = keep.MR; tidy(); if (lay) seen++; if (cu) n++; }
+        if (seen < N) P.push('the lazy routine reaches its lie-down only ' + seen + ' times in ' + N + ', so how often that lie-down is curled up could not be asked');
+        else { const pc = 100 * n / seen; out.push('of ' + seen + ' lie-downs of the lazy routine, every roll swept: curled up in ' + pc.toFixed(1) + '%');
+          if (pc < 28 || pc > 39) P.push('the lazy routine\'s lie-down is curled up ' + pc.toFixed(0) + '% of the time, where 1 time in 3 was asked');
+          if (sang) P.push('in the lazy routine he sings its short howl while still curled up asleep, ' + sang + ' time(s): a song is never sung curled up'); } }
+      /* curled, the lazy routine's lie-down still lasts its 6 to 10 seconds, and the routine still ends with him standing:
+         on a low roll (every roll low, so curled) and on a high one (every roll high but the one taken as he lies down,
+         which is the curl's) */
+      { const LAY = [6000, 10000], SL = 120;
+        for (const [how, roll] of [['a low roll', d => 0.02], ['a high roll', d => d.layT > 0 && !d.curlT ? 0.02 : 0.98]]) {
+          const d = made(); let now = T0, curledMs = 0, lay = 0; Math.random = () => roll(d);
+          try { ROUTINEPIN = 'lazy'; dogIdle(d, now);
+            for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay += 25; if (p.curl) curledMs += 25; } now += 25; dogStep(d, now); }
+          } finally { ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); }
+          const end = dogPose(d, now, D0);
+          out.push('the lazy routine on ' + how + ': lying ' + sec(lay) + ', curled up ' + sec(curledMs) + ' of it; at its end he is ' + (end.lay ? 'lying' : end.sit ? 'sitting' : 'standing'));
+          if (!curledMs) P.push('on ' + how + ' held for the curl, the lazy routine\'s lie-down is not curled up, so how long a curled lie-down lasts was not asked');
+          else if (curledMs < LAY[0] - SL || curledMs > LAY[1] + SL) P.push('in the lazy routine, on ' + how + ', the curled-up lie-down lasts ' + sec(curledMs) + ', where lying down lasts ' + sec(LAY[0]) + ' to ' + sec(LAY[1]));
+          if (d.task) P.push('on ' + how + ', with its lie-down curled up, the lazy routine never ends');
+          else if (end.lay || end.sit || end.curl) P.push('on ' + how + ', with its lie-down curled up, the lazy routine ends with him ' + (end.lay ? 'lying down' : 'sitting') + ', where it ends with him standing'); } }
+      /* a world's own numbers are heard (here every nap curled, no lazy lie-down curled), and a number that is not one falls
+         back to the engine's (about half, 1 time in 3). Asked only where the world has no numbers of its own, by handing it
+         some for a moment */
+      if (keep.ccOwn) out.push('this world gives its own numbers for the curl, so a world\'s own numbers were not asked here');
+      else { const rolls = [0.01, 0.2, 0.32, 0.34, 0.49, 0.51, 0.7, 0.99], at = (when, r) => { const d = made({ layT: T0 + 60000 }); return dogCurl(d, when, r); };
+        try { window.CURLCHANCE = { dog: { nap: 1, lazy: 0 } };
+          const nc = rolls.filter(r => at('nap', r)).length, lc = rolls.filter(r => at('lazy', r)).length;
+          out.push('a world asking for every nap curled and no lazy lie-down: ' + nc + ' of ' + rolls.length + ' naps curled, ' + lc + ' lazy lie-downs');
+          if (nc !== rolls.length) P.push('a world that asks for every nap curled up sees ' + nc + ' of ' + rolls.length + ' curled: its own numbers are not heard');
+          if (lc) P.push('a world that asks for no lazy lie-down curled up sees ' + lc + ' of ' + rolls.length + ' curled: its own numbers are not heard');
+          window.CURLCHANCE = { dog: { nap: '1', lazy: Infinity } };
+          const n2 = [at('nap', 0.49), at('nap', 0.51)], l2 = [at('lazy', 0.32), at('lazy', 0.34)];
+          if (!(n2[0] && !n2[1])) P.push('a world whose number for the nap is not a number does not get about half of its naps curled up, the engine\'s own');
+          if (!(l2[0] && !l2[1])) P.push('a world whose number for the lazy lie-down is not a number does not get it curled up 1 time in 3, the engine\'s own');
+        } finally { delete window.CURLCHANCE; } }
+
+      /* 3 · curled up he is asleep, for the whole of his nap, and his tail does not move: each breed */
+      for (const k of KS) { const d = curlUp({ kind: k }, T0 + 60000), plain = made({ kind: k, layT: T0 + 60000 }), the = k === K ? 'his' : 'the ' + k + '\'s', a = k === K ? 'he' : 'the ' + k;
+        if (!d || !dogPose(d, T0, D0).curl) { P.push('a ' + k + ' who has just lain down could not be curled up, on the roll that always curls him, so what he does curled up was not asked'); continue; }
+        let moved = 0, up = 0, awake = 0, wags = 0;
+        for (let t = 0; t < 30000; t += 50) { const p = dogPose(d, T0 + t, D0 + t); if (Math.abs(p.wag) > 1e-9) moved += 50; if (!p.curl) up += 50; if (!p.lay || p.howl || p.happy || p.love || p.dig || p.sniff) awake += 50;
+          if (Math.abs(dogPose(plain, T0 + t, D0 + t).wag) > 1e-9) wags += 50; }
+        out.push('the ' + k + ' curled up for 30 s: his tail moves for ' + sec(moved) + ', he is uncurled for ' + sec(up) + '; lying stretched out on the same clock his tail moves for ' + sec(wags));
+        if (!wags) P.push('lying stretched out, ' + the + ' tail does not move once in 30 seconds on this clock, so a still tail could not be told from a wagging one and the curled dog\'s tail was not asked');
+        if (moved) P.push('curled up, ' + the + ' tail moves for ' + sec(moved) + ' of 30 seconds, where curled up it does not move at all, not even the short wag of a dog lying stretched out');
+        if (up) P.push('curled up for a nap of a minute, ' + a + ' is seen uncurled for ' + sec(up) + ' of its first 30 seconds, with nothing having woken him');
+        if (awake) P.push('curled up, ' + a + ' is not simply lying asleep for ' + sec(awake) + ' of 30 seconds: he is seen up, singing, happy, digging or sniffing while curled');
+        const after = dogPose(d, T0 + 60001, D0);
+        if (after.curl || after.lay) P.push('when ' + the + ' nap is over ' + a + ' is still ' + (after.curl ? 'curled up' : 'lying down') + ': the curl does not end with the nap it was for'); }
+
+      /* 4 · on his card, for each breed: lower than lying stretched out, and a picture of its own; his eye shut, a thin
+         line and not a round open eye; his bandana still showing; and a seasonal look's ring round his eye put round his
+         shut eye. His card is painted by his own painter on a sheet of this check's and his own pixels counted (his shadow
+         is faint). What he wears for a season is left off, except for the ring, which is asked with a look of this check's
+         own: no tint, the ring a green no coat has */
+      { const S = 4, SW = 40 * S, BAND = [196, 88, 107], RING = { id: 'probe', tint: 'rgba(0,0,0,0)', accent: '#00FF00', pat: '#0000FF' };
+        const card = (paint, d) => { const cv = document.createElement('canvas'); cv.width = cv.height = SW; const g = cv.getContext('2d'); g.setTransform(S, 0, 0, S, 4 * S, 4 * S); paint(g, d, 0, 0);
+          const im = g.getImageData(0, 0, SW, SW).data; let top = -1, n = 0; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) if (im[(y * SW + x) * 4 + 3] > 128) { n++; if (top < 0) top = y; } return { top: top / S - 4, n, im }; };
+        /* the pixels of a card within r card px of a spot (x from the middle of his cell, y from its top) that pass `is` */
+        const near = (im, at, r, is) => { const out = []; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) { const X = x / S - 20, Y = y / S - 4, i = (y * SW + x) * 4;
+          if ((X - at[0]) ** 2 + (Y - at[1]) ** 2 <= r * r && is(im[i], im[i + 1], im[i + 2], im[i + 3])) out.push([X, Y]); } return out; };
+        /* how thick and how long a mark is, across and along its own line, in card px (a filled bar w by h has these w and h) */
+        const shape = pts => { const n = pts.length, mx = pts.reduce((a, p) => a + p[0], 0) / n, my = pts.reduce((a, p) => a + p[1], 0) / n;
+          let a = 0, b = 0, c = 0; pts.forEach(([x, y]) => { a += (x - mx) ** 2 / n; b += (x - mx) * (y - my) / n; c += (y - my) ** 2 / n; });
+          const m = (a + c) / 2, q = Math.sqrt(((a - c) / 2) ** 2 + b * b); return { thick: Math.sqrt(12 * Math.max(0, m - q)), long: Math.sqrt(12 * (m + q)) }; };
+        const dark = (r, g, b, a) => a > 128 && r < 90 && g < 90 && b < 90;
+        const kl = typeof alebLookFor === 'function' ? alebLookFor : null;
+        try {
+          for (const k of KS) { const paint = window['draw' + k[0].toUpperCase() + k.slice(1)], eye = typeof curlEyeAt === 'function' ? curlEyeAt(k) : null;
+            if (typeof paint !== 'function') { P.push('the ' + k + ' has no painter for his card, so his curled-up card could not be asked'); continue; }
+            if (keep.al) alebLooks = () => null;
+            const lay = card(paint, made({ kind: k, layT: Infinity })), dc = curlUp({ kind: k }, Infinity), cur = dc ? card(paint, dc) : null, band = dc ? card(paint, Object.assign(dc, { band: '#C4586B' })) : null;
+            if (dc) dc.band = undefined;
+            if (!cur) { P.push('a ' + k + ' could not be curled up to have his card painted, so his curled-up card was not asked'); continue; }
+            if (!lay.n || !cur.n) { P.push('the ' + k + '\'s card paints nothing of him ' + (!cur.n ? 'curled up' : 'lying down') + ', so how low he lies curled up could not be asked'); continue; }
+            let diff = 0; for (let i = 3; i < lay.im.length; i += 4) if ((lay.im[i] > 128) !== (cur.im[i] > 128)) diff++;
+            out.push('the ' + k + '\'s card: lying stretched out his top is ' + lay.top.toFixed(1) + ' px down his cell, curled up ' + cur.top.toFixed(1) + ' px; ' + (diff / S / S).toFixed(0) + ' px of his outline differ');
+            if (!(cur.top >= lay.top + 1.5)) P.push('on his card the ' + k + ' curled up is as tall as lying stretched out (his top is ' + cur.top.toFixed(1) + ' px down his cell, and ' + lay.top.toFixed(1) + ' px lying): curled up he is to be lower');
+            if (diff < 20 * S * S) P.push('on his card the ' + k + ' curled up is the picture of him lying stretched out: only ' + (diff / S / S).toFixed(0) + ' px of his outline differ');
+            /* his eye: the dark mark where his eye is, curled up, is a shut eye, a line no thicker than 1.1 px and at least half
+               as long again as it is thick; an open eye (round, or the square of his standing eye) is as thick as it is long */
+            if (!eye) P.push('the engine does not say where the ' + k + '\'s eye is on his curled-up card, so whether it is shut was not asked');
+            else { const e = near(cur.im, eye, 1.8, dark), sh = e.length >= 2 ? shape(e) : null;
+              if (!sh) P.push('curled up, the ' + k + '\'s card has no eye where his head is laid: nothing dark is painted there');
+              else { out.push('the ' + k + '\'s eye curled up: a mark ' + sh.thick.toFixed(2) + ' px thick and ' + sh.long.toFixed(2) + ' px long');
+                if (!(sh.thick <= 1.1 && sh.long >= 1.5 * sh.thick)) P.push('curled up, the ' + k + '\'s eye is open on his card: the mark where his eye is is ' + sh.thick.toFixed(1) + ' px thick and ' + sh.long.toFixed(1) + ' px long, where a shut eye is a thin line'); } }
+            /* his bandana: at least 2 px of the curled card are its own colour */
+            const bp = near(band.im, [0, 16], 30, (r, g, b, a) => a > 200 && Math.abs(r - BAND[0]) < 14 && Math.abs(g - BAND[1]) < 14 && Math.abs(b - BAND[2]) < 14).length / S / S;
+            out.push('the ' + k + ' curled up wearing a bandana: ' + bp.toFixed(1) + ' px of his card are its colour');
+            if (bp < 2) P.push('curled up, the ' + k + '\'s bandana is gone from his card: ' + bp.toFixed(1) + ' px of it show');
+            /* a seasonal look's ring round his eye: at least 4 px of its green, and at least half of what shows of it, within 1.5 px
+               outside the ring of his shut eye */
+            if (keep.al && kl && eye) { alebLooks = () => [RING]; alebLookFor = () => RING;
+              let ring = null; try { ring = card(paint, dc); } finally { alebLooks = keep.al; alebLookFor = kl; }
+              const gr = (r, g, b, a) => a > 128 && g > 150 && r < 120 && b < 120, at = near(ring.im, eye, (ALEB_KIND[k] || {}).eye ? ALEB_KIND[k].eye[2] + 1.5 : 4.5, gr).length / S / S, all = near(ring.im, [0, 16], 40, gr).length / S / S;
+              out.push('the ' + k + ' curled up in a seasonal look: ' + at.toFixed(1) + ' px of the ring round his eye are by his shut eye, of ' + all.toFixed(1) + ' px of it on his card');
+              if (at < 4 || at < all / 2) P.push('curled up in a seasonal look, the ring round the ' + k + '\'s eye is not round his shut eye: ' + at.toFixed(1) + ' px of it are there, of ' + all.toFixed(1) + ' px on his card'); }
+            /* facing left: the mirror of facing right about the middle of his cell, the same height, his shut eye, his
+               bandana and a look's ring where they are facing right, mirrored */
+            if (keep.al) alebLooks = () => null;
+            const dl = curlUp({ kind: k, face: -1 }, Infinity), lf = dl ? card(paint, dl) : null;
+            if (!lf || !lf.n) P.push('a ' + k + ' facing left could not be curled up and painted, so whether his card is the mirror of facing right was not asked');
+            else { let mis = 0; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) if ((lf.im[(y * SW + x) * 4 + 3] > 128) !== (cur.im[(y * SW + SW - 1 - x) * 4 + 3] > 128)) mis++;
+              const me = eye ? [-eye[0], eye[1]] : null, le = me ? near(lf.im, me, 1.8, dark) : [], ls = le.length >= 2 ? shape(le) : null,
+                lb = card(paint, Object.assign(dl, { band: '#C4586B' })), lbp = near(lb.im, [0, 16], 30, (r, g, b, a) => a > 200 && Math.abs(r - BAND[0]) < 14 && Math.abs(g - BAND[1]) < 14 && Math.abs(b - BAND[2]) < 14).length / S / S;
+              dl.band = undefined;
+              out.push('the ' + k + ' curled up facing left: his top ' + lf.top.toFixed(1) + ' px down his cell (' + cur.top.toFixed(1) + ' facing right); ' + (mis / S / S).toFixed(1) + ' px of his outline are not the mirror of facing right; his eye a mark ' + (ls ? ls.thick.toFixed(2) + ' px thick' : 'not found') + '; ' + lbp.toFixed(1) + ' px of bandana');
+              if (Math.abs(lf.top - cur.top) > 0.5) P.push('curled up facing left, the ' + k + ' is not as low on his card as facing right: his top is ' + lf.top.toFixed(1) + ' px down his cell, and ' + cur.top.toFixed(1) + ' px facing right');
+              if (mis > 3 * S * S) P.push('facing left, the ' + k + '\'s curled card is not the mirror of facing right: ' + (mis / S / S).toFixed(0) + ' px of his outline are not where the mirror puts them');
+              if (me && !(ls && ls.thick <= 1.1 && ls.long >= 1.5 * ls.thick)) P.push('curled up facing left, the ' + k + '\'s shut eye is not where facing right puts it, mirrored: ' + (ls ? 'the mark there is ' + ls.thick.toFixed(1) + ' px thick and ' + ls.long.toFixed(1) + ' px long' : 'nothing dark is painted there'));
+              if (lbp < 2) P.push('curled up facing left, the ' + k + '\'s bandana is gone from his card: ' + lbp.toFixed(1) + ' px of it show');
+              if (keep.al && kl && me) { alebLooks = () => [RING]; alebLookFor = () => RING; let lr = null; try { lr = card(paint, dl); } finally { alebLooks = keep.al; alebLookFor = kl; }
+                const gr = (r, g, b, a) => a > 128 && g > 150 && r < 120 && b < 120, at = near(lr.im, me, (ALEB_KIND[k] || {}).eye ? ALEB_KIND[k].eye[2] + 1.5 : 4.5, gr).length / S / S, all = near(lr.im, [0, 16], 40, gr).length / S / S;
+                if (at < 4 || at < all / 2) P.push('curled up facing left in a seasonal look, the ring round the ' + k + '\'s eye is not round his shut eye: ' + at.toFixed(1) + ' px of it are there, of ' + all.toFixed(1) + ' px on his card'); } } }
+        } finally { if (keep.al) alebLooks = keep.al; if (kl) alebLookFor = kl; } }
+      /* 5 · on his body, for each breed, held by the pose's own answer through the one door his body is posed by
+         (t3DogPose). Besides the shape of the curl: no part of him goes into the ground deeper than his own paw's size,
+         and once he uncurls his shadow is the one he had before, as well as his head, his hips and his barrel */
+      if (typeof dogMake !== 'function' || typeof THREE === 'undefined' || typeof t3DogPose !== 'function' || typeof dogBodyWants !== 'function') out.push('a dog\'s body could not be made in this shell (it has no 3D camera), so his curled-up body was not asked here');
+      else for (const k of KS) { const B = dogMake(dogSkeleton(k), dogLookOf({ kind: k }));
+        try { const J = B.userData.joints, at = n => B.worldToLocal(J[n].getWorldPosition(new THREE.Vector3())), barrel = () => { let m = null; B.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') m = o; }); return m ? Array.from(m.geometry.attributes.position.array) : []; };
+          const paw = (B.userData.skel && B.userData.skel.limb && B.userData.skel.limb.paw) || 0;
+          const shape = Pz => { t3DogPose(B, Pz, 0, false); B.updateWorldMatrix(true, true); const eyes = [], shadow = [], ears = [], inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), v = new THREE.Vector3(); let low = Infinity;
+            B.traverse(o => { if (!o.isMesh) return; if (o.userData.wears === 'eye') eyes.push(o.scale.y); if (o.userData.upEar) ears.push(o.rotation.x);
+              if (o.userData.shadow) { shadow.push(o.scale.x, o.scale.y, o.position.x, o.position.z); return; }
+              if (!o.visible) return; const Q = o.geometry.attributes.position; for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(o.matrixWorld).applyMatrix4(inv); if (v.y < low) low = v.y; } });
+            return { reach: at('head').distanceTo(at('tail_tip')), side: at('chest').x - at('hips').x, back: at('chest').distanceTo(at('hips')), eyes, shadow, ears, low, tail: J.tail_1.rotation.z, head: at('head'), hips: at('hips'), barrel: barrel(),
+              fore: ['fpaw_l', 'fpaw_r'].filter(n => J[n]).map(n => at(n).distanceTo(at('chest'))) }; };
+          const ds = made({ kind: k }), dl = made({ kind: k, layT: T0 + 60000 }), dc = curlUp({ kind: k }, T0 + 60000);
+          if (!dc) P.push('a ' + k + ' could not be curled up to have his body posed, so his curled-up body was not asked');
+          else { const Ps = dogPose(ds, T0, D0), Pl = dogPose(dl, T0, D0), Pc = dogPose(dc, T0, D0);
+            const s1 = shape(Ps), l1 = shape(Pl), c1 = shape(Pc), c2 = shape(dogPose(dc, T0 + 700, D0 + 700)), l2 = shape(Pl), s2 = shape(Ps);
+            const shadowSame = (a, b) => a.shadow.length === b.shadow.length && a.shadow.every((x, i) => Math.abs(x - b.shadow[i]) < 1e-7);
+            const same = (a, b) => Math.abs(a.reach - b.reach) < 1e-6 && a.head.distanceTo(b.head) < 1e-6 && a.hips.distanceTo(b.hips) < 1e-6 && a.barrel.length === b.barrel.length && a.barrel.every((x, i) => Math.abs(x - b.barrel[i]) < 1e-7) && shadowSame(a, b);
+            out.push('the ' + k + '\'s body: his head is ' + l1.reach.toFixed(3) + ' from the tip of his tail lying stretched out and ' + c1.reach.toFixed(3) + ' curled up; his chest is ' + Math.abs(c1.side).toFixed(3) + ' to the side of his hips curled up (' + Math.abs(l1.side).toFixed(3) + ' lying); his lowest point is ' + (-c1.low).toFixed(3) + ' into the ground curled up (' + (-l1.low).toFixed(3) + ' lying), his paw ' + paw.toFixed(3) + ' across');
+            if (!dogBodyWants(dc, Pc)) P.push('curled up, up close, the ' + k + ' is his flat card: his body does not take the pose');
+            if (!(c1.reach < l1.reach * 0.5)) P.push('curled up, the ' + k + '\'s head is ' + c1.reach.toFixed(3) + ' from the tip of his tail, and ' + l1.reach.toFixed(3) + ' lying stretched out: his head is not brought round to his tail');
+            if (!(Math.abs(c1.side) > l1.back * 0.25)) P.push('curled up, the ' + k + '\'s back is as straight as lying stretched out: his chest is ' + Math.abs(c1.side).toFixed(3) + ' to the side of his hips, where his back is ' + l1.back.toFixed(3) + ' long');
+            if (!s1.eyes.length) P.push('the ' + k + '\'s body has no eyes to ask, so whether they are shut curled up was not asked');
+            else if (!c1.eyes.every((x, i) => x < s1.eyes[i] * 0.5)) P.push('curled up, the ' + k + '\'s body\'s eyes are open: they are ' + (100 * c1.eyes[0] / s1.eyes[0]).toFixed(0) + '% as tall as when he stands');
+            if (Math.abs(c1.tail) > 1e-9 || Math.abs(c2.tail) > 1e-9 || c1.tail !== c2.tail) P.push('curled up, the ' + k + '\'s tail swings: it is turned ' + c1.tail.toFixed(3) + ' and then ' + c2.tail.toFixed(3) + ' seven tenths of a second apart');
+            if (!(paw > 0) || !isFinite(c1.low)) P.push('the ' + k + '\'s body has no paw size or no parts to measure, so whether he goes into the ground curled up was not asked');
+            else if (c1.low < -paw) P.push('curled up, part of the ' + k + ' goes ' + (-c1.low).toFixed(3) + ' into the ground, more than his paw is across (' + paw.toFixed(3) + '): it is seen cut off by the ground');
+            if (!s1.shadow.length) P.push('the ' + k + '\'s body has no shadow, so whether it is put back after he uncurls was not asked');
+            const left = (a, b) => 'his head is ' + b.head.distanceTo(a.head).toFixed(3) + ' from where it was, his barrel ' + (a.barrel.length === b.barrel.length && a.barrel.every((x, i) => Math.abs(x - b.barrel[i]) < 1e-7) ? 'is as it was' : 'is still bent') + ', and his shadow ' + (shadowSame(a, b) ? 'is as it was' : 'is ' + b.shadow[0].toFixed(3) + ' by ' + b.shadow[1].toFixed(3) + ' where it was ' + a.shadow[0].toFixed(3) + ' by ' + a.shadow[1].toFixed(3));
+            if (!same(l1, l2)) P.push('after he uncurls, the ' + k + '\'s body does not lie stretched out as it did before he curled up: ' + left(l1, l2));
+            if (!same(s1, s2)) P.push('after he uncurls, the ' + k + '\'s body does not stand as it did before he curled up: ' + left(s1, s2));
+            /* a pose his body was never taught: his card stands in, he is never stood up */
+            if (!dogBodyWants(ds, Ps)) P.push('standing, up close, the ' + k + ' is his flat card: the check of an unknown pose could not tell a body from a card');
+            else if (dogBodyWants(dc, Object.assign({}, Pc, { held: 'a pose his body was never taught' }))) P.push('a pose the ' + k + '\'s body was never taught is his body\'s to draw all the same, and his body would stand him up: his card, which draws every pose, is to stand in');
+            /* his fore paws tucked in under him: each nearer his chest than when he lies stretched out, by a fifth at least */
+            if (c1.fore.length !== 2 || l1.fore.length !== 2) P.push('the ' + k + '\'s body has not two fore paws to ask, so whether they are tucked in curled up was not asked');
+            else if (!c1.fore.every((x, i) => x < l1.fore[i] * 0.8)) P.push('curled up, the ' + k + '\'s fore paws are stretched out ahead of him: they are ' + c1.fore.map(x => x.toFixed(3)).join(' and ') + ' from his chest, and ' + l1.fore.map(x => x.toFixed(3)).join(' and ') + ' lying stretched out');
+            out.push('the ' + k + '\'s fore paws: ' + c1.fore.map(x => x.toFixed(3)).join(' and ') + ' from his chest curled up, ' + l1.fore.map(x => x.toFixed(3)).join(' and ') + ' lying' + (l1.ears.length ? '; his upright ears turned ' + c1.ears.map(x => x.toFixed(2)).join(' and ') + ' curled up, ' + l1.ears.map(x => x.toFixed(2)).join(' and ') + ' lying' : ''));
+            /* an upright ear laid further back along his skull than when he lies stretched out (a breed whose ears fold has none to ask) */
+            if (l1.ears.length && !(c1.ears.length === l1.ears.length && c1.ears.every((x, i) => x < l1.ears[i] - 0.5))) P.push('curled up, the ' + k + '\'s ears stand as when he lies stretched out: an upright ear is to be laid further back along his skull curled up');
+            /* facing left he curls to his other side, as far round, and no deeper into the ground */
+            const dw = curlUp({ kind: k, face: -1 }, T0 + 60000), Pw = dw ? dogPose(dw, T0, D0) : null, w1 = Pw ? shape(Pw) : null; shape(Pl);
+            if (!w1) P.push('a ' + k + ' facing left could not be curled up to have his body posed, so which side he curls to was not asked');
+            else { out.push('the ' + k + ' facing left: his head ' + w1.reach.toFixed(3) + ' from the tip of his tail, his chest ' + w1.side.toFixed(3) + ' to the side of his hips (' + c1.side.toFixed(3) + ' facing right)');
+              if (!(Math.sign(w1.side) === -Math.sign(c1.side) && Math.abs(w1.side) > l1.back * 0.25)) P.push('facing left, the ' + k + '\'s body curls to the same side as facing right (his chest ' + w1.side.toFixed(3) + ' to the side of his hips, and ' + c1.side.toFixed(3) + ' facing right): he is to curl toward the side his card faces');
+              if (Math.abs(w1.reach - c1.reach) > 0.01) P.push('facing left, the ' + k + ' is not curled as far round as facing right: his head is ' + w1.reach.toFixed(3) + ' from the tip of his tail, and ' + c1.reach.toFixed(3) + ' facing right');
+              if (isFinite(w1.low) && paw > 0 && w1.low < -paw) P.push('curled up facing left, part of the ' + k + ' goes ' + (-w1.low).toFixed(3) + ' into the ground, more than his paw is across (' + paw.toFixed(3) + ')'); } } }
+        finally { t3Dispose(B); } }
+
+      /* 6 · a treat ends it as it ends any nap, and a song ends it for good */
+      { const d = curlUp({}, wNow() + 60000);
+        if (!d || !dogPose(d).curl) P.push('a dog could not be curled up for a nap, so what a treat does to it was not asked');
+        else { CRIT.push(d); mine.push(d);
+          world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => 0.99;   /* a high roll: no song about the treat, so the treat alone is asked */
+          try { document.getElementById('treat').click(); } finally { Math.random = keep.MR; }
+          const p = dogPose(d);
+          if (p.curl) P.push('a treat does not wake a dog curled up asleep: he stays curled up');
+          else if (p.lay) P.push('a treat leaves a dog who was curled up asleep lying down, where a treat ends any nap and sits him up');
+          else if (!p.happy) P.push('a treat wakes a dog curled up asleep and he is not glad of it: no happy wag follows'); } }
+      { const d = curlUp({}, T0 + 60000);
+        if (!d) P.push('a dog could not be curled up for a nap, so what a song does to it was not asked');
+        else { Math.random = () => 0.99; try { dogHowl(d, T0, 2000); } finally { Math.random = keep.MR; }
+          const during = dogPose(d, T0 + 1000, D0), after = dogPose(d, T0 + 3000, D0);
+          if (!during.howl) P.push('a dog made to sing for two seconds is not singing one second in, so what a song does to a curl was not asked');
+          else if (during.curl) P.push('singing, he is still curled up asleep');
+          if (after.curl) P.push('his song over, he curls up again: a song is to end his curl for good, as it ends any nap'); } }
+      /* woken without his nap being ended: a happy wag (the one a met, eager dog gives when his body is first made near
+         him) or a song set on him while he lies. Awake, he lies stretched out, his tail wagging while he is happy; and when
+         it is over he stays lying stretched out for the rest of that nap: once woken he does not curl up again in it */
+      for (const [what, set] of [['made happy', d => { d.happyT = T0 + 1500; }], ['made to sing', d => { d.howlT = T0 + 1500; }]]) {
+        const d = curlUp({}, T0 + 60000);
+        if (!d) { P.push('a dog could not be curled up for a nap, so what being ' + what + ' does to it was not asked'); continue; }
+        set(d); let wag = false; for (let t = 600; t <= 1400; t += 50) if (Math.abs(dogPose(d, T0 + t, D0 + t).wag) > 1e-9) wag = true;
+        const during = dogPose(d, T0 + 700, D0 + 700), after = dogPose(d, T0 + 3500, D0 + 3500);
+        if (during.curl) P.push(what + ' while he lies, a dog who was curled up is still curled up asleep');
+        else if (!during.lay) P.push(what + ' while he lies, a dog who was curled up gets up, where his nap was not ended');
+        if (what === 'made happy' && !wag) P.push('made happy while he lies, a dog who was curled up does not wag his tail');
+        if (after.curl) P.push(what + ' while he lies, a dog who was curled up curls up again when it is over: once woken, he is to lie stretched out for the rest of his nap');
+        else if (!after.lay) P.push(what + ' while he lies, a dog who was curled up is up when it is over, where his nap was not ended'); }
+      /* happy as he lies down (a happy wag not yet over when his nap begins): never curled while his tail wags */
+      { const d = curlUp({ happyT: T0 + 1500 }, T0 + 60000);
+        if (!d) P.push('a dog could not be curled up for a nap, so a happy dog lying down was not asked');
+        else if (dogPose(d, T0 + 700, D0 + 700).curl) P.push('happy as he lies down, a dog is curled up asleep while his happy wag goes on: a happy dog is awake, his tail wagging'); }
+      /* his love shown ends it as it ends any nap (the button that tells him he is loved): not curled, not lying, loved */
+      { const d = curlUp({}, wNow() + 60000), mc = window.musChirp;
+        if (!d || !dogPose(d).curl) P.push('a dog could not be curled up for a nap, so what telling him he is loved does to it was not asked');
+        else { CRIT.push(d); mine.push(d); petTarget = d.kind; petCrit = d; window.musChirp = () => {}; Math.random = () => 0.99;
+          try { document.getElementById('love').click(); } finally { Math.random = keep.MR; window.musChirp = mc; }
+          const p = dogPose(d);
+          if (p.curl) P.push('told he is loved, a dog curled up asleep stays curled up');
+          else if (p.lay) P.push('told he is loved, a dog who was curled up is left lying down, where his love shown ends any nap and sits him up');
+          else if (!p.love) P.push('told he is loved, a dog who was curled up wakes and is not shown loved'); } }
+      /* a command he obeys ends it as it ends any nap: told to sit or to stay he sits, told to lie down he lies down stretched
+         out (he obeys awake). A command goes to the dog nearest you, so this check's dog is the only dog in this world and
+         you stand on him; the roll is held at 0, so he obeys; what he has learned is written under his name and saved, so the
+         saving is held off and the record put back */
+      { const pp = parkPersist, tr = JSON.stringify(parkPrefs.train || {}), dp = document.getElementById('dogP'), hid = dp ? dp.hidden : null;
+        mine.forEach(o => { o.world = '__frozen'; });
+        try { parkPersist = () => {};
+          for (const [cmd, want] of [['sit', 'sitting'], ['stay', 'sitting'], ['down', 'lying stretched out']]) {
+            const d = curlUp({}, wNow() + 60000);
+            if (!d || !dogPose(d).curl) { P.push('a dog could not be curled up for a nap, so what the command to ' + cmd + ' does to it was not asked'); continue; }
+            CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1];
+            if (nearestDog() !== d) P.push('the command to ' + cmd + ' would not reach the dog curled up beside you, so what it does to his curl was not asked');
+            else { Math.random = () => 0; try { dogCmd(cmd); } finally { Math.random = keep.MR; }
+              const p = dogPose(d), is = p.curl ? 'curled up asleep' : p.lay ? 'lying stretched out' : p.sit ? 'sitting' : 'standing';
+              if (is !== want) P.push('told to ' + (cmd === 'down' ? 'lie down' : cmd) + ' and obeying, a dog who was curled up asleep is ' + is + ', where he is to be ' + want); }
+            d.world = '__frozen'; } }
+        finally { parkPersist = pp; parkPrefs.train = JSON.parse(tr); if (dp) dp.hidden = hid; } }
+      /* a ball thrown for him, and he sets off after it: up, not curled, not lying. The ball's landing is the handler
+         (ballUpdate): a ball of this check's own is laid a moment from landing at his feet, his fetching is made certain
+         (his own shuffled answers, all yes), and the ball as it was is put back */
+      if (typeof ballUpdate !== 'function' || typeof keep.ball === 'undefined') P.push('this shell has no ball to throw, so whether a thrown ball gets a curled-up dog up was not asked');
+      else { const d = curlUp({}, wNow() + 60000);
+        if (!d || !dogPose(d).curl) P.push('a dog could not be curled up for a nap, so what a thrown ball does to it was not asked');
+        else { CRIT.push(d); mine.push(d); world = wid; d.fseq = [1, 1, 1, 1, 1, 1, 1]; d.fi = 0;
+          try { BALL = { world: wid, sx: at0[0], sy: at0[1], fx: at0[0], fy: at0[1], tx: at0[0], ty: at0[1], t: 0.999, phase: 'fly', dog: d }; ballUpdate(100, wNow()); }
+          finally { BALL = keep.ball; }
+          const p = dogPose(d);
+          if (!d.task || d.task.type !== 'fetch') P.push('a ball landing by a dog curled up asleep, who always fetches, does not send him after it, so whether he gets up for it was not asked');
+          else if (p.curl) P.push('sent after a thrown ball, a dog who was curled up asleep is still curled up as he sets off');
+          else if (p.lay) P.push('sent after a thrown ball, a dog who was curled up sets off lying down');
+          d.task = null; d.world = '__frozen'; } }
+      /* his personality, where a world has them: a patient or an aloof dog given a treat in his nap does not take it yet
+         (the patient one turns and waits, the aloof one later), so he stays curled up, as such a dog stays in any nap; an
+         eager one takes it and wakes. The personality is his own, set on him, so nothing is drawn or kept for it */
+      for (const [pe, stays] of [['patient', true], ['aloof', true], ['eager', false]]) {
+        const d = curlUp({ persona: pe }, wNow() + 60000);
+        if (!d || !dogPose(d).curl) { P.push('a ' + pe + ' dog could not be curled up for a nap, so what a treat does to it was not asked'); continue; }
+        CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => 0.99; personaOn = () => true;
+        try { document.getElementById('treat').click(); } finally { Math.random = keep.MR; personaOn = () => false; }
+        const p = dogPose(d); d.world = '__frozen';
+        if (stays && !p.curl) P.push('given a treat while curled up asleep, a ' + pe + ' dog wakes, where a ' + pe + ' dog does not take a treat in his nap and stays curled up');
+        if (!stays && (p.curl || p.lay)) P.push('given a treat while curled up asleep, an eager dog stays ' + (p.curl ? 'curled up' : 'lying down') + ', where an eager dog takes it, as a dog with no personality does'); }
+
+      /* 7 · a world that has not turned it on: no curled dog, not one number drawn for it; and where it is on, its roll is
+         the last, after the nap's own. Four different numbers are handed out in order, so a roll taken out of turn shows */
+      /* A plain nap (a high roll for the curl) draws one number more where it is on, and lasts what it lasts without it; a
+         curled one (a low roll) draws two more, the curl's and how much longer, and lasts that plus 5 seconds times the
+         last roll (a dog with no personality: the plain, even 0 to 5 seconds) */
+      { let cur = 0, same = 0, moved = 0, cmore = 0, clong = 0, asWas = 0; const N = 40, MOST = 5000;
+        for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, plain = [0.2, 0.5, r, 0.99], curly = [0.2, 0.5, r, 0.01, 1 - r];
+          curlOn = () => false; const off = nap(plain), offc = nap(curly); curlOn = () => true; const on = nap(plain), onc = nap(curly);
+          if (dogPose(off.d, T0 + 1, D0).curl || dogPose(offc.d, T0 + 1, D0).curl) cur++;
+          if (off.c !== 3 || offc.c !== 3 || Math.abs(off.d.layT - T0 - (6000 + 4000 * r)) > 1 || Math.abs(offc.d.layT - T0 - (6000 + 4000 * r)) > 1) asWas++;
+          if (on.c !== off.c + 1) same++; if (on.d.layT !== off.d.layT || on.d.next !== off.d.next || dogPose(on.d, T0 + 1, D0).curl) moved++;
+          if (onc.c !== offc.c + 2) cmore++;
+          const want = offc.d.layT + MOST * (1 - r);
+          if (Math.abs(onc.d.layT - want) > 1 || onc.d.next !== onc.d.layT || !dogPose(onc.d, T0 + 1, D0).curl || !dogPose(onc.d, onc.d.layT - 1, D0).curl || dogPose(onc.d, onc.d.layT + 1, D0).lay) clong++; }
+        curlOn = () => true;
+        out.push('naps on ' + N + ' rolls with the pose off and on: plain ones drew one number more ' + (N - same) + ' times and lasted the same ' + (N - moved) + ' times; curled ones drew two more ' + (N - cmore) + ' times and lasted the nap plus its extra ' + (N - clong) + ' times');
+        if (cur) P.push('in a world that has not turned the curled-up pose on, ' + cur + ' of ' + N + ' naps are curled up');
+        /* with it off, a nap is what it always was: three numbers (its band, the cone's, its time) and 6 to 10 seconds by its time's roll */
+        if (asWas) P.push('in a world that has not turned the curled-up pose on, ' + asWas + ' of ' + N + ' naps do not draw the three numbers a nap always drew or do not last 6 to 10 seconds by their roll, as a nap always did');
+        if (same) P.push('a nap in a world that has not turned the curled-up pose on does not draw exactly one number fewer than a nap where it is on, on ' + same + ' of ' + N + ' rolls: a world that says nothing would no longer roll as it did');
+        if (moved) P.push('where the curled-up pose is on, ' + moved + ' of ' + N + ' plain naps do not last what they last without it on the same rolls, or are curled on a high roll: its roll is not taken after the nap\'s own');
+        if (cmore) P.push('where the curled-up pose is on, ' + cmore + ' of ' + N + ' curled naps do not draw exactly two numbers more than the same nap with it off (the curl\'s and how much longer it lasts): a roll is taken out of its turn');
+        if (clong) P.push('where the curled-up pose is on, ' + clong + ' of ' + N + ' curled naps do not last the nap plus 5 seconds times the roll handed last, curled up to their end and up after: how much longer is not the last roll, or is not added'); }
+      /* the lazy routine the same: pinned and walked with the pose off and on, every roll swept on its own sequence. Off, no
+         lie-down curled and one number fewer drawn over the whole routine; on, the sit and the lie-down last what they
+         did (its lie-down is not made longer, and nothing it rolls before the curl moves) */
+      { let cur = 0, more = 0, moved = 0, onCurled = 0; const N = 30;
+        const walk = (on, i) => { curlOn = () => on; let c = 0; const sw = swept(i); Math.random = () => { c++; return sw(); };
+          const d = made(); let now = T0, sit = 0, lay = 0, curledSeen = false;
+          try { ROUTINEPIN = 'lazy'; dogIdle(d, now);
+            for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.curl) curledSeen = true; if (p.lay && !p.howl) lay += 25; else if (p.sit && !p.lay) sit += 25; now += 25; dogStep(d, now); }
+          } finally { ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); curlOn = () => true; }
+          return { c, sit, lay, curledSeen }; };
+        for (let i = 0; i < N; i++) { const off = walk(false, i), on = walk(true, i);
+          if (off.curledSeen) cur++; if (on.curledSeen) onCurled++; if (on.c !== off.c + 1) more++; if (on.sit !== off.sit || on.lay !== off.lay) moved++; }
+        out.push('the lazy routine on ' + N + ' sweeps with the pose off and on: one number more drawn ' + (N - more) + ' times, its sit and lie-down as long ' + (N - moved) + ' times; curled up in ' + onCurled + ' of them');
+        if (!onCurled) P.push('with the pose on, the lazy routine\'s lie-down is never curled up in ' + N + ' sweeps, so whether the curl moves the routine could not be asked');
+        if (cur) P.push('in a world that has not turned the curled-up pose on, the lazy routine\'s lie-down is curled up in ' + cur + ' of ' + N + ' routines');
+        if (more) P.push('with the pose off, the lazy routine does not draw exactly one number fewer than with it on, in ' + more + ' of ' + N + ' routines: a world that says nothing would no longer roll as it did');
+        if (moved) P.push('with the pose on, the lazy routine\'s sit or lie-down does not last what it lasts with it off on the same rolls, in ' + moved + ' of ' + N + ' routines: the curl\'s roll is not taken after the step\'s own, or the lie-down is made longer'); }
+
+      /* 8 · a curled nap lasts a little longer, by his personality: on the same rolls, the nap curled against the nap with
+         the pose off, the extra roll swept; each personality set on the dog himself, none for a dog with no personality */
+      { const N = 200, MOST = 5000, M = {};
+        for (const pe of ['eager', 'patient', 'aloof', null]) { let sum = 0, lo = Infinity, hi = -Infinity, plainLonger = 0;
+          personaOn = () => pe !== null;
+          try { for (let i = 0; i < N; i++) { const y = (i + 0.5) / N, o = pe ? { persona: pe } : {};
+              curlOn = () => false; const base = nap([0.2, 0.5, 0.5, 0.01, y], o).d.layT; curlOn = () => true;
+              const x = nap([0.2, 0.5, 0.5, 0.01, y], o).d.layT - base, plain = nap([0.2, 0.5, 0.5, 0.99, y], o).d.layT - base;
+              sum += x; lo = Math.min(lo, x); hi = Math.max(hi, x); if (plain !== 0) plainLonger++; } }
+          finally { personaOn = () => false; curlOn = () => true; }
+          const who = pe ? (pe === 'patient' ? 'a ' : 'an ') + pe + ' dog' : 'a dog with no personality';
+          M[pe || 'none'] = sum / N;
+          out.push(who.replace(/^an? /, '') + ': curled, his nap is ' + sec(lo) + ' to ' + sec(hi) + ' longer, ' + sec(sum / N) + ' on average');
+          if (lo < 0 || hi > MOST + 1) P.push('curled up, ' + who + '\'s nap is ' + sec(lo) + ' to ' + sec(hi) + ' longer than the same nap plain, where 0 to 5 seconds more was asked');
+          if (hi - lo < MOST * 0.8) P.push('curled up, ' + who + '\'s nap is ' + sec(lo) + ' to ' + sec(hi) + ' longer whatever the roll: how much longer is not drawn from 0 to 5 seconds');
+          if (plainLonger) P.push('not curled, ' + who + '\'s nap is made longer ' + plainLonger + ' times in ' + N + ': only a curled nap lasts longer'); }
+        if (!(M.eager < M.patient - 300 && M.patient < M.aloof - 300)) P.push('a curled nap is on average ' + sec(M.eager) + ' longer for an eager dog, ' + sec(M.patient) + ' for a patient one and ' + sec(M.aloof) + ' for an aloof one, where the eager dog leans toward none of the 5 seconds, the patient one the middle and the aloof one the whole');
+        if (!(M.none > 2300 && M.none < 2700)) P.push('a curled nap is on average ' + sec(M.none) + ' longer for a dog with no personality, where he gets the plain, even 0 to 5 seconds'); }
+
+      /* 9 · the versions of the curl: a list of two of this check's own (today's version twice over, under other names),
+         weighted 3 to 1, stood in for the engine's for a moment. On the same rolls, swept: each picked in its share; each
+         nap keeps its version to its end, and drawing him rolls nothing; the pick is the last roll, so the nap lasts what
+         it lasts with one version; and with one version not one more roll is taken than the curl's two */
+      if (!keep.cv || typeof dogCurlPick !== 'function') P.push('the curl has no list of versions, so how a version is picked was not asked');
+      else { const one = keep.cv(), base = one[0], two = [Object.assign({}, base, { id: 'probe one', w: 3 }), Object.assign({}, base, { id: 'probe two', w: 1 })];
+        const N = 200, pick = [0, 0]; let other = 0, lost = 0, drawn = 0, longer = 0, oneMore = 0, twoMore = 0;
+        try { for (let i = 0; i < N; i++) { const z = (i + 0.5) / N, seq = [0.2, 0.5, 0.5, 0.01, 0.3, z];
+            curlOn = () => false; const off = nap(seq); curlOn = () => true;
+            curlVersions = () => one; const a1 = nap(seq); curlVersions = () => two; const a2 = nap(seq);
+            if (a1.c !== off.c + 2) oneMore++; if (a2.c !== a1.c + 1) twoMore++; if (a2.d.layT !== a1.d.layT) longer++;
+            const v = dogPose(a2.d, T0 + 1, D0).ver; if (v === 0 || v === 1) pick[v]++; else other++;
+            const mr = Math.random; Math.random = () => { drawn++; return 0.5; };
+            try { for (let t = T0 + 1; t < a2.d.layT; t += 250) if (dogPose(a2.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { Math.random = mr; } } }
+        finally { curlVersions = keep.cv; curlOn = () => true; }
+        const p0 = 100 * pick[0] / N, p1 = 100 * pick[1] / N;
+        out.push('two versions weighted 3 to 1, over ' + N + ' curled naps: the first picked ' + p0.toFixed(1) + '%, the second ' + p1.toFixed(1) + '%; with one version ' + (N - oneMore) + ' naps drew no roll for it');
+        if (other) P.push('with two versions of the curl, ' + other + ' of ' + N + ' curled naps are in neither');
+        if (p0 < 70 || p0 > 80 || p1 < 20 || p1 > 30) P.push('with two versions of the curl weighted 3 to 1, the first is picked ' + p0.toFixed(0) + '% of the time and the second ' + p1.toFixed(0) + '%, where 75 and 25 were asked');
+        if (lost) P.push('in ' + lost + ' of ' + N + ' curled naps he changes from one version of the curl to another before the nap is over: the version is to be picked once, when the nap starts, and kept');
+        if (drawn) P.push('drawing a curled-up dog rolls ' + drawn + ' number(s): the version of his curl is never to be picked where he is drawn');
+        if (twoMore) P.push('with two versions of the curl, ' + twoMore + ' of ' + N + ' curled naps do not draw exactly one number more than with one version');
+        if (longer) P.push('with two versions of the curl, ' + longer + ' of ' + N + ' curled naps do not last what they last with one version on the same rolls: the pick is not the last roll');
+        if (oneMore) P.push('with one version of the curl, ' + oneMore + ' of ' + N + ' curled naps do not draw exactly the curl\'s two numbers: one version is to roll nothing more'); }
+
+      /* the switch itself: the engine's own answer, asked both ways in this world, so an engine that does not read the list
+         is red whichever way this world happens to be. The list is emptied for a moment (or, in a world that has none, one
+         is handed to it for a moment) and put back. Off, no dog curls up and his curl draws no number; on, one number is
+         drawn and the roll that always curls him curls him */
+      { curlOn = keep.con;
+        const has = typeof CURLTAKE !== 'undefined', says = has && Array.isArray(CURLTAKE) && CURLTAKE.includes('dog');
+        const ask = () => { const d = made({ layT: T0 + 60000 }); let c = 0, cu = false; Math.random = () => { c++; return 0; };
+          try { cu = dogCurl(d, 'nap'); } finally { Math.random = keep.MR; } return { on: !!curlOn(d), cu, c }; };
+        const as = ask(); let off = null, on = null;
+        if (has && Array.isArray(CURLTAKE) && !Object.isFrozen(CURLTAKE)) { const was = CURLTAKE.slice();
+          try { CURLTAKE.length = 0; off = ask(); CURLTAKE.push('dog'); on = ask(); } finally { CURLTAKE.length = 0; was.forEach(x => CURLTAKE.push(x)); } }
+        else if (!has) { try { window.CURLTAKE = ['dog']; on = ask(); } finally { delete window.CURLTAKE; } off = as; }
+        out.push('this world ' + (says ? 'asks for the curled-up pose for its dogs (CURLTAKE)' : 'has not turned the curled-up pose on, so it was asked by turning the switch on for the check')
+          + (off && on ? '; the engine\'s own switch asked with the list empty and with dogs in it' : '; its list cannot be changed for a moment, so the engine\'s own switch was asked only as this world has it'));
+        if (says !== as.on) P.push(says ? 'this world asks for the curled-up pose for its dogs and none of them would ever curl up: the engine does not hear its list' : 'this world has not asked for the curled-up pose and its dogs would curl up all the same');
+        if (off && (off.on || off.cu)) P.push('with no dog in the world\'s list of who curls up, a dog curls up all the same: every world that never asked for the pose would have curled-up dogs');
+        if (off && off.c) P.push('with no dog in the world\'s list of who curls up, a nap still draws ' + off.c + ' number(s) for the curl: every world that never asked would roll one more number each nap');
+        if (on && !(on.on && on.cu)) P.push('with dogs in the world\'s list of who curls up, a dog does not curl up on the roll that always curls him: the engine does not hear the list');
+        if (on && on.c !== 1) P.push('with dogs in the world\'s list of who curls up, a nap draws ' + on.c + ' numbers for the curl, where it draws one'); }
+    } finally {
+      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; if (keep.al) alebLooks = keep.al;
+      if (keep.cv) curlVersions = keep.cv; if (typeof keep.ball !== 'undefined' && typeof BALL !== 'undefined') BALL = keep.ball; if (!keep.ccOwn) delete window.CURLCHANCE;
+      mine.forEach(d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); }); real.forEach(([c, wd]) => { c.world = wd; }); Object.assign(PARK, JSON.parse(keep.park)); tidy();
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; petTarget = keep.pt; petCrit = keep.pc;
+      if (CRIT.length !== keep.crit) P.push('the check of the curled-up pose left ' + (CRIT.length - keep.crit) + ' dog(s) of its own in the world');
+    }
+    return { P, out };
+  });
+  curled.out.forEach(l => console.log('  CURLED UP: ' + l));
+  fails.push(...curled.P.map(m => 'the dog curled up: ' + m));
+
   /* ---- MERIDIAN'S DOGS STAND AS BODIES (mq-v289; the owner's confirmed goal of 2026-11-21 on Meridian's dogs) ----
      What was asked, on 2026-11-21 and confirmed that day: in Meridian the dogs that live the dog program, the star dog and
      every adopted dog, stand as bodies in the 3D camera, as a world that already asks for them has them; with no limit of
@@ -4794,7 +5251,7 @@ function findChromium() {
       happyT: 0, loveT: 0, next: Infinity, home: [x, y], task: null, holdT: 0, stayT: 0, moving: false, mt: 0, follow: false }, o); CRIT.push(cr); return cr; };
     const unmake = cr => { const i = CRIT.indexOf(cr); if (i >= 0) CRIT.splice(i, 1); };
     /* one frame of the 3D camera, drawn here: is this dog a body, was his card painted, and how many dog bodies stand in all */
-    const drawn = new Set(); let office = 0, officeG = null, rolls = 0, inDogs = false;
+    const drawn = new Set(); let office = 0, officeG = null, rolls = 0, inDogs = false, officeKeep = null, officeKeep0 = null;
     const isBody = cr => { const B = T3.dogOn ? T3.dogOn.get(cr) : null; return !!(B && B.visible && B.parent === T3.scene && T3.dogShown && T3.dogShown.has(cr)); };
     const frame = cr => { drawn.clear(); const ok = !!draw3d() && !T3.fail; let n = 0; T3.scene.traverse(o => { if (o.name === 'dogbody' && o.visible) n++; });
       return { ok, body: isBody(cr), card: drawn.has(cr), bodies: n }; };
@@ -4819,7 +5276,8 @@ function findChromium() {
     const size = s => s[0] + ' by ' + s[1];
     try {
       ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f; window[n] = function (g, cr, ...a) { drawn.add(cr); return f.call(this, g, cr, ...a); }; });
-      if (keep.dd) drawDog = function (...a) { office++; officeG = a[0]; return keep.dd.apply(this, a); };   /* the office dog's own painter, counted, and the billboard it painted him on */
+      if (keep.dd) drawDog = function (...a) { office++; officeG = a[0]; return keep.dd.apply(this, a); };
+      officeKeep0 = [Math.round(DOG.x), Math.round(DOG.y)];   /* the office dog's square when the check began: where he is held still in 7 */   /* the office dog's own painter, counted, and the billboard it painted him on */
       Math.random = () => { if (inDogs) rolls++; return keep.MR(); };
       t3DogBodies = dt => { inDogs = true; try { return keep.kd(dt); } finally { inDogs = false; } };   /* the engine's own, watched for dice and nothing else */
       el.hidden = false; camSet('3d'); sizeCanvas(); moving = false;
@@ -5094,7 +5552,13 @@ function findChromium() {
       { CRIT.length = Math.min(CRIT.length, keep.crit);
         const ow = typeof AW === 'function' ? AW('dog') : null;
         if (!ow || !keep.dd) { if (MER) P.push('Meridian\'s office dog stands in no world, so whether he stayed as he is could not be asked'); else out.push('this world has no office dog, so he was not asked here'); }
-        else { const ox = Math.round(DOG.x), oy = Math.round(DOG.y);   /* you stand two squares to one side of him, so you are not in front of him */
+        else {
+          /* HE IS HELD STILL ON HIS OWN STARTING SQUARE while he is looked at, and put back after: he wanders on the game's own
+             clock between the frames this check draws, and once, on the full run, he had walked to a square where nothing of
+             his card was on the screen, and the check said he was gone */
+          officeKeep = { x: DOG.x, y: DOG.y, fx: DOG.fx, fy: DOG.fy, moving: DOG.moving, mt: DOG.mt, next: DOG.next, sit: DOG.sit };   /* put back in the block's finally */
+          DOG.x = DOG.fx = officeKeep0[0]; DOG.y = DOG.fy = officeKeep0[1]; DOG.moving = false; DOG.mt = 0; DOG.next = Infinity; DOG.sit = false;
+          const ox = Math.round(DOG.x), oy = Math.round(DOG.y);   /* you stand two squares to one side of him, so you are not in front of him */
           const st = [[2, 0], [-2, 0], [2, 1], [-2, 1], [1, 1], [-1, 1], [1, 0], [-1, 0], [0, 1]].map(([dx, dy]) => [ox + dx, oy + dy]).find(([x, y]) => openIn(ow, x, y)) || [ox, oy + 1];
           world = ow; px = fx = st[0]; py = fy = st[1]; office = 0; officeG = null; const s = frames(near, 2), q = officeG ? T3.pool.find(e => e.g === officeG && e.live) : null;
           out.push('where the office dog lives: his card painted ' + office + ' times in two frames, dog bodies in the scene: ' + s.bodies);
@@ -5134,6 +5598,7 @@ function findChromium() {
                 finally { performance.now = k0.pn; Date.now = k0.dn; Math.random = k0.mr; Object.keys(DOG).forEach(k => { if (!(k in k0.dog)) delete DOG[k]; }); Object.assign(DOG, k0.dog); }
                 out.push('the office dog pixel for pixel against this world with the dog taken out of its own list (' + readers.length + ' function' + (readers.length === 1 ? '' : 's') + ' rebuilt), pixels that differ: ' + got.join(', ')); } } } } }
     } finally {
+      if (officeKeep) Object.assign(DOG, officeKeep);
       CRIT.length = Math.min(CRIT.length, keep.crit); keep.real.forEach(([c, wd]) => { c.world = wd; });
       Math.random = keep.MR; t3DogBodies = keep.kd; if (keep.dd) drawDog = keep.dd; Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); seasonPick = keep.season;
       while (keep.picks.length) { const [o, k, had, v] = keep.picks.pop(); if (had) o[k] = v; else delete o[k]; }
@@ -6269,7 +6734,7 @@ function findChromium() {
     const KN = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua' };
     const probe = (k, o) => Object.assign({ kind: k, name: 'Posed', world: '__probe', x: 0, y: 0, fx: 0, fy: 0, dx: 1, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
       moving: false, mt: 0, home: [0, 0], task: null }, o);
-    const poses = [['sitting', { sit: true }], ['lying down', { layT: LONG }], ['howling', { howlT: LONG }], ['howling lying down', { layT: LONG, howlT: LONG }],
+    const poses = [['sitting', { sit: true }], ['lying down', { layT: LONG }], ['curled up asleep', { layT: LONG, curlT: LONG }], ['howling', { howlT: LONG }], ['howling lying down', { layT: LONG, howlT: LONG }],
       ['digging', { digT: LONG }], ['sniffing', { sniffT: LONG }], ['happy', { happyT: LONG }], ['told he is loved', { loveT: LONG }], ['facing the other way', { face: -1 }]];
     const course = typeof agilityCourse === 'function' && PL.park ? agilityCourse(PL.park) : [];
     const piece = r => course.find(p => GEARROLE[(WORLDS[PL.park].rows[p[1]] || '')[p[0]]] === r), hur = piece('hurdle'), tun = piece('tunnel');
@@ -17600,6 +18065,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                        owner's confirmed goal of 2026-11-19); inside the tunnel neither is drawn; and he is a body again after ---- */
               const kg = gearPose;
               const asBody = [['sitting', c => { c.sit = true; }, c => { c.sit = false; }], ['lying down', c => { c.layT = Infinity; }, c => { c.layT = 0; }],
+                ['curled up asleep', c => { c.layT = Infinity; c.curlT = Infinity; }, c => { c.layT = 0; c.curlT = 0; }],   /* mq-v290: the mark on a nap (dogCurl), set by hand as the lie-down beside it is */
                 ['howling', c => { c.howlT = Infinity; }, c => { c.howlT = 0; }],
                 ['howling while he sits', c => { c.sit = true; c.howlT = Infinity; }, c => { c.sit = false; c.howlT = 0; }],
                 ['howling while he lies down', c => { c.layT = Infinity; c.howlT = Infinity; }, c => { c.layT = 0; c.howlT = 0; }],

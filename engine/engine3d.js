@@ -2461,9 +2461,10 @@ const DOGBUILDS=Object.freeze({
    walking and wagging, sitting, lying and howling (mq-v264), and now digging, his hearts, and the agility course: over the bar
    he is lifted with his legs tucked, through the poles his body takes the side step his record takes, and inside the tunnel
    nothing of him is drawn, body or card, as his card is not. A pose added to dogPose later is the body's to draw: name it in
-   dogMore, or it is held as standing */
+   dogMore. A new way of holding his whole body (dogPose's `held` word) is his body's to learn in DOGHELDS and dogHold;
+   until it has, he is his card for it and is never stood up (mq-v290) */
 function dogBodyWants(cr,P){
-  return !!cr&&!!P&&DOGK.has(cr.kind)&&!dogPaintCard(cr);}
+  return !!cr&&!!P&&DOGK.has(cr.kind)&&(typeof P.held!=="string"||DOGHELDS.includes(P.held))&&!dogPaintCard(cr);}
 /* A DOG PAINTED AS AN ALEBRIJE, WHERE THE WORLD KEEPS HIS CARD FOR IT (mq-v289; the owner's confirmed goal of 2026-11-21 on
    the night of alebrijes). On a night when every animal wears an alebrije's colours, marks
    and wings (alebLookFor, engine/engine.js), a dog's card is painted in them and his body is not: the body's paint is a
@@ -2472,8 +2473,16 @@ function dogBodyWants(cr,P){
    body again. A world that does not say it is exactly as it was: its dogs stand as bodies in their own coats that night.
    Read through this one function, so a check can hold it */
 function dogPaintCard(cr){return typeof BODYPAINT!=="undefined"&&BODYPAINT==="card"&&typeof alebLookFor==="function"&&!!alebLookFor(cr.kind,cr.name);}
-/* HOW HE IS HELD, of the three ways his body knows (mq-v264): lying beats sitting, as on his card, and anything else is standing */
-function dogHeld(P){return P&&P.lay?"lay":P&&P.sit?"sit":"stand";}
+/* THE WAYS OF HOLDING HIMSELF HIS BODY KNOWS (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). dogPose
+   names how he is held in one word (`held`). A word in this list is drawn by dogHold; any other word is a pose his body
+   has not learned, and he is his card for it (dogBodyWants), which draws every pose: never a dog standing where his record
+   says otherwise */
+const DOGHELDS=Object.freeze(["stand","sit","lay","curl"]);
+/* HOW HE IS HELD, of the ways his body knows (mq-v264; curled up from mq-v290): the pose's own word where it has one his
+   body knows; otherwise, as before, lying beats sitting, as on his card, and anything else is standing */
+function dogHeld(P){if(P&&DOGHELDS.includes(P.held))return P.held;return P&&P.lay?(P.curl?"curl":"lay"):P&&P.sit?"sit":"stand";}
+/* is he down on the ground, stretched out or curled up? What is true of a dog lying down (his tail's short swing, his ears laid) is true of both */
+function dogDown(held){return held==="lay"||held==="curl";}
 /* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */
 function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||DOGBUILDS.beagle,J={},back=new Set(["spine","chest"]),leg=/^(hock|hpaw|wrist|fpaw)_/,up=new Set(["neck","head"]);
   Object.keys(s.joints).forEach(n=>{const[p,x,y,z]=s.joints[n];
@@ -2721,6 +2730,8 @@ const DOGPART={
 function t3DogPose(B,P,phase,moving,groundAt){
   const held=dogHeld(P),howl=!!(P&&P.howl);
   t3BodyPose(B,phase,moving&&held==="stand",groundAt);
+  if(P&&(P.face===1||P.face===-1))B.userData.curlSide=P.face;   /* curled up, he curls toward the side his card faces */
+  B.userData.curlVer=held==="curl"&&P&&Number.isInteger(P.ver)?P.ver:0;   /* and in the version of the curl his record keeps (dogPose's `ver`) */
   dogHold(B,held,howl,P&&isFinite(P.t)?P.t:0);
   dogMore(B,P,held,P&&isFinite(P.t)?P.t:0);
   dogEars(B,P,held,moving,phase);
@@ -2728,7 +2739,7 @@ function t3DogPose(B,P,phase,moving,groundAt){
   /* turned about its own fore-and-aft line, the tip goes to his side by its height over that line times the sine; lying
      down it swings two fifths as far, as his card's does */
   t1.rotation.z=0;t1.updateWorldMatrix(true,true);
-  const reach=Math.max(0.01,t1.worldToLocal(tip.getWorldPosition(new THREE.Vector3())).length()),w=(P&&typeof P.wag==="number"&&isFinite(P.wag)?P.wag:0)*(held==="lay"?0.4:1)*0.92/32;
+  const reach=Math.max(0.01,t1.worldToLocal(tip.getWorldPosition(new THREE.Vector3())).length()),w=(P&&typeof P.wag==="number"&&isFinite(P.wag)?P.wag:0)*(dogDown(held)?0.4:1)*0.92/32;
   t1.rotation.z=-Math.asin(Math.max(-0.9,Math.min(0.9,w/reach)));
   B.updateWorldMatrix(true,true);}
 /* THE THREE WAYS HE IS HELD, AND THE HOWL (mq-v264). Standing is the walk's own answer, with what the other holds moved
@@ -2741,6 +2752,70 @@ function t3DogPose(B,P,phase,moving,groundAt){
        his head is brought level again; his tail lies out behind him.
      · LYING: his belly is on the ground; his fore legs are stretched out ahead and his hind legs folded beside him; his
        head is lowered and his eyes are shut; his chest fills out sideways by the breed's `lie`; his tail lies out behind. */
+/* CURLED UP ASLEEP, ON HIS BODY (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). Laid over the
+   lying hold (his belly on the ground, his chest filled out, his eyes shut, his ears laid), every angle a number of DOGCURL
+   (radians: `back` the bend of his barrel, `chest` and `head` how much further each turns, `nod` and `cheek` how his head
+   lies, `rest` how high its middle rests in head sizes, `tail` its two joints' tip-down and turn, `fore` his folded fore
+   legs, `ear` an upright ear laid back, `shadow` his shadow against the round of him):
+     (`cheek` and `rest` are held where his drop ear, on the low side of his head, goes no deeper into the ground than a
+     paw's size: on its cheek and at rest 1, the beagle's and the lab's went in half as deep again as that)
+     · HIS BACK IS CURVED: his barrel is bent round to one side along an arc from his hips to his chest (dogBarrelBend lays
+       its points over the arc, as earBend does an ear), and his chest, neck and head follow where the arc ends;
+     · HIS HEAD IS BROUGHT ROUND TO HIS TAIL: his chest turns further and tips forward until his head rests on the ground
+       (the tip is worked out from the breed's own neck and head, so every breed's chin reaches the ground), and his head
+       turns further still, set by where it should face whatever his neck did, a little on its cheek;
+     · HIS LEGS ARE TUCKED: his fore legs folded under his chest, his hind legs folded beside him as when he lies;
+     · HIS TAIL lies on the ground, brought round the same way to meet his nose;
+     · an upright ear is laid back along his skull, further than when he lies stretched out;
+     · he is moved over so the round of him lies on the middle of his square, and his shadow is as round as he is.
+   He curls toward the side his card faces (userData.curlSide, 1 his left). Nothing here moves with time: he is asleep.
+   dogUncurl puts back everything this moved, and runs only for a body that was curled.
+   The angles are the version's own (its `body`, CURLVERSIONS in engine/engine.js; the first version's are DOGCURL, kept
+   there beside his curled card): the version he was curled in rides on userData.curlVer */
+function dogCurlAngles(B){const v=curlVersion(B&&B.userData?B.userData.curlVer:0).body;return v&&typeof v==="object"?v:DOGCURL;}
+function dogBarrelBend(B,A,sd){let m=null;B.traverse(o=>{if(o.isMesh&&o.userData.trunk==="barrel")m=o;});if(!m)return null;
+  const P=m.geometry.attributes.position,u=m.userData;if(!u.barrelRest)u.barrelRest=new Float32Array(P.array);
+  const sx=m.scale.x||1,key=A?A*sd+"|"+sx:"";if((u.barrelBend||"")===key)return m;   /* laid again only when the bend or his chest's width moves */
+  const rest=u.barrelRest,L=B.userData.skel.joints.chest[3],k=A/(2*L);
+  for(let i=0;i<P.count;i++){const x=rest[i*3],y=rest[i*3+1];let nx=x,ny=y;
+    if(A>0){const d=y+L,th=Math.max(0,Math.min(2*L,d))*k,over=d>2*L?d-2*L:0,cx=(1-Math.cos(th))/k+over*Math.sin(A),cy=(d<0?d:Math.sin(th)/k+over*Math.cos(A))-L;
+      nx=sd*cx/sx+x*Math.cos(th);ny=cy-sd*x*sx*Math.sin(th);}   /* the part is stretched across him (sx): the arc is laid in his own measure */
+    P.setXYZ(i,nx,ny,rest[i*3+2]);}
+  P.needsUpdate=true;m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();u.barrelBend=key;return m;}
+function dogCurlHold(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData,C=dogCurlAngles(B),sd=U.curlSide===-1?-1:1,L=S.joints.chest[3],A=C.back,k=A/(2*L);
+  dogBarrelBend(B,A,sd);
+  /* his chest where the arc ends, turned on round and tipped forward until his head is on the ground */
+  const nv=new THREE.Vector3(0,S.joints.neck[2]+S.joints.head[2],S.joints.neck[3]+S.joints.head[3]),len=nv.length(),
+    tip=Math.acos(Math.max(-1,Math.min(1,(S.head*C.rest-J.hips.position.y)/Math.max(0.001,len))))-Math.atan2(nv.z,nv.y);
+  J.chest.position.set(sd*(1-Math.cos(A))/k,0,Math.sin(A)/k-L);J.chest.rotation.set(tip,sd*(A+C.chest),0,"YXZ");
+  J.neck.rotation.set(0,0,0);
+  /* his head, by where it should face: round toward his tail, his nose a little down, lying a little on its cheek */
+  {const up=new THREE.Quaternion();[J.hips,J.spine,J.chest,J.neck].forEach(j=>up.multiply(j.quaternion));
+    const want=new THREE.Quaternion().setFromEuler(new THREE.Euler(C.nod,sd*(A+C.chest+C.head),-sd*C.cheek,"YXZ"));
+    J.head.quaternion.copy(up.invert().multiply(want));}
+  /* his fore legs folded under his chest; his hind legs are folded beside him already (the lying hold) */
+  S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(C.fore[0],0,0);J[kn].rotation.set(C.fore[1],0,0);J[an].rotation.set(0,0,0);}});
+  /* his tail down on the ground and round toward his nose */
+  J.tail_1.rotation.set(C.tail[0],-sd*C.tail[2],0,"YXZ");J.tail_2.rotation.set(C.tail[1],0,-sd*C.tail[3]);
+  /* the round of him over the middle of his square: the middle of what his hips, chest, head, nose and tail cover, measured
+     once for this side with his hips where they stand, then his hips moved by that much */
+  {const key=sd+"|"+J.hips.position.y+"|"+(U.curlVer|0);if(!U.curlMid||U.curlMid[0]!==key){J.hips.position.x=0;J.hips.position.z=S.joints.hips[3];B.updateWorldMatrix(true,true);
+      const inv=new THREE.Matrix4().copy(B.matrixWorld).invert(),lo=[Infinity,Infinity],hi=[-Infinity,-Infinity],
+        take=(v,r)=>{v.applyMatrix4(inv);lo[0]=Math.min(lo[0],v.x-r);hi[0]=Math.max(hi[0],v.x+r);lo[1]=Math.min(lo[1],v.z-r);hi[1]=Math.max(hi[1],v.z+r);};
+      [["hips",S.limb.barrel],["chest",S.limb.barrel],["head",S.head],["tail_2",S.limb.tail],["tail_tip",S.limb.tail]].forEach(([n,r])=>take(J[n].getWorldPosition(new THREE.Vector3()),r));
+      take(new THREE.Vector3(0,0,S.head*1.4).applyMatrix4(J.head.matrixWorld),S.head*0.3);   /* his nose */
+      U.curlMid=[key,(lo[0]+hi[0])/2,(lo[1]+hi[1])/2,Math.max(hi[0]-lo[0],hi[1]-lo[1])/2];}
+    J.hips.position.x=-U.curlMid[1];J.hips.position.z=S.joints.hips[3]-U.curlMid[2];}
+  B.children.forEach(o=>{const u=o.userData;if(!u||!u.shadow)return;if(!u.restScale){u.restScale=o.scale.clone();u.restPos=o.position.clone();}
+    const r=U.curlMid[3]*C.shadow;o.scale.set(r,r,1);o.position.set(0,u.restPos.y,0);});
+  U.curled=true;}
+function dogUncurl(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData;
+  dogBarrelBend(B,0,1);
+  J.chest.position.set(S.joints.chest[1],S.joints.chest[2],S.joints.chest[3]);J.chest.rotation.set(0,0,0,"XYZ");
+  J.neck.rotation.set(J.neck.rotation.x,0,0);J.head.rotation.set(J.head.rotation.x,0,0,"XYZ");
+  J.tail_1.rotation.set(J.tail_1.rotation.x,0,0,"XYZ");J.tail_2.rotation.set(J.tail_2.rotation.x,0,0);J.hips.position.x=0;J.hips.position.z=S.joints.hips[3];
+  B.children.forEach(o=>{const u=o.userData;if(u&&u.shadow&&u.restScale){o.scale.copy(u.restScale);o.position.copy(u.restPos);}});
+  U.curled=false;}
 const DOGJAW=0.8;   /* how far his jaw drops for a howl, in radians: far enough that the dark of his mouth shows under his muzzle from the side */
 const DOGSIT=0.55,DOGLAY=0.72;   /* how high his hips are held, in barrel radii, sitting and lying */
 function dogHold(B,held,howl,t){
@@ -2751,7 +2826,7 @@ function dogHold(B,held,howl,t){
     J.hips.position.y=hy;neck=pitch*0.75;tail=pitch-1.3;tail2=0.45;
     S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(pitch,0,0);J[kn].rotation.set(0,0,0);J[an].rotation.set(0,0,0);}
       else{J[hp].rotation.set(pitch-Math.PI/2,0,0);J[kn].rotation.set(0.5,0,0);J[an].rotation.set(Math.PI/2-0.5,0,0);}});}
-  else if(held==="lay"){J.hips.position.y=S.limb.barrel*DOGLAY;neck=0.7;head=-0.4;tail=-1.3;tail2=0.45;shut=!howl;wide=typeof b.lie==="number"&&isFinite(b.lie)?Math.max(1,Math.min(1.4,b.lie)):1;
+  else if(dogDown(held)){J.hips.position.y=S.limb.barrel*DOGLAY;neck=0.7;head=-0.4;tail=-1.3;tail2=0.45;shut=!howl;wide=typeof b.lie==="number"&&isFinite(b.lie)?Math.max(1,Math.min(1.4,b.lie)):1;
     S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(-Math.PI/2+0.22,0,0);J[kn].rotation.set(0,0,0);J[an].rotation.set(Math.PI/2-0.22,0,0);}
       else{J[hp].rotation.set(-Math.PI/2+0.3,0,0);J[kn].rotation.set(2.3,0,0);J[an].rotation.set(Math.PI/2-2.6,0,0);}});}
   if(howl){neck-=0.45;head-=0.5;}
@@ -2761,7 +2836,8 @@ function dogHold(B,held,howl,t){
     if(u.wears==="eye"){if(u.open===undefined)u.open=o.scale.y;o.scale.y=u.open*(shut?0.22:1);}
     if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}
     /* lying down, an upright ear relaxes back along his skull, as a resting dog lays his ears (mq-v281) */
-    if(u.upEar){if(u.restX===undefined)u.restX=o.rotation.x;o.rotation.x=u.restX+(held==="lay"&&!howl?-0.75:0);}});
+    if(u.upEar){if(u.restX===undefined)u.restX=o.rotation.x;o.rotation.x=u.restX+(held==="curl"?dogCurlAngles(B).ear:dogDown(held)&&!howl?-0.75:0);}});
+  if(held==="curl")dogCurlHold(B);else if(B.userData.curled)dogUncurl(B);   /* after his chest has filled out, which the bend reads; a body that was never curled is not touched */
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}
@@ -2776,16 +2852,16 @@ function dogHold(B,held,howl,t){
      · a drop ear lifts and spreads a little when pricked, and swings as he trots */
 const EARSPRING=Object.freeze({eager:14,patient:8,aloof:3}),EARDAMP=0.45,EARTWITCH=[3000,7000],EARTWITCHKICK=0.25;
 function dogEars(B,P,held,moving,phase){const U=B.userData,dt=U.earHold?0:Math.min(0.05,Math.max(0,U.dt||0)),now=P&&isFinite(P.t)?P.t:0;   /* earHold: a check holds his ears where they are while it compares two frames */
-  const aim=held==="lay"?0:(typeof U.earAim==="number"?U.earAim:0.35),k=U.earSpeed||EARSPRING.patient;
+  const aim=dogDown(held)?0:(typeof U.earAim==="number"?U.earAim:0.35),k=U.earSpeed||EARSPRING.patient;
   let e=typeof U.ear==="number"?U.ear:aim,v=U.earV||0;
   if(dt>0){v+=(k*k*(aim-e)-2*EARDAMP*k*v)*dt;e+=v*dt;}
   if(U.twitchAt===undefined)U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);
-  if(dt>0&&now>=U.twitchAt){if(held!=="lay")v+=k*EARTWITCHKICK;U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);}
+  if(dt>0&&now>=U.twitchAt){if(!dogDown(held))v+=k*EARTWITCHKICK;U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);}
   if(Math.abs(e-aim)<0.002&&Math.abs(v)<0.002){e=aim;v=0;}
   U.ear=e;U.earV=v;const perk=Math.max(0,Math.min(1.15,e)),up=Math.max(0,Math.min(1,(perk-0.4)/0.6));
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.foldable){const A=EARBEND*(1-0.9*up);if(Math.abs((u.bend||0)-A)>0.01)earBend(o,A);}
-    if(u.upEar&&held!=="lay")o.rotation.x+=-0.3*(1-Math.min(1,perk));
+    if(u.upEar&&!dogDown(held))o.rotation.x+=-0.3*(1-Math.min(1,perk));
     if(u.dropEar){const sd=u.dropEar,lift=Math.max(0,perk-0.5);o.rotation.set(0.12-0.35*lift,0,sd*(0.16+0.3*lift)+(moving?sd*0.12*Math.sin(phase*2):0));}});
   /* AN EAR LISTENS FROM ITS ROOT (mq-v285; the owner's word of 2026-11-21). A dog moves an ear with the small muscles at its base:
      the root of a drop ear lifts a little as he pricks it (EARROOTLIFT of his head), comes forward, and turns toward what he
