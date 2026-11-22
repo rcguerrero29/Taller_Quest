@@ -1212,7 +1212,9 @@ function t3Petals(){
    top camera's own painting of the hole (drawDecal, baked once per kind at this density), faded by the same
    clock as every other camera (decalsNow → material opacity), and lit as a Lambert surface like the ground
    it lies on, so evening darkens both together. The other thing stands, and rides the actor pool
-   (t3Actors) the way the ball does. A pool like the petals: nothing is made or thrown away per frame. */
+   (t3Actors) the way the ball does; unless its world names the old picture character, it stands as a shape instead
+   (t3Mess, below).
+   A pool like the petals: nothing is made or thrown away per frame. */
 function t3DecalTex(kind){
   if(T3.decalK!==T3.K){Object.values(T3.decalTex||{}).forEach(t=>t.dispose());T3.decalTex={};T3.decalK=T3.K;}
   if(T3.decalTex[kind])return T3.decalTex[kind];
@@ -1231,6 +1233,33 @@ function t3Decals(){
     p.position.set(dc.x+0.5,0.011+stairLift(w,dc.x,dc.y),dc.y+0.5);
     p.userData={decal:dc.kind,x:dc.x,y:dc.y};p.visible=true;i++;});
   for(;i<T3.decals.length;i++)T3.decals[i].visible=false;}
+/* THE MESS AS A SHAPE (mq-v291; the owner's confirmed goal of 2026-11-21 on the mess a dog leaves). In every world that
+   does not name the old picture character (engine/engine.js, grep `THE MESS IS A FIGURE`) the mess is no card here: a
+   small shape stands on its tile, the shape of the look that world takes (messLook; for the first look, SHAPES.dogMess,
+   three soft lobes and no face), built through the shape builder like every other shape and lit as the street is. A
+   pool, like the holes above: one mesh per mess in sight, made the first time it is wanted and only moved after that,
+   never made or thrown away per frame. Each has a material of its own, because each fades on its own mark's clock
+   (decalsNow → opacity, the clock every camera reads), and that material is taken off the room's list (T3.tintables)
+   the moment it is built: the pool outlives the room, so the time of day is given to it here, each frame. Its colours
+   are baked through the player's colour theme, and its shape is the look's, so a new theme or a new look builds the
+   pool again. It is turned by the tile it lies on (messTurn). Where the shape cannot be built, T3.messFail says so once
+   and the card stands in from the next frame (t3Actors), painted by the same faceless painter. */
+function t3MessLook(){if(T3.messFail||typeof messLook!=="function"||typeof SHAPES!=="object"||!SHAPES)return null;
+  const lk=messLook();return lk&&typeof SHAPES[lk.shape]==="function"?lk:null;}
+function t3MessOn(){return !!t3MessLook();}
+function t3Mess(){
+  T3.mess=T3.mess||[];let i=0;const lk=t3MessLook(),key=themeName+"|"+(lk?lk.name:"");
+  if(T3.messKey!==key){T3.mess.forEach(m=>{T3.scene.remove(m);m.geometry.dispose();m.material.dispose();});T3.mess=[];T3.messKey=key;}
+  if(lk){const w=CW();
+    decalsNow().forEach(({dc,a})=>{if(dc.kind!=="poop"||T3.messFail)return;
+      let m=T3.mess[i];
+      if(!m){try{m=t3MeshOf(SHAPES[lk.shape](),{mess:true,decal:"poop",look:lk.name},null);}catch(e){T3.messFail=true;t3Note("mesh mess",e);return;}
+        const at=T3.tintables.indexOf(m.material);if(at>=0)T3.tintables.splice(at,1);
+        m.material.transparent=true;T3.mess[i]=m;T3.scene.add(m);}
+      m.material.color.copy(T3.tint);m.material.opacity=a;
+      m.position.set(dc.x+0.5,stairLift(w,dc.x,dc.y),dc.y+0.5);m.rotation.y=messTurn(dc)*Math.PI/4;
+      m.userData.x=dc.x;m.userData.y=dc.y;m.visible=true;i++;});}
+  for(;i<T3.mess.length;i++)T3.mess[i].visible=false;}
 /* actors: a pool of live-canvas sprites, repainted by the 2D artists every frame */
 function t3Sprite(i){
   let p=T3.pool[i];
@@ -3058,7 +3087,8 @@ function t3Actors(){
   const w=CW();
   /* the other thing the dog leaves stands, like the ball, painted by the flat cameras' own painter (#267) — first
      in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
-  decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind])list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});
+  {const shape=t3MessOn();   /* where the mess stands as a shape (THE MESS AS A SHAPE, t3Mess), its card is not drawn as well */
+    decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind]&&!(shape&&dc.kind==="poop"))list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});}
   w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n)&&T3.peopleOn.get(n);   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): their marks only, above the body's head */
     list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,...(body?{h:Math.max(0,(body.userData.top||0)+PEOPLEMARKGAP-PEOPLEMARK*T3PERSON)}:{}),f:(g)=>{
     if(!body)drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
@@ -3207,6 +3237,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3DroneMarks();
     t3Petals();
     t3Decals();
+    t3Mess();
     t3Fiesta();
     t3Leash();
     T3.renderer.render(T3.scene,T3.cam);

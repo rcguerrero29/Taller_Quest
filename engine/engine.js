@@ -3190,7 +3190,9 @@ function drawDecor(camX,camY){DECOS.forEach(d=>{if(d.world!==world)return;
    camera is running; drawDecal paints one mark on its tile. A hole LIES on the ground in every camera
    (iso lays the painter onto the tile's diamond, 3D lays it on the floor as a plane — engine3d.js,
    t3Decals); the other thing is a little pile drawn in profile, so it STANDS, and iso and 3D draw it
-   where they draw feet, the way they draw the ball. DECALFLAT says which is which. */
+   where they draw feet, the way they draw the ball. DECALFLAT says which is which. What the other thing LOOKS like
+   changed in mq-v291: a figure with no face, in every world that does not name the old picture character (THE MESS IS A
+   FIGURE, below). */
 const DECALS=[],DECALFLAT={hole:true};
 function decalsNow(){const nw=wDate();   /* the world's clock (THE GAME'S OWN CLOCK STANDS STILL WITH IT): a mark keeps its time behind the map */
   for(let i=DECALS.length-1;i>=0;i--)if(DECALS[i].until<nw)DECALS.splice(i,1);
@@ -3204,8 +3206,64 @@ function drawDecal(g,sx,sy,dc,a){ /* (sx,sy) is the tile's top-left, in the top 
      whatever fill the painter before it left, so a translucent one drew the mess faint by the clock of something
      else (measured 2026-09-30, one glyph on a bare card: alpha 22809 under "#000", 4553 under the 0.2 evening
      wash). The brown is what shows where a device has no colour glyph. */
-  else if(dc.kind==="poop"){g.fillStyle="#5A4630";g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}
+  else if(dc.kind==="poop"){const lk=messLook();
+    if(lk)lk.draw(g,sx,sy,dc);   /* every world but one that names the old picture: one of the figure's looks, drawn, and no picture character (THE MESS IS A FIGURE, below) */
+    else{g.fillStyle="#5A4630";g.font="11px serif";g.textAlign="center";g.fillText("💩",sx+16,sy+22);g.textAlign="start";}}
   g.globalAlpha=1;}
+/* ---------- THE MESS IS A FIGURE WITH NO FACE (mq-v291) ----------
+   (mq-v291; the owner's confirmed goal of 2026-11-21 on the mess a dog leaves.) Until now the mess was one picture character,
+   one with a face, written on the ground in every camera. Now it is a harmless little figure with no face, and it is the
+   engine's own for every world (mq-v291; the owner's confirmed goal of 2026-11-21 on where the figure is shown). No world
+   shows a face. Nothing else about it changes: the same
+   whim leaves it on the same roll, on the tile he stands on, and it goes by itself after the same time on the same clock
+   (the mark's own `until`, read by decalsNow). No puddle: that is a later update.
+   WHO HAS IT: every world. The engine's default is the first of the figure's looks (MESSLOOKS, below). The old picture
+   character stays for one case only: a world drawn only as cards, from before bodies, that says so in its own list,
+   `const MESSLOOK=["character"];`. It then keeps it exactly as it was, in every camera, the same pixels and the same
+   rolls. No world in this repository says it. A world may also name one of the looks there (`const MESSLOOK=["layers"];`);
+   a world that names none gets the first. A way to switch back if the old look is ever replaced by mistake is a later
+   feature, not this one.
+   WHERE IT IS DRAWN: the flat cameras (top, front and iso) call drawDecal as they always did, and it hands the mess to the
+   look's own flat painter: the figure from the side, drawn with shapes and never written. The 3D camera stands that look's
+   shape there, named in the library (engine/shapes.js), built through the shape builder and moved to the mark
+   (engine/engine3d.js, t3Mess); where the shape cannot be built its card stands in, painted by the same flat painter, so
+   there is still no face.
+   THE TWO ARE ONE THING SEEN TWICE: for the first look, 0.34 of a tile across and 0.23 tall there, 10.8 by 7.4 of a tile's
+   32 pixels here, the same three lobes in the same browns; test/engine.smoke.js (grep `messFig`) measures one against the other.
+   HOW LONG IT LIES is not this block's: the whim gives every mess the 45 seconds it always had (dogWhim, untouched), and
+   no world may change that or the figure's size. */
+/* which way one mess is turned, from the tile it lies on and nothing else (never a random number: a painter asks this
+   every frame): the flat cameras mirror it, the 3D camera turns it, so two left near each other are not one stamp */
+function messTurn(dc){return ((((dc.x|0)*73856093)^((dc.y|0)*19349663))>>>0)%8;}
+/* THE FIRST LOOK, three soft layers: (sx,sy) is the tile's top-left, as drawDecal has it; the figure stands on the line the ball's shadow lies on */
+function drawMessLayers(g,sx,sy,dc){
+  const f=messTurn(dc)&1?-1:1,cx=sx+16,gy=sy+24;
+  /* one lobe, from the side: its own brown at the foot, and a lighter one over its upper part, toward the light */
+  const lobe=(x,y,rx,ry,foot,top)=>{g.fillStyle=foot;g.beginPath();g.ellipse(cx+f*x,gy-y,rx,ry,0,0,7);g.fill();
+    g.fillStyle=top;g.beginPath();g.ellipse(cx+f*x-rx*0.14,gy-(y+ry*0.3),rx*0.74,ry*0.58,0,0,7);g.fill();};
+  g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,gy,6.4,1.5,0,0,7);g.fill();   /* the shade it stands on, as the bowl's */
+  lobe(0,2.3,5.4,2.3,"#5A4630","#7B6142");       /* the foot, wide and low */
+  lobe(0.5,4.0,3.7,1.85,"#6B5338","#86694A");    /* the middle */
+  lobe(-0.3,6.1,2.1,1.3,"#7B6142","#8E7150");}   /* the top, round, no point */
+/* THE FIGURE'S LOOKS, in order (mq-v291; the owner's confirmed goal of 2026-11-21 on the figure's looks). The figure
+   has a list of looks, and the first is every world's unless it names another. Each look is one thing seen twice: `draw` is its flat painter (drawDecal hands it
+   the mess, in the 32-px terms of a tile), and `shape` names its 3D shape in the library (SHAPES, engine/shapes.js). A
+   look's name is a word of ours, never a word a player sees. */
+const MESSLOOKS=[
+  {name:"layers",shape:"dogMess",draw:drawMessLayers},   /* three soft layers, each smaller than the one under it */
+  /* THE NEXT LOOK, PLANNED AND NOT BUILT: small round balls linked together. It comes in here, as the second entry: a name of
+     its own, its shape in engine/shapes.js beside dogMess, and its flat painter beside drawMessLayers, drawn from the same
+     numbers so the check can hold one against the other. Nothing else in the engine changes for it: the switch below, the
+     3D camera's pool (it is kept per look) and the check (grep `messFig`, which already asks a second look) read this list. */
+];
+/* the look a world takes, or null for the old picture character. Read from the world's own list each time it is asked and
+   cleaned where it is read: anything but a list says nothing, and a name that is not a look's is passed over */
+function messLook(){
+  const named=typeof MESSLOOK!=="undefined"&&Array.isArray(MESSLOOK)?MESSLOOK:[];
+  const ok=l=>!!l&&typeof l.name==="string"&&typeof l.shape==="string"&&typeof l.draw==="function";
+  if(named.includes("character"))return null;
+  for(const n of named){const l=MESSLOOKS.find(l=>ok(l)&&l.name===n);if(l)return l;}
+  return MESSLOOKS.find(ok)||null;}
 function drawDecals(camX,camY){ /* the top and front cameras: on the ground, under everybody */
   decalsNow().forEach(({dc,a})=>{
     const sx=dc.x*TS-camX,sy=dc.y*TS-camY;

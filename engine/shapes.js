@@ -686,6 +686,25 @@ const SHAPES=(function(){
     [0.09,-0.09].forEach(dy=>parts.push({s:"cyl",x:0,y:MID+dy,z:Z-0.012,r:0.01,h:0.03,c:BOLT,rx:Math.PI/2}));   /* bolted to the post */
     return turned(parts,(rnd(x,y,2,2)-0.5)*0.34);};                                         /* ±10° from where it was dropped */
 
+  /* ---------- WHAT A DOG LEAVES (no letter) — a soft little mound, and nothing on it ----------
+     (mq-v291; the owner's confirmed goal of 2026-11-21 on the mess a dog leaves.) Until now the mess was one picture
+     character with a face, written on a card. This is the first of the figure's looks (engine/engine.js, grep `THE
+     MESS IS A FIGURE`, its list MESSLOOKS), every world's unless it names another or the old picture character, and it
+     stands in the 3D camera instead: three soft lobes, each wider than tall, each smaller than the one
+     under it, set a hair off one another's middle the way a thing dropped is. It is not a tile and no letter is bound
+     to it: engine/engine3d.js (t3Mess) builds it once per mark and moves it to where the mark lies.
+     WHAT IT MAY NEVER GROW, and test/engine.smoke.js holds it to (grep `messFig`): a face. Every part is one of these
+     browns, shading from its own colour at the top to a darker one at the foot; no part is white, black or red, no
+     two small parts sit side by side over a third, and nothing here is a picture. The lobes stack on ONE line, so
+     from no side are there two of anything.
+     0.34 across and 0.23 tall: as wide as the character it replaces was written, and lower. The flat cameras draw the
+     same three lobes from the side (engine/engine.js, drawMessLayers), and the check measures one against the other.
+     The next look, planned and not built (small round balls linked together), is a shape of its own beside this one. */
+  const dogMess=()=>[
+    {s:"sph",x:0,y:0.05,z:0,r:0.17,sy:0.42,sz:0.9,c:"#7B6142",cb:"#5A4630"},                  /* the foot, wide and low */
+    {s:"sph",x:0.015,y:0.125,z:-0.01,r:0.115,sy:0.5,c:"#86694A",cb:"#6B5338"},                /* the middle */
+    {s:"sph",x:-0.01,y:0.19,z:0.005,r:0.065,sy:0.62,c:"#8E7150",cb:"#7B6142"}];               /* the top, round, no point */
+
   /* ---------- THE KITCHEN WALL (2026-10-29) — the places a kitchen keeps things in, each drawn shut and open ----------
      A kitchen wall stands in rows over one floor line: a TALL piece stands the whole height on its own (the fridge
      above, the freezer below); a LOWER piece stands on the floor; the WORKTOP lies on it at a person's waist, its top
@@ -893,7 +912,7 @@ const SHAPES=(function(){
   wardrobe.drawing="⎕";
   planter.walk=true;grass.walk=true;
 
-  const SH={plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles,planter,grass,siteSign,
+  const SH={plant,tree,desk,table,crate,shelving,fridge,stove,counter,draftingTable,picketFence,wellRail,doghouse,hurdle,tunnel,weavePoles,planter,grass,siteSign,dogMess,
           freezer,upperCupboard,lowerCupboard,drawers,wallShelf,worktop,wardrobe,kitchenColumn};
   return SH;
 })();
