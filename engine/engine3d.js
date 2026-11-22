@@ -2319,7 +2319,7 @@ function bodyPetal(B,ms,pose){const J=B.userData.joints;if(!J||!J.spine||!J.wris
 /* each frame: is the person you steer a body here, and if he is, where he stands, which way he faces and how he steps.
    True when the body stands, so the card is not drawn as well (t3Actors) */
 function t3Body(dt){
-  if(!BODYON||!bodyScreenOK()){T3.bodyOn=false;if(T3.body)T3.body.visible=false;return false;}   /* a screen too small for bodies (BODYSCREEN): his card */
+  if(!BODYON||!bodyScreenOK()){T3.bodyOn=false;if(T3.body)T3.body.visible=false;if(T3.lightOn&&T3.lightOn.has("me"))T3.lightOn.get("me").visible=false;return false;}   /* a screen too small for bodies (BODYSCREEN): his card */
   const[qx,qy]=focusXY(),d=Math.hypot(fx-qx,fy-qy);
   T3.bodyOn=T3.bodyOn?d<=BODYNEAR+BODYHYST:d<=BODYNEAR;
   /* his body is made to his look's choices (mq-v262: the table of the body's choices, read through bodyChoicesOf), and
@@ -2327,8 +2327,15 @@ function t3Body(dt){
   /* the pattern is in the key since mq-v273, when the body began to wear it (beto, run 2026-11-17-claude-b92c) */
   const Ch=bodyChoicesOf(look.body),key=[look.skin,look.hair,look.shirt,look.outfit,look.pattern,hairStyleOf(look),beardOf(look),JSON.stringify(Ch)].join("|");
   if(T3.body&&(T3.body.userData.key!==key||T3.body.parent!==T3.scene)){T3.body.parent&&T3.body.parent.remove(T3.body);t3Dispose(T3.body);T3.body=null;}
-  if(!T3.bodyOn){if(T3.body)T3.body.visible=false;return false;}
-  if(!T3.body){T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}
+  const lit=LIGHTON.has("person");
+  if(!T3.bodyOn){if(T3.body)T3.body.visible=false;if(lit)lightDrop("me");return false;}
+  if(!T3.body){if(!lit){T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}
+    /* WHERE THE WORLD ASKS (THE LIGHT STAND-IN): a body whose making fails is not tried again until his look changes, and in every
+       frame he has no body ready a light body stands in for him, turned away from the camera, walking where he walks */
+    else if(T3.bodyBad!==key){try{T3.body=bodyMake(bodySkeleton("person",Ch),look,Ch);T3.body.userData.key=key;T3.scene.add(T3.body);}catch(err){t3Note("his body",err);T3.bodyBad=key;T3.body=null;}}}
+  if(lit&&!T3.body){const w=CW(),mv=moving?[fx+(DIRS[dir]||[0,1])[0],fy+(DIRS[dir]||[0,1])[1]]:null;
+    lightStand("me",{...look,body:Ch},fx,fy,stairLift(w,Math.round(fx),Math.round(fy)),lightYaw(fx,fy,mv,fx,fy),moving,dt,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));lightLit();return true;}
+  if(lit){const from=lightDrop("me");if(from!==null)T3.body.userData.turn={from,t:0};}   /* ready: the light body goes, and he turns round */
   const B=T3.body,w=CW(),lift=stairLift(w,Math.round(fx),Math.round(fy)),[dx,dy]=DIRS[dir]||[0,1],S=B.userData.skel,sc=T3PERSON/0.92;
   /* THE WALK'S PACE FOLLOWS HIS SPEED, HELD TO A PERSON'S (mq-v260): the distance he covered and the time it took are handed
      in (dt, seconds, from draw3d), never read here. A cycle is 2 steps; the steps a second that would keep a planted foot
@@ -2337,7 +2344,7 @@ function t3Body(dt){
   const at=B.userData.at,go=at?Math.hypot(fx-at[0],fy-at[1]):0;B.userData.at=[fx,fy];
   if(moving&&go>0&&go<1&&dt>0){const n=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
     B.userData.phase=(B.userData.phase||0)+Math.PI*n*dt;}
-  B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,Math.atan2(dx,dy),0);B.scale.setScalar(sc);
+  B.visible=true;B.position.set(fx+0.5,lift,fy+0.5);B.rotation.set(0,B.userData.turn?lightTurn(B,Math.atan2(dx,dy),dt):Math.atan2(dx,dy),0);B.scale.setScalar(sc);
   t3BodyLight(B);
   /* his stance, and over it the petal moment (mq-v286): from the moment the engine says it began, until he moves on */
   const pm=typeof petalMoment!=="undefined"&&petalMoment&&!moving;if(pm){if(!B.userData.petalT)B.userData.petalT=Date.now();}else B.userData.petalT=0;
@@ -2371,14 +2378,14 @@ function t3BodyThrough(){
   /* AND ANYONE STANDING AS A BODY NEARER THE CAMERA (THE OTHER PEOPLE'S BODIES, mq-v274), as a nearer card is: drawn again only
      where he is, their ground shadow left out. Without it he stood on the head of anyone he walked behind (Chema, run
      2026-11-17-claude-5d3e: 1,068 to 1,665 pixels of a body painted over on a laptop) */
-  (T3.peopleShown||new Set()).forEach(n=>{const P=T3.peopleOn&&T3.peopleOn.get(n);
+  (T3.peopleShown||new Set()).forEach(n=>{const P=T3.lightShown&&T3.lightShown.get(n)||T3.peopleOn&&T3.peopleOn.get(n);   /* or the light body standing in (THE LIGHT STAND-IN) */
     if(!P||!P.visible||cam.position.distanceTo(P.position)>=me)return;
     P.traverse(o=>{if(!o.isMesh||(o.userData&&o.userData.shadow))return;const m=o.material;near.push([o,m.stencilWrite,m.stencilFunc]);
       m.stencilWrite=true;m.stencilFunc=THREE.EqualStencilFunc;m.stencilRef=1;m.stencilZPass=m.stencilZFail=m.stencilFail=THREE.KeepStencilOp;o.layers.enable(1);});});
   const bg=T3.scene.background;T3.scene.background=null;   /* a colour behind the scene clears the screen on every render: not this one */
   r.autoClear=false;r.clearDepth();cam.layers.set(1);
   try{r.render(T3.scene,cam);}
-  finally{cam.layers.set(0);r.autoClear=ac;T3.scene.background=bg;near.forEach(([s,w,f])=>{s.layers.disable(1);s.material.stencilWrite=w;s.material.stencilFunc=f;});}}
+  finally{cam.layers.set(0);r.autoClear=ac;T3.scene.background=bg;near.reverse().forEach(([s,w,f])=>{s.layers.disable(1);s.material.stencilWrite=w;s.material.stencilFunc=f;});}}   /* last first: light bodies share their colours, so a colour met twice is put back as it was before the first */
 /* THE BUILDER'S PREVIEW (mq-v262): his body as the look's choices make it, standing, turned `ang` radians from facing you, drawn
    into the creator's own 2D canvas `cv`. Drawn by the 3D camera's own renderer (one WebGL context on the page, as a browser
    allows only so many), into a picture of its own off the screen (a render target the canvas's size), read back and put
@@ -3048,6 +3055,77 @@ const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
    Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
 const PEOPLEWIN=0.2;
 const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].join("|");   /* the hat is in it from mq-v277 */
+/* ---- THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body) ----
+   A full body takes time to make (its head, scalp and hair are painted), so until it is made a person a world names stood as
+   their card. A world that names `person` in its own LIGHTTAKE list (engine/engine.js) has, instead, a LIGHT BODY stand in,
+   made at once, in the very frame they come into view: a handful of plain shapes on the same joints as the full body (a
+   body over the hips, a head, arms and legs, hands, the hair as a plain cap), in the person's own colours of skin, shirt,
+   trousers and hair; every shape and every colour shared by every light body (LIGHTGEO, LIGHTMAT), so making one is only
+   putting parts together. No painted scalp, no face, no pattern.
+     · IT STANDS TURNED AWAY FROM THE CAMERA, whichever way the camera is turned, so no face is ever needed. Walking, it walks
+       where they walk; its facing is LIGHTWALK: "away" (from the camera, as standing) or "way" (where it walks, still faceless).
+     · WHEN THE FULL BODY IS READY, THE PERSON TURNS ROUND: the light body is taken away, and the full body turns from facing
+       away to the way it faces today (standing, the camera; walking, its way) over LIGHTTURN seconds, eased, not a snap.
+     · WHO: every person PEOPLETAKE names, while their full body is made; and the person you steer, in any frame his own body
+       is not ready (t3Body: today it is made in the frame it is needed, so that is only a body whose making failed).
+     · A screen under BODYSCREEN keeps the cards, as before; and a world that says nothing has cards stand in, exactly as before.
+   The light bodies are never disposed when taken away: their shapes and colours are shared, and kept for the next */
+const LIGHTTURN=1/3;   /* seconds the turn round takes, from facing away to facing as today (the owner's: about a third of a second) */
+const LIGHTWALK="way";   /* walking, a light body faces "away" from the camera or the "way" it walks (the owner's confirmed goal of 2026-11-22 on the light stand-in) */
+const LIGHTGEO={};const LIGHTMAT=new Map();
+function lightGeo(k){return LIGHTGEO[k]||(LIGHTGEO[k]=k==="ball"?new THREE.SphereGeometry(1,12,8):k==="ground"?new THREE.CircleGeometry(1,16):new THREE.CapsuleGeometry(1,2,3,8));}   /* a capsule 4 tall, radius 1 */
+function lightMat(col){const c=new THREE.Color(col),h=c.getHexString();let m=LIGHTMAT.get(h);
+  if(!m){m=new THREE.MeshLambertMaterial({color:c.clone()});m.userData.base=c;LIGHTMAT.set(h,m);}return m;}
+function lightMake(skel,lk){
+  const root=new THREE.Group();root.name="lightbody";const J={},Lm=skel.limb,H=skel.build.height,b=skel.build,r=skel.head;
+  Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
+  Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
+  const at=n=>skel.joints[n].slice(1);
+  const part=(j,g,wears,col,x,y,z,sx,sy,sz)=>{const m=new THREE.Mesh(lightGeo(g),lightMat(col));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData={wears};J[j].add(m);return m;};
+  /* a limb from its joint to the next, as thick as the full body's, a little past the next joint so the two meet */
+  const limb=(a,c,rad,wears,col)=>{const[x,y,z]=at(c),L=Math.hypot(x,y,z);part(a,"cap",wears,col,x/2,y/2,z/2,rad,(L+rad)/4,rad);};
+  const trousers=trousersOf(lk);
+  ["l","r"].forEach(s=>{limb("upleg_"+s,"knee_"+s,Lm.leg,"trousers",trousers);limb("knee_"+s,"ankle_"+s,Lm.shin,"trousers",trousers);
+    limb("shoulder_"+s,"elbow_"+s,Lm.arm,"shirt",lk.shirt);limb("elbow_"+s,"wrist_"+s,Lm.forearm,"shirt",lk.shirt);
+    part("wrist_"+s,"ball","skin",lk.skin,0,-Lm.hand*0.5,0,Lm.hand,Lm.hand,Lm.hand);});
+  const hx=Math.abs(at("upleg_l")[0])+Lm.leg,tw=Math.abs(at("shoulder_l")[0]),td=tw*0.85,sp=at("spine"),ch=at("chest"),nk=at("neck"),hd=at("head");
+  part("hips","ball","trousers",trousers,0,0.01*H,0,hx,0.07*H,td*0.9);
+  {const lo=-sp[1]-0.09*H*b.hang,hi=ch[1]+nk[1]+0.04*H;part("spine","cap","shirt",lk.shirt,0,(lo+hi)/2,0,tw,(hi-lo)/4,td);}
+  part("neck","cap","skin",lk.skin,0,hd[1]/2,0,0.045*H,(hd[1]+0.045*H)/4,0.045*H);
+  /* the head as a ball, its centre 0.7 of a radius over its joint as the full body's; the hair a cap over its crown and back */
+  part("head","ball","skin",lk.skin,0,0.7*r,0,r,r,r);
+  if(hairStyleOf(lk)!=="bald")part("head","ball","hair",lk.hair,0,0.82*r,-0.1*r,1.06*r,1.0*r,1.04*r);
+  const sh=new THREE.Mesh(lightGeo("ground"),LIGHTMAT.get("ground")||(LIGHTMAT.set("ground",new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false})),LIGHTMAT.get("ground")));
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};root.add(sh);
+  root.userData.joints=J;root.userData.skel=skel;root.userData.light=true;return root;}
+/* the yaw of a light body at (x,y): turned away from the camera, or the way it walks (LIGHTWALK) */
+function lightYaw(x,y,mv,fromX,fromY){const cam=T3.cam.position;
+  if(mv&&LIGHTWALK==="way"){const hx=mv[0]-fromX,hy=mv[1]-fromY;if(hx||hy)return Math.atan2(hx,hy);}
+  return Math.atan2((x+0.5)-cam.x,(y+0.5)-cam.z);}
+/* AS BRIGHT AS A FULL BODY (t3BodyLight): their colours are shared, so they are lit once a frame, as a face turned to the camera
+   at the camera's focus would be */
+function lightLit(){const[qx,qy]=focusXY(),n=new THREE.Vector3(T3.cam.position.x-(qx+0.5),T3.cam.position.y,T3.cam.position.z-(qy+0.5)).normalize(),k=Math.max(0,n.dot(T3.sun.position.clone().normalize()));
+  const L=T3.amb.color.clone().multiplyScalar(T3.amb.intensity).add(T3.sun.color.clone().multiplyScalar(T3.sun.intensity*k));
+  const f=new THREE.Color(T3.tint.r/Math.max(0.05,L.r),T3.tint.g/Math.max(0.05,L.g),T3.tint.b/Math.max(0.05,L.b));
+  LIGHTMAT.forEach(m=>{if(m.userData.base)m.color.copy(m.userData.base).multiply(f);});}
+/* stand a light body for `who` (a key into T3.lightOn) this frame: made at once if there is none, posed and placed */
+function lightStand(who,lk,x,y,lift,yaw,walking,dt,groundAt){
+  const on=T3.lightOn||(T3.lightOn=new Map());let B=on.get(who);
+  const key=peopleKey(lk);
+  if(B&&(B.userData.key!==key||B.parent!==T3.scene)){B.parent&&B.parent.remove(B);on.delete(who);B=null;}
+  if(!B){const Ch=bodyChoicesOf(lk.body);B=lightMake(bodySkeleton("person",Ch),{...lk,body:Ch});B.userData.key=key;T3.scene.add(B);on.set(who,B);}
+  const S=B.userData.skel,sc=T3PERSON/0.92,a=B.userData.at,go=a?Math.hypot(x-a[0],y-a[1]):0;B.userData.at=[x,y];
+  if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
+  B.visible=true;B.position.set(x+0.5,lift,y+0.5);B.rotation.set(0,yaw,0);B.scale.setScalar(sc);B.userData.yaw=yaw;
+  t3BodyPose(B,B.userData.phase||0,walking,groundAt);
+  if(B.userData.top===undefined)B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;
+  return B;}
+/* take a light body away (never disposed: its shapes and colours are shared); the yaw it stood at, for the turn round */
+function lightDrop(who){const on=T3.lightOn,B=on&&on.get(who);if(!B)return null;B.parent&&B.parent.remove(B);on.delete(who);return B.visible?B.userData.yaw:null;}
+/* the turn round, each frame: from where the light body faced to `to`, over LIGHTTURN seconds of the time handed in */
+function lightTurn(B,to,dt){const t=B.userData.turn;if(!t)return to;
+  t.t+=Math.max(0,dt||0);const k=Math.min(1,t.t/LIGHTTURN),e=k*k*(3-2*k),d=Math.atan2(Math.sin(to-t.from),Math.cos(to-t.from));
+  if(k>=1){B.userData.turn=null;return to;}return t.from+d*e;}
 /* one body made each time the browser has a moment (requestIdleCallback; where it has none, the next tick), nearest first.
    A person who is no longer wanted when their turn comes is passed over */
 function t3PeopleMake(){
@@ -3074,8 +3152,10 @@ function t3PeopleMake(){
 function t3PeopleBodies(dt){
   const on=T3.peopleOn||(T3.peopleOn=new Map()),shown=new Set();
   const drop=n=>{const B=on.get(n);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(n);};
+  const lit=LIGHTON.has("person"),light=lit?(T3.lightShown=new Map()):null;   /* who stands as a light body this frame (THE LIGHT STAND-IN) */
+  if(lit&&T3.lightOn)[...T3.lightOn.keys()].forEach(k=>{if(k!=="me"&&T3.lightOn.get(k).parent!==T3.scene)lightDrop(k);});   /* a scene left behind */
   if(!PEOPLEON.size){[...on.keys()].forEach(drop);T3.peopleShown=shown;return shown;}
-  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});T3.peopleShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards */
+  if(!bodyScreenOK()){on.forEach(B=>{B.visible=false;});if(lit&&T3.lightOn)T3.lightOn.forEach((B,k)=>{if(k!=="me")B.visible=false;});T3.peopleShown=shown;return shown;}   /* a screen too small for bodies (BODYSCREEN): their cards */
   const w=CW(),[qx,qy]=focusXY(),sc=T3PERSON/0.92,cam=T3.cam.position,wait=[];
   const want=w.npcs.filter(n=>n.npc&&PEOPLEON.has(n.npc)&&!(T3.peopleBad&&T3.peopleBad.has(n))).map(n=>{
       const x=n.fx===undefined?n.x:n.fx,y=n.fy===undefined?n.y:n.fy,d=Math.hypot(x-qx,y-qy),B=on.get(n);
@@ -3091,22 +3171,28 @@ function t3PeopleBodies(dt){
   /* past PEOPLEKEEP, the bodies of other rooms go, the one shown longest ago first */
   if(on.size>PEOPLEKEEP){const away=[...on.keys()].filter(n=>!w.npcs.includes(n)).sort((a,b)=>on.get(a).userData.seen-on.get(b).userData.seen);
     while(on.size>PEOPLEKEEP&&away.length)drop(away.shift());}
-  want.forEach(({n,x,y})=>{const key=peopleKey(npcWhimsy(n));let B=on.get(n);
+  if(lit&&T3.lightOn)[...T3.lightOn.keys()].forEach(k=>{if(k!=="me"&&!keep.has(k))lightDrop(k);});   /* out of reach: no light body kept */
+  want.forEach(({n,x,y})=>{const lk=npcWhimsy(n),key=peopleKey(lk);let B=on.get(n);
     if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(n);B=null;}
-    if(!B){wait.push({n,key});return;}   /* their card stands in until the body is made */
     const lift=stairLift(w,Math.round(x),Math.round(y)),walking=!!n.mv,win=!walking&&winAt(w,n.x,n.y),
       open=win&&([[0,1],[0,-1],[1,0],[-1,0]].find(([dx,dy])=>!isSolidAt(world,n.x+dx,n.y+dy))||[0,1]);   /* the street side, as the counter is built */
+    if(!B){wait.push({n,key});   /* their card stands in until the body is made; where the world asks, a light body (THE LIGHT STAND-IN) */
+      if(lit){const ox=open?open[0]*PEOPLEWIN:0,oy=open?open[1]*PEOPLEWIN:0;
+        light.set(n,lightStand(n,lk,x+ox,y+oy,lift,lightYaw(x+ox,y+oy,n.mv,n.x,n.y),walking,dt,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b))));shown.add(n);}
+      return;}
+    if(lit){const from=lightDrop(n);if(from!==null)B.userData.turn={from,t:0};}   /* ready: the light body goes, and the person turns round */
     if(walking){const hx=n.mv[0]-n.x,hy=n.mv[1]-n.y;if(hx||hy)B.userData.yaw=Math.atan2(hx,hy);}
     else if(open)B.userData.yaw=Math.atan2(open[0],open[1]);
     else B.userData.yaw=Math.atan2(cam.x-(x+0.5),cam.z-(y+0.5));
     const S=B.userData.skel,at=B.userData.at,go=at?Math.hypot(x-at[0],y-at[1]):0;B.userData.at=[x,y];
     if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));
       B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
-    B.visible=true;B.userData.seen=tick;B.userData.world=world;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.yaw,0);B.scale.setScalar(sc);
+    B.visible=true;B.userData.seen=tick;B.userData.world=world;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.turn?lightTurn(B,B.userData.yaw,dt):B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     t3BodyPose(B,B.userData.phase||0,walking,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b)));
     shown.add(n);});
   if(wait.length){T3.peopleWait=wait;t3PeopleMake();}
+  if(lit&&(light.size||T3.lightOn&&T3.lightOn.has("me")))lightLit();
   T3.peopleShown=shown;return shown;}
 function t3Actors(){
   const list=[];
@@ -3115,7 +3201,7 @@ function t3Actors(){
      in the list, so somebody standing on the same tile is drawn over it, as in the flat cameras */
   {const shape=t3MessOn();   /* where the mess stands as a shape (THE MESS AS A SHAPE, t3Mess), its card is not drawn as well */
     decalsNow().forEach(({dc,a})=>{if(!DECALFLAT[dc.kind]&&!(shape&&dc.kind==="poop"))list.push({x:dc.x,y:dc.y,f:g=>drawDecal(g,2,6,dc,a)});});}
-  w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n)&&T3.peopleOn.get(n);   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): their marks only, above the body's head */
+  w.npcs.forEach(n=>{const body=T3.peopleShown&&T3.peopleShown.has(n)&&(T3.lightShown&&T3.lightShown.get(n)||T3.peopleOn.get(n));   /* a light body's too (THE LIGHT STAND-IN) */   /* standing as a body this frame (THE OTHER PEOPLE'S BODIES): their marks only, above the body's head */
     list.push({x:n.fx===undefined?n.x:n.fx,y:n.fy===undefined?n.y:n.fy,...(body?{h:Math.max(0,(body.userData.top||0)+PEOPLEMARKGAP-PEOPLEMARK*T3PERSON)}:{}),f:(g)=>{
     if(!body)drawPerson(g,2,6,npcWhimsy(n),{dir:"down",idle:Math.sin(Date.now()/500+n.x)*0.8,who:n.npc||n.key});
     /* the SAME painter the flat cameras use, smaller and closer because this sprite has six pixels

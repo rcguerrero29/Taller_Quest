@@ -109,7 +109,7 @@ function findChromium() {
       if ((!man && !dog && !ppl) || window.__bodyKept || window.__dogKept || window.__pplKept) return false;
       if (man) { window.__bodyKept = t3Body; t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; }
       if (dog) { window.__dogKept = t3DogBodies; t3DogBodies = () => { const s = new Set(); if (T3.dogOn) T3.dogOn.forEach(B => { B.visible = false; }); T3.dogShown = s; return s; }; }
-      if (ppl) { window.__pplKept = t3PeopleBodies; t3PeopleBodies = () => { const s = new Set(); if (T3.peopleOn) T3.peopleOn.forEach(B => { B.visible = false; }); T3.peopleShown = s; return s; }; }
+      if (ppl) { window.__pplKept = t3PeopleBodies; t3PeopleBodies = () => { const s = new Set(); if (T3.peopleOn) T3.peopleOn.forEach(B => { B.visible = false; }); if (T3.lightOn) T3.lightOn.forEach(B => { B.visible = false; }); T3.lightShown = new Map(); T3.peopleShown = s; return s; }; }   /* mq-v294: and their light stand-ins (THE LIGHT STAND-IN), made before the cards were asked for: held off as well */
       return true; });
     if (held) carded.add(what); return held; };
   const cardOff = async (p, held) => { if (held && !p.isClosed()) await p.evaluate(() => { if (window.__bodyKept) { t3Body = window.__bodyKept; delete window.__bodyKept; }
@@ -6822,6 +6822,182 @@ function findChromium() {
   });
   leashDeck.out.forEach(l => console.log('  LEASH: ' + l));
   fails.push(...leashDeck.P.map(m => 'the leash in 3D: ' + m));
+
+  /* ---- THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body) ----
+     While a named person's full body is being made, a light body of plain shapes in their own colours stands in, turned away
+     from the camera, instead of their card; when the full body is ready they turn round, over about a third of a second. The
+     person you steer too, in any frame his own body is not ready. On a screen under BODYSCREEN, cards as before; and a world that
+     says nothing has cards stand in, as before. Every sentence is what a person would see if that part broke. The owner's
+     numbers are typed here (480 for Meridian's screen line, about a third of a second for the turn); the session's are marked.
+     The clock is this check's own: every frame is drawn here, in one go, with the time handed in, and the full body is made
+     here (the page's idle moment run at once) only when the check asks for it */
+  const lightStandin = await page.evaluate(() => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    const has3d = typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d'));
+    const asks = typeof LIGHTON !== 'undefined' && LIGHTON.has('person');
+    if (!MER && !asks) { out.push('this world does not ask for a light stand-in, so its cards stand in as before and nothing more was asked of it here'); return { P, out }; }
+    if (MER && !asks) { P.push('in Meridian, while a named person\'s body is made, their card still stands in: no light body was asked for'); return { P, out }; }
+    if (!has3d) { P.push('this world asks for the light stand-in but has no 3D camera on this page, so nothing could be asked'); return { P, out }; }
+    /* WHAT WAS ASKED, typed. TURN: the owner's number, about a third of a second, so the turn is still going at 0.25 s and done by 0.45 s.
+       SCREEN: Meridian's line is 480 (his); another world's is its own. WALK: his, confirmed on 2026-11-22:
+       a light body walking faces the way it walks. PARTS: the session's reading of a handful of simple parts: at most 16 */
+    const TURN_GOING = 0.25, TURN_DONE = 0.45, SCREEN = MER ? 480 : (typeof BODYSCREEN === 'number' && BODYSCREEN > 0 ? BODYSCREEN : null), WALK = 'way', PARTS = 16, LAPTOP = [1280, 800];
+    const who = (typeof PEOPLETAKE !== 'undefined' ? PEOPLETAKE : []).find(k => Object.keys(WORLDS).some(id => (WORLDS[id].npcs || []).some(q => q.npc === k && !q.win)));
+    if (!who) { P.push('nobody this world names to be a body stands in any world away from a window, so the light stand-in could not be asked'); return { P, out }; }
+    const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who && !q.win)), w = WORLDS[wid], n = w.npcs.find(q => q.npc === who && !q.win);
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, bm: bodyMake, MR: Math.random,
+      dp: drawPerson, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      n: { x: n.x, y: n.y, fx: n.fx, fy: n.fy, mv: n.mv, mt: n.mt, wnext: n.wnext, doc: n.doc }, lit: [...LIGHTON] };
+    const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
+    const painted = { card: 0, hero: 0 }; let rolls = 0, counting = false, inBodies = false;
+    const frame = () => { painted.card = 0; painted.hero = 0; const ok = draw3d(); return ok && !T3.fail; };
+    const full = () => T3.peopleOn && T3.peopleOn.get(n), lightOf = k => T3.lightOn && T3.lightOn.get(k);
+    const standing = () => { const L = T3.lightShown && T3.lightShown.get(n); return !!(L && L.visible && L.parent === T3.scene && T3.peopleShown && T3.peopleShown.has(n)) ? L : null; };
+    const fresh = () => { const B = full(); if (B) { B.parent && B.parent.remove(B); t3Dispose(B); T3.peopleOn.delete(n); } if (T3.peopleBad) T3.peopleBad.delete(n); lightDrop(n); };
+    const hold = () => { t3PeopleMake = () => {}; }, makeNow = () => { t3PeopleMake = keep.mk; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; }; };
+    const ang = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    const away = (x, y) => { const c = T3.cam.position; return Math.atan2((x + 0.5) - c.x, (y + 0.5) - c.z); }, toCam = (x, y) => { const c = T3.cam.position; return Math.atan2(c.x - (x + 0.5), c.z - (y + 0.5)); };
+    /* the pixels a thing puts on the screen (the frame rendered with it and without it), and how many within a square of its tile */
+    const pixelsOf = (obj, tx, ty) => { const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+      const shot = () => { T3.renderer.render(T3.scene, T3.cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); return b; };
+      const on = (x, y) => { const v = new THREE.Vector3(x, 0.3, y).project(T3.cam); return [(v.x + 1) / 2 * W, (v.y + 1) / 2 * H]; };
+      let all = 0, here = 0; const was = obj.visible;
+      try { const a = shot(), c = on(tx + 0.5, ty + 0.5), e1 = on(tx + 1.5, ty + 0.5), e2 = on(tx + 0.5, ty + 1.5), sq = Math.max(Math.hypot(e1[0] - c[0], e1[1] - c[1]), Math.hypot(e2[0] - c[0], e2[1] - c[1]));
+        obj.visible = false; const b = shot();
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) <= 40) continue;
+          all++; if (Math.abs(x - c[0]) <= sq && Math.abs(y - c[1]) <= sq) here++; } } finally { obj.visible = was; }
+      return { all, here }; };
+    try {
+      drawPerson = function (g, sx, sy, lk, o) { if (o && o.who === who) painted.card++; if (o && o.hero) painted.hero++; return keep.dp.apply(this, arguments); };
+      Math.random = function () { if (counting && inBodies) rolls++; return keep.MR.apply(this, arguments); };
+      /* the engine's own steps for the bodies, watched for dice and nothing else: the street's own painters may draw theirs */
+      t3PeopleBodies = function () { inBodies = true; try { return keep.pb.apply(this, arguments); } finally { inBodies = false; } };
+      t3Body = function () { inBodies = true; try { return keep.tb.apply(this, arguments); } finally { inBodies = false; } };
+      world = wid; n.wnext = Infinity; n.mv = null; n.mt = 0; n.fx = n.x; n.fy = n.y;
+      let at = null, best = Infinity;
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N' || stairLift(w, x, y)) continue; const d = Math.hypot(x - n.x, y - n.y); if (d >= 1.9 && Math.abs(d - 2) < best) { best = Math.abs(d - 2); at = [x, y]; } }
+      if (!at) { P.push('there is no free square two from ' + who + ', so the light stand-in could not be asked'); return { P, out }; }
+      px = fx = at[0]; py = fy = at[1]; moving = false; dir = 'up'; el.hidden = false; camSet('3d'); sizeCanvas();
+      if (!screenIs(LAPTOP)) { P.push('the size of the screen could not be set on this page, so the light stand-in could not be asked'); return { P, out }; }
+
+      /* 1 · the very frame they come into view, before their full body is made: a light body stands where they stand, their card is not drawn */
+      hold(); frame(); fresh(); counting = true; const ok = frame(); counting = false;   /* a frame first, so the street and the body of the person you steer are made in this world before the frame asked */
+      const L = standing();
+      if (!ok) { P.push('the 3D camera could not draw on this page, so the light stand-in could not be asked'); return { P, out }; }
+      if (full() && full().visible) P.push('the light stand-in was asked with ' + who + '\'s full body held back, and their full body stood anyway: the check could not hold it');
+      if (!L) P.push('on a laptop, in the frame ' + who + ' comes into view before their full body is made, ' + (painted.card ? 'their flat card stands in' : 'nothing stands in their place') + ', not a light body');
+      else {
+        if (painted.card) P.push('on a laptop, ' + who + ' is drawn twice while their light body stands in: their card is painted in the same place');
+        const px1 = pixelsOf(L, n.x, n.y);
+        if (!(px1.all >= 50)) P.push('the light body said to stand in for ' + who + ' puts ' + px1.all + ' pixels on the screen: nothing a person could see');
+        else if (px1.here < px1.all * 0.8) P.push('the light body standing in for ' + who + ' is not where they stand: ' + px1.here + ' of its ' + px1.all + ' pixels are within a square of their tile');
+        /* 1b · light: a handful of plain parts, shared shapes and colours, no paint, in their own colours */
+        const meshes = []; L.traverse(o => { if (o.isMesh && !(o.userData && o.userData.shadow)) meshes.push(o); });
+        const painted2 = meshes.filter(o => o.material.map || o.material.alphaMap || o.material.bumpMap);
+        if (meshes.length > PARTS) P.push('the light body standing in for ' + who + ' is made of ' + meshes.length + ' parts, not a handful');
+        if (painted2.length) P.push('the light body standing in for ' + who + ' has ' + painted2.length + ' painted parts (a face, a scalp or a pattern), where it should be plain shapes');
+        const lk = npcWhimsy(n), wears = new Set(meshes.map(o => '#' + ((o.material.userData && o.material.userData.base) || o.userData.base || o.material.color).getHexString().toUpperCase())), want = { skin: lk.skin, shirt: lk.shirt, trousers: trousersOf(lk), hair: lk.hair };
+        const miss = Object.entries(want).filter(([k, c]) => !(k === 'hair' && hairStyleOf(lk) === 'bald') && !wears.has(c.toUpperCase()));
+        if (miss.length) P.push('the light body standing in for ' + who + ' does not wear their own ' + miss.map(([k, c]) => k + ' (' + c + ')').join(', ') + ': it wears ' + [...wears].join(' '));
+        /* shared: a second light body of the same look uses the very same shapes and colours, nothing of its own */
+        const L2 = lightMake(bodySkeleton('person', bodyChoicesOf(lk.body)), lk), m2 = []; L2.traverse(o => { if (o.isMesh) m2.push(o); });
+        const own = m2.filter(o => !meshes.concat(L.children.filter(c => c.isMesh)).some(q => q.geometry === o.geometry) || !meshes.concat(L.children.filter(c => c.isMesh)).some(q => q.material === o.material)).length;
+        if (own) P.push('two light bodies of the same person do not share their shapes and colours: ' + own + ' of the second one\'s parts were made new');
+        /* cheap: the time to make one, against the full body's */
+        const t0 = performance.now(); for (let k = 0; k < 5; k++) lightMake(bodySkeleton('person', bodyChoicesOf(lk.body)), lk); const tl = (performance.now() - t0) / 5;
+        const t1 = performance.now(), FB = bodyMake(bodySkeleton('person', bodyChoicesOf(lk.body)), { ...lk, body: bodyChoicesOf(lk.body) }, bodyChoicesOf(lk.body)), tf = performance.now() - t1; t3Dispose(FB);
+        if (!(tl * 5 < tf)) P.push('a light body takes ' + tl.toFixed(1) + ' ms to make, against ' + tf.toFixed(1) + ' ms for the full body: it is not cheap beside it');
+        /* dice: the 3D library names every new part with four random numbers (its own ids), so the frame a light body is made draws
+           four for each of its parts and joints and not one more; a frame after that draws none */
+        let things = 0; L.traverse(() => { things++; });
+        if (rolls !== 4 * things) P.push('standing the light body in for ' + who + ' drew ' + rolls + ' random numbers in the frame it was made, where the 3D library\'s names for its ' + things + ' parts and joints draw ' + 4 * things + ': something in it rolls dice');
+        rolls = 0; counting = true; frame(); counting = false;
+        if (rolls) P.push('every frame ' + who + '\'s light body stands, ' + rolls + ' random numbers are drawn, where nothing drawn every frame may roll');
+        out.push('the frame ' + who + ' came into view: a light body of ' + meshes.length + ' parts, ' + px1.all + ' pixels (' + px1.here + ' on their square), made in ' + tl.toFixed(2) + ' ms against ' + tf.toFixed(1) + ' ms for the full body; their card ' + (painted.card ? 'drawn' : 'not drawn'));
+
+        /* 2 · turned away from the camera, standing, and still away with the camera turned */
+        if (ang(L.rotation.y, away(n.x, n.y)) > 0.05) P.push(who + '\'s light body, standing, faces ' + L.rotation.y.toFixed(2) + ' rad, not away from the camera (' + away(n.x, n.y).toFixed(2) + '): its blank face is seen');
+        T3.yaw = keep.yaw + 1.2; frame(); const La = standing();
+        if (!La || ang(La.rotation.y, away(n.x, n.y)) > 0.05) P.push('with the camera turned, ' + who + '\'s light body ' + (La ? 'faces ' + La.rotation.y.toFixed(2) + ' rad, not away from the camera (' + away(n.x, n.y).toFixed(2) + ')' : 'is gone'));
+        T3.yaw = keep.yaw; frame();
+        /* 2b · walking: it walks where they walk, its legs moving, facing the way it walks (his, confirmed on 2026-11-22) */
+        n.mv = [n.x + 1, n.y]; n.mt = 0.3; n.fx = n.x + 0.2; t3PeopleBodies(0.016); const ph0 = (standing() || {}).userData ? standing().userData.phase || 0 : 0;
+        n.fx = n.x + 0.3; t3PeopleBodies(0.05); const Lw = standing();
+        if (!Lw) P.push(who + ' walking, before their full body is made, has no light body standing in');
+        else { if (Math.abs(Lw.position.x - (n.fx + 0.5)) > 0.02 || Math.abs(Lw.position.z - (n.fy + 0.5)) > 0.02) P.push(who + '\'s light body does not walk where they walk: it stands at ' + Lw.position.x.toFixed(2) + ', ' + Lw.position.z.toFixed(2) + ' while they are at ' + (n.fx + 0.5).toFixed(2) + ', ' + (n.fy + 0.5).toFixed(2));
+          if (!((Lw.userData.phase || 0) > ph0)) P.push(who + '\'s light body slides along: its legs do not move while they walk');
+          const wantYaw = WALK === 'way' ? Math.PI / 2 : away(n.fx, n.fy);
+          if (ang(Lw.rotation.y, wantYaw) > 0.05) P.push(who + '\'s light body, walking to the right, faces ' + Lw.rotation.y.toFixed(2) + ' rad, not ' + (WALK === 'way' ? 'the way it walks' : 'away from the camera') + ' (' + wantYaw.toFixed(2) + ')'); }
+        n.mv = null; n.mt = 0; n.fx = n.x; n.fy = n.y; t3PeopleBodies(0.016);
+
+        /* 3 · the full body ready: the light body goes in that frame, and the person turns round from facing away to the camera, over about a third of a second */
+        makeNow(); t3PeopleBodies(0); window.requestIdleCallback = keep.ric; hold();   /* the idle moment run at once: their full body made now */
+        const FBd = full();
+        if (!FBd) P.push('with the page given its moment, ' + who + '\'s full body was not made, so the turn round could not be asked');
+        else { const from = away(n.x, n.y), to = toCam(n.x, n.y), seen = [];
+          let clock = 0; const step = dt => { clock += dt; t3PeopleBodies(dt); seen.push([+clock.toFixed(3), +FBd.rotation.y.toFixed(3)]); return FBd.rotation.y; };
+          const y0 = step(0);
+          const left = () => { const Lx = lightOf(n); return !!(standing() || (Lx && Lx.visible && Lx.parent === T3.scene)); };   /* in the scene and seen, whether or not the step still counts it */
+          if (left()) P.push('when ' + who + '\'s full body is ready, the light body still stands beside it');
+          if (!FBd.visible) P.push('when ' + who + '\'s full body is ready, it does not stand');
+          if (ang(y0, from) > 0.05) P.push('when ' + who + '\'s full body is ready it snaps to ' + y0.toFixed(2) + ' rad, instead of starting turned away (' + from.toFixed(2) + ') and turning round');
+          step(0.1); const yMid = FBd.rotation.y;
+          if (ang(yMid, from) < 0.05 || ang(yMid, to) < 0.05) P.push(who + ', 0.1 s into turning round, is not partway round: they face ' + yMid.toFixed(2) + ' rad (away ' + from.toFixed(2) + ', the camera ' + to.toFixed(2) + ')');
+          step(TURN_GOING - 0.1); const yGo = FBd.rotation.y;
+          if (ang(yGo, to) < 0.02) P.push(who + ' has turned all the way round by ' + TURN_GOING + ' s: quicker than about a third of a second');
+          step(TURN_DONE - TURN_GOING); const yDone = FBd.rotation.y;
+          if (ang(yDone, to) > 0.02) P.push(who + ' has not turned round to face the camera by ' + TURN_DONE + ' s: slower than about a third of a second (they face ' + yDone.toFixed(2) + ', the camera ' + to.toFixed(2) + ')');
+          out.push(who + ' turning round, seconds and facing: ' + seen.map(s => s.join(' s ')).join(', ') + ' (away ' + from.toFixed(2) + ', the camera ' + to.toFixed(2) + ')');
+          /* and a person whose full body is already made comes back into view as it, with no stand-in and no turn */
+          step(0.016); if (left() || FBd.userData.turn) P.push(who + ', whose full body is made, still has a light body or a turn when seen again'); }
+
+        /* 4 · the person you steer, in a frame his body is not ready: a light body, turned away, his card not drawn; then he turns round */
+        { const B0 = T3.body; if (B0) { B0.parent && B0.parent.remove(B0); t3Dispose(B0); T3.body = null; } T3.bodyBad = null;
+          bodyMake = function () { throw new Error('his body held back by the check'); };
+          let me = null; try { frame(); me = lightOf('me'); } finally { bodyMake = keep.bm; }
+          if (!me || !me.visible || me.parent !== T3.scene) P.push('on a laptop, in a frame the person you steer has no body ready, ' + (painted.hero ? 'his flat card stands in' : 'nothing stands in his place') + ', not a light body');
+          else { if (painted.hero) P.push('the person you steer is drawn twice while his light body stands in: his card is painted as well');
+            if (Math.abs(me.position.x - (fx + 0.5)) > 0.02 || Math.abs(me.position.z - (fy + 0.5)) > 0.02) P.push('the light body of the person you steer does not stand where he stands');
+            if (ang(me.rotation.y, away(fx, fy)) > 0.05) P.push('the light body of the person you steer faces ' + me.rotation.y.toFixed(2) + ' rad, not away from the camera (' + away(fx, fy).toFixed(2) + ')');
+            const from = me.rotation.y; T3.bodyBad = null; t3Body(0); const Bm = T3.body, faces = Math.atan2(...(DIRS[dir] || [0, 1]));
+            if (!Bm || !Bm.visible) P.push('with his body ready again, the person you steer has no body');
+            else { if (lightOf('me')) P.push('with his body ready again, the light body of the person you steer still stands');
+              if (ang(Bm.rotation.y, from) > 0.05) P.push('with his body ready again, the person you steer snaps round instead of turning from facing away');
+              t3Body(TURN_DONE); if (ang(Bm.rotation.y, faces) > 0.02) P.push('the person you steer has not turned round to face his way by ' + TURN_DONE + ' s'); } } }
+
+        /* 4b · somebody this world does not name to be a body stays their card, with no light body */
+        { const other = w.npcs.find(q => q !== n && (!q.npc || !PEOPLEON.has(q.npc)) && Math.hypot(q.x - fx, q.y - fy) <= 6);
+          if (other) { frame(); if (T3.lightShown && T3.lightShown.has(other)) P.push('somebody this world does not name to be a body has a light body standing in'); } }
+      }
+
+      /* 5 · a screen under the line: cards, as before, no light body */
+      if (SCREEN !== null) { fresh(); hold(); const ph = [Math.min(390, SCREEN - 1), 844];
+        if (!screenIs(ph)) P.push('the size of the screen could not be set, so a screen under the line was not asked');
+        else { frame(); if (standing()) P.push('on a screen ' + ph[0] + ' wide, under ' + SCREEN + ', ' + who + ' has a light body standing in where the world keeps cards');
+          if (!painted.card) P.push('on a screen ' + ph[0] + ' wide, under ' + SCREEN + ', ' + who + ' has no card');
+          out.push('on a screen ' + ph[0] + ' by 844: ' + who + ' ' + (standing() ? 'a light body' : painted.card ? 'a card' : 'nothing')); }
+        screenIs(LAPTOP); }
+
+      /* 6 · a world that says nothing: their card stands in until the body is made, no light body, and not one more random number */
+      LIGHTON.clear(); fresh(); hold(); rolls = 0; counting = true; frame(); counting = false;
+      if (standing() || (T3.lightOn && T3.lightOn.size && [...T3.lightOn.values()].some(B => B.visible && B.parent === T3.scene))) P.push('in a world that says nothing of a light stand-in, a light body stands in anyway');
+      if (!painted.card) P.push('in a world that says nothing of a light stand-in, ' + who + ' has no card standing in while their body is made');
+      if (rolls) P.push('in a world that says nothing of a light stand-in, the bodies drew ' + rolls + ' random numbers in a frame');
+      out.push('a world that says nothing: ' + who + ' ' + (painted.card ? 'a card' : 'no card') + ' while their body is made, ' + rolls + ' random numbers drawn');
+    } finally {
+      LIGHTON.clear(); keep.lit.forEach(k => LIGHTON.add(k));
+      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
+      if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
+      if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
+      Object.assign(n, keep.n); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving;
+      camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden;
+    }
+    return { P, out };
+  });
+  lightStandin.out.forEach(l => console.log('  LIGHT STAND-IN: ' + l));
+  fails.push(...lightStandin.P.map(m => 'the light stand-in: ' + m));
 
   /* ---- FASTER BODIES: THE HEAD PAINTED ONCE, AND BODIES KEPT BETWEEN ROOMS (mq-v293) ----
      What was asked, confirmed on 2026-11-22: making a person's body is faster, because the paint on the head (the skin, the
@@ -19711,15 +19887,17 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         /* in that same moment: made while idle, so none yet. Counted of the people of this world only: from mq-v293 the bodies of
            the room the page stood in before are kept when it leaves (KEPT BETWEEN ROOMS), and are not made here */
         frame(); const first = look(); first.made = T3.peopleOn ? [...T3.peopleOn.keys()].filter(q => w.npcs.includes(q)).length : 0;
+        first.light = !!(T3.lightShown && T3.lightShown.get(n) && T3.lightShown.get(n).visible);   /* mq-v294: or a light body stands in, where the world asks (THE LIGHT STAND-IN) */
         /* the page's idle moments make the body: give it a few */
         for (let k = 0; k < 12 && !look().body; k++) { await new Promise(r => setTimeout(r, 120)); frame(); }
         const s = look(); seen.push(first, s);
-        const out = { first: { body: first.body, card: first.card, ok: first.ok, made: first.made }, now: { body: s.body, card: s.card, ok: s.ok }, made: T3.peopleOn ? T3.peopleOn.size : 0, on: typeof PEOPLEON === 'undefined' ? null : PEOPLEON.size };
+        const out = { first: { body: first.body, card: first.card, ok: first.ok, made: first.made, light: first.light }, now: { body: s.body, card: s.card, ok: s.ok }, made: T3.peopleOn ? T3.peopleOn.size : 0, on: typeof PEOPLEON === 'undefined' ? null : PEOPLEON.size };
         if (s.body) { const B = s.B, lk = npcWhimsy(n), cols = new Set();
           B.traverse(o => { if (o.isMesh && o.userData.base) cols.add('#' + o.userData.base.getHexString().toUpperCase()); });
           out.cols = [...cols]; out.lk = { shirt: lk.shirt.toUpperCase(), skin: lk.skin.toUpperCase(), hair: lk.hair.toUpperCase() };
           /* facing: walking right, walking toward the camera's +y, and standing */
           const yaw = () => { t3PeopleBodies(0.016); return B.rotation.y; };
+          t3PeopleBodies(1);   /* mq-v294: where a light body stood in, the person turns round over about a third of a second when the body is made (THE LIGHT STAND-IN): that turn finished before their facing is asked */
           n.mv = [n.x + 1, n.y]; n.mt = 0.3; n.fx = n.x + 0.3; out.right = yaw();
           n.mv = [n.x, n.y + 1]; n.fx = n.x; n.fy = n.y + 0.3; out.down = yaw();
           const ph0 = B.userData.phase || 0; n.fy = n.y + 0.6; t3PeopleBodies(0.05); out.stepped = (B.userData.phase || 0) > ph0;
@@ -19775,7 +19953,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           let planted = null; if (card) { const key = Object.keys(NPCLOOK).find(q => NPCLOOK[q] && !PEOPLEON.has(q));
             planted = { key, x: card[0], y: card[1], fx: card[0], fy: card[1], q: [], wnext: Infinity, mv: null, face: 1 }; w.npcs.push(planted); }
           try {
-            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }   /* mq-v294: their full body, not a light body standing in for it (THE LIGHT STAND-IN) */
             if (!(T3.peopleShown && T3.peopleShown.has(n))) { out.cases[k] = { why: who + ' was not a body with ' + k + ', so it was not asked' }; return; }
             /* time held for the three frames, so the only differences are the ones asked */
             Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
@@ -19800,7 +19978,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!ws) out.cases['a wall between them and the camera'] = { why: 'no free square with a wall in front of it in their world, so a wall was not asked' };
           else { w.grid[n.y][n.x] = w.rows[n.y][n.x]; n.x = n.fx = ws[0]; n.y = n.fy = ws[1]; w.grid[n.y][n.x] = 'N';
             px = fx = ws[0]; py = fy = ws[1] + 2; dir = 'up';
-            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n)); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }
+            for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }   /* mq-v294: their full body, not a light body standing in for it (THE LIGHT STAND-IN) */
             if (!(T3.peopleShown && T3.peopleShown.has(n))) out.cases['a wall between them and the camera'] = { why: who + ' was not a body behind a wall, so it was not asked' };
             else { Date = function (...a) { return a.length ? new RD(...a) : new RD(now0); }; Date.now = () => now0; Date.prototype = RD.prototype; performance.now = () => p0;
               through = true; hide = false; const A = grab(); hide = true; const Ah = grab(); through = false; hide = false; const B0 = grab(); hide = true; const M = grab(); hide = false; through = true;
@@ -19844,7 +20022,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!r.now.body) { say(0, 'on ' + dev + ', ' + who + ', named in PEOPLETAKE and two squares from you, is still a flat card in the 3D camera: no body stands there'); continue; }
           if (r.now.card) say(0, 'on ' + dev + ', ' + who + ' is drawn twice: their card stands in the same place as their body');
           if (r.first.body || r.first.made) say(0, 'on ' + dev + ', ' + who + '\'s body was made in the very frame they came into view, not while the page was idle');
-          if (!r.first.body && !r.first.card) say(0, 'on ' + dev + ', before ' + who + '\'s body was made, nothing stood in their place: their card did not stand in');
+          if (!r.first.body && !r.first.card && !r.first.light) say(0, 'on ' + dev + ', before ' + who + '\'s body was made, nothing stood in their place: neither their card nor a light body stood in');   /* mq-v294: a light body stands in where the world asks (THE LIGHT STAND-IN) */
           /* C · the card's colours */
           /* a style may paint its hair a shade off the card's paint (a short cut is darker), so a colour counts as worn when a part is
              within 45 of it, summed over red, green and blue: a body in somebody else's colours is far past that */

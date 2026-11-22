@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v293";
+const GAMEV="mq-v294";
 /* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
    and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
    bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
@@ -13,6 +13,11 @@ const PANELTAKE=["creator"];
 const BODYTAKE=["person","dog"];
 const PEOPLETAKE=["chuy","lupe","beto"];
 const BODYSCREEN=480;
+/* THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body): while a named person's full body
+   is being made, a light body of plain shapes in their own colours stands in, turned away from the camera, instead of their card;
+   when the full body is ready they turn round to face as before. The person you steer too, in any frame his body is not ready.
+   On the same screens as the bodies: under BODYSCREEN everyone is a card, as before. */
+const LIGHTTAKE=["person"];
 /* MERIDIAN'S DOGS AS BODIES (mq-v289; the owner's confirmed goal of 2026-11-21 on Meridian's dogs). The dogs that live the dog
    program, the star dog and every adopted dog, stand in the 3D camera as jointed bodies (`dog` in BODYTAKE above), as a
    world that already asks for them has them. However far they are from you (ANIMALREACH, squares: no limit) and up to

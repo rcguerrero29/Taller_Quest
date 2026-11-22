@@ -937,6 +937,12 @@ function bodyScreenOK(){return typeof BODYSCREEN!=="number"||!(BODYSCREEN>0)||Ma
    does not hold is nothing, and a world that says nothing has every one of its people as a card, as before: closed unless a
    world opens it */
 const PEOPLEON=new Set(BODYON&&typeof PEOPLETAKE!=="undefined"&&Array.isArray(PEOPLETAKE)?PEOPLETAKE.filter(k=>typeof k==="string"&&k&&k!=="__proto__"):[]);
+/* WHICH BODIES HAVE A LIGHT BODY STAND IN WHILE THEIR FULL BODY IS MADE (mq-v294; the owner's confirmed goal of 2026-11-22 on the
+   light stand-in body). LIGHTTAKE is the world's own list; `person` is every person PEOPLETAKE names, and the person you steer in
+   any frame his own body is not ready (engine/engine3d.js, grep "THE LIGHT STAND-IN"). Only where the world takes the person's
+   body (BODYON); a name it does not know is nothing, and a world that says nothing has their cards stand in, as before */
+const LIGHTKINDS=Object.freeze(["person"]);
+const LIGHTON=new Set(BODYON&&typeof LIGHTTAKE!=="undefined"&&Array.isArray(LIGHTTAKE)?LIGHTTAKE.filter(k=>LIGHTKINDS.includes(k)):[]);
 const BODYCHOICE=Object.freeze([
   /* each row says where the creator shows it: `group`, one of the groups of CRTABS (grep "THE CREATOR'S TABS") */
   {key:"height",kind:"measure",min:0.75,max:1.25,step:0.05,def:1,group:"build"},   /* how tall he is; his head stays the same share of him */
