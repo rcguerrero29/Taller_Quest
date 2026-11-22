@@ -4197,11 +4197,12 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
    wings showed where the tube hid him.
      hid  — nothing of him is drawn (inside the agility tunnel)
      lift — the whole animal up off where it stands; its shadow stays down
-     drop — the body lowered (lying down)
+     drop — the body lowered (lying down; curled up, `curl`, where the breed names it: his card is then a shape of its own,
+            dogCurlCard, and this is how far down what he wears rides, and where the ground under him is)
      nod  — the head alone, on top of the body (the howl lifts it, the peck lowers it, the parrot's bob)
      body, head — what the layer reads: drop − lift, and drop + nod − lift
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
-const POSEPX={beagle:{lay:3,howl:-3,sniff:3},lab:{lay:3,howl:-3,sniff:3},chi:{lay:2,howl:-2.5,sniff:2},pigeon:{peck:2.2}};
+const POSEPX={beagle:{lay:3,curl:3,howl:-3,sniff:3},lab:{lay:3,curl:3,howl:-3,sniff:3},chi:{lay:2,curl:3,howl:-2.5,sniff:2},pigeon:{peck:2.2}};
 /* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
    this instant, read off his state and two clocks — nw, the world's own clock (wNow), for how long a whim lasts (layT, howlT…), and
    t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
@@ -4211,6 +4212,14 @@ const POSEPX={beagle:{lay:3,howl:-3,sniff:3},lab:{lay:3,howl:-3,sniff:3},chi:{la
      sit, lay, howl, dig, happy, love — the whims and the commands, as his painters always read them
      sniff — his nose to the ground (mq-v287, a step of his routines): standing only, so a sit, a nap or a song wins over it;
              on his card it is his head lowered by the breed's `sniff` px and bobbing a little, through `nod`
+     curl — curled up asleep (mq-v290, dogCurl below): a way of lying down, so `lay` is true with it and anything that reads
+            only `lay` still has him lying; his eyes are shut and his tail does not move at all; a song, a happy wag or
+            his love shown is never curled, and once one of them has come during a nap he does not curl up again in it
+     ver — which version of the curl, curled up (a place in the list curlVersions answers, CURLVERSIONS): the one picked
+            when his nap began and kept on his record (cr.curlV), cleaned here; 0 when he is not curled
+     held — the one word for how his whole body is held: "stand", "sit", "lay" or "curl", lying beating sitting as on his
+            card. A body in another camera draws only the words it knows and hands any other back to his card
+            (dogBodyWants, engine/engine3d.js), so a way of holding himself added here is never drawn as standing
      drop, nod — the body lowered and the head moved, px on his card (POSEPX)
      wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
      face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
@@ -4229,17 +4238,69 @@ function tailWags(cr,t){let w=cr.tailW;
 function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.now();
   const K=POSEPX[cr.kind]||{},W=DOGWAG[cr.kind]||DOGWAG.beagle,gp=gearPose(cr),lay=cr.layT>nw,howl=cr.howlT>nw,happy=cr.happyT>nw,
     sniff=cr.sniffT>nw&&!cr.sit&&!lay&&!howl&&!(cr.digT>nw);
-  const love=cr.loveT>nw,rests=lay&&!happy&&!love&&!tailWags(cr,t);   /* lying down and neither happy nor loved, his tail lies still between its short wags */
-  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,howl,dig:cr.digT>nw,happy,love,sniff,
-    drop:lay?(K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
+  const love=cr.loveT>nw,curl=lay&&!howl&&!happy&&!love&&(typeof cr.curlT==="number"?cr.curlT===cr.layT:cr.curlT===dogCurlMark(cr)),   /* the mark on this one nap, and nothing has woken him since (dogCurl); no dice here */
+    rests=curl||(lay&&!happy&&!love&&!tailWags(cr,t));   /* lying down and neither happy nor loved, his tail lies still between its short wags; curled up, it does not wag at all */
+  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,curl,held:curl?"curl":lay?"lay":cr.sit?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
+    drop:lay?(curl&&K.curl!==undefined?K.curl:K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
-  if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;}
+  if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;if(D.curl){R.curl=true;R.curlV=D.ver;}}
   else if(a&&kind==="pigeon"){R.lift=a.hop||0;R.nod=a.peck?K.peck:0;}
   else if(kind==="colibri")R.lift=-Math.sin(Date.now()/160)*1.6;                        /* the hover */
   else if(a&&kind==="butterfly")R.lift=-Math.sin(Date.now()/300+a.home[0])*2.5;         /* the bob */
   else if(kind==="loro")R.nod=Math.sin(Date.now()/280)*1.1;                             /* the head bobs on the perch; the tail does not */
   R.body=R.drop-R.lift;R.head=R.drop+R.nod-R.lift;return R;}
+/* CURLED UP ASLEEP (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). One more way a dog lies
+   down: curled round, his nose to his tail, asleep. It shows in some of his naps (the free whim's nap) and some of the lazy
+   routine's lie-downs, as often as CURLCHANCE_DEF says for his kind; a world may give its own CURLCHANCE.
+   WHO HAS IT: a world turns it on kind by kind in its own CURLTAKE list ("dog"). A world that says nothing has none: no
+   dog curls up, and not one more number is drawn than before.
+   HOW IT IS KEPT: the curl is a mark on ONE nap (curlT, dogCurlMark): the time that nap ends, written beside it. So
+   whatever ends the nap or starts another lie-down (a treat, his love, a command, a routine's next step, a job) ends the
+   curl with it, at every place that does so today and at any place added later, with nothing to remember.
+   WHAT WAKES HIM WAKES HIM FOR GOOD: a song, a happy wag or his love shown may come while the nap goes on (a dog may sing
+   lying down). So the mark also holds how those three clocks stood when he curled up; once any of them has been set
+   since, the mark no longer fits: he is awake for the rest of this nap, lying stretched out, and does not curl up again
+   when the song or the wag is over. dogPose reads the mark; nothing is rolled there, and nothing is written there.
+   A mark set by hand (a check, a picture) may be the nap's end alone, a number equal to layT: curled for that nap
+   whenever he is not singing, happy or loved.
+   THE ROLL is taken here, by the handler that starts the lie-down, AFTER the rolls it already takes, so those land
+   where they always did. r, a number from 0 to 1, may be handed in so a check can hold it still.
+   AFTER THE CURL'S ROLL, in this order and only for a lie-down that is curled (mq-v290; the owner's confirmed goal of
+   2026-11-21 on the curled-up pose): the free whim's nap rolls how much longer it lasts (dogCurlLonger, CURLLONGER), and
+   then the version of the curl is picked (dogCurlPick, CURLVERSIONS), which rolls nothing while there is one version.
+   HOW OFTEN (CURLCHANCE_DEF): about half of his naps, and 1 time in 3 the lazy routine's lie-down, both his numbers */
+const CURLCHANCE_DEF=Object.freeze({dog:Object.freeze({nap:1/2,lazy:1/3})});
+function curlOn(cr){const k=personaKind(cr);
+  return !!k&&typeof CURLTAKE!=="undefined"&&Array.isArray(CURLTAKE)&&CURLTAKE.includes(k)&&Object.prototype.hasOwnProperty.call(CURLCHANCE_DEF,k);}
+/* how often this dog curls up for this kind of lie-down ("nap", "lazy"), from 0 to 1: the world's own number where it gives
+   a real one, the engine's otherwise; 0 where the world has not turned it on or the lie-down is not named */
+function curlChance(cr,when){if(!curlOn(cr))return 0;
+  const k=personaKind(cr),W=typeof CURLCHANCE!=="undefined"?CURLCHANCE:null,
+    num=o=>o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,when)&&typeof o[when]==="number"&&isFinite(o[when])?o[when]:null,
+    own=num(W&&typeof W==="object"&&Object.prototype.hasOwnProperty.call(W,k)?W[k]:null),v=own===null?num(CURLCHANCE_DEF[k]):own;
+  return v===null?0:Math.max(0,Math.min(1,v));}
+/* he has just lain down (layT is set): does he curl up for it? Answers whether he did */
+function dogCurlMark(cr){return cr.layT+"|"+(cr.howlT||0)+"|"+(cr.happyT||0)+"|"+(cr.loveT||0);}   /* this nap's end, and his song's, his happy wag's and his love's clocks as they stand */
+function dogCurl(cr,when,r){const c=curlChance(cr,when);
+  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:Math.random())<c){cr.curlT=dogCurlMark(cr);cr.curlV=0;return true;}
+  if(cr.curlT)cr.curlT=0;return false;}
+/* A CURLED NAP LASTS A LITTLE LONGER (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). To the nap's
+   own 6 to 10 seconds (DOGTIME.lay) 0 to 5 seconds more are added, from one roll r from 0 to 1, shaped by his personality:
+   an aloof dog leans toward the whole 5, an eager one toward none, a patient one sits in the middle, and a dog with no
+   personality (a world that has not turned personalities on) gets the plain, even 0 to 5.
+     most — the most added, in ms: 5000, his number
+     lean — the shape of each personality's share of it, r to a share from 0 to 1: these shapes are the session's (eager
+            r squared leans low, patient and none r itself, aloof 1 − (1 − r) squared leans high)
+   Only a CURLED nap of his free whims gets it (dogWhim): a plain nap, and the lazy routine's lie-down, last as they did */
+const CURLLONGER=Object.freeze({most:5000,lean:Object.freeze({eager:r=>r*r,patient:r=>r,aloof:r=>1-(1-r)*(1-r),none:r=>r})});
+/* how much longer this dog's curled nap lasts, in ms: his personality's shape of one roll (r may be handed in for a check) */
+function curlExtra(cr,r){const pe=personaOf(cr),L=CURLLONGER.lean,f=pe&&Object.prototype.hasOwnProperty.call(L,pe)?L[pe]:L.none,
+    x=typeof r==="number"&&r>=0&&r<1?r:Math.random(),s=+f(x);
+  return (isFinite(s)?Math.max(0,Math.min(1,s)):0)*CURLLONGER.most;}
+/* he has just curled up for a nap of his free whims: the nap is made longer, his next move waits for its end, and the mark
+   is written again for the nap's new end. Answers the ms added */
+function dogCurlLonger(cr,r){const x=curlExtra(cr,r);cr.layT+=x;cr.next=cr.layT;cr.curlT=dogCurlMark(cr);return x;}
 /* A SONG AND A HOLE, EACH IN ONE PLACE (mq-v287): what a howl and a dig do to him and to the world around him, lifted out of
    the whim with nothing changed, so a step of a routine howls and digs exactly as a whim does. ms is how long the song lasts */
 /* HOW LONG A POSE LASTS (mq-v287; the owner's confirmed goals of 2026-11-21 on the times of the poses and on the howl). Each
@@ -4305,7 +4366,8 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
      Away from the park the course's roll goes to his own stick or a restaurant door, and the greeting's
      to a romp with somebody near (2026-09-29; see `more to do away from the park` below), and each
      passes in its turn when it cannot happen. */
-  if(r<0.40){cr.layT=now+dogTime("lay",cr);cr.sit=false;cr.next=cr.layT;}
+  if(r<0.40){cr.layT=now+dogTime("lay",cr);cr.sit=false;cr.next=cr.layT;
+    if(dogCurl(cr,"nap")){dogCurlLonger(cr);dogCurlPick(cr);}}   /* curled up for this nap, or not (mq-v290): its roll after the nap's own, and none where the world has not turned it on; curled, how much longer, then which version */
   else if(r<0.71)dogHowl(cr,now);
   else if(r<0.83){if(park){const wp=agilityCourse(cr.world);
     /* no gear, no course: the whim passes */
@@ -4327,7 +4389,9 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
    takes a whim, he first picks one of three MODES by chance:
      free    — the whim above (dogWhim), exactly as it has always been;
      curious — routine A, in order, a sniff, a hole, a happy wag, back to normal;
-     lazy    — routine B, in order, a sit, a lie-down, a short howl, back to normal.
+     lazy    — routine B, in order, a sit, a lie-down, a short howl, back to normal. Where the world has turned the
+               curled-up pose on (CURLTAKE, mq-v290), its lie-down is curled up 1 time in 3 (the owner's confirmed number);
+               he uncurls to sing.
    A routine is a job like any other (cr.task, type "routine"), a list of steps in ROUTINES below, each a pose held for its
    own time. It starts from his normal stance and its last step is his normal stance, so any routine can follow any other.
    WHO HAS THEM: a world turns them on kind by kind in its own ROUTINETAKE list ("dog"); a world that says nothing has none,
@@ -4348,7 +4412,7 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
 const ROUTINEMODES=Object.freeze(["free","curious","lazy"]);
 const ROUTINES=Object.freeze({
   curious:Object.freeze([{pose:"sniff"},{pose:"dig",roll:"dig",or:{pose:"sniff",part:0.5}},{pose:"happy"},{pose:"normal"}]),
-  lazy:Object.freeze([{pose:"sit"},{pose:"lay"},{pose:"howl",held:"lay",short:true},{pose:"normal"}])});
+  lazy:Object.freeze([{pose:"sit"},{pose:"lay",curl:"lazy"},{pose:"howl",held:"lay",short:true},{pose:"normal"}])});
 /* how long this step lasts for this dog: its pose's own time (dogTime); `part` is a share of it (the sniff that stands in for
    the hole is half a sniff), `short` draws from the lower half of the range (the lazy routine's howl is a short one) */
 function routineTime(cr,st){return dogTime(st.pose,cr,st.short?Math.random()*0.5:undefined)*(typeof st.part==="number"?st.part:1);}
@@ -4373,7 +4437,7 @@ function routineDraw(cr,r){if(ROUTINEMODES.includes(ROUTINEPIN))return ROUTINEPI
 function routineDigChance(cr){const o=routineOdds(cr);
   return o.curious>0?Math.max(0,Math.min(1,(DIGSHARE-o.free*(DOGDIGBAND[1]-DOGDIGBAND[0]))/o.curious)):0;}
 /* his normal stance: on his feet, every pose's clock stopped. His wag and his hearts run out on their own */
-function dogNormal(cr){cr.sit=false;cr.layT=0;cr.howlT=0;cr.digT=0;cr.sniffT=0;}
+function dogNormal(cr){cr.sit=false;cr.layT=0;cr.howlT=0;cr.digT=0;cr.sniffT=0;if(cr.curlT)cr.curlT=0;}
 /* one step's pose, set on his record: the same clocks and the same words his whims and his commands set */
 function routinePose(cr,st,now,ms){const p=st.pose;
   if(st.held==="lay")cr.layT=now+ms;else if(st.held==="sit")cr.sit=true;
@@ -4388,7 +4452,9 @@ function routineStep(cr,tk,now){const steps=ROUTINES[tk.id]||[];tk.i++;
   dogNormal(cr);
   if(tk.i>=steps.length){cr.task=null;cr.next=now+400+Math.random()*900;return;}
   let st=steps[tk.i];if(st.roll==="dig"&&!tk.dig)st=st.or||{pose:"normal",part:0};
-  const ms=routineTime(cr,st);routinePose(cr,st,now,ms);tk.pose=st.pose;tk.wait=now+ms;}
+  const ms=routineTime(cr,st);routinePose(cr,st,now,ms);
+  if(st.curl&&dogCurl(cr,st.curl))dogCurlPick(cr);   /* a lie-down that may be curled up (mq-v290): its roll after the step's own; curled, which version */
+  tk.pose=st.pose;tk.wait=now+ms;}
 /* r, a number from 0 to 1, may be handed in for the hole's own roll */
 function routineStart(cr,id,now,r){const steps=ROUTINES[id];if(!steps||!steps.length)return false;
   cr.task={type:"routine",id,i:-1,pose:"normal",dig:ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:Math.random())<routineDigChance(cr)};
@@ -4590,12 +4656,104 @@ function drawColibri(g,cr,sx,sy){
   g.fillRect(cx+3.2,cy-2.1,0.8,0.8);
   g.restore();
 }
+/* CURLED UP ON HIS CARD (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). One shape for the three
+   breeds, drawn here; each breed's sizes are a row of CURLCARD, card px from the middle of his cell as he faces right, and
+   each painter hands in its own colours and paints its own head. What is drawn, back to front:
+     · his shadow, as wide as he now lies;
+     · his body, a low round mound: its top is below where his head is when he lies stretched out, so curled up he is
+       the lowest he ever is; his legs are tucked under him and none shows; the fold of his haunch is a soft line;
+     · his collar where his neck comes round behind his head; over it his bandana's rolled edge and the two ends of its
+       knot, which stand out past his outline (its point lies under his chin, out of sight);
+     · his tail, brought round along the ground from his rump to end under his nose;
+     · his head, laid down against his own flank and turned back, so his nose points to his tail: painted by his own
+       painter in the head's frame (its middle at 0,0, his nose toward +x), which this turns round.
+   Nothing here moves: curled up he is asleep, so there is no wag and no clock to read.
+     body — the mound: its middle x and y, half its length, half its height
+     head — the middle of his head; turn — how far it is tipped, nose down, in radians; r — its half width, for its shadow
+     eye — the middle of his shut eye, in the head's frame; tail — how thick, and the size of its tip; sh — his shadow's half length and half height */
+const CURLCARD=Object.freeze({
+  beagle:Object.freeze({body:[-0.4,22.3,8.6,5.2],head:[2.8,23.2],turn:0.35,r:4.6,eye:[0.65,-0.45],tail:[2.4,1.5],sh:[9.4,2.8]}),
+  lab:Object.freeze({body:[-0.4,21.7,9.4,5.8],head:[3,23.2],turn:0.4,r:4.9,eye:[0.75,-0.75],tail:[3,0],sh:[10.2,3]}),
+  chi:Object.freeze({body:[0.2,23.7,6.6,3.8],head:[1.9,23.2],turn:0.45,r:4.2,eye:[0.3,-0.4],tail:[1.8,0],sh:[7.2,2.3]})});
+/* where his shut eye is on his card, curled up: px from the middle of his cell and from its top, as he faces right. What he
+   wears round his eye (wildDraw) is put there, so it is not left where his eye was when he stood */
+function curlEyeAt(kind,ver){const CC=curlVersion(ver).card||CURLCARD,C=CC[kind];if(!C)return null;const[ex,ey]=C.eye,c=Math.cos(C.turn),s=Math.sin(C.turn);
+  return [C.head[0]-(ex*c-ey*s),C.head[1]+(ex*s+ey*c)];}
+/* HIS CURLED BODY'S ANGLES, first version (the numbers engine/engine3d.js's dogCurlHold lays over the lying hold; what each
+   is, is written there). Kept here, beside his curled card, because the two together are one version of the curl */
+const DOGCURL=Object.freeze({back:1.2,chest:0.9,head:0.75,nod:0.2,cheek:0.2,rest:1.15,tail:Object.freeze([-1.75,0.85,0.75,1.0]),fore:Object.freeze([-0.7,2.3]),ear:-2.0,shadow:0.95});
+/* THE VERSIONS OF THE CURL (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). The curled pose is a
+   LIST of versions, one picked at random for each curled lie-down. A version is one entry holding everything that differs
+   between versions:
+     id   — its name, for people reading it
+     w    — its weight: how often it is picked against the others (this list is the table of weights)
+     card — his curled card, a CURLCARD-shaped table, a row per breed (the painters paint each head into it)
+     body — his curled body's angles, a DOGCURL-shaped table (dogCurlHold, engine/engine3d.js)
+   THE PICK is made once, when the curled lie-down starts (dogCurlPick), after every other roll that lie-down takes; it is
+   kept on his record for that lie-down (cr.curlV, a place in this list) and read, cleaned, by dogPose (`ver`); nothing is
+   ever rolled where a painter asks. With one version no roll is taken at all, so a world rolls exactly as before.
+   Today's curl, nose round to tail lying on his side, is the first and for now the only one. */
+const CURLVERSIONS=Object.freeze([
+  Object.freeze({id:"nose to tail",w:1,card:CURLCARD,body:DOGCURL})
+  /* THE SECOND VERSION goes here, as one more entry (NOT built yet): planned from the owner's reference photographs, a
+     closed ring, his nose tucked into his hind leg or his flank, his tail wrapped round him, his legs hidden inside the
+     ring, his ears flat, a low round loaf. It needs its own CURLCARD-shaped rows (and, if its head is painted otherwise,
+     a way for each painter to paint that head), its own DOGCURL-shaped angles, and its weight */
+]);
+/* the list in use: the engine's own; a check may stand a list of its own in for a moment */
+function curlVersions(){return CURLVERSIONS;}
+/* which version a dog is curled in, cleaned where it is read: a whole number naming an entry of the list, else the first */
+function curlVersionOf(cr){const L=curlVersions(),i=cr?cr.curlV:undefined;return Array.isArray(L)&&Number.isInteger(i)&&i>=0&&i<L.length?i:0;}
+/* a version by its place, the first where the place names none */
+function curlVersion(i){const L=curlVersions();return (Array.isArray(L)&&Number.isInteger(i)&&L[i])||CURLVERSIONS[0];}
+/* he has just curled up: which version, by the weights, kept on his record for this lie-down. One version, or weights that
+   give nothing to pick between: the first, and no roll. r may be handed in for a check. Answers the place picked */
+function dogCurlPick(cr,r){const L=curlVersions();cr.curlV=0;if(!Array.isArray(L)||L.length<2)return 0;
+  const w=L.map(v=>v&&typeof v.w==="number"&&isFinite(v.w)?Math.max(0,v.w):0),tot=w.reduce((a,b)=>a+b,0);if(!(tot>0))return 0;
+  let x=(typeof r==="number"&&r>=0&&r<1?r:Math.random())*tot,last=0;
+  for(let i=0;i<L.length;i++){if(!(w[i]>0))continue;last=i;x-=w[i];if(x<0){cr.curlV=i;return i;}}
+  cr.curlV=last;return last;}
+function dogCurlCard(g,cr,cx,sy,o,ver){const CC=curlVersion(ver).card||CURLCARD,C=CC[cr.kind]||CC.beagle||CURLCARD.beagle,[bx,by,rx,ry]=C.body,[hx,hy]=C.head,gy=sy+by+ry;   /* gy: the ground under him */
+  const mound=()=>{g.beginPath();g.ellipse(cx+bx,sy+by,rx,ry,0,0,7);};
+  g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx+bx,sy+27,C.sh[0],C.sh[1],0,0,7);g.fill();
+  g.fillStyle=o.body;mound();g.fill();
+  g.save();mound();g.clip();   /* what lies on him is kept inside his outline */
+  if(o.back)o.back(g,cx+bx,sy+by,rx,ry);
+  g.strokeStyle="rgba(0,0,0,.13)";g.lineWidth=0.7;g.lineCap="round";   /* the fold of his haunch */
+  g.beginPath();g.arc(cx+bx-rx*0.52,gy-ry*0.4,ry*0.8,-2.3,-0.3);g.stroke();
+  g.strokeStyle=cr.collar||"#2E5FA8";g.lineWidth=1.7;g.lineCap="butt";   /* his collar, where his neck comes round behind his head */
+  g.beginPath();g.arc(cx+hx,sy+hy,C.r+1.1,-0.75,0.35);g.stroke();
+  g.restore();
+  if(cr.band){   /* his bandana: its point lies on his chest, under his chin and out of sight, so what shows is its rolled edge round the back of his neck, over his collar, and the two ends of its knot */
+    const R=C.r+1.5,kx=cx+hx+(R+0.6)*Math.cos(-0.25),ky=sy+hy+(R+0.6)*Math.sin(-0.25);
+    g.strokeStyle=cr.band;g.lineWidth=2.2;g.lineCap="butt";g.beginPath();g.arc(cx+hx,sy+hy,R,-0.85,0.3);g.stroke();
+    g.fillStyle=cr.band;g.beginPath();g.moveTo(kx-0.6,ky-0.9);g.lineTo(kx+2.2,ky-2);g.lineTo(kx+0.9,ky+0.1);g.lineTo(kx+2,ky+2.2);g.lineTo(kx-0.6,ky+0.9);g.closePath();g.fill();
+    g.fillStyle=shadeHex(cr.band,-0.14);g.beginPath();g.arc(kx,ky,0.8,0,7);g.fill();}
+  g.strokeStyle=o.tail;g.lineWidth=C.tail[0];g.lineCap="round";   /* his tail, round along the ground to under his nose */
+  const tx=cx+hx-C.r*1.2,ty=gy-C.tail[0]*0.45;
+  g.beginPath();g.moveTo(cx+bx-rx+1.4,gy-ry*0.75);g.quadraticCurveTo(cx+bx-rx-0.5,gy-0.2,cx+bx-rx*0.5,gy-C.tail[0]*0.4);g.lineTo(tx,ty);g.stroke();
+  if(C.tail[1]>0&&o.tip){g.fillStyle=o.tip;g.beginPath();g.arc(tx,ty,C.tail[1],0,7);g.fill();}
+  g.fillStyle="rgba(0,0,0,.12)";g.beginPath();g.arc(cx+hx-0.4,sy+hy+0.4,C.r+0.5,0,7);g.fill();   /* his head's own shadow on his flank */
+  g.save();g.translate(cx+hx,sy+hy);g.scale(-1,1);g.rotate(C.turn);o.head(g);g.restore();}
 function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, floppy ears, working tail */
   const P=dogPose(cr);if(P.hid)return;   /* inside the agility tunnel: nothing of him shows until he comes out */
   const lay=P.lay,howl=P.howl,dig=P.dig,t=P.t;
   const cx=sx+16,wag=P.wag,lemon="#E8C46A",white="#F6F2E8";
   const dy=P.drop,hy=P.nod;
   g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
+  if(P.curl){   /* curled up asleep (mq-v290): his lemon saddle over his back, the heart on his face, his ear fallen across his cheek */
+    dogCurlCard(g,cr,cx,sy,{body:white,tail:lemon,tip:white,
+      back:(g,mx,my,rx,ry)=>{g.fillStyle=lemon;g.beginPath();g.ellipse(mx-1,my-ry*0.55,rx*0.7,ry*0.7,0,0,7);g.fill();
+        g.fillStyle=white;[[-5,-0.5],[-2.2,-0.72],[-3.4,-0.2],[0.6,-0.8]].forEach(q=>{g.beginPath();g.arc(mx+q[0],my+ry*q[1],0.55,0,7);g.fill();});},
+      head:g=>{g.fillStyle=white;g.beginPath();g.arc(0,0,4.6,0,7);g.fill();
+        g.fillStyle=lemon;g.beginPath();g.arc(0.5,-1.6,3.7,Math.PI,Math.PI*2);g.fill();g.fillRect(-3.2,-1.6,7.4,1.6);
+        g.fillStyle=white;g.save();g.translate(0.2,-3);g.rotate(-0.75);
+        g.beginPath();g.arc(-0.62,-0.46,0.72,0,7);g.arc(0.62,-0.46,0.72,0,7);g.fill();
+        g.beginPath();g.moveTo(-1.31,-0.17);g.lineTo(0,1.46);g.lineTo(1.31,-0.17);g.closePath();g.fill();g.restore();
+        g.fillStyle=lemon;g.beginPath();g.roundRect(-4.3,-2.8,3.4,7.5,2);g.fill();
+        g.fillStyle=white;[[-3.1,-0.8],[-2.1,2.3]].forEach(q=>{g.beginPath();g.arc(q[0],q[1],0.5,0,7);g.fill();});
+        g.fillStyle="#26202B";g.fillRect(-0.3,-0.8,1.9,0.7);g.beginPath();g.arc(4.1,1.2,1.3,0,7);g.fill();}},P.ver);
+    g.restore();dogOverlays(g,cr,cx,sy,P);return;}
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,7,2.8,0,0,7);g.fill();
   sy-=P.lift;                                /* over the hurdle's bar he is in the air; his shadow is not */
   g.strokeStyle=lemon;g.lineWidth=2.4;g.lineCap="round"; /* the tail: lemon, always going (slower when resting) */
@@ -4660,6 +4818,12 @@ function drawLab(g,cr,sx,sy){ /* a lab: solid, square, permanently pleased */
   const cx=sx+16,wag=P.wag,co=cr.c||"#E0C070";
   const dk=shadeHex(co,-0.25),dy=P.drop,hy=P.nod;
   g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
+  if(P.curl){   /* curled up asleep (mq-v290): his blocky head down on his flank, his dark ear across it, his thick tail round him */
+    dogCurlCard(g,cr,cx,sy,{body:co,tail:co,
+      head:g=>{g.fillStyle=co;g.beginPath();g.roundRect(-4.75,-4,9.5,8,3.5);g.fill();
+        g.fillStyle=dk;g.beginPath();g.roundRect(-5.65,-3.5,3,6.5,2);g.fill();
+        g.fillStyle="#26202B";g.fillRect(-0.25,-1.1,2,0.7);g.beginPath();g.arc(4.15,0.5,1.5,0,7);g.fill();}},P.ver);
+    g.restore();dogOverlays(g,cr,cx,sy,P);return;}
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,8,3,0,0,7);g.fill();
   sy-=P.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=3;g.lineCap="round"; /* thick otter tail */
@@ -4690,6 +4854,14 @@ function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opin
   const cx=sx+16,wag=P.wag,co=cr.c||"#C9975C";
   const dk=shadeHex(co,-0.22),dy=P.drop,hy=P.nod;
   g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
+  if(P.curl){   /* curled up asleep (mq-v290): her apple head down on her flank, her ears laid back along it, her thin tail round her */
+    dogCurlCard(g,cr,cx,sy,{body:co,tail:co,
+      head:g=>{g.fillStyle=co;g.beginPath();g.arc(0,0,4.2,0,7);g.fill();
+        g.beginPath();g.moveTo(-3.4,-0.2);g.lineTo(-6.3,-2.4);g.lineTo(-3,-2.6);g.closePath();g.fill();     /* the far ear, laid back */
+        g.beginPath();g.moveTo(-3.6,-1.8);g.lineTo(-5.8,-4.8);g.lineTo(-1.2,-3.9);g.closePath();g.fill();   /* the near ear, laid back */
+        g.fillStyle=dk;g.beginPath();g.moveTo(-3.4,-2.5);g.lineTo(-4.9,-4.3);g.lineTo(-2.2,-3.7);g.closePath();g.fill();
+        g.fillStyle="#26202B";g.fillRect(-0.6,-0.7,1.8,0.6);g.beginPath();g.arc(3.6,1.1,1,0,7);g.fill();}},P.ver);
+    g.restore();dogOverlays(g,cr,cx,sy,P);return;}
   g.fillStyle="rgba(0,0,0,.13)";g.beginPath();g.ellipse(cx,sy+27,5.5,2.2,0,0,7);g.fill();
   sy-=P.lift;                                /* over the bar, the shadow stays down */
   g.strokeStyle=co;g.lineWidth=1.8;g.lineCap="round"; /* thin curled tail */
@@ -5151,7 +5323,8 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
   if(KD.eye){ /* C½: colour round the eyes (the owner suggested colour around the eyes) — two rings, the accent and
        a thinner one in the pattern colour outside it (Pili: two rings is the alebrije look, one is a bruise), centred ON the eye
        and wider than it, so the pupil stays a pupil; inside the silhouette like everything else */
-    const[ex,ey,er]=KD.eye;tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
+    let[ex,ey,er]=KD.eye;const ce=R.curl?curlEyeAt(kind,R.curlV):null;if(ce){ex=ce[0];ey=ce[1]-R.head;}   /* curled up, his eye is where his head is laid (mq-v290) */
+    tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
     tg.lineWidth=1.6;tg.globalAlpha=0.9;tg.strokeStyle=look.accent;tg.beginPath();tg.arc(cx+ex,sh+ey,er,0,7);tg.stroke();
     tg.lineWidth=0.7;tg.globalAlpha=0.6;tg.strokeStyle=look.pat;tg.beginPath();tg.arc(cx+ex,sh+ey,er+1.1,0,7);tg.stroke();tg.restore();}
   if(look.wings&&KD.wings){ /* D: the wings, each painted whole on its own sheet and then laid behind the animal — the forewing

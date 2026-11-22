@@ -166,6 +166,34 @@ const CANDIDATES = [
     t2.forEach(m => fails.push(m));
     await page.setViewportSize({ width: 480, height: 900 });
   }
+  /* ---- MERIDIAN'S DOGS CURL UP IN THEIR NAPS, BY MERIDIAN'S OWN SWITCH (mq-v290) ----
+     The owner's confirmed goal of 2026-11-21 on the curled-up pose: both games take it. The engine's own suite asks the pose
+     with its switch stood in for, and asks a world that says nothing; only here is Meridian asked as it ships, so taking
+     Meridian's line out (or emptying it) is a red here. A dog of Meridian, made on its street, takes his nap whim with the
+     roll for the nap held and every later roll swept from 0 to 1: about half of his naps are curled up, the share typed
+     here. Every roll is put back. */
+  {
+    const curl = await page.evaluate(() => {
+      const problems = [];
+      if (typeof dogWhim !== 'function' || typeof dogPose !== 'function') { problems.push('Meridian\'s dogs have no whim to nap in, so whether they curl up could not be asked'); return problems; }
+      const K = [...DOGK][0], wid = PL.street, w = WORLDS[wid]; let at = null;
+      for (let y = 0; y < w.H && !at; y++) for (let x = 0; x < w.W && !at; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') at = [x, y];
+      if (!at) { problems.push('Meridian\'s street has nowhere to stand a dog, so whether its dogs curl up could not be asked'); return problems; }
+      const MR = Math.random, N = 40; let naps = 0, curled = 0;
+      try {
+        for (let i = 0; i < N; i++) { const v = (i + 0.5) / N; let k = 0;
+          Math.random = () => { k++; return k === 1 ? 0.2 : k === 2 ? 0.5 : v; };   /* the nap's band, no cone, then the sweep */
+          const d = { kind: K, name: 'Probe', world: wid, x: at[0], y: at[1], fx: at[0], fy: at[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, next: 0, home: at.slice(), task: null };
+          const now = wNow(); dogWhim(d, now);
+          if (d.layT > now) { naps++; if (dogPose(d, now + 10, now + 10).curl) curled++; } }
+      } finally { Math.random = MR; }
+      if (!naps) problems.push('a dog of Meridian given the roll for a nap does not lie down, so whether he curls up could not be asked');
+      else { const pc = 100 * curled / naps;
+        if (pc < 40 || pc > 60) problems.push('in Meridian, ' + Math.round(pc) + '% of a dog\'s naps are curled up, where about half of them are (both games take the pose: ' + (curled ? 'the share has moved' : 'Meridian\'s own switch for it is off') + ')'); }
+      return problems;
+    });
+    curl.forEach(m => fails.push(m));
+  }
   /* ---- MERIDIAN'S NEW GAME AND BARBER'S CHAIR ARE THE CUSTOMIZING PANEL (the owner's goal confirmed 2026-11-16, step two) ----
      At a phone's 390 by 844 and a laptop's 1280 by 800, in English and Spanish, at a new game and in the barber's chair:
      the creator is open as the browser's modal dialog, so the page behind is dimmed and takes no press (on a laptop a
