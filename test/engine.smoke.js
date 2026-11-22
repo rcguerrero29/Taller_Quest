@@ -4718,6 +4718,402 @@ function findChromium() {
   poseTimes.out.forEach(l => console.log('  POSE TIMES: ' + l));
   fails.push(...poseTimes.P.map(m => 'the dog\'s poses: ' + m));
 
+  /* ---- THE MESS A DOG LEAVES IS A FIGURE WITH NO FACE (mq-v291) ----
+     What was asked, on 2026-11-21 and confirmed that day: the mess, until now one picture character with a face written on
+     the ground in every camera, is replaced by a harmless-looking figure with no face; in the 3D camera it is a small 3D
+     shape, a soft little mound with no eyes, no mouth and nothing that reads as a face; the flat cameras draw the same
+     faceless shape, drawn and not a picture character; it still goes by itself after 45 seconds, as today; and no puddle
+     is added. And, confirmed later that day: no face anywhere, so the figure is the engine's own for every world, and
+     the old picture character stays only for a world drawn as cards that names it (MESSLOOK names "character"); the
+     figure has a list of looks, the three soft layers first and for now the only one, and a world may name which it takes.
+     Asked of what a person sees, on a clock this check owns, the mess left by a dog's own whim (the roll swept until he
+     leaves one, so no band is typed here), with you standing one tile to its left in the flat cameras and one tile to its
+     left and one nearer in the 3D one (so that at no quarter turn do you stand between the camera and it), every animal and
+     person of that world out of the picture, the season off and the tram away, so that two frames of one instant differ by
+     the mess alone (a control pair must differ by nothing first). The switch is the world's own, turned for real: the
+     list it names is changed in place, or lent to a world that names none, so the engine's own messLook is what is asked.
+       0 · NO FACE ANYWHERE: a world that names nothing gets the figure, in its first look; a world that names the old
+           picture character keeps it.
+       1 · IN A WORLD THAT NAMES NOTHING, IN EVERY FLAT CAMERA the mess is drawn and nothing is written: the frame with the
+           mess writes not one character more than the frame without it, and it changes pixels. Where the world names the
+           old picture, the same frame writes the one picture character it always did, which is also how this check knows
+           it can see writing. And no frame with a mess in sight draws a random number a frame without it does not.
+       2 · THE FLAT DRAWING HAS NO FACE: every solid pixel of it is one of a family of browns, none light enough for the
+           white of an eye, none dark enough for a pupil; and nothing is drawn inside its outline darker than all round it,
+           which is what an eye, a pupil or a mouth is (its lobes darken only toward their own edge). It stands where feet
+           stand: its middle within a tenth of a tile of its tile's middle, its foot in the lower part of the tile.
+       3 · IN THE 3D CAMERA A SHAPE STANDS THERE, on its tile, on the ground, small (no wider than half a tile, no taller
+           than a third); its card is not painted as well; it wears no picture; nothing in it is named for an eye, a mouth
+           or a face; every corner of it is one of the same browns; no two of its lumps sit side by side at one height,
+           which is what a pair of eyes is from the front; and its lumps stack on one line, each narrower than the one
+           under it, so nothing is set on its side, which is what a mouth is. And it SHOWS, at each of the four quarter
+           turns: the frame with it minus the frame without it changes pixels, and they are browns, none pale, none black.
+           It stands within a tenth of a tile of its tile's middle, as in the flat cameras. Left on a stair, it stands on
+           the step. And at night it takes the street's own tint, so it is never lit brighter than the ground it lies on.
+       4 · THE TWO ARE THE SAME SHAPE: as wide and as tall in the flat drawing as in the 3D one, in the same browns; and the
+           first look is today's size in both (0.34 of a tile across and 0.23 tall, within 0.02), fixed in the engine.
+       5 · IT GOES BY ITSELF AFTER 45 SECONDS, IN EVERY CAMERA: 44 seconds after he leaves it, it is still there and still
+           seen; 0.6 seconds before its end it is weaker than at 44 and stronger than nothing; a moment after 45, it is drawn
+           by nobody, standing nowhere and kept by nobody. And he leaves ONE thing: no puddle beside it.
+       6 · A WORLD THAT NAMES THE OLD PICTURE KEEPS IT EXACTLY AS IT WAS: in every camera the same pixels as the old
+           painter (typed here as it was on mq-v287) gives, and the same rolls; the 3D camera stands no shape and paints
+           the card it always did.
+       7 · SEVERAL LOOKS: with a second look lent to the list for the length of this check, a world that names it draws it
+           in every camera and a world that names nothing draws the first; and with the one look there is, naming it
+           changes not one pixel.
+     Every real dog and person is put back, and so are the world's list, the list of looks, the rolls, the clocks, the words
+     said, the park's counts, the marks on the ground, the camera and where you stand. */
+  const messFig = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof messLook !== 'function' || typeof MESSLOOKS === 'undefined' || !Array.isArray(MESSLOOKS) || typeof drawDecal !== 'function' || typeof DECALS === 'undefined') { P.push('the mess a dog leaves has no figure to become: the engine has no list of looks for it, so it is still the picture character with a face in every camera'); return { P, out }; }
+    const K = typeof DOGK !== 'undefined' ? [...DOGK][0] : null;
+    if (!K || typeof dogWhim !== 'function') { P.push('this shell has no dog, so nothing is left on the ground and the figure could not be asked'); return { P, out }; }
+    const GLYPH = '\u{1F4A9}', FIRST = 'layers', OLDP = 'character', LIFE = 45000, T0 = new Date(2026, 10, 2, 12, 0, 0).getTime(), MIN = 20, QT = Math.PI / 2;   /* noon of an ordinary day: the 3D camera lights the street by the hour, so the hour is held too */
+    const has3d = CAMS.indexOf('3d') >= 0, flat = ['top', 'front', 'iso'].filter(c => CAMS.indexOf(c) >= 0);
+    if (!flat.length) { P.push('this shell has no flat camera, so what the flat cameras draw where a mess lies could not be asked'); return { P, out }; }
+    /* the spot: open ground with open ground all round it, chosen from the map (the older check on what he leaves, grep `WHAT THE DOG LEAVES ON THE GROUND`, says why) */
+    const bare = (wid, x, y) => { const w = WORLDS[wid]; if (x < 0 || y < 0 || x >= w.W || y >= w.H) return false;
+      const r = w.rows[y][x], g = w.grid[y][x] === 'N' ? r : w.grid[y][x];
+      return !SOLID.has(g) && !SOLID.has(r) && g !== 'N' && r !== 'N' && !stands(r) && !stands(g) && !DOORSET.has(r) && !portalAt(wid, x, y) && !DECOS.some(d => d.world === wid && d.x === x && d.y === y) && !wellDepth(w, x, y) && !stairLift(w, x, y); };
+    let spot = null;
+    [PL.street].concat(Object.keys(WORLDS)).filter((id, i, a) => WORLDS[id] && a.indexOf(id) === i).some(wid => { const w = WORLDS[wid], L = troLine(wid);
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if ((L && Math.abs(y - L.row) <= 1) || !bare(wid, x, y)) continue;
+        let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (bare(wid, x + dx, y + dy)) n++;
+        if (bare(wid, x - 1, y) && bare(wid, x - 1, y + 1) && (!spot || n > spot.n)) spot = { wid, x, y, n }; }
+      return spot && spot.n === 9; });
+    if (!spot) { P.push('there is no open ground with room to stand beside it in any world of this shell, so the mess could not be looked at: that is a red, not a pass'); return { P, out }; }
+    const at3 = [spot.x - 1, spot.y + 1];   /* where you stand for the 3D camera: never on the line from any of its four stops to the mess */
+    /* THE WORLD'S OWN SWITCH. Its list is changed in place (a const array keeps its contents writable), or, in a world that
+       names none, one is lent to it on the page and taken back; either way the engine's messLook reads it as it stands.
+       turn('none') names nothing, turn(OLDP) names the old picture character, turn(<a look's name>) names that look. */
+    const own = typeof MESSLOOK === 'undefined' ? null : MESSLOOK, namesOld = Array.isArray(own) && own.includes(OLDP), ownList = Array.isArray(own) ? own.slice() : null;
+    const RD = Date, FT = CanvasRenderingContext2D.prototype.fillText;
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, lk: messLook, dd: drawDecal, world, px, py, fx, fy, dir, mv: moving, cam: camMode, st: TRO.state,
+      season: typeof seasonPick !== 'undefined' ? seasonPick : null, yaw: typeof T3 !== 'undefined' ? T3.yaw : 0, turn: typeof T3 !== 'undefined' ? T3.turn : null, fail: typeof T3 !== 'undefined' ? T3.messFail : undefined,
+      decals: DECALS.slice(), things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, park: JSON.stringify(PARK), hid: document.getElementById('world').hidden, looks: MESSLOOKS.slice() };
+    const turn = mode => { const list = mode === 'none' ? [] : [mode];
+      if (Array.isArray(own)) { own.length = 0; list.forEach(t => own.push(t)); }
+      else if (own === null) { if (list.length) window.MESSLOOK = list; else delete window.MESSLOOK; }
+      else messLook = mode === OLDP ? () => null : () => MESSLOOKS.find(l => l.name === (mode === 'none' ? FIRST : mode)) || null; };   /* a list that is not a list cannot be turned: the switch is stood in for, and an out line says so */
+    const parked = CRIT.filter(c => c.world === spot.wid).map(c => [c, c.world]), people = WORLDS[spot.wid].npcs;
+    let NOW = T0, wrote = [], painted = 0, rolls = 0, mark = null, drew3d = false, useOld = false;
+    /* THE OLD PAINTER, as it was on mq-v287 (engine/engine.js, drawDecal, kind "poop"), typed here so that what a world that
+       names the old picture sees is held to what it always saw, and never to what the engine says it is today */
+    const OLD = (g, sx, sy, a) => { g.globalAlpha = a; g.fillStyle = '#5A4630'; g.font = '11px serif'; g.textAlign = 'center'; g.fillText(GLYPH, sx + 16, sy + 22); g.textAlign = 'start'; g.globalAlpha = 1; };
+    const roll = () => { rolls++; return 0.5; };   /* while a frame is drawn: every number a painter asks for is counted */
+    const cv2 = document.getElementById('cv'), g2 = cv2.getContext('2d');
+    const made = () => ({ kind: K, name: 'Probe', world: spot.wid, x: spot.x, y: spot.y, fx: spot.x, fy: spot.y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: 0, home: [spot.x, spot.y], task: null, holdT: 0, stayT: 0, moving: false, mt: 0 });
+    /* his own whim, the roll swept from the top until a mess is on the ground: what he left, and how many numbers the whim drew */
+    const leave = () => { for (let i = 399; i >= 0; i--) { const r = (i + 0.5) / 400, n0 = DECALS.length, t0 = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0; let c = 0;
+        Math.random = () => { c++; return c === 1 ? r : 0.5; }; const d = made(); dogWhim(d, 5e6); Math.random = keep.MR;
+        const got = DECALS.slice(n0), things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length - t0 : 0; DECALS.length = n0; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = t0;
+        if (got.some(dc => dc.kind === 'poop')) return { got, things, rolls: c, dog: d }; }
+      return null; };
+    /* one frame of a flat camera: its pixels, every character it wrote, and how many random numbers it drew */
+    const frame = () => { wrote = []; const r0 = rolls; Math.random = roll; try { draw(); } finally { Math.random = keep.MR; }
+      return { d: g2.getImageData(0, 0, cv2.width, cv2.height).data, wrote: wrote.slice(), r: rolls - r0 }; };
+    /* one frame of the 3D camera at quarter turn q, you standing at at3; f reads what it wants of the scene and the picture */
+    const in3d = (q, f) => { camSet('3d'); sizeCanvas(); T3.turn = null; T3.yaw = q * QT; px = fx = at3[0]; py = fy = at3[1]; wrote = []; painted = 0; const r0 = rolls; let ok = false;
+      Math.random = roll; try { ok = draw3d(); } finally { Math.random = keep.MR; px = fx = spot.x - 1; py = fy = spot.y; }
+      if (!ok) return null; drew3d = true; return Object.assign({ r: rolls - r0 }, f ? f() : {}); };
+    const shot3 = () => { const c3 = T3.renderer.domElement, c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
+      const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return { d: g.getImageData(0, 0, c.width, c.height).data, w: c.width }; };
+    const differ = (A, B) => { let n = 0; for (let i = 0; i < A.d.length; i += 4) if (Math.abs(A.d[i] - B.d[i]) + Math.abs(A.d[i + 1] - B.d[i + 1]) + Math.abs(A.d[i + 2] - B.d[i + 2]) > 30) n++; return n; };
+    const exact = (A, B) => { let n = 0; for (let i = 0; i < A.d.length; i += 4) if (A.d[i] !== B.d[i] || A.d[i + 1] !== B.d[i + 1] || A.d[i + 2] !== B.d[i + 2] || A.d[i + 3] !== B.d[i + 3]) n++; return n; };
+    const force = (A, B) => { let s = 0; for (let i = 0; i < A.d.length; i += 4) s += Math.abs(A.d[i] - B.d[i]) + Math.abs(A.d[i + 1] - B.d[i + 1]) + Math.abs(A.d[i + 2] - B.d[i + 2]); return s; };   /* how strongly the mess shows: everything it changes, summed */
+    const more = (A, B) => { const left = B.wrote.slice(); return A.wrote.filter(t => { const k = left.indexOf(t); if (k < 0) return true; left.splice(k, 1); return false; }); };   /* what A wrote that B did not */
+    const put = () => { if (DECALS.indexOf(mark) < 0) DECALS.push(mark); }, lift = () => { const i = DECALS.indexOf(mark); if (i >= 0) DECALS.splice(i, 1); };
+    /* a brown: red over green over blue, neither pale nor near black (0 to 255). The white of an eye, a pupil and a mouth are none of these */
+    const brown = (r, g, b) => r >= g && g >= b && r - b >= 15 && r >= 70 && r <= 190 && b >= 25;
+    const hex = (r, g, b) => '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+    /* the pixels the mess changes in a 3D frame, read off the frame WITH it: how many, how many are browns, pale, black.
+       Its brown share is read off the pixels INSIDE what it changes: a pixel at the edge, with an unchanged pixel beside it,
+       is the mound's outline smoothed into whatever lies behind it, a brown mixed with a cream floor or a dark counter, and
+       is no brown of its own (found in the oven's kitchen at one quarter turn, a quarter of its pixels such edges, where the
+       street behind it is close to a brown and never showed it). Pale and black are asked of every pixel, edge or not, and an
+       eye or a mouth drawn on the mound lies inside it, so it is read there as before */
+    const seen3 = (A, B) => { let n = 0, br = 0, pale = 0, black = 0, inner = 0; const a = A.d, b = B.d, W = A.w || 0;
+      const ch = i => i >= 0 && i < a.length && Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30;
+      for (let i = 0; i < a.length; i += 4) { if (!ch(i)) continue; n++;
+        if (Math.min(a[i], a[i + 1], a[i + 2]) > 200) { pale++; continue; } if (Math.max(a[i], a[i + 1], a[i + 2]) < 30) { black++; continue; }
+        const x = (i / 4) % W, edge = !W || x === 0 || x === W - 1 || !ch(i - 4) || !ch(i + 4) || !ch(i - 4 * W) || !ch(i + 4 * W);
+        if (edge) continue; inner++; if (brown(a[i], a[i + 1], a[i + 2])) br++; }
+      return { n, br, pale, black, inner }; };
+    /* the shape that stands for this mark in the 3D scene, if one does */
+    const shapes = () => { const got = []; T3.scene.traverse(o => { if (o.isMesh && o.visible && o.userData && o.userData.mess && o.userData.x === mark.x && o.userData.y === mark.y) got.push(o); }); return got; };
+    try {
+      window.Date = class extends RD { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } };   /* the clock, and the hour every painter reads off it */
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      CanvasRenderingContext2D.prototype.fillText = function (t) { wrote.push(String(t)); return FT.apply(this, arguments); };
+      drawDecal = function (g, sx, sy, dc, a) { if (dc === mark) { painted++; if (useOld) return OLD(g, sx, sy, a); } return keep.dd.apply(this, arguments); };
+      parked.forEach(([c]) => { c.world = '__frozen'; }); WORLDS[spot.wid].npcs = [];
+      if (typeof seasonSet === 'function') seasonSet('off'); TRO.state = 'away';
+      document.getElementById('world').hidden = false;
+      world = spot.wid; px = fx = spot.x - 1; py = fy = spot.y; moving = false; dir = 'down';
+      DECALS.length = 0;
+      /* 0 · the switch as the world left it, before this check turns anything; then turned each way */
+      const said = messLook();
+      out.push('this world ' + (own === null ? 'names no MESSLOOK' : Array.isArray(own) ? 'names MESSLOOK ' + JSON.stringify(own) : 'gives MESSLOOK as ' + JSON.stringify(own) + ', which is not a list, so its switch could not be turned: the engine\'s switch is stood in for here') +
+        ', and the engine ' + (said ? 'draws the look "' + said.name + '"' : 'writes the old picture character') + (Array.isArray(own) || own === null ? '; it is asked with ' + (own === null ? 'a list lent to it on the page' : 'its own list') + ', turned each way' : '') + '; the figure has ' + MESSLOOKS.length + ' look(s)');
+      if (namesOld && said) P.push('this world names the old picture character for its mess, and the engine draws the figure all the same: a world drawn only as cards that keeps the old picture loses it');
+      if (!namesOld && !said) P.push('this world ' + (own === null ? 'says nothing about how the mess looks' : 'does not name the old picture character') + ', and the engine still writes the picture character with a face: the figure with no face is every world\'s own unless it names the old picture');
+      turn('none'); const d0 = messLook();
+      if (!d0) P.push('with the world naming nothing for the mess, the engine writes the old picture character with a face: a world that says nothing is to get the figure with no face');
+      else if (d0.name !== FIRST) P.push('with the world naming no look, the engine draws the look "' + d0.name + '", where the first look, the three soft layers, is every world\'s until it names another');
+      turn(OLDP);
+      if (messLook()) P.push('with the world\'s list naming the old picture character, the engine draws the figure all the same: a world drawn only as cards that keeps the old picture loses it');
+      turn('none');
+
+      const left = leave();
+      if (!left) { P.push('swept through every roll of his whim, the dog never left a mess, so there was nothing to look at in any camera'); return { P, out }; }
+      mark = left.got.find(dc => dc.kind === 'poop');
+      if (left.got.length !== 1 || left.things) P.push('leaving a mess, the dog leaves ' + (left.got.length + left.things) + ' things on the ground (' + left.got.map(dc => dc.kind).join(', ') + (left.things ? ', and something thrown or set down' : '') + '), where only the mess was asked: no puddle is added');
+      if (mark.world !== spot.wid || mark.x !== spot.x || mark.y !== spot.y) P.push('the dog standing at (' + spot.x + ',' + spot.y + ') left his mess at (' + mark.x + ',' + mark.y + '): not where he was');
+      const lies = mark.until - wDate();
+
+      /* 1 · in a world that names nothing, in every flat camera the mess is drawn and nothing is written, and no painter rolls for it */
+      const flatAsk = cam => { camSet(cam); sizeCanvas(); NOW = T0 + 1000; put(); frame();   /* one frame thrown away: a first draw settling */
+        const A = frame(), A2 = frame(); lift(); const B = frame(); put();
+        if (A.r !== B.r) P.push('in the ' + cam + ' camera a frame with the mess in sight draws ' + A.r + ' random number(s) and the same frame without it ' + B.r + ': a painter rolls for it every frame, so every roll after it lands elsewhere than it did, and what is drawn can change from one frame to the next');
+        if (differ(A, A2)) { P.push('the ' + cam + ' camera cannot be measured: two frames of the same scene at the same instant differ by ' + differ(A, A2) + ' pixels'); return null; }
+        return { n: differ(A, B), wrote: more(A, B) }; };
+      flat.forEach(cam => {
+        const on = flatAsk(cam);
+        if (on) { out.push('the ' + cam + ' camera, the world naming nothing: the mess changes ' + on.n + ' pixels and writes ' + (on.wrote.length ? on.wrote.length + ' character(s)' : 'nothing'));
+          if (on.wrote.length) P.push('in the ' + cam + ' camera the mess is still WRITTEN in a world that names nothing: the frame with it writes ' + on.wrote.length + ' character(s) the frame without it does not' + (on.wrote.includes(GLYPH) ? ', the picture character with a face among them' : '') + '. It is to be drawn, not a picture character');
+          if (on.n < MIN) P.push('in the ' + cam + ' camera nothing is drawn where the mess lies: taking it away changes ' + on.n + ' pixels. The character is gone and no figure took its place'); }
+        turn(OLDP);
+        try { const off = flatAsk(cam);
+          if (off) { out.push('the ' + cam + ' camera, the world naming the old picture: the mess changes ' + off.n + ' pixels and writes ' + off.wrote.length + ' character(s)');
+            if (off.wrote.length !== 1 || off.wrote[0] !== GLYPH) P.push('in the ' + cam + ' camera, in a world that names the old picture character, the mess writes ' + (off.wrote.length ? off.wrote.length + ' character(s), ' + (off.wrote.includes(GLYPH) ? 'more than its one' : 'and not the one it always wrote') : 'no character at all') + ': a world drawn as cards that keeps the old picture no longer sees the mess as it was'); }
+        } finally { turn('none'); } });
+
+      /* 2 · the flat drawing has no face, and stands where feet stand: the painter, on a card of this check's own, eight times the size */
+      const Z = 8, TW = 32 * Z, card = document.createElement('canvas'); card.width = card.height = TW;
+      const cg = card.getContext('2d'); cg.setTransform(Z, 0, 0, Z, 0, 0); wrote = []; drawDecal(cg, 0, 0, mark, 1);
+      const cd = cg.getImageData(0, 0, TW, TW).data, fl = { x0: 1e9, x1: -1, y0: 1e9, y1: -1, n: 0, r: 0, g: 0, b: 0, odd: 0, oddAt: null };
+      const Lm = new Float32Array(TW * TW);   /* how light each solid pixel is; -1 where the card shows through (the outline and beyond) */
+      for (let i = 0; i < cd.length; i += 4) { const q = i >> 2; if (cd[i + 3] < 200) { Lm[q] = -1; continue; } const x = q % TW, y = (q - x) / TW;
+        Lm[q] = 0.3 * cd[i] + 0.59 * cd[i + 1] + 0.11 * cd[i + 2];
+        fl.n++; fl.r += cd[i]; fl.g += cd[i + 1]; fl.b += cd[i + 2]; if (x < fl.x0) fl.x0 = x; if (x > fl.x1) fl.x1 = x; if (y < fl.y0) fl.y0 = y; if (y > fl.y1) fl.y1 = y;
+        if (!brown(cd[i], cd[i + 1], cd[i + 2])) { fl.odd++; fl.oddAt = fl.oddAt || hex(cd[i], cd[i + 1], cd[i + 2]); } }
+      if (wrote.length) P.push('the flat cameras\' painter writes ' + wrote.length + ' character(s) for the mess in a world that names nothing, where it is to be drawn');
+      if (fl.n < 200) P.push('the flat cameras\' painter draws nothing solid for the mess (' + fl.n + ' pixels on a card eight times the size), so whether it has a face could not be asked: that is a red, not a pass');
+      else { fl.w = (fl.x1 - fl.x0 + 1) / TW; fl.h = (fl.y1 - fl.y0 + 1) / TW; fl.mean = [fl.r / fl.n, fl.g / fl.n, fl.b / fl.n];
+        fl.mid = (fl.x0 + fl.x1 + 1) / 2 / TW; fl.foot = (fl.y1 + 1) / TW;
+        /* a mark drawn on it: at every shade, the pixels darker than that shade taken in touching groups; a group that never
+           reaches the outline, ringed all round by lighter pixels, and at least a quarter of one of the tile's pixels, is
+           something drawn inside the mound darker than what it sits on. Each lobe of the mound darkens only toward its own
+           edge, so every darker part of it runs out to the outline. */
+        const SPOT = 16, inside = new Uint8Array(TW * TW); let lo = 1e9, hi = -1, worst = null, most = 0;
+        for (let q = 0; q < Lm.length; q++) if (Lm[q] >= 0) { if (Lm[q] < lo) lo = Lm[q]; if (Lm[q] > hi) hi = Lm[q]; }
+        for (let t = lo + 2; t <= hi; t += 2) { inside.fill(0); let here = 0;
+          for (let s = 0; s < Lm.length; s++) { if (inside[s] || Lm[s] < 0 || Lm[s] >= t) continue;
+            const st = [s]; inside[s] = 1; let n = 0, edge = false, sx = 0, sy = 0;
+            while (st.length) { const q = st.pop(), x = q % TW, y = (q - x) / TW; n++; sx += x; sy += y;
+              for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const X = x + dx, Y = y + dy;
+                if (X < 0 || Y < 0 || X >= TW || Y >= TW) { edge = true; continue; } const k = Y * TW + X;
+                if (Lm[k] < 0) edge = true; else if (Lm[k] < t && !inside[k]) { inside[k] = 1; st.push(k); } } }
+            if (!edge && n >= SPOT) { here++; if (!worst || n > worst.n) worst = { n, x: sx / n / TW, y: sy / n / TW }; } }
+          if (here > most) most = here; }
+        out.push('the flat drawing: ' + fl.w.toFixed(2) + ' of a tile across, ' + fl.h.toFixed(2) + ' tall, its middle ' + fl.mid.toFixed(2) + ' of the tile across and its foot ' + fl.foot.toFixed(2) + ' down, ' + fl.n + ' solid pixels at eight times the size, mean colour ' + hex(...fl.mean) + ', ' + fl.odd + ' not a brown, ' + most + ' mark(s) drawn inside its outline');
+        if (fl.odd > fl.n * 0.01) P.push('the flat drawing of the mess has ' + fl.odd + ' pixels that are not one of its browns (one is ' + fl.oddAt + '): something pale or dark is drawn on it, which is how an eye or a mouth reads. It is to have no face');
+        if (most) P.push('the flat drawing of the mess has ' + most + ' mark(s) drawn inside its outline, each darker than everything round it (the largest about ' + worst.x.toFixed(2) + ' of the tile across and ' + worst.y.toFixed(2) + ' down): that is how an eye, a pupil or a mouth reads. It is to have no face');
+        if (fl.w > 0.5 || fl.h > 0.34) P.push('the flat drawing of the mess is ' + fl.w.toFixed(2) + ' of a tile across and ' + fl.h.toFixed(2) + ' tall, where a small mound was asked (no wider than half a tile, no taller than a third)');
+        if (Math.abs(fl.mid - 0.5) > 0.1 || fl.foot < 0.6 || fl.foot > 0.95) P.push('the flat cameras draw the mess off where feet stand on its tile: its middle ' + fl.mid.toFixed(2) + ' of the tile across and its foot ' + fl.foot.toFixed(2) + ' of the tile down, where it is to stand on the ground he stood on (its middle within a tenth of a tile of the tile\'s middle, its foot 0.6 to 0.95 of the tile down)'); }
+
+      /* 3 · in the 3D camera a shape stands there, it has no face, and it is seen at every quarter turn */
+      let solid = null;
+      if (!has3d) out.push('this shell has no 3D camera, so the shape that stands there was not asked');
+      else if (typeof draw3d !== 'function' || !window.THREE || typeof T3 === 'undefined') P.push('this shell names a 3D camera and it is not loaded, so the shape the mess becomes there could not be asked: that is a red, not a pass');
+      else { NOW = T0 + 1000; put();
+        const seen = in3d(0, () => ({ m: shapes(), painted, wrote: wrote.slice() }));
+        if (!seen) P.push('the 3D camera could not draw at all, so the shape the mess becomes there was not looked for');
+        else if (seen.m.length !== 1) P.push(seen.m.length ? 'in the 3D camera ' + seen.m.length + ' shapes stand on the one mess' : 'in the 3D camera no shape stands where the mess lies' + (seen.painted ? ': it is still a card, painted flat and turned to face you' : ', and no card either: there is nothing on the ground') + '. A small 3D shape was asked');
+        else { const m = seen.m[0], pos = m.geometry.attributes.position, col = m.geometry.attributes.color, sc = m.scale.x, n = pos ? pos.count : 0;
+          if (seen.painted) P.push('in the 3D camera the mess stands as a shape and its card is painted as well: there are two of it on the tile');
+          if (seen.wrote.includes(GLYPH)) P.push('a frame of the 3D camera still writes the picture character with a face while a mess lies in sight');
+          /* nothing named for a face, no picture on it, nothing hung on it */
+          const NAMED = /eye|mouth|face|smile|grin|ojo|boca|cara|sonrisa/i, named = [];
+          m.traverse(o => { [o.name, o.type === 'Sprite' ? 'a card hung on it' : '', ...Object.keys(o.userData || {}), ...Object.values(o.userData || {}).filter(v => typeof v === 'string')].forEach(t => { if (t && (NAMED.test(t) || t === 'a card hung on it')) named.push(t); });
+            const mt = o.material; if (mt && (mt.map || mt.emissiveMap || mt.alphaMap)) named.push('a picture pasted on it'); });
+          if (named.length) P.push('the shape the mess becomes in 3D carries ' + named.join(', ') + ': it is to have no eyes, no mouth and nothing that reads as a face');
+          if (!n || !col) P.push('the shape the mess becomes in 3D has ' + (n ? 'no colours of its own' : 'no corners at all') + ', so whether it has a face could not be asked: that is a red, not a pass');
+          else { const c3 = new THREE.Color(), V = [], odd = []; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9; const mean = [0, 0, 0];
+            for (let i = 0; i < n; i++) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); V.push([x, y, z]);
+              if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+              const h = c3.setRGB(col.getX(i), col.getY(i), col.getZ(i)).getHexString(), rgb = [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16));   /* the colour as it was written, whichever colour space the library keeps it in */
+              rgb.forEach((v, k) => { mean[k] += v / n; }); if (!brown(...rgb) && !odd.includes('#' + h)) odd.push('#' + h); }
+            /* its lumps: the corners that touch, taken together (each primitive of the mesh is one) */
+            const par = V.map((_, i) => i), find = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; }, at = {};
+            V.forEach((v, i) => { const k = v.map(q => Math.round(q * 2000)).join(','); if (at[k] === undefined) at[k] = i; else par[find(i)] = find(at[k]); });
+            for (let i = 0; i + 2 < n; i += 3) { par[find(i + 1)] = find(i); par[find(i + 2)] = find(i); }
+            const lumps = {}; V.forEach((v, i) => { const r = find(i), L = lumps[r] = lumps[r] || { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9, z0: 1e9, z1: -1e9 };
+              if (v[0] < L.x0) L.x0 = v[0]; if (v[0] > L.x1) L.x1 = v[0]; if (v[1] < L.y0) L.y0 = v[1]; if (v[1] > L.y1) L.y1 = v[1]; if (v[2] < L.z0) L.z0 = v[2]; if (v[2] > L.z1) L.z1 = v[2]; });
+            const LS = Object.values(lumps).map(L => ({ cx: (L.x0 + L.x1) / 2, cy: (L.y0 + L.y1) / 2, cz: (L.z0 + L.z1) / 2, w: Math.max(L.x1 - L.x0, L.z1 - L.z0), h: L.y1 - L.y0 }));
+            let pairs = 0; LS.forEach((a, i) => LS.slice(i + 1).forEach(b => { if (Math.abs(a.cy - b.cy) < Math.min(a.h, b.h) / 2 && Math.hypot(a.cx - b.cx, a.cz - b.cz) > Math.min(a.w, b.w) / 2) pairs++; }));
+            /* the stack: from the lowest lump up, each centred on the lowest one's middle (within a quarter of its own width) and narrower than the one under it */
+            const ST = LS.slice().sort((a, b) => a.cy - b.cy), base = ST[0], aside = [], wider = [];
+            ST.forEach((L, i) => { const o = Math.hypot(L.cx - base.cx, L.cz - base.cz); if (o > L.w / 4) aside.push({ o, L }); if (i && L.w >= ST[i - 1].w) wider.push(L); });
+            solid = { w: Math.max(x1 - x0, z1 - z0) * sc, h: Math.max(0, y1) * sc, mean };
+            out.push('the 3D shape: ' + solid.w.toFixed(2) + ' of a tile across, ' + solid.h.toFixed(2) + ' tall, ' + LS.length + ' lump(s), ' + (n / 3) + ' triangles, mean colour ' + hex(...mean) + ', ' + (odd.length ? odd.length + ' colour(s) not a brown' : 'every corner a brown') + ', ' + pairs + ' pair(s) of lumps side by side, ' + aside.length + ' lump(s) off its one stack');
+            if (odd.length) P.push('the shape the mess becomes in 3D has corners coloured ' + odd.slice(0, 4).join(', ') + ', not one of its browns: something pale or dark sits on it, which is how an eye or a mouth reads. It is to have no face');
+            if (pairs) P.push('the shape the mess becomes in 3D has ' + pairs + ' pair(s) of lumps side by side at one height: from the front that is a pair of eyes. Nothing on it may read as a face, from any side');
+            if (aside.length) P.push('the shape the mess becomes in 3D has ' + aside.length + ' lump(s) set on its side, off the one line its lobes stack on (one ' + (aside[0].L.w * sc).toFixed(2) + ' of a tile across, ' + (aside[0].o * sc).toFixed(2) + ' out from the middle, ' + (aside[0].L.cy * sc).toFixed(2) + ' up): a thing set on the side of the mound is how a mouth or an eye reads. Nothing on it may read as a face, from any side');
+            if (wider.length) P.push('the shape the mess becomes in 3D has ' + wider.length + ' lump(s) as wide as or wider than the one under it: it is to be a soft mound, each lobe smaller than the one it sits on');
+            if (solid.w > 0.5 || solid.h > 0.34 || solid.w < 0.1 || solid.h < 0.05) P.push('the shape the mess becomes in 3D is ' + solid.w.toFixed(2) + ' of a tile across and ' + solid.h.toFixed(2) + ' tall, where a small mound was asked (no wider than half a tile, no taller than a third, and big enough to see)');
+            const lift3 = stairLift(WORLDS[spot.wid], mark.x, mark.y), off = Math.hypot(m.position.x - (mark.x + 0.5), m.position.z - (mark.y + 0.5));
+            if (off > 0.1 || Math.abs(m.position.y + y0 * sc - lift3) > 0.06) P.push('the shape the mess becomes in 3D is not on the ground where he left it: ' + off.toFixed(2) + ' of a tile from the middle of its tile, its foot ' + (m.position.y + y0 * sc - lift3).toFixed(2) + ' above the floor'); } }
+        /* and at each of the four quarter turns, as a person sees it: one shape, no card, nothing written, and the frame with it
+           minus the frame without it (one held instant, a control pair first) changes pixels, browns at least nine in ten of
+           them, none pale, none black; no frame with it draws a random number the frame without it does not */
+        const seenAt = [];
+        [0, 1, 2, 3].forEach(q => { const nm = q ? 'the 3D camera turned ' + q + ' quarter' + (q > 1 ? 's' : '') : 'the 3D camera at its resting turn';
+          NOW = T0 + 1000; put(); in3d(q);   /* one frame thrown away: a first draw settling */
+          const A = in3d(q, () => Object.assign(shot3(), { m: shapes().length, painted, wrote: wrote.slice() })), A2 = in3d(q, shot3); lift(); const B = in3d(q, shot3); put();
+          if (!A || !A2 || !B) { P.push(nm + ' could not draw at all, so the mess was not looked for there'); return; }
+          if (A.r !== B.r) P.push('in ' + nm + ' a frame with the mess in sight draws ' + A.r + ' random number(s) and the same frame without it ' + B.r + ': a painter rolls for it every frame, so every roll after it lands elsewhere than it did, and the shape can turn from one frame to the next');
+          if (differ(A, A2)) { P.push(nm + ' cannot be measured: two frames of the same scene at the same instant differ by ' + differ(A, A2) + ' pixels'); return; }
+          if (q && A.m !== 1) P.push('in ' + nm + ' ' + (A.m ? A.m + ' shapes stand on the one mess' : 'no shape stands where the mess lies'));
+          if (q && A.painted) P.push('in ' + nm + ' the mess\'s card is painted: it stands there as a flat card, not only as the shape');
+          if (q && A.wrote.includes(GLYPH)) P.push('in ' + nm + ' a frame still writes the picture character with a face while a mess lies in sight');
+          const s = seen3(A, B); seenAt.push(s.n + (s.inner ? ' (' + Math.round(s.br / s.inner * 100) + '% of the ' + s.inner + ' inside it browns)' : ''));
+          if (s.n < MIN) P.push('in ' + nm + ' the mess cannot be seen: taking it away changes ' + s.n + ' pixels. It stands in the scene and nobody sees it');
+          else { if (!s.inner) P.push('in ' + nm + ' the mess changes ' + s.n + ' pixels and none of them inside its outline, so whether it is the brown mound could not be asked');
+            else if (s.br < s.inner * 0.9) P.push('in ' + nm + ' only ' + s.br + ' of the ' + s.inner + ' pixels inside what the mess changes are browns: what shows is not the brown mound');
+            if (s.pale || s.black) P.push('in ' + nm + ' the mess shows ' + s.pale + ' pale pixel(s) and ' + s.black + ' black one(s): something light or dark is on it, which is how an eye or a mouth reads'); } });
+        lift(); out.push('the 3D camera, pixels the mess changes at its four quarter turns: ' + seenAt.join(', '));
+        /* at ten at night the 3D camera tints the street by the hour (T3.tint); the shape is off the room's list of tinted
+           things, so it is handed the tint itself, each frame: without it, it would stand lit as at noon on a dark street */
+        { const was = mark.until; NOW = T0 + 10 * 3600000; mark.until = wDate() + lies; put();
+          try { in3d(0); const got = in3d(0, () => ({ m: shapes(), tint: T3.tint.clone() }));
+            if (got && got.m.length === 1) { const c = got.m[0].material.color, white = got.tint.r === 1 && got.tint.g === 1 && got.tint.b === 1;
+              out.push('at ten at night the street is tinted #' + got.tint.getHexString() + ' and the shape #' + c.getHexString());
+              if (white) P.push('at ten at night the 3D camera does not tint the street at all, so whether the mess darkens with it could not be asked: that is a red, not a pass');
+              else if (!c.equals(got.tint)) P.push('at ten at night the shape the mess becomes in 3D is tinted #' + c.getHexString() + ' where the street round it is tinted #' + got.tint.getHexString() + ': it stands lit brighter than the ground it lies on'); }
+            else P.push('at ten at night ' + (got ? got.m.length + ' shapes stand' : 'the 3D camera could not draw, so nothing stands') + ' on the mess, so whether it darkens with the street could not be asked');
+          } finally { lift(); mark.until = was; NOW = T0 + 1000; } }
+        /* left on a stair, it stands on the step: the first stair tile of this shell, the mark moved there and that world drawn */
+        let stair = null;
+        Object.keys(WORLDS).some(wid => { const w = WORLDS[wid];
+          for (let y = 0; y < w.H && !stair; y++) for (let x = 0; x < w.W && !stair; x++) if (stairLift(w, x, y) && !SOLID.has(w.rows[y][x]) && !SOLID.has(w.grid[y][x])) stair = { wid, x, y, lift: stairLift(w, x, y) };
+          return !!stair; });
+        if (!stair) out.push('this shell has no stair, so a mess left on a step was not asked');
+        else { const flatMark = mark, wasW = world; mark = Object.assign({}, flatMark, { world: stair.wid, x: stair.x, y: stair.y });
+          try { world = stair.wid; NOW = T0 + 1000; mark.until = wDate() + lies; put(); camSet('3d'); sizeCanvas(); T3.turn = null; T3.yaw = 0; px = fx = stair.x; py = fy = stair.y;
+            let ok = false; Math.random = roll; try { ok = draw3d(); } finally { Math.random = keep.MR; } if (ok) drew3d = true;
+            const got = ok ? shapes() : [];
+            if (!ok) P.push('the 3D camera could not draw the world with a stair in it, so a mess left on a step was not looked for');
+            else if (got.length !== 1) P.push('a mess left on the stair at (' + stair.x + ',' + stair.y + ') in ' + stair.wid + ' has ' + (got.length ? got.length + ' shapes' : 'no shape') + ' standing on it in the 3D camera, where one small shape was asked');
+            else { const m = got[0]; m.geometry.computeBoundingBox(); const foot = m.position.y + m.geometry.boundingBox.min.y * m.scale.y - stair.lift;
+              out.push('a mess left on the stair at (' + stair.x + ',' + stair.y + ') in ' + stair.wid + ', a step ' + stair.lift.toFixed(2) + ' up: its foot ' + foot.toFixed(2) + ' off the step');
+              if (Math.abs(foot) > 0.06) P.push('a mess left on a stair stands with its foot ' + foot.toFixed(2) + ' ' + (foot > 0 ? 'above' : 'below') + ' the step he left it on (the stair at (' + stair.x + ',' + stair.y + ') in ' + stair.wid + '): it is to lie on the step, as it lies on the ground'); }
+          } finally { lift(); mark = flatMark; world = wasW; px = fx = spot.x - 1; py = fy = spot.y; } } }
+
+      /* 4 · the two are the same shape, and the first look is today's size in both: the size is fixed in the engine and no
+         world may change it, so a figure grown in every camera at once is a red here too */
+      const SIZE = { w: 0.34, h: 0.23 }, near = (v, t) => Math.abs(v - t) <= 0.02;
+      if (fl.w && !(near(fl.w, SIZE.w) && near(fl.h, SIZE.h))) P.push('the flat cameras draw the mess ' + fl.w.toFixed(2) + ' of a tile across and ' + fl.h.toFixed(2) + ' tall, where its size is ' + SIZE.w + ' across and ' + SIZE.h + ' tall, fixed in the engine');
+      if (solid && !(near(solid.w, SIZE.w) && near(solid.h, SIZE.h))) P.push('the 3D camera stands the mess ' + solid.w.toFixed(2) + ' of a tile across and ' + solid.h.toFixed(2) + ' tall, where its size is ' + SIZE.w + ' across and ' + SIZE.h + ' tall, fixed in the engine');
+      if (solid && fl.w) { const dw = Math.abs(fl.w - solid.w) / solid.w, dh = Math.abs(fl.h - solid.h) / solid.h, dc = Math.max(...fl.mean.map((v, k) => Math.abs(v - solid.mean[k])));
+        if (dw > 0.15 || dh > 0.15) P.push('the flat cameras draw the mess ' + fl.w.toFixed(2) + ' of a tile across and ' + fl.h.toFixed(2) + ' tall, and the 3D camera stands it ' + solid.w.toFixed(2) + ' across and ' + solid.h.toFixed(2) + ' tall: they are not the same shape');
+        if (dc > 40) P.push('the flat cameras draw the mess in ' + hex(...fl.mean) + ' and the 3D camera builds it in ' + hex(...solid.mean) + ': the same figure was asked in every camera, and these are two colours'); }
+
+      /* 5 · it goes by itself after 45 seconds, in every camera, and fades with every other mark in its last second and a half */
+      const LATE = LIFE - 1000, FADE = LIFE - 600, pct = v => Math.round(v * 100) + '%';
+      out.push('a mess lies ' + (lies / 1000).toFixed(1) + ' s from the moment he leaves it');
+      if (!(Math.abs(lies - LIFE) < 50)) P.push('a mess is left to lie ' + (isFinite(lies) ? (lies / 1000).toFixed(1) + ' seconds' : 'no time that could be read') + ', where it is to go by itself after 45 seconds, as it always has');
+      NOW = T0 + 1000; mark.until = wDate() + lies; const born = NOW;   /* the mark as he left it, its time counted from this instant */
+      /* what a person sees at 44 s, at 0.6 s before its end, and a moment after its 45 s, in one camera; ask(f) draws a frame */
+      const lifeOf = (nm, ask) => {
+        NOW = born + LATE; put(); ask(); const A = ask(true); lift(); const B = ask(); put();
+        const late = A && B ? differ(A, B) : 0, fLate = A && B ? force(A, B) : 0, keptLate = DECALS.indexOf(mark) >= 0, m44 = A ? A.m : 0;
+        NOW = born + FADE; put(); ask(); const F = ask(); lift(); const G = ask(); put();
+        const share = fLate && F && G ? force(F, G) / fLate : NaN;
+        NOW = born + LIFE + 100; put(); const E = ask(true), kept = DECALS.indexOf(mark) >= 0; lift(); const E2 = ask();
+        const after = E && E2 ? differ(E, E2) : NaN;
+        out.push(nm + ': 44 s after he leaves it the mess changes ' + late + ' pixels; 0.6 s before its end it shows at ' + (isFinite(share) ? pct(share) : '?') + ' of that; a moment after 45 s, ' + after + ' pixels' + (kept ? ', and it is still kept' : ', and nothing keeps it'));
+        if (late < MIN || !keptLate || m44 === 0) P.push('44 seconds after the dog leaves a mess it is already gone from ' + nm + ' (' + late + ' pixels of it' + (m44 === 0 ? ', no shape standing' : '') + '), where it is to lie for 45 seconds');
+        else if (!isFinite(share) || share > 0.8) P.push('0.6 seconds before a mess goes, ' + nm + ' shows it at ' + (isFinite(share) ? pct(share) : 'a strength that could not be read') + ' of its strength at 44 seconds: it does not fade, where every mark on the ground fades out over its last second and a half');
+        else if (share < 0.05) P.push('0.6 seconds before a mess goes, ' + nm + ' shows it at ' + pct(share) + ' of its strength at 44 seconds: it is as good as gone already, where it fades out over its last second and a half');
+        if (!(after === 0) || (E && E.m) || (E && E.painted)) P.push('a moment after its 45 seconds the mess is still drawn in ' + nm + (isFinite(after) ? ': ' + after + ' pixels of it' : '') + '. It is to go by itself after 45 seconds');
+        if (kept) P.push('a moment after its 45 seconds the mess is still kept while ' + nm + ' runs: nothing lets go of it, so everything he ever leaves is carried for good'); };
+      flat.forEach(cam => { camSet(cam); sizeCanvas(); lifeOf('the ' + cam + ' camera', () => frame()); });
+      if (has3d && solid) lifeOf('the 3D camera', full => in3d(0, () => Object.assign(shot3(), full ? { m: shapes().length, painted } : {})));
+
+      /* 6 · a world that names the old picture keeps it exactly as it was: the same rolls, and the same pixels as the old painter */
+      { try { turn(OLDP); const off = leave(); turn('none'); const on = leave();
+          if (off && on && off.rolls !== on.rolls) P.push('the whim that leaves a mess draws ' + on.rolls + ' numbers in a world that names nothing and ' + off.rolls + ' in one that names the old picture character: every roll after it lands elsewhere than it did');
+          if (off && on && Math.abs((off.got[0].until - on.got[0].until)) > 5) P.push('a mess lies a different time in a world that names the old picture character than in one that names nothing: only how it looks was to change');
+          turn(OLDP); NOW = T0 + 1000; mark.until = wDate() + lies; put();
+          /* on a card of this check's own, eight times the size: the engine's painter, then the old one, at full strength and fading */
+          [1, 0.4].forEach(a => { const two = [false, true].map(old => { const c = document.createElement('canvas'); c.width = c.height = TW; const g = c.getContext('2d'); g.setTransform(Z, 0, 0, Z, 0, 0);
+              useOld = old; try { drawDecal(g, 0, 0, mark, a); } finally { useOld = false; } return { d: g.getImageData(0, 0, TW, TW).data }; });
+            const n = exact(two[0], two[1]); if (n) P.push('in a world that names the old picture character, the engine paints the mess ' + n + ' pixels off the picture it always was (at ' + pct(a) + ' of its strength, on a card eight times the size): it is to be kept exactly as it was'); });
+          flat.forEach(cam => { camSet(cam); sizeCanvas(); frame(); const A = frame(); useOld = true; let B; try { B = frame(); } finally { useOld = false; }
+            const n = exact(A, B); if (n) P.push('in the ' + cam + ' camera, in a world that names the old picture character, the mess is ' + n + ' pixels off the picture it always was: it is to be kept exactly as it was');
+            if (A.r !== B.r) P.push('in the ' + cam + ' camera, in a world that names the old picture character, a frame draws ' + A.r + ' random number(s) where the old painter drew ' + B.r); });
+          if (has3d && solid) { in3d(0); const seen = in3d(0, () => Object.assign(shot3(), { m: shapes().length, painted, wrote: wrote.slice() })); useOld = true; let was; try { was = in3d(0, shot3); } finally { useOld = false; }
+            if (seen) { out.push('the 3D camera, the world naming the old picture: ' + seen.m + ' shape(s), its card painted ' + seen.painted + ' time(s), the character written ' + seen.wrote.filter(t => t === GLYPH).length + ' time(s), ' + (was ? exact(seen, was) : '?') + ' pixels off the old painter\'s');
+              if (seen.m) P.push('in a world that names the old picture character a shape stands on the mess in the 3D camera all the same: a world drawn as cards that keeps the old picture no longer sees the mess as it was');
+              if (seen.painted !== 1 || seen.wrote.filter(t => t === GLYPH).length !== 1) P.push('in a world that names the old picture character the 3D camera no longer paints the mess on its card as it did (painted ' + seen.painted + ' time(s), its character written ' + seen.wrote.filter(t => t === GLYPH).length + ')');
+              else if (was && exact(seen, was)) P.push('in a world that names the old picture character the 3D camera shows the mess ' + exact(seen, was) + ' pixels off the picture it always was: it is to be kept exactly as it was');
+              if (was && seen.r !== was.r) P.push('in a world that names the old picture character a 3D frame draws ' + seen.r + ' random number(s) where the old painter drew ' + was.r); } }
+          lift();
+        } finally { turn('none'); useOld = false; } }
+
+      /* 7 · several looks: a second look lent to the list for this check alone (one lump, 0.24 of a tile across, where the
+         first is three), named by the world in every camera; then the first, by naming nothing; then naming the first by
+         its name, with the one look there is, changes not one pixel */
+      { const SN = 'probe-second', SS = '__messProbeSecond', first = MESSLOOKS[0], fd = first && first.draw, drew = [];
+        const second = { name: SN, shape: SS, draw: (g, sx, sy) => { drew.push('second'); g.fillStyle = '#6B5338'; g.fillRect(sx + 12, sy + 19, 8, 5); } };
+        const across = m => { m.geometry.computeBoundingBox(); const bb = m.geometry.boundingBox; return Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * m.scale.x; };
+        const ask = mode => { turn(mode); NOW = T0 + 1000; mark.until = wDate() + lies; put(); const got = {};
+          flat.forEach(cam => { camSet(cam); sizeCanvas(); frame(); drew.length = 0; frame(); got[cam] = drew.slice(); });
+          if (has3d && solid) { in3d(0); const s3 = in3d(0, () => ({ m: shapes(), painted })); got['3d'] = s3 ? { n: s3.m.length, w: s3.m.length === 1 ? across(s3.m[0]) : NaN, painted: s3.painted } : null; }
+          lift(); return got; };
+        if (!first || typeof fd !== 'function') P.push('the figure has no first look to draw, so which look a world takes could not be asked');
+        else try {
+          if (typeof SHAPES === 'object' && SHAPES) SHAPES[SS] = () => [{ s: 'sph', x: 0, y: 0.04, z: 0, r: 0.12, sy: 0.35, c: '#7B6142', cb: '#5A4630' }];   /* a world with no 3D camera has no shapes to lend it */
+          first.draw = function () { drew.push('first'); return fd.apply(this, arguments); };
+          MESSLOOKS.push(second);
+          const two = ask(SN), none = ask('none');
+          flat.forEach(cam => { const a = two[cam], b = none[cam];
+            if (!a.includes('second') || a.includes('first')) P.push('in the ' + cam + ' camera, in a world that names the second look, the mess is drawn ' + (a.includes('first') ? 'in the first look' : 'in no look at all') + ': a world is to get the look it names');
+            if (!b.includes('first') || b.includes('second')) P.push('in the ' + cam + ' camera, in a world that names no look, the mess is drawn ' + (b.includes('second') ? 'in the second look' : 'in no look at all') + ': a world that names none is to get the first'); });
+          if (has3d && solid) { const a = two['3d'], b = none['3d'];
+            out.push('several looks: the flat cameras drew ' + flat.map(c => c + ' ' + (two[c].join('+') || 'nothing') + ' / ' + (none[c].join('+') || 'nothing')).join(', ') + ' (the second named / none named); the 3D camera stood ' + (a ? a.n + ' shape(s), ' + a.w.toFixed(2) + ' across' : '?') + ' / ' + (b ? b.n + ' shape(s), ' + b.w.toFixed(2) + ' across' : '?'));
+            if (!a || a.n !== 1 || a.painted || !(Math.abs(a.w - 0.24) < 0.03)) P.push('in the 3D camera, in a world that names the second look, ' + (!a ? 'nothing could be drawn' : a.n !== 1 ? a.n + ' shapes stand on the mess' : a.painted ? 'the card is painted' : 'the shape standing is ' + a.w.toFixed(2) + ' of a tile across, not the second look\'s 0.24') + ': a world is to get the look it names, in every camera');
+            if (!b || b.n !== 1 || b.painted || !(Math.abs(b.w - solid.w) < 0.03)) P.push('in the 3D camera, in a world that names no look, ' + (!b ? 'nothing could be drawn' : b.n !== 1 ? b.n + ' shapes stand on the mess' : b.painted ? 'the card is painted' : 'the shape standing is ' + b.w.toFixed(2) + ' of a tile across, not the first look\'s ' + solid.w.toFixed(2)) + ': a world that names none is to get the first'); }
+          else out.push('several looks: the flat cameras drew ' + flat.map(c => c + ' ' + (two[c].join('+') || 'nothing') + ' / ' + (none[c].join('+') || 'nothing')).join(', ') + ' (the second named / none named)');
+        } finally { const k = MESSLOOKS.indexOf(second); if (k >= 0) MESSLOOKS.splice(k, 1); if (typeof SHAPES === 'object' && SHAPES) delete SHAPES[SS]; if (first) first.draw = fd; turn('none'); }
+        /* with the one look there is, a world that names it sees exactly what a world that names nothing sees */
+        NOW = T0 + 1000; mark.until = wDate() + lies; put(); const same = [];
+        flat.forEach(cam => { camSet(cam); sizeCanvas(); turn('none'); frame(); const A = frame(); turn(FIRST); frame(); const B = frame(); turn('none');
+          const n = exact(A, B); same.push(cam + ' ' + n); if (n) P.push('in the ' + cam + ' camera a world that names the first look sees the mess ' + n + ' pixels off what a world that names nothing sees: with one look, naming it is to change nothing'); });
+        if (has3d && solid) { turn('none'); in3d(0); const A = in3d(0, shot3); turn(FIRST); in3d(0); const B = in3d(0, shot3); turn('none');
+          const n = A && B ? exact(A, B) : NaN; same.push('3d ' + n); if (n !== 0) P.push('in the 3D camera a world that names the first look sees the mess ' + n + ' pixels off what a world that names nothing sees: with one look, naming it is to change nothing'); }
+        lift(); out.push('naming the first look against naming nothing, pixels apart: ' + same.join(', ')); }
+    } finally {
+      window.Date = RD; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; messLook = keep.lk; drawDecal = keep.dd;
+      if (Array.isArray(own)) { own.length = 0; ownList.forEach(t => own.push(t)); } else if (own === null) delete window.MESSLOOK;
+      MESSLOOKS.length = 0; keep.looks.forEach(l => MESSLOOKS.push(l)); if (typeof SHAPES === 'object' && SHAPES) delete SHAPES.__messProbeSecond;
+      CanvasRenderingContext2D.prototype.fillText = FT;
+      DECALS.length = 0; keep.decals.forEach(d => DECALS.push(d)); if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
+      Object.assign(PARK, JSON.parse(keep.park)); parked.forEach(([c, w]) => { c.world = w; }); WORLDS[spot.wid].npcs = people;
+      if (keep.season !== null && typeof seasonSet === 'function') seasonSet(keep.season); TRO.state = keep.st;
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.mv;
+      if (typeof T3 !== 'undefined') { T3.yaw = keep.yaw; T3.turn = keep.turn; T3.messFail = keep.fail; }
+      /* build the 3D scene again for the world this check came from, or the next check that reads T3.scene measures this one */
+      if (drew3d) { camSet('3d'); sizeCanvas(); draw3d(); }
+      camSet(keep.cam); sizeCanvas(); document.getElementById('world').hidden = keep.hid;
+    }
+    return { P, out };
+  });
+  messFig.out.forEach(l => console.log('  THE MESS: ' + l));
+  fails.push(...messFig.P.map(m => 'the mess a dog leaves: ' + m));
+
   /* ---- CURLED UP ASLEEP: ONE MORE WAY HE LIES DOWN (mq-v290) ----
      What was asked, and confirmed on 2026-11-21: a new pose, the dog lying down curled up, on his card and on his body, for
      each breed; it shows in about half of his naps (the free whim's nap) and as the lazy routine's lie-down 1 time in 3;
@@ -6019,7 +6415,9 @@ function findChromium() {
         /* THE OTHER THING STANDS, and every flat camera stands it up with the same painter on the same canvas at the
            same scale, so it covers about as many pixels in each. It is a colour glyph, which keeps the ALPHA of
            whatever fill the painter before it left: in iso that drew it at about half its strength (59 pixels where
-           top and front showed 102, measured 2026-09-30) until it was given an ink of its own. */
+           top and front showed 102, measured 2026-09-30) until it was given an ink of its own. Since mq-v291 it is a
+           drawn figure with no face in every world that does not name the old picture character (grep `messFig`); the
+           glyph, and this sentence about its ink, hold for such a world only. */
         if (dc.kind !== 'hole') { const most = Math.max(...Object.values(flatN)), top = Object.keys(flatN).find(c => flatN[c] === most);
           Object.keys(flatN).forEach(c => { if (flatN[c] < most * 0.75) P.push('in the ' + c + ' camera ' + name + ' is drawn faint: it changes ' + flatN[c] +
             ' pixels where the same drawing in the ' + top + ' camera changes ' + most + ' — it is written in whatever ink the painter before it left'); }); }
