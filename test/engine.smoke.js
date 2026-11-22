@@ -8667,10 +8667,14 @@ function findChromium() {
         cuts.forEach(([x, y]) => {
           tested++;
           if (w.grid[oy]) w.grid[oy][ox] = w.rows[oy][ox];
+          /* what the square held is put back, not the map's letter: a chokepoint can be where somebody who never moves
+             already stands, and putting the letter back took them off the grid for every check after this one (found
+             with a wall planted in the furniture room, where it left a person anyone could walk through) */
+          const was = w.grid[y] ? w.grid[y][x] : undefined;
           n.x = x; n.y = y; if (w.grid[y]) w.grid[y][x] = 'N';
           const now = (auditReach(true) || []);
           if (now.length > base) { strand++; if (!first) first = id + ' (' + x + ',' + y + '): ' + String(now[0]).slice(0, 90); }
-          if (w.grid[y]) w.grid[y][x] = w.rows[y][x];
+          if (w.grid[y]) w.grid[y][x] = was;
           n.x = ox; n.y = oy; if (w.grid[oy]) w.grid[oy][ox] = 'N';
         });
       } finally { n.x = ox; n.y = oy; if (w.grid[oy]) w.grid[oy][ox] = 'N'; unhold(); }
@@ -12471,6 +12475,30 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const clean = auditReach(true);
     if (clean.length)
       P.push('#155: with every lot in the city built, somewhere still cannot be reached — ' + clean.join(' | '));
+    /* ...and a walker half way through a step is still not a wall. A walker marks the square it is stepping onto
+       when the step starts, and the audit used to read that mark as masonry: in the furniture room, a walker
+       stepping into the one gap into its corner cut four tiles off, and the line above went red a few runs in a
+       hundred, whenever the audit happened to run during a step. Where the walker happened to stand decided it,
+       so this does not wait for luck: in every world somebody walks in, one walker is stopped half way onto
+       every square it may ever step onto (open, not a door, within its range of home), one square at a time,
+       marked as the walking code marks it, and the audit must say what it said with nobody stepping. A step
+       already under way is given back first and put back after. This runs inside one page call, so no frame
+       moves anybody while it asks. */
+    Object.keys(WORLDS).forEach(id => { const w = WORLDS[id], n = w.npcs.find(m => wanders(m)); if (!n) return;
+      const kept = n.mv ? { mv: n.mv, mt: n.mt, g: w.grid[n.mv[1]][n.mv[0]] } : null;
+      if (kept) { w.grid[kept.mv[1]][kept.mv[0]] = w.rows[kept.mv[1]][kept.mv[0]]; n.mv = null; }
+      const hx = n.hx !== undefined ? n.hx : n.x, hy = n.hy !== undefined ? n.hy : n.y;
+      try {
+        for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
+          if (Math.abs(x - hx) + Math.abs(y - hy) > WANDER_R || shutToPeople(w.grid[y][x]) || w.grid[y][x] === 'N' ||
+              DOORSET.has(w.rows[y][x]) || portalAt(id, x, y)) continue;
+          const was = w.grid[y][x]; n.mv = [x, y]; n.mt = 0.5; w.grid[y][x] = 'N';
+          let said; try { said = auditReach(true); } finally { n.mv = null; n.mt = 0; w.grid[y][x] = was; }
+          const extra = said.filter(s => clean.indexOf(s) < 0);
+          if (extra.length) P.push('a place cut off by a walker: while ' + (n.npc || n.key) + ' is half way through a step onto ' + x + ',' + y + ' in ' + id +
+            ', the square is read as a wall — ' + extra.join(' | '));
+        }
+      } finally { if (kept) { n.mv = kept.mv; n.mt = kept.mt; w.grid[kept.mv[1]][kept.mv[0]] = kept.g; } } });
 
     // ---- and it must NOTICE. Sever every way into an inhabited world and expect to be told ----
     const victim = ids.find(id => id !== PL.home && WORLDS[id] && WORLDS[id].npcs.length
