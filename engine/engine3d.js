@@ -2393,7 +2393,8 @@ function t3BodyPreview(cv,lk,ang){
      · HIS LIGHT: t3BodyLight, as the person's, so at night he is as bright as the cards beside him.
    NOT DONE HERE: a body for the star's own dog (DOG) or for any other animal (from mq-v278 every pose his card draws is
    his body's: dogBodyWants); a choice of breed, markings or
-   coat (BODYPLAN, engine/engine.js); and being seen through a wall, which no animal's card is either. */
+   coat (BODYPLAN, engine/engine.js); an alebrije's paint on his body (a world may keep him his card while he wears it:
+   dogPaintCard); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
 const DOGBODYMAX=3;       /* the most dogs that stand as bodies at once */
 /* HOW FAR AND HOW MANY (mq-v283; the owner's confirmed goal of 2026-11-20). A dog's body is cheap to make (about 3 to 6
@@ -2462,7 +2463,15 @@ const DOGBUILDS=Object.freeze({
    nothing of him is drawn, body or card, as his card is not. A pose added to dogPose later is the body's to draw: name it in
    dogMore, or it is held as standing */
 function dogBodyWants(cr,P){
-  return !!cr&&!!P&&DOGK.has(cr.kind);}
+  return !!cr&&!!P&&DOGK.has(cr.kind)&&!dogPaintCard(cr);}
+/* A DOG PAINTED AS AN ALEBRIJE, WHERE THE WORLD KEEPS HIS CARD FOR IT (mq-v289; the owner's confirmed goal of 2026-11-21 on
+   the night of alebrijes). On a night when every animal wears an alebrije's colours, marks
+   and wings (alebLookFor, engine/engine.js), a dog's card is painted in them and his body is not: the body's paint is a
+   choice planned and not built (the `paint` row of BODYPLAN). A world that says `const BODYPAINT="card";` in its own config
+   keeps such a dog his card, wings and all, on every screen, for as long as he is painted; the frame the night ends he is a
+   body again. A world that does not say it is exactly as it was: its dogs stand as bodies in their own coats that night.
+   Read through this one function, so a check can hold it */
+function dogPaintCard(cr){return typeof BODYPAINT!=="undefined"&&BODYPAINT==="card"&&typeof alebLookFor==="function"&&!!alebLookFor(cr.kind,cr.name);}
 /* HOW HE IS HELD, of the three ways his body knows (mq-v264): lying beats sitting, as on his card, and anything else is standing */
 function dogHeld(P){return P&&P.lay?"lay":P&&P.sit?"sit":"stand";}
 /* the skeleton a dog of this breed gets: the engine's, every joint, limb and step sized by DOGBUILDS */

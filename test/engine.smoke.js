@@ -4718,6 +4718,478 @@ function findChromium() {
   poseTimes.out.forEach(l => console.log('  POSE TIMES: ' + l));
   fails.push(...poseTimes.P.map(m => 'the dog\'s poses: ' + m));
 
+  /* ---- MERIDIAN'S DOGS STAND AS BODIES (mq-v289; the owner's confirmed goal of 2026-11-21 on Meridian's dogs) ----
+     What was asked, on 2026-11-21 and confirmed that day: in Meridian the dogs that live the dog program, the star dog and
+     every adopted dog, stand as bodies in the 3D camera, as a world that already asks for them has them; with no limit of
+     distance and up to 24 at once; laptop and desktop first, so on a screen whose shorter side is under 480 px they stay
+     cards, for now; Meridian still has no personalities; and the office dog is no part of it and stays exactly as he is.
+     Asked of THIS WORLD AS IT SHIPS: no switch is put in, taken out or stood in for here, but for one line taken out
+     for one frame of 6 (BODYPAINT, so a world that does not say it is asked too). Meridian is asked for the
+     numbers above, typed here; any other world that asks for dog bodies is asked for the numbers its own pack names, and
+     a world that does not ask is not asked. The screen's size is the one thing set here (the window's width and height,
+     as the page reads them), so one page can be a laptop and a phone; the engine's own reading of it is not touched.
+     Whether he is a body or a card is what the 3D camera drew that frame: his body standing in the scene, and whether
+     his card's painter was called for him; where a body is counted, the pixels it puts on the screen are counted too,
+     and most of them must lie within a square of the tile he stands on.
+       1 · UP CLOSE ON A LAPTOP, the star dog is a body where he stands, and his card is not drawn as well; and so is he
+           while he follows you, a dog of every breed in DOGK in every coat the adoption card offers, and a dog of each
+           breed adopted through the adoption card itself, in the park.
+       2 · HOWEVER FAR: you at one end of the two tiles farthest apart in any place of this world, a dog at the other; from
+           each of the camera's four quarter turns, and walking toward you from there, a body the whole way.
+       3 · UP TO 24 AT ONCE: with 26 dogs in the place, 24 stand as bodies, the nearest, and the other two are their cards;
+           with exactly 24 all are bodies; and with 25, the one left a card is a body within two frames when he comes
+           nearer than the farthest body, and the farthest then his card; and when one of the bodies leaves through a door,
+           the one left a card is a body within two frames, and no dog is ever drawn twice or not at all.
+       4 · THE SCREENS, by their SHORTER side against 480: 480 by 900 and 1024 by 480 bodies; 479 by 900, 390 by 844, the
+           same phone on its side (844 by 390) and 1024 by 479 cards, with no body anywhere; a desktop a body; back on the
+           laptop a body again. (The same seven in a real window resized to each are asked right after this block.)
+       5 · NO PERSONALITY: he does not stand turned away with a thought of his own, he is given none, and a dog standing
+           still as a body throws no dice; the adoption card shows no row to choose one; and a first treat does not turn
+           him to you as an eager dog's first meeting does.
+       6 · ON THE NIGHT OF ALEBRIJES he is his painted card, where the world keeps the card for it, and a body again when
+           the night ends; a damaged saved look does not stop the 3D camera; and in this world with that line taken out
+           he is a body that night, as every world that does not say it has him; and every breed, in a look with wings and
+           one without, a dog walking, the star dog himself and the far dog of 2, is his card painted in the look picked
+           for him. (The card that night is BODYPAINT in the
+           pack's config, mq-v289; the owner's confirmed goal of 2026-11-21 on the night of alebrijes.)
+       7 · THE OFFICE DOG is still painted as his card where he lives, on the square he stands on, and no dog's body stands
+           there for him; and the screen where he lives, standing, sitting and mid-step, is pixel for pixel what this world
+           with the dog taken out of its own list draws.
+     Every real dog is parked off the map and put back; the screen's size, the season, the camera, the rolls, the painters,
+     every dog made here, every dog adopted here and the park's save, the office dog and where you stand are put back. Nothing asked here waits on a clock: each dog made here has
+     every timer at zero, and each frame is drawn by the check itself. */
+  const merDogs = await page.evaluate(() => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    const has3d = typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d'));
+    const takes = typeof BODYTAKE !== 'undefined' && Array.isArray(BODYTAKE) && BODYTAKE.includes('dog') && typeof DOGK !== 'undefined';
+    if (!MER && (!has3d || !takes)) { out.push('this world ' + (!has3d ? 'has no 3D camera' : 'does not ask for its dogs to stand as bodies') + ', so nothing was asked of it here'); return { P, out }; }
+    if (!has3d || typeof DOGK === 'undefined') { P.push('Meridian has no 3D camera on this page, so whether its dogs stand as bodies could not be asked'); return { P, out }; }
+    /* WHAT WAS ASKED, typed here. Meridian's are the owner's numbers (and `paint`, his card that night); another world's
+       are the ones its own pack names, and a number it does not name is not asked of it */
+    const num = v => typeof v === 'number' && v > 0 ? v : null;
+    const ASK = MER ? { reach: Infinity, max: 24, screen: 480, persona: false, paint: 'card' }
+      : { reach: num(typeof ANIMALREACH === 'undefined' ? null : ANIMALREACH), max: num(typeof ANIMALMAX === 'undefined' ? null : Math.min(24, Math.floor(ANIMALMAX))), screen: num(typeof BODYSCREEN === 'undefined' ? null : BODYSCREEN),
+        persona: typeof PERSONATAKE !== 'undefined' && Array.isArray(PERSONATAKE) && PERSONATAKE.includes('dog'), paint: typeof BODYPAINT !== 'undefined' && BODYPAINT === 'card' ? 'card' : 'body' };
+    const LAPTOP = [1280, 800], FAR = 12;
+    /* THE SCREENS ASKED, width by height, and what a dog beside you is on each. Meridian's are typed from what was asked
+       (cards while the SHORTER side is under 480 px): the line itself, 480 a body and 479 his card; a phone held upright
+       and the same phone on its side, whose long side is over 480 and whose short side is not; a wide window one pixel
+       too low, and the same window one pixel taller; and a desktop. Another world's are made from the number its own
+       pack names, the same four shapes round its own line */
+    const SCREENS = MER ? [[480, 900, 'body'], [479, 900, 'card'], [390, 844, 'card'], [844, 390, 'card'], [1024, 479, 'card'], [1024, 480, 'body'], [1920, 1080, 'body']]
+      : ASK.screen === null ? [[390, 844, 'body'], [844, 390, 'body']]
+        : [[ASK.screen, ASK.screen + 420, 'body'], [ASK.screen - 1, ASK.screen + 420, 'card'], [ASK.screen + 420, ASK.screen - 1, 'card'], [ASK.screen + 420, ASK.screen, 'body']];
+    const BREEDNAME = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua' };
+    const dogs = CRIT.filter(c => DOGK.has(c.kind)), star = dogs.find(c => c.role === 'star') || dogs[0];
+    if (!star || !WORLDS[star.world]) { P.push('this world has no dog of the dog program standing anywhere, so whether its dogs stand as bodies could not be asked'); return { P, out }; }
+    const wid = star.world, w = WORLDS[wid], el = document.getElementById('world');
+    const openIn = (id, x, y) => { const W = WORLDS[id]; return x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N' && (TILES[W.rows[y][x]] || {}).kind !== 'gear' && !(typeof portalAt === 'function' && portalAt(id, x, y)); };
+    const openAt = (x, y) => openIn(wid, x, y);
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, crit: CRIT.length, MR: Math.random, kd: t3DogBodies, dd: typeof drawDog === 'function' ? drawDog : null, painters: {}, season: seasonPick,
+      fail: T3.fail, said: T3.said, errs: T3.errors.length, err3d: (() => { try { return localStorage.getItem(SK('err3d')); } catch (e) { return null; } })(), picks: [],
+      iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), real: dogs.map(c => [c, c.world]) };
+    const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
+    const made = (x, y, o) => { const cr = Object.assign({ kind: [...DOGK][0], name: 'Probe', world: wid, x, y, fx: x, fy: y, c: '#E8C46A', face: 1, dx: 1, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: Infinity, home: [x, y], task: null, holdT: 0, stayT: 0, moving: false, mt: 0, follow: false }, o); CRIT.push(cr); return cr; };
+    const unmake = cr => { const i = CRIT.indexOf(cr); if (i >= 0) CRIT.splice(i, 1); };
+    /* one frame of the 3D camera, drawn here: is this dog a body, was his card painted, and how many dog bodies stand in all */
+    const drawn = new Set(); let office = 0, officeG = null, rolls = 0, inDogs = false;
+    const isBody = cr => { const B = T3.dogOn ? T3.dogOn.get(cr) : null; return !!(B && B.visible && B.parent === T3.scene && T3.dogShown && T3.dogShown.has(cr)); };
+    const frame = cr => { drawn.clear(); const ok = !!draw3d() && !T3.fail; let n = 0; T3.scene.traverse(o => { if (o.name === 'dogbody' && o.visible) n++; });
+      return { ok, body: isBody(cr), card: drawn.has(cr), bodies: n }; };
+    const frames = (cr, n) => { let s = null; for (let k = 0; k < n; k++) s = frame(cr); return s; };
+    /* the pixels a thing puts on the screen (the same frame rendered with it and without it): how many in all, and how many
+       of them within a square of the tile it stands on, by the camera's own reading of where that tile is on the screen */
+    const pixelsOf = (obj, tx, ty) => { const gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+      const shot = () => { T3.renderer.render(T3.scene, T3.cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); return b; };
+      const on = (x, y) => { const v = new THREE.Vector3(x, 0.2, y).project(T3.cam); return [(v.x + 1) / 2 * W, (v.y + 1) / 2 * H]; };
+      let all = 0, here = 0; const was = obj.visible;
+      try { const a = shot(), c = on(tx + 0.5, ty + 0.5), e1 = on(tx + 1.5, ty + 0.5), e2 = on(tx + 0.5, ty + 1.5), sq = Math.max(Math.hypot(e1[0] - c[0], e1[1] - c[1]), Math.hypot(e2[0] - c[0], e2[1] - c[1]));
+        obj.visible = false; const b = shot();
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) <= 40) continue;
+          all++; if (Math.abs(x - c[0]) <= sq && Math.abs(y - c[1]) <= sq) here++; } } finally { obj.visible = was; }
+      return { all, here }; };
+    /* what those pixels say of a body: enough of it to see, and standing where he stands */
+    const placed = (n, who) => { if (!(n.all >= 50)) return who + ' is said to stand as a body and ' + n.all + ' pixels of it are on the screen: nothing a person could see';
+      if (!(n.here >= 50) || n.here < n.all * 0.8) return who + ' stands as a body, and the body is not where he is: ' + n.here + ' of its ' + n.all + ' pixels are within a square of the tile he stands on';
+      return null; };
+    /* the 3D camera stopped drawing during a frame asked here: set going again, so the sentences after it are still asked */
+    const again = () => { T3.fail = false; T3.said = keep.said; el.hidden = false; camSet('3d'); sizeCanvas(); };
+    const size = s => s[0] + ' by ' + s[1];
+    try {
+      ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f; window[n] = function (g, cr, ...a) { drawn.add(cr); return f.call(this, g, cr, ...a); }; });
+      if (keep.dd) drawDog = function (...a) { office++; officeG = a[0]; return keep.dd.apply(this, a); };   /* the office dog's own painter, counted, and the billboard it painted him on */
+      Math.random = () => { if (inDogs) rolls++; return keep.MR(); };
+      t3DogBodies = dt => { inDogs = true; try { return keep.kd(dt); } finally { inDogs = false; } };   /* the engine's own, watched for dice and nothing else */
+      el.hidden = false; camSet('3d'); sizeCanvas(); moving = false;
+      if (!screenIs(LAPTOP)) { P.push('the size of the screen could not be set on this page, so on which screens a dog stands as a body could not be asked'); return { P, out }; }
+
+      /* 1 · up close on a laptop, the star dog is a body, and his card is not drawn as well */
+      { const sx = Math.round(star.fx), sy = Math.round(star.fy), at = [[0, 2], [1, 2], [-1, 2], [2, 0], [-2, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [sx + dx, sy + dy]).find(([x, y]) => openAt(x, y)) || [sx, sy];
+        world = wid; px = fx = at[0]; py = fy = at[1];
+        const s = frames(star, 3), near = Math.hypot(star.fx - fx, star.fy - fy).toFixed(1);
+        if (!s.ok) { P.push('the 3D camera could not draw on this page, so whether a dog stands as a body could not be asked'); return { P, out }; }
+        if (dogPose(star).hid) P.push('the star dog is inside the agility tunnel, where nothing of him shows, so whether he stands as a body could not be asked');
+        else if (!s.body) P.push('on a laptop-size screen (' + size(LAPTOP) + '), the star dog ' + near + ' squares from you in the 3D camera is still his flat card: no body stands there');
+        else { if (s.card) P.push('on a laptop-size screen (' + size(LAPTOP) + '), the star dog up close is drawn twice: his card stands in the same place as his body');
+          const n = pixelsOf(T3.dogOn.get(star), star.fx, star.fy), bad = placed(n, 'on a laptop-size screen (' + size(LAPTOP) + '), the star dog up close');
+          out.push('the star dog, ' + near + ' squares from you on a ' + size(LAPTOP) + ' screen: a body, ' + n.all + ' pixels of it on the screen (' + n.here + ' within a square of where he stands), his card ' + (s.card ? 'drawn as well' : 'not drawn'));
+          if (bad) P.push(bad); } }
+      /* 1, following · the star dog while he follows you: a body where he stands, and his card not drawn as well */
+      { const f0 = star.follow;
+        try { star.follow = true; const s = frames(star, 3), near1 = Math.hypot(star.fx - fx, star.fy - fy).toFixed(1);
+          if (dogPose(star).hid) out.push('the star dog following you is inside the agility tunnel, so he was not asked following you');
+          else if (!s.body) P.push('on a laptop-size screen (' + size(LAPTOP) + '), the star dog following you, ' + near1 + ' squares away, is still his flat card: no body stands there');
+          else { if (s.card) P.push('on a laptop-size screen (' + size(LAPTOP) + '), the star dog following you is drawn twice: his card stands in the same place as his body');
+            const n = pixelsOf(T3.dogOn.get(star), star.fx, star.fy), bad = placed(n, 'on a laptop-size screen (' + size(LAPTOP) + '), the star dog following you');
+            out.push('the star dog following you, ' + near1 + ' squares away: a body, ' + n.all + ' pixels of it on the screen (' + n.here + ' within a square of where he stands), his card ' + (s.card ? 'drawn as well' : 'not drawn'));
+            if (bad) P.push(bad); } } finally { star.follow = f0; } }
+
+      /* every real dog off the map from here on: the dogs asked are made here */
+      keep.real.forEach(([c]) => { c.world = '__frozen'; });
+      const [qx, qy] = focusXY(), tiles = [];
+      for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) if (openAt(x, y)) tiles.push([x, y, Math.hypot(x - qx, y - qy)]);
+      tiles.sort((a, b) => a[2] - b[2]);
+      if (tiles.length < 2) { P.push('the world the star dog lives in has no room to stand more dogs in, so how far and how many could not be asked'); return { P, out }; }
+
+      /* 1, the rest · a dog of every breed, in every coat the adoption card offers, beside you in turn: each a body where he
+         stands, and his card not drawn as well. He stands on the tile near you that is most to one side as the camera
+         sees it, so the person you steer is not in front of him */
+      { const cx = T3.cam.position.x - (qx + 0.5), cz = T3.cam.position.z - (qy + 0.5), cl = Math.hypot(cx, cz) || 1, side = t => Math.abs((t[0] - qx) * cz - (t[1] - qy) * cx) / cl;
+        const spot = tiles.filter(t => t[2] >= 1 && t[2] <= 2.5).sort((a, b) => side(b) - side(a) || a[2] - b[2])[0] || tiles[1], seen = [];
+        [...DOGK].forEach(kind => { const coats = typeof BREEDS === 'object' && BREEDS && Array.isArray(BREEDS[kind]) && BREEDS[kind].length ? BREEDS[kind] : [null];
+          coats.forEach(coat => { const d = made(spot[0], spot[1], coat ? { kind, c: coat } : { kind }), who = 'a ' + (BREEDNAME[kind] || kind) + (coat ? ' in the coat ' + coat : ''), s = frames(d, 3);
+            if (!s.body) P.push('on a laptop-size screen (' + size(LAPTOP) + '), ' + who + ' standing ' + spot[2].toFixed(1) + ' squares from you is still his flat card: no body stands there, where a dog of every breed stands as a body');
+            else { if (s.card) P.push('on a laptop-size screen (' + size(LAPTOP) + '), ' + who + ' standing beside you is drawn twice: his card stands in the same place as his body');
+              const n = pixelsOf(T3.dogOn.get(d), d.fx, d.fy), bad = placed(n, 'on a laptop-size screen (' + size(LAPTOP) + '), ' + who + ' standing beside you'); if (bad) P.push(bad); seen.push([n.all, (BREEDNAME[kind] || kind) + (coat ? ' ' + coat : '')]); }
+            unmake(d); }); });
+        frame(star); seen.sort((a, b) => a[0] - b[0]);
+        out.push('a dog of every breed and coat, ' + spot[2].toFixed(1) + ' squares from you in turn (' + [...DOGK].map(k => (BREEDNAME[k] || k) + ' x' + ((typeof BREEDS === 'object' && BREEDS && BREEDS[k] || [0]).length)).join(', ') + '): ' + seen.length + ' bodies' + (seen.length ? ', the smallest ' + seen[0][0] + ' pixels (' + seen[0][1] + '), the largest ' + seen[seen.length - 1][0] : '')); }
+      /* 1, adopted · a dog of each breed ADOPTED through the game's own card (its button, the breed's button, a name, its
+         Adopt button), standing in the park where the card puts him, you two squares from him: each a body where he stands,
+         and his card not drawn as well. Each is sent away again before the next, and the park's saved dogs are put back.
+         The poses (sitting, lying down, howling, digging, his hearts, the course) are the body part's own (grep "asBody") */
+      { const park = typeof PL === 'object' && PL ? PL.park : null, $id = id => document.getElementById(id), btn = $id('adopt'), go = $id('adoptGo');
+        if (!park || !WORLDS[park] || !btn || !go || typeof parkPrefs !== 'object') { if (MER) P.push('Meridian has no adoption card in its park on this page, so whether an adopted dog stands as a body could not be asked'); else out.push('this world has no adoption card, so an adopted dog was not asked here'); }
+        else { const home = [world, px, py, fx, fy], n0 = parkPrefs.dogs.length, pe0 = parkPrefs.persona ? Object.keys(parkPrefs.persona) : null, kt = window.toast, got = [];
+          let ks = null; try { ks = localStorage.getItem(SK('park')); } catch (e) {}
+          try { window.toast = () => {};
+            [...DOGK].forEach((kind, i) => { const who = 'a ' + (BREEDNAME[kind] || kind) + ' adopted through the adoption card', c0 = CRIT.length;
+              btn.click(); const b = document.querySelector('#adoptBreeds button[data-b="' + kind + '"]');
+              if (!b) { P.push('the adoption card offers no ' + (BREEDNAME[kind] || kind) + ', so whether an adopted one stands as a body could not be asked'); $id('adoptX') && $id('adoptX').click(); return; }
+              b.click(); $id('adoptName').value = 'Probe' + 'abcdefgh'[i]; go.click();
+              const d = CRIT.length === c0 + 1 ? CRIT[CRIT.length - 1] : null;
+              if (!d || d.kind !== kind || d.world !== park) { P.push('adopting a ' + (BREEDNAME[kind] || kind) + ' through the adoption card brought no dog to the park, so whether he stands as a body could not be asked'); return; }
+              try { d.next = Infinity; world = park; const at = [[0, 2], [1, 2], [-1, 2], [2, 0], [-2, 0], [2, 1], [-2, 1], [0, -2]].map(([dx, dy]) => [d.x + dx, d.y + dy]).find(([x, y]) => openIn(park, x, y)) || [d.x, d.y + 1];
+                px = fx = at[0]; py = fy = at[1]; const s = frames(d, 3);
+                if (!s.ok) { P.push('the 3D camera could not draw in the park, so whether ' + who + ' stands as a body could not be asked'); again(); }
+                else if (!s.body) P.push('on a laptop-size screen (' + size(LAPTOP) + '), ' + who + ', standing in the park two squares from you, is still his flat card: no body stands there');
+                else { if (s.card) P.push('on a laptop-size screen (' + size(LAPTOP) + '), ' + who + ' is drawn twice: his card stands in the same place as his body');
+                  const n = pixelsOf(T3.dogOn.get(d), d.fx, d.fy), bad = placed(n, 'on a laptop-size screen (' + size(LAPTOP) + '), ' + who); if (bad) P.push(bad);
+                  got.push((BREEDNAME[kind] || kind) + ' ' + n.all + ' pixels (' + n.here + ' where he stands)' + (s.card ? ', his card as well' : '')); } }
+              finally { unmake(d); [world, px, py, fx, fy] = home; } });
+            out.push('a dog of each breed adopted through the adoption card, in the park: ' + (got.length ? got.join('; ') : 'none a body'));
+          } finally { window.toast = kt; parkPrefs.dogs.length = Math.min(parkPrefs.dogs.length, n0);
+            if (parkPrefs.persona) Object.keys(parkPrefs.persona).forEach(k => { if (!pe0 || !pe0.includes(k)) delete parkPrefs.persona[k]; }); if (!pe0) delete parkPrefs.persona;
+            try { if (ks === null) localStorage.removeItem(SK('park')); else localStorage.setItem(SK('park'), ks); } catch (e) {}
+            const pp = $id('adoptP'); if (pp) pp.hidden = true; [world, px, py, fx, fy] = home; frame(star); } } }
+
+      /* 2 · however far: you on one of the two tiles farthest apart that a dog and you can stand on, in any place of this
+         world, and a dog on the other. No dog in this world can be farther from you than that, so a reach of any number
+         of squares under it is a red here, and one over it is a limit nobody can meet */
+      let farPair = null;
+      { const home = [world, px, py, fx, fy]; let fp = null;
+        Object.keys(WORLDS).forEach(id => { const W = WORLDS[id], T = []; if (!W || !W.grid || !W.rows) return;
+          for (let y = 0; y < W.H; y++) for (let x = 0; x < W.W; x++) if (openIn(id, x, y)) T.push([x, y]);
+          for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) { const d = Math.hypot(T[i][0] - T[j][0], T[i][1] - T[j][1]); if (!fp || d > fp.d) fp = { id, a: T[i], b: T[j], d }; } });
+        if (ASK.reach !== Infinity) out.push('this world names ' + (ASK.reach === null ? 'no reach of its own' : 'a reach of ' + ASK.reach + ' squares') + ', so a dog as far as can be was not asked to be a body here');
+        else if (!fp || !(fp.d > FAR)) P.push('no place of this world has two tiles to stand on more than ' + FAR + ' squares apart (the farthest are ' + (fp ? fp.d.toFixed(1) : 0) + '), so whether a far dog stands as a body could not be asked');
+        else { try { world = fp.id; px = fx = fp.a[0]; py = fy = fp.a[1]; const far = made(fp.b[0], fp.b[1], { world: fp.id }), s = frames(far, 4), d = fp.d.toFixed(1);
+            out.push('a dog ' + d + ' squares from you, as far apart as two places to stand are anywhere in this world: ' + (!s.ok ? 'the 3D camera could not draw there' : s.body ? 'a body' : 'his card') + (s.body && s.card ? ', and his card as well' : ''));
+            if (!s.ok) { P.push('the 3D camera could not draw the place whose two ends are farthest apart, so whether a far dog stands as a body could not be asked'); again(); }
+            else if (!s.body) P.push('a dog ' + d + ' squares from you, at the far end of the widest place in this world, is his flat card: only the dogs within some distance of you stand as bodies, where every dog in the place does, however far');
+            else if (s.card) P.push('a dog ' + d + ' squares from you is drawn twice: his card stands in the same place as his body');
+            /* the same dog from each of the camera's four quarter turns, and then walking toward you from there, half a square
+               a frame until he is a square from you: a body the whole way, never his card and never both. That his card
+               stands in for the one frame before his body is made is the body part's (its section Q) */
+            if (s.ok && s.body) { farPair = fp; const y0 = T3.yaw, t0 = T3.turn, turns = [];
+              try { for (let q = 0; q < 4; q++) { T3.turn = null; T3.yaw = y0 + q * Math.PI / 2; const s2 = frames(far, 2), how = q === 0 ? 'as the camera stands' : 'with the camera turned ' + q + ' quarter turn' + (q === 1 ? '' : 's');
+                  turns.push(!s2.ok ? 'not drawn' : s2.body ? (s2.card ? 'a body and his card' : 'a body') : 'his card');
+                  if (!s2.ok) { P.push(how + ', the 3D camera could not draw the far dog, so whether he stands as a body from there could not be asked'); again(); }
+                  else if (!s2.body) P.push(how + ', a dog ' + d + ' squares from you is his flat card: a far dog stands as a body only from some sides');
+                  else if (s2.card) P.push(how + ', a dog ' + d + ' squares from you is drawn twice: his card stands in the same place as his body'); } }
+              finally { T3.yaw = y0; T3.turn = t0; }
+              const [ax, ay] = fp.b, [bx, by] = fp.a, steps = Math.max(1, Math.floor((fp.d - 1) / 0.5)), bad = [];
+              for (let k = 1; k <= steps; k++) { const u = k * 0.5 / fp.d, x = ax + (bx - ax) * u, y = ay + (by - ay) * u;
+                Object.assign(far, { fx: x, fy: y, x: Math.round(x), y: Math.round(y), moving: true, mt: k, dx: Math.sign(bx - ax), dy: Math.sign(by - ay), face: bx < ax ? -1 : 1 });
+                const s3 = frame(far); if (!s3.ok || !s3.body || s3.card) bad.push([Math.hypot(x - bx, y - by), !s3.ok ? 'not drawn' : !s3.body ? 'his card' : 'his card as well as his body']); }
+              far.moving = false;
+              out.push('the far dog from each quarter turn of the camera: ' + turns.join(', ') + '; walking toward you from ' + d + ' squares, ' + steps + ' steps of half a square: ' + (bad.length ? bad.length + ' not a body alone' : 'a body the whole way'));
+              if (bad.length) P.push('a dog walking toward you from ' + d + ' squares away is not a body the whole way: ' + bad.length + ' of ' + steps + ' frames ' + bad[0][1] + ' (the first ' + bad[0][0].toFixed(1) + ' squares from you)'); }
+            unmake(far); } finally { [world, px, py, fx, fy] = home; } } }
+
+      /* 3 · up to 24 at once: the nearest are bodies and the rest their cards */
+      let near = null;
+      if (ASK.max === null) { out.push('this world names no number of dogs at once, so the count was not asked here'); near = made(tiles[0][0], tiles[0][1]); frames(near, 2); }
+      else if (tiles.length < ASK.max + 2) { P.push('the world the star dog lives in has room for ' + tiles.length + ' dogs, so whether ' + ASK.max + ' at once stand as bodies could not be asked'); return { P, out }; }
+      else { const N = ASK.max + 2, pack = [];   /* the nearest tiles, and the two past the number on the farthest, so which two are cards is not a toss-up */
+        for (let k = 0; k < N; k++) { const t = k < ASK.max ? tiles[k] : tiles[tiles.length - 1 - (k - ASK.max)]; pack.push([made(t[0], t[1]), t[2]]); }
+        near = pack[0][0]; frames(near, N + 3);
+        const bodies = pack.filter(([c]) => isBody(c)), cards = pack.filter(([c]) => !isBody(c)), all = frame(near).bodies;
+        out.push(N + ' dogs in one place: ' + bodies.length + ' bodies, ' + cards.length + ' cards' + (cards.length ? ' (the cards ' + cards.map(([, d]) => d.toFixed(1)).join(' and ') + ' squares from you, the farthest body ' + Math.max(...bodies.map(([, d]) => d)).toFixed(1) + ')' : ''));
+        if (bodies.length !== ASK.max || all !== ASK.max) P.push('with ' + N + ' dogs in one place, ' + bodies.length + ' stand as bodies (' + all + ' dog bodies in the scene), where ' + ASK.max + ' do and the rest are their cards');
+        else if (Math.max(...bodies.map(([, d]) => d)) > Math.min(...cards.map(([, d]) => d)) + 1e-9) P.push('with more than ' + ASK.max + ' dogs in one place, a farther dog stands as a body while a nearer one is his card');
+        cards.forEach(([c, d]) => { if (!drawn.has(c)) P.push('a dog past the ' + ASK.max + ' who stand as bodies (' + d.toFixed(1) + ' squares from you) has no card: he is not drawn at all'); });
+        pack.slice(1).forEach(([c]) => unmake(c)); frames(near, 2);
+        /* EXACTLY the number at once: every one a body and none his card. Then one dog more, on the farthest tile, his card;
+           and one of the bodies leaves the place, as through a door: the one who was his card is a body within two frames,
+           and in no frame is a dog drawn twice or not at all */
+        const pk = [near]; for (let k = 1; k < ASK.max; k++) pk.push(made(tiles[k][0], tiles[k][1]));
+        frames(near, ASK.max + 3); const nb = pk.filter(c => isBody(c)).length, nc = pk.filter(c => drawn.has(c)).length;
+        if (nb !== ASK.max || nc) P.push('with exactly ' + ASK.max + ' dogs in one place, ' + nb + ' stand as bodies and ' + nc + (nc === 1 ? ' is drawn as his card' : ' are drawn as their cards') + ', where all ' + ASK.max + ' stand as bodies and none is a card');
+        const t25 = tiles[tiles.length - 1], extra = made(t25[0], t25[1]), leaver = pk[ASK.max - 1]; frames(near, 2);
+        const before = isBody(extra), seen = []; let when = 0, closer = null;
+        /* the one left a card COMES NEARER than the farthest of the bodies (onto the nearest dog's tile): the nearest are
+           bodies however they came to be near, so he is a body within two frames and the farthest body is then his card;
+           and he goes back to the far tile */
+        if (!before) { const pf = pk[ASK.max - 1], t0 = tiles[0]; Object.assign(extra, { x: t0[0], y: t0[1], fx: t0[0], fy: t0[1] });
+          let f2 = 0; for (let f = 1; f <= 4 && !f2; f++) { frame(near); if (isBody(extra)) f2 = f; }
+          closer = { f2, farBody: isBody(pf), farCard: drawn.has(pf), d: tiles[ASK.max - 1][2] };
+          Object.assign(extra, { x: t25[0], y: t25[1], fx: t25[0], fy: t25[1] }); frames(near, 3); }
+        leaver.world = '__through_a_door';
+        for (let f = 1; f <= 4; f++) { frame(near); [...pk.filter(c => c !== leaver), extra].forEach(c => { const b = isBody(c), cd = drawn.has(c); if (b && cd) seen.push([f, 'drawn twice']); else if (!b && !cd) seen.push([f, 'not drawn at all']); });
+          if (!when && isBody(extra)) when = f; }
+        leaver.world = wid;
+        out.push('exactly ' + ASK.max + ' dogs in one place: ' + nb + ' bodies, ' + nc + ' cards; one more, ' + t25[2].toFixed(1) + ' squares from you, ' + (before ? 'a body' : 'his card') + ', and when one of the ' + ASK.max + ' leaves through a door he is ' + (when ? 'a body ' + when + ' frame' + (when === 1 ? '' : 's') + ' later' : 'still his card four frames later'));
+        if (before) P.push('with ' + (ASK.max + 1) + ' dogs in one place, the farthest of them, ' + t25[2].toFixed(1) + ' squares from you, stands as a body, where the nearest ' + ASK.max + ' are bodies and he is his card');
+        if (closer) { out.push('with ' + (ASK.max + 1) + ' dogs, the one who was his card comes nearer than the farthest body: ' + (closer.f2 ? 'a body ' + closer.f2 + ' frame' + (closer.f2 === 1 ? '' : 's') + ' later' : 'still his card four frames later') + ', and the farthest body (' + closer.d.toFixed(1) + ' squares from you) then ' + (closer.farBody ? 'still a body' : closer.farCard ? 'his card' : 'not drawn'));
+          if (!closer.f2 || closer.f2 > 2) P.push('with ' + (ASK.max + 1) + ' dogs in one place, the dog who was his card walks up nearer to you than the farthest of the bodies and is ' + (closer.f2 ? 'a body only ' + closer.f2 + ' frames later' : 'still his card four frames later') + ', while a dog farther away keeps his body: the nearest ' + ASK.max + ' are bodies however they came to be near');
+          else if (closer.farBody || !closer.farCard) P.push('with ' + (ASK.max + 1) + ' dogs in one place, when the dog who was his card comes nearer and stands as a body, the farthest dog (' + closer.d.toFixed(1) + ' squares from you) is ' + (closer.farBody ? 'still a body: ' + (ASK.max + 1) + ' stand as bodies' : 'not drawn at all') + ', where he is then his card'); }
+        else if (!when || when > 2) P.push('with ' + (ASK.max + 1) + ' dogs in one place, when one of the ' + ASK.max + ' who stand as bodies leaves through a door, the dog who was his card is ' + (when ? 'a body only ' + when + ' frames later' : 'still his card four frames later') + ', where he is a body within two');
+        if (seen.length) P.push('with ' + (ASK.max + 1) + ' dogs in one place, while one of the bodies leaves through a door, a dog is ' + seen[0][1] + ' in frame ' + seen[0][0] + ' (' + seen.length + ' times in four frames)');
+        pk.slice(1).forEach(c => unmake(c)); unmake(extra); frames(near, 2); }
+
+      /* 4 · the screens: under the line his card and no body anywhere, on it and over it a body; back on the laptop a body again */
+      { const short = z => Math.min(z[0], z[1]), line = ASK.screen === null ? 'this world names no screen too small for bodies' : 'under ' + ASK.screen + ' px they stay cards, for now, and from ' + ASK.screen + ' px up they are bodies';
+        if (!frame(near).body) P.push('on a laptop-size screen (' + size(LAPTOP) + '), a dog standing beside you is his flat card, so what a small screen changes could not be asked');
+        else { const got = [];
+          SCREENS.forEach(z => { screenIs(z); const s = frame(near), on = 'on a ' + size(z) + ' screen, whose shorter side is ' + short(z) + ' px, '; got.push(size(z) + ' ' + (s.body ? 'a body' : 'his card'));
+            if (!s.ok) { P.push(on + 'the 3D camera could not draw, so whether a dog stands as a body there could not be asked'); again(); }
+            else if (z[2] === 'body') { if (!s.body) P.push(on + 'a dog beside you is his flat card: ' + line);
+              else if (s.card) P.push(on + 'a dog beside you is drawn twice: his card stands in the same place as his body'); }
+            else { if (s.body || s.bodies) P.push(on + (s.bodies || 1) + ' dog' + ((s.bodies || 1) === 1 ? ' stands as a body' : 's stand as bodies') + ': ' + line);
+              if (!s.card) P.push(on + 'a dog beside you has no card: he is not drawn at all'); } });
+          screenIs(LAPTOP); const b = frame(near);
+          out.push('the dog beside you, screen by screen (width by height): ' + got.join('; ') + '; back on ' + size(LAPTOP) + ', ' + (b.body ? 'a body' : 'his card'));
+          if (!b.body) P.push('back on a laptop-size screen after a small one, the dog beside you does not stand as a body again');
+          else if (b.card) P.push('back on a laptop-size screen after a small one, the dog beside you is drawn twice: his card stands in the same place as his body'); } }
+      /* the same screens in a REAL window, resized to each (not told its size), are asked right after this block */
+
+      /* 5 · no personality, where the world gives its dogs none */
+      if (!ASK.persona) { frames(near, 2); rolls = 0; const s = frames(near, 3), B = T3.dogOn ? T3.dogOn.get(near) : null, pe = typeof personaOf === 'function' ? personaOf(near) : null;
+        if (!s.body || !B) P.push('a dog standing beside you is not a body, so whether he shows a personality could not be asked');
+        else { if (B.userData.away || (B.userData.bubble && B.userData.bubble.visible)) P.push('a dog who has not been met stands turned away with a thought of his own over his head, as a dog with a personality does, where this world gives its dogs none');
+          if (pe || near.persona !== undefined) P.push('a dog made in this world has been given a personality (' + (pe || near.persona) + '), where this world gives its dogs none');
+          if (rolls) P.push('a dog standing still as a body threw the dice ' + rolls + ' times in three frames, so every roll the game makes after a frame lands somewhere else');   /* counted once his body is made: the 3D library names every part it makes with dice of its own, as it does for the person's body */
+          out.push('no personality: no thought over his head, none given, ' + rolls + ' dice thrown by the dogs\' bodies over three frames of a dog standing still'); } }
+      else out.push('this world gives its dogs personalities, so a dog without one was not asked here');
+      /* 5, the rest · the adoption card, opened through its own button, shows no row to choose a personality, and no word
+         of one; and a treat, the first time a dog is given one, does not turn him to you (an eager dog's first meeting turns
+         him and sets him wagging): he is not met, he does not turn, and he faces the way he faced */
+      if (!ASK.persona) { const $id = id => document.getElementById(id), btn = $id('adopt'), card = $id('adoptP'), shows = e => !!e && !e.hidden && !e.closest('[hidden]') && getComputedStyle(e).display !== 'none';
+        if (!btn || !card) { if (MER) P.push('Meridian has no adoption card on this page, so whether it offers a personality could not be asked'); }
+        else { const kt = window.toast; try { window.toast = () => {}; btn.click();
+            const rows = [...card.querySelectorAll('#adoptPersona, #lbPersona, [data-pe]')].filter(shows);
+            if (!shows(card)) P.push('the adoption card did not open from its own button, so whether it offers a personality could not be asked');
+            else if (rows.length) P.push('the adoption card offers a choice of personality (' + rows.length + ' thing' + (rows.length === 1 ? '' : 's') + ' to see: ' + rows.map(e => (e.textContent || e.id || '').trim().slice(0, 20)).join(', ') + '), where this world gives its dogs none');
+            out.push('the adoption card, opened: ' + (rows.length ? rows.length + ' personality controls shown' : 'no personality row') + ', ' + card.querySelectorAll('button').length + ' buttons in all'); }
+          finally { const x = $id('adoptX'); if (x) x.click(); card.hidden = true; window.toast = kt; } }
+        const t2 = tiles.find(t => t[2] >= 1.5 && t[2] <= 3) || tiles[1], d = made(t2[0], t2[1], { name: 'Probe', dx: t2[0] >= qx ? 1 : -1, face: t2[0] >= qx ? 1 : -1 }), s0 = frames(d, 2), B0 = T3.dogOn && T3.dogOn.get(d);
+        if (!s0.body || !B0) P.push('a dog standing near you is not a body, so whether a first treat turns him to you could not be asked');
+        else { const yaw0 = B0.userData.yaw, k = { pt: petTarget, pc: petCrit, to: window.toast, mh: window.musHowl, st: window.setTimeout, parkT: typeof PARK === 'object' && PARK ? PARK.t : undefined };
+          try { window.toast = () => {}; window.musHowl = () => {}; window.setTimeout = () => 0; petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); }
+          finally { petTarget = k.pt; petCrit = k.pc; window.toast = k.to; window.musHowl = k.mh; window.setTimeout = k.st; if (k.parkT !== undefined) PARK.t = k.parkT; }
+          const s1 = frames(d, 2), B1 = T3.dogOn && T3.dogOn.get(d), yaw1 = B1 ? B1.userData.yaw : NaN, turned = !!(B1 && B1.userData.turned), dy = Math.abs(((yaw1 - yaw0 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+          out.push('a first treat: ' + (d.metT !== undefined ? 'met' : 'not met') + ', ' + (turned ? 'turned to you' : 'not turned') + ', his facing moved ' + (isFinite(dy) ? dy.toFixed(2) : '?') + ' radians, ' + (s1.body ? 'a body' : 'his card'));
+          if (d.metT !== undefined || d.turnT !== undefined) P.push('a dog given his first treat is met as a dog with a personality is, and turns to you when that is over, where this world gives its dogs none');
+          if (turned || dy > 1e-6) P.push('a dog given his first treat is turned to you' + (dy > 1e-6 ? ' (his facing moved ' + dy.toFixed(2) + ' radians)' : '') + ', as an eager dog is at his first meeting, where this world gives its dogs none'); }
+        unmake(d); frames(near, 2); }
+
+      /* 6 · on the night of alebrijes he is his painted card, where the world keeps the card for it (Meridian does: mq-v289) */
+      { const night = typeof SEAS === 'function' ? Object.keys(SEAS()).find(k => SEAS()[k].art && SEAS()[k].art.alebrije) : null;
+        if (!night) { if (MER) P.push('Meridian has no night of alebrijes to pick, so what a dog\'s body does that night could not be asked'); else out.push('this world has no night of alebrijes, so it was not asked here'); }
+        else if (!frame(near).body) P.push('a dog standing beside you is not a body, so what the night of alebrijes changes could not be asked');
+        else { seasonPick = night; const s = frame(near), look = alebLookFor(near.kind, near.name); seasonPick = keep.season; const b = frame(near);
+          out.push('on the night of alebrijes the dog beside you is ' + (s.body ? 'a body' : 'his card') + (look ? ', his look that night ' + look.id : ', and wears no look') + '; after it, ' + (b.body ? 'a body' : 'his card'));
+          if (!look) P.push('picking the night of alebrijes paints no look on a dog, so what his body does that night could not be asked');
+          else if (ASK.paint === 'card') { if (s.body) P.push('on the night of alebrijes a dog beside you stands as a body in his everyday coat: his alebrije colours, marks and wings are gone, while every other animal wears them');
+            if (!s.card) P.push('on the night of alebrijes a dog beside you has no card: he is not drawn in his colours at all'); }
+          else if (!s.body) P.push('on the night of alebrijes a dog beside you is his card, where this world has not asked to keep the card that night: he stood as a body there before');
+          if (!b.body) P.push('when the night of alebrijes ends, the dog beside you does not stand as a body again');
+          /* that night, a dog whose saved look is damaged, and a dog the player has named with a word every saved table
+             already holds: the 3D camera goes on drawing, and he is what any dog is that night. A look is saved under the
+             dog's NAME and read on every frame of the 3D camera, so one that cannot be read must not stop the camera */
+          if (look) { const A = alePick.animals, C = alePick.custom, has = (o, k) => Object.prototype.hasOwnProperty.call(o, k), name0 = near.name;
+            const put = (o, k, v) => { keep.picks.push([o, k, has(o, k), o[k]]); o[k] = v; };
+            const asked = (what, set) => { seasonPick = night; let s = null, lk = null, threw = ''; try { set(); s = frame(near); try { lk = alebLookFor(near.kind, near.name); } catch (e) { threw = String(e && e.message || e); } }
+              finally { seasonPick = keep.season; near.name = name0; while (keep.picks.length) { const [o, k, had, v] = keep.picks.pop(); if (had) o[k] = v; else delete o[k]; } }
+              out.push('that night, ' + what + ': ' + (!s.ok ? 'the 3D camera stopped drawing' : s.body ? 'a body' : s.card ? 'his card' : 'not drawn') + (lk ? ', his look ' + lk.id : threw ? ', and his look could not be read (' + threw + ')' : ', and no look'));
+              if (!s.ok) { P.push('on the night of alebrijes, with ' + what + ', the 3D camera stops drawing and the game drops to the flat camera'); again(); }
+              else if (!lk) P.push('on the night of alebrijes, ' + what + ' wears no look at all, where he wears the one his name gives him');
+              else if (ASK.paint === 'card' ? (s.body || !s.card) : !s.body) P.push('on the night of alebrijes, ' + what + ' is ' + (s.body ? 'a body in his everyday coat' : s.card ? 'his card' : 'not drawn at all') + ', where every other dog that night is ' + (ASK.paint === 'card' ? 'his painted card' : 'a body')); };
+            asked('a dog whose saved look is not a number', () => { put(A, name0, 'x'); put(C, name0, { tint: '#ffffff' }); });
+            asked('a dog the player has named "constructor"', () => { near.name = 'constructor'; });
+            if (!frame(near).body) P.push('after a dog\'s damaged saved look was read on the night of alebrijes, the dog beside you does not stand as a body again'); }
+          /* that night in THIS WORLD WITH ITS LINE TAKEN OUT (const BODYPAINT="card"): a world that does not say it was to stay
+             exactly as it was, its dogs bodies that night in their own coats. No world in this repository but this one has
+             that night and dog bodies, so this world is asked as such a world too: every function of the engine that reads
+             the line is rebuilt, for one frame, where the line is not there to read, and put back */
+          if (look && ASK.paint === 'card') { const src = f => { try { return Function.prototype.toString.call(f); } catch (e) { return ''; } };
+            const readers = Object.keys(window).filter(k => { let f = null; try { f = window[k]; } catch (e) { return false; } return typeof f === 'function' && /\bBODYPAINT\b/.test(src(f)); });
+            let swap = null; try { swap = readers.map(k => [k, window[k], (0, eval)('(function(){let BODYPAINT;return (' + src(window[k]) + ');})()')]); } catch (e) { swap = null; }
+            if (!swap || swap.some(([, , f]) => typeof f !== 'function')) P.push('the engine\'s reading of the line that keeps a dog his card that night could not be rebuilt without it, so whether a world that does not say it keeps its dogs as bodies that night could not be asked');
+            else { let s = null; seasonPick = night; swap.forEach(([k, , f]) => { window[k] = f; });
+              try { s = frame(near); } finally { swap.forEach(([k, f0]) => { window[k] = f0; }); seasonPick = keep.season; }
+              out.push('that night, in this world with its line that keeps the card taken out (' + readers.length + ' function' + (readers.length === 1 ? '' : 's') + ' of the engine read it): ' + (!s.ok ? 'the 3D camera stopped drawing' : s.body ? 'a body' : 'his card'));
+              if (!s.ok) { P.push('on the night of alebrijes, in this world with its line that keeps the card taken out, the 3D camera stops drawing'); again(); }
+              else if (!s.body) P.push('on the night of alebrijes, in a world that does not say it keeps a dog his card that night, a dog beside you is still his card: every world\'s dogs turn to cards that night, where they stood as bodies before');
+              else if (s.card) P.push('on the night of alebrijes, in a world that does not say it keeps a dog his card that night, a dog beside you is drawn twice: his card stands in the same place as his body'); }
+            if (!frame(near).body) P.push('after the night of alebrijes was asked with the line taken out, the dog beside you does not stand as a body again'); }
+          /* that night for EVERY BREED, in a look with wings and in one without (picked for him by his name, as Settings picks
+             it), and for a dog as far from you as two places to stand are in this world (2): his card, painted in the look
+             picked for him, and a body the frame the night ends. Painted is read where the card's painter lays the look on
+             (wildDraw, engine/engine.js), for him and in that look */
+          if (look && ASK.paint === 'card') { const L = (() => { seasonPick = night; try { return alebLooks() || []; } finally { seasonPick = keep.season; } })(), wi = L.findIndex(l => l && l.wings), wo = L.findIndex(l => l && !l.wings), A = alePick.animals, has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+            if (wi < 0 || wo < 0) P.push('the looks of the night of alebrijes are not ' + (wi < 0 ? 'one with wings' : 'one without wings') + ' and another, so a dog in each could not be asked');
+            else { const kw = wildDraw, painted = new Map(), got = [];
+              const night1 = (d, i, who) => { keep.picks.push([A, d.name, has(A, d.name), A[d.name]]); A[d.name] = i; painted.delete(d); let s = null, b = null;
+                try { seasonPick = night; s = frame(d); } finally { seasonPick = keep.season; const [o, k, had, v] = keep.picks.pop(); if (had) o[k] = v; else delete o[k]; }
+                b = frame(d); const lk = L[i], pt = painted.get(d);
+                got.push(who + ' ' + (s.body ? 'a body' : s.card ? 'his card' : 'not drawn') + (pt ? ' painted ' + pt : ', not painted') + ', after it ' + (b.body ? 'a body' : 'his card'));
+                if (!s.ok) { P.push('on the night of alebrijes, with ' + who + ' in the look ' + lk.id + ', the 3D camera stops drawing'); again(); return; }
+                if (s.body) P.push('on the night of alebrijes ' + who + ' in the look ' + lk.id + (lk.wings ? ', with wings,' : ', without wings,') + ' stands as a body in his everyday coat: his alebrije colours' + (lk.wings ? ', marks and wings' : ' and marks') + ' are gone, while every other animal wears them');
+                else if (!s.card) P.push('on the night of alebrijes ' + who + ' in the look ' + lk.id + ' has no card: he is not drawn in his colours at all');
+                else if (pt !== lk.id) P.push('on the night of alebrijes ' + who + ' is his card, ' + (pt ? 'painted in the look ' + pt : 'not painted at all') + ', where the look picked for him is ' + lk.id);
+                if (!b.body) P.push('when the night of alebrijes ends, ' + who + ' does not stand as a body again'); };
+              try { wildDraw = function (g, lk, kind, fn, sx, sy, face, an) { if (an && lk) painted.set(an, lk.id); return kw.apply(this, arguments); };
+                const t2 = tiles.find(t => t[2] >= 1.5 && t[2] <= 3) || tiles[1];
+                [...DOGK].forEach((kind, j) => [wi, wo].forEach(i => { const d = made(t2[0], t2[1], { kind, name: 'Probe' + kind + i }); try { night1(d, i, 'a ' + (BREEDNAME[kind] || kind) + ' beside you'); } finally { unmake(d); } }));
+                /* a dog WALKING beside you that night, mid-step, and the STAR DOG himself, put back where he lives for it */
+                { const d = made(t2[0], t2[1], { name: 'Probewalk', moving: true, mt: 1, fx: t2[0] + 0.5, dx: 1, dy: 0, face: 1 }); try { night1(d, wi, 'a dog walking beside you'); } finally { unmake(d); } }
+                { const home = [world, px, py, fx, fy], sx = Math.round(star.fx), sy = Math.round(star.fy), at = [[0, 2], [1, 2], [-1, 2], [2, 0], [-2, 0], [0, -2]].map(([dx, dy]) => [sx + dx, sy + dy]).find(([x, y]) => openAt(x, y)) || [sx, sy];
+                  try { star.world = wid; world = wid; px = fx = at[0]; py = fy = at[1]; frames(star, 3);
+                    if (dogPose(star).hid) got.push('the star dog inside the agility tunnel, not asked'); else night1(star, wi, 'the star dog beside you'); }
+                  finally { star.world = '__frozen'; [world, px, py, fx, fy] = home; } }
+                if (farPair) { const home = [world, px, py, fx, fy];
+                  try { world = farPair.id; px = fx = farPair.a[0]; py = fy = farPair.a[1]; const d = made(farPair.b[0], farPair.b[1], { world: farPair.id, name: 'Probefar' });
+                    try { frames(d, 3); night1(d, wi, 'a dog ' + farPair.d.toFixed(1) + ' squares from you'); } finally { unmake(d); } }
+                  finally { [world, px, py, fx, fy] = home; } }
+                else if (ASK.reach === Infinity) P.push('no far dog was asked in 2, so the far dog on the night of alebrijes could not be asked'); }
+              finally { wildDraw = kw; }
+              out.push('that night, breed by breed, in the look ' + L[wi].id + ' (wings) and ' + L[wo].id + ' (none): ' + got.join('; ')); }
+            frames(near, 2); } } }
+
+      /* 7 · the office dog is still his card where he lives, on the square he stands on, and no dog's body stands there for him */
+      { CRIT.length = Math.min(CRIT.length, keep.crit);
+        const ow = typeof AW === 'function' ? AW('dog') : null;
+        if (!ow || !keep.dd) { if (MER) P.push('Meridian\'s office dog stands in no world, so whether he stayed as he is could not be asked'); else out.push('this world has no office dog, so he was not asked here'); }
+        else { const ox = Math.round(DOG.x), oy = Math.round(DOG.y);   /* you stand two squares to one side of him, so you are not in front of him */
+          const st = [[2, 0], [-2, 0], [2, 1], [-2, 1], [1, 1], [-1, 1], [1, 0], [-1, 0], [0, 1]].map(([dx, dy]) => [ox + dx, oy + dy]).find(([x, y]) => openIn(ow, x, y)) || [ox, oy + 1];
+          world = ow; px = fx = st[0]; py = fy = st[1]; office = 0; officeG = null; const s = frames(near, 2), q = officeG ? T3.pool.find(e => e.g === officeG && e.live) : null;
+          out.push('where the office dog lives: his card painted ' + office + ' times in two frames, dog bodies in the scene: ' + s.bodies);
+          if (!s.ok) P.push('the 3D camera could not draw where the office dog lives, so whether he stayed as he is could not be asked');
+          else { if (!office || !q) P.push('the office dog is not painted as his card in the 3D camera any more: he is gone, or something else stands there for him');
+            else { /* every card is pulled a little toward the camera, so heads do not sink into the wall behind; so his may stand off
+                 the middle of his square toward the camera, by less than half a square, and not to one side of that line at all */
+              const mx = DOG.fx + 0.5, mz = DOG.fy + 0.5, ox2 = q.spr.position.x - mx, oz2 = q.spr.position.z - mz, cx2 = T3.cam.position.x - mx, cz2 = T3.cam.position.z - mz, cl2 = Math.hypot(cx2, cz2) || 1;
+              const off = Math.hypot(ox2, oz2), aside = Math.abs(ox2 * cz2 - oz2 * cx2) / cl2, toward = (ox2 * cx2 + oz2 * cz2) / cl2, n = pixelsOf(q.spr, DOG.fx, DOG.fy);
+              out.push('the office dog\'s card: ' + off.toFixed(2) + ' squares from the middle of the square he is on (' + toward.toFixed(2) + ' toward the camera, ' + aside.toFixed(2) + ' to one side), ' + n.all + ' pixels of it on the screen, ' + n.here + ' of them within a square of where he stands');
+              if (off >= 0.5 || toward < -1e-6 || aside > 0.02 || !(n.here >= 50) || n.here < n.all * 0.8) P.push('the office dog\'s card does not stand on the square he is on (' + off.toFixed(2) + ' squares from its middle, ' + aside.toFixed(2) + ' of them to one side, ' + n.here + ' of its ' + n.all + ' pixels within a square of it): he was to stay exactly as he is'); }
+            if (s.bodies) P.push('where the office dog lives, with no dog of the dog program there, ' + s.bodies + ' dog bod' + (s.bodies === 1 ? 'y stands' : 'ies stand') + ': the office dog was to stay his card, exactly as he is');
+            /* PIXEL FOR PIXEL: the screen where he lives, standing, sitting and mid-step, the clock and the dice held, drawn by
+               this world as it ships and by this world with the dog taken out of its own list (every function of the engine
+               that reads whether the world takes the dog's body is rebuilt, for one frame, where the world does not take it,
+               and put back): not one pixel differs. A frame drawn twice by the same engine is asked first, so a screen that
+               moves by itself is said, and not taken for him */
+            if (s.ok && office && q) { const src = f => { try { return Function.prototype.toString.call(f); } catch (e) { return ''; } }, gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+              const readers = Object.keys(window).filter(k => { let f = null; try { f = k === 't3DogBodies' ? keep.kd : window[k]; } catch (e) { return false; } return typeof f === 'function' && /\bDOGBODYON\b/.test(src(f)); });
+              let swap = null; try { swap = readers.map(k => [k, window[k], (0, eval)('(function(){let DOGBODYON=false;return (' + src(k === 't3DogBodies' ? keep.kd : window[k]) + ');})()')]); } catch (e) { swap = null; }
+              const k0 = { dog: Object.assign({}, DOG), pn: performance.now, dn: Date.now, mr: Math.random }, T0 = performance.now(), D0 = Date.now();
+              const shot = () => { let z = 0x9e3779b9; Math.random = () => { z ^= z << 13; z ^= z >>> 17; z ^= z << 5; return ((z >>> 0) % 1e6) / 1e6; };
+                draw3d(); T3.renderer.render(T3.scene, T3.cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); return b; };
+              const differ = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
+              if (!readers.length || !swap || swap.some(([, , f]) => typeof f !== 'function')) P.push('the engine\'s reading of whether this world takes the dog\'s body could not be rebuilt without the dog, so the office dog could not be compared pixel for pixel');
+              else { const got = [];
+                try { performance.now = () => T0; Date.now = () => D0;
+                  for (const [how, o] of [['standing', { sit: false, moving: false }], ['sitting', { sit: true, moving: false }], ['mid-step', { sit: false, moving: true, mt: 0.5, fx: DOG.x + 0.5 * (DOG.dx || 1), dx: DOG.dx || 1 }]]) {
+                    Object.assign(DOG, k0.dog, o, { next: Infinity }); office = 0;
+                    const a = shot(), a2 = shot(); let b = null; const seenOff = office;
+                    swap.forEach(([k, , f]) => { if (k === 't3DogBodies') t3DogBodies = dt => { inDogs = true; try { return f(dt); } finally { inDogs = false; } }; else window[k] = f; });
+                    try { b = shot(); } finally { swap.forEach(([k, f0]) => { window[k] = f0; }); }
+                    const same = differ(a, a2), n = differ(a, b); got.push(how + ' ' + n);
+                    if (!seenOff) P.push('the office dog, ' + how + ', is not painted as his card, so he could not be compared pixel for pixel');
+                    else if (same) P.push('where the office dog lives the same frame drawn twice differs by ' + same + ' pixels with the clock and the dice held, so he could not be compared pixel for pixel ' + how);
+                    else if (n) P.push('the office dog, ' + how + ', is not exactly as he was: ' + n + ' pixels of the screen where he lives differ from this world with the dog taken out of its own list'); } }
+                finally { performance.now = k0.pn; Date.now = k0.dn; Math.random = k0.mr; Object.keys(DOG).forEach(k => { if (!(k in k0.dog)) delete DOG[k]; }); Object.assign(DOG, k0.dog); }
+                out.push('the office dog pixel for pixel against this world with the dog taken out of its own list (' + readers.length + ' function' + (readers.length === 1 ? '' : 's') + ' rebuilt), pixels that differ: ' + got.join(', ')); } } } } }
+    } finally {
+      CRIT.length = Math.min(CRIT.length, keep.crit); keep.real.forEach(([c, wd]) => { c.world = wd; });
+      Math.random = keep.MR; t3DogBodies = keep.kd; if (keep.dd) drawDog = keep.dd; Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); seasonPick = keep.season;
+      while (keep.picks.length) { const [o, k, had, v] = keep.picks.pop(); if (had) o[k] = v; else delete o[k]; }
+      /* a frame that failed here (a red above) is not left behind: the camera's own note of it is taken back */
+      T3.fail = keep.fail; T3.said = keep.said; T3.errors.length = Math.min(T3.errors.length, keep.errs); try { if (keep.err3d === null) localStorage.removeItem(SK('err3d')); else localStorage.setItem(SK('err3d'), keep.err3d); } catch (e) {}
+      if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
+      if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving;
+      camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; try { draw3d(); } catch (e) {}   /* one frame of the place you were in, so the bodies of the dogs made here are thrown away */
+    }
+    return { P, out };
+  });
+  merDogs.out.forEach(l => console.log('  MERIDIAN DOGS: ' + l));
+  fails.push(...merDogs.P.map(m => 'Meridian\'s dogs as bodies: ' + m));
+  /* ---- MERIDIAN'S DOGS, SCREEN BY SCREEN IN A REAL WINDOW (mq-v289; the owner's confirmed goal of 2026-11-21 on Meridian's dogs) ----
+     The block above tells its page what size it is, which is what the engine reads. Here one window of its own is opened
+     and RESIZED to each of the same seven screens, typed again (cards while the shorter side is under 480 px), so an
+     engine that read anything but the window it is in would show here: at each, the star dog two squares from you is a
+     body or his card as the screen wants, never both and never neither, and on the small ones no dog's body stands at
+     all. Only Meridian is asked here; the window is closed after */
+  const merDogsReal = await (async () => { const P = [], out = [];
+    if (!(await page.evaluate(() => typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest' && typeof T3 !== 'undefined' && !!window.THREE))) { out.push('this world is not Meridian, so its dogs were not asked in a real window'); return { P, out }; }
+    const SCREENS = [[480, 900, 'body'], [479, 900, 'card'], [390, 844, 'card'], [844, 390, 'card'], [1024, 479, 'card'], [1024, 480, 'body'], [1920, 1080, 'body']], LAPTOP = [1280, 800];
+    const ctx = await browser.newContext({ viewport: { width: LAPTOP[0], height: LAPTOP[1] } });
+    try { const p = await ctx.newPage(), err = []; p.on('pageerror', e => err.push(e.message));
+      await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await p.goto(require('url').pathToFileURL(file).href); await boot(p);
+      const set = await p.evaluate(() => { const star = CRIT.find(c => DOGK.has(c.kind) && c.role === 'star'); if (!star || !WORLDS[star.world]) return 'there is no star dog standing anywhere';
+        const W = WORLDS[star.world], open = (x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
+        Object.assign(star, { next: Infinity, stayT: Infinity, follow: false, task: null, moving: false, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, fx: star.x, fy: star.y });
+        const at = [[0, 2], [1, 2], [-1, 2], [2, 0], [-2, 0], [0, -2]].map(([dx, dy]) => [star.x + dx, star.y + dy]).find(([x, y]) => open(x, y)); if (!at) return 'there is no tile beside the star dog to stand on';
+        world = star.world; px = fx = at[0]; py = fy = at[1]; moving = false; document.getElementById('world').hidden = false; camSet('3d'); sizeCanvas();
+        window.__merSeen = new Set(); ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f === 'function') window[n] = function (g, cr, ...a) { window.__merSeen.add(cr); return f.call(this, g, cr, ...a); }; });
+        return ''; });
+      if (set) { P.push('in a real window, ' + set + ', so on which screens his body stands could not be asked'); return { P, out }; }
+      const look = () => p.evaluate(() => { const star = CRIT.find(c => DOGK.has(c.kind) && c.role === 'star'); star.next = Infinity; star.moving = false; window.__merSeen.clear(); const ok = !!draw3d() && !T3.fail;
+        const B = T3.dogOn ? T3.dogOn.get(star) : null; let n = 0; T3.scene.traverse(o => { if (o.name === 'dogbody' && o.visible) n++; });
+        return { ok, body: !!(B && B.visible && T3.dogShown && T3.dogShown.has(star)), card: window.__merSeen.has(star), bodies: n, w: innerWidth, h: innerHeight }; });
+      const got = [];
+      for (const [w, h, want] of [...SCREENS, [...LAPTOP, 'body']]) { await p.setViewportSize({ width: w, height: h });
+        const sized = await until(p, ([w, h]) => innerWidth === w && innerHeight === h, [w, h], 5000); await rafs(p, 2);
+        const s = await look(), on = 'in a real window ' + w + ' by ' + h + ' (its shorter side ' + Math.min(w, h) + ' px), ';
+        got.push(w + ' by ' + h + ' ' + (!s.ok ? 'not drawn' : s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither'));
+        if (!sized) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
+        if (!s.ok) P.push(on + 'the 3D camera could not draw, so whether the star dog stands as a body there could not be asked');
+        else if (want === 'body') { if (!s.body) P.push(on + 'the star dog two squares from you is his flat card: under 480 px they stay cards, for now, and from 480 px up they are bodies');
+          else if (s.card) P.push(on + 'the star dog is drawn twice: his card stands in the same place as his body'); }
+        else { if (s.body || s.bodies) P.push(on + (s.bodies || 1) + ' dog' + ((s.bodies || 1) === 1 ? ' stands as a body' : 's stand as bodies') + ': under 480 px they stay cards, for now');
+          if (!s.card) P.push(on + 'the star dog has no card: he is not drawn at all'); } }
+      out.push('the star dog in one real window, resized screen by screen (width by height): ' + got.join('; '));
+      err.forEach(m => P.push('the real window threw: ' + m));
+    } finally { await ctx.close(); }
+    return { P, out }; })();
+  merDogsReal.out.forEach(l => console.log('  MERIDIAN DOGS: ' + l));
+  fails.push(...merDogsReal.P.map(m => 'Meridian\'s dogs as bodies: ' + m));
+
   /* ---- THE 3D LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288) ----
      What was asked, on 2026-11-21 and confirmed that day: in the 3D camera the leash is lifted onto the bridge deck. Each
      end sits as high over the ground beneath it as it does on the street (the hand's end half a square up, the collar's
@@ -16667,7 +17139,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const dShell = fs.readFileSync(file, 'utf8'), dBoot = /<script src="(?:[^"]*\/)?engine\/boot\.js"><\/script>/;
     const dHref = require('url').pathToFileURL(file).href, dPack = new URL('__dogtake.js', dHref).href;
     const opened = [];
-    /* a world that names its own list without the dog (Meridian names the person from mq-v277) is asked with its own list and
+    /* a world that names its own list without the dog (Meridian named only the person from mq-v277 until mq-v289; from then it names the dog too and is asked as it stands) is asked with its own list and
        the dog added, its declaration rewritten where the world makes it: a second declaration before the engine would throw.
        Until mq-v278 such a world was not asked at all, so from mq-v277 the dog's body went unasked in the public build */
     const openWith = async list => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 }); opened.push(ctx);
@@ -16692,6 +17164,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         if (own0 === null) { await page.evaluate(kitSrc); silent.push(['a world that says nothing', page]); }
         else if (!(Array.isArray(ownL) && ownL.includes('dog'))) { await page.evaluate(kitSrc); silent.push(['this world, whose own list is ' + own0, page]); }
         if (own0 === null) { const o = await openWith(['person']); silent.push(['a world that names only the person', o.p]); }
+        /* a world that names the dog itself (Meridian, from mq-v289) is asked with the dog TAKEN
+           OUT of its own list, the declaration rewritten where the world makes it. Until that step such a world was not asked
+           here at all, so the public build would have stopped asking that a world which has not asked keeps every dog his card */
+        if (own0 !== null && Array.isArray(ownL) && ownL.includes('dog')) { const o = await openWith(ownL.filter(k => k !== 'dog'));
+          /* Meridian is a world this suite knows: there a list that could not be rewritten is a red, as nothing else in the
+             public build asks that a world which has not asked keeps every dog his card */
+          if (await o.p.evaluate(() => typeof BODYTAKE === 'undefined' || !Array.isArray(BODYTAKE) || BODYTAKE.includes('dog'))) say(await page.evaluate(() => typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest') ? 0 : 1, 'the dog could not be taken out of this world\'s own list (' + own0 + ': its declaration is not written the way this check rewrites it), so that a world which has not asked for his body keeps every dog his card was not asked here');
+          else silent.push(['this world with the dog taken out of its own list', o.p]); }
         if (!silent.length) say(1, 'this world names the dog in its own list (' + own0 + '), so a world that has not asked for his body was not asked here');
         for (const [what, sp] of silent) {
           const r = await sp.evaluate(() => { const K = window.__dk; K.hold(); try { const at = K.spot(); if (!at) return { why: 'no free tile beside the person you steer' };

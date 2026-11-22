@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v288";
+const GAMEV="mq-v289";
 /* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
    and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
    bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
@@ -10,9 +10,23 @@ const PANELTAKE=["creator"];
    and so do the three of Meridian's people who share a name with the town's (Chuy, Lupe and Beto), each in Meridian's own card
    look; everyone else stays a card, for now. Only on a screen whose shorter side is at least BODYSCREEN pixels (480, his yes of 2026-11-19, so a laptop in an ordinary window clears it while every phone held upright stays under), so a phone keeps
    the cards until a round of its own (laptop and desktop first). */
-const BODYTAKE=["person"];
+const BODYTAKE=["person","dog"];
 const PEOPLETAKE=["chuy","lupe","beto"];
 const BODYSCREEN=480;
+/* MERIDIAN'S DOGS AS BODIES (mq-v289; the owner's confirmed goal of 2026-11-21 on Meridian's dogs). The dogs that live the dog
+   program, the star dog and every adopted dog, stand in the 3D camera as jointed bodies (`dog` in BODYTAKE above), as a
+   world that already asks for them has them. However far they are from you (ANIMALREACH, squares: no limit) and up to
+   ANIMALMAX of them at once; past that many, the nearest are bodies and the rest their cards. On the same screens as the
+   people's bodies: under BODYSCREEN they stay cards, for now. The office dog is not a dog of the dog program and stays
+   his card. Meridian still gives its dogs no personalities: it names no PERSONATAKE.
+   THE NIGHT OF ALEBRIJES (mq-v289; the owner's confirmed goal of 2026-11-21 on the night of alebrijes). On the night when
+   every animal wears an alebrije's colours, a dog is still his card, colours, marks and wings, as he was before this step,
+   because a body cannot wear that paint yet (BODYPAINT, read by the engine's dogPaintCard); the frame the night ends he is
+   a body again. Without the line that night the dogs would stand as bodies in their own coats while every other animal
+   is painted. */
+const ANIMALREACH=Infinity;
+const ANIMALMAX=24;
+const BODYPAINT="card";
 /* THE DOGS' IDLE ROUTINES (mq-v287; his confirmed goals of 2026-11-20 and his word of 2026-11-21 that both games take them).
    Meridian's dogs pick, each time they are idle, between their free whims and two set routines (the engine's ROUTINES and
    its chances, ROUTINECHANCE_DEF). Meridian has not turned personalities on, so no dog's chances are tilted here. */
