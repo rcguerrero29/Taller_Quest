@@ -7171,10 +7171,11 @@ function findChromium() {
               if (!s.ok) P.push('the 3D camera did not draw at ' + w + ' by ' + h); else if ((want === 'body') !== s.body || (want === 'card') !== s.card) P.push('two squares from you at ' + w + ' by ' + h + ' the office dog is ' + is + '; he is to be ' + (want === 'body' ? 'a body' : 'his card'));
               got.push(w + ' by ' + h + ' ' + is);
               if (w === 1280 && s.body) { const B = T3.dogOn.get(od); let up = 0; B.traverse(o => { if (o.isMesh && o.userData.upEar && !o.userData.inside) up++; });
-                const spring = typeof EARSPRING !== 'undefined' ? EARSPRING.patient : null, sw = [];
+                /* his ears at his own personality's speed, the patient one where he has none (a personality in Meridian from mq-v297) */
+                const pe = typeof personaOf === 'function' ? personaOf(od) : null, spring = typeof EARSPRING !== 'undefined' ? (EARSPRING[pe] || EARSPRING.patient) : null, sw = [];
                 for (const dt of [0, 27, 55]) { Date.now = () => 1.7e12 + dt; try { draw3d(); } finally { Date.now = keep.DN; } sw.push(B.userData.joints.tail_1.rotation.z); }
                 if (up !== 2) P.push('his body has ' + up + ' upright ears; his card has two');
-                if (spring !== null && B.userData.earSpeed !== spring) P.push('his ears spring at ' + B.userData.earSpeed + ', not the patient speed (' + spring + ')');
+                if (spring !== null && B.userData.earSpeed !== spring) P.push('his ears spring at ' + B.userData.earSpeed + ', not ' + (pe ? 'his ' + pe + ' speed' : 'the patient speed') + ' (' + spring + ')');
                 if (!(Math.max(...sw) - Math.min(...sw) > 0.05)) P.push('his body\'s tail does not wag standing: it turned ' + sw.map(x => x.toFixed(3)).join(', ') + ' over three instants');
                 got.push('his ears ' + up + ', springing at ' + B.userData.earSpeed + ', his tail ' + sw.map(x => x.toFixed(2)).join('/'));
                 /* each piece of the wardrobe can be SEEN on his body: at a frozen clock, him held, put on alone in a colour of
