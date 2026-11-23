@@ -928,9 +928,11 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 /* WHICH BODIES A WORLD TAKES (mq-v263). BODYTAKE is the world's own list. `person` is the person you steer; `dog` is a dog who
    follows him (engine/engine3d.js, grep "THE DOG'S BODY"). A name this list does not hold is nothing, and a world that says
    nothing takes none: closed unless a world opens it */
-const BODYKINDS=Object.freeze(["person","dog","cat"]);   /* cat: every cat of the critters (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
+const BODYKINDS=Object.freeze(["person","dog","cat","parrot","pigeon","hummingbird","butterfly"]);   /* the small birds and the butterflies of the critters, each drawn as its card draws it (mq-v297) */   /* parrot: every parrot of the critters with a coat, the macaw (mq-v297; the owner's confirmed goals of 2026-11-23 on the parrot) */   /* cat: every cat of the critters (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
-const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog"),CATBODYON=bodyTakes("cat");
+const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog"),CATBODYON=bodyTakes("cat"),LOROBODYON=bodyTakes("parrot");
+/* the critter kind each of these body words names (the switch words are the personality table's, mq-v297) */
+const BIRDBODY=Object.freeze({pigeon:"pigeon",colibri:"hummingbird",butterfly:"butterfly"});
 /* ON WHICH SCREENS THE BODIES STAND (mq-v277). BODYSCREEN is a world's own number: the shorter side of the screen, in CSS
    pixels, below which every body (the person you steer, the people PEOPLETAKE names, a dog) stays its card, so a phone draws
    only cards while a laptop draws bodies. Read every frame, so turning a tablet or resizing a window moves between the two. A
@@ -1436,12 +1438,14 @@ function drawIso(){
     drawEmote(n,bx,by);}));
   if(world===AW("dog"))bill(DOG.fx,DOG.fy,(bx,by)=>drawDog(ctx,bx,by));
   if(world===AW("cat"))bill(CAT.fx,CAT.fy,(bx,by)=>drawCat(ctx,bx,by));
-  if(world===AW("pig"))bill(PIG.fx,PIG.fy,(bx,by)=>drawPigeon(ctx,bx,by));
-  if(world===AW("loro"))bill(LORO.x,LORO.y,(bx,by)=>drawLoro(ctx,bx,by));
+  if(world===AW("pig"))bill(PIG.fx,PIG.fy,(bx,by)=>drawPigeon(ctx,PIG,bx,by));
+  if(world===AW("loro"))bill(LORO.x,LORO.y,(bx,by)=>drawLoro(ctx,LORO,bx,by));
   CRIT.forEach(cr=>{if(cr.world!==world)return;
     bill(cr.fx,cr.fy,(bx,by)=>{
       if(cr.kind==="butterfly")drawButterfly(ctx,cr,bx,by);
       else if(cr.kind==="colibri")drawColibri(ctx,cr,bx,by);
+      else if(cr.kind==="pigeon")drawPigeon(ctx,cr,bx,by);
+      else if(cr.kind==="loro")drawLoro(ctx,cr,bx,by);
       else if(cr.kind==="gato")drawGato(ctx,cr,bx,by);
       else if(cr.kind==="beagle")drawBeagle(ctx,cr,bx,by);
       else if(cr.kind==="lab")drawLab(ctx,cr,bx,by);
@@ -2354,7 +2358,7 @@ function troBlocked(wid){const L=troLine(wid);if(!L)return [];const w=WORLDS[L.w
 function troAhead(L){const sp=troSpan(L),nose=TRO.x+(TRO.dir>0?sp:0),near=v=>{const d=(v-nose)*TRO.dir;return d>=-sp&&d<=TRO_LOOK;};
   if(world===L.world&&Math.round(py)===L.row&&near(px))return true;
   const w=WORLDS[L.world];if(w&&w.npcs.some(n=>n.y===L.row&&near(n.x)))return true;
-  if((typeof CRIT!=="undefined"?CRIT:[]).some(c=>c.world===L.world&&Math.round(c.y)===L.row&&near(c.x)))return true;
+  if((typeof CRIT!=="undefined"?CRIT:[]).some(c=>c.world===L.world&&!(c.kind==="pigeon"&&c.lift)&&Math.round(c.y)===L.row&&near(c.x)))return true;   /* a pigeon in the air is off the rails, as PIG is (mq-v297) */
   /* ...and the animals the engine moves through their own globals rather than through CRITTERS.
      Braking for the hummingbird and running over the pigeon is not a policy,
      it is a blind spot. Meridian did exactly that, by species, by name — the colibri is declared in
@@ -3418,12 +3422,14 @@ function drawFront(){
       ctx.textAlign="start";});});
   if(world===AW("dog"))act(DOG.fx,DOG.fy,(sx,sy)=>drawDog(ctx,sx,sy));
   if(world===AW("cat"))act(CAT.fx,CAT.fy,(sx,sy)=>drawCat(ctx,sx,sy));
-  if(world===AW("pig"))act(PIG.fx,PIG.fy,(sx,sy)=>drawPigeon(ctx,sx,sy));
-  if(world===AW("loro"))act(LORO.x,LORO.y,(sx,sy)=>drawLoro(ctx,sx,sy));
+  if(world===AW("pig"))act(PIG.fx,PIG.fy,(sx,sy)=>drawPigeon(ctx,PIG,sx,sy));
+  if(world===AW("loro"))act(LORO.x,LORO.y,(sx,sy)=>drawLoro(ctx,LORO,sx,sy));
   CRIT.forEach(cr=>{if(cr.world!==world)return;
     act(cr.fx,cr.fy,(sx,sy)=>{
       if(cr.kind==="butterfly")drawButterfly(ctx,cr,sx,sy);
       else if(cr.kind==="colibri")drawColibri(ctx,cr,sx,sy);
+      else if(cr.kind==="pigeon")drawPigeon(ctx,cr,sx,sy);
+      else if(cr.kind==="loro")drawLoro(ctx,cr,sx,sy);
       else if(cr.kind==="gato")drawGato(ctx,cr,sx,sy);
       else if(cr.kind==="beagle")drawBeagle(ctx,cr,sx,sy);
     else if(cr.kind==="lab")drawLab(ctx,cr,sx,sy);
@@ -3518,14 +3524,16 @@ function draw(){
   });
   if(world===AW("dog"))drawDog(ctx,DOG.fx*TS-camX,DOG.fy*TS-camY);
   if(world===AW("cat"))drawCat(ctx,CAT.fx*TS-camX,CAT.fy*TS-camY);
-  if(world===AW("pig"))drawPigeon(ctx,PIG.fx*TS-camX,PIG.fy*TS-camY);
-  if(world===AW("loro"))drawLoro(ctx,LORO.x*TS-camX,LORO.y*TS-camY);
+  if(world===AW("pig"))drawPigeon(ctx,PIG,PIG.fx*TS-camX,PIG.fy*TS-camY);
+  if(world===AW("loro"))drawLoro(ctx,LORO,LORO.x*TS-camX,LORO.y*TS-camY);
   CRIT.forEach(cr=>{
     if(cr.world!==world)return;
     const sx=cr.fx*TS-camX,sy=cr.fy*TS-camY;
     if(sx<-TS||sy<-TS||sx>VW||sy>VH)return;
     if(cr.kind==="butterfly")drawButterfly(ctx,cr,sx,sy);
     else if(cr.kind==="colibri")drawColibri(ctx,cr,sx,sy);
+    else if(cr.kind==="pigeon")drawPigeon(ctx,cr,sx,sy);
+    else if(cr.kind==="loro")drawLoro(ctx,cr,sx,sy);
     else if(cr.kind==="gato")drawGato(ctx,cr,sx,sy);
     else if(cr.kind==="beagle")drawBeagle(ctx,cr,sx,sy);
     else if(cr.kind==="lab")drawLab(ctx,cr,sx,sy);
@@ -3731,7 +3739,9 @@ function drawCat(g,sx,sy){
 }
 /* ---------- Paloma the pigeon (street) & Lorenzo the parrot (perched on the fence) ---------- */
 const PIG=aniXY("pig",{x:4,y:1,fx:4,fy:1,moving:false,mt:0,dx:0,dy:0,face:1,next:0,peck:false});
-function pigFree(x,y){const w=WORLDS[AW("pig")];if(!w)return false;return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")&&!(world===AW("pig")&&x===px&&y===py)&&!troDanger(AW("pig"),x,y)&&gearStep(AW("pig"),PIG.x,PIG.y,x,y,"any");}
+/* THE PIGEON'S WORLD: the engine's own (AW "pig") for PIG, her record's for a pigeon of the program (mq-v297) */
+const pigWorld=P=>P===PIG?AW("pig"):P.world;
+function pigFree(P,x,y){const wo=pigWorld(P),w=WORLDS[wo];if(!w)return false;return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")&&!(world===wo&&x===px&&y===py)&&!troDanger(wo,x,y)&&gearStep(wo,P.x,P.y,x,y,"any")&&(P===PIG||Math.abs(x-P.home[0])+Math.abs(y-P.home[1])<=critReach(P));}
 /* PALOMA GETS OUT OF THE WAY (the owner asked that Paloma not be run over,
    and be smart enough to hop away). A bird, not a rule: she hears it coming three tiles out and lifts off the
    rail — 560 ms, a sine arc about two thirds of a tile high, drifting a little downstream, landing
@@ -3744,11 +3754,11 @@ function pigFree(x,y){const w=WORLDS[AW("pig")];if(!w)return false;return !(x<0|
    is deliberately SMALL. A hop, not a flight across the street. And the tram still brakes if she is
    somehow still there: the lift is what means it rarely has to, never what excuses it. */
 const PIGLIFT=560;
-function pigFlee(now){
-  if(PIG.lift)return;
-  const L=(typeof troLine==="function")?troLine(AW("pig")):null;
-  if(!L||TRO.state==="away"||Math.round(PIG.y)!==L.row)return;  /* a car on the line is a car on the line, whatever it is doing */
-  const sp=troSpan(L),nose=TRO.x+(TRO.dir>0?sp:0),d=(PIG.x-nose)*TRO.dir;
+function pigFlee(P,now){
+  if(P.lift)return;
+  const L=(typeof troLine==="function")?troLine(pigWorld(P)):null;
+  if(!L||TRO.state==="away"||Math.round(P.y)!==L.row)return;  /* a car on the line is a car on the line, whatever it is doing */
+  const sp=troSpan(L),nose=TRO.x+(TRO.dir>0?sp:0),d=(P.x-nose)*TRO.dir;
   /* She must be GOING before the brake window, or the tram stops for her and she never learns why.
      Measured before this line existed: the brake fires at d<=2.6 and the lift triggered at d<=3.2,
      which is 0.6 tiles of lead — about 176 ms at the shipped speed — so in practice the tram entered
@@ -3762,39 +3772,46 @@ function pigFlee(now){
      reached. She is still airborne when the tram first eases — deliberately. A car that checks, sees
      her go, and picks its power back up is what a driver actually does; a bird that leaves six tiles
      early reads as psychic. */
-  const up=(PIG.y>0&&!SOLID.has((WORLDS[AW("pig")].grid[PIG.y-1]||"")[PIG.x]));
-  PIG.lift={t:0,fromY:PIG.y,toY:up?PIG.y-1:PIG.y+1,fromX:PIG.x,drift:TRO.dir*0.35};
-  PIG.moving=false;PIG.peck=false;PIG.next=now+PIGLIFT+400;}
-function pigUpdate(dt,now){
-  if(PIG.lift){const k=(PIG.lift.t+=dt)/PIGLIFT;
-    if(k>=1){PIG.y=PIG.lift.toY;PIG.x=Math.max(0,Math.round(PIG.lift.fromX+PIG.lift.drift));
-      PIG.fx=PIG.x;PIG.fy=PIG.y;PIG.hop=0;PIG.lift=null;return;}
-    PIG.hop=hopArc(k,20);                                 /* the height is the tell (the dog's hop over a bar is this arc too) */
-    PIG.fy=PIG.lift.fromY+(PIG.lift.toY-PIG.lift.fromY)*k;
-    PIG.fx=PIG.lift.fromX+PIG.lift.drift*k;return;}
-  pigFlee(now);
-  if(PIG.moving){PIG.mt+=dt/180;
-    if(PIG.mt>=1){PIG.moving=false;PIG.fx=PIG.x;PIG.fy=PIG.y;}
-    else{PIG.fx=PIG.x-PIG.dx*(1-PIG.mt);PIG.fy=PIG.y-PIG.dy*(1-PIG.mt);}return;}
-  if(world!==AW("pig")){PIG.next=now+1000;return;}
-  if(now<PIG.next)return;
+  /* she lands only where a bird can stand: walled in on both sides of the rails she does not lift into a wall, she stays, and
+     the tram brakes for her, as the owner ruled for anything alive on the line (mq-v297: a cornered pigeon used to land in the
+     wall and the tram drove on; found when the street's first critter became the pigeon) */
+  const W0=WORLDS[pigWorld(P)],land=y=>y>=0&&y<W0.H&&!SOLID.has((W0.grid[y]||"")[P.x])&&(W0.grid[y]||"")[P.x]!=="N";
+  const up=land(P.y-1);if(!up&&!land(P.y+1))return;
+  P.lift={t:0,fromY:P.y,toY:up?P.y-1:P.y+1,fromX:P.x,drift:TRO.dir*0.35};
+  P.moving=false;P.peck=false;P.next=now+PIGLIFT+400;}
+function pigUpdate(dt,now){pigStep(PIG,dt,now);}
+/* every pigeon, the engine's own and each of the program, by the one rule: her lift off the rails, her steps, her pecks, the
+   rolls drawn in the order they always were (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds) */
+function pigStep(P,dt,now){
+  if(P.lift){const k=(P.lift.t+=dt)/PIGLIFT;
+    if(k>=1){P.y=P.lift.toY;P.x=Math.max(0,Math.round(P.lift.fromX+P.lift.drift));
+      P.fx=P.x;P.fy=P.y;P.hop=0;P.lift=null;return;}
+    P.hop=hopArc(k,20);                                 /* the height is the tell (the dog's hop over a bar is this arc too) */
+    P.fy=P.lift.fromY+(P.lift.toY-P.lift.fromY)*k;
+    P.fx=P.lift.fromX+P.lift.drift*k;return;}
+  pigFlee(P,now);
+  if(P.moving){P.mt+=dt/180;
+    if(P.mt>=1){P.moving=false;P.fx=P.x;P.fy=P.y;}
+    else{P.fx=P.x-P.dx*(1-P.mt);P.fy=P.y-P.dy*(1-P.mt);}return;}
+  if(world!==pigWorld(P)){P.next=now+1000;return;}
+  if(now<P.next)return;
   const r=Math.random();
-  if(r<0.5){PIG.peck=r<0.3;PIG.next=now+500+Math.random()*1400;return;}
-  PIG.peck=false;
-  const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>pigFree(PIG.x+d[0],PIG.y+d[1]));
-  if(!dirs.length){PIG.next=now+900;return;}
+  if(r<0.5){P.peck=r<0.3;P.next=now+500+Math.random()*1400;return;}
+  P.peck=false;
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>pigFree(P,P.x+d[0],P.y+d[1]));
+  if(!dirs.length){P.next=now+900;return;}
   const d=dirs[Math.floor(Math.random()*dirs.length)];
-  PIG.dx=d[0];PIG.dy=d[1];if(d[0])PIG.face=d[0];
-  PIG.x+=d[0];PIG.y+=d[1];PIG.moving=true;PIG.mt=0;
-  PIG.next=now+300+Math.random()*1200;
-  if(Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1&&Math.random()<0.25&&wDate()-lastBump>3000){
+  P.dx=d[0];P.dy=d[1];if(d[0])P.face=d[0];
+  P.x+=d[0];P.y+=d[1];P.moving=true;P.mt=0;
+  P.next=now+300+Math.random()*1200;
+  if(Math.abs(P.x-px)+Math.abs(P.y-py)===1&&Math.random()<0.25&&wDate()-lastBump>3000){
     lastBump=wDate();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
 }
-function drawPigeon(g,sx,sy){
-  const R=bodyRide("pigeon",PIG);
+function drawPigeon(g,P,sx,sy){
+  const R=bodyRide("pigeon",P);
   sy-=R.lift;                                             /* mid-lift she is off the ground */
   const cx=sx+16,pk=R.nod;
-  g.save();g.translate(cx,0);g.scale(PIG.face,1);g.translate(-cx,0);
+  g.save();g.translate(cx,0);g.scale(P.face||1,1);g.translate(-cx,0);
   g.fillStyle="rgba(0,0,0,.12)";g.beginPath();g.ellipse(cx,sy+27,4.5,1.8,0,0,7);g.fill();
   g.fillStyle="#E0662B";g.fillRect(cx-1.5,sy+24.5,1,2.5);g.fillRect(cx+1,sy+24.5,1,2.5);
   g.fillStyle="#8B8F98";g.beginPath();g.ellipse(cx,sy+21.5,4.6,3.4,0,0,7);g.fill();
@@ -3802,17 +3819,76 @@ function drawPigeon(g,sx,sy){
   g.fillStyle="#5E8F6E";g.beginPath();g.arc(cx+3.6,sy+18.6+pk,2.2,0,7);g.fill();
   g.fillStyle="#E0B45C";g.fillRect(cx+5.4,sy+18.2+pk,1.8,0.9);
   g.fillStyle="#26202B";g.fillRect(cx+3.9,sy+17.8+pk,0.9,0.9);
-  g.restore();
+  g.restore();birdBubble(g,P,sx,sy+10);
 }
 const LORO=aniXY("loro",{x:17,y:5,next:0});
-function loroTick(now){
-  if(world!==AW("loro"))return;
-  if(now<LORO.next)return;LORO.next=now+2000;
-  if(Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2&&Math.random()<0.45&&wDate()-lastBump>2600){
+function loroTick(now){loroStep(LORO,now);}
+/* every parrot, the engine's own and each of the program: on his perch, a line now and then when you stand near (mq-v297) */
+function loroStep(L,now){
+  if(world!==(L===LORO?AW("loro"):L.world))return;
+  if(now<L.next)return;L.next=now+2000;
+  if(Math.abs(L.x-px)+Math.abs(L.y-py)<=2&&Math.random()<0.45&&wDate()-lastBump>2600){
     lastBump=wDate();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
 }
-function drawLoro(g,sx,sy){
-  const bob=bodyRide("loro",LORO).nod;
+/* ---- THE PARROT AS A REAL PARROT (mq-v297; the owner's confirmed goals of 2026-11-23 on the parrot) ----
+   A parrot whose record names a coat (coat) is drawn as a macaw, the shape the owner shaped in the session from his own
+   pictures: one smooth form leaning on his perch, the wing in feathers, a tail as long as the rest of him, a large hooked
+   bill under a full forehead, the bare face round his eye. His card and his body (engine/engine3d.js) are drawn from these
+   same measures, so the one is the other seen flat. A parrot with no coat is drawn as the engine's parrot always was.
+   THE MEASURES are in squares, a person 0.92 tall, his feet on his perch at 0 and his body leaning on its spine: each row
+   of LOROFORM.body is [height up the spine, forward, half-width, half-depth]; each of .wing [height, forward, half-depth].
+   ROOM TO GROW (his word): LOROBUILD_DEF is how big he is (size), how full his feathers (fluff), and how far his folded
+   wings wrap round his body (wrap), each a setting a record may give its own (build); nothing is rebuilt to change them */
+const LOROFORM=Object.freeze({
+  body:Object.freeze([[0.198,0.010,0,0],[0.190,0.010,0.0125,0.0135],[0.172,0.007,0.0158,0.0176],[0.156,0.006,0.0168,0.0196],[0.136,0.007,0.0185,0.0225],[0.112,0.009,0.0210,0.0270],
+    [0.086,0.008,0.0205,0.0270],[0.060,0.005,0.0185,0.0240],[0.038,0.002,0.0155,0.0180],[0.018,-0.002,0.0115,0.0115],[0.004,-0.005,0.0075,0.0065],[-0.004,-0.006,0,0]].map(Object.freeze)),
+  wing:Object.freeze([[0.154,-0.001,0.0001],[0.147,-0.002,0.0120],[0.124,-0.004,0.0195],[0.100,-0.006,0.0218],[0.080,-0.008,0.0212],[0.062,-0.010,0.0192],[0.054,-0.011,0.0188],[0.020,-0.015,0.0140],[-0.024,-0.019,0.0082],[-0.060,-0.022,0.0032],[-0.070,-0.023,0.0001]].map(Object.freeze)),
+  lean:0.5,   /* how far he leans forward on his perch, radians from upright */
+  scale:1.3});   /* the measures above make a parrot of a person's 0.38; at 1.3 he is about half a person long with his tail, a macaw's size */
+const LOROBUILD_DEF=Object.freeze({size:1,fluff:0.2,wrap:0});
+function loroBuildOf(L){const b=L&&L.build&&typeof L.build==="object"?L.build:{},o={};
+  Object.keys(LOROBUILD_DEF).forEach(k=>{const v=+b[k];o[k]=isFinite(v)?Math.max(k==="size"?0.5:0,Math.min(k==="size"?2:1,v)):LOROBUILD_DEF[k];});return o;}
+/* his feathers, fluffed: fuller from neck to vent, the breast most (fluff 0 is the bare measures) */
+function loroBodyRows(fl){return LOROFORM.body.map(([y,z,a,b])=>{const f=a?1+fl*Math.sin(Math.PI*Math.min(1,Math.max(0,(0.196-y)/0.20))):1;return[y,z+(f-1)*0.012,a*f,b*f];});}
+/* THE COATS: a coat is the colours of one kind of parrot, read off the owner's pictures; every coat is worn on the one shape */
+const LOROCOAT=Object.freeze({
+  scarlet:Object.freeze({body:"#C4241C",shoulder:"#C4241C",band:"#E8C21E",edge:"#3F8A3C",prim:"#2552A8",tail:"#B8201A",under:"#2552A8",head:"#CC2A1C",face:"#EDE7E1",iris:"#E6DFB4",beak:"#E2D0AA",beakDark:"#2A2626",low:"#2A2626",feet:"#4A4644"}),
+  amazon:Object.freeze({body:"#5E9E34",front:"#6FAE3C",shoulder:"#4C8A2B",band:"#4C8A2B",prim:"#2F6E9A",tail:"#5E9E34",under:"#C9C63A",head:"#5E9E34",crown:"#E6CF3A",face:"#5E9E34",ring:"#F2EFE6",iris:"#D2701E",beak:"#3A3436",beakDark:"#2E2A2C",low:"#2E2A2C",feet:"#8E8A80"}),
+  bluegold:Object.freeze({body:"#2B7FC0",front:"#F2B51E",shoulder:"#2B7FC0",band:"#2472B0",prim:"#1F4F86",tail:"#2B7FC0",under:"#F2B51E",head:"#2B7FC0",crown:"#5E9E34",face:"#F2EEE8",iris:"#E8D25A",beak:"#2A2626",beakDark:"#2A2626",low:"#2A2626",feet:"#4A4646",throat:"#1E1C1E"}),
+  grey:Object.freeze({body:"#8C9096",front:"#9DA1A6",shoulder:"#7C8086",band:"#7C8086",prim:"#55595F",tail:"#C0392B",under:"#C0392B",head:"#8C9096",face:"#D9DADC",iris:"#EDE7D2",beak:"#262326",beakDark:"#262326",low:"#262326",feet:"#55595F"})});
+const loroCoatOf=L=>L&&typeof L.coat==="string"&&Object.prototype.hasOwnProperty.call(LOROCOAT,L.coat)?LOROCOAT[L.coat]:null;
+/* a parrot not yet met, turned away (where the world gives parrots a personality): he faces from you and preens */
+function loroAway(L,nw){return !!L&&L.kind==="loro"&&birdAway(L,nw);}
+/* HIS CARD: the side of him, leaning on his perch, his bill toward his facing (face, -1 or 1); on a rod (perch "rod") the
+   rod is drawn end on, its plate on the wall behind */
+function loroCard(g,L,sx,sy,pre,bob){const base=g.getTransform(),C=loroCoatOf(L),B=loroBuildOf(L),K=34.8*LOROFORM.scale*B.size,cx=sx+16,ry=sy+22,face=L.face<0?-1:1;
+  const X=z=>(z-0.010)*K,Y=y=>-(y-0.034)*K,poly=(c,pts)=>{g.fillStyle=c;g.beginPath();pts.forEach(([z,y],i)=>i?g.lineTo(X(z),Y(y)):g.moveTo(X(z),Y(y)));g.closePath();g.fill();};
+  if(L.perch==="rod"){g.fillStyle="#3E434B";g.fillRect(cx-2,ry-1.2,4,4);g.fillStyle="#6A7079";g.beginPath();g.arc(cx,ry+0.8,1.25,0,7);g.fill();}
+  g.save();g.translate(cx,ry-0.3);g.scale(face,1);g.rotate(LOROFORM.lean);
+  poly(C.under,[[-0.0135,0.008],[-0.0070,0.008],[-0.0205,-0.104],[-0.0235,-0.104]]);
+  poly(C.tail,[[-0.0110,0.012],[-0.0030,0.012],[-0.0212,-0.164],[-0.0238,-0.164]]);
+  const BODY=loroBodyRows(B.fluff);
+  poly(C.body,BODY.map(([y,z,,b])=>[z+b,y]).concat(BODY.slice().reverse().map(([y,z,,b])=>[z-b,y])));
+  if(C.front)poly(C.front,BODY.slice(1,10).map(([y,z,,b])=>[z+b,y]).concat(BODY.slice(1,10).reverse().map(([y,z,,b])=>[z+b*0.35,y])));
+  g.fillStyle=C.feet;g.fillRect(X(0.004),Y(0.036),1.0,1.3);g.fillRect(X(0.016),Y(0.036),1.0,1.3);
+  const W=LOROFORM.wing,band=(c,i0,i1)=>{const R=W.slice(i0,i1+1);poly(c,R.map(([y,z,b])=>[z+b,y]).concat(R.slice().reverse().map(([y,z,b])=>[z-b,y])));};
+  g.save();if(pre>0){g.translate(X(-0.004),Y(0.15));g.rotate(-0.16*Math.min(1,pre*1.6));g.translate(-X(-0.004),-Y(0.15));}   /* preening, the wing lifted off his back */
+  band(C.shoulder,0,3);band(C.band,3,5);band(C.edge||C.band,5,6);band(C.prim,6,10);g.restore();
+  const k=Math.min(1,pre*1.6),dip=pre>0.6?(pre-0.6)*2.5:0;   /* preening, the head right round over his back, the bill down in the wing */
+  const b0=bob||0;g.translate(X(0.011-0.012*k)+b0*Math.sin(LOROFORM.lean),Y(0.186-0.008*k)+b0*Math.cos(LOROFORM.lean));   /* his head bobs its whole bob straight up and down on the card, as the engine's parrot's always did, whatever his lean */g.scale(k>0.5?-1:1,1);g.rotate(k>0.5?-(0.75+0.25*dip):-0.22);g.scale(1.07,1.07);
+  const hx=z=>z*K,hy=y=>-y*K,ell=(c,x,y,rx,ry2,rot)=>{g.fillStyle=c;g.beginPath();g.ellipse(hx(x),hy(y),rx*K,ry2*K,rot||0,0,7);g.fill();};
+  ell(C.head,0.001,0.001,0.0216,0.0178);ell(C.low,0.0170,-0.0165,0.0080,0.0062);
+  g.fillStyle=C.beak;g.beginPath();g.moveTo(hx(0.0080),hy(0.0178));g.quadraticCurveTo(hx(0.0545),hy(0.0140),hx(0.0262),hy(-0.0270));g.quadraticCurveTo(hx(0.0290),hy(-0.0070),hx(0.0165),hy(-0.0030));g.closePath();g.fill();
+  ell(C.head,0.0135,0.0100,0.0140,0.0108,0.35);   /* the forehead, over the bill's root */
+  if(C.crown)ell(C.crown,0.012,0.015,0.011,0.0055,0.3);
+  ell(C.face,0.0112,-0.0036,0.0105,0.0118);ell(C.face,0.0122,0.0062,0.0086,0.0106);
+  /* his eye: the painters' one ink, a square pixel upright on the card wherever his head is turned, as every card's eye is */
+  {const p=base.inverse().multiply(g.getTransform()).transformPoint(new DOMPoint(hx(0.0128),hy(0.0118)));
+   g.setTransform(base);g.fillStyle="#26202B";g.fillRect(Math.round(p.x*2)/2-0.5,Math.round(p.y*2)/2-0.5,1,1);}
+  g.restore();}
+function drawLoro(g,L,sx,sy){
+  if(loroCoatOf(L)){const R=bodyRide("loro",L);loroCard(g,L,sx,sy,R.preen||0,R.nod);birdBubble(g,L,sx,sy+4);return;}   /* a parrot with a coat: the macaw (mq-v297) */
+  const bob=bodyRide("loro",L).nod;
   g.fillStyle="#2F7D3E";g.beginPath();g.ellipse(sx+16,sy+10+bob*0.4,4,5.2,0,0,7);g.fill();
   g.fillStyle="#2C5FA8";g.fillRect(sx+14.6,sy+14,2.8,9);
   g.fillStyle="#C0392B";g.beginPath();g.arc(sx+16,sy+5.2+bob,2.8,0,7);g.fill();
@@ -3824,7 +3900,8 @@ function drawLoro(g,sx,sy){
    The content pack declares spawns in CRITTERS [{kind,world,x,y,c}]; the engine owns
    the kinds. Critters wander a small radius around home, never block the hero, and
    the street cat is pettable via the same button as the named animals. */
-const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:c.sit===true,holdT:0,stayT:0,home:[c.x,c.y],   /* sit: a record may start sitting, as the kitchen cat always did (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
+const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:c.face===-1?-1:1,   /* a record may face left (the parrot toward the office's door, mq-v297); every other starts facing right, as before */
+  next:0,sit:c.sit===true,holdT:0,stayT:0,home:[c.x,c.y],   /* sit: a record may start sitting, as the kitchen cat always did (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
   ...(c.leashOnly===true?{den:[c.world,c.x,c.y]}:{})}));   /* a dog who leaves his room only on the leash keeps where his room is (den: dogDen) (mq-v295) */
 const CRIT_REACH=4; /* how many steps from its own spot a critter wanders on its own; critFree refuses a step any further */
 /* ...unless its record says otherwise: reach "room" is the whole of its world, with no limit from its spot (the office dog
@@ -3866,6 +3943,10 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   /* the stuck clock (#268): when he was last anything but free and standing — a step, a job, told to hold,
      following you, you not in the room. dogUnstick reads it; a clock that ran backwards starts again. */
   if(cr.moving||cr.task||cr.follow||cr.holdT>now||cr.stayT>now||world!==cr.world||cr.stepT===undefined||cr.stepT>now)cr.stepT=now;
+  /* THE BIRDS OF THE PROGRAM (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds): a pigeon lives by the pigeon's
+     rule (her lift off the rails is her road sense), a parrot by the parrot's, exactly as the engine's own two always did */
+  if(cr.kind==="pigeon"){pigStep(cr,dt,now);return;}
+  if(cr.kind==="loro"){loroStep(cr,now);return;}
   if(!cr.moving&&critShy(cr,now))return;   /* the road first: a critter does not wait its turn to live */
   if(cr.moving){cr.mt+=dt/(isCat(cr)?520:cr.kind==="butterfly"?300:160*(cr.task&&cr.task.type==="run"&&cr.task.pace>1?cr.task.pace:1));   /* on a run, at his own pace (paceOf): 1 wherever no pace is taken */
     if(cr.mt>=1){cr.moving=false;cr.fx=cr.x;cr.fy=cr.y;}
@@ -4570,10 +4651,13 @@ function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.no
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
   if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;if(D.curl){R.curl=true;R.curlV=D.ver;}}
-  else if(a&&kind==="pigeon"){R.lift=a.hop||0;R.nod=a.peck?K.peck:0;}
+  else if(a&&kind==="pigeon"){R.lift=a.hop||0;R.nod=a.peck||(birdAway(a)&&Math.sin(Date.now()/230)>0.2)?K.peck:0;}   /* not yet met, she pecks on her own (mq-v297) */
   else if(kind==="colibri")R.lift=-Math.sin(Date.now()/160)*1.6;                        /* the hover */
   else if(a&&kind==="butterfly")R.lift=-Math.sin(Date.now()/300+a.home[0])*2.5;         /* the bob */
-  else if(kind==="loro")R.nod=Math.sin(Date.now()/280)*1.1;                             /* the head bobs on the perch; the tail does not */
+  else if(kind==="loro"){R.nod=Math.sin(Date.now()/280)*1.1;                            /* the head bobs on the perch; the tail does not */
+    /* PREENING (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds): while a parrot you have not met is turned away, he
+       preens, his head right round over his back and his bill working in his wing (0 to 1, no dice: the clock alone) */
+    if(a&&loroAway(a,wNow()))R.preen=0.62+0.38*Math.abs(Math.sin(Date.now()/520));}
   R.body=R.drop-R.lift;R.head=R.drop+R.nod-R.lift;return R;}
 /* CURLED UP ASLEEP (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). One more way a dog lies
    down: curled round, his nose to his tail, asleep. It shows in some of his naps (the free whim's nap) and some of the lazy
@@ -4953,6 +5037,21 @@ $("ball").addEventListener("click",()=>{
   BALL={world,sx:px,sy:py,fx:px,fy:py,tx,ty,t:0,phase:"fly",dog:petCrit};
   $("ball").hidden=true;
 });
+/* A BIRD NOT YET MET (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds): where the world gives a bird a personality, a
+   bird you have not met is busy with something of its own, and a picture bubble over it says what it is thinking of: crumbs for
+   the pigeon, a cracker for the parrot, a flower for the hummingbird and the butterflies. No words: a line comes only when you
+   press its button and it does not do what you asked. Once met it turns, and the bubble goes. The engine's own PIG and LORO are
+   never asked: they have no personality */
+const BIRDK=new Set(["pigeon","loro","colibri","butterfly"]);
+function birdAway(cr,nw){return !!cr&&cr!==PIG&&cr!==LORO&&BIRDK.has(cr.kind)&&typeof personaOf==="function"&&!!personaOf(cr)&&(!cr.metT||(nw===undefined?wNow():nw)<(cr.turnT||0));}
+function birdBubble(g,cr,sx,sy,top){if(!birdAway(cr))return;const bx=sx+22,by=(top===undefined?sy+2:top)-2;
+  g.save();g.fillStyle="rgba(255,255,255,.92)";g.strokeStyle="rgba(38,32,43,.55)";g.lineWidth=0.6;
+  g.beginPath();g.ellipse(bx,by,5.2,4.2,0,0,7);g.fill();g.stroke();
+  g.beginPath();g.arc(bx-4.4,by+4.6,1.1,0,7);g.fill();g.stroke();g.beginPath();g.arc(bx-6.2,by+6.4,0.7,0,7);g.fill();
+  if(cr.kind==="pigeon"){g.fillStyle="#C8A26A";[[-2,0.6],[0.2,-1],[1.9,1],[-0.4,1.6]].forEach(([x,y])=>{g.fillRect(bx+x-0.6,by+y-0.6,1.2,1.2);});}   /* crumbs */
+  else if(cr.kind==="loro"){g.fillStyle="#E0B45C";g.fillRect(bx-2.6,by-2.2,5.2,4.4);g.fillStyle="#A87C34";[[-1.3,-1],[1.3,-1],[0,0.3],[-1.3,1.4],[1.3,1.4]].forEach(([x,y])=>{g.fillRect(bx+x-0.35,by+y-0.35,0.7,0.7);});}   /* a cracker */
+  else{g.fillStyle="#E87FB2";for(let i=0;i<5;i++){const a=i/5*Math.PI*2;g.beginPath();g.arc(bx+Math.cos(a)*1.7,by+Math.sin(a)*1.7,1.2,0,7);g.fill();}g.fillStyle="#F2C94C";g.beginPath();g.arc(bx,by,0.9,0,7);g.fill();}   /* a flower */
+  g.restore();}
 function drawButterfly(g,cr,sx,sy){
   const t2=Date.now(),fl=Math.abs(Math.sin(t2/90)),bobY=bodyRide("butterfly",cr).body;
   const cx=sx+16,cy=sy+13+bobY;
@@ -4965,7 +5064,7 @@ function drawButterfly(g,cr,sx,sy){
   g.beginPath();g.ellipse(cx+2.2,cy+1.6,2.4*fl+0.5,2,.4,0,7);g.fill();
   g.globalAlpha=1;
   g.fillStyle="#26202B";g.fillRect(cx-0.7,cy-3,1.4,6.5);
-  g.restore();
+  g.restore();birdBubble(g,cr,sx,cy-12);
 }
 function drawColibri(g,cr,sx,sy){
   const t2=Date.now(),hov=bodyRide("colibri",cr).body,wg=Math.abs(Math.sin(t2/55));
@@ -4979,7 +5078,7 @@ function drawColibri(g,cr,sx,sy){
   g.fillStyle="#C4586B";g.beginPath();g.arc(cx+3,cy-1.4,1.7,0,7);g.fill();
   g.fillStyle="#26202B";g.fillRect(cx+4.4,cy-1.8,4.4,0.8); /* the beak */
   g.fillRect(cx+3.2,cy-2.1,0.8,0.8);
-  g.restore();
+  g.restore();birdBubble(g,cr,sx,cy-10);
 }
 /* CURLED UP ON HIS CARD (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). One shape for the three
    breeds, drawn here; each breed's sizes are a row of CURLCARD, card px from the middle of his cell as he faces right, and
@@ -5712,7 +5811,8 @@ const ALEB_KIND={
   gato:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
     g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}},
   pigeon:{eye:[4.35,18.25,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;g.beginPath();g.moveTo(cx-3.5,sb+21.5);g.lineTo(cx-1.5,sb+20);g.lineTo(cx+0.5,sb+21.5);g.stroke();}}, /* one chevron */
-  loro:{tint:0.75,eye:[0.6,4.9,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sb+yy+1);g.lineTo(cx,sb+yy);g.lineTo(cx+1.3,sb+yy+1);g.stroke();});}},
+  loro:{tint:0.75,eye:an=>loroCoatOf(an)?[4.0,15.3,2.0]:[0.6,4.9,2.2],   /* the macaw's eye is where his card draws it (mq-v297) */
+    marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sb+yy+1);g.lineTo(cx,sb+yy);g.lineTo(cx+1.3,sb+yy+1);g.stroke();});}},
   butterfly:{tint:0.95,marks:(g,l,cx,sb)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-2.6,sb+11.5,1,0,7);g.arc(cx+2.6,sb+11.5,1,0,7);g.fill();}}, /* an eye on each upper wing */
   colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sb)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3.3,sb+12.1,1.1,0,7);g.fill();}} /* the gorget, at the throat: on the head, riding with it, it painted his eye out (mq-v234) */
 };
@@ -5768,7 +5868,7 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
   if(KD.eye){ /* C½: colour round the eyes (the owner suggested colour around the eyes) — two rings, the accent and
        a thinner one in the pattern colour outside it (Pili: two rings is the alebrije look, one is a bruise), centred ON the eye
        and wider than it, so the pupil stays a pupil; inside the silhouette like everything else */
-    let[ex,ey,er]=KD.eye;const ce=R.curl?curlEyeAt(kind,R.curlV):null;if(ce){ex=ce[0];ey=ce[1]-R.head;}   /* curled up, his eye is where his head is laid (mq-v290) */
+    let[ex,ey,er]=typeof KD.eye==="function"?KD.eye(an):KD.eye;   /* a kind whose eye moves with its record (the macaw, mq-v297) */const ce=R.curl?curlEyeAt(kind,R.curlV):null;if(ce){ex=ce[0];ey=ce[1]-R.head;}   /* curled up, his eye is where his head is laid (mq-v290) */
     tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
     tg.lineWidth=1.6;tg.globalAlpha=0.9;tg.strokeStyle=look.accent;tg.beginPath();tg.arc(cx+ex,sh+ey,er,0,7);tg.stroke();
     tg.lineWidth=0.7;tg.globalAlpha=0.6;tg.strokeStyle=look.pat;tg.beginPath();tg.arc(cx+ex,sh+ey,er+1.1,0,7);tg.stroke();tg.restore();}
@@ -5785,7 +5885,7 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
 const wild=(fn,ai,kind,who)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
   const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&(typeof cr.ale==="string"&&ALEB_KIND[cr.ale]?cr.ale:cr.kind)||kind,look=cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
   return wildDraw(g,look,k,tg=>fn(tg,...a),a[ai],a[ai+1],an&&an.face||1,an);};
-drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,0,"pigeon",()=>PIG);drawLoro=wild(drawLoro,0,"loro",()=>LORO);
+drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,1,"pigeon",c=>c);drawLoro=wild(drawLoro,1,"loro",c=>c);
 drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawAussie=wild(drawAussie,1,"aussie",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
 /* A DOG OF THE PROGRAM'S CARD, by his kind, through the painters as they stand now (the alebrije layer's included) (mq-v295) */
 function dogCard(g,cr,sx,sy){const k=cr&&cr.kind;
@@ -7053,6 +7153,17 @@ $("talk").addEventListener("click",()=>{
 {const sb=$("serve");
  if(sb)sb.addEventListener("click",()=>{const who=sb.dataset.svcn;if(who)svcRun(who);});}
 let petTarget=null,petCrit=null;
+/* MEETING AN ANIMAL, THE RULE BUILT ONCE (mq-v297; the owner's confirmed goals of 2026-11-19 on the personalities and of 2026-11-23 on the
+   birds): where the world gives the animal a personality, the paw button meets it, by the dogs' own rule (the treat's handler,
+   mq-v279), so every animal reacts alike. Eager turns at once and does what it always does, with no line; patient turns and
+   waits, with its line; aloof goes on ignoring you for PERSONAWAIT, with its line, then turns. Answers true when the animal did
+   not do what you asked (its line said why), so the caller stops there. With no personality it answers false at once and
+   draws no number */
+function animalMeet(cr){const pe=typeof personaOf==="function"?personaOf(cr):null;if(!pe)return false;
+  const nw=wNow();cr.metT=nw;cr.turnT=nw+(pe==="aloof"?PERSONAWAIT:0);
+  if(pe==="eager")return false;
+  if(pe==="patient"){cr.sit=true;cr.next=nw+3200;}
+  const ln=personaLine(cr,pe);if(ln)toast(ln,2600);return true;}
 function fredCheck(){ /* now the generic animal-interaction check: every creature is reachable and greetable */
   let tgt=null,label="";
   /* a person with a quest beside you wins the buttons — the pigeon wandered next to the
@@ -7068,11 +7179,13 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
     else if(world===AW("loro")&&Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2){tgt="loro";label=T().petLoro;}
     else{ /* every critter is interactive — cats and dogs get petted, fliers get admired */
       const g2=CRIT.find(cr=>cr.world===world&&
-        ((isCat(cr)||isDog(cr))?(!cr.moving&&Math.abs(cr.x-px)+Math.abs(cr.y-py)===1)
+        (cr.kind==="loro"?Math.abs(cr.x-px)+Math.abs(cr.y-py)<=2:   /* a parrot within two squares, as LORO; a pigeon beside you and still, as PIG (mq-v297) */
+         (isCat(cr)||isDog(cr)||cr.kind==="pigeon")?(!cr.moving&&Math.abs(cr.x-px)+Math.abs(cr.y-py)===1)
                                       :Math.abs(cr.x-px)+Math.abs(cr.y-py)<=1));
       if(g2){tgt=g2.kind;petCrit=g2;
         label=isDog(g2)?"🐾 "+(g2.name||"🐶")
              :isCat(g2)?((typeof g2.pet==="string"&&typeof T()[g2.pet]==="string")?T()[g2.pet]:T().petGato)   /* a cat's own button word (pet: the kitchen cat's "petCat") (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
+             :g2.kind==="pigeon"?T().petPig:g2.kind==="loro"?T().petLoro
              :g2.kind==="butterfly"?T().petFly:T().petColi;}}
   }
   petTarget=tgt;$("treat").hidden=!tgt;
@@ -7153,8 +7266,12 @@ $("treat").addEventListener("click",()=>{
       const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}}   /* met: it turns to you (catAway) */
     const L=catLines(g2);
     if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
+  else if(petTarget==="pigeon"||petTarget==="loro"){   /* the birds of the program (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds) */
+    const g2=petCrit;if(g2&&animalMeet(g2))return;
+    if(petTarget==="pigeon"){if(g2){g2.peck=true;g2.next=wNow()+2200;}const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
+    else{const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
-    const g2=petCrit;
+    const g2=petCrit;if(g2&&animalMeet(g2))return;   /* its personality first, where the world gives one (mq-v297) */
     if(g2){g2.sit=true;g2.moving=false;g2.next=wNow()+2600;} /* it pauses for you */
     const L=petTarget==="butterfly"?T().mariposa:T().colibri;
     if(Array.isArray(L)&&L.length)toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
@@ -9859,7 +9976,7 @@ const PERSONACHANCE_DEF=Object.freeze({dog:{eager:60,patient:30,aloof:10},cat:{e
   butterfly:{eager:0,patient:40,aloof:60}});
 function personaChance(k){const w=typeof PERSONACHANCE==="object"&&PERSONACHANCE&&Object.prototype.hasOwnProperty.call(PERSONACHANCE,k)?PERSONACHANCE[k]:PERSONACHANCE_DEF[k];
   return w&&typeof w==="object"?w:null;}
-function personaKind(cr){return !cr?null:DOGK.has(cr.kind)?"dog":cr.kind==="gato"?"cat":cr.kind==="colibri"?"hummingbird":cr.kind==="butterfly"?"butterfly":null;}
+function personaKind(cr){return !cr?null:DOGK.has(cr.kind)?"dog":cr.kind==="gato"?"cat":cr.kind==="colibri"?"hummingbird":cr.kind==="butterfly"?"butterfly":cr.kind==="pigeon"?"pigeon":cr.kind==="loro"?"parrot":null;}   /* the pigeon and the parrot of the program by the table's own words (mq-v297) */
 function personaOn(k){return typeof PERSONATAKE!=="undefined"&&Array.isArray(PERSONATAKE)&&PERSONATAKE.includes(k);}
 /* one draw from the kind's chances; r, a number from 0 to 1, may be handed in so a check can hold it still */
 function personaDraw(k,r){const w=personaChance(k),n=p=>w&&isFinite(+w[p])?Math.max(0,+w[p]):0;let tot=0;PERSONAS.forEach(p=>{tot+=n(p);});
@@ -9870,14 +9987,19 @@ function personaClean(o){const m=Object.create(null);if(o&&typeof o==="object"&&
   Object.keys(o).slice(0,64).forEach(k=>{const v=o[k];if(typeof k==="string"&&k.length<=40&&PERSONAS.includes(v))m[k]=v;});return m;}
 function personaOf(cr){const k=personaKind(cr);if(!k||!personaOn(k))return null;
   if(PERSONAS.includes(cr.persona))return cr.persona;
-  const kept=cr.name&&parkPrefs.persona?parkPrefs.persona[cr.name]:undefined;
+  /* KEPT EVERY VISIT (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds): a named animal by its name, as always; an animal
+     with no name by its kind and the square it lives on, so the parrot on his rod is the same parrot every visit */
+  const key=cr.name||(Array.isArray(cr.home)&&cr.world?k+"@"+cr.world+":"+cr.home[0]+","+cr.home[1]:null);
+  const kept=key&&parkPrefs.persona?parkPrefs.persona[key]:undefined;
   cr.persona=PERSONAS.includes(kept)?kept:personaDraw(k);
-  if(cr.name&&cr.name.length<=40&&kept!==cr.persona){if(!parkPrefs.persona)parkPrefs.persona=Object.create(null);parkPrefs.persona[cr.name]=cr.persona;parkPersist();}
+  if(key&&key.length<=40&&kept!==cr.persona){if(!parkPrefs.persona)parkPrefs.persona=Object.create(null);parkPrefs.persona[key]=cr.persona;parkPersist();}
   return cr.persona;}
 /* a line in its personality's voice, from the world's own words (persona.<kind>.<reaction>, a list), {n} its name; none
    when the world has no words for it, so the reaction still shows and nothing is said in a language the world did not give */
 function personaLine(cr,pe){const W=T().persona,k=personaKind(cr),L=W&&W[k]&&Array.isArray(W[k][pe])?W[k][pe]:null;
-  return L&&L.length?String(L[Math.floor(Math.random()*L.length)]).replace(/\{n\}/g,cr.name||""):null;}
+  /* an animal with no name is called by the world's word for its kind (personaWho), so no line has a gap in it (mq-v297) */
+  const who=cr.name||((T().personaWho||{})[k])||"";
+  return L&&L.length?String(L[Math.floor(Math.random()*L.length)]).replace(/\{n\}/g,who):null;}
 const parkPrefs={band:Object.create(null),collar:Object.create(null),dogs:[],train:{}};
 /* THE PARK'S RECORD, READ AND CLEANED: one function, so a check can hand it a record and see what the game keeps of it
    (the course's kept paces, mq-v292); it is called once, here, as the page loads, exactly as the lines it holds ran before */
@@ -10415,6 +10537,7 @@ function applyStaged(){
   const sf=g.safe;
   if(sf&&world===g.world&&(isSolid(px,py)||!growthReach(px,py))){
     px=fx=sf.x;py=fy=sf.y;dir="down";held=null;moving=false;}
+  CRIT.forEach(c=>{if(c.kind==="pigeon"&&c.world===g.world&&SOLID.has(w.grid[c.y][c.x])){c.x=c.fx=c.home[0];c.y=c.fy=c.home[1];c.moving=false;c.lift=null;}});   /* (mq-v297) */
   if(SOLID.has(w.grid[PIG.y][PIG.x])){const pa=ANI("pig")||ANIDEF.pig;PIG.x=PIG.fx=pa.x|0;PIG.y=PIG.fy=pa.y|0;PIG.moving=false;} /* Paloma will not be bricked in — she goes back where her pack put her */
 }
 /* A storefront, a gift or a page on your wall may say ONE line the first time it lands.
