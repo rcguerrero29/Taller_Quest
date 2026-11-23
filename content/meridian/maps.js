@@ -374,8 +374,21 @@ const CRITTERS=[
  {kind:"gato",world:"li",x:16,y:7,c:"#F2F0EA",name:"Pelusa"}, /* she rides in the van */
  {kind:"gato",world:"no",x:2,y:2,c:"#3A3A40",name:"Timbre"} /* she sits where the doorbell would be */,
  {kind:"gato",world:"me",x:15,y:9,c:"#7A6A55"},  /* Frijol — the bodega cat, pettable */
- {kind:"beagle",world:"st",x:22,y:11,c:"#E8C46A",name:"Sonny",role:"star",egg:"star"} /* the star himself; his name is the player's (DOGNAMES) */
+ {kind:"beagle",world:"st",x:22,y:11,c:"#E8C46A",name:"Sonny",role:"star",egg:"star"}, /* the star himself; his name is the player's (DOGNAMES) */
+ /* THE OFFICE DOG, ONE MORE DOG OF THE DOG PROGRAM (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). He was
+    the engine's own office dog (ANIMALS.dog, below), outside the program; now he lives it, every behaviour the other dogs have,
+    in the look he always had (kind "aussie"), on the square he always started on. role "office": the treat button's words and
+    its three treats that open his side quest, his bump lines, the wardrobe, its preview and his alebrije card are his, as they
+    were; he is never adopted, renamed or rehomed. tidy: he does not dig and leaves no mess. leashOnly: for this first version he
+    leaves the office with you only on the leash; off it he stays and wanders the office, and does not follow you through a
+    door, on a whim or when told. reach "room": he wanders the whole office, as he always did, where every other dog keeps
+    within four steps of its square (the owner's confirmed goal of 2026-11-23 on his range). The star dog, the adoption house, the paw menu and the whistle are as they were. His record
+    carries no name, as DOG's did not: the words that name him are the world's own lines (strings.js), as before. */
+ {kind:"aussie",world:"hq",x:12,y:5,c:"#7B7E8A",role:"office",tidy:true,leashOnly:true,reach:"room"}
 ];
+/* the engine's own office dog (DOG) is not placed: the office dog above is the one, in the program (mq-v295). The cat, the
+   pigeon and the parrot stand where the engine's defaults put them, as before */
+const ANIMALS={dog:null};
 /* one-off place identity as data (IDEAS §10): the engine's DECODRAW vocabulary
    (sign, mural) renders these in ALL FOUR cameras: top (engine.js drawDecor), front (the
    depth pass), iso (the billboard pass) and 3D (engine3d.js, a plane on the wall's first open

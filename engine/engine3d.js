@@ -2434,8 +2434,9 @@ function t3BodyPreview(cv,lk,ang){
      · HIS SHAPE: SKELETONS.dog, sized for his breed by DOGBUILDS, made by dogMake, his breed's markings by DOGPART.
      · HIS WALK: the person's own (t3BodyPose reads any skeleton's `legs`), four legs in a trot, the two diagonals together.
      · HIS LIGHT: t3BodyLight, as the person's, so at night he is as bright as the cards beside him.
-   NOT DONE HERE: a body for the star's own dog (DOG) or for any other animal (from mq-v278 every pose his card draws is
-   his body's: dogBodyWants); a choice of breed, markings or
+   NOT DONE HERE: a body for the engine's own office dog of a world that keeps him outside the program (DOG, drawDog: a world
+   that declares its office dog in its CRITTERS, as one more dog of the program, has him here as an aussie, mq-v295) or for
+   any other animal (from mq-v278 every pose his card draws is his body's: dogBodyWants); a choice of breed, markings or
    coat (BODYPLAN, engine/engine.js); an alebrije's paint on his body (a world may keep him his card while he wears it:
    dogPaintCard); and being seen through a wall, which no animal's card is either. */
 const DOGNEAR=BODYNEAR;   /* squares from the camera's focus within which a following dog is a body, not a card */
@@ -2499,7 +2500,14 @@ SKELETONS.dog={
 const DOGBUILDS=Object.freeze({
   beagle:Object.freeze({size:1,length:1,legs:1,head:1,neck:1,chest:1,lie:1.12,ear:"drop",tail:"up"}),
   lab:Object.freeze({size:1.12,length:0.85,legs:1,head:0.92,neck:1,chest:1.1,lie:1.18,jaw:1.25,ear:"drop",tail:"out"}),
-  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.2,neck:1.4,chest:0.9,lie:1.06,jaw:0.85,ear:"up",tail:"curl"})});
+  chi:Object.freeze({size:0.7,length:1,legs:1.05,head:1.2,neck:1.4,chest:0.9,lie:1.06,jaw:0.85,ear:"up",tail:"curl"}),
+  /* the aussie, the office dog (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog), read off his card (drawAussie):
+     a body 16 px by 9, so 1.1 of the beagle, on legs 4.5 px long; his head 4.6 px round, the beagle's, so a little smaller
+     against him, and carried 2.5 px higher, so a longer neck; two upright pointed ears ("up") over a muzzle of a dog's
+     length (`muzzle`, the share of the beagle's: the chi's short muzzle goes with her ears, not his) and eyes of the beagle's
+     size (`eye`, of his head), his ears smaller than the chi's against his head (`earSize`, his card's ears stand 3.2 px over a
+     head 4.6 px round); a short bobbed tail ("bob"), a third of a tail long (`tailLen`) and thick for it */
+  aussie:Object.freeze({size:1.1,length:1,legs:1.05,head:0.92,neck:1.3,chest:1.05,lie:1.15,jaw:1,ear:"up",earSize:0.6,tail:"bob",tailLen:0.35,muzzle:0.95,eye:0.16})});
 /* IS HE A BODY IN THIS POSE? From mq-v278, in every pose his card draws (the owner's confirmed goal of 2026-11-19): standing,
    walking and wagging, sitting, lying and howling (mq-v264), and now digging, his hearts, and the agility course: over the bar
    he is lifted with his legs tucked, through the poles his body takes the side step his record takes, and inside the tunnel
@@ -2532,12 +2540,14 @@ function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||DOGBUILDS.be
     J[n]=[p,x*b.size,y*b.size*(leg.test(n)?b.legs:1)*(up.has(n)?(b.neck||1):1),z*b.size*(back.has(n)?b.length:1)];});
   J.jaw=[s.joints.jaw[0],0,s.joints.jaw[2]*b.size*b.head,s.joints.jaw[3]*b.size*b.head];   /* his jaw hangs on his head, so it follows his head's size */
   J.hips=[null,0,s.joints.hips[2]*b.size*b.legs,s.joints.hips[3]*b.size*b.length];   /* he stands as high as his legs are long */
+  if(typeof b.tailLen==="number"&&isFinite(b.tailLen)&&b.tailLen>0)["tail_2","tail_tip"].forEach(n=>{const[p,x,y,z]=J[n];J[n]=[p,x*b.tailLen,y*b.tailLen,z*b.tailLen];});   /* a short tail (the aussie's bob, mq-v295); a breed that names none keeps the whole */
   const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.size;});
   return {...s,joints:J,limb,head:s.head*b.size*b.head,stride:s.stride*b.size*b.legs,lift:s.lift*b.size,drop:s.drop*b.size,build:b,kind};}
 /* THE CARD'S OWN PAINT, where a card does not paint with the dog's colour: the beagle's card is lemon and white whatever his
    record says (drawBeagle), so his body is too, and his record's coat is not read for him. Every other breed is painted in
    the coat his record names (dogLookOf), as his card is */
-const DOGCARDPAINT=Object.freeze({beagle:Object.freeze({body:"#F6F2E8",coat:"#E8C46A"})});
+const DOGCARDPAINT=Object.freeze({beagle:Object.freeze({body:"#F6F2E8",coat:"#E8C46A"}),
+  aussie:Object.freeze({body:"#7B7E8A",coat:"#7B7E8A",wears:"coat"})});   /* the office dog's own grey, whatever his record's coat (mq-v295); his parts wear "coat", as his card's grey is his coat */
 /* THE DOG'S MAKER. Handed a skeleton (dogSkeleton) and a look (dogLookOf, already cleaned: kind, coat, collar, band), it
    answers a group named "dogbody" whose userData holds `joints` (an Object3D for every joint of the skeleton, named for
    itself, parented as the skeleton says), `skel` and `look`. Every part hangs on a joint, says what it wears in
@@ -2565,7 +2575,7 @@ function dogMake(skel,lk){
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
   const b=skel.build||DOGBUILDS.beagle,Lm=skel.limb,r=skel.head,at=n=>new THREE.Vector3(...skel.joints[n].slice(1));
-  const paint=DOGCARDPAINT[lk.kind]||{body:lk.coat,coat:lk.coat},bw=DOGCARDPAINT[lk.kind]?"white":"coat";
+  const paint=DOGCARDPAINT[lk.kind]||{body:lk.coat,coat:lk.coat},bw=DOGCARDPAINT[lk.kind]?(DOGCARDPAINT[lk.kind].wears||"white"):"coat";
   const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
     m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};J[j].add(m);return m;};
   const ball=(rr,w,h)=>new THREE.SphereGeometry(rr,w||14,h||10);
@@ -2605,7 +2615,7 @@ function dogMake(skel,lk){
   const ring=(f,rad,tall,wears,col)=>{const cv=nv.clone().multiplyScalar(f),m=part("chest",new THREE.CylinderGeometry(rad,rad*1.06,tall,20),wears,col,cv.x,cv.y,cv.z);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),lie);return cv;};
   const cf=Math.max(0.3,Math.min(0.7,(nL-r*0.9)/nL));   /* just under his skull */
-  ring(cf-0.08,Lm.neck*1.36,Lm.neck*0.85,"collar",lk.collar);
+  if(lk.collar)ring(cf-0.08,Lm.neck*1.36,Lm.neck*0.85,"collar",lk.collar);   /* every dog's look has one, but the office dog's only when his wardrobe gives it (mq-v295) */
   /* the bandana, only where his record has one: a kerchief folded to a triangle, its rolled edge round his neck over the
      collar, its point down over the front of his chest, and tied at the back of his neck, the knot and its two ends up
      where they are seen from above */
@@ -2622,14 +2632,19 @@ function dogMake(skel,lk){
     part("chest",ball(R*0.4,10,8),"band",dk,bk.x,bk.y,bk.z).userData.band="knot";
     [1,-1].forEach(sd=>{const e=part("chest",ball(R*0.4,8,6),"band",lk.band,bk.x+sd*R*0.5,bk.y+R*0.12,bk.z-R*0.22,[1,0.35,0.6]);
       e.rotation.set(0,sd*0.5,sd*0.45);e.userData.band="end";});}
+  /* HIS CAPE (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog), only where his look has one (the office dog's
+     wardrobe): a cloth laid over the top of his back as his card's cape is, a little behind the middle of him, its two edges
+     hanging down his sides; on the spine, so it goes with his back as he sits and lies */
+  if(lk.cape){const R=Lm.barrel*1.14,L=M.barrelLen*0.62,sp=Math.PI*0.95,g=new THREE.CylinderGeometry(R,R,L,20,1,true,Math.PI-sp/2,sp);g.rotateX(Math.PI/2);
+    const m=part("spine",g,"cape",lk.cape,0,Lm.barrel*0.03,-M.barrelLen*0.12);m.material.side=THREE.DoubleSide;m.userData.cape=true;}
   /* the head: the skull round its joint, the muzzle ahead of it and a little down, the nose at its end, the eyes over the
      muzzle, where the card puts its eye, and the ears by the breed's build. The skull's sheet runs over his head from his
      chin (the sheet's left edge) by his nose (a quarter along) and his crown (half) to his nape, and from ear to ear */
   {const g=new THREE.SphereGeometry(r,24,16);g.rotateZ(Math.PI/2);coat(part("head",g,bw,paint.body,0,0,0),"skull",128,64);}
-  const ml=b.ear==="up"?0.75:1;   /* the chi's muzzle is short */
+  const ml=typeof b.muzzle==="number"&&isFinite(b.muzzle)?b.muzzle:b.ear==="up"?0.75:1;   /* the chi's muzzle is short; a breed may name its own (the aussie's, mq-v295) */
   coat(part("head",ball(r*0.55,14,10),bw,paint.body,0,-r*0.4,r*(0.45+0.4*ml),[1.02*(b.jaw||1),0.88*(b.jaw||1),1.35*ml]),"muzzle",64,32);
   part("head",ball(r*0.26,10,8),"nose","#26202B",0,-r*0.26,r*(0.25+1.14*ml));
-  [1,-1].forEach(sd=>part("head",ball(r*(b.ear==="up"?0.2:0.16),10,8),"eye","#26202B",sd*r*0.5,r*0.14,r*0.82));
+  [1,-1].forEach(sd=>part("head",ball(r*(typeof b.eye==="number"&&isFinite(b.eye)?b.eye:b.ear==="up"?0.2:0.16),10,8),"eye","rgb(38,32,43)",sd*r*0.5,r*0.14,r*0.82));
   /* his lower jaw, hung on its own joint under his muzzle, and the dark of his mouth lying on it: shut, both are inside
      his muzzle; they show when the joint drops (a howl) */
   part("jaw",ball(r*0.42,12,8),bw,paint.body,0,-r*0.03,r*0.4*ml,[0.9*(b.jaw||1),0.34,1.15*ml]);
@@ -2656,7 +2671,8 @@ function dogMake(skel,lk){
         rest[k*3]=P.getX(k)*(1-0.62*Math.pow(t,1.6))*w;rest[k*3+1]=P.getY(k)*h;rest[k*3+2]=P.getZ(k)*d;}
       const m=part("head",g,"ear",col,0,0,0);m.material.side=THREE.DoubleSide;m.userData.earRest=rest;m.userData.earR=r;
       earBend(m,bend?EARBEND:0);if(bend)m.userData.foldable=true;return m;};
-    const upEar=(x,y,bend)=>{const o=shell(earCol,0.66,1.12,0.34,0,bend),n=shell(inPink,0.5,0.94,0.22,0.08,bend);
+    const es=typeof b.earSize==="number"&&isFinite(b.earSize)&&b.earSize>0?b.earSize:1;   /* how big an upright ear is against the chi's (the aussie's smaller, mq-v295); 1 where a breed names none */
+    const upEar=(x,y,bend)=>{const o=shell(earCol,0.66*es,1.12*es,0.34*es,0,bend),n=shell(inPink,0.5*es,0.94*es,0.22*es,0.08,bend);
       [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});
       n.userData.inside=true;n.material.side=THREE.BackSide;   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
       if(bend)o.userData.fold=true;return o;};
@@ -2682,7 +2698,7 @@ function dogMake(skel,lk){
        a ball on it. Each stretch is a cone cut short (DOGTAIL: its thickness at the root, the middle joint, where the tip
        begins and the very end, against the breed's own tail), rounded at each joint so a bend stays whole; the last
        half of its second stretch is the tip, a part of its own on the tip's joint, which the beagle wears white */
-    const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:1),[k0,k1,k2,k3]=DOGTAIL;
+    const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:b.tail==="bob"?1.6:1),[k0,k1,k2,k3]=DOGTAIL;   /* a bob is short and thick (mq-v295) */
     const taper=(j,v,r0,r1,wears)=>{const L=v.length(),m=part(j,new THREE.CylinderGeometry(r1,r0,L,12,1),wears,paint.coat,v.x/2,v.y/2,v.z/2);
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize());return m;};
     const v1=at("tail_2"),v2=at("tail_tip"),cut=v2.clone().multiplyScalar(0.45);
@@ -2759,14 +2775,28 @@ const DOGCOAT={
       /* the two white freckles on his ear, as the card's, on the face of the flap that shows */
       ["freckles",(g,w,h,paint)=>{g.fillStyle=paint.body;[[0.5,0.32],[0.54,0.66],[0.0,0.32],[0.04,0.66],[1,0.32]].forEach(([u,v])=>{g.beginPath();g.ellipse(u*w,v*h,w*0.035,h*0.05,0.4,0,7);g.fill();});}]]},
   lab:{},
-  chi:{}};
+  chi:{},
+  /* the aussie's, his card's (drawAussie, mq-v295): his two darker grey patches over his back and side, and a white chest at
+     the front of his barrel, under it; his head a darker grey than his body; his muzzle white, the tan of his cheek behind it */
+  aussie:{
+    barrel:[
+      ["patches",(g,w,h)=>{g.fillStyle="#4C4F58";[[0.4,0.6,0.11,0.13],[0.7,0.38,0.09,0.1],[0.63,0.7,0.07,0.08],[0.3,0.33,0.06,0.07]].forEach(([u,v,a,b])=>{g.beginPath();g.ellipse(u*w,v*h,a*w,b*h,0,0,7);g.fill();});}],
+      ["chest",(g,w,h)=>{g.fillStyle="#EDEDE8";g.fillRect(0,0,w*0.2,h*0.3);g.fillRect(w*0.8,0,w*0.2,h*0.3);}]],
+    skull:[["head",(g,w,h)=>{g.fillStyle="#6E7280";g.fillRect(0,0,w,h);}]],
+    muzzle:[["muzzle",(g,w,h)=>{g.fillStyle="#EDEDE8";g.fillRect(0,0,w,h);g.fillStyle="#B5773A";
+      [[0.04,0.7],[0.46,0.7]].forEach(([u,v])=>{g.beginPath();g.ellipse(u*w,v*h,w*0.06,h*0.22,0,0,7);g.fill();});}]]}};
 /* EACH BREED'S OWN PARTS, by its kind: handed what the maker knows, it changes or hangs what makes this breed this breed
    and is not paint (his paint is DOGCOAT's). The beagle's is the white tip of his tail, canon */
 const DOGPART={
   beagle(M){const{J,paint}=M,white=paint.body;
     J.tail_tip.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="tip"){o.userData.base=new THREE.Color(white);o.material.color.set(white);}});},
   lab(M){},
-  chi(M){}};
+  chi(M){},
+  /* the aussie's (mq-v295): his legs and his upright ears his card's darker grey, his chest white, as on his card */
+  aussie(M){const{J}=M,tint=(o,c)=>{o.userData.base=new THREE.Color(c);o.material.color.set(c);},leg=/^(hind|hock|hpaw|fore|wrist|fpaw)_/;
+    Object.keys(J).forEach(n=>{if(!leg.test(n))return;J[n].children.forEach(o=>{if(o.isMesh)tint(o,"#4C4F58");});});
+    J.head.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="ear"&&!o.userData.inside)tint(o,"#4C4F58");});
+    J.chest.children.forEach(o=>{if(o.isMesh&&o.userData.trunk==="chest")tint(o,"#EDEDE8");});}};
 /* HOW HE IS HELD THIS FRAME: his legs by the walk every body shares, then what is a dog's own, read off the pose his card
    reads: his tail swung side to side by the pose's `wag`, card pixels at the tip, so the tip of the body's tail is as far
    to his side as the card's is behind or ahead of its rest; calm or happy, as dogPose says. Nothing else is decided here */
@@ -3223,7 +3253,8 @@ function t3Actors(){
       else if(cr.kind==="gato")drawGato(g,cr,2,6);
       else if(cr.kind==="beagle")drawBeagle(g,cr,2,6);
       else if(cr.kind==="lab")drawLab(g,cr,2,6);
-      else if(cr.kind==="chi")drawChi(g,cr,2,6);}});});
+      else if(cr.kind==="chi")drawChi(g,cr,2,6);
+      else if(cr.kind==="aussie")drawAussie(g,cr,2,6);}});});
   /* the ball. Carried by a dog who stands as a body this frame (THE DOG'S BODY), it rides at his body's `mouth`, whichever way
      he faces: pinned there, and painted with its middle on the billboard's anchor, so the anchor is the mouth */
   if(BALL&&BALL.world===world){const B=BALL.phase==="carried"&&T3.dogShown&&T3.dogShown.has(BALL.dog)&&T3.dogOn?T3.dogOn.get(BALL.dog):null,

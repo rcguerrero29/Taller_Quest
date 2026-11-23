@@ -1608,7 +1608,7 @@ const CANDIDATES = [
         const n1 = await N.p.evaluate(() => {
           const $ = id => document.getElementById(id), d = CRIT.find(c => DOGK.has(c.kind));
           let rec = null; try { rec = JSON.parse(localStorage.getItem('mqpark') || 'null'); } catch (e) {}
-          const o = { pool: typeof DOGNAMES, role: CRITTERS.some(c => c.role), name: d && d.name,
+          const o = { pool: typeof DOGNAMES, role: CRITTERS.some(c => c.role === 'star'), name: d && d.name,
             mapName: (CRITTERS.find(c => DOGK.has(c.kind)) || {}).name, kept: !!(rec && 'star' in rec) };
           document.querySelector('.classes button[data-c="architect"]').click(); $('begin').click();
           world = 'st'; d.world = 'st'; d.x = d.fx = 22; d.y = d.fy = 11; d.moving = false; d.task = null; px = fx = 21; py = fy = 11; setWorldTag();
@@ -2464,13 +2464,13 @@ const CANDIDATES = [
     const at = (D, T) => { Date.now = () => D; performance.now = () => T; };
     const shot = f => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H); g.setTransform(SC, 0, 0, SC, OX * SC, OY * SC);
       ctx = g; try { f(g); } finally { ctx = ctx0; } return g.getImageData(0, 0, W, H).data; };
-    const KN = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua', dog: 'office dog', cat: 'cat', gato: 'street cat', pigeon: 'pigeon', loro: 'parrot', colibri: 'hummingbird' };
+    const KN = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua', aussie: 'office dog of the program', dog: 'office dog', cat: 'cat', gato: 'street cat', pigeon: 'pigeon', loro: 'parrot', colibri: 'hummingbird' };
     const probe = (kind, name, o) => Object.assign({ kind, name, world: '__probe', x: 0, y: 0, fx: 0, fy: 0, dx: 1, dy: 0, face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0,
       moving: false, mt: 0, home: [0, 0], task: null }, o);
     /* how each kind is drawn: the dog program's kinds and the street cat are critters with a name; the office dog, the bodega cat,
        the pigeon and the parrot are the engine's own four, one each */
     const ONE = { dog: DOG, cat: CAT, pigeon: PIG, loro: LORO };
-    const PAINT = { beagle: (g, a) => drawBeagle(g, a, 0, 0), lab: (g, a) => drawLab(g, a, 0, 0), chi: (g, a) => drawChi(g, a, 0, 0), gato: (g, a) => drawGato(g, a, 0, 0),
+    const PAINT = { beagle: (g, a) => drawBeagle(g, a, 0, 0), lab: (g, a) => drawLab(g, a, 0, 0), chi: (g, a) => drawChi(g, a, 0, 0), aussie: (g, a) => drawAussie(g, a, 0, 0), gato: (g, a) => drawGato(g, a, 0, 0),
       colibri: (g, a) => drawColibri(g, a, 0, 0), dog: g => drawDog(g, 0, 0), cat: g => drawCat(g, 0, 0), pigeon: g => drawPigeon(g, 0, 0), loro: g => drawLoro(g, 0, 0) };
     const winged = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].wings), ringed = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].eye);
     [...new Set([...winged, ...ringed])].filter(k => !PAINT[k]).forEach(k => P.push('NOCHE DE ALEBRIJES: the ' + k + ' has ' + (ALEB_KIND[k].wings ? 'wings' : 'a ring round its eye') + ' and this guard does not know how to draw it, so nothing it wears was asked to go where it goes — teach the guard its painter'));
@@ -5935,7 +5935,10 @@ const CANDIDATES = [
   {
     const r1 = await page.evaluate(() => {
       const problems = [];
-      if (typeof ANIMALS !== 'undefined') problems.push('Meridian declares ANIMALS — its animals are the engine defaults by design');
+      /* mq-v295 (the owner's confirmed goal of 2026-11-22 on the office dog): Meridian declares ANIMALS for one thing only, the
+         engine's own office dog set to null, because its office dog is one more dog of the dog program (CRITTERS). The cat,
+         the pigeon and the parrot are still the engine defaults by design */
+      if (typeof ANIMALS === 'undefined' || JSON.stringify(ANIMALS) !== '{"dog":null}') problems.push('Meridian\'s ANIMALS is ' + (typeof ANIMALS === 'undefined' ? 'not declared' : JSON.stringify(ANIMALS)) + ': it sets the engine\'s own office dog to null and nothing else, the rest being the engine defaults by design');
       // #25 (the owner asked for it both in Meridian and in the template, so that both carry plenty
       // of metadata about the roles): Meridian DECLARES its rooms, one line per role with a note,
       // and the declaration must match the engine's default table key for key — it is documentation
@@ -5967,7 +5970,15 @@ const CANDIDATES = [
       // it, so every person with a document stays where the map put them, as before.
       Object.entries(WORLDS).forEach(([id, w]) => w.npcs.forEach(n => { if (n.roams) problems.push(`Meridian station ${n.npc} in ${id} roams — the seam is the town's, not Meridian's`);
         if (n.doc && wanders(n)) problems.push(`Meridian's ${n.npc} carries a document and wanders — a person you look for must be where you left them`); }));
-      const want = { dog: ['hq', 12, 5], cat: ['lc', 16, 9], pig: ['st', 4, 1], loro: ['st', 17, 5] };
+      const want = { cat: ['lc', 16, 9], pig: ['st', 4, 1], loro: ['st', 17, 5] };
+      /* the office dog: the engine's own stands nowhere, and the dog program's stands in the office on his square (mq-v295) */
+      { if (ANI('dog') !== null || AW('dog') !== null) problems.push('the engine\'s own office dog stands in ' + AW('dog') + ': Meridian\'s office dog is the dog program\'s');
+        const rec = CRITTERS.filter(c => c.role === 'office'), od = typeof officeDog === 'function' ? officeDog() : null;
+        if (rec.length !== 1 || !od) problems.push('Meridian declares ' + rec.length + ' office dogs in its CRITTERS, and the engine finds ' + (od ? 'one' : 'none'));
+        else { const r = rec[0], g = WORLDS[r.world] && WORLDS[r.world].grid[r.y] && WORLDS[r.world].grid[r.y][r.x];
+          if (r.world !== 'hq' || r.x !== 12 || r.y !== 5) problems.push('the office dog of the program starts at ' + r.world + ' (' + r.x + ',' + r.y + '), not on his square in the office (hq 12,5)');
+          if (r.kind !== 'aussie' || r.tidy !== true || r.leashOnly !== true) problems.push('the office dog of the program is declared ' + JSON.stringify({ kind: r.kind, tidy: r.tidy, leashOnly: r.leashOnly }) + ': an aussie, tidy, leaving the office only on the leash');
+          if (g === undefined || SOLID.has(g)) problems.push('the office dog of the program has nothing to stand on at ' + r.world + ' (' + r.x + ',' + r.y + ')'); } }
       Object.entries(want).forEach(([k, [wid, x, y]]) => {
         const a = ANI(k); if (!a || a.world !== wid || a.x !== x || a.y !== y) problems.push(`animal ${k} default moved: ${JSON.stringify(a)}`);
         if (AW(k) !== wid) problems.push(`animal ${k} is not in ${wid}`);
