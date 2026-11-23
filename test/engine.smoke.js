@@ -6768,7 +6768,11 @@ function findChromium() {
         return { ok, body: !!(B && B.visible && T3.dogShown && T3.dogShown.has(star)), card: window.__merSeen.has(star), bodies: n, w: innerWidth, h: innerHeight }; });
       const got = [];
       for (const [w, h, want] of [...SCREENS, [...LAPTOP, 'body']]) { await p.setViewportSize({ width: w, height: h });
-        const sized = await until(p, ([w, h]) => innerWidth === w && innerHeight === h, [w, h], 5000); await rafs(p, 2);
+        /* ASKED BY THE CLOCK, NOT BY THE FRAME: waitForFunction asks once a frame unless told otherwise, and a page drawing a
+           street of bodies can go seconds without one, so a window that HAD its size read as one that never got it (red on
+           GitHub and here on 2026-11-23, both times reading 480 by 900 the moment after giving up, with 5 s and with 15 s).
+           rafs above falls back to a timer for the same reason; this asks every 100 ms, by the clock */
+        const sized = await p.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, [w, h], { timeout: 15000, polling: 100 }).then(() => true, () => false); await rafs(p, 2);
         const s = await look(), on = 'in a real window ' + w + ' by ' + h + ' (its shorter side ' + Math.min(w, h) + ' px), ';
         got.push(w + ' by ' + h + ' ' + (!s.ok ? 'not drawn' : s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither'));
         if (!sized) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
