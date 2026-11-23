@@ -7564,6 +7564,12 @@ function findChromium() {
           L.build = { fluff: 0.5 }; draw3d(); const B4 = T3.loroOn.get(L), bx4 = new THREE.Box3().setFromObject(B4.userData.T.children[0]), bx0 = new THREE.Box3().setFromObject(B.userData.T.children[0]);
           if (!(bx4.max.x - bx4.min.x > (bx0.max.x - bx0.min.x) * 1.08)) P.push('his fluff setting did not make him fuller');
           delete L.build; draw3d(); }
+        /* his perches: a rod brings its rod and no twig; a branch (mq-v298, the town's) its twig and no rod */
+        { const has = (B, hex) => { let n = 0; B.traverse(o => { if (o.isMesh && o.userData.base && ('#' + o.userData.base.getHexString().toUpperCase()) === hex) n++; }); return n; };
+          const BR = loroMake(Object.assign({}, L, { perch: 'branch' })), RO = loroMake(Object.assign({}, L, { perch: 'rod' }));
+          if (!has(BR, '#6B4A2B') || has(BR, '#5A5F68')) P.push('a parrot on a branch does not stand on a twig of his own, or stands on a rod as well');
+          if (!has(RO, '#5A5F68') || has(RO, '#6B4A2B')) P.push('a parrot on a rod does not stand on his rod, or stands on a twig as well');
+          t3Dispose(BR); t3Dispose(RO); }
         let cardDrawn = false; const lc = window.drawLoro; window.drawLoro = function (g, c, ...a) { if (c === L) cardDrawn = true; return lc.call(this, g, c, ...a); }; draw3d(); window.drawLoro = lc;
         if (cardDrawn) P.push('the parrot is drawn twice in the 3D camera: his card stands where his body is'); }
       /* 3 · the small birds */

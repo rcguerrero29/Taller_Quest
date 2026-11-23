@@ -3863,6 +3863,7 @@ function loroAway(L,nw){return !!L&&L.kind==="loro"&&birdAway(L,nw);}
    rod is drawn end on, its plate on the wall behind */
 function loroCard(g,L,sx,sy,pre,bob){const base=g.getTransform(),C=loroCoatOf(L),B=loroBuildOf(L),K=34.8*LOROFORM.scale*B.size,cx=sx+16,ry=sy+22,face=L.face<0?-1:1;
   const X=z=>(z-0.010)*K,Y=y=>-(y-0.034)*K,poly=(c,pts)=>{g.fillStyle=c;g.beginPath();pts.forEach(([z,y],i)=>i?g.lineTo(X(z),Y(y)):g.moveTo(X(z),Y(y)));g.closePath();g.fill();};
+  if(L.perch==="branch"){g.fillStyle="#6B4A2B";g.beginPath();g.arc(cx,ry+0.8,1.1,0,7);g.fill();g.fillStyle="#4F8A3A";g.beginPath();g.ellipse(cx-2.2,ry+1.4,1.6,0.7,0.4,0,7);g.fill();}   /* a branch, end on, a leaf by it (mq-v298) */
   if(L.perch==="rod"){g.fillStyle="#3E434B";g.fillRect(cx-2,ry-1.2,4,4);g.fillStyle="#6A7079";g.beginPath();g.arc(cx,ry+0.8,1.25,0,7);g.fill();}
   g.save();g.translate(cx,ry-0.3);g.scale(face,1);g.rotate(LOROFORM.lean);
   poly(C.under,[[-0.0135,0.008],[-0.0070,0.008],[-0.0205,-0.104],[-0.0235,-0.104]]);
