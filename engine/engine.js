@@ -928,9 +928,9 @@ const saveStr=(v,m2,d2)=>(typeof v==="string"&&v)?v.slice(0,m2):d2;
 /* WHICH BODIES A WORLD TAKES (mq-v263). BODYTAKE is the world's own list. `person` is the person you steer; `dog` is a dog who
    follows him (engine/engine3d.js, grep "THE DOG'S BODY"). A name this list does not hold is nothing, and a world that says
    nothing takes none: closed unless a world opens it */
-const BODYKINDS=Object.freeze(["person","dog"]);
+const BODYKINDS=Object.freeze(["person","dog","cat"]);   /* cat: every cat of the critters (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
 const bodyTakes=k=>BODYKINDS.includes(k)&&typeof BODYTAKE!=="undefined"&&Array.isArray(BODYTAKE)&&BODYTAKE.includes(k);
-const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog");
+const BODYON=bodyTakes("person"),DOGBODYON=bodyTakes("dog"),CATBODYON=bodyTakes("cat");
 /* ON WHICH SCREENS THE BODIES STAND (mq-v277). BODYSCREEN is a world's own number: the shorter side of the screen, in CSS
    pixels, below which every body (the person you steer, the people PEOPLETAKE names, a dog) stays its card, so a phone draws
    only cards while a laptop draws bodies. Read every frame, so turning a tablet or resizing a window moves between the two. A
@@ -1073,6 +1073,10 @@ const BODYPLAN=Object.freeze([
    both up (as they always were) or mixed, one up and one folded over; mixed is kept on the dog and drawn on his card and his
    body alike. A dog of any other kind wears his ears as his breed does */
 const EARKINDS=Object.freeze(["chi"]);
+/* A CAT'S LOOK, cleaned, for its body (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats): its card's coat (CATCOAT: the body, the two bars, the muzzle), and what it
+   wears (catWear: the kitchen cat's bandana and collar; none on any other cat). The body is made again when this changes */
+function catLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr);
+  return {kind:"gato",coat:P.body,bar:P.bar,muzzle:P.muzzle,collar:W.collar,band:W.band};}
 function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
   const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
   const o={kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};
@@ -3820,7 +3824,7 @@ function drawLoro(g,sx,sy){
    The content pack declares spawns in CRITTERS [{kind,world,x,y,c}]; the engine owns
    the kinds. Critters wander a small radius around home, never block the hero, and
    the street cat is pettable via the same button as the named animals. */
-const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,holdT:0,stayT:0,home:[c.x,c.y],
+const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:c.sit===true,holdT:0,stayT:0,home:[c.x,c.y],   /* sit: a record may start sitting, as the kitchen cat always did (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
   ...(c.leashOnly===true?{den:[c.world,c.x,c.y]}:{})}));   /* a dog who leaves his room only on the leash keeps where his room is (den: dogDen) (mq-v295) */
 const CRIT_REACH=4; /* how many steps from its own spot a critter wanders on its own; critFree refuses a step any further */
 /* ...unless its record says otherwise: reach "room" is the whole of its world, with no limit from its spot (the office dog
@@ -3863,7 +3867,7 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
      following you, you not in the room. dogUnstick reads it; a clock that ran backwards starts again. */
   if(cr.moving||cr.task||cr.follow||cr.holdT>now||cr.stayT>now||world!==cr.world||cr.stepT===undefined||cr.stepT>now)cr.stepT=now;
   if(!cr.moving&&critShy(cr,now))return;   /* the road first: a critter does not wait its turn to live */
-  if(cr.moving){cr.mt+=dt/(cr.kind==="gato"?520:cr.kind==="butterfly"?300:160*(cr.task&&cr.task.type==="run"&&cr.task.pace>1?cr.task.pace:1));   /* on a run, at his own pace (paceOf): 1 wherever no pace is taken */
+  if(cr.moving){cr.mt+=dt/(isCat(cr)?520:cr.kind==="butterfly"?300:160*(cr.task&&cr.task.type==="run"&&cr.task.pace>1?cr.task.pace:1));   /* on a run, at his own pace (paceOf): 1 wherever no pace is taken */
     if(cr.mt>=1){cr.moving=false;cr.fx=cr.x;cr.fy=cr.y;}
     else{cr.fx=cr.x-cr.dx*(1-cr.mt);cr.fy=cr.y-cr.dy*(1-cr.mt);}
     gearSway(cr);                        /* through the weave poles on a run, the side he passes each one; nothing anywhere else */
@@ -3886,8 +3890,10 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
         cr.x+=st[0];cr.y+=st[1];cr.moving=true;cr.mt=0;cr.next=now+60;return;}}
   }
   if(isDog(cr)&&Math.random()<0.018){dogIdle(cr,now);return;}
-  const r=Math.random(),idle=cr.kind==="gato"?0.55:0.3;
-  if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(cr.kind==="gato"?1500+Math.random()*3500:400+Math.random()*900);return;}
+  const r=Math.random(),idle=isCat(cr)?0.55:0.3;
+  if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+Math.random()*3500:400+Math.random()*900);
+    if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    return;}
   cr.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
   if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* a dog must never stay stuck (#268) */
@@ -3895,8 +3901,9 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   const d=dirs[Math.floor(Math.random()*dirs.length)];
   cr.dx=d[0];cr.dy=d[1];if(d[0])cr.face=d[0];
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;
-  cr.next=now+(cr.kind==="gato"?900+Math.random()*2600:250+Math.random()*900);
-  if(cr.role==="office"&&isDog(cr))officeBump(cr);   /* the office dog's lines, as DOG said them (mq-v295) */
+  cr.next=now+(isCat(cr)?900+Math.random()*2600:250+Math.random()*900);
+  if(cr.role==="office"&&isDog(cr))officeBump(cr);
+  else if(isCat(cr))catBump(cr);   /* every cat says its own lines when it steps next to you (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */   /* the office dog's lines, as DOG said them (mq-v295) */
 });gearLive();}   /* the poles a dog is passing, stood again in the 3D camera as they lean; nothing where no world takes them */
 /* A DOG WHO LEAVES HIS ROOM ONLY ON THE LEASH IS NEVER LEFT OUT OF IT (mq-v295; the owner's confirmed goal of 2026-11-22 on the
    office dog). The leash takes him to the park and the door out brings him home (dogsFollow, then parkExit). Every other way
@@ -3915,6 +3922,15 @@ function dogDen(cr,now){
 /* THE OFFICE DOG'S BUMP LINES (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog): a step that ends beside
    you, about a third of the time and never within 2.5 s of the last, he says one of the world's dog lines (T().dog), as DOG
    always did; the roll is drawn only when he ends beside you, as it was */
+/* A CAT'S OWN LINES (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 8): its record's words (say: a key of the world's words, for the kitchen cat her own key, cat), else its
+   story's where it has one (egg), else the street cat's. Said when it steps next to you, 30 in 100, never within 2.5 s of the
+   last, as the kitchen cat always said hers; a heart line when it is petted, for 2.2 s, every cat alike */
+function catLines(cr){const t=T();
+  if(cr&&typeof cr.say==="string"&&Array.isArray(t[cr.say]))return t[cr.say];
+  return (cr&&cr.egg&&EGGSAFE[cr.egg])?eggLines(cr.egg,cr.name):t.gato;}
+function catBump(cr){
+  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&Math.random()<0.3&&wDate()-lastBump>2500){
+    const L=catLines(cr);if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(Math.random()*L.length)],1800);}}}
 function officeBump(cr){
   if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
     const L=T().dog;if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(Math.random()*L.length)],1800);}}}
@@ -3925,6 +3941,25 @@ function officeBump(cr){
    city hires janitors. All engine-generic: name a dog and the program is his. */
 const DOGK=new Set(["beagle","lab","chi","aussie"]); /* every kind that runs the dog program */
 const isDog=cr=>!!cr&&DOGK.has(cr.kind);
+/* ONE CAT SYSTEM (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats): every kind that is a cat. The kitchen cat was the engine's own animal (CAT, catUpdate, drawCat),
+   outside the critters, as the office dog was outside the dog program; a world now declares her in its own CRITTERS as one more
+   cat, and sets its ANIMALS.cat to null. A world that does neither keeps CAT exactly as it was. Every cat reads its rules here,
+   so a rule written for cats reaches every cat (his rule of 2026-11-22 for every animal) */
+const CATK=new Set(["gato"]);
+const isCat=cr=>!!cr&&CATK.has(cr.kind);
+/* GROOMING (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 6: a world turns it on by naming cat in its own GROOMTAKE list, as it turns on the dogs' routines. Where it
+   is on, 1 in 3 of a cat's sits becomes a groom of 3 to 6 s (CATGROOM): sitting, its head down to a raised fore paw, licking it,
+   and the paw wiped over an ear; on its card (the card he approved on 2026-11-23) and on its body. The roll is taken after every
+   roll a cat already takes, so those land where they did; petting ends a groom at once. A world that says nothing rolls not one
+   number more than before, and its cats never groom */
+const GROOMON=typeof GROOMTAKE!=="undefined"&&Array.isArray(GROOMTAKE)&&GROOMTAKE.includes("cat");
+const CATGROOM=Object.freeze({share:1/3,min:3000,max:6000,lick:450});   /* lick: ms each of the card's two lick frames shows */
+/* A CAT NOT YET MET (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 11: where a world gives cats a personality (cat named in its PERSONATAKE), a cat you have not met sits
+   facing away, grooming, with a picture of a fish in its thought bubble, and an aloof one goes on ignoring you for a while after
+   (PERSONAWAIT); petting meets it, and it turns to you with its ears pricked and a short stretch. A world with no cat personality
+   has none of this */
+function catAway(cr,nw){return isCat(cr)&&typeof personaOf==="function"&&!!personaOf(cr)&&!cr.moving&&(!cr.metT||nw<(cr.turnT||0));}
+const CATSTRETCH=900;   /* ms the stretch takes as a cat turns to greet you */
 /* THE OFFICE DOG IN THE PROGRAM (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). The office dog was
    once a dog of his own (DOG, dogUpdate, drawDog), built before this program and never moved into it, so every behaviour
    added since skipped him. A world now declares him in its own CRITTERS as one more dog of the program, and sets its
@@ -4529,7 +4564,8 @@ function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.no
     sniff=cr.sniffT>nw&&!cr.sit&&!lay&&!howl&&!(cr.digT>nw);
   const love=cr.loveT>nw,curl=lay&&!howl&&!happy&&!love&&(typeof cr.curlT==="number"?cr.curlT===cr.layT:cr.curlT===dogCurlMark(cr)),   /* the mark on this one nap, and nothing has woken him since (dogCurl); no dice here */
     rests=curl||(lay&&!happy&&!love&&!tailWags(cr,t));   /* lying down and neither happy nor loved, his tail lies still between its short wags; curled up, it does not wag at all */
-  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit,lay,curl,held:curl?"curl":lay?"lay":cr.sit?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
+  const groom=CATK.has(cr.kind)&&(cr.groomT>nw||catAway(cr,nw)),stretch=CATK.has(cr.kind)&&cr.stretchT>nw,stretchLeft=stretch?cr.stretchT-nw:0;   /* a cat's groom and its greeting stretch (mq-v296); no dog has either */
+  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit||groom,lay,curl,groom,stretch,stretchLeft,held:curl?"curl":lay?"lay":groom?"groom":cr.sit?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
     drop:lay?(curl&&K.curl!==undefined?K.curl:K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
@@ -5252,23 +5288,62 @@ function drawAussie(g,cr,sx,sy){
   g.restore(); /* text outside the mirror so it never flips */
   dogOverlays(g,cr,cx,sy,P);
 }
-function drawGato(g,cr,sx,sy){ /* the street cat: Canela's silhouette, alley palette, no collar — yet */
-  const cx=sx+16,sw=Math.sin(Date.now()/300+7);
-  g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
+/* THE GROOMING CARD (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), as he approved it on 2026-11-23 (draft 2): the sitting body and bars; the tail curled round the
+   feet; the near fore paw raised up and out in front of the face; the head nodded down onto it, eyes shut, the tongue out on the
+   paw; k the lick frame, 0 the paw at the mouth and 1 the lick drawn down it, the head following. In the card's coat (P) and
+   what the cat wears (W); facing is the painter's own (drawGato) */
+function catGroomCard(g,P,W,cx,sy,k){
   g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,6.5,2.6,0,0,7);g.fill();
-  g.strokeStyle="#6E7278";g.lineWidth=2.6;g.lineCap="round";
+  g.strokeStyle=P.tail;g.lineWidth=2.6;g.lineCap="round";g.beginPath();g.moveTo(cx-6.5,sy+21);g.quadraticCurveTo(cx-10.5,sy+23.5,cx-6,sy+26.2);g.stroke();
+  g.fillStyle=P.body;g.beginPath();g.roundRect(cx-7,sy+18,12.5,7.5,3.8);g.fill();
+  g.fillStyle=P.bar;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
+  if(W.band){g.fillStyle=W.band;g.beginPath();g.moveTo(cx+1.4,sy+19.4);g.lineTo(cx+7.8,sy+19.8);g.lineTo(cx+4.4,sy+23.4);g.closePath();g.fill();}
+  const pbx=cx+5,pby=sy+25,ptx=cx+10.6,pty=sy+(k?18.2:16.6);
+  g.strokeStyle=P.leg;g.lineWidth=2.2;g.lineCap="round";g.beginPath();g.moveTo(pbx,pby);g.quadraticCurveTo(cx+10.2,sy+23.5,ptx,pty);g.stroke();
+  g.fillStyle=P.muzzle;g.beginPath();g.ellipse(ptx+0.1,pty-0.4,1.3,1.5,0,0,7);g.fill();
+  const hx=cx+5,hy=sy+(k?18:17.3),turn=k?0.62:0.45;
+  g.save();g.translate(hx,hy);g.rotate(turn);g.translate(-hx,-hy);
+  g.fillStyle=P.head;g.beginPath();g.arc(hx,hy,4.2,0,7);g.fill();
+  g.beginPath();g.moveTo(hx-2.8,hy-2.5);g.lineTo(hx-1.8,hy-5.9);g.lineTo(hx,hy-3.5);g.closePath();g.fill();
+  g.beginPath();g.moveTo(hx+0.6,hy-3.7);g.lineTo(hx+2.6,hy-5.7);g.lineTo(hx+3,hy-2.5);g.closePath();g.fill();
+  g.fillStyle=P.muzzle;g.beginPath();g.arc(hx+1.3,hy+1.9,2,0,7);g.fill();
+  g.fillStyle="#26202B";g.fillRect(hx-0.8,hy-0.4,1.8,0.7);g.fillRect(hx+2,hy-0.4,1.8,0.7);
+  g.fillStyle="#C4586B";g.fillRect(hx+3.2,hy+0.6,1.1,0.9);
+  g.fillStyle="#E8879A";g.beginPath();g.ellipse(hx+3.9,hy+2.4,1.1,k?1.5:1,-0.4,0,7);g.fill();
+  g.restore();
+  if(W.collar){g.fillStyle=W.collar;g.save();g.translate(cx+5.2,sy+21.8);g.rotate(0.3);g.fillRect(-2.6,-0.7,5.2,1.4);g.restore();
+    g.fillStyle="#E0B45C";g.beginPath();g.arc(cx+4.6,sy+23.4,0.9,0,7);g.fill();}}
+/* THE CATS' COATS """+CR+""": the card's paint, by name. grey is the street cat's, the default; ginger is the kitchen cat's, as
+   drawCat paints her. A record names its coat (coat); each cat's own colour is a later item, for now, as today */
+const CATCOAT={grey:{tail:"#6E7278",body:"#8B8F98",bar:"#6E7278",leg:"#7B7F88",head:"#8B8F98",muzzle:"#D8DBE0"},
+  ginger:{tail:"#C97F3F",body:"#D98E4A",bar:"#B96F31",leg:"#C97F3F",head:"#D98E4A",muzzle:"#F1E3CE"}};
+/* what a cat wears: the cat the wardrobe dresses (wardrobe: true, the kitchen cat), its bandana and collar (wearCat); any other
+   cat, none, for now, as today */
+const catWear=cr=>cr&&cr.wardrobe===true?{band:saveCol(wearCat.bandana),collar:saveCol(wearCat.collar)}:{band:null,collar:null};
+function drawGato(g,cr,sx,sy){ /* every cat: Canela's silhouette, in its record's coat (coat) and what it wears (catWear). The kitchen
+     cat, coat ginger, her tail's sway at her own clock (sway 0) and the wardrobe on, is drawCat's card pixel for pixel; a cat that
+     names neither is the street cat it always was, grey, its sway 7 on """+CR+""" */
+  const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr),cx=sx+16,sw=Math.sin(Date.now()/300+(typeof cr.sway==="number"&&isFinite(cr.sway)?cr.sway:7));
+  g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
+  if(cr.groomT>wNow()||catAway(cr,wNow())){catGroomCard(g,P,W,cx,sy,Math.floor(Date.now()/CATGROOM.lick)%2);g.restore();return;}   /* grooming (mq-v296) */
+  g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,6.5,2.6,0,0,7);g.fill();
+  g.strokeStyle=P.tail;g.lineWidth=2.6;g.lineCap="round";
   g.beginPath();g.moveTo(cx-6.5,sy+21);g.quadraticCurveTo(cx-11,sy+18+sw*2,cx-9.5,sy+13+sw*3);g.stroke();
-  g.fillStyle="#8B8F98";g.beginPath();g.roundRect(cx-7,sy+18,12.5,7.5,3.8);g.fill();
-  g.fillStyle="#6E7278";g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
-  if(!cr.sit){g.fillStyle="#7B7F88";g.fillRect(cx-5.5,sy+24.5,2,3);g.fillRect(cx+2.5,sy+24.5,2,3);}
-  g.fillStyle="#8B8F98";g.beginPath();g.arc(cx+6,sy+17.5,4.2,0,7);g.fill();
+  g.fillStyle=P.body;g.beginPath();g.roundRect(cx-7,sy+18,12.5,7.5,3.8);g.fill();
+  g.fillStyle=P.bar;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
+  if(!cr.sit){g.fillStyle=P.leg;g.fillRect(cx-5.5,sy+24.5,2,3);g.fillRect(cx+2.5,sy+24.5,2,3);}
+  if(W.band){g.fillStyle=W.band; /* neckerchief tucks behind the head */
+    g.beginPath();g.moveTo(cx+2.2,sy+18.8);g.lineTo(cx+9.2,sy+18.8);g.lineTo(cx+5.7,sy+22.8);g.closePath();g.fill();}
+  g.fillStyle=P.head;g.beginPath();g.arc(cx+6,sy+17.5,4.2,0,7);g.fill();
   g.beginPath();g.moveTo(cx+3.2,sy+15);g.lineTo(cx+4.2,sy+11.6);g.lineTo(cx+6,sy+14);g.closePath();g.fill();
   g.beginPath();g.moveTo(cx+6.6,sy+13.8);g.lineTo(cx+8.6,sy+11.8);g.lineTo(cx+9,sy+15);g.closePath();g.fill();
-  g.fillStyle="#D8DBE0";g.beginPath();g.arc(cx+7.3,sy+19.4,2,0,7);g.fill();
+  g.fillStyle=P.muzzle;g.beginPath();g.arc(cx+7.3,sy+19.4,2,0,7);g.fill();
   g.fillStyle="#26202B";
   if(cr.sit){g.fillRect(cx+5.2,sy+17,1.8,0.7);g.fillRect(cx+8,sy+17,1.8,0.7);}
   else{g.fillRect(cx+5.4,sy+16.6,1.1,1.1);g.fillRect(cx+8,sy+16.6,1.1,1.1);}
   g.fillStyle="#C4586B";g.fillRect(cx+9.2,sy+18,1.1,0.9);
+  if(W.collar){g.fillStyle=W.collar;g.fillRect(cx+2.8,sy+20.6,5.2,1.4);
+    g.fillStyle="#E0B45C";g.beginPath();g.arc(cx+5.4,sy+22.5,0.9,0,7);g.fill();}
   g.restore();
 }
 /* El Portero (#8, Pili's first robot): a tin man with a clipboard, a shade too still. Square head,
@@ -5611,7 +5686,7 @@ function alebLookFor(kind,name){const L=alebLooks();if(!L)return null;
    (key "dog"), so on the night of alebrijes he is painted in the look he always was, and a look picked for him is the one he
    had (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). His name in the Settings list is the office dog's
    person's (the npc "fred", whose side quest his treats open), as the wardrobe calls him; any other animal's as before */
-const aleKeyOf=c=>c.name||(c.role==="office"&&isDog(c)?"dog":c.kind);
+const aleKeyOf=c=>c.name||(typeof c.ale==="string"&&c.ale?c.ale:"")||(c.role==="office"&&isDog(c)?"dog":c.kind);   /* ale: the key of the engine's own animal a critter was (the kitchen cat's "cat"), so her look and any pick saved for her are kept (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
 const aleLookOf=c=>alebLookFor(c.name?c.kind:aleKeyOf(c),c.name);
 const aleLabelOf=c=>c.name||(c.role==="office"&&isDog(c)?shortName("fred"):"")||npcName(c.kind)||c.kind;
 const wildTmp={a:null,b:null};
@@ -5708,7 +5783,7 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
 /* `who` names the animal itself (the critter handed to the painter, or the engine's own DOG, CAT, PIG, LORO): the layer
    reads its facing, its pose (bodyRide) and its step (aleBeat) from it */
 const wild=(fn,ai,kind,who)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
-  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&cr.kind||kind,look=cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
+  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&(typeof cr.ale==="string"&&ALEB_KIND[cr.ale]?cr.ale:cr.kind)||kind,look=cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
   return wildDraw(g,look,k,tg=>fn(tg,...a),a[ai],a[ai+1],an&&an.face||1,an);};
 drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,0,"pigeon",()=>PIG);drawLoro=wild(drawLoro,0,"loro",()=>LORO);
 drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawAussie=wild(drawAussie,1,"aussie",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
@@ -6993,11 +7068,11 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
     else if(world===AW("loro")&&Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2){tgt="loro";label=T().petLoro;}
     else{ /* every critter is interactive — cats and dogs get petted, fliers get admired */
       const g2=CRIT.find(cr=>cr.world===world&&
-        ((cr.kind==="gato"||isDog(cr))?(!cr.moving&&Math.abs(cr.x-px)+Math.abs(cr.y-py)===1)
+        ((isCat(cr)||isDog(cr))?(!cr.moving&&Math.abs(cr.x-px)+Math.abs(cr.y-py)===1)
                                       :Math.abs(cr.x-px)+Math.abs(cr.y-py)<=1));
       if(g2){tgt=g2.kind;petCrit=g2;
         label=isDog(g2)?"🐾 "+(g2.name||"🐶")
-             :g2.kind==="gato"?T().petGato
+             :isCat(g2)?((typeof g2.pet==="string"&&typeof T()[g2.pet]==="string")?T()[g2.pet]:T().petGato)   /* a cat's own button word (pet: the kitchen cat's "petCat") (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
              :g2.kind==="butterfly"?T().petFly:T().petColi;}}
   }
   petTarget=tgt;$("treat").hidden=!tgt;
@@ -7072,10 +7147,11 @@ $("treat").addEventListener("click",()=>{
     /* his happy wag for its own time (dogTime), then a beat before he moves on; and a beagle often sings about it. Drawn
        AFTER the treat's line: the rolls that pick the line are the ones they always were, and these come after them */
     if(g2){g2.next=dogHappy(g2,wNow())+1000;dogGlad(g2,wNow());}}
-  else if(petTarget==="gato"){
+  else if(CATK.has(petTarget)){   /* every cat: a 3.2 s sit and its own lines for 2.2 s (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=wNow()+3200;}
-    const L=(g2&&g2.egg&&EGGSAFE[g2.egg])?eggLines(g2.egg,g2.name):T().gato;
+    if(g2){g2.sit=true;g2.next=wNow()+3200;g2.petT=wNow();g2.groomT=0;   /* petT: the moment it was petted, its ears prick for it; a groom ends */
+      const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}}   /* met: it turns to you (catAway) */
+    const L=catLines(g2);
     if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;
@@ -9474,7 +9550,9 @@ function wdDraw(){
   if(wdPet==="fred"){g.setTransform(1.9,0,0,1.9,1,-13);const od=officeDog();
     /* the office dog in the program (mq-v295): his card as DOG's preview drew it, standing, sitting or mid-step as he is, in what he wears now */
     if(od)dogCard(g,{...od,layT:0,howlT:0,digT:0,sniffT:0,happyT:0,loveT:0,curlT:0,task:null},1,0);else drawDog(g,1,0);}
-  else{g.setTransform(1.9,0,0,1.9,1,-16);drawCat(g,1,0);}
+  else{g.setTransform(1.9,0,0,1.9,1,-16);const kc=CRIT.find(c=>isCat(c)&&c.wardrobe===true);
+    /* the cat the wardrobe dresses, in the critters (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats): her card, as the preview drew it, in what she wears now */
+    if(kc)drawGato(g,kc,1,0);else drawCat(g,1,0);}
 }
 function buildWearRow(rowId,key){
   const row=$(rowId);row.innerHTML="";
@@ -9980,7 +10058,8 @@ function aleSetPick(key,i){
    face, or any animal with a name — then the look by its name. Built from content like the season row; hidden when
    the season hands out no looks. */
 function aleSubjects(){const out=[];if(faceLooks())out.push(["you",T().aleYou||"You"]);
-  if(alebLooks()){const seen=new Set();CRIT.forEach(c=>{const k=aleKeyOf(c);if(seen.has(k))return;seen.add(k);out.push([k,aleLabelOf(c)]);});}
+  if(alebLooks()){const seen=new Set();CRIT.forEach(c=>{if(typeof c.ale==="string"&&c.ale)return;   /* a critter keyed as the engine's own animal (the kitchen cat) is not listed, as that animal was not (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
+    const k=aleKeyOf(c);if(seen.has(k))return;seen.add(k);out.push([k,aleLabelOf(c)]);});}
   return out;}
 let aleWho="you";
 function aleRowBuild(){const row=$("aleRow"),lb=$("lbAle");if(!row)return;

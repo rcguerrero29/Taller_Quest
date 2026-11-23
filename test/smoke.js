@@ -5935,10 +5935,11 @@ const CANDIDATES = [
   {
     const r1 = await page.evaluate(() => {
       const problems = [];
-      /* mq-v295 (the owner's confirmed goal of 2026-11-22 on the office dog): Meridian declares ANIMALS for one thing only, the
-         engine's own office dog set to null, because its office dog is one more dog of the dog program (CRITTERS). The cat,
-         the pigeon and the parrot are still the engine defaults by design */
-      if (typeof ANIMALS === 'undefined' || JSON.stringify(ANIMALS) !== '{"dog":null}') problems.push('Meridian\'s ANIMALS is ' + (typeof ANIMALS === 'undefined' ? 'not declared' : JSON.stringify(ANIMALS)) + ': it sets the engine\'s own office dog to null and nothing else, the rest being the engine defaults by design');
+      /* mq-v295 (the owner's confirmed goal of 2026-11-22 on the office dog) and mq-v296 (his of the same day on the cats): Meridian
+         declares ANIMALS for two things only, the engine's own office dog and its own kitchen cat set to null, because its office
+         dog is one more dog of the dog program and its kitchen cat one more cat of the critters (CRITTERS). The pigeon and the
+         parrot are still the engine defaults by design */
+      if (typeof ANIMALS === 'undefined' || JSON.stringify(ANIMALS) !== '{"dog":null,"cat":null}') problems.push('Meridian\'s ANIMALS is ' + (typeof ANIMALS === 'undefined' ? 'not declared' : JSON.stringify(ANIMALS)) + ': it sets the engine\'s own office dog and kitchen cat to null and nothing else, the rest being the engine defaults by design');
       // #25 (the owner asked for it both in Meridian and in the template, so that both carry plenty
       // of metadata about the roles): Meridian DECLARES its rooms, one line per role with a note,
       // and the declaration must match the engine's default table key for key — it is documentation
@@ -5970,7 +5971,16 @@ const CANDIDATES = [
       // it, so every person with a document stays where the map put them, as before.
       Object.entries(WORLDS).forEach(([id, w]) => w.npcs.forEach(n => { if (n.roams) problems.push(`Meridian station ${n.npc} in ${id} roams — the seam is the town's, not Meridian's`);
         if (n.doc && wanders(n)) problems.push(`Meridian's ${n.npc} carries a document and wanders — a person you look for must be where you left them`); }));
-      const want = { cat: ['lc', 16, 9], pig: ['st', 4, 1], loro: ['st', 17, 5] };
+      const want = { pig: ['st', 4, 1], loro: ['st', 17, 5] };
+      /* the kitchen cat: the engine's own stands nowhere, and the critters' stands in the kitchen on her square, in her coat,
+         sitting as she always started, the wardrobe's cat (mq-v296) */
+      { if (ANI('cat') !== null || AW('cat') !== null) problems.push('the engine\'s own kitchen cat stands in ' + AW('cat') + ': Meridian\'s kitchen cat is the critters\'');
+        const rec = CRITTERS.filter(c => c.wardrobe === true);
+        if (rec.length !== 1) problems.push('Meridian declares ' + rec.length + ' cats the wardrobe dresses in its CRITTERS, where it has one, the kitchen cat');
+        else { const r = rec[0], g = WORLDS[r.world] && WORLDS[r.world].grid[r.y] && WORLDS[r.world].grid[r.y][r.x];
+          if (r.world !== 'lc' || r.x !== 16 || r.y !== 9) problems.push('the kitchen cat starts at ' + r.world + ' (' + r.x + ',' + r.y + '), not on her square in the kitchen (lc 16,9)');
+          if (r.kind !== 'gato' || r.coat !== 'ginger' || r.sit !== true || r.say !== 'cat' || r.pet !== 'petCat' || r.ale !== 'cat' || r.reach !== 'room') problems.push('the kitchen cat is declared ' + JSON.stringify({ kind: r.kind, coat: r.coat, sit: r.sit, say: r.say, pet: r.pet, ale: r.ale, reach: r.reach }) + ': a ginger cat, sitting, her own words, button, look and whole room');
+          if (g === undefined || SOLID.has(g)) problems.push('the kitchen cat has nothing to stand on at ' + r.world + ' (' + r.x + ',' + r.y + ')'); } }
       /* the office dog: the engine's own stands nowhere, and the dog program's stands in the office on his square (mq-v295) */
       { if (ANI('dog') !== null || AW('dog') !== null) problems.push('the engine\'s own office dog stands in ' + AW('dog') + ': Meridian\'s office dog is the dog program\'s');
         const rec = CRITTERS.filter(c => c.role === 'office'), od = typeof officeDog === 'function' ? officeDog() : null;

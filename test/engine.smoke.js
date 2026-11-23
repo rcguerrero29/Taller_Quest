@@ -7301,9 +7301,9 @@ function findChromium() {
     try {
       if (info.MER) { const fs = require('fs'), mp = path.resolve(path.dirname(file), 'content/meridian/maps.js'); let src = '';
         try { src = fs.readFileSync(mp, 'utf8'); } catch (e) { P.push('Meridian\'s map file could not be read, so a copy of it without its office dog could not be made'); return { P, out }; }
-        const lines = src.split('\n'), rec = lines.filter(l => /^\s*\{kind:"[a-z]+"[^\n]*role:"office"/.test(l)), ani = lines.filter(l => /^const ANIMALS=\{dog:null\};/.test(l));
+        const lines = src.split('\n'), rec = lines.filter(l => /^\s*\{kind:"[a-z]+"[^\n]*role:"office"/.test(l)), ani = lines.filter(l => /^const ANIMALS=\{dog:null[,}]/.test(l));
         if (rec.length !== 1 || ani.length !== 1) { P.push('Meridian\'s map file has ' + rec.length + ' office dog lines and ' + ani.length + ' lines setting ANIMALS.dog to null, where one of each was looked for, so a copy without them could not be made'); return { P, out }; }
-        const body = lines.filter(l => !rec.includes(l) && !ani.includes(l)).join('\n');
+        const body = lines.filter(l => !rec.includes(l)).map(l => ani.includes(l) ? l.replace(/dog:null,?/, '') : l).join('\n');   /* only the office dog's part of the line: the kitchen cat stays where Meridian puts her (mq-v296) */
         ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); p = await ctx.newPage(); const err = []; p.on('pageerror', e => err.push(e.message));
         await p.route('**', r => { const u = r.request().url(); if (u.startsWith('file://') && u.endsWith('/content/meridian/maps.js')) return r.fulfill({ status: 200, contentType: 'application/javascript', body }); return u.startsWith('file://') ? r.continue() : r.abort(); });
         await p.goto(require('url').pathToFileURL(file).href); await boot(p);
@@ -7315,6 +7315,195 @@ function findChromium() {
     return { P, out }; })();
   officeKept.out.forEach(l => console.log('  OFFICE DOG KEPT: ' + l));
   fails.push(...officeKept.P.map(m => 'a world that keeps its office dog outside the program: ' + m));
+
+  /* ---- THE CATS: ONE CAT SYSTEM, THEIR BODIES, GROOMING (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats, and his
+     yes of 2026-11-23 to the grooming card) ----
+     What he asked: every cat in Meridian (the kitchen cat and five cats in five other rooms) stands as a 3D body as the dogs do,
+     looks like its card, and grooms. One cat system: the kitchen cat, the engine's own animal (CAT), moves into the critters,
+     and a second cat system fails the build. Asked here, each red in its own sentence:
+       1 · THE GUARD: in a world whose critters include a cat, the engine's own kitchen cat stands nowhere and its painter
+           (drawCat) draws nothing, in every camera, and every critter its cat painter draws is a cat of CATK.
+       2 · HER CARD: the kitchen cat's card, through the critters' painter, is drawCat's pixel for pixel: standing and sitting,
+           facing either way, at three instants, with and without each bandana and collar (48 pictures); and a street cat's
+           card is the painter's of mq-v295, frozen here, pixel for pixel (its own colour still not read, for now, as today).
+       3 · HER WAYS: her button's word (petCat), a 3.2 s sit when petted and one of her lines for 2.2 s; every cat a line of
+           its own when it steps next to you, about 30 in 100; her whole kitchen; every cat sitting 70 in 100 of its rests.
+       4 · THEIR BODIES: on a laptop (1280 by 800) each of the six cats is a body in its room, however far; at 479 by 900
+           each is its card; each body in its card's coat (the kitchen cat ginger, the others grey) with the card's two bars;
+           her bandana and collar on her body, and none on any other cat; and the dogs' own ceiling counted apart from the cats'.
+       5 · GROOMING: about 1 in 3 of a cat's sits, 3 to 6 s each, over a long seeded run; a groom on its card (the approved
+           drawing, two lick frames) and on its body (held "groom", its near fore paw raised); petting ends it at once.
+       6 · ITS EARS: pricked when petted, at ease while grooming, a little when you stand near, at the patient speed.
+       7 · A CAT NOT YET MET, where a world turns cat personalities on (asked here by turning them on for this block only):
+           it faces away grooming with a fish in its bubble; petted, it is met, turns to you and stretches.
+     Every state touched here is put back. */
+  const merCats = await page.evaluate(async () => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    if (typeof CATK === 'undefined' || typeof isCat !== 'function') { P.push('the engine has no set of cat kinds (CATK), so its cats are not one system'); return { P, out }; }
+    const cats = CRIT.filter(isCat), kc = cats.find(c => c.wardrobe === true);
+    if (!cats.length) { if (MER) P.push('Meridian has no cat among its critters'); else out.push('this world has no cat, so nothing was asked of cats here'); return { P, out }; }
+    if (MER && (cats.length !== 6 || !kc)) P.push('Meridian has ' + cats.length + ' cats among its critters, ' + (kc ? 'the kitchen cat among them' : 'and no kitchen cat'), ': six, the kitchen cat one of them');
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, TO: window.toast, wc: { ...wearCat }, lastBump, pet: [petTarget, petCrit],
+      iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), dc: window.drawCat, dg: window.drawGato,
+      rec: cats.map(c => [c, { ...c }]), pt: Object.getOwnPropertyDescriptor(window, 'PERSONATAKE'),
+      all: CRIT.map(c => [c, { ...c }]), visits: typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, decals: DECALS.length,
+      ball: typeof BALL !== 'undefined' ? BALL : null, btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]), talk: document.getElementById('talk') ? document.getElementById('talk').hidden : null };
+    /* every animal that is not a cat is held still for this block, so nothing but the cats moves (a dog sent out on a whim here
+       would still be out when a later block asked for him), and every one of them is put back as it was at the end */
+    const others = () => CRIT.filter(c => !isCat(c)).forEach(c => Object.assign(c, { next: Infinity, task: null, moving: false, follow: false }));
+    const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
+    const open = (W, x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
+    const near = (c, d) => { const W = WORLDS[c.world]; return [[0, d], [d, 0], [-d, 0], [0, -d], [1, d], [-1, d], [d, 1]].map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => open(W, x, y) && !(typeof portalAt === 'function' && portalAt(c.world, x, y))) || null; };
+    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0 });
+    const pic = f => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; f(c.getContext('2d')); return c.toDataURL(); };
+    const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
+    const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+    try { el.hidden = false; if (document.getElementById('talk')) document.getElementById('talk').hidden = true; others();
+      /* 1 · the guard */
+      { let calls = 0; const bad = new Set(); window.drawCat = function (...a) { calls++; return keep.dc.apply(this, a); };
+        window.drawGato = function (g, c, ...a) { if (!isCat(c)) bad.add(c && c.kind); return keep.dg.call(this, g, c, ...a); };
+        try { if (AW('cat') !== null) P.push('the engine\'s own kitchen cat stands in ' + AW('cat') + ' beside the critters\' cats: a second cat system');
+          const rooms = [...new Set(cats.map(c => c.world))];
+          for (const wid of rooms) { const c = cats.find(k => k.world === wid); stand(wid, c.x, c.y + 1); for (const cm of (typeof CAMS !== 'undefined' ? CAMS : ['top'])) { try { camSet(cm); } catch (e) {} if (cm === '3d') draw3d(); else draw(); } }
+          if (calls) P.push('the engine\'s own kitchen cat\'s painter drew ' + calls + ' times in the rooms of the cats: a cat drawn outside the cats\' one system');
+          if (bad.size) P.push('the cats\' painter drew something that is not a cat: ' + [...bad].join(', '));
+          out.push('the guard: ' + rooms.length + ' rooms with cats, every camera: the engine\'s own cat drawn ' + calls + ' times'); }
+        finally { window.drawCat = keep.dc; window.drawGato = keep.dg; } }
+      /* 2 · her card, and a street cat's */
+      if (kc) { let same = 0, n = 0; const diff = [];
+        try { for (const t of [1.7e12, 1.7e12 + 470, 1.7e12 + 1234]) for (const sit of [false, true]) for (const face of [1, -1]) for (const [b, c] of [[null, null], ['#C0392B', null], [null, '#2E5FA8'], ['#E0B45C', '#26202B']]) {
+          Date.now = () => t; wearCat.bandana = b; wearCat.collar = c; Object.assign(CAT, { sit, face }); n++;
+          if (pic(g => drawCat(g, 4, 4)) === pic(g => drawGato(g, { ...kc, sit, face, groomT: 0, metT: 1 }, 4, 4))) same++; else diff.push([sit, face, b, c].join('/')); } }
+        finally { Date.now = keep.DN; Object.assign(wearCat, keep.wc); }
+        if (same !== n) P.push('the kitchen cat\'s card through the cats\' painter is drawCat\'s in ' + same + ' of ' + n + ' pictures (' + diff.slice(0, 3).join('; ') + '): her card is to be as it always was');
+        out.push('her card: ' + same + ' of ' + n + ' pictures drawCat\'s, pixel for pixel'); }
+      { /* the street cat's painter at mq-v295, frozen here, its near-black written as it was */
+        const old = function (g, cr, sx, sy) { const cx = sx + 16, sw = Math.sin(Date.now() / 300 + 7);
+          g.save(); g.translate(cx, 0); g.scale(cr.face, 1); g.translate(-cx, 0);
+          g.fillStyle = 'rgba(0,0,0,.15)'; g.beginPath(); g.ellipse(cx, sy + 27, 6.5, 2.6, 0, 0, 7); g.fill();
+          g.strokeStyle = '#6E7278'; g.lineWidth = 2.6; g.lineCap = 'round';
+          g.beginPath(); g.moveTo(cx - 6.5, sy + 21); g.quadraticCurveTo(cx - 11, sy + 18 + sw * 2, cx - 9.5, sy + 13 + sw * 3); g.stroke();
+          g.fillStyle = '#8B8F98'; g.beginPath(); g.roundRect(cx - 7, sy + 18, 12.5, 7.5, 3.8); g.fill();
+          g.fillStyle = '#6E7278'; g.fillRect(cx - 4.5, sy + 18.5, 1.8, 6); g.fillRect(cx - 1, sy + 18.5, 1.8, 6);
+          if (!cr.sit) { g.fillStyle = '#7B7F88'; g.fillRect(cx - 5.5, sy + 24.5, 2, 3); g.fillRect(cx + 2.5, sy + 24.5, 2, 3); }
+          g.fillStyle = '#8B8F98'; g.beginPath(); g.arc(cx + 6, sy + 17.5, 4.2, 0, 7); g.fill();
+          g.beginPath(); g.moveTo(cx + 3.2, sy + 15); g.lineTo(cx + 4.2, sy + 11.6); g.lineTo(cx + 6, sy + 14); g.closePath(); g.fill();
+          g.beginPath(); g.moveTo(cx + 6.6, sy + 13.8); g.lineTo(cx + 8.6, sy + 11.8); g.lineTo(cx + 9, sy + 15); g.closePath(); g.fill();
+          g.fillStyle = '#D8DBE0'; g.beginPath(); g.arc(cx + 7.3, sy + 19.4, 2, 0, 7); g.fill();
+          g.fillStyle = '#26202B';
+          if (cr.sit) { g.fillRect(cx + 5.2, sy + 17, 1.8, 0.7); g.fillRect(cx + 8, sy + 17, 1.8, 0.7); }
+          else { g.fillRect(cx + 5.4, sy + 16.6, 1.1, 1.1); g.fillRect(cx + 8, sy + 16.6, 1.1, 1.1); }
+          g.fillStyle = '#C4586B'; g.fillRect(cx + 9.2, sy + 18, 1.1, 0.9); g.restore(); };
+        let same = 0, n = 0;
+        try { cats.filter(c => !c.wardrobe).forEach(c => { for (const t of [1.7e12, 1.7e12 + 777]) for (const sit of [false, true]) for (const face of [1, -1]) {
+          Date.now = () => t; n++; const r = { ...c, sit, face, groomT: 0, metT: 1 }; if (pic(g => old(g, r, 4, 4)) === pic(g => drawGato(g, r, 4, 4))) same++; } }); }
+        finally { Date.now = keep.DN; }
+        if (n && same !== n) P.push('the street cats\' cards are the painter\'s of mq-v295 in ' + same + ' of ' + n + ' pictures: each is to look as it always did');
+        out.push('the street cats\' cards: ' + same + ' of ' + n + ' as at mq-v295'); }
+      /* 3 · her ways */
+      if (kc) { const toasts = []; window.toast = (m, ms) => toasts.push([m, ms]);
+        try { const sq = near(kc, 1); hold(kc); stand(kc.world, sq[0], sq[1]); fredCheck(); const lb = document.getElementById('treat').textContent;
+          if (petTarget !== 'gato' || petCrit !== kc || lb !== T().petCat) P.push('beside the kitchen cat the button says "' + lb + '" for ' + petTarget + ': her own word, ' + JSON.stringify(T().petCat));
+          const n0 = wNow(); document.getElementById('treat').click();
+          const said = toasts.find(t => /^❤ /.test(t[0])), L = T().cat;
+          if (!kc.sit || !(kc.next >= n0 + 3100 && kc.next <= n0 + 3300)) P.push('petted, the kitchen cat sits until ' + (kc.next - n0) + ' ms: a 3.2 s sit');
+          if (!said || said[1] !== 2200 || !L.includes(said[0].slice(2))) P.push('petted, the kitchen cat says ' + JSON.stringify(said) + ': one of her own lines, for 2.2 s');
+          if (critReach(kc) !== Infinity) P.push('the kitchen cat wanders ' + critReach(kc) + ' steps of her kitchen: the whole of it, as before');
+          out.push('her ways: the button "' + lb + '", a ' + (kc.next - n0) + ' ms sit, her line for ' + (said && said[1]) + ' ms'); }
+        finally { window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1]; } }
+      { /* the lines when a cat steps next to you, and the sits, over a seeded run of every cat */
+        let bumps = 0, beside = 0, rests = 0, sits = 0, own = 0; const N0 = Date.now; let now = 1e9;
+        window.toast = (m) => { bumps++; }; Math.random = seeded(4242);
+        try { others(); for (const c of cats) { stand(c.world, c.x, c.y + 3);
+          for (let k = 0; k < 4000; k++) { const was = c.sit, stepped = c.x + ',' + c.y; lastBump = -1e12; Object.assign(c, { next: 0, moving: false, mt: 0, task: null });
+            if (Math.abs(c.x - px) + Math.abs(c.y - py) === 0) stand(c.world, c.x, c.y + 3);
+            const b0 = bumps, r0 = Math.random; let first = null; Math.random = () => { const v = r0(); if (first === null) first = v; return v; };
+            const save = { ...c }; critUpdate(16, now); now += 16; Math.random = r0;
+            if (first !== null && first < 0.55) { rests++; if (c.sit) sits++; }
+            if (c.moving && Math.abs(c.x - px) + Math.abs(c.y - py) === 1) { beside++; if (bumps > b0) own++; }
+            c.moving = false; c.fx = c.x; c.fy = c.y; } } }
+        finally { window.toast = keep.TO; Math.random = keep.MR; }
+        const sh = rests ? sits / rests : 0, bs = beside ? own / beside : 0;
+        if (Math.abs(sh - 0.7) > 0.04) P.push('a cat sits in ' + (100 * sh).toFixed(1) + ' in 100 of its rests: 70 in 100, every cat alike');
+        if (beside < 60 || Math.abs(bs - 0.3) > 0.08) P.push('a cat that steps next to you says a line ' + (100 * bs).toFixed(1) + ' times in 100 (' + beside + ' steps): about 30 in 100, every cat');
+        out.push('every cat: sitting in ' + (100 * sh).toFixed(1) + '% of ' + rests + ' rests; a line in ' + (100 * bs).toFixed(1) + '% of ' + beside + ' steps beside you'); }
+      keep.rec.forEach(([c, r]) => Object.assign(c, r));
+      /* 4 · their bodies */
+      { const has3d = typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function';
+        if (!has3d || typeof CATBODYON === 'undefined' || !CATBODYON) { if (MER) P.push('Meridian names no cat in its BODYTAKE, or has no 3D camera here, so its cats\' bodies could not be asked'); else out.push('this world gives its cats no bodies'); }
+        else { el.hidden = false; camSet('3d'); const got = []; wearCat.bandana = '#C0392B'; wearCat.collar = '#2E5FA8';   /* dressed, so a bandana or a collar on any other cat would show */
+          for (const [w, h, want] of [[1280, 800, 'body'], [479, 900, typeof BODYSCREEN === 'number' && BODYSCREEN > 479 ? 'card' : 'body']]) { if (!screenIs(w, h)) { P.push('the size of the screen could not be set'); break; } sizeCanvas();
+            for (const c of cats) { hold(c); c.sit = false; const sq = near(c, 2); stand(c.world, sq[0], sq[1]); for (let k = 0; k < 8; k++) draw3d();
+              const B = T3.dogOn && T3.dogOn.get(c), body = !!(B && B.visible && T3.dogShown && T3.dogShown.has(c));
+              if ((want === 'body') !== body) P.push('at ' + w + ' by ' + h + ' the cat ' + (c.name || (c === kc ? 'of the kitchen' : c.world)) + ' is ' + (body ? 'a body' : 'its card') + ': ' + (want === 'body' ? 'a body' : 'its card'));
+              if (body && w === 1280) { const lk = B.userData.look, Pc = CATCOAT[c.coat] || CATCOAT.grey;
+                if (lk.coat !== Pc.body) P.push('the body of ' + (c.name || 'the kitchen cat') + ' is painted ' + lk.coat + ', not its card\'s coat ' + Pc.body);
+                let bars = false, band = false, collar = false; B.traverse(o => { if (o.isMesh && (o.userData.marks || []).includes('bars')) bars = true; if (o.isMesh && o.userData.wears === 'band') band = true; if (o.isMesh && o.userData.wears === 'collar') collar = true; });
+                if (!bars) P.push('the body of ' + (c.name || 'the kitchen cat') + ' has no bars: its card has two');
+                if (c === kc && (!!wearCat.bandana !== band || !!wearCat.collar !== collar)) P.push('the kitchen cat\'s body wears ' + JSON.stringify({ band, collar }) + ' where the wardrobe gives ' + JSON.stringify(wearCat));
+                if (c !== kc && (band || collar)) P.push('the body of ' + (c.name || c.world) + ' wears a bandana or a collar: those are the kitchen cat\'s alone'); } }
+            got.push(w + ' by ' + h + ' ' + want + 's'); }
+          out.push('their bodies: ' + cats.length + ' cats, ' + got.join(', ')); } }
+      /* 5 · grooming */
+      if (typeof GROOMON === 'undefined' || !GROOMON) { if (MER) P.push('Meridian does not turn grooming on (GROOMTAKE)'); }
+      else { let sits = 0, grooms = 0, lo = Infinity, hi = 0; let now = 2e9; Math.random = seeded(777);
+        try { others(); const c = cats[0]; stand(c.world, c.x, c.y + 3);
+          for (let k = 0; k < 20000; k++) { Object.assign(c, { next: 0, moving: false, groomT: 0, x: c.home[0], y: c.home[1] }); critUpdate(16, now);
+            if (!c.moving && c.sit) { sits++; if (c.groomT > now) { grooms++; const d = c.groomT - now; lo = Math.min(lo, d); hi = Math.max(hi, d); } } now += 16; } }
+        finally { Math.random = keep.MR; }
+        const sh = sits ? grooms / sits : 0;
+        if (Math.abs(sh - 1 / 3) > 0.04) P.push('a cat grooms in ' + (100 * sh).toFixed(1) + ' in 100 of its sits: 1 in 3');
+        if (!(lo >= 3000 && hi <= 6000 && hi - lo > 2000)) P.push('a groom lasts ' + lo.toFixed(0) + ' to ' + hi.toFixed(0) + ' ms: 3 to 6 s');
+        out.push('grooming: ' + grooms + ' of ' + sits + ' sits (' + (100 * sh).toFixed(1) + '%), ' + (lo / 1000).toFixed(1) + ' to ' + (hi / 1000).toFixed(1) + ' s');
+        if (kc) { const nw = wNow(); kc.groomT = nw + 5000; kc.sit = true;
+          const Pg = dogPose(kc, nw, 0); if (Pg.held !== 'groom' || !Pg.sit) P.push('grooming, the kitchen cat\'s pose is held "' + Pg.held + '": "groom"');
+          const a = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)), b = pic(g => drawGato(g, { ...kc, face: 1, groomT: 0 }, 4, 4));
+          let f0, f1; Date.now = () => 0; try { f0 = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)); Date.now = () => CATGROOM.lick; f1 = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)); } finally { Date.now = keep.DN; }
+          if (a === b) P.push('grooming, the kitchen cat\'s card is her sitting card: the grooming card is to show');
+          if (f0 === f1) P.push('the grooming card has one frame: two, the paw at the mouth and the lick');
+          const toasts = []; window.toast = m => toasts.push(m);
+          try { const sq = near(kc, 1); stand(kc.world, sq[0], sq[1]); kc.moving = false; fredCheck(); document.getElementById('treat').click(); } finally { window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1]; }
+          if (kc.groomT > wNow()) P.push('petted while grooming, the kitchen cat goes on grooming: petting ends it at once'); } }
+      /* 6 · its ears */
+      if (kc && typeof CATBODYON !== 'undefined' && CATBODYON && typeof T3 !== 'undefined' && T3.dogOn) { screenIs(1280, 800); sizeCanvas(); camSet('3d');
+        const aim = () => { for (let k = 0; k < 3; k++) draw3d(); const B = T3.dogOn.get(kc); return B ? [B.userData.earAim, B.userData.earSpeed] : null; };
+        hold(kc); kc.sit = false; let sq = near(kc, 4); stand(kc.world, sq[0], sq[1]); const far = aim();
+        sq = near(kc, 1); stand(kc.world, sq[0], sq[1]); const close = aim();
+        kc.petT = wNow(); const pet = aim(); kc.petT = 0; kc.sit = true; kc.groomT = wNow() + 5000; const gr = aim(); kc.groomT = 0;
+        if (!far || !close || !pet || !gr) P.push('the kitchen cat had no body to read its ears from');
+        else { if (pet[0] !== 1) P.push('petted, the kitchen cat\'s ears aim at ' + pet[0] + ': pricked (1)');
+          if (!(close[0] > far[0])) P.push('the kitchen cat\'s ears are no keener with you beside her (' + close[0] + ') than four squares off (' + far[0] + '): a little pricked when you are near');
+          if (!(gr[0] < close[0])) P.push('grooming, the kitchen cat\'s ears aim at ' + gr[0] + ': at ease');
+          if (pet[1] !== EARSPRING.patient) P.push('the kitchen cat\'s ears spring at ' + pet[1] + ', not the patient speed (' + EARSPRING.patient + ')');
+          out.push('her ears: far ' + far[0] + ', near ' + close[0] + ', petted ' + pet[0] + ', grooming ' + gr[0] + ', springing at ' + pet[1]); } }
+      /* 7 · a cat not yet met, with cat personalities turned on for this block only */
+      if (kc && typeof catAway === 'function') { window.PERSONATAKE = ['cat']; const saved = kc.persona;
+        try { kc.persona = 'patient'; hold(kc); kc.sit = true; const nw = wNow();
+          if (!catAway(kc, nw)) P.push('with cat personalities on, a cat not yet met does not face away');
+          if (dogPose(kc, nw, 0).held !== 'groom') P.push('with cat personalities on, a cat not yet met is not grooming as it faces away');
+          if (typeof T3 !== 'undefined' && T3.dogOn) { const sq = near(kc, 2); stand(kc.world, sq[0], sq[1]); for (let k = 0; k < 3; k++) draw3d(); const B = T3.dogOn.get(kc);
+            if (B && !(B.userData.bubble && B.userData.bubble.visible)) P.push('a cat not yet met faces away with no thought bubble over it');
+            if (B && B.userData.bubble) { const m = B.userData.bubble.material.map.image.getContext('2d').getImageData(36, 20, 1, 1).data; if (!(m[2] > m[0] + 40)) P.push('a cat\'s thought bubble holds no blue fish (' + [...m].join(',') + ')'); }
+            const sq1 = near(kc, 1); stand(kc.world, sq1[0], sq1[1]); kc.moving = false; fredCheck(); window.toast = () => {}; document.getElementById('treat').click(); window.toast = keep.TO;
+            if (!kc.metT) P.push('petted, a cat not yet met is not met'); for (let k = 0; k < 2; k++) draw3d();
+            if (!(kc.stretchT > wNow())) P.push('met, a cat does not stretch as it turns to you');
+            if (catAway(kc, wNow())) P.push('met, a patient cat still faces away');
+            out.push('a cat not yet met, cat personalities on: facing away grooming, its bubble a fish; petted, met, stretching, turned'); } }
+        finally { delete window.PERSONATAKE; kc.persona = saved; petTarget = keep.pet[0]; petCrit = keep.pet[1]; } }
+    } finally {
+      keep.all.forEach(([c, r]) => { Object.keys(c).forEach(k => { if (!(k in r)) delete c[k]; }); Object.assign(c, r); });
+      if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = keep.visits; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; DECALS.length = keep.decals; if (typeof BALL !== 'undefined') BALL = keep.ball;
+      keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; }); if (keep.talk !== null) document.getElementById('talk').hidden = keep.talk;
+      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; Math.random = keep.MR; Date.now = keep.DN; window.toast = keep.TO;
+      if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
+      stand(keep.world, keep.px, keep.py); fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; try { camSet(keep.cam); } catch (e) {} el.hidden = keep.hidden; sizeCanvas();
+    }
+    return { P, out };
+  });
+  merCats.out.forEach(l => console.log('  CATS: ' + l));
+  fails.push(...merCats.P.map(m => 'the cats: ' + m));
 
   /* ---- THE 3D LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288) ----
      What was asked, on 2026-11-21 and confirmed that day: in the 3D camera the leash is lifted onto the bridge deck. Each

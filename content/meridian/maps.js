@@ -374,6 +374,13 @@ const CRITTERS=[
  {kind:"gato",world:"li",x:16,y:7,c:"#F2F0EA",name:"Pelusa"}, /* she rides in the van */
  {kind:"gato",world:"no",x:2,y:2,c:"#3A3A40",name:"Timbre"} /* she sits where the doorbell would be */,
  {kind:"gato",world:"me",x:15,y:9,c:"#7A6A55"},  /* Frijol — the bodega cat, pettable */
+ /* THE KITCHEN CAT, ONE MORE CAT OF THE CRITTERS (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats). She was the
+    engine's own kitchen cat (ANIMALS.cat, below), outside the critters; now every cat is one system, and she is one more cat in
+    it, on the square she always started on, sitting as she always started. coat ginger and sway 0: her card, as it always was.
+    wardrobe: the wardrobe dresses her (her bandana and collar, saved as before). say "cat" and pet "petCat": her lines and her
+    button's word. ale "cat": her look on the night of alebrijes, and any pick saved for her, as before. reach "room": her whole
+    kitchen, as before. Her record carries no name, as before: the world's own words name her */
+ {kind:"gato",world:"lc",x:16,y:9,coat:"ginger",sway:0,sit:true,wardrobe:true,say:"cat",pet:"petCat",ale:"cat",reach:"room"},
  {kind:"beagle",world:"st",x:22,y:11,c:"#E8C46A",name:"Sonny",role:"star",egg:"star"}, /* the star himself; his name is the player's (DOGNAMES) */
  /* THE OFFICE DOG, ONE MORE DOG OF THE DOG PROGRAM (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). He was
     the engine's own office dog (ANIMALS.dog, below), outside the program; now he lives it, every behaviour the other dogs have,
@@ -386,9 +393,10 @@ const CRITTERS=[
     carries no name, as DOG's did not: the words that name him are the world's own lines (strings.js), as before. */
  {kind:"aussie",world:"hq",x:12,y:5,c:"#7B7E8A",role:"office",tidy:true,leashOnly:true,reach:"room"}
 ];
-/* the engine's own office dog (DOG) is not placed: the office dog above is the one, in the program (mq-v295). The cat, the
-   pigeon and the parrot stand where the engine's defaults put them, as before */
-const ANIMALS={dog:null};
+/* the engine's own office dog (DOG) is not placed: the office dog above is the one, in the program (mq-v295); nor is the engine's
+   own kitchen cat (CAT): the kitchen cat above is the one, in the critters (mq-v296). The pigeon and the parrot stand where the
+   engine's defaults put them, as before */
+const ANIMALS={dog:null,cat:null};   /* the kitchen cat is in CRITTERS too, one more cat of the critters (mq-v296) */
 /* one-off place identity as data (IDEAS §10): the engine's DECODRAW vocabulary
    (sign, mural) renders these in ALL FOUR cameras: top (engine.js drawDecor), front (the
    depth pass), iso (the billboard pass) and 3D (engine3d.js, a plane on the wall's first open
