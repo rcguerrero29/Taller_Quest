@@ -7171,10 +7171,11 @@ function findChromium() {
               if (!s.ok) P.push('the 3D camera did not draw at ' + w + ' by ' + h); else if ((want === 'body') !== s.body || (want === 'card') !== s.card) P.push('two squares from you at ' + w + ' by ' + h + ' the office dog is ' + is + '; he is to be ' + (want === 'body' ? 'a body' : 'his card'));
               got.push(w + ' by ' + h + ' ' + is);
               if (w === 1280 && s.body) { const B = T3.dogOn.get(od); let up = 0; B.traverse(o => { if (o.isMesh && o.userData.upEar && !o.userData.inside) up++; });
-                const spring = typeof EARSPRING !== 'undefined' ? EARSPRING.patient : null, sw = [];
+                /* his ears at his own personality's speed, the patient one where he has none (a personality in Meridian from mq-v297) */
+                const pe = typeof personaOf === 'function' ? personaOf(od) : null, spring = typeof EARSPRING !== 'undefined' ? (EARSPRING[pe] || EARSPRING.patient) : null, sw = [];
                 for (const dt of [0, 27, 55]) { Date.now = () => 1.7e12 + dt; try { draw3d(); } finally { Date.now = keep.DN; } sw.push(B.userData.joints.tail_1.rotation.z); }
                 if (up !== 2) P.push('his body has ' + up + ' upright ears; his card has two');
-                if (spring !== null && B.userData.earSpeed !== spring) P.push('his ears spring at ' + B.userData.earSpeed + ', not the patient speed (' + spring + ')');
+                if (spring !== null && B.userData.earSpeed !== spring) P.push('his ears spring at ' + B.userData.earSpeed + ', not ' + (pe ? 'his ' + pe + ' speed' : 'the patient speed') + ' (' + spring + ')');
                 if (!(Math.max(...sw) - Math.min(...sw) > 0.05)) P.push('his body\'s tail does not wag standing: it turned ' + sw.map(x => x.toFixed(3)).join(', ') + ' over three instants');
                 got.push('his ears ' + up + ', springing at ' + B.userData.earSpeed + ', his tail ' + sw.map(x => x.toFixed(2)).join('/'));
                 /* each piece of the wardrobe can be SEEN on his body: at a frozen clock, him held, put on alone in a colour of
@@ -7564,6 +7565,12 @@ function findChromium() {
           L.build = { fluff: 0.5 }; draw3d(); const B4 = T3.loroOn.get(L), bx4 = new THREE.Box3().setFromObject(B4.userData.T.children[0]), bx0 = new THREE.Box3().setFromObject(B.userData.T.children[0]);
           if (!(bx4.max.x - bx4.min.x > (bx0.max.x - bx0.min.x) * 1.08)) P.push('his fluff setting did not make him fuller');
           delete L.build; draw3d(); }
+        /* his perches: a rod brings its rod and no twig; a branch (mq-v298, the town's) its twig and no rod */
+        { const has = (B, hex) => { let n = 0; B.traverse(o => { if (o.isMesh && o.userData.base && ('#' + o.userData.base.getHexString().toUpperCase()) === hex) n++; }); return n; };
+          const BR = loroMake(Object.assign({}, L, { perch: 'branch' })), RO = loroMake(Object.assign({}, L, { perch: 'rod' }));
+          if (!has(BR, '#6B4A2B') || has(BR, '#5A5F68')) P.push('a parrot on a branch does not stand on a twig of his own, or stands on a rod as well');
+          if (!has(RO, '#5A5F68') || has(RO, '#6B4A2B')) P.push('a parrot on a rod does not stand on his rod, or stands on a twig as well');
+          t3Dispose(BR); t3Dispose(RO); }
         let cardDrawn = false; const lc = window.drawLoro; window.drawLoro = function (g, c, ...a) { if (c === L) cardDrawn = true; return lc.call(this, g, c, ...a); }; draw3d(); window.drawLoro = lc;
         if (cardDrawn) P.push('the parrot is drawn twice in the 3D camera: his card stands where his body is'); }
       /* 3 · the small birds */

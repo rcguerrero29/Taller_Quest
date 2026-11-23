@@ -3134,6 +3134,11 @@ function loroLoft(rings,seg,paint,tex){seg=seg||14;const pos=[],col=[],uv=[],idx
 function loroMake(L){const C=loroCoatOf(L),Bd=loroBuildOf(L),G=new THREE.Group();G.name="parrotbody";
   const add=(geo,c,x,y,z,s,r,par)=>{const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:new THREE.Color(c)}));m.userData.base=new THREE.Color(c);m.position.set(x,y,z);if(s)m.scale.set(...s);if(r)m.rotation.set(...r);(par||G).add(m);return m;};
   const sph=(r,w,h)=>new THREE.SphereGeometry(r,w||18,h||14),R=(y,z,a,b,col,x,front)=>({c:[x||0,y,z],a,b,col,front});
+  /* A BRANCH (mq-v298; the owner's confirmed goal of 2026-11-23 on the town's parrot): a small twig grown out of a potted plant's
+     bush toward the street, rising a little to its tip under his feet, two leaves along it; its root deep in the leaves */
+  if(L.perch==="branch"){const tw=add(new THREE.CylinderGeometry(0.0055,0.0085,0.24,8),"#6B4A2B",0,-0.02,-0.11,null,[Math.PI/2-0.18,0,0]);
+    [[-0.07,1],[-0.16,-1]].forEach(([z,sd])=>add(new THREE.SphereGeometry(0.018,10,8),"#4F8A3A",sd*0.016,-0.012+z*0.18,z,[0.45,0.18,1],[0.2,sd*0.5,sd*0.4]));
+    add(new THREE.SphereGeometry(0.0075,8,6),"#6B4A2B",0,-0.006,0.004);}
   if(L.perch==="rod"){add(new THREE.BoxGeometry(0.05,0.05,0.012),"#3E434B",0,-0.008,-0.2);   /* the rod from the wall: a plate, the rod straight out, a ball at its end */
     add(new THREE.CylinderGeometry(0.008,0.008,0.21,10),"#5A5F68",0,-0.008,-0.095,null,[Math.PI/2,0,0]);add(new THREE.SphereGeometry(0.0095,10,8),"#5A5F68",0,-0.008,0.01);}
   const P=new THREE.Group();G.add(P);
@@ -3214,7 +3219,9 @@ function t3LoroBodies(){const on=T3.loroOn||(T3.loroOn=new Map()),shown=new Set(
     if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(cr);B=null;}
     if(!B){B=loroMake(cr);T3.scene.add(B);on.set(cr,B);}
     const at=Array.isArray(cr.perchAt)?cr.perchAt:[0.5,0.6];   /* where on his square the perch is: along the wall, and its height */
-    B.position.set(cr.x+at[0],at[1],cr.y+(cr.perch==="rod"?1+0.206*LOROFORM.scale*loroBuildOf(cr).size:0.5));   /* on a rod, its plate flat on the wall's face (the wall's face at the square's edge) */
+    /* on a rod, its plate flat on the wall's face (the wall's face at the square's edge); on a branch, out of the bush toward the
+       street by the record's third number (how far from the square's middle, in squares) */
+    B.position.set(cr.x+at[0],at[1],cr.y+(cr.perch==="rod"?1+0.206*LOROFORM.scale*loroBuildOf(cr).size:0.5+(cr.perch==="branch"&&isFinite(at[2])?at[2]:0)));
     const away=loroAway(cr,nw);loroPose(B,cr,bodyRide("loro",cr),away);t3BodyLight(B);B.visible=true;shown.add(cr);t3BirdBubble(B,cr,away,0.32);});
   T3.loroShown=shown;return shown;}
 const ANIMALMAX_ONE=()=>typeof DOGBODYCEIL==="number"?DOGBODYCEIL:24;   /* the ceiling every animal's bodies share (24) */
