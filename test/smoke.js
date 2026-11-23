@@ -2670,8 +2670,10 @@ const CANDIDATES = [
         /* the drawing every camera paints a dog with, the clock and the pose held still */
         draw: nm => { const d = dogOf(nm); if (!d) return null;
           const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
-          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
-          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          /* every pose clock held, her sniff among them: with a personality (mq-v297) her idle routine leans, and a dog caught nose down
+             mid-sniff after the reload read as a dog drawn differently */
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'sniffT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, sniffT: 0, moving: false }); Date.now = () => 1700000000000;
           try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
             return Array.from(g.getImageData(0, 0, 44, 44).data); }
           finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
@@ -2768,8 +2770,8 @@ const CANDIDATES = [
         /* the tail wags with the clock and the pose changes by the second: both held still, so two drawings differ only by how she is dressed */
         draw: nm => { const d = dogOf(nm); if (!d) return null;
           const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
-          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
-          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'sniffT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;   /* her sniff held too (mq-v298) */
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, sniffT: 0, moving: false }); Date.now = () => 1700000000000;
           try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
             return Array.from(g.getImageData(0, 0, 44, 44).data); }
           finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
@@ -2931,8 +2933,8 @@ const CANDIDATES = [
            both held still, so two drawings differ only by what she wears */
         draw: nm => { const d = dogOf(nm); if (!d) return null;
           const fn = { beagle: drawBeagle, lab: drawLab, chi: drawChi }[d.kind]; if (!fn) return null;
-          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;
-          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, moving: false }); Date.now = () => 1700000000000;
+          const P = ['face', 'sit', 'layT', 'howlT', 'digT', 'happyT', 'loveT', 'sniffT', 'moving'], keep = P.map(k => d[k]), now0 = Date.now;   /* her sniff held too (mq-v298) */
+          Object.assign(d, { face: 1, sit: false, layT: 0, howlT: 0, digT: 0, happyT: 0, loveT: 0, sniffT: 0, moving: false }); Date.now = () => 1700000000000;
           try { const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 6, 12); fn(g, d, 0, 0);
             return Array.from(g.getImageData(0, 0, 44, 44).data); }
           finally { Date.now = now0; P.forEach((k, i) => { d[k] = keep[i]; }); } },
