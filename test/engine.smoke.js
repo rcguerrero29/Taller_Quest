@@ -5141,8 +5141,13 @@ function findChromium() {
           if (wea) { const s = beside(wea).find(q => openAt(q[0], q[1])); if (s && !critFree(made(s, { kind }), wea[0], wea[1])) P.push('a ' + kind + ' beside the weave poles may not step in among them, where their square is closed to dogs only'); } });
         /* ...and the town's own animals (the office dog, the cat, the pigeon), each in its own world: a tunnel laid beside it,
            its line toward the animal, is entered at its end; the same square, with the line turned across, is not (planted:
-           the street animals' step asking nothing of the gear) */
-        [['dog', () => DOG, dogFree], ['cat', () => CAT, catFree], ['pig', () => PIG, pigFree]].forEach(([k, A, free]) => { const aw = AW(k), W2 = aw && WORLDS[aw], a = A(); if (!W2 || !a) return;
+           the street animals' step asking nothing of the gear). The pigeon's step takes the bird first from mq-v297, and a
+           world's pigeon may be a bird of the program (Meridian's from mq-v297), asked the same in its own
+           world (planted: the step asked without the bird, red in the town on the engine's own pigeon) */
+        const progPig = CRIT.find(c => c.kind === 'pigeon'), pigHome = progPig && (real.find(r => r[0] === progPig) || [])[1],
+          asHome = f => { const w0 = progPig.world; progPig.world = pigHome; try { return f(); } finally { progPig.world = w0; } };   /* she is held in no world while the course is asked; her step is asked in her own */
+        [['dog', () => DOG, dogFree], ['cat', () => CAT, catFree], ['pig', () => PIG, (x, y) => pigFree(PIG, x, y)],
+         ['pigeon', () => progPig, (x, y) => asHome(() => pigFree(progPig, x, y)), () => pigHome]].forEach(([k, A, free, home]) => { const aw = home ? home() : AW(k), W2 = aw && WORLDS[aw], a = A(); if (!W2 || !a) return;
           const o2 = [[1, 0], [-1, 0]].map(([dx]) => [a.x + dx, a.y]).find(([x, y]) => x > 0 && x < W2.W - 1 && y >= 0 && y < W2.H && !SOLID.has(W2.grid[y][x]) && W2.grid[y][x] !== 'N' && !portalAt(aw, x, y) && (TILES[W2.rows[y][x]] || {}).kind !== 'gear');
           const ny = o2 && [o2[1] + 2, o2[1] - 2].find(y => y >= 0 && y < W2.H);
           if (!o2 || ny === undefined || agilityCourse(aw).length) { out.push('there is no open square beside the ' + k + ' of ' + aw + ' to lay a tunnel on, so its step past one was not asked'); return; }
@@ -5150,7 +5155,8 @@ function findChromium() {
           let endOk, sideOk; try { lay(o2[0], o2[1], '4'); endOk = free(o2[0], o2[1]); lay(o2[0], ny, '3'); sideOk = free(o2[0], o2[1]); }
           finally { R0.forEach((r, y) => { W2.rows[y] = r; }); G0.forEach((r, y) => r.forEach((c, x) => { W2.grid[y][x] = c; })); }
           if (!endOk) P.push('the ' + k + ' of ' + aw + ' may not walk into a tunnel at its open end');
-          if (sideOk) P.push('the ' + k + ' of ' + aw + ' may walk into a tunnel through its side, where nothing crosses it that way'); });
+          if (sideOk) P.push('the ' + k + ' of ' + aw + ' may walk into a tunnel through its side, where nothing crosses it that way');
+          if (endOk && !sideOk) out.push('the ' + k + ' of ' + aw + ' walks into a tunnel laid beside it at its end, and not through its side'); });
         /* EVERY JOB THAT WALKS HIM past the tube, from one side of it to the other: his way never crosses its side */
         if (sd.length === 2) { const r = jobsAcross(tun, sd[0], sd[1]);
           if (r.bad.length) P.push('a dog walked across the tunnel through its side on these jobs: ' + r.bad.join(', ') + '; nothing crosses it that way');
