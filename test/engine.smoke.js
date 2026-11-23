@@ -6058,7 +6058,13 @@ function findChromium() {
             const same = (a, b) => Math.abs(a.reach - b.reach) < 1e-6 && a.head.distanceTo(b.head) < 1e-6 && a.hips.distanceTo(b.hips) < 1e-6 && a.barrel.length === b.barrel.length && a.barrel.every((x, i) => Math.abs(x - b.barrel[i]) < 1e-7) && shadowSame(a, b);
             out.push('the ' + k + '\'s body: his head is ' + l1.reach.toFixed(3) + ' from the tip of his tail lying stretched out and ' + c1.reach.toFixed(3) + ' curled up; his chest is ' + Math.abs(c1.side).toFixed(3) + ' to the side of his hips curled up (' + Math.abs(l1.side).toFixed(3) + ' lying); his lowest point is ' + (-c1.low).toFixed(3) + ' into the ground curled up (' + (-l1.low).toFixed(3) + ' lying), his paw ' + paw.toFixed(3) + ' across');
             if (!dogBodyWants(dc, Pc)) P.push('curled up, up close, the ' + k + ' is his flat card: his body does not take the pose');
-            if (!(c1.reach < l1.reach * 0.5)) P.push('curled up, the ' + k + '\'s head is ' + c1.reach.toFixed(3) + ' from the tip of his tail, and ' + l1.reach.toFixed(3) + ' lying stretched out: his head is not brought round to his tail');
+            /* a bobbed tail (a build with a short tail, the office dog's aussie, mq-v295) has no tip to come round to his nose: his head is
+               asked to come round to the root of his tail, his rump, as far as every long-tailed breed's comes (0.73 to 0.76 of the way
+               lying stretched out, measured on 2026-11-22; asked under 0.8) */
+            const bob = typeof DOGBUILDS !== 'undefined' && DOGBUILDS[k] && typeof DOGBUILDS[k].tailLen === 'number' && DOGBUILDS[k].tailLen < 1;
+            if (bob) { const rump = Pz => { t3DogPose(B, Pz, 0, false); B.updateWorldMatrix(true, true); return at('head').distanceTo(at('tail_1')); }, lr = rump(Pl), cr0 = rump(Pc); rump(Ps);
+              if (!(cr0 < lr * 0.8)) P.push('curled up, the ' + k + '\'s head is ' + cr0.toFixed(3) + ' from the root of his bobbed tail, and ' + lr.toFixed(3) + ' lying stretched out: his head is not brought round to his rump'); }
+            else if (!(c1.reach < l1.reach * 0.5)) P.push('curled up, the ' + k + '\'s head is ' + c1.reach.toFixed(3) + ' from the tip of his tail, and ' + l1.reach.toFixed(3) + ' lying stretched out: his head is not brought round to his tail');
             if (!(Math.abs(c1.side) > l1.back * 0.25)) P.push('curled up, the ' + k + '\'s back is as straight as lying stretched out: his chest is ' + Math.abs(c1.side).toFixed(3) + ' to the side of his hips, where his back is ' + l1.back.toFixed(3) + ' long');
             if (!s1.eyes.length) P.push('the ' + k + '\'s body has no eyes to ask, so whether they are shut curled up was not asked');
             else if (!c1.eyes.every((x, i) => x < s1.eyes[i] * 0.5)) P.push('curled up, the ' + k + '\'s body\'s eyes are open: they are ' + (100 * c1.eyes[0] / s1.eyes[0]).toFixed(0) + '% as tall as when he stands');
@@ -6323,9 +6329,11 @@ function findChromium() {
            one without, a dog walking, the star dog himself and the far dog of 2, is his card painted in the look picked
            for him. (The card that night is BODYPAINT in the
            pack's config, mq-v289; the owner's confirmed goal of 2026-11-21 on the night of alebrijes.)
-       7 · THE OFFICE DOG is still painted as his card where he lives, on the square he stands on, and no dog's body stands
-           there for him; and the screen where he lives, standing, sitting and mid-step, is pixel for pixel what this world
-           with the dog taken out of its own list draws.
+       7 · THE OFFICE DOG, where a world keeps the engine's own (DOG), is still painted as his card where he lives, on the
+           square he stands on, and no dog's body stands there for him; and the screen where he lives, standing, sitting and
+           mid-step, is pixel for pixel what this world with the dog taken out of its own list draws. Where a world declares
+           its office dog in the dog program (Meridian from mq-v295), he is a body as every dog is, and is asked in his own
+           block (grep "THE OFFICE DOG IN THE DOG PROGRAM").
      Every real dog is parked off the map and put back; the screen's size, the season, the camera, the rolls, the painters,
      every dog made here, every dog adopted here and the park's save, the office dog and where you stand are put back. Nothing asked here waits on a clock: each dog made here has
      every timer at zero, and each frame is drawn by the check itself. */
@@ -6351,7 +6359,8 @@ function findChromium() {
     const SCREENS = MER ? [[480, 900, 'body'], [479, 900, 'card'], [390, 844, 'card'], [844, 390, 'card'], [1024, 479, 'card'], [1024, 480, 'body'], [1920, 1080, 'body']]
       : ASK.screen === null ? [[390, 844, 'body'], [844, 390, 'body']]
         : [[ASK.screen, ASK.screen + 420, 'body'], [ASK.screen - 1, ASK.screen + 420, 'card'], [ASK.screen + 420, ASK.screen - 1, 'card'], [ASK.screen + 420, ASK.screen, 'body']];
-    const BREEDNAME = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua' };
+    const BREEDNAME = { beagle: 'beagle', lab: 'lab', chi: 'chihuahua', aussie: 'aussie (the office dog\'s own)' };
+    const HOUSE = [...DOGK].filter(k => !(typeof DOGSOLE !== 'undefined' && DOGSOLE.has(k)));   /* the breeds the adoption card offers: never a world's own dog's kind (mq-v295) */
     const dogs = CRIT.filter(c => DOGK.has(c.kind)), star = dogs.find(c => c.role === 'star') || dogs[0];
     if (!star || !WORLDS[star.world]) { P.push('this world has no dog of the dog program standing anywhere, so whether its dogs stand as bodies could not be asked'); return { P, out }; }
     const wid = star.world, w = WORLDS[wid], el = document.getElementById('world');
@@ -6389,7 +6398,7 @@ function findChromium() {
     const again = () => { T3.fail = false; T3.said = keep.said; el.hidden = false; camSet('3d'); sizeCanvas(); };
     const size = s => s[0] + ' by ' + s[1];
     try {
-      ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f; window[n] = function (g, cr, ...a) { drawn.add(cr); return f.call(this, g, cr, ...a); }; });
+      ['drawBeagle', 'drawLab', 'drawChi', 'drawAussie'].forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f; window[n] = function (g, cr, ...a) { drawn.add(cr); return f.call(this, g, cr, ...a); }; });
       if (keep.dd) drawDog = function (...a) { office++; officeG = a[0]; return keep.dd.apply(this, a); };
       /* where the office dog is held still in 7: the square his world puts him on (ANI), where he starts every game, in full view
          of the camera there. Held where he happened to be when the check began, he once stood where 6 pixels of him showed */
@@ -6449,7 +6458,7 @@ function findChromium() {
         else { const home = [world, px, py, fx, fy], n0 = parkPrefs.dogs.length, pe0 = parkPrefs.persona ? Object.keys(parkPrefs.persona) : null, kt = window.toast, got = [];
           let ks = null; try { ks = localStorage.getItem(SK('park')); } catch (e) {}
           try { window.toast = () => {};
-            [...DOGK].forEach((kind, i) => { const who = 'a ' + (BREEDNAME[kind] || kind) + ' adopted through the adoption card', c0 = CRIT.length;
+            HOUSE.forEach((kind, i) => { const who = 'a ' + (BREEDNAME[kind] || kind) + ' adopted through the adoption card', c0 = CRIT.length;
               btn.click(); const b = document.querySelector('#adoptBreeds button[data-b="' + kind + '"]');
               if (!b) { P.push('the adoption card offers no ' + (BREEDNAME[kind] || kind) + ', so whether an adopted one stands as a body could not be asked'); $id('adoptX') && $id('adoptX').click(); return; }
               b.click(); $id('adoptName').value = 'Probe' + 'abcdefgh'[i]; go.click();
@@ -6666,8 +6675,12 @@ function findChromium() {
 
       /* 7 · the office dog is still his card where he lives, on the square he stands on, and no dog's body stands there for him */
       { CRIT.length = Math.min(CRIT.length, keep.crit);
-        const ow = typeof AW === 'function' ? AW('dog') : null;
-        if (!ow || !keep.dd) { if (MER) P.push('Meridian\'s office dog stands in no world, so whether he stayed as he is could not be asked'); else out.push('this world has no office dog, so he was not asked here'); }
+        const ow = typeof AW === 'function' ? AW('dog') : null, inProgram = typeof officeDog === 'function' && !!officeDog();
+        /* from mq-v295 (the owner's confirmed goal of 2026-11-22 on the office dog) a world may declare its office dog as one more dog
+           of the dog program: he is then a body as every dog is, and asked so in the block on him below (OFFICE DOG); what follows
+           here holds a world that keeps the engine's own office dog to staying his card, exactly as he was */
+        if (inProgram && !ow) out.push('the office dog is a dog of the dog program in this world, a body as every dog is: he is asked in the office dog\'s own block');
+        else if (!ow || !keep.dd) { if (MER) P.push('Meridian\'s office dog stands in no world, so whether he stayed as he is could not be asked'); else out.push('this world has no office dog, so he was not asked here'); }
         else {
           /* HE IS HELD STILL ON HIS OWN STARTING SQUARE while he is looked at, and put back after: he wanders on the game's own
              clock between the frames this check draws, and once, on the full run, he had walked to a square where nothing of
@@ -6747,7 +6760,7 @@ function findChromium() {
         Object.assign(star, { next: Infinity, stayT: Infinity, follow: false, task: null, moving: false, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, fx: star.x, fy: star.y });
         const at = [[0, 2], [1, 2], [-1, 2], [2, 0], [-2, 0], [0, -2]].map(([dx, dy]) => [star.x + dx, star.y + dy]).find(([x, y]) => open(x, y)); if (!at) return 'there is no tile beside the star dog to stand on';
         world = star.world; px = fx = at[0]; py = fy = at[1]; moving = false; document.getElementById('world').hidden = false; camSet('3d'); sizeCanvas();
-        window.__merSeen = new Set(); ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; if (typeof f === 'function') window[n] = function (g, cr, ...a) { window.__merSeen.add(cr); return f.call(this, g, cr, ...a); }; });
+        window.__merSeen = new Set(); ['drawBeagle', 'drawLab', 'drawChi', 'drawAussie'].forEach(n => { const f = window[n]; if (typeof f === 'function') window[n] = function (g, cr, ...a) { window.__merSeen.add(cr); return f.call(this, g, cr, ...a); }; });
         return ''; });
       if (set) { P.push('in a real window, ' + set + ', so on which screens his body stands could not be asked'); return { P, out }; }
       const look = () => p.evaluate(() => { const star = CRIT.find(c => DOGK.has(c.kind) && c.role === 'star'); star.next = Infinity; star.moving = false; window.__merSeen.clear(); const ok = !!draw3d() && !T3.fail;
@@ -6770,6 +6783,534 @@ function findChromium() {
     return { P, out }; })();
   merDogsReal.out.forEach(l => console.log('  MERIDIAN DOGS: ' + l));
   fails.push(...merDogsReal.P.map(m => 'Meridian\'s dogs as bodies: ' + m));
+  /* ---- THE OFFICE DOG IN THE DOG PROGRAM (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) ----
+     The office dog was a dog of his own (DOG, dogUpdate, drawDog), built before the dog program and never moved into it, so
+     every behaviour added since reached the program's dogs and skipped him. A world now declares him in its own CRITTERS as
+     one more dog of the program (kind aussie, role office, tidy, leashOnly) and sets ANIMALS.dog to null. Asked here, of
+     Meridian (typed) and of any world that declares an office dog in the program:
+       1 · NO DOG OUTSIDE THE PROGRAM (the guard): the engine's own office dog stands nowhere, and in every place, in every
+           camera, with you standing at the place's first open tile and on every dog's own square, no dog's card is painted
+           but by a painter of the program (DOGK) for a dog of the program; and the office dog himself is painted that way at
+           least once, so the guard is known to see him. And it asks of every ANIMAL, not of named painters: every kind the
+           world holds (every critter, the engine's own animals, the alebrijes' marks, the adoption house's breeds) is a
+           dog of the program (DOGK) or one of the animals this guard names as not a dog; a kind that is neither is red
+           until it is classified, so a new dog with a painter of its own cannot walk in unseen. Meridian's own record of
+           him is typed: kind aussie, the office, 12,5, tidy, leashOnly, role office, and the adoption house does not offer
+           his kind.
+       2 · HIS CARD, PIXEL FOR PIXEL: standing, walking (mid-step) and sitting, facing either way, with nothing on and in the
+           whole wardrobe, at two instants of the clock, his card is the old office dog's painter's of mq-v294 byte for
+           byte: a copy of that painter, frozen here as it was, so the card is held to a picture fixed in time and not to a
+           second piece of today's code. The engine's own drawDog is held to it too, so a world that keeps DOG (the town)
+           keeps his card. And lying, curled up, howling, sniffing and happy he is drawn, each unlike his standing card.
+       3 · TIDY: in a seeded run of 20000 idle choices in each place a dog idles (his room; the park alone; the park with
+           another dog near, the greeting's branch) he never digs and never leaves a mess, and still naps, sings and the
+           rest; the same dog with tidy off digs and leaves a mess at the program's own rates (DIGSHARE, the mess band, with
+           his chances of each mode), within four of their standard errors; and the curious routine pinned (every step's own
+           pose) walks every step without a hole for him, and with one for the same dog untidy.
+       4 · LEASH-ONLY: beside his room's door, off the leash, he does not come through it with you, on a whim (the roll that
+           brings any other dog) or told to follow; a dog made here in his place, the same in every way but leashOnly,
+           does both. On the leash he is taken to the park, comes out of it with you, and is back in his room on his own
+           square. Off the leash he LIVES in his room: a seeded run of his own update, you in the room, has him step, take
+           his whims and cover more than a few squares, and never leave it. A way out of the park that is not its door
+           (Replay, the week's handover: you are set down in his room with him still in the park, on the leash) brings him
+           home and lets the stale leash go. THE PAW MENU AND THE WHISTLE AS THEY WERE: in his room, not beside him, the paw
+           menu reaches the star and Come whistles the star in from the street, as before he was in the program; beside him
+           (the treat's reach) it reaches him, and his sit is his.
+       5 · THE TREAT BUTTON: beside him it is the old words (treatLb), and the ball, the leash and the love buttons the
+           program's; two treats do not open his side quest, the third does, with its line and its care pack's line, and the
+           fourth starts it (fredQuestStart, once); a step that ends beside you says one of the world's dog lines.
+       6 · THE WARDROBE: his card changes with it; his body wears the cape, the bandana and the collar (and none of them
+           when the wardrobe gives none); no other dog's body wears the cape; the wardrobe's preview paints him by the
+           program's painter and never the old one. And each can be SEEN: in the 3D camera, at a frozen clock with him held,
+           putting the cape, the bandana and the collar on changes his picture by enough pixels of its own colour (in 7).
+       7 · HIS BODY: two squares from you in the 3D camera on a laptop (1280 by 800) he is a body and not his card, with two
+           upright ears that spring at the patient speed (EARSPRING) and a tail that wags as the others' do; at 479
+           by 900 he is his card and no body; on the night of alebrijes, where the world keeps the card for it, he is his
+           painted card and no body, in the look the engine's own office dog wore that night (DOG's, key "dog").
+     Every state touched here is put back: where you stand, the camera, the screen's size, the season, the rolls, the clock,
+     the painters, the wardrobe, the treats, his own record and every dog made here. */
+  const officeDogs = await page.evaluate(async () => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    const od = typeof officeDog === 'function' ? officeDog() : null;
+    if (!od) { if (MER) P.push('Meridian declares no office dog in the dog program (CRITTERS, role office), so the office dog is still outside it');
+      else out.push('this world declares no office dog in the dog program (its own later step), so nothing was asked of it here; the block after this one asks that its own office dog is as he was');
+      return { P, out }; }
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
+      season: typeof seasonPick !== 'undefined' ? seasonPick : null, wear: { ...wear }, treats, fredQ, lastBump, pin: ROUTINEPIN, crit: CRIT.length, decals: DECALS.length, park: JSON.stringify(PARK),
+      dd: typeof drawDog === 'function' ? drawDog : null, painters: {}, od: { ...od }, odHome: od.home.slice(), dig: dogDig, wd: typeof wdPet !== 'undefined' ? wdPet : null,
+      iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), real: CRIT.filter(isDog).map(c => [c, c.world, c.x, c.y, c.fx, c.fy, c.next, c.task, c.follow]),
+      pet: [petTarget, petCrit], btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]), cards: [...document.querySelectorAll('#parkCard,#dogP,#card')].map(e => [e, e.hidden]) };   /* the buttons beside an animal, shown here, are put back as they were */
+    const PAINT = ['drawBeagle', 'drawLab', 'drawChi', 'drawAussie'];
+    const seen = { dog: 0, bad: [], by: new Map() };   /* the old painter's count; a program painter's call for something that is not a program dog; who each painted */
+    const open = (W, x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
+    const besideOf = (cr, d) => { const W = WORLDS[cr.world]; return [[0, d], [d, 0], [-d, 0], [0, -d], [1, d], [-1, d]].map(([dx, dy]) => [cr.x + dx, cr.y + dy]).find(([x, y]) => open(W, x, y) && !(typeof portalAt === 'function' && portalAt(cr.world, x, y))) || null; };
+    const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
+    const hold = cr => Object.assign(cr, { next: Infinity, moving: false, mt: 0, task: null, follow: false, holdT: 0, stayT: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, curlT: 0, fx: cr.x, fy: cr.y });
+    const made = o => { const cr = Object.assign({ kind: 'aussie', name: 'Probe', world: od.world, x: od.x, y: od.y, fx: od.x, fy: od.y, c: '#7B7E8A', face: 1, dx: 1, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: Infinity, home: [od.x, od.y], task: null, holdT: 0, stayT: 0, moving: false, mt: 0, follow: false }, o); CRIT.push(cr); return cr; };
+    const unmake = cr => { const i = CRIT.indexOf(cr); if (i >= 0) CRIT.splice(i, 1); };
+    const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
+    const seeded = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const pct = (a, n) => (100 * a / n).toFixed(2) + '%';
+    /* every critter as it was (not the dogs alone): a run of critUpdate here moves the clock of every animal in the world */
+    const snapAll = () => CRIT.map(c => [c, { ...c, home: Array.isArray(c.home) ? c.home.slice() : c.home }]);
+    const unsnap = S => S.forEach(([c, o]) => { Object.keys(c).forEach(k => { if (!(k in o)) delete c[k]; }); Object.assign(c, o, { home: Array.isArray(o.home) ? o.home.slice() : o.home }); });
+    try {
+      PAINT.forEach(n => { const f = window[n]; if (typeof f !== 'function') return; keep.painters[n] = f;
+        window[n] = function (g, cr, ...a) { if (!(cr && CRIT.includes(cr) && isDog(cr)) && !(cr && cr.__probe)) seen.bad.push(n + ' painted ' + (cr && (cr.name || cr.kind) || 'something') + ', which is not a dog of the program');
+          if (cr) seen.by.set(cr, (seen.by.get(cr) || 0) + 1); return f.call(this, g, cr, ...a); }; });
+      if (keep.dd) drawDog = function (...a) { seen.dog++; return keep.dd.apply(this, a); };
+      keep.real.forEach(([c]) => hold(c));
+
+      /* 1 · no dog outside the program */
+      { if (typeof AW === 'function' && AW('dog')) P.push('the engine\'s own office dog (DOG) stands in ' + AW('dog') + ' as well as the office dog of the program: there are two office dogs');
+        if (MER) { const rec = (typeof CRITTERS !== 'undefined' ? CRITTERS : []).filter(c => c && c.role === 'office');
+          if (rec.length !== 1) P.push('Meridian\'s CRITTERS declares ' + rec.length + ' office dogs; one was asked for');
+          else { const r = rec[0], want = { kind: 'aussie', world: 'hq', x: 12, y: 5, tidy: true, leashOnly: true };
+            Object.keys(want).forEach(k => { if (r[k] !== want[k]) P.push('Meridian\'s office dog has ' + k + ' ' + JSON.stringify(r[k]) + '; it was asked for as ' + JSON.stringify(want[k])); }); }
+          if (typeof BREEDS === 'object' && BREEDS && Object.prototype.hasOwnProperty.call(BREEDS, od.kind)) P.push('the adoption house offers the office dog\'s own kind (' + od.kind + '): he cannot be adopted, and no dog is adopted in his look yet'); }
+        const cams = (typeof CAMS !== 'undefined' ? CAMS : ['top', 'front', 'iso', '3d']).slice(); let frames = 0;
+        Object.keys(WORLDS).forEach(id => { const W = WORLDS[id], spots = [];
+          for (let y = 0; y < W.H && !spots.length; y++) for (let x = 0; x < W.W; x++) if (open(W, x, y)) { spots.push([x, y]); break; }
+          if (typeof AW === 'function' && AW('dog') === id && typeof DOG !== 'undefined') spots.push([DOG.x, DOG.y]);
+          CRIT.forEach(c => { if (isDog(c) && c.world === id) spots.push([c.x, c.y]); });
+          spots.forEach(([x, y]) => { stand(id, x, y); cams.forEach(c => { camSet(c); if (camMode !== c) return; try { draw(); frames++; } catch (e) { P.push(id + ' in ' + c + ' throws while the guard looks for dogs: ' + e.message); } }); }); });
+        if (seen.dog) P.push('the old office dog\'s painter (drawDog) painted a dog ' + seen.dog + ' times in ' + frames + ' frames of every place in every camera: a dog is drawn outside the dog program');
+        [...new Set(seen.bad)].forEach(m => P.push(m));
+        if (!seen.by.get(od)) P.push('in ' + frames + ' frames of every place in every camera, the office dog was never painted by the program\'s painter, so the guard cannot be said to see him');
+        /* every animal, by its kind: a dog of the program, or one named here as not a dog. A list closed by hand, so a kind
+           nobody classified is red, whoever painted it and however */
+        const NOTDOG = Object.freeze({ gato: 'the street cat', butterfly: 'the butterfly', colibri: 'the hummingbird', cat: 'the bodega cat', pig: 'the pigeon', pigeon: 'the pigeon', loro: 'the parrot' });
+        const kinds = [];
+        CRIT.forEach(c => kinds.push([c && c.kind, 'a critter in ' + (c && c.world) + ' at ' + (c && c.x) + ',' + (c && c.y), false]));
+        [['the engine\'s own animals (ANIDEF)', typeof ANIDEF === 'object' && ANIDEF], ['the world\'s own animals (ANIMALS)', typeof ANIMALS === 'object' && ANIMALS], ['the alebrijes\' marks (ALEB_KIND)', typeof ALEB_KIND === 'object' && ALEB_KIND],
+          ['the adoption house (BREEDS)', typeof BREEDS === 'object' && BREEDS]].forEach(([where, T0]) => { if (T0) Object.keys(T0).forEach(k => kinds.push([k, where, where.indexOf('BREEDS') < 0])); });
+        const odd = kinds.filter(([k, , own]) => !DOGK.has(k) && !Object.prototype.hasOwnProperty.call(NOTDOG, k) && !(own && k === 'dog'));   /* "dog" is the engine's own office dog's key, asked above to stand nowhere */
+        [...new Set(odd.map(([k, where]) => k + ' (' + where + ')'))].forEach(m => P.push('an animal of the kind ' + m + ' is neither a dog of the dog program (DOGK) nor one of the animals this guard knows is not a dog: a person would see an animal that is not one of the program\'s dogs and that nothing here has asked about; classify it'));
+        out.push('every kind classified: ' + kinds.length + ' kinds asked (critters, the engine\'s own animals, the alebrijes\' marks, the adoption house), ' + odd.length + ' unclassified');
+        out.push('the guard: ' + frames + ' frames of ' + Object.keys(WORLDS).length + ' places in ' + cams.join(', ') + '; the old painter ' + seen.dog + ' times; the office dog painted by the program ' + (seen.by.get(od) || 0) + ' times'); }
+
+      /* 2 · his card, pixel for pixel, against the old office dog's painter AS IT WAS AT mq-v294: copied here, frozen, line for
+         line (its near-black written as rgb, the same colour), so neither painter of today can drift with the other unseen */
+      const drawDog294 = function (g, sx, sy) {
+        const cx = sx + 16, wob = DOG.moving ? Math.sin(Date.now() / 90) * 0.8 : 0;
+        g.save(); g.translate(cx, 0); g.scale(DOG.face, 1); g.translate(-cx, 0);
+        g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(cx, sy + 27, 8, 3, 0, 0, 7); g.fill();
+        g.fillStyle = '#4C4F58';
+        g.fillRect(cx - 7, sy + 22 + wob, 2.4, 4.5); g.fillRect(cx - 2.5, sy + 22 - wob, 2.4, 4.5);
+        g.fillRect(cx + 1.5, sy + 22 + wob, 2.4, 4.5); g.fillRect(cx + 5, sy + 22 - wob, 2.4, 4.5);
+        g.fillStyle = '#7B7E8A'; g.beginPath(); g.roundRect(cx - 8.5, sy + 15, 16, 9, 4.5); g.fill();
+        g.fillStyle = '#4C4F58'; g.beginPath(); g.arc(cx - 3, sy + 18, 2.4, 0, 7); g.fill();
+        g.beginPath(); g.arc(cx + 3.4, sy + 20.6, 1.9, 0, 7); g.fill();
+        g.fillStyle = '#EDEDE8'; g.beginPath(); g.roundRect(cx + 3.6, sy + 16.4, 4.4, 7.2, 2.2); g.fill();
+        g.fillStyle = '#7B7E8A';
+        g.beginPath(); g.ellipse(cx - 9.6, sy + 16.5 + Math.sin(Date.now() / 110) * 1.4, 2.3, 1.7, -0.5, 0, 7); g.fill();
+        if (DOG.sit) { g.fillStyle = '#7B7E8A'; g.beginPath(); g.roundRect(cx - 9.5, sy + 18, 7, 7, 3); g.fill(); }
+        if (wear.cape) { g.fillStyle = wear.cape; g.beginPath(); g.roundRect(cx - 7.8, sy + 13.9, 10, 6.6, 2.6); g.fill();
+          g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(cx - 7.8, sy + 14.8, 10, 1); }
+        if (wear.bandana) { g.fillStyle = wear.bandana; g.beginPath(); g.moveTo(cx + 3.4, sy + 15.6); g.lineTo(cx + 10.4, sy + 15.6); g.lineTo(cx + 7, sy + 20.2); g.closePath(); g.fill(); }
+        g.fillStyle = '#6E7280'; g.beginPath(); g.arc(cx + 7.5, sy + 13.5, 4.6, 0, 7); g.fill();
+        if (wear.collar) { g.fillStyle = wear.collar; g.fillRect(cx + 3.2, sy + 16.5, 6.2, 1.8);
+          g.fillStyle = '#E0B45C'; g.beginPath(); g.arc(cx + 6.3, sy + 19.2, 1.05, 0, 7); g.fill(); }
+        g.fillStyle = '#4C4F58';
+        g.beginPath(); g.moveTo(cx + 4.4, sy + 10.6); g.lineTo(cx + 6.4, sy + 7.4); g.lineTo(cx + 8, sy + 10.2); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(cx + 8.6, sy + 10); g.lineTo(cx + 10.8, sy + 7.6); g.lineTo(cx + 11.6, sy + 10.8); g.closePath(); g.fill();
+        g.fillStyle = '#B5773A'; g.beginPath(); g.arc(cx + 10.2, sy + 15.2, 1.7, 0, 7); g.fill();
+        g.fillStyle = '#EDEDE8'; g.beginPath(); g.arc(cx + 11, sy + 14.2, 1.9, 0, 7); g.fill();
+        g.fillStyle = 'rgb(38,32,43)'; g.beginPath(); g.arc(cx + 12.1, sy + 13.8, 0.9, 0, 7); g.fill();
+        g.fillRect(cx + 8.2, sy + 12.2, 1.2, 1.2);
+        g.restore(); };
+      if (typeof DOG === 'undefined') out.push('this engine has no old office dog to hold his card to');
+      else { const S = 3, cv = () => { const c = document.createElement('canvas'); c.width = c.height = 40 * S; return c; }, A = cv(), B = cv(), ga = A.getContext('2d'), gb = B.getContext('2d');
+        const shot = (g, c, f) => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); g.setTransform(S, 0, 0, S, 0, 0); f(g); return g.getImageData(0, 0, c.width, c.height).data; };
+        const same = (a, b) => { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
+        const inked = a => { let n = 0; for (let i = 3; i < a.length; i += 4) if (a[i]) n++; return n; };
+        const dog0 = { ...DOG }, WARD = [['nothing on', { cape: null, bandana: null, collar: null }], ['the whole wardrobe', { cape: '#7A3FE0', bandana: '#2AA47C', collar: '#C0392B' }]];
+        const STATES = [['standing', { moving: false, sit: false }], ['walking', { moving: true, mt: 0.5, sit: false }], ['sitting', { moving: false, sit: true }]];
+        const rec = o => ({ ...od, x: 5, y: 5, fx: 5, fy: 5, dx: 1, dy: 0, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, curlT: 0, task: null, tailW: null, __probe: true, ...o });
+        let n = 0, diff = [], ddiff = [], stand0 = null, sit0 = null;
+        try { seasonPick = 'off'; if (typeof seasonMemo === 'object' && seasonMemo) seasonMemo.day = '';
+          for (const t of [1.7e12, 1.7e12 + 37]) for (const [wn, wv] of WARD) for (const [sn, sv] of STATES) for (const face of [1, -1]) {
+            Date.now = () => t; Object.assign(wear, wv); Object.assign(DOG, dog0, sv, { face, dx: face, dy: 0 });
+            const a = shot(ga, A, g => drawDog294(g, 4, 4)), b = shot(gb, B, g => window.drawAussie(g, rec({ ...sv, face }), 4, 4)); n++;
+            if (!inked(a)) diff.push('the old painter drew nothing ' + sn + ', so nothing was compared');
+            else if (!same(a, b)) diff.push(sn + ', facing ' + (face > 0 ? 'right' : 'left') + ', with ' + wn);
+            if (keep.dd && inked(a)) { const c = shot(gb, B, g => keep.dd(g, 4, 4)); if (!same(a, c)) ddiff.push(sn + ', facing ' + (face > 0 ? 'right' : 'left') + ', with ' + wn); }
+            if (sn === 'standing' && wn === 'nothing on' && face === 1 && t === 1.7e12) stand0 = b; if (sn === 'sitting' && wn === 'nothing on' && face === 1 && t === 1.7e12) sit0 = b; }
+          if (diff.length) P.push('his card is not the old office dog\'s card of mq-v294 pixel for pixel: ' + [...new Set(diff)].slice(0, 6).join('; '));
+          if (ddiff.length) P.push('the engine\'s own office dog painter (drawDog), which a world that keeps DOG still shows, no longer paints the card of mq-v294 pixel for pixel: ' + [...new Set(ddiff)].slice(0, 6).join('; '));
+          if (stand0 && sit0 && same(stand0, sit0)) P.push('his card standing and sitting are the same picture, so the comparison cannot tell a pose from another');
+          Date.now = () => 1.7e12; Object.assign(wear, WARD[0][1]);
+          const other = [['lying', { layT: 1e18 }], ['curled up', { layT: 1e18, curlT: 1e18 }], ['howling', { howlT: 1e18 }], ['sniffing', { sniffT: 1e18 }], ['happy', { happyT: 1e18 }]], drawnO = [];
+          other.forEach(([nm, o]) => { const b = shot(gb, B, g => window.drawAussie(g, rec(o), 4, 4)); if (!inked(b)) P.push('his card ' + nm + ' is not drawn'); else if (stand0 && same(b, stand0)) P.push('his card ' + nm + ' is his standing card: the pose is not drawn'); else drawnO.push(nm); });
+          out.push('his card: ' + n + ' pictures (standing, walking, sitting; either way; nothing on and the whole wardrobe; two instants) held to the old painter\'s of mq-v294, frozen here: ' + (n - diff.length) + ' byte for byte' + (keep.dd ? ', and the engine\'s own drawDog ' + (n - ddiff.length) : '') + '; drawn in his look ' + drawnO.join(', '));
+        } finally { Object.assign(DOG, dog0); Date.now = keep.DN; Object.assign(wear, keep.wear); seasonPick = keep.season; if (typeof seasonMemo === 'object' && seasonMemo) seasonMemo.day = ''; } }
+
+      /* 3 · tidy */
+      { const N = 20000, places = [], said = [];
+        let digs = 0; dogDig = function (cr) { digs++; };
+        const away = [];   /* the park alone: any dog of the program standing in it is set aside while it is asked, then put back */
+        try { window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {}; ROUTINEPIN = null;
+          places.push(['his room', od.world, od.x, od.y, false]);
+          if (WORLDS[PL.park] && Array.isArray(PL.parkDog)) { places.push(['the park alone', PL.park, PL.parkDog[0], PL.parkDog[1], false]); places.push(['the park with another dog near', PL.park, PL.parkDog[0], PL.parkDog[1], true]); }
+          else out.push('this world has no park, so tidy was asked in his room only');
+          const probe = { ...od, tidy: false }, free = typeof routineOn === 'function' && routineOn(probe) ? routineOdds(probe).free : 1;
+          const wantHole = typeof routineOn === 'function' && routineOn(probe) ? DIGSHARE : DOGDIGBAND[1] - DOGDIGBAND[0], wantMess = free * (1 - DOGDIGBAND[1]);
+          const se = p => Math.sqrt(p * (1 - p) / N);
+          for (const [where, wid, ax, ay, friend] of places) {
+            CRIT.forEach(c => { if (wid === PL.park && isDog(c) && c.world === PL.park && c !== od) { away.push([c, c.world]); c.world = '__away'; } });
+            let pal = null;
+            if (friend) { const W = WORLDS[wid], nb = [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 1], [3, 0], [0, 3]].map(([dx, dy]) => [ax + dx, ay + dy]).find(([x, y]) => open(W, x, y));
+              if (!nb) { P.push('there is no open tile near the park\'s dog spot for another dog, so the greeting\'s branch could not be asked'); continue; }
+              pal = made({ name: 'ProbePal', world: wid, x: nb[0], y: nb[1], fx: nb[0], fy: nb[1], home: nb.slice() }); }
+            const counts = {};
+            try { for (const tidy of [true, false]) { Math.random = seeded(295); const c = { hole: 0, mess: 0, nap: 0, song: 0, greet: 0 };
+                for (let i = 0; i < N; i++) { const d = { ...od, tidy, world: wid, x: ax, y: ay, fx: ax, fy: ay, home: [ax, ay], task: null, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, curlT: 0, next: 0, face: 1, dx: 0, dy: 0, __probe: true };
+                  if (pal) Object.assign(pal, { task: null, sit: false, layT: 0, world: wid });
+                  const dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, visits = typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0, d0 = digs;
+                  dogIdle(d, 1e6);
+                  const mess = DECALS.slice(dec).some(x => x && x.kind === 'poop'), hole = digs > d0 || !!(d.task && d.task.type === 'routine' && d.task.dig && (ROUTINES[d.task.id] || []).some(st => st.roll === 'dig'));   /* a routine whose steps hold a hole, rolled to dig it */
+                  if (hole) c.hole++; if (mess) c.mess++; if (d.layT) c.nap++; if (d.howlT) c.song++; if (d.task && (d.task.type === 'sniff' || d.task.type === 'chase') && d.task.other === pal && pal) c.greet++;
+                  DECALS.length = dec; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = things; if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = visits; }
+                counts[tidy ? 'tidy' : 'untidy'] = c; } }
+            finally { if (pal) unmake(pal); away.splice(0).forEach(([c, w]) => { c.world = w; }); }
+            const t = counts.tidy, u = counts.untidy;
+            if (t.hole || t.mess) P.push('the office dog, tidy, in ' + where + ', dug ' + t.hole + ' times and left ' + t.mess + ' messes in ' + N + ' idle choices: a tidy dog does neither, wherever he is');
+            if (!(t.nap > N * 0.1 && t.song > N * 0.05)) P.push('the office dog, tidy, in ' + where + ', napped ' + t.nap + ' and sang ' + t.song + ' times in ' + N + ' idle choices: tidy took more than the hole and the mess away');
+            if (friend && !t.greet) P.push('the office dog, tidy, in ' + where + ', never sniffed or chased the dog beside him in ' + N + ' idle choices, so the greeting\'s branch cannot be said to be asked');
+            if (Math.abs(u.hole / N - wantHole) > 4 * se(wantHole) + 0.002) P.push('the same dog untidy, in ' + where + ', dug in ' + pct(u.hole, N) + ' of ' + N + ' idle choices; the program\'s rate is ' + pct(wantHole, 1));
+            if (Math.abs(u.mess / N - wantMess) > 4 * se(wantMess) + 0.001) P.push('the same dog untidy, in ' + where + ', left a mess in ' + pct(u.mess, N) + ' of ' + N + ' idle choices; the program\'s rate is ' + pct(wantMess, 1));
+            said.push(where + ': tidy ' + t.hole + ' holes, ' + t.mess + ' messes, ' + t.nap + ' naps, ' + t.song + ' songs' + (friend ? ', ' + t.greet + ' greetings' : '') + '; untidy ' + pct(u.hole, N) + ' holes, ' + pct(u.mess, N) + ' messes'); }
+          /* the curious routine pinned: every step's own pose, the hole included */
+          const walk = tidy => { const d = { ...od, tidy, task: null, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, next: 0, __probe: true }, d0 = digs; ROUTINEPIN = 'curious';
+            try { if (!routineStart(d, 'curious', 1e6)) return null; for (let k = 0; k < 10 && d.task; k++) routineStep(d, d.task, 1e6); } finally { ROUTINEPIN = null; } return digs - d0; };
+          const pt = walk(true), pu = walk(false);
+          if (pt === null) out.push('this world has no curious routine, so the pinned routine was not walked'); 
+          else { if (pt) P.push('the curious routine pinned (every step\'s own pose) dug ' + pt + ' times for the office dog, tidy'); if (pu !== 1) P.push('the curious routine pinned dug ' + pu + ' times for the same dog untidy, where it digs once: the pinned walk cannot be said to see a hole'); }
+          out.push('tidy: ' + N + ' seeded idle choices each, the program\'s rates ' + pct(wantHole, 1) + ' holes and ' + pct(wantMess, 1) + ' messes — ' + said.join('; ') + '; the curious routine pinned: ' + pt + ' holes tidy, ' + pu + ' untidy');
+        } finally { away.forEach(([c, w]) => { c.world = w; }); dogDig = keep.dig; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; ROUTINEPIN = keep.pin; DECALS.length = keep.decals; Object.assign(PARK, JSON.parse(keep.park)); } }
+
+      /* 4 · leash-only */
+      { const W = WORLDS[od.world]; let door = null;
+        for (let y = 0; y < W.H && !door; y++) for (let x = 0; x < W.W && !door; x++) { const p = typeof portalAt === 'function' ? portalAt(od.world, x, y) : null; if (p && p.to && p.to !== od.world && WORLDS[p.to]) door = { x, y, p }; }
+        if (!door) P.push('the office dog\'s room has no door out, so whether he follows you through it could not be asked');
+        else { const by = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => [door.x + dx, door.y + dy]).filter(([x, y]) => open(W, x, y) && !portalAt(od.world, x, y));
+          const W0 = keep.od.world;   /* his room, read once: he is the dog asked, so it is never read off him while he is being moved */
+          const go = (c, how) => { stand(W0, door.x, door.y); hold(c); c.world = W0; c.x = c.fx = by[0][0]; c.y = c.fy = by[0][1]; c.home = by[0].slice(); if (how === 'told') c.follow = true;
+            Math.random = () => 0; try { stand(door.p.to, door.p.x, door.p.y); dogsFollow(W0, door.x, door.y); } finally { Math.random = keep.MR; } return c.world !== W0; };
+          if (!by.length) P.push('there is no open tile beside the office dog\'s door, so whether he follows you through it could not be asked');
+          else { const res = [];
+            for (const how of ['whim', 'told']) { let him = false, it = false, ctl = null;
+              try { him = go(od, how); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), follow: false });   /* he is asked alone, then put back */
+                ctl = made({ name: 'Probe' + how }); it = go(ctl, how); }
+              finally { if (ctl) unmake(ctl); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), follow: false }); }
+              if (him) P.push('off the leash the office dog came through his room\'s door with you ' + (how === 'whim' ? 'on a whim' : 'told to follow') + ': he leaves his room only on the leash');
+              if (!it) P.push('a dog made in his place, the same but for leashOnly, did not come through the door ' + (how === 'whim' ? 'on a whim, with the roll that brings any dog' : 'told to follow') + ', so the door cannot be said to be asked');
+              res.push(how + ': he ' + (him ? 'came' : 'stayed') + ', the dog made in his place ' + (it ? 'came' : 'stayed')); }
+            out.push('leash-only, at his door (' + door.x + ',' + door.y + ' to ' + door.p.to + '): ' + res.join('; ')); } }
+        /* on the leash: the button takes him to the park, and out of it he is home where he was taken from */
+        const park = PL.park, nb = besideOf(od, 1);
+        if (!WORLDS[park] || !nb) out.push('this world has no park, or no tile beside him, so the leash was not walked');
+        else { const home0 = od.home.slice(); hold(od); stand(od.world, nb[0], nb[1]); el.hidden = false;
+          try { petTarget = od.kind; petCrit = od; const btn = document.getElementById('leash'); btn.hidden = false; btn.click();
+            await new Promise(r => keep.ST.call(window, r, 1300));
+            if (world !== park || od.world !== park || !(LEASH && LEASH.cr === od)) P.push('the leash did not take the office dog to the park (you in ' + world + ', he in ' + od.world + ')');
+            else { const PW = WORLDS[park]; let ex = null; for (let y = 0; y < PW.H && !ex; y++) for (let x = 0; x < PW.W && !ex; x++) { const p = portalAt(park, x, y); if (p && p.to !== park && WORLDS[p.to]) ex = { x, y, p }; }
+              if (!ex) P.push('the park has no way out, so coming home from it could not be asked');
+              else { const nx = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => [ex.x + dx, ex.y + dy]).find(([x, y]) => open(PW, x, y) && !portalAt(park, x, y));
+                hold(od); od.world = park; if (nx) { od.x = od.fx = nx[0]; od.y = od.fy = nx[1]; }
+                Math.random = () => 0; try { stand(ex.p.to, ex.p.x, ex.p.y); dogsFollow(park, ex.x, ex.y); } finally { Math.random = keep.MR; }
+                const came = od.world === ex.p.to; parkExit(); const pc = document.getElementById('parkCard'); if (pc) pc.hidden = true;
+                if (!came) P.push('on the leash, the office dog did not come out of the park with you');
+                if (od.world !== keep.od.world || od.x !== home0[0] || od.y !== home0[1]) P.push('after the park the office dog is in ' + od.world + ' at ' + od.x + ',' + od.y + ', not back in his room on his own square (' + home0 + ')');
+                out.push('on the leash: to the park, out of it with you (' + (came ? 'came' : 'stayed') + '), and home at ' + od.world + ' ' + od.x + ',' + od.y); } }
+          } finally { LEASH = null; Object.assign(od, { world: keep.od.world, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: home0, follow: false, task: null, leashT: 0 }); stand(keep.world, keep.px, keep.py); } }
+        /* off the leash he LIVES in his room: a seeded run of his own update (critUpdate), you in the room far from him, the
+           other dogs held; he steps, takes his whims, covers more than a few squares, and is never anywhere but his room. And
+           he wanders the WHOLE room, as the office dog always did: his record says reach "room", so he goes further from his
+           square than the program's CRIT_REACH, while every dog without it keeps CRIT_REACH exactly, as today (the owner's
+           confirmed goal of 2026-11-23 on the office dog's range) */
+        { const W0 = keep.od.world, W = WORLDS[W0]; let far = null;
+          for (let y = 0; y < W.H && !far; y++) for (let x = 0; x < W.W && !far; x++) if (open(W, x, y) && Math.abs(x - keep.od.x) + Math.abs(y - keep.od.y) >= 7 && !(typeof portalAt === 'function' && portalAt(W0, x, y))) far = [x, y];
+          if (!far) P.push('there is no square in his room far from him to stand on, so whether he lives in it could not be asked');
+          else { const DI = window.dogIdle, sq = new Set(), dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, visits = typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0;
+            let steps = 0, whims = 0, left = null, maxd = 0, now = 1e9; const S0 = snapAll();
+            try { stand(W0, far[0], far[1]); hold(od); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), next: 0, follow: false, stepT: now });
+              window.dogIdle = function (...a) { whims++; return DI.apply(this, a); }; window.toast = () => {}; window.musHowl = () => {}; window.setTimeout = () => 0; ROUTINEPIN = null; Math.random = seeded(2951);
+              for (let k = 0; k < 6000; k++) { const was = od.x + ',' + od.y; critUpdate(50, now); now += 50;
+                if (od.world !== W0 && !left) left = od.world + ' at tick ' + k; if (od.x + ',' + od.y !== was) steps++; sq.add(od.x + ',' + od.y); maxd = Math.max(maxd, Math.abs(od.x - keep.odHome[0]) + Math.abs(od.y - keep.odHome[1])); keep.real.forEach(([c]) => { if (c !== od) hold(c); }); } }
+            finally { window.dogIdle = DI; window.toast = keep.TO; window.musHowl = keep.MH; window.setTimeout = keep.ST; ROUTINEPIN = keep.pin; Math.random = keep.MR;
+              DECALS.length = dec; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = things; if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = visits; if (typeof BALL !== 'undefined' && BALL && BALL.dog === od) BALL = null;
+              unsnap(S0); hold(od); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), follow: false }); stand(keep.world, keep.px, keep.py); }
+            if (left) P.push('off the leash, left to himself with you in his room, the office dog left it (' + left + '): off the leash he stays in his room');
+            if (!steps || !whims || sq.size < 6) P.push('off the leash, left to himself for 300 s with you in his room, the office dog stepped ' + steps + ' times, took ' + whims + ' whims and stood on ' + sq.size + ' squares: he stays and wanders his room, he is not a statue');
+            if (maxd <= CRIT_REACH + 1) P.push('off the leash, left to himself for 300 s, the office dog went at most ' + maxd + ' steps from his square, where the program keeps a dog within ' + CRIT_REACH + ': he wanders the whole office, not ' + CRIT_REACH + ' steps of it');
+            out.push('off the leash, left to himself for 300 s with you in his room: ' + steps + ' steps, ' + whims + ' whims, ' + sq.size + ' squares, at most ' + maxd + ' steps from his square, ' + (left ? 'left it' : 'never out of it')); }
+          /* and the setting is his alone: asked square by square, every other dog refuses a step past CRIT_REACH and takes one
+             inside it, as today; he takes the far square too, and refuses nothing for its distance alone */
+          if (far) { const oth = CRIT.filter(c => isDog(c) && c !== od), wrong = [];
+            oth.forEach(c => { const W2 = WORLDS[c.world]; let past = null, inside = null;
+              for (let y = 0; y < W2.H; y++) for (let x = 0; x < W2.W; x++) { if (!open(W2, x, y) || (world === c.world && x === px && y === py)) continue;
+                const d = Math.abs(x - c.home[0]) + Math.abs(y - c.home[1]); if (d === CRIT_REACH + 1 && !past) past = [x, y]; if (d === CRIT_REACH && !inside) inside = [x, y]; }
+              if (past && critFree(c, past[0], past[1])) wrong.push((c.name || c.kind) + ' takes a step ' + (CRIT_REACH + 1) + ' from his square');
+              if (inside && !critFree(c, inside[0], inside[1]) && !(typeof troDanger === 'function' && troDanger(c.world, inside[0], inside[1])) && gearStep(c.world, c.x, c.y, inside[0], inside[1], gearWho(c))) wrong.push((c.name || c.kind) + ' refuses an open step ' + CRIT_REACH + ' from his square'); });
+            if (!oth.length) P.push('there is no other dog in the program, so whether the range is his alone could not be asked');
+            if (wrong.length) P.push('the office dog\'s range reached other dogs: ' + wrong.join('; ') + ': every other dog keeps CRIT_REACH, as today');
+            const hm = od.home; od.home = keep.odHome.slice();
+            try { if (!critFree(od, far[0], far[1]) && !(world === od.world && far[0] === px && far[1] === py)) P.push('the office dog refuses the open square ' + far.join(',') + ' of his room, ' + (Math.abs(far[0] - keep.odHome[0]) + Math.abs(far[1] - keep.odHome[1])) + ' steps from his own: he wanders the whole office'); } finally { od.home = hm; }
+            out.push('his range: ' + oth.length + ' other dogs each kept to ' + CRIT_REACH + ' steps; he may stand ' + (Math.abs(far[0] - keep.odHome[0]) + Math.abs(far[1] - keep.odHome[1])) + ' steps from his square'); } }
+        /* a way out of the park that is not its door: you are set down in his room (Replay, the week's handover) with him still in
+           the park on the leash; he comes home, and the stale leash is let go */
+        if (WORLDS[PL.park] && Array.isArray(PL.parkDog)) { const W0 = keep.od.world, S0 = snapAll();
+          try { hold(od); Object.assign(od, { world: PL.park, x: PL.parkDog[0], y: PL.parkDog[1], fx: PL.parkDog[0], fy: PL.parkDog[1], home: (PL.parkDogHome || PL.parkDog).slice(), follow: true, next: 0 });
+            LEASH = { cr: od, w: W0, x: keep.odHome[0], y: keep.odHome[1] };
+            stand(PL.home, PL.spawn[0], PL.spawn[1]); if (world === PL.park) stand(W0, keep.px, keep.py);
+            let now = 1e9; for (let k = 0; k < 5; k++) { critUpdate(50, now); now += 50; }
+            const home = od.world === W0 && Math.abs(od.x - keep.odHome[0]) + Math.abs(od.y - keep.odHome[1]) <= CRIT_REACH;
+            if (!home) P.push('set down in ' + world + ' by a way out of the park that is not its door (Replay, the week\'s handover), you left the office dog in ' + od.world + ' at ' + od.x + ',' + od.y + ': nothing brings him home off the leash, so he is brought home at once');
+            if (LEASH && LEASH.cr === od) P.push('set down out of the park by a way that is not its door, the leash is still on the office dog: the next walk would not bring him home');
+            out.push('out of the park by a way that is not its door: he is ' + (home ? 'home in ' + od.world + ' at ' + od.x + ',' + od.y : 'in ' + od.world) + ', the leash ' + (LEASH && LEASH.cr === od ? 'still on him' : 'let go')); }
+          finally { LEASH = null; unsnap(S0); hold(od); Object.assign(od, { world: keep.od.world, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), follow: false, task: null, leashT: 0 }); stand(keep.world, keep.px, keep.py); } }
+        /* THE PAW MENU AND THE WHISTLE AS THEY WERE: in his room, not beside him, the paw menu reaches the star, and Come
+           whistles the star in from another world; beside him it reaches him, and his sit is his */
+        { const sd = starDog(), W0 = keep.od.world, W = WORLDS[W0];
+          if (!sd) out.push('this world has no star dog, so the paw menu from his room was not asked');
+          else { const s0 = { ...sd, home: sd.home.slice() }, tr = JSON.stringify(parkPrefs.train || {}), st = [], dp = document.getElementById('dogP'), dph = dp ? dp.hidden : null;
+            let fromRoom = null, bes = null, sat = false, came = null;
+            try { try { hold(od); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y });
+              let at = null; for (let y = 0; y < W.H && !at; y++) for (let x = 0; x < W.W && !at; x++) { const d = Math.abs(x - od.x) + Math.abs(y - od.y); if (d >= 2 && d <= 4 && open(W, x, y) && !portalAt(W0, x, y)) at = [x, y]; }
+              const otherW = Object.keys(WORLDS).find(id => id !== W0 && id !== PL.park && WORLDS[id]), nb = besideOf(od, 1);
+              if (!at || !nb || !otherW) throw new Error('no square two to four from him, none beside him, or no other world to whistle from');
+              hold(sd); sd.world = otherW; stand(W0, at[0], at[1]); fromRoom = nearestDog();
+              window.toast = m => { st.push(String(m)); }; window.setTimeout = () => 0; Math.random = () => 0;
+              if (fromRoom === sd) { dogCmd('come'); came = sd.world; }
+              hold(od); stand(W0, nb[0], nb[1]); bes = nearestDog(); if (bes === od) { dogCmd('sit'); sat = !!od.sit && od.holdT > 0; } }
+              catch (e) { P.push('the paw menu in his room could not be asked: ' + e.message); } }
+            finally { window.toast = keep.TO; window.setTimeout = keep.ST; Math.random = keep.MR; Object.keys(sd).forEach(k => { if (!(k in s0)) delete sd[k]; }); Object.assign(sd, s0);
+              if (parkPrefs.train) { const t0 = JSON.parse(tr); Object.keys(parkPrefs.train).forEach(k => { if (!(k in t0)) delete parkPrefs.train[k]; }); Object.assign(parkPrefs.train, t0); }
+              try { parkPersist(); } catch (e) {} if (dp) dp.hidden = dph; hold(od); Object.assign(od, { holdT: 0, sit: false }); stand(keep.world, keep.px, keep.py); }
+            if (fromRoom !== sd) P.push('in the office dog\'s room, not beside him, the paw menu reaches ' + (fromRoom === od ? 'the office dog' : fromRoom ? (fromRoom.name || fromRoom.kind) : 'nobody') + ': there it reaches the star dog, as it did before he was in the program');
+            else if (came !== W0) P.push('from the office dog\'s room, Come did not whistle the star dog in from ' + s0.world + ' (he is in ' + came + '): the whistle stays as it was');
+            if (bes !== od) P.push('beside the office dog the paw menu reaches ' + (bes ? (bes.name || bes.kind) : 'nobody') + ': beside him (the treat\'s reach) his commands are his');
+            else if (!sat) P.push('beside the office dog, told to sit (the roll held to land), he did not sit');
+            out.push('the paw menu in his room: not beside him it reaches ' + (fromRoom === sd ? 'the star, and Come brings him in (' + came + ')' : fromRoom === od ? 'him' : 'someone else') + '; beside him it reaches ' + (bes === od ? 'him, and he sits' : 'someone else')); } } }
+
+      /* 5 · the treat button */
+      { const nb = besideOf(od, 1);
+        if (!nb) P.push('there is no tile beside the office dog, so the treat button could not be asked');
+        else { const said = [], talk = document.getElementById('talk'), th = talk ? talk.hidden : null;
+          try { hold(od); stand(od.world, nb[0], nb[1]); el.hidden = false; if (talk) talk.hidden = true; treats = 0; fredQ = 0;
+            window.toast = m => { said.push(String(m)); }; window.setTimeout = (f) => { try { f(); } catch (e) {} return 0; };
+            fredCheck(); const btn = document.getElementById('treat');
+            if (petTarget !== od.kind || petCrit !== od || btn.hidden) P.push('beside the office dog the treat button is not his (' + petTarget + ')');
+            else { if (btn.textContent !== T().treatLb) P.push('beside the office dog the treat button reads "' + btn.textContent + '", not the old words');
+              ['ball', 'leash', 'love'].forEach(id => { const b = document.getElementById(id); if (b && b.hidden) P.push('beside the office dog the program\'s ' + id + ' button is not offered'); });
+              const q = [];
+              for (let k = 1; k <= 3; k++) { petTarget = od.kind; petCrit = od; btn.click(); q.push(fredQ); }
+              if (treats !== 3) P.push('three treats given counted ' + treats);
+              if (q[0] !== 0 || q[1] !== 0) P.push('his side quest opened after ' + (q[0] ? 1 : 2) + ' treats; it opens at the third');
+              if (q[2] !== 1) P.push('three treats did not open his side quest');
+              /* the fourth treat STARTS it: counted, not run (the quest's card is not opened here) */
+              { const FQS = window.fredQuestStart; let started = 0; window.fredQuestStart = function () { started++; };
+                try { petTarget = od.kind; petCrit = od; btn.click(); } finally { window.fredQuestStart = FQS; }
+                q.push(started ? 'started' : 'not started');
+                if (started !== 1) P.push('the treat after the third ' + (started ? 'started his side quest ' + started + ' times' : 'did not start his side quest') + ': the side quest his treats open starts from him, once'); }
+              [['his heart', T().fredHeart], ['the side quest\'s line', T().fredUnlock], ['the care pack\'s line', T().carePackToast]].forEach(([nm, s]) => { if (s && !said.includes(s)) P.push('the treats did not say ' + nm); });
+              /* a step that ends beside you */
+              said.length = 0; Math.random = () => 0; lastBump = -1e15; try { officeBump(od); } finally { Math.random = keep.MR; }
+              const L = T().dog || []; if (L.length && !said.some(s => L.includes(s))) P.push('a step of the office dog\'s that ends beside you said none of the world\'s dog lines');
+              out.push('the treat button: "' + btn.textContent + '"; side quest after treats ' + q.join(', ') + '; beside you he says ' + (said[0] ? '"' + said[0] + '"' : 'nothing')); }
+          } finally { window.toast = keep.TO; window.setTimeout = keep.ST; treats = keep.treats; fredQ = keep.fredQ; lastBump = keep.lastBump; if (talk) talk.hidden = th; try { save(); } catch (e) {} } } }
+
+      /* 6 · the wardrobe */
+      { const ON = { cape: '#7A3FE0', bandana: '#2AA47C', collar: '#C0392B' }, OFF = { cape: null, bandana: null, collar: null };
+        const parts = lk => { if (typeof dogMake !== 'function') return null; const B = dogMake(dogSkeleton(lk.kind), lk), got = {};
+          B.traverse(o => { if (o.isMesh && ['cape', 'band', 'collar'].includes(o.userData.wears)) got[o.userData.wears] = '#' + o.material.color.getHexString().toUpperCase(); }); if (typeof t3Dispose === 'function') t3Dispose(B); return got; };
+        try { Object.assign(wear, ON); const on = parts(dogLookOf(od)); Object.assign(wear, OFF); const off = parts(dogLookOf(od));
+          if (on === null) out.push('this world has no 3D bodies, so the wardrobe on his body was not asked');
+          else { [['cape', 'cape'], ['band', 'bandana'], ['collar', 'collar']].forEach(([k, w]) => { if (!on[k]) P.push('in the whole wardrobe his body wears no ' + w);
+              else if (k !== 'band' && on[k] !== ON[w].toUpperCase()) P.push('his body\'s ' + w + ' is ' + on[k] + ', not the wardrobe\'s ' + ON[w]);
+              if (off[k]) P.push('with nothing on from the wardrobe his body still wears a ' + w); });
+            const sd = starDog(); if (sd) { Object.assign(wear, ON); const s = parts(dogLookOf(sd)); if (s.cape) P.push('the star dog\'s body wears the office dog\'s cape'); }
+            out.push('the wardrobe on his body: ' + JSON.stringify(on) + '; with nothing on: ' + JSON.stringify(off)); }
+          /* the preview */
+          if (typeof wdDraw === 'function' && document.getElementById('wdpv')) { const n0 = seen.dog, a0 = seen.by.get(od) || 0; wdPet = 'fred'; Object.assign(wear, ON); wdDraw();
+            const old = seen.dog - n0;
+            const viaProgram = [...seen.by.entries()].some(([k, v]) => k && k.role === 'office' && k !== od) || (seen.by.get(od) || 0) > a0;
+            if (old) P.push('the wardrobe\'s preview painted the office dog with the old painter');
+            if (!viaProgram) P.push('the wardrobe\'s preview did not paint the office dog with the program\'s painter');
+            out.push('the wardrobe\'s preview: the old painter ' + old + ' times, the program\'s ' + (viaProgram ? 'yes' : 'no')); }
+        } finally { Object.assign(wear, keep.wear); if (keep.wd !== null) wdPet = keep.wd; } }
+
+      /* 7 · his body, and his card where he is one */
+      { const has3d = typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && (typeof CAMS === 'undefined' || CAMS.includes('3d'));
+        const takes = typeof BODYTAKE !== 'undefined' && Array.isArray(BODYTAKE) && BODYTAKE.includes('dog');
+        if (!has3d || !takes) { if (MER) P.push('Meridian has no 3D camera or no dog bodies on this page, so his body could not be asked'); else out.push('this world has no dog bodies, so his body was not asked'); }
+        else { /* on his own square, side on to the camera's way (his last step to the east), whatever the blocks before left him
+                  as: the whole office is his to wander (reach "room"), so where he stood and which way he faced was the run's
+                  own, and his cape, on his back, is not seen from in front of him */
+          Object.assign(od, { world: keep.od.world, x: keep.odHome[0], y: keep.odHome[1], dx: 1, dy: 0, face: 1 }); hold(od);
+          const nb = besideOf(od, 2) || besideOf(od, 1), mine = new Set();
+          const wrapA = keep.painters.drawAussie ? window.drawAussie : null;
+          const frame = () => { seen.by.delete(od); let ok = false; for (let k = 0; k < 3; k++) ok = !!draw3d() && !T3.fail; const B = T3.dogOn ? T3.dogOn.get(od) : null;
+            return { ok, body: !!(B && B.visible && B.parent === T3.scene && T3.dogShown && T3.dogShown.has(od)), card: (seen.by.get(od) || 0) > 0 }; };
+          try { hold(od); stand(od.world, nb[0], nb[1]); el.hidden = false; camSet('3d'); sizeCanvas();
+            const got = [];
+            for (const [w, h, want] of [[1280, 800, 'body'], [479, 900, 'card'], [1920, 1080, 'body']]) { if (!screenIs(w, h)) { P.push('the size of the screen could not be set'); break; } sizeCanvas();
+              const s = frame(), is = s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither';
+              if (!s.ok) P.push('the 3D camera did not draw at ' + w + ' by ' + h); else if ((want === 'body') !== s.body || (want === 'card') !== s.card) P.push('two squares from you at ' + w + ' by ' + h + ' the office dog is ' + is + '; he is to be ' + (want === 'body' ? 'a body' : 'his card'));
+              got.push(w + ' by ' + h + ' ' + is);
+              if (w === 1280 && s.body) { const B = T3.dogOn.get(od); let up = 0; B.traverse(o => { if (o.isMesh && o.userData.upEar && !o.userData.inside) up++; });
+                const spring = typeof EARSPRING !== 'undefined' ? EARSPRING.patient : null, sw = [];
+                for (const dt of [0, 27, 55]) { Date.now = () => 1.7e12 + dt; try { draw3d(); } finally { Date.now = keep.DN; } sw.push(B.userData.joints.tail_1.rotation.z); }
+                if (up !== 2) P.push('his body has ' + up + ' upright ears; his card has two');
+                if (spring !== null && B.userData.earSpeed !== spring) P.push('his ears spring at ' + B.userData.earSpeed + ', not the patient speed (' + spring + ')');
+                if (!(Math.max(...sw) - Math.min(...sw) > 0.05)) P.push('his body\'s tail does not wag standing: it turned ' + sw.map(x => x.toFixed(3)).join(', ') + ' over three instants');
+                got.push('his ears ' + up + ', springing at ' + B.userData.earSpeed + ', his tail ' + sw.map(x => x.toFixed(2)).join('/'));
+                /* each piece of the wardrobe can be SEEN on his body: at a frozen clock, him held, put on alone in a colour of
+                   its own, it changes his picture by enough pixels of that colour (a piece built and left under his coat
+                   keeps its part and loses its picture) */
+                const gl = T3.renderer && typeof T3.renderer.getContext === 'function' ? T3.renderer.getContext() : null;
+                if (!gl) out.push('the 3D camera gives no pixels to read here, so the wardrobe was not looked at');
+                else { const PN = performance.now, wear0 = { ...wear }, NONE = { cape: null, bandana: null, collar: null }, seenW = [];
+                  const grab = () => { for (let k = 0; k < 3; k++) draw3d(); const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, a = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, a); return a; };
+                  /* how much of him each piece must show, as a share of his whole picture (the pixels he changes against the room
+                     without him), so the size of the window does not matter; each about half what the pieces show today */
+                  const PIECES = [['cape', '#FF00FF', (r, g, b) => r > g + 60 && b > g + 60, 0.11], ['bandana', '#00E5FF', (r, g, b) => g > r + 60 && b > r + 60, 0.06], ['collar', '#FFE500', (r, g, b) => r > b + 60 && g > b + 60, 0.04]];   /* today 23%, 13% and 8% of him */
+                  const diffN = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) n++; return n; };
+                  try { Date.now = () => 1.7e12; performance.now = () => 1e6; Object.assign(wear, NONE); hold(od); const base = grab(), again = grab();
+                    let noise = 0; for (let i = 0; i < base.length; i += 4) if (Math.abs(base[i] - again[i]) + Math.abs(base[i + 1] - again[i + 1]) + Math.abs(base[i + 2] - again[i + 2]) > 30) noise++;
+                    if (noise) P.push('two pictures of him at a frozen clock, held, differ in ' + noise + ' pixels, so what the wardrobe changes cannot be told from what moves');
+                    const W1 = od.world; od.world = '__away'; let sil = 0; try { sil = diffN(base, grab()); } finally { od.world = W1; hold(od); }
+                    if (sil < 120) P.push('his whole picture in the 3D camera is ' + sil + ' pixels, too few to look at what he wears');
+                    for (const [nm, col, is, min] of PIECES) { Object.assign(wear, NONE, { [nm]: col }); hold(od); const f = grab(); let ch = 0, own = 0;
+                      for (let i = 0; i < f.length; i += 4) if (Math.abs(f[i] - base[i]) + Math.abs(f[i + 1] - base[i + 1]) + Math.abs(f[i + 2] - base[i + 2]) > 30) { ch++; if (is(f[i], f[i + 1], f[i + 2])) own++; }
+                      if (own < min * sil) P.push('in the 3D camera at 1280 by 800, two squares from you, putting the ' + nm + ' on changed ' + ch + ' pixels of his picture of ' + sil + ', ' + own + ' of them its colour, where at least ' + Math.ceil(min * sil) + ' are asked: the ' + nm + ' cannot be seen on his body');
+                      seenW.push(nm + ' ' + own + ' of ' + ch + ' (' + (100 * own / Math.max(1, sil)).toFixed(1) + '% of him)'); }
+                    seenW.unshift('his whole picture ' + sil + ' pixels'); }
+                  finally { Date.now = keep.DN; performance.now = PN; Object.keys(wear).forEach(k => { if (!(k in wear0)) delete wear[k]; }); Object.assign(wear, wear0); }
+                  got.push('the wardrobe seen on his body (pixels of its colour, of those changed): ' + seenW.join(', ')); } } }
+            const night = typeof SEAS === 'function' ? Object.keys(SEAS()).find(k => SEAS()[k].art && SEAS()[k].art.alebrije) : null, paint = typeof BODYPAINT !== 'undefined' && BODYPAINT === 'card';
+            if (night && (paint || MER)) { screenIs(1280, 800); sizeCanvas(); seasonPick = night; let s = null, lk = null, was = null; try { s = frame(); lk = typeof aleLookOf === 'function' ? aleLookOf(od) : alebLookFor(od.kind, od.name); was = alebLookFor('dog', null); } finally { seasonPick = keep.season; }
+              const is = s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither';
+              if (!lk) P.push('on the night of alebrijes the office dog has no alebrije look');
+              else if (!od.name && was && lk.id !== was.id) P.push('on the night of alebrijes the office dog wears the look ' + lk.id + ', not ' + was.id + ', the look the engine\'s own office dog wore that night');
+              if (!lk) {} else if (s.body || !s.card) P.push('on the night of alebrijes, on a laptop, the office dog is ' + is + '; he is his painted card');
+              got.push('the night of alebrijes ' + is + (lk ? ' (' + lk.id + ')' : '')); }
+            out.push('his body, two squares from you: ' + got.join('; '));
+          } finally { if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight; seasonPick = keep.season; } } }
+    } finally {
+      Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); if (keep.dd) drawDog = keep.dd;
+      Math.random = keep.MR; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; dogDig = keep.dig; ROUTINEPIN = keep.pin;
+      Object.assign(wear, keep.wear); treats = keep.treats; fredQ = keep.fredQ; lastBump = keep.lastBump; LEASH = null;
+      while (CRIT.length > keep.crit) CRIT.pop();
+      keep.real.forEach(([c, w, x, y, fx0, fy0, nx, tk, fo]) => { Object.assign(c, { world: w, x, y, fx: fx0, fy: fy0, next: nx, task: tk, follow: fo, moving: false }); });
+      Object.keys(od).forEach(k => { if (!(k in keep.od)) delete od[k]; }); Object.assign(od, keep.od, { home: keep.odHome.slice() });
+      Object.assign(PARK, JSON.parse(keep.park)); DECALS.length = Math.min(DECALS.length, keep.decals);
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held;
+      camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; try { draw(); } catch (e) {}
+      [petTarget, petCrit] = keep.pet; keep.btns.forEach(([b, h, t]) => { b.hidden = h; if (b.textContent !== t) b.textContent = t; }); keep.cards.forEach(([e, h]) => { e.hidden = h; });
+    }
+    return { P, out };
+  });
+  officeDogs.out.forEach(l => console.log('  OFFICE DOG: ' + l));
+  fails.push(...officeDogs.P.map(m => 'the office dog in the dog program: ' + m));
+  /* ---- A WORLD THAT DOES NOT DECLARE ITS OFFICE DOG IN THE PROGRAM KEEPS HIM AS HE WAS (mq-v295; the owner's confirmed goal
+     of 2026-11-22 on the office dog) ----
+     Only a world's own lines move its office dog into the dog program. A world that names no office dog in its CRITTERS and
+     leaves its ANIMALS.dog where it was keeps the engine's own office dog (DOG) exactly: asked of Meridian with its two lines
+     taken out (a copy of its map file, served in place of the real one to a page of its own), and of any other world that
+     keeps him, on its own page:
+       · he stands in his world (ANIMALS.dog, or the engine's default), and no dog of the program is an office dog there;
+       · in his room, in every camera, he is painted by his own painter (drawDog) and never by the program's (drawAussie);
+       · beside him the treat button is his own ("fred") in its old words, and three treats open his side quest, two do not,
+         and the fourth starts it (fredQuestStart, once);
+       · a step of his that ends beside you says one of the world's dog lines (T().dog), as it always did;
+       · the wardrobe's preview paints him with his own painter;
+       · left to himself he still wanders and sits as he did (a seeded run of his own update: he steps and he sits).
+     Everything touched on a page that is the game's own is put back. */
+  const officeKept = await (async () => { const P = [], out = [];
+    const info = await page.evaluate(() => ({ MER: typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest', od: typeof officeDog === 'function' && !!officeDog(), aw: typeof AW === 'function' ? AW('dog') : null }));
+    if (info.od && !info.MER) { out.push('this world declares its office dog in the program, and no copy of it without him is made here'); return { P, out }; }
+    if (!info.od && !info.aw) { out.push('this world has no office dog of either kind, so nothing was asked'); return { P, out }; }
+    let p = page, ctx = null;
+    const ask = () => p.evaluate(() => { const P = [], out = [];
+      const aw = AW('dog'), el = document.getElementById('world');
+      if (!aw || typeof DOG === 'undefined') { P.push('the engine\'s own office dog stands nowhere'); return { P, out }; }
+      if (CRIT.some(c => isDog(c) && (c.role === 'office' || (typeof DOGSOLE !== 'undefined' && DOGSOLE.has(c.kind))))) P.push('a dog of the program is the office dog here as well');
+      const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, ST: window.setTimeout, TO: window.toast, dog: { ...DOG }, treats, fredQ, wear: { ...wear },
+        dd: drawDog, da: typeof drawAussie === 'function' ? drawAussie : null, wd: typeof wdPet !== 'undefined' ? wdPet : null,
+        pet: [petTarget, petCrit], btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]) };
+      let nd = 0, na = 0; const W = WORLDS[aw], open = (x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
+      try { drawDog = function (...a) { nd++; return keep.dd.apply(this, a); }; if (keep.da) drawAussie = function (...a) { na++; return keep.da.apply(this, a); };
+        Object.assign(DOG, { next: Infinity, moving: false, mt: 0, fx: DOG.x, fy: DOG.y, sit: false });
+        const nb = [[0, 1], [1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => [DOG.x + dx, DOG.y + dy]).find(([x, y]) => open(x, y));
+        if (!nb) { P.push('there is no tile beside the office dog'); return { P, out }; }
+        world = aw; px = fx = nb[0]; py = fy = nb[1]; moving = false; held = null; el.hidden = false;
+        const cams = (typeof CAMS !== 'undefined' ? CAMS : ['top', 'front', 'iso', '3d']).slice(), per = [];
+        cams.forEach(c => { camSet(c); if (camMode !== c) return; const n0 = nd, a0 = na; try { draw(); } catch (e) { P.push('his room in ' + c + ' throws: ' + e.message); }
+          per.push(c + ' ' + (nd - n0)); if (nd === n0) P.push('in the ' + c + ' camera his own painter did not paint him'); if (na !== a0) P.push('in the ' + c + ' camera the program\'s office dog painter painted something'); });
+        /* the treat button */
+        const said = [], talk = document.getElementById('talk'), th = talk ? talk.hidden : null, q = [];
+        try { if (talk) talk.hidden = true; treats = 0; fredQ = 0; window.toast = m => { said.push(String(m)); }; window.setTimeout = f => { try { f(); } catch (e) {} return 0; };
+          fredCheck(); const btn = document.getElementById('treat');
+          if (petTarget !== 'fred' || btn.hidden) P.push('beside him the treat button is not his own (' + petTarget + ')');
+          else { if (btn.textContent !== T().treatLb) P.push('beside him the treat button reads "' + btn.textContent + '"');
+            for (let k = 0; k < 3; k++) { petTarget = 'fred'; btn.click(); q.push(fredQ); }
+            if (q.join() !== '0,0,1') P.push('his side quest opened after the treats ' + q.join(', ') + '; it opens at the third');
+            if (!DOG.sit) P.push('a treat did not sit him down');
+            { const FQS = window.fredQuestStart; let started = 0; window.fredQuestStart = function () { started++; };
+              try { petTarget = 'fred'; btn.click(); } finally { window.fredQuestStart = FQS; }
+              q.push(started ? 'started' : 'not started'); if (started !== 1) P.push('the treat after the third ' + (started ? 'started his side quest ' + started + ' times' : 'did not start his side quest') + ': it starts from him, once'); } }
+        } finally { window.toast = keep.TO; window.setTimeout = keep.ST; treats = keep.treats; fredQ = keep.fredQ; if (talk) talk.hidden = th; try { save(); } catch (e) {} }
+        /* the preview */
+        let pv = 'not asked';
+        if (typeof wdDraw === 'function' && document.getElementById('wdpv')) { const n0 = nd, a0 = na; wdPet = 'fred'; wdDraw(); pv = (nd - n0) + ' by his own painter, ' + (na - a0) + ' by the program\'s';
+          if (nd === n0 || na !== a0) P.push('the wardrobe\'s preview painted him ' + pv); }
+        /* his bump lines: a step of his that ends beside you, the rolls held to land (walk, the first way open, the line's roll,
+           the first line), says one of the world's dog lines */
+        let bump = 'not asked';
+        { const L = T().dog, spot = [];
+          for (let y = 0; y < W.H && !spot.length; y++) for (let x = 0; x < W.W - 2 && !spot.length; x++) if (open(x, y) && open(x + 1, y) && open(x + 2, y) && (typeof troDanger !== 'function' || !troDanger(aw, x + 1, y))) spot.push(x, y);
+          if (!Array.isArray(L) || !L.length) bump = 'the world has no dog lines';
+          else if (!spot.length) P.push('there is no row of three open squares in his room, so his bump lines could not be asked');
+          else { const said = [], seq = [0.5, 0, 0, 0, 0]; let i = 0, lb = lastBump;
+            try { Object.assign(DOG, { x: spot[0], y: spot[1], fx: spot[0], fy: spot[1], next: 0, moving: false, sit: false, face: 1 }); world = aw; px = fx = spot[0] + 2; py = fy = spot[1];
+              lastBump = -1e15; window.toast = m => { said.push(String(m)); }; Math.random = () => (i < seq.length ? seq[i++] : 0);
+              dogUpdate(16, 1e9); }
+            finally { Math.random = keep.MR; window.toast = keep.TO; lastBump = lb; Object.assign(DOG, { x: keep.dog.x, y: keep.dog.y, fx: keep.dog.x, fy: keep.dog.y, moving: false, mt: 0, next: Infinity }); px = fx = nb[0]; py = fy = nb[1]; }
+            bump = said.find(m => L.includes(m)) || null;
+            if (!bump) P.push('a step of his that ends beside you said ' + (said.length ? '"' + said[0] + '"' : 'nothing') + ', none of the world\'s dog lines: he says them as he always did');
+            bump = bump ? '"' + bump + '"' : 'nothing'; } }
+        /* left to himself: a seeded run of his own update, you two rooms away */
+        let st = 0, sat = 0; { let s = 295; Math.random = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+          window.toast = () => {}; Object.assign(DOG, { next: 0, moving: false, sit: false }); px = fx = -50; py = fy = -50; let now = 1e6;
+          try { for (let k = 0; k < 2000; k++) { const was = [DOG.x, DOG.y]; dogUpdate(100, now); now += 100; if (DOG.x !== was[0] || DOG.y !== was[1]) st++; if (DOG.sit) sat++; } } finally { Math.random = keep.MR; window.toast = keep.TO; } }
+        if (!st || !sat) P.push('left to himself for 200 s he stepped ' + st + ' times and sat ' + sat + ' ticks: he does not wander and sit as he did');
+        out.push('the office dog kept outside the program, in ' + aw + ': painted by his own painter in ' + per.join(', ') + '; the treat button "' + petTarget + '", side quest after treats ' + q.join(', ') + '; the preview ' + pv + '; a step that ends beside you says ' + bump + '; left to himself ' + st + ' steps, ' + sat + ' ticks sitting');
+      } finally { [petTarget, petCrit] = keep.pet; keep.btns.forEach(([b, h, t]) => { b.hidden = h; if (b.textContent !== t) b.textContent = t; });
+        drawDog = keep.dd; if (keep.da) drawAussie = keep.da; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; Object.assign(DOG, keep.dog); Object.assign(wear, keep.wear); if (keep.wd !== null) wdPet = keep.wd;
+        world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; try { draw(); } catch (e) {} }
+      return { P, out }; });
+    try {
+      if (info.MER) { const fs = require('fs'), mp = path.resolve(path.dirname(file), 'content/meridian/maps.js'); let src = '';
+        try { src = fs.readFileSync(mp, 'utf8'); } catch (e) { P.push('Meridian\'s map file could not be read, so a copy of it without its office dog could not be made'); return { P, out }; }
+        const lines = src.split('\n'), rec = lines.filter(l => /^\s*\{kind:"[a-z]+"[^\n]*role:"office"/.test(l)), ani = lines.filter(l => /^const ANIMALS=\{dog:null\};/.test(l));
+        if (rec.length !== 1 || ani.length !== 1) { P.push('Meridian\'s map file has ' + rec.length + ' office dog lines and ' + ani.length + ' lines setting ANIMALS.dog to null, where one of each was looked for, so a copy without them could not be made'); return { P, out }; }
+        const body = lines.filter(l => !rec.includes(l) && !ani.includes(l)).join('\n');
+        ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); p = await ctx.newPage(); const err = []; p.on('pageerror', e => err.push(e.message));
+        await p.route('**', r => { const u = r.request().url(); if (u.startsWith('file://') && u.endsWith('/content/meridian/maps.js')) return r.fulfill({ status: 200, contentType: 'application/javascript', body }); return u.startsWith('file://') ? r.continue() : r.abort(); });
+        await p.goto(require('url').pathToFileURL(file).href); await boot(p);
+        await p.evaluate(() => { const b = document.querySelector('.classes button'); if (b) b.click(); const g = document.getElementById('begin'); if (g) g.click(); }); await rafs(p, 2);
+        const r = await ask(); P.push(...r.P.map(m => 'in Meridian without its two lines, ' + m)); out.push(...r.out.map(m => 'Meridian without its two lines: ' + m));
+        if (err.length) P.push('Meridian without its two lines threw: ' + err.slice(0, 3).join(' | '));
+      } else { const r = await ask(); P.push(...r.P); out.push(...r.out); }
+    } finally { if (ctx) await ctx.close(); }
+    return { P, out }; })();
+  officeKept.out.forEach(l => console.log('  OFFICE DOG KEPT: ' + l));
+  fails.push(...officeKept.P.map(m => 'a world that keeps its office dog outside the program: ' + m));
 
   /* ---- THE 3D LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288) ----
      What was asked, on 2026-11-21 and confirmed that day: in the 3D camera the leash is lifted onto the bridge deck. Each
@@ -8941,7 +9482,12 @@ function findChromium() {
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await p.goto('file://' + file); await boot(p);
       return await cont(p) ? p : null; };
-    const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 3000 }); } catch (e) { return false; }
+    /* A PRESS OF THE MAP OR FULL-SCREEN BUTTON MAY TAKE 15 S, not 3 (every press of #mapbtn and #fsbtn in this file). At full
+       screen, 1920 by 1080, the page draws its heaviest frame, and on a runner of two cores shared with the rest of the run a
+       press once took longer than 3 s to land: the button visible, on top, enabled and still, the map shut (measured on
+       2026-11-23 with the map part run four at once, which failed four times so). It failed main's run once and the office
+       dog's branch once with nothing in the way. A press that cannot land at all still fails, after 15 s */
+    const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 15000 }); } catch (e) { return false; }
       return until(p, () => !document.getElementById('mapov').hidden, null, 2000); };
     /* closed with Escape, the panel's own way out, where a check is not about the way out: a click on Close has the
        browser scroll the box to reach the sticky button first. Section 7 closes it both ways, as a person does */
@@ -9607,9 +10153,9 @@ function findChromium() {
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await p.goto('file://' + file); await boot(p); await p.evaluate(YOUHELP); return { ctx, p }; };
     const sizeTo = async (p, w, h, full, was) => {
-      if (was) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+      if (was) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
       await p.setViewportSize({ width: w, height: h }); await rafs(p);
-      if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); } };
+      if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); } };
     /* what a player reads: the line under the map and the line above the game; and what is chosen */
     const linesNow = p => p.evaluate(() => ({ note: ((document.getElementById('mapNote') || {}).textContent || '').trim(), tag: ((document.getElementById('worldTag') || {}).textContent || '').trim(),
       dest: mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null }));
@@ -9677,7 +10223,7 @@ function findChromium() {
         for (const [w, h, size, tapToo, full] of SIZES) {
           if (touch && !tapToo) continue;
           await p.setViewportSize({ width: w, height: h }); await rafs(p);
-          if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); }
+          if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); }
           for (const on of [false, true]) {
             const where = size + ', the edge arrow ' + (on ? 'on' : 'off') + (touch ? ', with a finger' : '');
             if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so its markers were not clicked'); continue; }
@@ -9735,7 +10281,7 @@ function findChromium() {
             await p.evaluate(() => { mapDest = null; drawTown(); });
             await mapShut(p);
           }
-          if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
         }
         await ctx.close();
       }
@@ -10618,7 +11164,7 @@ function findChromium() {
               const c = document.getElementById('mapClose'); if (c) c.click(); else document.getElementById('mapov').hidden = true; });
           }
         }
-        if (wasFull) { await P.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(P, 3); }
+        if (wasFull) { await P.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(P, 3); }
         await ctx.close();
       }
       const by = {}; bad.forEach(([where, k, which, what]) => { const key = k + '|' + which; (by[key] = by[key] || []).push([where, what]); });
@@ -10713,7 +11259,7 @@ function findChromium() {
             if (r.none.length) MP.push('I opened the map in ' + [...new Set(r.none)].slice(0, 3).join(', ') + ' (' + size + ') and the box shows no plan to measure — nothing to measure is not a pass');
             if (r.noSwitch) noSwitch = true;
           }
-          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
         }
         if (moved.length) MP.push('Choosing or clearing where I am going moves the map under my finger: ' + moved.slice(0, 3).join('; ') + (moved.length > 3 ? '; and ' + (moved.length - 3) + ' more' : '') + ' — only turning the edge arrow on or off may move it');
         MN.push('COUNT-ONLY: the plan\'s top was read in ' + places + ' opening(s) of the map (' + rounds + ' round(s) of sizes, languages and the edge arrow off and on), each with up to four destinations chosen and cleared' + (noSwitch ? '; this game\'s map has no switch for the edge arrow, so it was asked with the arrow as it is' : ''));
@@ -10981,7 +11527,7 @@ function findChromium() {
                     if (k < 0.9) { const key = r.name + '|' + t.word + '|' + t.ch, e = bad.get(key); if (!e || k < e.k) bad.set(key, { k, t, where }); } }); });
               }
             }
-            if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+            if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
           }
           if (bad.size) { const B = [...bad.values()].sort((a, b) => a.k - b.k);
             MP.push('I opened the map where I am a ring round my own door, and the ring hides letters of a name: ' + B.slice(0, 3).map(e => '“' + e.t.ch + '” of “' + e.t.word + '” keeps ' + Math.round(100 * e.k) + '% of the contrast it has with only the ring left out, in ' + e.where).join('; ') + (B.length > 3 ? '; and ' + (B.length - 3) + ' more letter(s)' : '') + ' — every letter under the ring keeps 90%'); }
@@ -11370,7 +11916,7 @@ function findChromium() {
             if (s0 && s2 && s2.some((v, i) => Math.abs(v - s0[i]) > 1)) MP.push('On ' + size + ', I closed the map and the game did not come back where it was: the street is at ' + s2.map(v => Math.round(v)).join(',') + ', where it was at ' + s0.map(v => Math.round(v)).join(',') + ' before the map opened');
             if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 6000)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
           }
-          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
           /* where the half narrows the game's column, the page the player scrolled comes back where it was */
           { await p.setViewportSize({ width: 1100, height: 640 }); await rafs(p, 2);
             const y0 = await p.evaluate(() => { scrollTo(0, document.scrollingElement.scrollHeight); return scrollY; });
@@ -18354,6 +18900,12 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (!kept.length) return -1; let n = 0; for (let i = 0; i < F.px.length; i += 4) if (mag(F.px, i) && !mag(A.px, i)) n++; return n; };
             const set = (style, body, d) => { look = saveLook({ ...look, ...LOOK, style, body }); dir = d; };
             const eyeOf = A => Math.max(...[0, 1].map(i => { let k = 0; return painted(o => o.userData.wears === 'eye' && k++ === i, A); }));
+            /* HE IS MEASURED ALONE: every dog of the dog program is parked off the map for these frames and put back after. The
+               office dog of the program (mq-v295) lives and wanders in the room this page opens in, and his card standing up
+               behind this head changed what these frames read (measured on 2026-11-22: red with him in the room, green with him
+               upstairs or in the far corner, green with his card not drawn; his card paints none of the person's body in the
+               plain camera) */
+            const parked = (typeof CRIT !== 'undefined' && typeof DOGK !== 'undefined' ? CRIT : []).filter(c => DOGK.has(c.kind)).map(c => [c, c.world]); parked.forEach(([c]) => { c.world = '__parked'; });
             try { faceLooks = () => null; moving = false; wEl.hidden = false; camSet('3d'); sizeCanvas();
               /* the street alone, his body and his card both hidden: what differs from it, near him, is him */
               t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; }; t3Actors = () => { ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); };
@@ -18646,7 +19198,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     else if (t1 !== fb) P.push('changing ' + what + ' as the creator changes it, in his one look, his body ' + where + ' stays as it was: it is not made again from his look as it now is'); }
                   said.push(what); }
                 N.push('his body made again on the street and in the preview when each of these changes, handed over as another look and changed in his one look as the creator changes it: ' + said.join(', ')); }
-            } finally { t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = kd; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
+            } finally { parked.forEach(([c, w]) => { c.world = w; }); t3Body = kb; t3Actors = ka; faceLooks = kf; Date = RD; look = kl; dir = kd; moving = false; camSet(kw.cam); sizeCanvas(); wEl.hidden = kw.hidden; t3Body(0); }
             return { P, N }; });
           R.P.forEach(m => say(0, m)); R.N.forEach(m => say(1, m));
           if (K2.errs.length) say(0, 'the page that looks at his hair, ears, neck and eyes threw "' + K2.errs[0] + '"');
@@ -18972,7 +19524,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const K = {};
       K.hold = () => { if (S.held) return; S.held = true; S.ws = wStillAt; if (!wStillAt) wStillAt = performance.now(); Date = D;
         S.crit = CRIT.splice(0, CRIT.length); S.ball = BALL; BALL = null; S.dir = dir; S.moving = moving;
-        ['drawBeagle', 'drawLab', 'drawChi'].forEach(n => { const f = window[n]; S.painters[n] = f; window[n] = function (g, cr, ...a) { S.drawn.add(cr); return f.call(this, g, cr, ...a); }; });
+        ['drawBeagle', 'drawLab', 'drawChi', 'drawAussie'].forEach(n => { const f = window[n]; S.painters[n] = f; window[n] = function (g, cr, ...a) { S.drawn.add(cr); return f.call(this, g, cr, ...a); }; });
         S.kb = t3Body; S.ka = t3Actors; S.kd = t3DogBodies;
         t3Body = () => { T3.bodyOn = false; if (T3.body) T3.body.visible = false; return false; };   /* the person you steer is not in the dog's frames */
         t3Actors = () => { S.ka(); T3.pool.forEach(q => { if (q.spr.userData.hero) q.spr.visible = false; }); };

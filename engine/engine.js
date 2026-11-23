@@ -1077,6 +1077,7 @@ function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
   const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
   const o={kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};
   if(cr.ears==="mixed"&&EARKINDS.includes(kind))o.ears="mixed";   /* only where it is chosen, so every other look is what it was */
+  if(cr.role==="office"&&DOGK.has(cr.kind)){const W=dogWear(cr);o.collar=W.collar;o.band=W.band;if(W.cape)o.cape=W.cape;}   /* the office dog wears the wardrobe on his body as on his card, and no collar until it gives him one (mq-v295) */
   return o;}
 /* ANOTHER PLAYER'S LOOK (#32; the owner approved fixing the colour check). In multiplayer a
    stranger's character arrives from THEIR device and is drawn for everyone who can see them, so it is
@@ -1440,7 +1441,8 @@ function drawIso(){
       else if(cr.kind==="gato")drawGato(ctx,cr,bx,by);
       else if(cr.kind==="beagle")drawBeagle(ctx,cr,bx,by);
       else if(cr.kind==="lab")drawLab(ctx,cr,bx,by);
-      else if(cr.kind==="chi")drawChi(ctx,cr,bx,by);});});
+      else if(cr.kind==="chi")drawChi(ctx,cr,bx,by);
+      else if(cr.kind==="aussie")drawAussie(ctx,cr,bx,by);});});
   if(BALL&&BALL.world===world)bill(BALL.fx,BALL.fy,(bx,by)=>drawBall(ctx,bx,by,BALL.phase,BALL.t));
   DOGTHINGS.forEach(o=>{if(o.world===world)bill(o.fx,o.fy,(bx,by)=>drawDogThing(ctx,bx,by,o));});
   bill(fx,fy,(bx,by)=>drawPerson(ctx,bx,by,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true}));
@@ -3421,7 +3423,8 @@ function drawFront(){
       else if(cr.kind==="gato")drawGato(ctx,cr,sx,sy);
       else if(cr.kind==="beagle")drawBeagle(ctx,cr,sx,sy);
     else if(cr.kind==="lab")drawLab(ctx,cr,sx,sy);
-    else if(cr.kind==="chi")drawChi(ctx,cr,sx,sy);});});
+    else if(cr.kind==="chi")drawChi(ctx,cr,sx,sy);
+    else if(cr.kind==="aussie")drawAussie(ctx,cr,sx,sy);});});
   if(BALL&&BALL.world===world)act(BALL.fx,BALL.fy,(sx,sy)=>drawBall(ctx,sx,sy,BALL.phase,BALL.t));
   DOGTHINGS.forEach(o=>{if(o.world===world)act(o.fx,o.fy,(sx,sy)=>drawDogThing(ctx,sx,sy,o));});
   act(fx,fy,(sx,sy)=>drawPerson(ctx,sx,sy,look,{dir,bob:moving?Math.sin(bob)*2:0,moving,hero:true}));
@@ -3523,6 +3526,7 @@ function draw(){
     else if(cr.kind==="beagle")drawBeagle(ctx,cr,sx,sy);
     else if(cr.kind==="lab")drawLab(ctx,cr,sx,sy);
     else if(cr.kind==="chi")drawChi(ctx,cr,sx,sy);
+    else if(cr.kind==="aussie")drawAussie(ctx,cr,sx,sy);
   });
   if(BALL&&BALL.world===world)drawBall(ctx,BALL.fx*TS-camX,BALL.fy*TS-camY,BALL.phase,BALL.t);
   DOGTHINGS.forEach(o=>{if(o.world===world)drawDogThing(ctx,o.fx*TS-camX,o.fy*TS-camY,o);});
@@ -3816,13 +3820,18 @@ function drawLoro(g,sx,sy){
    The content pack declares spawns in CRITTERS [{kind,world,x,y,c}]; the engine owns
    the kinds. Critters wander a small radius around home, never block the hero, and
    the street cat is pettable via the same button as the named animals. */
-const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,holdT:0,stayT:0,home:[c.x,c.y]}));
+const CRIT=(typeof CRITTERS!=="undefined"?CRITTERS:[]).map(c=>({...c,fx:c.x,fy:c.y,moving:false,mt:0,dx:0,dy:0,face:1,next:0,sit:false,holdT:0,stayT:0,home:[c.x,c.y],
+  ...(c.leashOnly===true?{den:[c.world,c.x,c.y]}:{})}));   /* a dog who leaves his room only on the leash keeps where his room is (den: dogDen) (mq-v295) */
 const CRIT_REACH=4; /* how many steps from its own spot a critter wanders on its own; critFree refuses a step any further */
+/* ...unless its record says otherwise: reach "room" is the whole of its world, with no limit from its spot (the office dog
+   wanders the whole office, as he always did), and a number is that many steps. A critter whose record says nothing keeps
+   CRIT_REACH exactly, as before (mq-v295; the owner's confirmed goal of 2026-11-23 on the office dog's range) */
+const critReach=cr=>cr.reach==="room"?Infinity:(Number.isInteger(cr.reach)&&cr.reach>=0?cr.reach:CRIT_REACH);
 function critFree(cr,x,y){const w=WORLDS[cr.world];
   return !(x<0||y<0||x>=w.W||y>=w.H||SOLID.has(w.grid[y][x])||w.grid[y][x]==="N")
     &&!(world===cr.world&&x===px&&y===py)
     &&!(typeof troDanger==="function"&&troDanger(cr.world,x,y))  /* nothing alive WALKS INTO a road with a car on it */
-    &&Math.abs(x-cr.home[0])+Math.abs(y-cr.home[1])<=CRIT_REACH
+    &&Math.abs(x-cr.home[0])+Math.abs(y-cr.home[1])<=critReach(cr)
     &&gearStep(cr.world,cr.x,cr.y,x,y,gearWho(cr));}   /* the tunnel by its ends only, the poles not at all off a run; true where no world takes them */
 /* ---- ...and a thing that finds itself in the road leaves it ----
    Avoidance alone is not enough: the line is empty ground when no car is running, so a critter is
@@ -3864,7 +3873,7 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
     else{cr.task=null;if(BALL&&BALL.dog===cr)BALL=null;}
     if(!cr.task)dogDone(cr,tk,now);   /* every way a job ends passes here: the one rule (#268) */
     return;}
-  if(world!==cr.world){cr.next=now+1200;return;}
+  if(world!==cr.world){if(!dogDen(cr,now))cr.next=now+1200;return;}
   if(now<cr.next)return;
   if(cr.stayT>now){cr.sit=true;return;} /* STAY means stay */
   if(cr.follow){ /* off-leash but loyal: keeps up MOST of the time (canon) */
@@ -3887,14 +3896,59 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   cr.dx=d[0];cr.dy=d[1];if(d[0])cr.face=d[0];
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;
   cr.next=now+(cr.kind==="gato"?900+Math.random()*2600:250+Math.random()*900);
+  if(cr.role==="office"&&isDog(cr))officeBump(cr);   /* the office dog's lines, as DOG said them (mq-v295) */
 });gearLive();}   /* the poles a dog is passing, stood again in the 3D camera as they lean; nothing where no world takes them */
+/* A DOG WHO LEAVES HIS ROOM ONLY ON THE LEASH IS NEVER LEFT OUT OF IT (mq-v295; the owner's confirmed goal of 2026-11-22 on the
+   office dog). The leash takes him to the park and the door out brings him home (dogsFollow, then parkExit). Every other way
+   out of the park sets you down somewhere without that door (Replay in Settings, the week's handover): he would be left in the
+   park with no way home, since nothing brings him back off the leash and the whistle is not his. So the moment you are in
+   another world than his and he is in the park, he is home: on the square the leash took him from, else his own, and the
+   leash, stale, is let go. A dog with no den (every dog not leashOnly) is never touched here */
+function dogDen(cr,now){
+  if(!dogLeashOnly(cr)||!Array.isArray(cr.den)||!WORLDS[cr.den[0]]||cr.world===cr.den[0]||cr.world!==PL.park||world===cr.world)return false;   /* the leash only ever takes him to the park, so only the park is asked */
+  const led=LEASH&&LEASH.cr===cr,at=led&&LEASH.w===cr.den[0]?[LEASH.x,LEASH.y]:[cr.den[1],cr.den[2]];
+  if(led)LEASH=null;
+  if(BALL&&BALL.dog===cr)BALL=null;
+  cr.world=cr.den[0];cr.home=at.slice();cr.follow=false;cr.task=null;cr.leashT=0;
+  if(!dogPut(cr,dogHomeSpot(cr)||at))return false;
+  cr.stepT=now;cr.next=now+600;return true;}
+/* THE OFFICE DOG'S BUMP LINES (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog): a step that ends beside
+   you, about a third of the time and never within 2.5 s of the last, he says one of the world's dog lines (T().dog), as DOG
+   always did; the roll is drawn only when he ends beside you, as it was */
+function officeBump(cr){
+  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
+    const L=T().dog;if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(Math.random()*L.length)],1800);}}}
 /* ---------- the dog program (IDEAS §11) ----------
    Any beagle gets a real life: a ball he fetches exactly 4 times in 7 (a shuffled
    cycle, so it feels like a dog and not a coin), a howl, a proper lie-down, holes,
    and — infrequently — the other thing, which fades on its own until the day the
    city hires janitors. All engine-generic: name a dog and the program is his. */
-const DOGK=new Set(["beagle","lab","chi"]); /* every kind that runs the dog program */
+const DOGK=new Set(["beagle","lab","chi","aussie"]); /* every kind that runs the dog program */
 const isDog=cr=>!!cr&&DOGK.has(cr.kind);
+/* THE OFFICE DOG IN THE PROGRAM (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). The office dog was
+   once a dog of his own (DOG, dogUpdate, drawDog), built before this program and never moved into it, so every behaviour
+   added since skipped him. A world now declares him in its own CRITTERS as one more dog of the program, and sets its
+   ANIMALS.dog to null; a world that does neither keeps DOG exactly as it was. What makes him himself is data on his record:
+     · kind "aussie": his look, the office dog's card (drawAussie) and a body built to it (DOGBUILDS, DOGPART). The kind is a
+       world's own dog's (DOGSOLE): the adoption house never offers it and a saved adopted dog never takes it;
+     · role "office" (officeDog): what hung on DOG hangs on him: the treat button's words and its count of treats, which opens
+       his side quest; his bump lines (T().dog); the wardrobe (wear: cape, bandana, collar), on his card and on his body; the
+       wardrobe's preview. He is never an adopted dog: he cannot be renamed or rehomed (dogRecord answers none for him);
+     · tidy (dogTidy): a well-trained dog. He never digs and never leaves a mess: the free whim's roll is laid over the other
+       whims only, so the hole's and the mess's bands are never drawn, and the curious routine's hole is never rolled, so he
+       sniffs a little longer in its place, as any dog whose hole did not come up does;
+     · leashOnly (dogLeashOnly): he leaves his room with you only on the leash. Off it he stays and wanders his room: he does
+       not come through a door after you, on a whim or when told (the follow command keeps him at your heel inside the room),
+       and the whistle that carries across the city is not his. The leash still takes him, and a way out of the park that is
+       not its door brings him home (dogDen). The paw menu reaches him from beside him only (the treat's reach); anywhere
+       else in his room it reaches whom it reached before, so Come still whistles the star in from the office;
+     · reach (critReach): "room" and he wanders the whole of his room with no limit from his square; a number, that many
+       steps. Without it, CRIT_REACH, as every dog before.
+   Every field is off unless a record says it, so every other dog in every world is exactly as before. */
+const DOGSOLE=new Set(["aussie"]);   /* the kinds a world gives one dog of its own: never offered for adoption, never kept by a save as an adopted dog */
+const officeDog=()=>CRIT.find(c=>c.role==="office"&&isDog(c))||null;
+const dogTidy=cr=>!!(cr&&cr.tidy===true);
+const dogLeashOnly=cr=>!!(cr&&cr.leashOnly===true);
 let BALL=null; /* one ball at a time; the city is not a ball pit */
 let LEASH=null; /* {cr,w,x,y} — the dog on the leash and where home is */
 let PARK={f:0,t:0,h:0,d:0}; /* the park session's little memories: fetches, treats, howls, holes */
@@ -3962,6 +4016,7 @@ function dogsFollow(fromW,fromX,fromY){
   const now=wNow(),taken=[];
   CRIT.forEach(c=>{
     if(!isDog(c)||c.world!==fromW)return;
+    if(dogLeashOnly(c)&&!(LEASH&&LEASH.cr===c))return;   /* a dog who leaves his room only on the leash stays in it, on a whim or told to follow (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
     if(c.holdT>now||c.stayT>now)return;      /* told to sit, lie down or stay: he holds, and you leave without him */
     const d=Math.abs(c.x-fromX)+Math.abs(c.y-fromY);
     if(c.follow?d>FOLLOW_REACH:!(d<=1&&Math.random()<FOLLOW_WHIM))return;
@@ -4190,7 +4245,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
    · A walk home that could not finish is not tried again from here; the stuck clock has it. */
 function dogDone(cr,tk,now){
   if(tk.type==="home"||cr.task||cr.follow)return;
-  if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=CRIT_REACH)return;
+  if(Math.abs(cr.x-cr.home[0])+Math.abs(cr.y-cr.home[1])<=critReach(cr))return;
   if(cr.world!==world){dogPut(cr,dogHomeSpot(cr));return;}
   cr.task={type:"home",wait:cr.next};}
 /* ---------- a dog must never stay stuck: the stuck clock ----------
@@ -4217,7 +4272,7 @@ function dogCanStand(cr,x,y){const w=WORLDS[cr.world];if(!w)return false;
     &&!CRIT.some(c=>c!==cr&&c.world===cr.world&&c.x===x&&c.y===y)&&!gearShut(cr.world,x,y);}
 function dogHomeSpot(cr){
   const w=WORLDS[cr.world];if(!w)return null;const hx=cr.home[0],hy=cr.home[1];
-  for(let r=0;r<=CRIT_REACH;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)
+  for(let r=0,R=Math.min(critReach(cr),w.W+w.H);r<=R;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)
     if(Math.abs(dx)+Math.abs(dy)===r&&dogCanStand(cr,hx+dx,hy+dy))return[hx+dx,hy+dy];
   return null;}
 function dogPut(cr,s){if(!s)return false;
@@ -4436,7 +4491,7 @@ function gearSway(cr){const s=gearPose(cr).side;if(!s)return;
      nod  — the head alone, on top of the body (the howl lifts it, the peck lowers it, the parrot's bob)
      body, head — what the layer reads: drop − lift, and drop + nod − lift
    An animal or a pose not named here answers zeros, which is where it has always been drawn. */
-const POSEPX={beagle:{lay:3,curl:3,howl:-3,sniff:3},lab:{lay:3,curl:3,howl:-3,sniff:3},chi:{lay:2,curl:3,howl:-2.5,sniff:2},pigeon:{peck:2.2}};
+const POSEPX={beagle:{lay:3,curl:3,howl:-3,sniff:3},lab:{lay:3,curl:3,howl:-3,sniff:3},chi:{lay:2,curl:3,howl:-2.5,sniff:2},aussie:{lay:3,curl:3,howl:-3,sniff:3},pigeon:{peck:2.2}};
 /* A DOG'S POSE, ALL OF IT, IN ONE PLACE (mq-v235). Everything the dog program's painters decide about how a dog is held
    this instant, read off his state and two clocks — nw, the world's own clock (wNow), for how long a whim lasts (layT, howlT…), and
    t, Date.now(), for the idle wag and the digging paws — both passable, so a test can hold them still. The 2D painters
@@ -4457,7 +4512,7 @@ const POSEPX={beagle:{lay:3,curl:3,howl:-3,sniff:3},lab:{lay:3,curl:3,howl:-3,sn
      drop, nod — the body lowered and the head moved, px on his card (POSEPX)
      wag — the tail's swing in px, calm or happy, at its own breed's pace (DOGWAG)
      face, heading, step — which way he faces on the card, the way his last step went, how far through a step he is */
-const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6]}; /* ms a swing and px: calm, then happy */
+const DOGWAG={beagle:[130,2.4,70,3.4],lab:[150,2,70,3.2],chi:[120,1.8,60,2.6],aussie:[110,1.4,55,2.2]}; /* ms a swing and px: calm, then happy. The aussie's calm wag is the office dog's bobbed tail as DOG always wagged it (mq-v295) */
 /* LYING DOWN, HIS TAIL RESTS (mq-v287; the owner's confirmed goal of 2026-11-21 on the tail). It wags the whole time only
    while he is happy or shown he is loved; otherwise it lies still and gives a short wag now and then: WAGLIE.ms long, the
    next one WAGLIE.gap after the last, a time of its own each time. No dice are thrown here: his painters ask every frame,
@@ -4566,7 +4621,7 @@ function dogDig(cr,now,ms){if(!(ms>0))ms=dogTime("dig",cr);cr.digT=now+ms;cr.nex
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (canon) — it stays in the repertoire, barely. In the park:
   zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
-  const r=Math.random(),park=cr.world===PL.park;
+  const r=Math.random()*(dogTidy(cr)?DOGDIGBAND[0]:1),park=cr.world===PL.park;   /* a tidy dog's one roll is laid over the whims below the hole's band, so the hole and the mess are never drawn (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
   /* the cone (2026-09-04: the dog can even rip it). Checked before the rest of
      the repertoire so a cone right under his nose beats a nap — but it is one roll in twenty-five,
      so it stays a thing that happened once and not a thing he does. It comes back when you leave
@@ -4691,7 +4746,7 @@ function routineStep(cr,tk,now){const steps=ROUTINES[tk.id]||[];tk.i++;
   tk.pose=st.pose;tk.wait=now+ms;}
 /* r, a number from 0 to 1, may be handed in for the hole's own roll */
 function routineStart(cr,id,now,r){const steps=ROUTINES[id];if(!steps||!steps.length)return false;
-  cr.task={type:"routine",id,i:-1,pose:"normal",dig:ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:Math.random())<routineDigChance(cr)};
+  cr.task={type:"routine",id,i:-1,pose:"normal",dig:!dogTidy(cr)&&(ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:Math.random())<routineDigChance(cr))};   /* a tidy dog's hole is never rolled: he sniffs in its place (mq-v295) */
   routineStep(cr,cr.task,now);return true;}
 /* a hand on him ends his routine at once (a treat, his love, a ball, a leash, a command): he is yours, standing, that instant */
 function routineStop(cr){if(cr&&cr.task&&cr.task.type==="routine"){cr.task=null;dogNormal(cr);}}
@@ -4908,7 +4963,8 @@ function drawColibri(g,cr,sx,sy){
 const CURLCARD=Object.freeze({
   beagle:Object.freeze({body:[-0.4,22.3,8.6,5.2],head:[2.8,23.2],turn:0.35,r:4.6,eye:[0.65,-0.45],tail:[2.4,1.5],sh:[9.4,2.8]}),
   lab:Object.freeze({body:[-0.4,21.7,9.4,5.8],head:[3,23.2],turn:0.4,r:4.9,eye:[0.75,-0.75],tail:[3,0],sh:[10.2,3]}),
-  chi:Object.freeze({body:[0.2,23.7,6.6,3.8],head:[1.9,23.2],turn:0.45,r:4.2,eye:[0.3,-0.4],tail:[1.8,0],sh:[7.2,2.3]})});
+  chi:Object.freeze({body:[0.2,23.7,6.6,3.8],head:[1.9,23.2],turn:0.45,r:4.2,eye:[0.3,-0.4],tail:[1.8,0],sh:[7.2,2.3]}),
+  aussie:Object.freeze({body:[-0.4,21.7,9.4,5.8],head:[3,23.2],turn:0.4,r:4.6,eye:[1.3,-1.3],tail:[2.4,0],sh:[10.2,3]})});   /* the office dog (mq-v295): his bobbed tail is tucked out of sight, curled up */
 /* where his shut eye is on his card, curled up: px from the middle of his cell and from its top, as he faces right. What he
    wears round his eye (wildDraw) is put there, so it is not left where his eye was when he stood */
 function curlEyeAt(kind,ver){const CC=curlVersion(ver).card||CURLCARD,C=CC[kind];if(!C)return null;const[ex,ey]=C.eye,c=Math.cos(C.turn),s=Math.sin(C.turn);
@@ -4955,18 +5011,21 @@ function dogCurlCard(g,cr,cx,sy,o,ver){const CC=curlVersion(ver).card||CURLCARD,
   if(o.back)o.back(g,cx+bx,sy+by,rx,ry);
   g.strokeStyle="rgba(0,0,0,.13)";g.lineWidth=0.7;g.lineCap="round";   /* the fold of his haunch */
   g.beginPath();g.arc(cx+bx-rx*0.52,gy-ry*0.4,ry*0.8,-2.3,-0.3);g.stroke();
-  g.strokeStyle=cr.collar||"#2E5FA8";g.lineWidth=1.7;g.lineCap="butt";   /* his collar, where his neck comes round behind his head */
-  g.beginPath();g.arc(cx+hx,sy+hy,C.r+1.1,-0.75,0.35);g.stroke();
+  /* what he wears round his neck: his record's, unless his painter hands in his own (o.collar, o.band; the office dog's wardrobe,
+     mq-v295), where a collar of null is none */
+  const col=o.collar!==undefined?o.collar:(cr.collar||"#2E5FA8"),bd=o.band!==undefined?o.band:cr.band;
+  if(col){g.strokeStyle=col;g.lineWidth=1.7;g.lineCap="butt";   /* his collar, where his neck comes round behind his head */
+    g.beginPath();g.arc(cx+hx,sy+hy,C.r+1.1,-0.75,0.35);g.stroke();}
   g.restore();
-  if(cr.band){   /* his bandana: its point lies on his chest, under his chin and out of sight, so what shows is its rolled edge round the back of his neck, over his collar, and the two ends of its knot */
+  if(bd){   /* his bandana: its point lies on his chest, under his chin and out of sight, so what shows is its rolled edge round the back of his neck, over his collar, and the two ends of its knot */
     const R=C.r+1.5,kx=cx+hx+(R+0.6)*Math.cos(-0.25),ky=sy+hy+(R+0.6)*Math.sin(-0.25);
-    g.strokeStyle=cr.band;g.lineWidth=2.2;g.lineCap="butt";g.beginPath();g.arc(cx+hx,sy+hy,R,-0.85,0.3);g.stroke();
-    g.fillStyle=cr.band;g.beginPath();g.moveTo(kx-0.6,ky-0.9);g.lineTo(kx+2.2,ky-2);g.lineTo(kx+0.9,ky+0.1);g.lineTo(kx+2,ky+2.2);g.lineTo(kx-0.6,ky+0.9);g.closePath();g.fill();
-    g.fillStyle=shadeHex(cr.band,-0.14);g.beginPath();g.arc(kx,ky,0.8,0,7);g.fill();}
-  g.strokeStyle=o.tail;g.lineWidth=C.tail[0];g.lineCap="round";   /* his tail, round along the ground to under his nose */
-  const tx=cx+hx-C.r*1.2,ty=gy-C.tail[0]*0.45;
-  g.beginPath();g.moveTo(cx+bx-rx+1.4,gy-ry*0.75);g.quadraticCurveTo(cx+bx-rx-0.5,gy-0.2,cx+bx-rx*0.5,gy-C.tail[0]*0.4);g.lineTo(tx,ty);g.stroke();
-  if(C.tail[1]>0&&o.tip){g.fillStyle=o.tip;g.beginPath();g.arc(tx,ty,C.tail[1],0,7);g.fill();}
+    g.strokeStyle=bd;g.lineWidth=2.2;g.lineCap="butt";g.beginPath();g.arc(cx+hx,sy+hy,R,-0.85,0.3);g.stroke();
+    g.fillStyle=bd;g.beginPath();g.moveTo(kx-0.6,ky-0.9);g.lineTo(kx+2.2,ky-2);g.lineTo(kx+0.9,ky+0.1);g.lineTo(kx+2,ky+2.2);g.lineTo(kx-0.6,ky+0.9);g.closePath();g.fill();
+    g.fillStyle=shadeHex(bd,-0.14);g.beginPath();g.arc(kx,ky,0.8,0,7);g.fill();}
+  if(o.tail){g.strokeStyle=o.tail;g.lineWidth=C.tail[0];g.lineCap="round";   /* his tail, round along the ground to under his nose (a bobbed tail, handed in as none, is tucked out of sight) */
+    const tx=cx+hx-C.r*1.2,ty=gy-C.tail[0]*0.45;
+    g.beginPath();g.moveTo(cx+bx-rx+1.4,gy-ry*0.75);g.quadraticCurveTo(cx+bx-rx-0.5,gy-0.2,cx+bx-rx*0.5,gy-C.tail[0]*0.4);g.lineTo(tx,ty);g.stroke();
+    if(C.tail[1]>0&&o.tip){g.fillStyle=o.tip;g.beginPath();g.arc(tx,ty,C.tail[1],0,7);g.fill();}}
   g.fillStyle="rgba(0,0,0,.12)";g.beginPath();g.arc(cx+hx-0.4,sy+hy+0.4,C.r+0.5,0,7);g.fill();   /* his head's own shadow on his flank */
   g.save();g.translate(cx+hx,sy+hy);g.scale(-1,1);g.rotate(C.turn);o.head(g);g.restore();}
 function drawBeagle(g,cr,sx,sy){ /* a lemon beagle: white coat, lemon saddle, floppy ears, working tail */
@@ -5122,6 +5181,75 @@ function drawChi(g,cr,sx,sy){ /* a chihuahua: 4 pounds of dog, 40 pounds of opin
   else{g.fillRect(cx+3.6,sy+14.2+dy+hy,1.5,1.5);g.fillRect(cx+6.6,sy+14.2+dy+hy,1.5,1.5);} /* enormous eyes */
   g.beginPath();g.arc(cx+8.6,sy+(howl?14:16.6)+dy+hy,1,0,7);g.fill();
   g.restore();
+  dogOverlays(g,cr,cx,sy,P);
+}
+/* THE OFFICE DOG'S CARD (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog): an Aussie, grey with darker grey
+   patches, a white chest and muzzle, two upright pointed ears and a short bobbed tail that always wags. Standing, walking and
+   sitting this is DOG's painter (drawDog) line for line, reading the dog's own record and pose (dogPose) where it read DOG, so
+   he is pixel for pixel the card he always was; the program's other poses are drawn in his look: lying down (his fore legs
+   stretched out, his eyes shut, his tail at rest between its short wags), the howl (his head up, his nose to the sky), the
+   sniff, a hole for a dog that is not tidy, over the bar and in the tunnel, curled up (dogCurlCard), and the feelings layer
+   (dogOverlays). What he wears is dogWear's: for the office dog, the wardrobe (wear), as on DOG */
+/* his ink is the cards' own near-black, written as rgb (the same colour) */
+const AUSSIE=Object.freeze({coat:"#7B7E8A",dark:"#4C4F58",white:"#EDEDE8",head:"#6E7280",tan:"#B5773A",ink:"rgb(38,32,43)",gold:"#E0B45C"});
+/* what a dog wears (mq-v295): the office dog wears the wardrobe (wear: cape, bandana, collar) as DOG did, and what the park's
+   buttons put on him only where the wardrobe has none; any other dog his record's bandana and collar, and no cape */
+function dogWear(cr){cr=cr||{};
+  if(cr.role==="office")return {cape:saveCol(wear.cape),band:saveCol(wear.bandana)||saveCol(cr.band),collar:saveCol(wear.collar)||saveCol(cr.collar)};
+  return {cape:null,band:saveCol(cr.band),collar:saveCol(cr.collar)};}
+function drawAussie(g,cr,sx,sy){
+  const P=dogPose(cr);if(P.hid)return;   /* inside the agility tunnel */
+  const A=AUSSIE,W=dogWear(cr),lay=P.lay,howl=P.howl,t=P.t,dy=P.drop,hy=P.nod;
+  const cx=sx+16,wob=P.step!==null&&!lay?Math.sin(t/90)*0.8:0;
+  g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
+  if(P.curl){   /* curled up asleep: his patches over his back, his cape on it, his upright ears laid back, his bob tucked away */
+    dogCurlCard(g,cr,cx,sy,{body:A.coat,collar:W.collar,band:W.band,
+      back:(g,mx,my,rx,ry)=>{g.fillStyle=A.dark;g.beginPath();g.arc(mx-2.6,my-ry*0.35,2.4,0,7);g.fill();g.beginPath();g.arc(mx+2.2,my+ry*0.05,1.9,0,7);g.fill();
+        if(W.cape){g.fillStyle=W.cape;g.beginPath();g.roundRect(mx-rx*0.75,my-ry*1.05,rx*1.1,ry*0.95,2.4);g.fill();}},
+      head:g=>{g.fillStyle=A.head;g.beginPath();g.arc(0,0,4.6,0,7);g.fill();
+        g.fillStyle=A.dark;g.beginPath();g.moveTo(-2.4,-3.6);g.lineTo(-6.4,-4.8);g.lineTo(-3.6,-1.6);g.closePath();g.fill();
+        g.beginPath();g.moveTo(-0.6,-4.3);g.lineTo(-4.4,-6.4);g.lineTo(-2.4,-2.9);g.closePath();g.fill();
+        g.fillStyle=A.tan;g.beginPath();g.arc(2.7,1.7,1.7,0,7);g.fill();
+        g.fillStyle=A.white;g.beginPath();g.arc(3.5,0.7,1.9,0,7);g.fill();
+        g.fillStyle=A.ink;g.fillRect(0.4,-1.6,1.9,0.6);g.beginPath();g.arc(4.6,0.3,0.9,0,7);g.fill();}},P.ver);
+    g.restore();dogOverlays(g,cr,cx,sy,P);return;}
+  g.fillStyle="rgba(0,0,0,.18)";g.beginPath();g.ellipse(cx,sy+27,8,3,0,0,7);g.fill();
+  sy-=P.lift;                                /* over the hurdle's bar he is in the air; his shadow is not */
+  g.fillStyle=A.dark;
+  if(!lay){g.fillRect(cx-7,sy+22+wob,2.4,4.5);g.fillRect(cx-2.5,sy+22-wob,2.4,4.5);
+    g.fillRect(cx+1.5,sy+22+wob,2.4,4.5);g.fillRect(cx+5,sy+22-wob,2.4,4.5);}
+  else g.fillRect(cx+2,sy+24.8,8,2.2);       /* lying down, his fore legs stretched out ahead */
+  if(P.dig){g.fillRect(cx+6.6,sy+21.6+Math.sin(t/70)*2,2.6,4.2);   /* a dog of his look who is not tidy: paws at the ground, dirt flying */
+    g.fillStyle="#6E5638";[[13,17],[16,13],[14,21]].forEach((p,i)=>{g.fillRect(cx+p[0]+Math.sin(t/90+i*2)*2.5,sy+p[1],2,2);});}
+  g.fillStyle=A.coat;g.beginPath();g.roundRect(cx-8.5,sy+15+dy,16,9,4.5);g.fill();
+  g.fillStyle=A.dark;g.beginPath();g.arc(cx-3,sy+18+dy,2.4,0,7);g.fill();
+  g.beginPath();g.arc(cx+3.4,sy+20.6+dy,1.9,0,7);g.fill();
+  g.fillStyle=A.white;g.beginPath();g.roundRect(cx+3.6,sy+16.4+dy,4.4,7.2,2.2);g.fill();
+  /* bobbed tail — small, always wagging, as requested by management (at rest lying down between its short wags, as every dog's) */
+  g.fillStyle=A.coat;
+  g.beginPath();g.ellipse(cx-9.6,sy+16.5+dy+P.wag,2.3,1.7,-0.5,0,7);g.fill();
+  if(P.sit&&!lay){g.fillStyle=A.coat;g.beginPath();g.roundRect(cx-9.5,sy+18,7,7,3);g.fill();}
+  /* the wardrobe: cape over the back, bandana at the neck (collar comes after the head) */
+  if(W.cape){g.fillStyle=W.cape;g.beginPath();g.roundRect(cx-7.8,sy+13.9+dy,10,6.6,2.6);g.fill();
+    g.fillStyle="rgba(255,255,255,.28)";g.fillRect(cx-7.8,sy+14.8+dy,10,1);}
+  if(W.band){g.fillStyle=W.band;g.beginPath();g.moveTo(cx+3.4,sy+15.6+dy);g.lineTo(cx+10.4,sy+15.6+dy);g.lineTo(cx+7,sy+20.2+dy);g.closePath();g.fill();}
+  g.fillStyle=A.head;g.beginPath();g.arc(cx+7.5,sy+13.5+dy+hy,4.6,0,7);g.fill();
+  if(W.collar){g.fillStyle=W.collar;g.fillRect(cx+3.2,sy+16.5+dy,6.2,1.8);
+    g.fillStyle=A.gold;g.beginPath();g.arc(cx+6.3,sy+19.2+dy,1.05,0,7);g.fill();}
+  g.fillStyle=A.dark;
+  g.beginPath();g.moveTo(cx+4.4,sy+10.6+dy+hy);g.lineTo(cx+6.4,sy+7.4+dy+hy);g.lineTo(cx+8,sy+10.2+dy+hy);g.closePath();g.fill();
+  g.beginPath();g.moveTo(cx+8.6,sy+10+dy+hy);g.lineTo(cx+10.8,sy+7.6+dy+hy);g.lineTo(cx+11.6,sy+10.8+dy+hy);g.closePath();g.fill();
+  if(howl){   /* nose to the sky */
+    g.fillStyle=A.tan;g.beginPath();g.arc(cx+10.4,sy+13+dy+hy,1.7,0,7);g.fill();
+    g.fillStyle=A.white;g.beginPath();g.arc(cx+11,sy+11.6+dy+hy,1.9,0,7);g.fill();
+    g.fillStyle=A.ink;g.beginPath();g.arc(cx+11.8,sy+10.4+dy+hy,0.9,0,7);g.fill();
+    g.fillRect(cx+8.2,sy+12.2+dy+hy,1.2,1.2);}
+  else{g.fillStyle=A.tan;g.beginPath();g.arc(cx+10.2,sy+15.2+dy+hy,1.7,0,7);g.fill();
+    g.fillStyle=A.white;g.beginPath();g.arc(cx+11,sy+14.2+dy+hy,1.9,0,7);g.fill();
+    g.fillStyle=A.ink;g.beginPath();g.arc(cx+12.1,sy+13.8+dy+hy,0.9,0,7);g.fill();
+    if(lay)g.fillRect(cx+7.8,sy+12.9+dy,2,0.7);   /* eyes closed — do not disturb */
+    else g.fillRect(cx+8.2,sy+12.2+dy+hy,1.2,1.2);}
+  g.restore(); /* text outside the mirror so it never flips */
   dogOverlays(g,cr,cx,sy,P);
 }
 function drawGato(g,cr,sx,sy){ /* the street cat: Canela's silhouette, alley palette, no collar — yet */
@@ -5479,6 +5607,13 @@ function alePickOf(k){if(!Object.prototype.hasOwnProperty.call(alePick.animals,k
 function alebLookFor(kind,name){const L=alebLooks();if(!L)return null;
   const k=name||kind,sv=alePickOf(k),i=sv!==null?sv:(aleHash(k)+alePick.off),lk=L[((i%L.length)+L.length)%L.length];
   const cu=alePick.custom&&Object.prototype.hasOwnProperty.call(alePick.custom,k)&&alePick.custom[k];return cu&&lk?{...lk,...cu,id:lk.id}:lk;}
+/* WHOSE LOOK AN ANIMAL WEARS ON THE NIGHT: his name's, or, with none, his kind's — and the office dog in the program wears DOG's
+   (key "dog"), so on the night of alebrijes he is painted in the look he always was, and a look picked for him is the one he
+   had (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog). His name in the Settings list is the office dog's
+   person's (the npc "fred", whose side quest his treats open), as the wardrobe calls him; any other animal's as before */
+const aleKeyOf=c=>c.name||(c.role==="office"&&isDog(c)?"dog":c.kind);
+const aleLookOf=c=>alebLookFor(c.name?c.kind:aleKeyOf(c),c.name);
+const aleLabelOf=c=>c.name||(c.role==="office"&&isDog(c)?shortName("fred"):"")||npcName(c.kind)||c.kind;
 const wildTmp={a:null,b:null};
 function wildScratch(which,W,H){let c=wildTmp[which];if(!c||c.width!==W||c.height!==H){c=wildTmp[which]=document.createElement("canvas");c.width=W;c.height=H;}return c;}
 /* the marks each kind has room for, where its wings root and where its eye is; cx is the sprite's centre column. A mark
@@ -5506,6 +5641,7 @@ const ALEB_KIND={
   butterfly:{tint:0.95,marks:(g,l,cx,sb)=>{g.fillStyle=l.pat;g.beginPath();g.arc(cx-2.6,sb+11.5,1,0,7);g.arc(cx+2.6,sb+11.5,1,0,7);g.fill();}}, /* an eye on each upper wing */
   colibri:{eye:[3.6,10.2,2.2],marks:(g,l,cx,sb)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+3.3,sb+12.1,1.1,0,7);g.fill();}} /* the gorget, at the throat: on the head, riding with it, it painted his eye out (mq-v234) */
 };
+ALEB_KIND.aussie=ALEB_KIND.dog;   /* the office dog in the program wears the alebrije's marks where DOG wore them: his card is DOG's (mq-v295) */
 /* hexDark multiplies toward black, which is right for a shadow and useless for a highlight:
    a near-black hair times 1.3 is still near-black. hexLite mixes toward white instead, so the
    lit side of dark hair actually lifts (#133). */
@@ -5572,10 +5708,13 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
 /* `who` names the animal itself (the critter handed to the painter, or the engine's own DOG, CAT, PIG, LORO): the layer
    reads its facing, its pose (bodyRide) and its step (aleBeat) from it */
 const wild=(fn,ai,kind,who)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
-  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&cr.kind||kind,look=alebLookFor(k,cr&&cr.name);if(!look)return fn(g,...a);
+  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&cr.kind||kind,look=cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
   return wildDraw(g,look,k,tg=>fn(tg,...a),a[ai],a[ai+1],an&&an.face||1,an);};
 drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,0,"pigeon",()=>PIG);drawLoro=wild(drawLoro,0,"loro",()=>LORO);
-drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
+drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawAussie=wild(drawAussie,1,"aussie",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
+/* A DOG OF THE PROGRAM'S CARD, by his kind, through the painters as they stand now (the alebrije layer's included) (mq-v295) */
+function dogCard(g,cr,sx,sy){const k=cr&&cr.kind;
+  if(k==="beagle")drawBeagle(g,cr,sx,sy);else if(k==="lab")drawLab(g,cr,sx,sy);else if(k==="chi")drawChi(g,cr,sx,sy);else if(k==="aussie")drawAussie(g,cr,sx,sy);}
 drawButterfly=wild(drawButterfly,1,"butterfly",c=>c);drawColibri=wild(drawColibri,1,"colibri",c=>c);
 /* ---------- movement ---------- */
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
@@ -6846,7 +6985,9 @@ function fredCheck(){ /* now the generic animal-interaction check: every creatur
      got crosswalk lines while trying to talk). Step away to pet her. */
   const personFirst=!$("talk").hidden&&$("talk").dataset.qi!==undefined;
   if(!$("world").hidden&&!moving&&!personFirst){
+    const od=officeDog();   /* the office dog in the program (mq-v295): first, as DOG was, and the treat button in his own words */
     if(world===AW("dog")&&!DOG.moving&&Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1){tgt="fred";label=T().treatLb;}
+    else if(od&&od.world===world&&!od.moving&&Math.abs(od.x-px)+Math.abs(od.y-py)===1){tgt=od.kind;petCrit=od;label=T().treatLb||("🐾 "+(od.name||"🐶"));}
     else if(world===AW("cat")&&!CAT.moving&&Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1){tgt="cat";label=T().petCat;}
     else if(world===AW("pig")&&!PIG.moving&&Math.abs(PIG.x-px)+Math.abs(PIG.y-py)===1){tgt="pig";label=T().petPig;}
     else if(world===AW("loro")&&Math.abs(LORO.x-px)+Math.abs(LORO.y-py)<=2){tgt="loro";label=T().petLoro;}
@@ -6903,6 +7044,17 @@ $("treat").addEventListener("click",()=>{
     const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
   else if(petTarget==="loro"){
     const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
+  else if(DOGK.has(petTarget)&&petCrit&&petCrit.role==="office"){ /* the office dog's treat (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog):
+       DOG's own words and count, so three treats open his side quest as they always did, and a dog's treat from the program */
+    const g2=petCrit;routineStop(g2);
+    treats++;save();
+    toast(T().fredHeart,1200);
+    g2.sit=true;g2.layT=0;g2.fedT=wNow();g2.fseq=null;if(world===PL.park)PARK.t++;
+    g2.next=Math.max(wNow()+2600,dogHappy(g2,wNow()));dogGlad(g2,wNow());
+    if(fredQ===0&&treats>=3){fredQ=1;save();setTimeout(()=>toast(T().fredUnlock,3800),1400);
+      setTimeout(()=>toast(T().carePackToast,3600),1600);}
+    else if(fredQ===1){fredQuestStart();}
+    return;}
   else if(DOGK.has(petTarget)){ /* a treat: the tail achieves liftoff, and he's FUELED */
     const g2=petCrit,pe=g2?personaOf(g2):null;
     routineStop(g2);
@@ -9319,7 +9471,9 @@ const wdState=()=>wdPet==="fred"?wear:wearCat;
 function wdDraw(){
   const g=$("wdpv").getContext("2d");
   g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,66,44);
-  if(wdPet==="fred"){g.setTransform(1.9,0,0,1.9,1,-13);drawDog(g,1,0);}
+  if(wdPet==="fred"){g.setTransform(1.9,0,0,1.9,1,-13);const od=officeDog();
+    /* the office dog in the program (mq-v295): his card as DOG's preview drew it, standing, sitting or mid-step as he is, in what he wears now */
+    if(od)dogCard(g,{...od,layT:0,howlT:0,digT:0,sniffT:0,happyT:0,loveT:0,curlT:0,task:null},1,0);else drawDog(g,1,0);}
   else{g.setTransform(1.9,0,0,1.9,1,-16);drawCat(g,1,0);}
 }
 function buildWearRow(rowId,key){
@@ -9721,7 +9875,7 @@ function friendSpot(fr){
   return [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]
     .map(d=>[f.x+d[0],f.y+d[1]])
     .find(([x,y])=>x>0&&y>0&&x<w.W-1&&y<w.H-1&&!SOLID.has(w.grid[y][x])&&w.grid[y][x]!=="N")||null;}
-function dogRecord(cr){return cr&&cr.name?parkPrefs.dogs.find(d=>sanName(d.n)===cr.name):null;}
+function dogRecord(cr){return cr&&cr.name&&cr.role!=="office"?parkPrefs.dogs.find(d=>sanName(d.n)===cr.name):null;}   /* the office dog is never an adopted dog, whatever an adopted dog is called (mq-v295) */
 function dogPlace(cr,rec){ /* the park, or the friend's side */
   if((rec.rehomed||rec.out)&&rec.friend){
     const s=friendSpot(rec.friend);
@@ -9736,7 +9890,7 @@ function dogsRoam(newW){ /* rolled at every door: unseen dogs drift between the 
     if(Math.random()<0.3){rec.out=!rec.out;dogPlace(cr,rec);dirty=true;}});
   if(dirty)parkPersist();}
 parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
-  const k=DOGK.has(d0.k)?d0.k:"beagle";
+  const k=DOGK.has(d0.k)&&!DOGSOLE.has(d0.k)?d0.k:"beagle";   /* a world's own dog's kind is never an adopted dog's (mq-v295) */
   if(!d0.friend)d0.friend=pickFriend(); /* older pups get a friend assigned */
   const cr={kind:k,world:PL.park,x:d0.x|0,y:d0.y|0,fx:d0.x|0,fy:d0.y|0,
     c:hexOK(d0.c)?d0.c:"#E8C46A",friend:d0.friend,
@@ -9810,7 +9964,7 @@ collarBtn.addEventListener("click",()=>{
 function alePress(random){
   const L=alebLooks();
   const c=(L&&DOGK.has(petTarget)&&petCrit)?petCrit:null;
-  if(c){const key=c.name||c.kind,cur=L.indexOf(alebLookFor(c.kind,c.name));let i=(cur+1)%L.length;
+  if(c){const key=aleKeyOf(c),cur=L.indexOf(aleLookOf(c));let i=(cur+1)%L.length;
     if(random){do{i=Math.floor(Math.random()*L.length);}while(i===cur&&L.length>1);}
     aleSetPick(key,i);}
   else{const F=faceLooks();if(!F)return;const cur=alePick.hero%F.length;let i=(cur+1)%F.length;
@@ -9820,13 +9974,13 @@ function alePress(random){
 /* one door for every pick — the buttons beside the bandana, the Settings menu, a barber's chair later */
 function aleSetPick(key,i){
   if(key==="you"){const F=faceLooks();if(!F)return;alePick.hero=i;const lk=F[i];toast((T().youLb||"You")+" — "+(lk.name?(lk.name[lang]||lk.name.en):lk.id),1800);}
-  else{const L=alebLooks();if(!L)return;alePick.animals[key]=i;const lk=L[i],c=CRIT.find(k=>(k.name||k.kind)===key);toast((c&&c.name||npcName(key)||key)+" — "+(lk.name?(lk.name[lang]||lk.name.en):lk.id),1800);}
+  else{const L=alebLooks();if(!L)return;alePick.animals[key]=i;const lk=L[i],c=CRIT.find(k=>aleKeyOf(k)===key);toast((c?aleLabelOf(c):npcName(key)||key)+" — "+(lk.name?(lk.name[lang]||lk.name.en):lk.id),1800);}
   alePersist();aleRowBuild();}
 /* Settings → Alebrijes (the owner asked for a menu of alebrije styles): pick who — your
    face, or any animal with a name — then the look by its name. Built from content like the season row; hidden when
    the season hands out no looks. */
 function aleSubjects(){const out=[];if(faceLooks())out.push(["you",T().aleYou||"You"]);
-  if(alebLooks()){const seen=new Set();CRIT.forEach(c=>{const k=c.name||c.kind;if(seen.has(k))return;seen.add(k);out.push([k,c.name||npcName(c.kind)||c.kind]);});}
+  if(alebLooks()){const seen=new Set();CRIT.forEach(c=>{const k=aleKeyOf(c);if(seen.has(k))return;seen.add(k);out.push([k,aleLabelOf(c)]);});}
   return out;}
 let aleWho="you";
 function aleRowBuild(){const row=$("aleRow"),lb=$("lbAle");if(!row)return;
@@ -9928,9 +10082,12 @@ $("adoptX").addEventListener("click",()=>{$("adoptP").hidden=true;});
    ("he should do a recall most of the time — especially after a treat"). */
 function nearestDog(){let best=null,bd=1e9;
   CRIT.forEach(c=>{if(!isDog(c)||c.world!==world)return;
-    const d=Math.abs(c.x-px)+Math.abs(c.y-py);if(d<bd){bd=d;best=c;}});
+    const d=Math.abs(c.x-px)+Math.abs(c.y-py);
+    if(dogLeashOnly(c)&&d>1)return;   /* a dog who leaves his room only on the leash is reached from beside him, the treat's reach: anywhere else
+       in his room the paw menu reaches whom it reached before he was in it, the star's whistle included (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
+    if(d<bd){bd=d;best=c;}});
   /* nobody here? the paw menu still reaches the star dog, wherever he is — found by his role */
-  return best||starDog()||CRIT.find(c=>isDog(c))||null;}
+  return best||starDog()||CRIT.find(c=>isDog(c)&&!dogLeashOnly(c))||null;}   /* a dog who leaves his room only on the leash is reached only in it (mq-v295) */
 /* THE COURSE AT YOUR WORD (mq-v287; the owner's confirmed goals of 2026-11-20 on the course command). The command is offered
    only where the course is: in the park, with gear on its map, and to a dog who is there with you (courseOK). HIS
    PERSONALITY ANSWERS, where the world has turned personalities on (COURSEANSWER, a table: how likely he is to go, and
@@ -9973,7 +10130,7 @@ function dogCmd(kind){
   else if(kind==="down"){c.layT=now+5200;c.next=c.layT;c.holdT=c.layT;toast("🐶 "+T().cmdOkDown,2200);}
   else if(kind==="stay"){c.stayT=now+9000;c.sit=true;c.holdT=c.stayT;toast("🐶 "+T().cmdOkStay,2200);}
   else if(kind==="come"){c.stayT=0;c.holdT=0;c.sit=false;
-    if(c.world!==world){ /* the whistle carries across the whole city */
+    if(c.world!==world&&!dogLeashOnly(c)){ /* the whistle carries across the whole city — to every dog but one who leaves his room only on the leash (mq-v295) */
       const w=CW(),rs=dogReach({world,x:px,y:py},"dog"),opts=[];
       for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
         const d=Math.abs(x-px)+Math.abs(y-py);
@@ -10069,7 +10226,7 @@ $("cmdReh").addEventListener("click",()=>{
 /* a save that closed the app mid-park: make sure a dog is there when it reopens */
 function parkRescue(){
   if(world===PL.park&&!CRIT.some(c=>isDog(c)&&c.world===PL.park)){
-    const s0=starDog()||CRIT.find(c=>isDog(c));
+    const s0=starDog()||CRIT.find(c=>isDog(c)&&!dogLeashOnly(c));
     if(s0){s0.world=PL.park;s0.x=PL.parkDog[0];s0.y=PL.parkDog[1];s0.fx=s0.x;s0.fy=s0.y;s0.home=PL.parkDogHome.slice();}
   }
 }
