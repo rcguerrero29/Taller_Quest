@@ -62,7 +62,12 @@ and only he approves a deploy to the live site.
 - One branch per part, one pull request per part, every check green, the owner merges.
 - When anything under `engine/` changes, bump `GAMEV` in `content/meridian/config.js` and `CACHE` in
   `sw.js` together (`test/bump.js` checks it), or returning players never get the change.
-- **Run these before you open a pull request** (set `CHROMIUM_PATH` if Chromium is not in a standard place):
+- **Before you open a pull request, run the checks your change touches** (the owner's confirmed goal of 2026-11-23):
+  `node scripts/pick-checks.js --run` reads the files you changed, runs the checks that read them from one table,
+  reruns a failure once alone, and prints the list your pull request carries, each check skipped with its reason. A
+  file the table does not know runs every check, and a check the workflow runs with no row in the table stops it.
+  Every check still runs on GitHub on every pull request. The game's suites, which it picks for any change to the
+  engine or a world (set `CHROMIUM_PATH` if Chromium is not in a standard place):
 
   ```
   node test/smoke.js
