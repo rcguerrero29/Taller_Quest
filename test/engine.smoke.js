@@ -7158,7 +7158,11 @@ function findChromium() {
             return { ok, body: !!(B && B.visible && B.parent === T3.scene && T3.dogShown && T3.dogShown.has(od)), card: (seen.by.get(od) || 0) > 0 }; };
           try { hold(od); stand(od.world, nb[0], nb[1]); el.hidden = false; camSet('3d'); sizeCanvas();
             const got = [];
-            for (const [w, h, want] of [[1280, 800, 'body'], [479, 900, 'card'], [1920, 1080, 'body']]) { if (!screenIs(w, h)) { P.push('the size of the screen could not be set'); break; } sizeCanvas();
+            /* under the world's own screen line (BODYSCREEN) he is his card, as every dog there; a world that draws no line has bodies
+               on every screen, him among them (Meridian's line is 480: his card at 479, the owner's rule 6 of 2026-11-22) */
+            const small = typeof BODYSCREEN === 'number' && BODYSCREEN > 479 ? 'card' : 'body';
+            if (MER && small !== 'card') P.push('Meridian draws no screen line at 480 for bodies, so his card under 480 could not be asked');
+            for (const [w, h, want] of [[1280, 800, 'body'], [479, 900, small], [1920, 1080, 'body']]) { if (!screenIs(w, h)) { P.push('the size of the screen could not be set'); break; } sizeCanvas();
               const s = frame(), is = s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither';
               if (!s.ok) P.push('the 3D camera did not draw at ' + w + ' by ' + h); else if ((want === 'body') !== s.body || (want === 'card') !== s.card) P.push('two squares from you at ' + w + ' by ' + h + ' the office dog is ' + is + '; he is to be ' + (want === 'body' ? 'a body' : 'his card'));
               got.push(w + ' by ' + h + ' ' + is);
