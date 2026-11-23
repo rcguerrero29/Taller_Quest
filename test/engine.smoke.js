@@ -6347,7 +6347,7 @@ function findChromium() {
     /* WHAT WAS ASKED, typed here. Meridian's are the owner's numbers (and `paint`, his card that night); another world's
        are the ones its own pack names, and a number it does not name is not asked of it */
     const num = v => typeof v === 'number' && v > 0 ? v : null;
-    const ASK = MER ? { reach: Infinity, max: 24, screen: 480, persona: false, paint: 'card' }
+    const ASK = MER ? { reach: Infinity, max: 24, screen: 480, persona: true, paint: 'card' }   /* persona: every animal in Meridian has one from mq-v297 (the owner's confirmed goal of 2026-11-23) */
       : { reach: num(typeof ANIMALREACH === 'undefined' ? null : ANIMALREACH), max: num(typeof ANIMALMAX === 'undefined' ? null : Math.min(24, Math.floor(ANIMALMAX))), screen: num(typeof BODYSCREEN === 'undefined' ? null : BODYSCREEN),
         persona: typeof PERSONATAKE !== 'undefined' && Array.isArray(PERSONATAKE) && PERSONATAKE.includes('dog'), paint: typeof BODYPAINT !== 'undefined' && BODYPAINT === 'card' ? 'card' : 'body' };
     const LAPTOP = [1280, 800], FAR = 12;
@@ -7351,7 +7351,7 @@ function findChromium() {
     const el = document.getElementById('world');
     const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, TO: window.toast, wc: { ...wearCat }, lastBump, pet: [petTarget, petCrit],
       iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), dc: window.drawCat, dg: window.drawGato,
-      rec: cats.map(c => [c, { ...c }]), pt: Object.getOwnPropertyDescriptor(window, 'PERSONATAKE'),
+      rec: cats.map(c => [c, { ...c }]), pt: Object.getOwnPropertyDescriptor(window, 'PERSONATAKE'), pon: personaOn,
       all: CRIT.map(c => [c, { ...c }]), visits: typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, decals: DECALS.length,
       ball: typeof BALL !== 'undefined' ? BALL : null, btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]), talk: document.getElementById('talk') ? document.getElementById('talk').hidden : null };
     /* every animal that is not a cat is held still for this block, so nothing but the cats moves (a dog sent out on a whim here
@@ -7364,6 +7364,9 @@ function findChromium() {
     const pic = f => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; f(c.getContext('2d')); return c.toDataURL(); };
     const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
     const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+    /* sections 1 to 6 ask the cats in their everyday poses, with no personality, whatever the world gives them (Meridian gives
+       every animal one from mq-v297); section 7 turns the cat's alone on, by the switch the engine reads */
+    personaOn = () => false;
     try { el.hidden = false; if (document.getElementById('talk')) document.getElementById('talk').hidden = true; others();
       /* 1 · the guard */
       { let calls = 0; const bad = new Set(); window.drawCat = function (...a) { calls++; return keep.dc.apply(this, a); };
@@ -7483,7 +7486,7 @@ function findChromium() {
           if (pet[1] !== EARSPRING.patient) P.push('the kitchen cat\'s ears spring at ' + pet[1] + ', not the patient speed (' + EARSPRING.patient + ')');
           out.push('her ears: far ' + far[0] + ', near ' + close[0] + ', petted ' + pet[0] + ', grooming ' + gr[0] + ', springing at ' + pet[1]); } }
       /* 7 · a cat not yet met, with cat personalities turned on for this block only */
-      if (kc && typeof catAway === 'function') { window.PERSONATAKE = ['cat']; const saved = kc.persona;
+      if (kc && typeof catAway === 'function') { personaOn = k => k === 'cat'; const saved = kc.persona;
         try { kc.persona = 'patient'; hold(kc); kc.sit = true; const nw = wNow();
           if (!catAway(kc, nw)) P.push('with cat personalities on, a cat not yet met does not face away');
           if (dogPose(kc, nw, 0).held !== 'groom') P.push('with cat personalities on, a cat not yet met is not grooming as it faces away');
@@ -7495,8 +7498,8 @@ function findChromium() {
             if (!(kc.stretchT > wNow())) P.push('met, a cat does not stretch as it turns to you');
             if (catAway(kc, wNow())) P.push('met, a patient cat still faces away');
             out.push('a cat not yet met, cat personalities on: facing away grooming, its bubble a fish; petted, met, stretching, turned'); } }
-        finally { delete window.PERSONATAKE; kc.persona = saved; petTarget = keep.pet[0]; petCrit = keep.pet[1]; } }
-    } finally {
+        finally { personaOn = () => false; kc.persona = saved; petTarget = keep.pet[0]; petCrit = keep.pet[1]; } }
+    } finally { personaOn = keep.pon;
       keep.all.forEach(([c, r]) => { Object.keys(c).forEach(k => { if (!(k in r)) delete c[k]; }); Object.assign(c, r); });
       if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = keep.visits; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; DECALS.length = keep.decals; if (typeof BALL !== 'undefined') BALL = keep.ball;
       keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; }); if (keep.talk !== null) document.getElementById('talk').hidden = keep.talk;
@@ -7508,6 +7511,94 @@ function findChromium() {
   });
   merCats.out.forEach(l => console.log('  CATS: ' + l));
   fails.push(...merCats.P.map(m => 'the cats: ' + m));
+  /* ---- THE BIRDS (mq-v297; the owner's confirmed goals of 2026-11-23 on the birds and the parrot) ----
+     Asked wherever a world has a bird among its critters; a world with none is told so and not asked.
+       1 · ONE BIRD SYSTEM (the guard): where the critters hold a pigeon or a parrot, the engine's own PIG and LORO stand nowhere,
+           and every bird card the cameras paint is for a critter of the program.
+       2 · THE PARROT: a parrot with a coat is a body in the 3D camera on a laptop, his card not drawn as well; on his rod, the rod
+           reaching back to the office's wall, his feet on its top; his card's and his body's colours his coat's; his three
+           settings (size, fluff, wrap) each change him without a rebuild of anything else.
+       3 · THE SMALL BIRDS: every pigeon, hummingbird and butterfly the world names in BODYTAKE is a body, its card not drawn.
+       4 · SCREENS: under the world's screen line every bird is its card and no bird's body stands.
+       5 · PERSONALITIES, where a world names the kind in PERSONATAKE: a bird not met is busy (a bubble over it, the parrot preening);
+           the button meets it: eager turns at once with no line, patient waits with its line, aloof ignores you for PERSONAWAIT
+           with its line and then turns; a bird with no name keeps its draw under its kind and square every visit.
+     Every state touched here is put back. */
+  const merBirds = await page.evaluate(async () => {
+    const P = [], out = [];
+    const birds = CRIT.filter(c => ['pigeon', 'loro', 'colibri', 'butterfly'].includes(c.kind));
+    if (!birds.length) { out.push('this world has no bird among its critters, so nothing was asked of birds here'); return { P, out }; }
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, TO: window.toast, all: CRIT.map(c => [c, { ...c }]), pp: parkPrefs.persona ? { ...parkPrefs.persona } : null,
+      iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), pc: window.drawPigeon, lc: window.drawLoro, nowF: window.wNow };
+    const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
+    const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); };
+    const still = () => CRIT.forEach(c => Object.assign(c, { next: Infinity, task: null, moving: false, follow: false }));
+    const said = []; window.toast = (t) => { said.push(String(t)); };
+    try { el.hidden = false; still();
+      /* 1 · the guard */
+      { const hasPig = birds.some(c => c.kind === 'pigeon'), hasLoro = birds.some(c => c.kind === 'loro');
+        if (hasPig && AW('pig') !== null) P.push('the engine\'s own pigeon stands in ' + AW('pig') + ' beside the critters\' pigeon: a second bird system');
+        if (hasLoro && AW('loro') !== null) P.push('the engine\'s own parrot stands in ' + AW('loro') + ' beside the critters\' parrot: a second bird system');
+        const bad = []; window.drawPigeon = function (g, c, ...a) { if (!CRIT.includes(c) && hasPig) bad.push('a pigeon'); return keep.pc.call(this, g, c, ...a); };
+        window.drawLoro = function (g, c, ...a) { if (!CRIT.includes(c) && hasLoro) bad.push('a parrot'); return keep.lc.call(this, g, c, ...a); };
+        for (const wid of [...new Set(birds.map(c => c.world))]) { const c = birds.find(b => b.world === wid); stand(wid, c.x, Math.min(WORLDS[wid].H - 1, c.y + 1));
+          for (const cm of (typeof CAMS !== 'undefined' ? CAMS : ['top'])) { try { camSet(cm); sizeCanvas(); } catch (e) {} if (cm === '3d') { try { draw3d(); } catch (e) {} } else { try { draw(); } catch (e) {} } } }
+        window.drawPigeon = keep.pc; window.drawLoro = keep.lc;
+        if (bad.length) P.push('the cameras painted ' + [...new Set(bad)].join(' and ') + ' that is not a critter of the program: a bird drawn outside the one system'); }
+      /* 2 · the parrot */
+      const L = birds.find(c => c.kind === 'loro' && loroCoatOf(c));
+      if (L && bodyTakes('parrot')) { screenIs(1280, 800); stand(L.world, L.x, L.y + 1); camSet('3d'); sizeCanvas(); draw3d(); draw3d();
+        const B = T3.loroOn && T3.loroOn.get(L);
+        if (!B || !B.visible || !T3.loroShown.has(L)) P.push('on a laptop the parrot with a coat is not a body in the 3D camera');
+        else { const box = new THREE.Box3().setFromObject(B), C = loroCoatOf(L), cols = new Set(); B.traverse(o => { if (!o.isMesh || !o.material || o.material.map) return; if (o.material.vertexColors) { const ca = o.geometry.attributes.color; for (let i = 0; i < ca.count; i += 7) cols.add('#' + new THREE.Color(ca.getX(i), ca.getY(i), ca.getZ(i)).getHexString().toUpperCase()); } else if (o.userData.base) cols.add('#' + o.userData.base.getHexString().toUpperCase()); });
+          ['shoulder', 'beak', 'low', 'feet'].forEach(k => { if (!cols.has(C[k].toUpperCase())) P.push('the parrot\'s body wears no ' + k + ' colour of his coat (' + C[k] + ')'); });
+          if (L.perch === 'rod') { const wallZ = L.y + 1; if (Math.abs(box.min.z - wallZ) > 0.015) P.push('the parrot\'s rod does not reach back to the wall: its back end is ' + (box.min.z - wallZ).toFixed(3) + ' squares from the wall\'s face');
+            const at = Array.isArray(L.perchAt) ? L.perchAt : [0.5, 0.6]; if (Math.abs(B.position.y - at[1]) > 0.001) P.push('the parrot does not sit at his rod\'s height (' + B.position.y.toFixed(3) + ' against ' + at[1] + ')'); }
+          out.push('the parrot: ' + (box.max.y - box.min.y).toFixed(3) + ' squares from his tail\'s tip to his crown, ' + [...cols].length + ' colours');
+          /* the three settings, each a change without a rebuild of anything else */
+          const size0 = B.scale.x, w0 = B.userData.wings[1].position.clone(); L.build = { size: 1.2 }; draw3d(); const B2 = T3.loroOn.get(L);
+          if (!(B2.scale.x > size0 * 1.15)) P.push('his size setting did not make him larger (' + size0.toFixed(3) + ' to ' + B2.scale.x.toFixed(3) + ')');
+          L.build = { wrap: 0.6 }; draw3d(); const B3 = T3.loroOn.get(L), w1 = B3.userData.wings[1].position;
+          if (!(w1.z > w0.z + 0.004)) P.push('his wrap setting did not bring his folded wings round his body');
+          L.build = { fluff: 0.5 }; draw3d(); const B4 = T3.loroOn.get(L), bx4 = new THREE.Box3().setFromObject(B4.userData.T.children[0]), bx0 = new THREE.Box3().setFromObject(B.userData.T.children[0]);
+          if (!(bx4.max.x - bx4.min.x > (bx0.max.x - bx0.min.x) * 1.08)) P.push('his fluff setting did not make him fuller');
+          delete L.build; draw3d(); }
+        let cardDrawn = false; const lc = window.drawLoro; window.drawLoro = function (g, c, ...a) { if (c === L) cardDrawn = true; return lc.call(this, g, c, ...a); }; draw3d(); window.drawLoro = lc;
+        if (cardDrawn) P.push('the parrot is drawn twice in the 3D camera: his card stands where his body is'); }
+      /* 3 · the small birds */
+      for (const [k, word] of [['pigeon', 'pigeon'], ['colibri', 'hummingbird'], ['butterfly', 'butterfly']]) { const list = birds.filter(c => c.kind === k);
+        if (!list.length || !bodyTakes(word)) continue;
+        for (const c of list) { stand(c.world, c.x, Math.min(WORLDS[c.world].H - 1, c.y + 1)); camSet('3d'); sizeCanvas(); draw3d(); draw3d();
+          if (!T3.birdShown || !T3.birdShown.has(c)) P.push('on a laptop the ' + word + ' at ' + c.world + ' (' + c.x + ',' + c.y + ') is not a body in the 3D camera'); } }
+      /* 4 · screens */
+      if (typeof BODYSCREEN === 'number' && BODYSCREEN > 0) { screenIs(BODYSCREEN - 1, 900); const c = L || birds[0]; stand(c.world, c.x, Math.min(WORLDS[c.world].H - 1, c.y + 1)); draw3d();
+        const n = (T3.loroShown ? T3.loroShown.size : 0) + (T3.birdShown ? T3.birdShown.size : 0); if (n) P.push('under the screen line (' + (BODYSCREEN - 1) + ' px) ' + n + ' bird(s) stand as bodies; every bird is its card there');
+        screenIs(1280, 800); draw3d(); }
+      /* 5 · personalities */
+      for (const c of birds) { const kk = personaKind(c); if (!personaOn(kk)) continue;
+        for (const pe of ['eager', 'patient', 'aloof']) { Object.assign(c, { persona: pe, metT: 0, turnT: 0 }); let t0 = 1e6; window.wNow = () => t0; said.length = 0;
+          if (!birdAway(c, t0)) P.push('the ' + kk + ', ' + pe + ' and not met, is not busy (no bubble, not turned away)');
+          if (c.kind === 'loro' && !(bodyRide('loro', c).preen > 0)) P.push('the parrot, not met, does not preen');
+          const stopped = animalMeet(c);
+          if (pe === 'eager' && (stopped || said.length || birdAway(c, t0))) P.push('an eager ' + kk + ' did not turn at once with no line when met');
+          if (pe === 'patient' && (!stopped || !said.length || birdAway(c, t0))) P.push('a patient ' + kk + ' did not turn and wait with its line when met (' + JSON.stringify(said) + ')');
+          if (pe === 'aloof') { if (!stopped || !said.length || !birdAway(c, t0)) P.push('an aloof ' + kk + ' did not go on ignoring you with its line when met');
+            t0 += PERSONAWAIT + 1; if (birdAway(c, t0)) P.push('an aloof ' + kk + ' was still turned away ' + (PERSONAWAIT + 1) + ' ms after it was met'); }
+          if (said.some(l => /\{n\}|^\s|\s{2}/.test(l))) P.push('the ' + kk + '\'s line has a gap where a name should be: ' + JSON.stringify(said)); }
+        window.wNow = keep.nowF; }
+      { const c = birds.find(b => !b.name && personaOn(personaKind(b))); if (c) { delete c.persona; const pe = personaOf(c), key = personaKind(c) + '@' + c.world + ':' + c.home[0] + ',' + c.home[1];
+          delete c.persona; const again = personaOf(c); if (!parkPrefs.persona || parkPrefs.persona[key] !== pe || again !== pe) P.push('a bird with no name does not keep its personality under its kind and square (' + key + ')'); } }
+    } catch (e) { P.push('the birds\' checks broke: ' + (e && e.message || e)); }
+    finally { window.toast = keep.TO; window.drawPigeon = keep.pc; window.drawLoro = keep.lc; window.wNow = keep.nowF;
+      if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
+      if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
+      keep.all.forEach(([c, o]) => { Object.keys(c).forEach(k => { if (!(k in o)) delete c[k]; }); Object.assign(c, o); });
+      if (keep.pp) parkPrefs.persona = keep.pp; else delete parkPrefs.persona;
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; try { draw3d(); } catch (e) {} }
+    return { P, out }; });
+  merBirds.out.forEach(l => console.log('  BIRDS: ' + l));
+  fails.push(...merBirds.P.map(m => 'the birds: ' + m));
 
   /* ---- THE 3D LEASH STANDS ON THE GROUND UNDER EACH END (mq-v288) ----
      What was asked, on 2026-11-21 and confirmed that day: in the 3D camera the leash is lifted onto the bridge deck. Each

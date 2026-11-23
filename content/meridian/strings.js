@@ -40,6 +40,17 @@ const UI={
   tlFindPh:"Search text…",tlNoHit:"No match.",
   dog:["Woof!","Frederick approves.","Frederick is herding you back to work."],
   treatLb:"🦴 Treat Frederick",fredHeart:"Frederick: ❤",
+  /* THE ANIMALS' PERSONALITIES (mq-v297; the owner's confirmed goal of 2026-11-23, every animal in Meridian): the lines he approved on
+     2026-11-19, said when an animal does not do what you asked; each bird's one line serves patient and aloof both. personaWho:
+     how an animal with no name is called in them. personaPick: the choice at adoption, the words he approved on 2026-11-20 */
+  persona:{dog:{patient:["{n} is guarding a very important stick."],aloof:["{n} is busy daydreaming about a squirrel…"]},
+    cat:{patient:["{n} is plotting something with the curtains."],aloof:["{n} is ignoring you, as cats do. Try again in a moment."]},
+    pigeon:{patient:["The pigeon is counting crumbs. It lost count."],aloof:["The pigeon is counting crumbs. It lost count."]},
+    parrot:{patient:["{n} is rehearsing a new word."],aloof:["{n} is rehearsing a new word."]},
+    hummingbird:{patient:["The hummingbird is too busy to stop. Blink and it's back."],aloof:["The hummingbird is too busy to stop. Blink and it's back."]},
+    butterfly:{patient:["The butterfly is deciding which flower is best."],aloof:["The butterfly is deciding which flower is best."]}},
+  personaWho:{dog:"The dog",cat:"The cat",parrot:"Lorenzo"},
+  personaPick:{label:"Personality",eager:"Eager",patient:"Patient",aloof:"Aloof",surprise:"Surprise me"},
   petCat:"🐾 Pet Canela",petPig:"🐾 Greet Paloma",petLoro:"🦜 Say hi to Lorenzo",petGato:"🐾 Pet the street cat",petFly:"🦋 Watch the butterfly",petColi:"🌺 Watch the colibrí",
   fredUnlock:"Frederick trusts you now… and he has paperwork. 🐾 Secret side quest unlocked — treat him again to open it.",
   carePackToast:"📦 New in ⚙️ → Export: Frederick's care pack — his sheet + reminders, ready for your own pet.",
@@ -288,6 +299,16 @@ One source of truth for one very good pet.
   tlFindPh:"Buscar texto…",tlNoHit:"Sin coincidencias.",
   dog:["¡Guau!","Frederick aprueba.","Frederick te pastorea de vuelta al trabajo."],
   treatLb:"🦴 Premio a Frederick",fredHeart:"Frederick: ❤",
+  /* LAS PERSONALIDADES DE LOS ANIMALES (mq-v297): las líneas que él aprobó el 2026-11-19; personaWho: cómo se llama un animal sin
+     nombre en ellas; personaPick: la elección al adoptar, las palabras que él aprobó el 2026-11-20 */
+  persona:{dog:{patient:["{n} está cuidando un palo muy importante."],aloof:["{n} está soñando despierto con una ardilla…"]},
+    cat:{patient:["{n} está tramando algo con las cortinas."],aloof:["{n} te está ignorando, como buen gato. Intenta en un momento."]},
+    pigeon:{patient:["La paloma está contando migajas. Perdió la cuenta."],aloof:["La paloma está contando migajas. Perdió la cuenta."]},
+    parrot:{patient:["{n} está ensayando una palabra nueva."],aloof:["{n} está ensayando una palabra nueva."]},
+    hummingbird:{patient:["El colibrí está muy ocupado para parar. Parpadea y regresa."],aloof:["El colibrí está muy ocupado para parar. Parpadea y regresa."]},
+    butterfly:{patient:["La mariposa está decidiendo cuál flor es la mejor."],aloof:["La mariposa está decidiendo cuál flor es la mejor."]}},
+  personaWho:{dog:"El perro",cat:"El gato",parrot:"Lorenzo"},
+  personaPick:{label:"Personalidad",eager:"Entusiasta",patient:"Paciente",aloof:"Indiferente",surprise:"Sorpréndeme"},
   petCat:"🐾 Acariciar a Canela",petPig:"🐾 Saludar a Paloma",petLoro:"🦜 Saludar a Lorenzo",petGato:"🐾 Acariciar al gato callejero",petFly:"🦋 Observar la mariposa",petColi:"🌺 Observar al colibrí",
   fredUnlock:"Frederick ya confía en ti… y tiene papeleo. 🐾 Misión secreta desbloqueada — dale otro premio para abrirla.",
   carePackToast:"📦 Nuevo en ⚙️ → Exportar: el kit de cuidados de Frederick — su ficha + recordatorios, listos para tu propia mascota.",

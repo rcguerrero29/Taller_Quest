@@ -1129,10 +1129,10 @@ const CANDIDATES = [
     document.getElementById('leash').click();
     await sleep(1200);
     out.inPark = world === 'pk' && star.world === 'pk' && star.follow === true;
-    // a treat in the park counts toward the recap
-    petCrit = star; petTarget = 'beagle';
+    // a treat in the park counts toward the recap: an eager dog's, who takes it (a patient or aloof one waits, by his personality, mq-v297)
+    petCrit = star; petTarget = 'beagle'; const pe0 = star.persona; star.persona = 'eager';
     document.getElementById('treat').click();
-    out.treatCounted = PARK.t === 1;
+    out.treatCounted = PARK.t === 1; star.persona = pe0;
     // bandana cycles and persists
     petCrit = star; petTarget = 'beagle';
     document.getElementById('band').click();
@@ -1264,9 +1264,11 @@ const CANDIDATES = [
     out.card = !document.getElementById('parkCard').hidden;
     out.starHome = star.world === 'st' && star.follow === false;
     // the personality chosen at adoption (mq-v280): offered only where the world asks for it and gives its words; the chosen
-    // one is his, "surprise me" draws one, and both are kept; Meridian asks for none, so it is asked here with the switch held on
+    // one is his, "surprise me" draws one, and both are kept. Meridian asks for it from mq-v297 (the owner's confirmed goal of
+    // 2026-11-23, every animal), so the rule's off half is asked with the switch held off, and its on half with it held on
     { const kpo = personaOn, U = UI[lang], had = Object.prototype.hasOwnProperty.call(U, 'personaPick'), kp = U.personaPick;
       try {
+        personaOn = () => false; if (had) delete U.personaPick;
         adoptPaint(); out.peOff = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden;
         U.personaPick = { label: 'P', eager: 'E', patient: 'Pa', aloof: 'A', surprise: 'S' }; adoptPaint();
         out.peOffWords = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden;   /* the words alone do not ask for it */
@@ -1282,8 +1284,8 @@ const CANDIDATES = [
         document.getElementById('adopt').click(); btn('surprise').click();
         document.getElementById('adoptName').value = 'Sol'; document.getElementById('adoptGo').click();
         const so = CRIT.find(c => c.name === 'Sol'); out.peSurprise = !!so && PERSONAS.includes(so.persona) && (parkPrefs.persona || {}).Sol === so.persona;
-      } finally { personaOn = kpo; if (had) U.personaPick = kp; else delete U.personaPick; adoptPaint(); }
-      out.peOffAgain = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden; }
+      } finally { personaOn = () => false; if (had) U.personaPick = kp; else delete U.personaPick; adoptPaint();
+        out.peOffAgain = !document.getElementById('adoptPersona') || document.getElementById('adoptPersona').hidden; personaOn = kpo; adoptPaint(); } }
     // the ears chosen at adoption (mq-v281): offered for a short-eared kind where the world gives the words; kept on the pup and in
     // the save as one known word; for any other kind, or with no words, nothing is offered and nothing is kept
     { const U = UI[lang], had = Object.prototype.hasOwnProperty.call(U, 'earPick'), kp = U.earPick;
@@ -2458,7 +2460,9 @@ const CANDIDATES = [
       P.push('NOCHE DE ALEBRIJES: this pack has no alebrije mode, or the engine no alebrije layer, so nothing an animal wears could be asked to go where he goes'); return { P, N }; }
     const aid = A[0], pick0 = seasonPick, ale0 = JSON.stringify(alePick), DN = Date.now, PN = performance.now, ctx0 = ctx;
     const D0 = 1700000000000, T0 = 5e6, LONG = 1e7;   /* the clock held at a fixed moment, so every run asks the same question */
-    const held = [DOG, CAT, PIG, LORO].map(o => [o, Object.assign({}, o)]);
+    const PGc = CRIT.find(c => c.kind === 'pigeon'), LOc = CRIT.find(c => c.kind === 'loro'), pon0 = personaOn;   /* the program's pigeon and parrot where the world has them (mq-v297) */
+    personaOn = () => false;   /* asked in their everyday poses: a bird or cat not yet met is turned away (mq-v297), its eye hidden */
+    const held = [DOG, CAT, PIG, LORO, PGc, LOc].filter(Boolean).map(o => [o, Object.assign({}, o)]);
     const SC = 4, CWU = 44, CHU = 48, OX = 6, OY = 16, W = CWU * SC, H = CHU * SC, CX = (OX + 16) * SC;   /* the card, at 4x, with room above for a dog in the air */
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
     const at = (D, T) => { Date.now = () => D; performance.now = () => T; };
@@ -2469,9 +2473,9 @@ const CANDIDATES = [
       moving: false, mt: 0, home: [0, 0], task: null }, o);
     /* how each kind is drawn: the dog program's kinds and the street cat are critters with a name; the office dog, the bodega cat,
        the pigeon and the parrot are the engine's own four, one each */
-    const ONE = { dog: DOG, cat: CAT, pigeon: PIG, loro: LORO };
+    const ONE = { dog: DOG, cat: CAT, pigeon: PGc || PIG, loro: LOc || LORO };
     const PAINT = { beagle: (g, a) => drawBeagle(g, a, 0, 0), lab: (g, a) => drawLab(g, a, 0, 0), chi: (g, a) => drawChi(g, a, 0, 0), aussie: (g, a) => drawAussie(g, a, 0, 0), gato: (g, a) => drawGato(g, a, 0, 0),
-      colibri: (g, a) => drawColibri(g, a, 0, 0), dog: g => drawDog(g, 0, 0), cat: g => drawCat(g, 0, 0), pigeon: g => drawPigeon(g, 0, 0), loro: g => drawLoro(g, 0, 0) };
+      colibri: (g, a) => drawColibri(g, a, 0, 0), dog: g => drawDog(g, 0, 0), cat: g => drawCat(g, 0, 0), pigeon: g => drawPigeon(g, ONE.pigeon, 0, 0), loro: g => drawLoro(g, ONE.loro, 0, 0) };
     const winged = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].wings), ringed = Object.keys(ALEB_KIND).filter(k => ALEB_KIND[k].eye);
     [...new Set([...winged, ...ringed])].filter(k => !PAINT[k]).forEach(k => P.push('NOCHE DE ALEBRIJES: the ' + k + ' has ' + (ALEB_KIND[k].wings ? 'wings' : 'a ring round its eye') + ' and this guard does not know how to draw it, so nothing it wears was asked to go where it goes — teach the guard its painter'));
     /* where he is on the hurdle, from the park's own course, on a real run: the line through the bar, the step onto it and off it */
@@ -2571,7 +2575,8 @@ const CANDIDATES = [
                there); and the ring is round the eye, not beside it — the two ways along any line meet it at the same distance,
                give or take 1.75 px (the chihuahua's one ring goes round both his eyes, and howling his nose touches the near
                one, so only the far eye is found) */
-            const lim = (ALEB_KIND[k].eye[2] + 1.6) * SC, D = [];
+            const KE = typeof ALEB_KIND[k].eye === 'function' ? ALEB_KIND[k].eye(a) : ALEB_KIND[k].eye;   /* an eye that moves with its record (the macaw, mq-v297) */
+            const lim = (KE[2] + 1.6) * SC, D = [];
             for (let r = 0; r < 8; r++) { const t = r * Math.PI / 4, ux = Math.cos(t), uy = Math.sin(t); let res = null;
               for (let s = 1; s <= lim; s += 0.5) { const x = Math.round(E[0] + ux * s), y = Math.round(E[1] + uy * s);
                 if (acc(x, y)) { res = s; break; } if (alphaAt(R, x, y) < 64) { res = 'out'; break; } }
@@ -2582,7 +2587,7 @@ const CANDIDATES = [
               const d = (a2 - a1) / 2 / SC; if (Math.abs(d) > Math.abs(off)) off = d; }
             if (miss || hits < 4 || onEye || Math.abs(off) > 1.75) {
               /* the words only, never the verdict: which way the colour went, from the middle of what it painted near his eye */
-              let mx = 0, my = 0, mn = 0; const rr = (ALEB_KIND[k].eye[2] + 2.5) * SC;
+              let mx = 0, my = 0, mn = 0; const rr = (KE[2] + 2.5) * SC;
               for (let y = Math.max(0, Math.floor(E[1] - rr)); y < Math.min(H, E[1] + rr); y++) for (let x = Math.max(0, Math.floor(E[0] - rr)); x < Math.min(W, E[0] + rr); x++)
                 if (Math.hypot(x - E[0], y - E[1]) <= rr && acc(x, y)) { mx += x; my += y; mn++; }
               const cx_ = mn ? (mx / mn - E[0]) * face : 0, cy_ = mn ? my / mn - E[1] : 0;
@@ -2620,7 +2625,7 @@ const CANDIDATES = [
       });
     } catch (e) { P.push('NOCHE DE ALEBRIJES: asking what an animal wears to go where he goes threw: ' + (e && e.message)); }
     finally {
-      Date.now = DN; performance.now = PN; ctx = ctx0; held.forEach(([o, s]) => { Object.keys(o).forEach(f => { if (!(f in s)) delete o[f]; }); Object.assign(o, s); });
+      personaOn = pon0; Date.now = DN; performance.now = PN; ctx = ctx0; held.forEach(([o, s]) => { Object.keys(o).forEach(f => { if (!(f in s)) delete o[f]; }); Object.assign(o, s); });
       alePick = JSON.parse(ale0); seasonSet(pick0);
     }
     Object.values(firsts).forEach(f => P.push('NOCHE DE ALEBRIJES: ' + f.msg + (f.n > 1 ? ' (and in ' + (f.n - 1) + ' more pose' + (f.n > 2 ? 's' : '') + ' of the same kind)' : '')));
@@ -3036,19 +3041,21 @@ const CANDIDATES = [
   // you get the bird. A quest person adjacent now hides the animal button.
   const yield_ = await page.evaluate(() => {
     const problems = [];
-    const before = { world, px, py, pig: { x: PIG.x, y: PIG.y, m: PIG.moving } };
+    /* the pigeon of the program, where the world has one (mq-v297), else the engine's own */
+    const PG = CRIT.find(c => c.kind === 'pigeon') || PIG, pgNext = PG.next;
+    const before = { world, px, py, pig: { x: PG.x, y: PG.y, fx: PG.fx, fy: PG.fy, m: PG.moving } };
     // Lupe carries both La Obra quests since 2026-09-03 (Don Güero stands upstairs only)
     const lu = WORLDS.st.npcs.find(x => x.npc === 'lupe');
     world = 'st'; px = fx = lu.x; py = fy = lu.y + 1; moving = false; held = null;
     document.getElementById('card').hidden = true; document.getElementById('world').hidden = false;
-    PIG.x = lu.x - 1; PIG.y = lu.y + 1; PIG.moving = false;                    // the pigeon beside you too
+    PG.x = PG.fx = lu.x - 1; PG.y = PG.fy = lu.y + 1; PG.moving = false; PG.next = Infinity;                    // the pigeon beside you too
     checkTalk(); fredCheck();
     const talk = document.getElementById('talk'), treat = document.getElementById('treat');
     if (talk.hidden || talk.dataset.qi === undefined) problems.push('standing beside the quest-giver shows no quest Talk button');
     if (!treat.hidden) problems.push('the pigeon still takes a button while a quest person is adjacent');
-    px = fx = 6; py = fy = 9; PIG.x = 6; PIG.y = 10; checkTalk(); fredCheck();   // away from her, bird still beside you
+    px = fx = 6; py = fy = 9; PG.x = PG.fx = 6; PG.y = PG.fy = 10; checkTalk(); fredCheck();   // away from her, bird still beside you
     if (treat.hidden) problems.push('with nobody to talk to, the pigeon lost her button');
-    world = before.world; px = fx = before.px; py = fy = before.py; PIG.x = before.pig.x; PIG.y = before.pig.y; PIG.moving = before.pig.m;
+    world = before.world; px = fx = before.px; py = fy = before.py; PG.x = before.pig.x; PG.y = before.pig.y; PG.fx = before.pig.fx; PG.fy = before.pig.fy; PG.moving = before.pig.m; PG.next = pgNext;
     checkTalk(); fredCheck();
     return problems;
   });
@@ -3215,6 +3222,7 @@ const CANDIDATES = [
     });
     (typeof CRITTERS !== 'undefined' ? CRITTERS : []).forEach(c => { const w = WORLDS[c.world];
       if (!w) problems.push(`critter in a missing world ${c.world}`);
+      else if (c.perch === 'rod') { if (!SOLID.has(w.grid[c.y][c.x])) problems.push(`${c.kind} at ${c.world} (${c.x},${c.y}) is on a rod out of no wall`); }   /* a perch on a wall is the wall (mq-v297) */
       else if (SOLID.has(w.grid[c.y][c.x]) || w.grid[c.y][c.x] === 'N') problems.push(`${c.kind} ${c.name || ''} at ${c.world} (${c.x},${c.y}) sits on a blocked tile`); });
     const f2 = WORLDS.f2;
     ribbons().filter(r => r.world === 'f2').forEach(r => r.tiles.forEach(([y, x, ch]) => {
@@ -5937,9 +5945,9 @@ const CANDIDATES = [
       const problems = [];
       /* mq-v295 (the owner's confirmed goal of 2026-11-22 on the office dog) and mq-v296 (his of the same day on the cats): Meridian
          declares ANIMALS for two things only, the engine's own office dog and its own kitchen cat set to null, because its office
-         dog is one more dog of the dog program and its kitchen cat one more cat of the critters (CRITTERS). The pigeon and the
-         parrot are still the engine defaults by design */
-      if (typeof ANIMALS === 'undefined' || JSON.stringify(ANIMALS) !== '{"dog":null,"cat":null}') problems.push('Meridian\'s ANIMALS is ' + (typeof ANIMALS === 'undefined' ? 'not declared' : JSON.stringify(ANIMALS)) + ': it sets the engine\'s own office dog and kitchen cat to null and nothing else, the rest being the engine defaults by design');
+         dog is one more dog of the dog program and its kitchen cat one more cat of the critters (CRITTERS). From mq-v297 (his of
+         2026-11-23 on the birds) the pigeon and the parrot are the program's too, so all four are null */
+      if (typeof ANIMALS === 'undefined' || JSON.stringify(ANIMALS) !== '{"dog":null,"cat":null,"pig":null,"loro":null}') problems.push('Meridian\'s ANIMALS is ' + (typeof ANIMALS === 'undefined' ? 'not declared' : JSON.stringify(ANIMALS)) + ': it sets all four of the engine\'s own animals to null, each one more animal of the program (CRITTERS)');
       // #25 (the owner asked for it both in Meridian and in the template, so that both carry plenty
       // of metadata about the roles): Meridian DECLARES its rooms, one line per role with a note,
       // and the declaration must match the engine's default table key for key — it is documentation
@@ -5971,7 +5979,18 @@ const CANDIDATES = [
       // it, so every person with a document stays where the map put them, as before.
       Object.entries(WORLDS).forEach(([id, w]) => w.npcs.forEach(n => { if (n.roams) problems.push(`Meridian station ${n.npc} in ${id} roams — the seam is the town's, not Meridian's`);
         if (n.doc && wanders(n)) problems.push(`Meridian's ${n.npc} carries a document and wanders — a person you look for must be where you left them`); }));
-      const want = { pig: ['st', 4, 1], loro: ['st', 17, 5] };
+      const want = {};
+      /* the pigeon and the parrot: the engine's own stand nowhere, and the program's stand where the owner put them (mq-v297): the
+         pigeon on her square of the street, the parrot a scarlet macaw on his rod out of the office's wall beside its street door,
+         facing the door, the wall behind him the thing under him (the owner's confirmed goals of 2026-11-23) */
+      { ['pig', 'loro'].forEach(k => { if (ANI(k) !== null || AW(k) !== null) problems.push('the engine\'s own ' + k + ' stands in ' + AW(k) + ': Meridian\'s is the program\'s'); });
+        const pg = CRITTERS.filter(c => c.kind === 'pigeon'), lo = CRITTERS.filter(c => c.kind === 'loro');
+        if (pg.length !== 1 || pg[0].world !== 'st' || pg[0].x !== 4 || pg[0].y !== 1 || pg[0].reach !== 'room') problems.push('Meridian\'s pigeon is declared ' + JSON.stringify(pg) + ': one, on her square of the street (st 4,1), the whole street hers');
+        if (lo.length !== 1) problems.push('Meridian declares ' + lo.length + ' parrots in its CRITTERS, where it has one');
+        else { const r = lo[0], g = WORLDS[r.world] && WORLDS[r.world].grid[r.y] && WORLDS[r.world].grid[r.y][r.x], door = WORLDS.st.grid[0][14];
+          if (r.world !== 'st' || r.x !== 15 || r.y !== 0 || r.perch !== 'rod' || r.coat !== 'scarlet' || r.face !== -1) problems.push('Meridian\'s parrot is declared ' + JSON.stringify(r) + ': a scarlet macaw on a rod at st (15,0), facing the door at (14,0)');
+          if (door !== 'E') problems.push('the office\'s street door is not beside the parrot\'s rod: (14,0) is "' + door + '"');
+          if (!SOLID.has(g)) problems.push('the parrot\'s rod comes out of no wall at st (15,0): "' + g + '"'); } }
       /* the kitchen cat: the engine's own stands nowhere, and the critters' stands in the kitchen on her square, in her coat,
          sitting as she always started, the wardrobe's cat (mq-v296) */
       { if (ANI('cat') !== null || AW('cat') !== null) problems.push('the engine\'s own kitchen cat stands in ' + AW('cat') + ': Meridian\'s kitchen cat is the critters\'');
@@ -6260,7 +6279,11 @@ const CANDIDATES = [
       const mid = Math.round((L.from + L.to) / 2);
       const g = w.grid[L.row] && w.grid[L.row][mid];
       if (g === undefined || SOLID.has(g) || g === 'N') return;   /* nothing could stand there anyway */
-      CRIT.filter(c => c.world === L.world).forEach(cr => {
+      /* a parrot on his perch lives on a wall, never on the ground, so he is not asked (mq-v297) */
+      CRIT.filter(c => c.world === L.world && !c.perch).forEach(cr => {
+        /* every OTHER animal held still too, as the note above says, so the one asked is the only thing that can move: the pigeon
+           lives in the program from mq-v297, and wandering onto the rails while the butterfly was asked she made the tram brake */
+        const others = CRIT.filter(c => c !== cr).map(c => [c, c.next]); others.forEach(([c]) => { c.next = 1e9; });
         const keep = { w: world, px: px, py: py, x: cr.x, y: cr.y, fx: cr.fx, fy: cr.fy,
                        mv: cr.moving, mt: cr.mt, nx: cr.next, sit: cr.sit, tk: cr.task,
                        st: TRO.state, tx: TRO.x, dir: TRO.dir, t: TRO.t };
@@ -6288,6 +6311,7 @@ const CANDIDATES = [
         cr.x = keep.x; cr.y = keep.y; cr.fx = keep.fx; cr.fy = keep.fy;
         cr.moving = keep.mv; cr.mt = keep.mt; cr.next = keep.nx; cr.sit = keep.sit; cr.task = keep.tk;
         TRO.state = keep.st; TRO.x = keep.tx; TRO.dir = keep.dir; TRO.t = keep.t;
+        others.forEach(([c, n]) => { c.next = n; });
       });
     });
     return P;
@@ -6338,6 +6362,7 @@ const CANDIDATES = [
     wall(L.row - 1); wall(L.row + 1);
     world = L.world; px = fx = mid; py = fy = Math.min(w.H - 1, L.row + 4);
     cr.x = cr.fx = mid; cr.y = cr.fy = L.row; cr.moving = false; cr.next = 1e9;
+    const others = CRIT.filter(c => c !== cr).map(c => [c, c.next]); others.forEach(([c]) => { c.next = 1e9; });   /* only the cornered one can move (mq-v297) */
     TRO.dir = L.to >= L.from ? 1 : -1;
     TRO.x = mid - TRO.dir * 6; TRO.state = 'run'; TRO.t = 0; TRO.dwelt = 0; TRO.dwellAt = null;
     let held = false;
@@ -6348,7 +6373,8 @@ const CANDIDATES = [
     if (w.grid[L.row - 1]) { if (typeof w.grid[L.row - 1] === 'string') w.grid[L.row - 1] = keep.up; else w.grid[L.row - 1][mid] = keep.upv; }
     if (w.grid[L.row + 1]) { if (typeof w.grid[L.row + 1] === 'string') w.grid[L.row + 1] = keep.dn; else w.grid[L.row + 1][mid] = keep.dnv; }
     world = keep.w; px = fx = keep.px; py = fy = keep.py;
-    cr.x = cr.fx = keep.x; cr.y = cr.fy = keep.y; cr.moving = keep.mv; cr.next = keep.nx;
+    cr.x = cr.fx = keep.x; cr.y = cr.fy = keep.y; cr.moving = keep.mv; cr.next = keep.nx; cr.lift = null; cr.hop = 0;
+    others.forEach(([c, n]) => { c.next = n; });
     TRO.state = keep.st; TRO.x = keep.tx; TRO.dir = keep.dir;
     return P;
   });

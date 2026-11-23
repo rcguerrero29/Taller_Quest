@@ -3103,6 +3103,168 @@ function t3DogBodies(dt){
     t3DogPose(B,P,B.userData.phase||0,B.userData.still<DOGREST,(x,z)=>stairLift(w,Math.floor(x),Math.floor(z)));
     shown.add(cr);});
   T3.dogShown=shown;return shown;}
+/* ---- THE PARROT'S BODY (mq-v297; the owner's confirmed goals of 2026-11-23 on the parrot) ----
+   The macaw the owner shaped in the session, made from the same measures as his card (LOROFORM, engine/engine.js): ONE SMOOTH
+   FORM where a bird is one form (body, tail, head, bill: rings along a spine, skinned, loroLoft), and SEPARATE PIECES where a
+   bird is made of pieces (each feather of the wing its own blade, hung from the wing's one joint at the shoulder, so the wing
+   can open later without a rebuild). The bare face is paint on the head, not a part. His three settings (loroBuildOf: size,
+   fluff, wrap) are read here; nothing else is typed twice */
+function loroLoft(rings,seg,paint,tex){seg=seg||14;const pos=[],col=[],uv=[],idx=[],V=THREE.Vector3,n=rings.length,S1=seg+1;
+  const C=rings.map(r=>new V(...r.c)),D=rings.map((r,i)=>{const t=C[Math.min(n-1,i+1)].clone().sub(C[Math.max(0,i-1)]);if(t.lengthSq()<1e-12)t.set(0,-1,0);t.normalize();
+    const d=new V(0,-t.z,t.y);if(d.lengthSq()<1e-9)d.set(0,0,1);return d.normalize();});
+  const at=(f,u)=>{const i=Math.min(n-2,Math.max(0,Math.floor(f))),k=Math.min(1,Math.max(0,f-i)),r0=rings[i],r1=rings[i+1],th=Math.PI/2+u*Math.PI*2,
+      a=r0.a+(r1.a-r0.a)*k,b=r0.b+(r1.b-r0.b)*k,c=C[i].clone().lerp(C[i+1],k),dd=D[i].clone().lerp(D[i+1],k).normalize();
+    return c.add(new V(a*Math.cos(th),0,0)).addScaledVector(dd,b*Math.sin(th));};
+  rings.forEach((r,i)=>{for(let k=0;k<=seg;k++){const th=Math.PI/2+k/seg*Math.PI*2,o=new V(r.a*Math.cos(th),0,0).addScaledVector(D[i],r.b*Math.sin(th)),p=C[i].clone().add(o);
+      pos.push(p.x,p.y,p.z);uv.push(k/seg,i/(n-1));const c=new THREE.Color(r.front&&o.z>0.25*r.b?r.front:r.col);col.push(c.r,c.g,c.b);}});
+  for(let i=0;i<n-1;i++)for(let k=0;k<seg;k++){const a=i*S1+k,b=a+1,c=a+S1,e=b+S1;idx.push(a,c,b,b,c,e);}
+  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setAttribute("color",new THREE.Float32BufferAttribute(col,3));g.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+  {const N=g.attributes.normal;for(let i=0;i<n;i++){const a=i*S1,b=a+seg,x=N.getX(a)+N.getX(b),y=N.getY(a)+N.getY(b),z=N.getZ(a)+N.getZ(b),l=Math.hypot(x,y,z)||1;N.setXYZ(a,x/l,y/l,z/l);N.setXYZ(b,x/l,y/l,z/l);}N.needsUpdate=true;}   /* no seam in the light */
+  let m;
+  if(tex&&paint){ /* A COAT IS PAINTED, NOT BUILT: the colour lying on this form is paint on a small sheet wrapped round it */
+    const[w,h]=tex,cv=document.createElement("canvas");cv.width=w;cv.height=h;const cg=cv.getContext("2d"),im=cg.createImageData(w,h),D=im.data,rgb=Object.create(null);
+    const rgbOf=c=>rgb[c]||(rgb[c]=(k=>[Math.round(k.r*255),Math.round(k.g*255),Math.round(k.b*255)])(new THREE.Color(c)));
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=at((1-(y+0.5)/h)*(n-1),(x+0.5)/w),c=rgbOf(paint(p.x,p.y,p.z,rings[0].col)),i=(y*w+x)*4;D[i]=c[0];D[i+1]=c[1];D[i+2]=c[2];D[i+3]=255;}
+    cg.putImageData(im,0,0);   /* the whole sheet in one paint, not a rectangle a pixel */
+    const t=new THREE.CanvasTexture(cv);t.generateMipmaps=false;t.minFilter=THREE.LinearFilter;
+    m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide}));}
+  else m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  m.userData.base=new THREE.Color("#FFFFFF");return m;}
+/* the parts a pose moves are kept on the root: H (the head), T (the body on its lean), the two wings, P (his facing) */
+function loroMake(L){const C=loroCoatOf(L),Bd=loroBuildOf(L),G=new THREE.Group();G.name="parrotbody";
+  const add=(geo,c,x,y,z,s,r,par)=>{const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:new THREE.Color(c)}));m.userData.base=new THREE.Color(c);m.position.set(x,y,z);if(s)m.scale.set(...s);if(r)m.rotation.set(...r);(par||G).add(m);return m;};
+  const sph=(r,w,h)=>new THREE.SphereGeometry(r,w||18,h||14),R=(y,z,a,b,col,x,front)=>({c:[x||0,y,z],a,b,col,front});
+  if(L.perch==="rod"){add(new THREE.BoxGeometry(0.05,0.05,0.012),"#3E434B",0,-0.008,-0.2);   /* the rod from the wall: a plate, the rod straight out, a ball at its end */
+    add(new THREE.CylinderGeometry(0.008,0.008,0.21,10),"#5A5F68",0,-0.008,-0.095,null,[Math.PI/2,0,0]);add(new THREE.SphereGeometry(0.0095,10,8),"#5A5F68",0,-0.008,0.01);}
+  const P=new THREE.Group();G.add(P);
+  const LEAN=LOROFORM.lean,T=new THREE.Group();T.rotation.x=LEAN;P.add(T);
+  /* THE BODY: neck, shoulders, a deep chest, the belly drawn in to the vent; his feathers as full as his build says */
+  const BODY=loroBodyRows(Bd.fluff),F=C.front||null;
+  T.add(loroLoft(BODY.map(([y,z,a,b])=>R(y,z,a,b,C.body,0,F)),18));
+  const wide=y=>{for(let i=0;i<BODY.length-1;i++){const[y0,,a0]=BODY[i],[y1,,a1]=BODY[i+1];if(y<=y0&&y>=y1)return a1+(a0-a1)*(y-y1)/(y0-y1||1);}return 0.006;};
+  /* THE TAIL: as long as the rest of him, tapering to a point; the outer feathers shorter, under the long middle ones */
+  T.add(loroLoft([R(0.014,-0.010,0,0,C.under),R(0.006,-0.011,0.0125,0.0028,C.under),R(-0.045,-0.016,0.0085,0.0024,C.under),R(-0.092,-0.021,0.0035,0.0016,C.under),R(-0.104,-0.022,0,0,C.under)],10));
+  T.add(loroLoft([R(0.016,-0.006,0,0,C.tail),R(0.008,-0.007,0.0098,0.0040,C.tail),R(-0.050,-0.012,0.0068,0.0030,C.tail),R(-0.115,-0.018,0.0034,0.0020,C.tail),R(-0.158,-0.022,0.0009,0.0008,C.tail),R(-0.164,-0.0225,0,0,C.tail)],10));
+  /* THE WINGS, folded, made as a wing is: a rounded shoulder; a row of covert feathers tipped a second colour; the long flight
+     feathers, each its own blade, the hindmost longest. Every feather hangs from the wing's joint at the shoulder (W). WRAP (his
+     build) turns each wing about the spine, round the body toward his breast */
+  const dark=(c,k)=>"#"+new THREE.Color(c).multiplyScalar(k).getHexString();
+  const feather=(len,w,col,tip,th)=>loroLoft([{c:[0,0,0],a:0,b:0,col},{c:[0,-len*0.10,0],a:th||0.0013,b:w*0.72,col},{c:[0,-len*0.42,0],a:th||0.0013,b:w,col},
+      {c:[0,-len*0.74,0],a:(th||0.0013)*0.9,b:w*0.80,col},{c:[0,-len*0.74,0],a:(th||0.0013)*0.9,b:w*0.80,col:tip||col},{c:[0,-len*0.93,0],a:(th||0.0013)*0.6,b:w*0.42,col:tip||col},{c:[0,-len,0],a:0,b:0,col:tip||col}],8);
+  const wings=[-1,1].map(sd=>{const W=new THREE.Group(),Rw=wide(0.150)+0.0020,wr=Bd.wrap*0.9;
+    W.position.set(sd*Rw*Math.cos(wr),0.150,-0.002+Rw*Math.sin(wr));W.rotation.set(0,sd*wr,-sd*0.067);W.userData.wing=sd;W.userData.rest=W.rotation.z;T.add(W);
+    const put=(m,x,y,z,lean)=>{m.position.set(sd*x,y,z);m.rotation.x=lean;W.add(m);return m;};
+    [[-0.0240,0.152,0.03],[-0.0192,0.136,0.05],[-0.0144,0.118,0.07],[-0.0096,0.100,0.09],[-0.0048,0.082,0.11],[0.0000,0.066,0.14]]
+      .forEach(([z,len,lean],i)=>put(feather(len,0.0060,i%2?dark(C.prim,0.84):C.prim),0,-0.074,z,lean));
+    [[-0.0235,0.06],[-0.0155,0.09],[-0.0075,0.12],[0.0005,0.16],[0.0085,0.21]]
+      .forEach(([z,lean],i)=>put(feather(0.062,0.0078,i%2?dark(C.band,0.93):C.band,C.edge||dark(C.band,0.8)),0.0013,-0.036,z,lean));
+    put(add(sph(0.0215),C.shoulder,0,0,0,[0.17,1.12,1.0],null,W),0.0008,-0.024,-0.0045,-0.08);
+    [[-0.0205,0.05],[-0.0105,0.09],[-0.0005,0.13],[0.0095,0.18]].forEach(([z,lean],i)=>put(feather(0.022,0.0080,i%2?dark(C.shoulder,0.92):C.shoulder),0.0022,-0.030,z,lean));
+    return W;});
+  /* THE HEAD on its neck, the forehead full over the bill's root; the bare face painted on it, round the eye and down to the jaw */
+  const H=new THREE.Group();H.position.set(0,0.186,0.011);H.rotation.x=-0.22;H.scale.setScalar(1.07);T.add(H);
+  {const rings=[],N=26,ZB=-0.0205,ZF=0.0278;
+    for(let i=0;i<=N;i++){const z=ZB+(ZF-ZB)*i/N,w=Math.min(1,Math.max(0,(z+0.010)/(ZF+0.010))),up=0.0108*w*w*(3-2*w);
+      if(z<0.001){const t=(z-0.001)/0.0216,k=Math.pow(Math.max(0,1-t*t),0.46);rings.push({c:[0,0.001+up,z],a:0.0165*k,b:0.0178*k,col:C.head});}
+      else{const t=(z-0.001)/(ZF-0.001);rings.push({c:[0,0.001+up,z],a:0.0165*Math.pow(Math.max(0,1-t*t),0.42),b:0.0178*Math.pow(Math.max(0,1-t*t),0.5),col:C.head});}}
+    const face=(x,y,z)=>Math.abs(x)>0.0040&&(Math.pow((z-0.0112)/0.0112,2)+Math.pow((y+0.0036)/0.0124,2)<1||Math.pow((z-0.0122)/0.0086,2)+Math.pow((y-0.0062)/0.0106,2)<1);
+    const crown=(x,y,z)=>C.crown&&y>0.010&&z>0.004;
+    H.add(loroLoft(rings,30,(x,y,z,base)=>face(x,y,z)?C.face:crown(x,y,z)?C.crown:base,[256,176]));}
+  if(C.throat)add(sph(0.010),C.throat,0,-0.0135,0.009,[1,0.6,0.9],null,H);
+  [-1,1].forEach(sd=>{const E=new THREE.Group();E.position.set(sd*0.0131,0.0118,0.0128);E.rotation.set(0,sd*0.3,sd*0.42);H.add(E);   /* the eye: high on the head's side, forward */
+    if(C.ring)add(sph(0.0046,10,8),C.ring,0,0,0,[0.35,1,1],null,E);
+    add(sph(0.0026,10,8),C.iris,sd*0.0003,0,0.0002,[0.45,1,1],null,E);add(sph(0.0013,8,6),"#151215",sd*0.0011,0,0.0004,[0.5,1,1],null,E);});
+  /* THE BILL: the upper a horn on an arc, deep and full along its top, hooked to a sharp point; the lower short and dark */
+  {const cz=0.0120,cy=-0.0115,RR=0.0178,rings=[],N=18;
+    rings.push({c:[0,cy+RR*Math.cos(-0.75),cz+RR*Math.sin(-0.75)],a:0,b:0,col:C.beak});
+    for(let i=0;i<=N;i++){const t=i/N,a=(-15+152*t)*Math.PI/180,u=(t-0.06)/0.70,in0=Math.min(1,t/0.14),e=0.0042*Math.pow(1-t,1.6)*in0*in0*(3-2*in0)+(u>0&&u<1?0.0031*Math.pow(Math.sin(Math.PI*u),2):0),rr=RR+e/2;
+      rings.push({c:[0,cy+rr*Math.cos(a),cz+rr*Math.sin(a)],a:i===N?0:0.0070*Math.pow(1-t,0.62)+e*0.25,b:i===N?0:0.0105*Math.pow(1-t,0.78)+e/2,col:C.beak});}
+    H.add(loroLoft(rings,18));
+    add(sph(0.0080,12,10),C.low,0,-0.0172,0.0165,[0.9,0.75,1.1],[0.25,0,0],H);add(sph(0.0050,10,8),C.beakDark,0,-0.0112,0.0190,[1.3,0.8,1.0],null,H);}
+  /* THE FEET: short legs out of his feathers, two toes forward and two back round the perch */
+  {const A=new THREE.Vector3(0,0.034,0.010).applyAxisAngle(new THREE.Vector3(1,0,0),LEAN);T.position.set(0,0.013-A.y,-A.z);
+    [-0.0085,0.0085].forEach(x=>{add(new THREE.CylinderGeometry(0.0046,0.0040,0.012,8),C.feet,x,0.005,0,null,null,P);
+      add(sph(0.0100,10,8),C.front||C.body,x,0.017,-0.001,[0.95,1.15,1.05],null,P);
+      [[1,0.45],[1,-0.45],[-1,0.45],[-1,-0.45]].forEach(([f,dx])=>add(new THREE.TorusGeometry(0.0106,0.0027,6,10,Math.PI*0.72),C.feet,x+dx*0.0042,-0.008,0,null,[0,Math.PI/2,f>0?Math.PI*0.25:Math.PI*1.03],P));});}
+  G.scale.setScalar(LOROFORM.scale*Bd.size);
+  G.userData={H,T,P,wings,key:JSON.stringify([L.coat,Bd,L.perch])};return G;}
+/* his pose this frame, from the clocks alone: the head's bob, his preening (head round over his back, that wing lifted), and
+   his facing: across his perch, his bill toward his record's face; turned from you while he is away (not yet met) */
+function loroPose(G,L,R,away){const{H,P,wings}=G.userData,face=L.face<0?-1:1,pre=R.preen||0;
+  P.rotation.y=face*Math.PI/2+(away?-face*0.55:0);
+  if(pre>0){const sd=away?-1:1,k=Math.min(1,pre*1.6);H.rotation.order="YXZ";H.rotation.set(-0.22+(0.95+0.22)*k,sd*2.55*k,0);H.position.set(sd*0.010*k,0.186-0.006*k,0.011-0.007*k);
+    wings.forEach(W=>{W.rotation.z=W.userData.rest+(W.userData.wing===sd?sd*0.22*k:0);});}
+  else{H.rotation.order="XYZ";H.rotation.set(-0.22+(R.nod||0)*0.035,0,0);H.position.set(0,0.186,0.011);wings.forEach(W=>{W.rotation.z=W.userData.rest;});}}
+/* EACH FRAME: which parrots stand as bodies, each on his perch. A parrot with a coat in a world that takes the parrot's body,
+   on a screen that takes bodies, on a day that is not the alebrijes' painted night; any other parrot is his card. Answers the
+   set whose cards t3Actors leaves out, so he is never drawn twice or not at all */
+/* A BIRD'S BUBBLE OVER ITS BODY (mq-v297): its card's own bubble (birdBubble) drawn once on a sheet and hung over it while it is busy,
+   not yet met; dropped with the body */
+function t3BirdBubble(B,cr,away,up){const U=B.userData;
+  if(away&&!U.bub){const c=document.createElement("canvas");c.width=64;c.height=64;const g=c.getContext("2d");g.scale(2,2);birdBubble(g,cr,-8,0,18);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t3Tex(c),transparent:true,alphaTest:T3ALPHA}));sp.scale.set(0.42,0.42,1);T3.scene.add(sp);U.bub=sp;}
+  if(U.bub){U.bub.visible=away;U.bub.position.set(B.position.x+0.04,B.position.y+up,B.position.z+0.06);}}
+const t3BirdDrop=B=>{const bb=B.userData&&B.userData.bub;if(bb){bb.parent&&bb.parent.remove(bb);t3Dispose(bb);}};
+function t3LoroBodies(){const on=T3.loroOn||(T3.loroOn=new Map()),shown=new Set();
+  const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);t3BirdDrop(B);}on.delete(cr);};
+  const want=LOROBODYON&&bodyScreenOK()?CRIT.filter(cr=>cr.kind==="loro"&&cr.world===world&&loroCoatOf(cr)&&!dogPaintCard(cr)).slice(0,ANIMALMAX_ONE()):[];
+  const keep=new Set(want);[...on.keys()].forEach(cr=>{if(!keep.has(cr))drop(cr);});
+  const nw=wNow();
+  want.forEach(cr=>{let B=on.get(cr);const key=JSON.stringify([cr.coat,loroBuildOf(cr),cr.perch]);
+    if(B&&(B.userData.key!==key||B.parent!==T3.scene)){drop(cr);B=null;}
+    if(!B){B=loroMake(cr);T3.scene.add(B);on.set(cr,B);}
+    const at=Array.isArray(cr.perchAt)?cr.perchAt:[0.5,0.6];   /* where on his square the perch is: along the wall, and its height */
+    B.position.set(cr.x+at[0],at[1],cr.y+(cr.perch==="rod"?1+0.206*LOROFORM.scale*loroBuildOf(cr).size:0.5));   /* on a rod, its plate flat on the wall's face (the wall's face at the square's edge) */
+    const away=loroAway(cr,nw);loroPose(B,cr,bodyRide("loro",cr),away);t3BodyLight(B);B.visible=true;shown.add(cr);t3BirdBubble(B,cr,away,0.32);});
+  T3.loroShown=shown;return shown;}
+const ANIMALMAX_ONE=()=>typeof DOGBODYCEIL==="number"?DOGBODYCEIL:24;   /* the ceiling every animal's bodies share (24) */
+/* ---- THE SMALL BIRDS' AND THE BUTTERFLIES' BODIES (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds) ----
+   Each draws what its card draws, in its card's colours, at its card's size (one card pixel is T3PERSON/32 of a square): the
+   pigeon walks, pecks and lifts off the tram's line with her wing folded; the hummingbird hovers, its wings a pale blur; a
+   butterfly bobs and opens and closes its four wings. Smooth forms by the parrot's own skin (loroLoft) */
+function smallBirdMake(cr){const G=new THREE.Group(),px=T3PERSON/32,U={};G.name="birdbody";
+  const add=(geo,c,x,y,z,s,r,par,op)=>{const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:new THREE.Color(c),transparent:op!==undefined,opacity:op===undefined?1:op,side:THREE.DoubleSide}));
+    m.userData.base=new THREE.Color(c);m.position.set(x,y,z);if(s)m.scale.set(...s);if(r)m.rotation.set(...r);(par||G).add(m);return m;};
+  const sph=r=>new THREE.SphereGeometry(r,16,12),R=(y,z,a,b,col)=>({c:[0,y,z],a,b,col});
+  const F=new THREE.Group();G.add(F);U.F=F;   /* her facing: +z is where her beak points */
+  if(cr.kind==="pigeon"){   /* the card: body #8B8F98, a folded wing #767A84, a green head #5E8F6E, a yellow beak, orange legs */
+    const B=new THREE.Group();F.add(B);U.B=B;
+    B.add(loroLoft([R(10.2*px,0.6*px,0,0,"#8B8F98"),R(9.6*px,1.4*px,2.6*px,2.8*px,"#8B8F98"),R(7.6*px,0.8*px,3.4*px,4.4*px,"#8B8F98"),R(5.6*px,-0.6*px,2.8*px,3.6*px,"#8B8F98"),R(4.4*px,-3.2*px,1.2*px,1.6*px,"#8B8F98"),R(4.0*px,-5.6*px,0,0,"#767A84")],14));
+    [-1,1].forEach(sd=>add(sph(2.4*px),"#767A84",sd*2.6*px,7.4*px,-1.0*px,[0.35,0.9,1.4],[-0.35,0,0],B));   /* her wings, folded, as her card's */
+    const H=new THREE.Group();H.position.set(0,10.0*px,2.8*px);B.add(H);U.H=H;
+    add(sph(2.2*px),"#5E8F6E",0,0,0,[0.95,1,1.1],null,H);add(new THREE.ConeGeometry(0.55*px,1.9*px,8),"#E0B45C",0,-0.3*px,2.6*px,null,[Math.PI/2,0,0],H);
+    [-1,1].forEach(sd=>add(sph(0.45*px),"#26202B",sd*1.5*px,0.5*px,1.0*px,null,null,H));
+    [-1,1].forEach(sd=>add(new THREE.CylinderGeometry(0.4*px,0.4*px,2.6*px,6),"#E0662B",sd*1.2*px,1.3*px,0,null,null,F));}
+  else if(cr.kind==="colibri"){   /* the card: body in its colour, a blue tail, a pink-red head, a long dark beak, a pale blur of wings */
+    const c=cr.c||"#3FA88F",B=new THREE.Group();F.add(B);U.B=B;
+    B.add(loroLoft([R(1.6*px,3.4*px,0,0,c),R(1.4*px,2.4*px,2.0*px,2.0*px,c),R(0,0,2.4*px,2.4*px,c),R(-0.8*px,-2.4*px,1.6*px,1.6*px,c),R(-1.2*px,-3.6*px,0,0,c)],12));
+    add(new THREE.ConeGeometry(1.2*px,3.6*px,4),"#2C5FA8",0,-1.6*px,-4.6*px,[1,1,0.35],[-Math.PI/2-0.5,0,0],B);
+    const H=new THREE.Group();H.position.set(0,1.4*px,3.0*px);B.add(H);U.H=H;add(sph(1.7*px),"#C4586B",0,0,0,null,null,H);
+    add(new THREE.CylinderGeometry(0.25*px,0.18*px,4.4*px,6),"#26202B",0,-0.3*px,3.6*px,null,[Math.PI/2,0,0],H);[-1,1].forEach(sd=>add(sph(0.4*px),"#26202B",sd*1.2*px,0.4*px,0.8*px,null,null,H));
+    U.W=[-1,1].map(sd=>add(new THREE.CircleGeometry(3.4*px,16),"#9CB8AE",sd*2.6*px,2.6*px,-0.4*px,[1.4,0.6,1],[0,sd*Math.PI/2,0],B,0.45));}
+  else {   /* a butterfly: four wings in its colour, the lower ones at three quarters, a dark body */
+    const c=cr.c||"#E4A7D8";add(new THREE.CylinderGeometry(0.7*px,0.6*px,6.5*px,6),"#26202B",0,0,0,null,[Math.PI/2,0,0],F);
+    U.W=[-1,1].map(sd=>{const W=new THREE.Group();F.add(W);
+      add(new THREE.CircleGeometry(1,18),c,sd*2.8*px,0,-1.4*px,[3.1*px,2.6*px,1],[-Math.PI/2,0,0],W);
+      add(new THREE.CircleGeometry(1,18),c,sd*2.3*px,0,1.8*px,[2.4*px,2.0*px,1],[-Math.PI/2,0,0],W,0.75);W.userData.sd=sd;return W;});}
+  G.userData=U;return G;}
+function t3SmallBirdBodies(){const on=T3.birdOn||(T3.birdOn=new Map()),shown=new Set(),nw=wNow(),t=Date.now(),px=T3PERSON/32;
+  const drop=cr=>{const B=on.get(cr);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);t3BirdDrop(B);}on.delete(cr);};
+  const ok=cr=>cr.world===world&&BIRDBODY[cr.kind]&&bodyTakes(BIRDBODY[cr.kind])&&!dogPaintCard(cr);
+  const want=bodyScreenOK()?CRIT.filter(ok).slice(0,ANIMALMAX_ONE()):[],keep=new Set(want);
+  [...on.keys()].forEach(cr=>{if(!keep.has(cr))drop(cr);});
+  want.forEach(cr=>{let B=on.get(cr);if(B&&B.parent!==T3.scene){drop(cr);B=null;}
+    if(!B){B=smallBirdMake(cr);T3.scene.add(B);on.set(cr,B);}
+    const U=B.userData,k=cr.kind,Rd=bodyRide(k,cr),w=CW(),lift=stairLift(w,Math.round(cr.fx),Math.round(cr.fy));
+    /* her facing: her card faces left or right (face); her body the way her last step went, or her card's way */
+    const hx=cr.dx||0,hy=cr.dy||0;if(cr.moving&&(hx||hy))U.yaw=Math.atan2(hx,hy);else if(U.yaw===undefined||!cr.moving&&cr.face!==U.face)U.yaw=Math.atan2(cr.face<0?-1:1,0);U.face=cr.face;
+    const away=birdAway(cr,nw);if(away)U.yaw=Math.atan2(cr.fx+0.5-T3.cam.position.x,cr.fy+0.5-T3.cam.position.z);   /* not yet met: from you */
+    B.rotation.set(0,U.yaw,0);
+    if(k==="pigeon"){B.position.set(cr.fx+0.5,lift+(Rd.lift||0)*px,cr.fy+0.5);U.H.position.y=(10.0-(Rd.nod||0))*px;U.H.rotation.x=(Rd.nod||0)*0.18;}
+    else if(k==="colibri"){B.position.set(cr.fx+0.5,lift+(18-Rd.body)*px,cr.fy+0.5);const wg=Math.abs(Math.sin(t/55));U.W.forEach(W=>{W.scale.set(1.4*(0.5+wg*0.5),0.6,1);});}
+    else{B.position.set(cr.fx+0.5,lift+(17-Rd.body)*px,cr.fy+0.5);const fl=Math.abs(Math.sin(t/90));U.W.forEach(W=>{W.rotation.z=W.userData.sd*(1-fl)*1.2;});}
+    t3BodyLight(B);B.visible=true;shown.add(cr);t3BirdBubble(B,cr,away,k==="pigeon"?0.42:0.3);});
+  T3.birdShown=shown;return shown;}
 /* ---- THE OTHER PEOPLE'S BODIES (mq-v274): a person a world names stands as a body, as you do ----
    A world that names people in its own PEOPLETAKE list (engine/engine.js) sees each of them, near the camera's focus in the 3D
    camera, as a jointed body made from their look, by the same maker as the body of the person you steer: their shirt, skin,
@@ -3308,13 +3470,17 @@ function t3Actors(){
   PEERS.forEach(p=>{if(p.w===world)list.push({x:p.x,y:p.y,f:g=>drawPerson(g,2,6,peerLook(p),{dir:t3ScreenDir(p.dir||"down"),who:p.id||p.name||"peer"})});});
   if(world===AW("dog"))list.push({x:DOG.fx,y:DOG.fy,fc:DOG,f:g=>drawDog(g,2,6)});
   if(world===AW("cat"))list.push({x:CAT.fx,y:CAT.fy,fc:CAT,f:g=>drawCat(g,2,6)});
-  if(world===AW("pig"))list.push({x:PIG.fx,y:PIG.fy,fc:PIG,f:g=>drawPigeon(g,2,6)});
-  if(world===AW("loro"))list.push({x:LORO.x,y:LORO.y,f:g=>drawLoro(g,2,6)});
+  if(world===AW("pig"))list.push({x:PIG.fx,y:PIG.fy,fc:PIG,f:g=>drawPigeon(g,PIG,2,6)});
+  if(world===AW("loro"))list.push({x:LORO.x,y:LORO.y,f:g=>drawLoro(g,LORO,2,6)});
   CRIT.forEach(cr=>{if(cr.world!==world)return;
     if(T3.dogShown&&T3.dogShown.has(cr))return;   /* he stands as a body this frame (THE DOG'S BODY), so his card is not drawn as well */
+    if(T3.loroShown&&T3.loroShown.has(cr))return;   /* ...and a parrot standing as a body (THE PARROT'S BODY, mq-v297) */
+    if(T3.birdShown&&T3.birdShown.has(cr))return;   /* ...and a small bird or a butterfly (mq-v297) */
     list.push({x:cr.fx,y:cr.fy,fc:cr,pull:t3GearPull(cr),f:g=>{
       if(cr.kind==="butterfly")drawButterfly(g,cr,2,6);
       else if(cr.kind==="colibri")drawColibri(g,cr,2,6);
+      else if(cr.kind==="pigeon")drawPigeon(g,cr,2,6);
+      else if(cr.kind==="loro")drawLoro(g,cr,2,6);
       else if(cr.kind==="gato")drawGato(g,cr,2,6);
       else if(cr.kind==="beagle")drawBeagle(g,cr,2,6);
       else if(cr.kind==="lab")drawLab(g,cr,2,6);
@@ -3440,7 +3606,7 @@ function draw3d(){ /* returns true when it rendered; false → caller falls back
     t3Glow();
     t3Reveal();
     t3Trolley();   /* the car first: the people ask where it stands (t3Actors, tramBetween) */
-    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;t3DogBodies(T3.dogT?Math.min(0.25,(tn-T3.dogT)/1000):0);T3.dogT=tn;t3PeopleBodies(T3.pplT?Math.min(0.25,(tn-T3.pplT)/1000):0);T3.pplT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
+    {const tn=performance.now();t3Body(T3.bodyT?Math.min(0.25,(tn-T3.bodyT)/1000):0);T3.bodyT=tn;t3DogBodies(T3.dogT?Math.min(0.25,(tn-T3.dogT)/1000):0);T3.dogT=tn;t3LoroBodies();t3SmallBirdBodies();t3PeopleBodies(T3.pplT?Math.min(0.25,(tn-T3.pplT)/1000):0);T3.pplT=tn;}      /* before the people: where the person you steer is a body, his card is not drawn (THE JOINTED BODY) */
     t3Actors();
     t3DroneMarks();
     t3Petals();

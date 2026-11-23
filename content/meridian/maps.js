@@ -366,6 +366,13 @@ const DOGNAMES=["Biscuit","Bruno","Chato","Chester","Chispa","Firulais","Manchas
    content. Each wanders a small radius around home; the gato is pettable. A dog marked
    role:"star" is the one the paw menu reaches from any room — the engine finds him by that. */
 const CRITTERS=[
+ /* THE PIGEON AND THE PARROT, in the program with every other animal (mq-v297; the owner's confirmed goals of 2026-11-23 on the
+    birds and the parrot): first in the list, so the rolls of the street are drawn in the order they always were. The pigeon is
+    the engine's own pigeon as she always was, the whole street hers. The parrot is a scarlet macaw on a small metal rod out of
+    the office's wall, beside its street door where every game starts, facing the door (perchAt: along the wall, and the rod's
+    height, in squares) */
+ {kind:"pigeon",world:"st",x:4,y:1,reach:"room"},
+ {kind:"loro",world:"st",x:15,y:0,perch:"rod",perchAt:[0.08,0.6],coat:"scarlet",face:-1,reach:0},
  {kind:"butterfly",world:"st",x:6,y:12,c:"#E4A7D8"},
  {kind:"butterfly",world:"ex",x:13,y:3,c:"#8FC7E8"},
  {kind:"colibri",world:"st",x:16,y:4,c:"#3FA88F"},
@@ -396,7 +403,7 @@ const CRITTERS=[
 /* the engine's own office dog (DOG) is not placed: the office dog above is the one, in the program (mq-v295); nor is the engine's
    own kitchen cat (CAT): the kitchen cat above is the one, in the critters (mq-v296). The pigeon and the parrot stand where the
    engine's defaults put them, as before */
-const ANIMALS={dog:null,cat:null};   /* the kitchen cat is in CRITTERS too, one more cat of the critters (mq-v296) */
+const ANIMALS={dog:null,cat:null,pig:null,loro:null};   /* the pigeon and the parrot are in CRITTERS too (mq-v297) */   /* the kitchen cat is in CRITTERS too, one more cat of the critters (mq-v296) */
 /* one-off place identity as data (IDEAS §10): the engine's DECODRAW vocabulary
    (sign, mural) renders these in ALL FOUR cameras: top (engine.js drawDecor), front (the
    depth pass), iso (the billboard pass) and 3D (engine3d.js, a plane on the wall's first open
