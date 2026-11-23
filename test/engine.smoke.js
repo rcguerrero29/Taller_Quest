@@ -9482,7 +9482,12 @@ function findChromium() {
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await p.goto('file://' + file); await boot(p);
       return await cont(p) ? p : null; };
-    const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 3000 }); } catch (e) { return false; }
+    /* A PRESS OF THE MAP OR FULL-SCREEN BUTTON MAY TAKE 15 S, not 3 (every press of #mapbtn and #fsbtn in this file). At full
+       screen, 1920 by 1080, the page draws its heaviest frame, and on a runner of two cores shared with the rest of the run a
+       press once took longer than 3 s to land: the button visible, on top, enabled and still, the map shut (measured on
+       2026-11-23 with the map part run four at once, which failed four times so). It failed main's run once and the office
+       dog's branch once with nothing in the way. A press that cannot land at all still fails, after 15 s */
+    const mapOpen = async p => { try { await p.click('#mapbtn', { timeout: 15000 }); } catch (e) { return false; }
       return until(p, () => !document.getElementById('mapov').hidden, null, 2000); };
     /* closed with Escape, the panel's own way out, where a check is not about the way out: a click on Close has the
        browser scroll the box to reach the sticky button first. Section 7 closes it both ways, as a person does */
@@ -10148,9 +10153,9 @@ function findChromium() {
       await p.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
       await p.goto('file://' + file); await boot(p); await p.evaluate(YOUHELP); return { ctx, p }; };
     const sizeTo = async (p, w, h, full, was) => {
-      if (was) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+      if (was) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
       await p.setViewportSize({ width: w, height: h }); await rafs(p);
-      if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); } };
+      if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); } };
     /* what a player reads: the line under the map and the line above the game; and what is chosen */
     const linesNow = p => p.evaluate(() => ({ note: ((document.getElementById('mapNote') || {}).textContent || '').trim(), tag: ((document.getElementById('worldTag') || {}).textContent || '').trim(),
       dest: mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null }));
@@ -10218,7 +10223,7 @@ function findChromium() {
         for (const [w, h, size, tapToo, full] of SIZES) {
           if (touch && !tapToo) continue;
           await p.setViewportSize({ width: w, height: h }); await rafs(p);
-          if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); }
+          if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await until(p, () => !!document.fullscreenElement || document.getElementById('vp').classList.contains('fs'), null, 2000); await rafs(p, 3); }
           for (const on of [false, true]) {
             const where = size + ', the edge arrow ' + (on ? 'on' : 'off') + (touch ? ', with a finger' : '');
             if (!await mapOpen(p)) { MP.push('the map button could not be pressed (' + where + '), so its markers were not clicked'); continue; }
@@ -10276,7 +10281,7 @@ function findChromium() {
             await p.evaluate(() => { mapDest = null; drawTown(); });
             await mapShut(p);
           }
-          if (full) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (full) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
         }
         await ctx.close();
       }
@@ -11159,7 +11164,7 @@ function findChromium() {
               const c = document.getElementById('mapClose'); if (c) c.click(); else document.getElementById('mapov').hidden = true; });
           }
         }
-        if (wasFull) { await P.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(P, 3); }
+        if (wasFull) { await P.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(P, 3); }
         await ctx.close();
       }
       const by = {}; bad.forEach(([where, k, which, what]) => { const key = k + '|' + which; (by[key] = by[key] || []).push([where, what]); });
@@ -11254,7 +11259,7 @@ function findChromium() {
             if (r.none.length) MP.push('I opened the map in ' + [...new Set(r.none)].slice(0, 3).join(', ') + ' (' + size + ') and the box shows no plan to measure — nothing to measure is not a pass');
             if (r.noSwitch) noSwitch = true;
           }
-          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
         }
         if (moved.length) MP.push('Choosing or clearing where I am going moves the map under my finger: ' + moved.slice(0, 3).join('; ') + (moved.length > 3 ? '; and ' + (moved.length - 3) + ' more' : '') + ' — only turning the edge arrow on or off may move it');
         MN.push('COUNT-ONLY: the plan\'s top was read in ' + places + ' opening(s) of the map (' + rounds + ' round(s) of sizes, languages and the edge arrow off and on), each with up to four destinations chosen and cleared' + (noSwitch ? '; this game\'s map has no switch for the edge arrow, so it was asked with the arrow as it is' : ''));
@@ -11522,7 +11527,7 @@ function findChromium() {
                     if (k < 0.9) { const key = r.name + '|' + t.word + '|' + t.ch, e = bad.get(key); if (!e || k < e.k) bad.set(key, { k, t, where }); } }); });
               }
             }
-            if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+            if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
           }
           if (bad.size) { const B = [...bad.values()].sort((a, b) => a.k - b.k);
             MP.push('I opened the map where I am a ring round my own door, and the ring hides letters of a name: ' + B.slice(0, 3).map(e => '“' + e.t.ch + '” of “' + e.t.word + '” keeps ' + Math.round(100 * e.k) + '% of the contrast it has with only the ring left out, in ' + e.where).join('; ') + (B.length > 3 ? '; and ' + (B.length - 3) + ' more letter(s)' : '') + ' — every letter under the ring keeps 90%'); }
@@ -11911,7 +11916,7 @@ function findChromium() {
             if (s0 && s2 && s2.some((v, i) => Math.abs(v - s0[i]) > 1)) MP.push('On ' + size + ', I closed the map and the game did not come back where it was: the street is at ' + s2.map(v => Math.round(v)).join(',') + ', where it was at ' + s0.map(v => Math.round(v)).join(',') + ' before the map opened');
             if (go && !go.never && !await until(p, i => !WORLDS[world].npcs[i].mv, go.i, 6000)) MP.push('On ' + size + ', I closed the map and ' + go.who + ' never finished the step taken as it opened');
           }
-          if (wasFull) { await p.click('#fsbtn', { timeout: 3000 }).catch(() => {}); await rafs(p, 3); }
+          if (wasFull) { await p.click('#fsbtn', { timeout: 15000 }).catch(() => {}); await rafs(p, 3); }
           /* where the half narrows the game's column, the page the player scrolled comes back where it was */
           { await p.setViewportSize({ width: 1100, height: 640 }); await rafs(p, 2);
             const y0 = await p.evaluate(() => { scrollTo(0, document.scrollingElement.scrollHeight); return scrollY; });
