@@ -7796,6 +7796,7 @@ function findChromium() {
     if (!at0) { P.push('this shell has no world to stand a dog in, so the curl\'s second version could not be asked'); return { P, out }; }
     const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, cv: curlVersions,
       al: typeof alebLooks === 'function' ? alebLooks : null, alf: typeof alebLookFor === 'function' ? alebLookFor : null, sv: typeof save === 'function' ? save : null,
+      btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]),   /* a pet and the leash relabel and show the world's buttons */
       world, px, py, fx, fy, dir, held, mv: moving, pt: petTarget, pc: petCrit, crit: CRIT.length, park: JSON.stringify(PARK), leash: typeof LEASH !== 'undefined' ? LEASH : null, decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0 };
     const real = CRIT.filter(isDog).map(c => [c, c.world]), mine = [];
     const made = o => Object.assign({ kind: 'beagle', name: 'Probe', world: wid, x: at0[0], y: at0[1], fx: at0[0], fy: at0[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
@@ -7914,13 +7915,14 @@ function findChromium() {
         if (/^(hind|hock|hpaw)/.test(n)) return 'hip'; if (/^(fore|wrist|fpaw)/.test(n)) return 'shoulder'; if (/^tail/.test(n)) return 'tail'; return n || 'other'; };
       /* what the checks read off a posed body, in his own frame: how much of each kind of part is where */
       const read = B => { B.updateWorldMatrix(true, true); const S = B.userData.skel, J = B.userData.joints, inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), at = n => J[n].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), v = new THREE.Vector3();
-        const lo = [Infinity, Infinity], hi = [-Infinity, -Infinity], tops = {}, pts = []; let low = Infinity, nose = null, earR = 0, eyes = [], shine = 0;
+        const lo = [Infinity, Infinity], hi = [-Infinity, -Infinity], tops = {}, pts = []; let low = Infinity, nose = null, earR = 0, eyes = [], shine = 0, tailTop = -Infinity;
         const hc = J.head.getWorldPosition(new THREE.Vector3());
         B.traverse(m => { if (!m.isMesh || !m.visible) return; const u = m.userData; if (u.shadow || u.dirt) return;
           if (u.wears === 'eye' && u.open) eyes.push(m.scale.y / u.open); if (u.wears === 'shine') shine++; if (u.wears === 'nose') nose = m.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
           const g = groupOf(m), Q = m.geometry.attributes.position;
           for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(m.matrixWorld); if (u.upEar) earR = Math.max(earR, v.distanceTo(hc) / S.head); v.applyMatrix4(inv);
             lo[0] = Math.min(lo[0], v.x); hi[0] = Math.max(hi[0], v.x); lo[1] = Math.min(lo[1], v.z); hi[1] = Math.max(hi[1], v.z); low = Math.min(low, v.y); tops[g] = Math.max(tops[g] === undefined ? -Infinity : tops[g], v.y);
+            if (m.parent && (m.parent.name === 'tail_2' || m.parent.name === 'tail_tip')) tailTop = Math.max(tailTop, v.y);
             if (u.trunk || g === 'head') pts.push([v.x, v.z]); } });
         const ex = [hi[0] - lo[0], hi[1] - lo[1]], mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2], dm = q => Math.hypot(q.x - mid[0], q.z - mid[1]);
         /* the top-down outline of his trunk and head (their hull), and which paws lie inside it */
@@ -7937,7 +7939,7 @@ function findChromium() {
         const tipNear = nose ? Math.min(tip.distanceTo(nose), ...['fpaw_l', 'fpaw_r'].map(n => at(n).distanceTo(tip))) : Infinity;
         const topG = Object.entries(tops).sort((a, b) => b[1] - a[1]);
         return { S, J, round: Math.min(...ex) / Math.max(...ex), turn, near, headMid: at('head').y, barrelTop: tops.barrel, tipOut: dm(tip) - line, tipNear, pawsIn, paws: paws.length, top: topG[0][1], topWho: topG[0][0], tops, low, earR, eyes, shine,
-          side: at('chest').x - at('hips').x, tail: [J.tail_1.rotation.x, J.tail_1.rotation.y, J.tail_1.rotation.z, J.tail_2.rotation.x, J.tail_2.rotation.z] }; };
+          side: at('chest').x - at('hips').x, tailTop, hipY: at('hips').y, tail: [J.tail_1.rotation.x, J.tail_1.rotation.y, J.tail_1.rotation.z, J.tail_2.rotation.x, J.tail_2.rotation.z] }; };
       /* his drop ear on his high side, in his head's frame: where its middle is against his eye (below it and ahead of its root:
          over his cheek) and how near it comes to his eye */
       const dropOf = B => { const J = B.userData.joints, inv = new THREE.Matrix4().copy(J.head.matrixWorld).invert(), sd = B.userData.curlSide === -1 ? -1 : 1, r = B.userData.skel.head; let ear = null, root = null, eye = null;
@@ -7976,7 +7978,8 @@ function findChromium() {
               /* C · his tail round the outside, its tip further out than the line of his back by half his barrel's round at least, and
                  within 1.5 head sizes of his nose or a fore paw (a bobbed tail is tucked away, as in the first version) */
               if (!bob) { if (!(m.tipOut >= S.limb.barrel * 0.5)) P.push(who + '\'s tail is not round the outside of the ring: its tip is ' + m.tipOut.toFixed(3) + ' further from the ring\'s middle than the line of his back, where half his barrel\'s round (' + (S.limb.barrel * 0.5).toFixed(3) + ') was asked');
-                if (!(m.tipNear <= 1.5 * hd)) P.push(who + '\'s tail\'s tip is ' + (m.tipNear / hd).toFixed(2) + ' head sizes from his nose and his fore paws: in the closed ring it lies along his nose (within 1.5)'); }
+                if (!(m.tipNear <= 1.5 * hd)) P.push(who + '\'s tail\'s tip is ' + (m.tipNear / hd).toFixed(2) + ' head sizes from his nose and his fore paws: in the closed ring it lies along his nose (within 1.5)');
+                if (!(m.tailTop <= m.hipY)) P.push(who + '\'s tail stands up out of the closed ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over his hips (' + m.hipY.toFixed(3) + '); it lies round him, low'); }
               /* D · his legs inside: 3 of his 4 paws at least inside him from above, and from the game\'s camera his paws a third of
                  what shows of them lying stretched out, at most */
               if (m.pawsIn < 3) P.push(who + ' has ' + (m.paws - m.pawsIn) + ' paws outside the ring seen from above: his legs are folded inside it, at most one paw at its edge');
@@ -8116,6 +8119,7 @@ function findChromium() {
                 out.push('a cat\'s body curled up: ' + m.round.toFixed(2) + ' as wide one way as the other, its chest turned ' + deg(m.turn) + ' degrees round, its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg or tail\'s root, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose, ' + m.pawsIn + ' paws inside, its ears reaching ' + m.earR.toFixed(2) + ' head sizes (' + s0.earR.toFixed(2) + ' standing)');
                 if (!B.userData.curled) P.push('a cat curled up is not curled up on its body');
                 if (!(m.round >= 0.8 && m.turn >= 150 * Math.PI / 180 && m.turn < 300 * Math.PI / 180)) P.push('a cat\'s body curled up is not the closed ring: ' + m.round.toFixed(2) + ' round from above, its chest turned ' + deg(m.turn) + ' degrees');
+                if (!(m.tailTop <= m.hipY)) P.push('a cat curled up has its tail standing out of the ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over its hips (' + m.hipY.toFixed(3) + '); it lies round it, low');
                 if (!(m.near <= hd && m.tipNear <= 1.5 * hd)) P.push('a cat curled up does not have its nose tucked under its tail: its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose');
                 if (m.pawsIn < 3) P.push('a cat curled up has ' + (m.paws - m.pawsIn) + ' paws outside it: tucked under');
                 if (!(Math.abs(m.earR - s0.earR) < 0.05)) P.push('a cat curled up has its ears laid back (' + m.earR.toFixed(2) + ' head sizes, ' + s0.earR.toFixed(2) + ' standing): its ears stay up');
@@ -8158,6 +8162,7 @@ function findChromium() {
       if (keep.al) alebLooks = keep.al; if (keep.alf) alebLookFor = keep.alf; if (keep.sv) save = keep.sv; if (typeof LEASH !== 'undefined') LEASH = keep.leash; Object.assign(PARK, JSON.parse(keep.park)); tidy();
       mine.forEach(d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); }); real.forEach(([c, wd]) => { c.world = wd; });
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; moving = keep.mv; petTarget = keep.pt; petCrit = keep.pc;
+      keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; });
       if (R3) { R3.dispose(); R3.forceContextLoss && R3.forceContextLoss(); }
       if (CRIT.length !== keep.crit) P.push('the check of the curl\'s second version left ' + (CRIT.length - keep.crit) + ' animal(s) of its own in the world');
     }
