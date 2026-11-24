@@ -8146,7 +8146,8 @@ function findChromium() {
             /* A ONE-COLOURED BREED STAYS ONE COLOUR (rule 5): on the lab's and the chihuahua's ring card his body, off his head, is his
                one coat colour (the colour most of his first version's body is): any other colour covers no more than 1.5 px of it (the
                fold of his haunch, the edge of his ear) */
-            if (k === 'lab' || k === 'chi') { const b1 = solidIn(c1.im, L[0].card[k]), b2 = solidIn(c2.im, L[1].card[k]), cnt = {};
+            const rows = L[0] && L[0].card && L[0].card[k] && L[1] && L[1].card && L[1].card[k];   /* a missing row is sentence 1's red; nothing is asked of it here */
+            if (rows && (k === 'lab' || k === 'chi')) { const b1 = solidIn(c1.im, L[0].card[k]), b2 = solidIn(c2.im, L[1].card[k]), cnt = {};
               b1.forEach(q => { const key = q.slice(2).join(','); cnt[key] = (cnt[key] || 0) + 1; }); const main = (Object.entries(cnt).sort((a, b) => b[1] - a[1])[0] || [''])[0].split(',').map(Number);
               const other = b => b.filter(q => Math.abs(q[2] - main[0]) + Math.abs(q[3] - main[1]) + Math.abs(q[4] - main[2]) > 24), o2 = other(b2), o1 = other(b1);
               out.push('the ' + k + '\'s ring card, his body off his head: ' + (b2.length / Sx / Sx).toFixed(0) + ' px, ' + (o2.length / Sx / Sx).toFixed(1) + ' px of them not his coat\'s one colour (rgb ' + main.join(' ') + '; his first version\'s body ' + (o1.length / Sx / Sx).toFixed(1) + ' px of ' + (b1.length / Sx / Sx).toFixed(0) + ')');
@@ -8156,7 +8157,7 @@ function findChromium() {
                goes round the outside of his body. The outer band: further out than 0.65 of the way to his mound's edge, off his head.
                The beagle: of what is lemon or white there, more than 75% lemon (his first version's white flanks are not). The
                office dog: of his dark patches on his body, more than 60% in that band (his first version's sit in his middle) */
-            if (k === 'beagle' || k === 'aussie') { const share = (im, row) => { const body = solidIn(im, row), [bx, by, rx, ry] = row.body, out2 = q => Math.hypot((q[0] - bx) / rx, (q[1] - by) / ry) > 0.65;
+            if (rows && (k === 'beagle' || k === 'aussie')) { const share = (im, row) => { const body = solidIn(im, row), [bx, by, rx, ry] = row.body, out2 = q => Math.hypot((q[0] - bx) / rx, (q[1] - by) / ry) > 0.65;
                 if (k === 'beagle') { const isW = q => q[2] > 225 && q[3] > 225 && q[4] > 215, isL = q => q[2] > 200 && q[4] < q[2] * 0.6, band = body.filter(q => out2(q) && (isW(q) || isL(q))); return { v: band.filter(isL).length / Math.max(1, band.length), n: band.length }; }
                 const dark = body.filter(q => q[2] < 100 && q[3] < 100 && q[4] < 110); return { v: dark.filter(out2).length / Math.max(1, dark.length), n: dark.length }; };
               const s2 = share(c2.im, L[1].card[k]), s1 = share(c1.im, L[0].card[k]), want = k === 'beagle' ? 0.75 : 0.6, what = k === 'beagle' ? 'of the outer band of his body (lemon or white) lemon' : 'of his dark patches on his body in its outer band';
