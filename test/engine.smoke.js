@@ -16499,6 +16499,13 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         ['wanderUpdate', 'dogUpdate', 'catUpdate', 'pigUpdate', 'loroTick', 'critUpdate', 'ballUpdate', 'dogThingsUpdate',
          'troTick', 'petalMomentTick', 'fredCheck', 'portalNudge'].forEach(f => { if (typeof window[f] === 'function') window[f] = function () {}; });
         const T0 = Date.now(); Date.now = () => T0;
+        /* ...and the world's own clock, which runs on the frame timer, not the wall clock. An animal's timed moments end on that
+           clock (a dog's sniff, nap, dig, song or happy wag; a bird not yet met), and the animals' updates are held above, so
+           nothing starts a new one: one already under way simply ends, once, between two frames with nothing else changed, and
+           the stranger cases read the change as theirs (84 pixels on GitHub on 2026-11-24, green again after the reload). The
+           room the game starts in holds a dog and no bird. Held at one moment, as the wall clock is (planted: the dog's sniff
+           ending three seconds into the 3D camera, red on the old hold and green on this) */
+        if (typeof wNow === 'function') { const W0 = wNow(); window.wNow = () => W0; }
         moving = false; held = null;
         const w = WORLDS[world];
         if (!w) return { none: 'the game started in a world it does not have (' + world + ')' };
