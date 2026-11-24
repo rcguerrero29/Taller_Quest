@@ -2520,13 +2520,19 @@ const CANDIDATES = [
         const d = shot(paint(k, a)), dark = new Uint8Array(W * H);
         for (let i = 0; i < W * H; i++) { const r = d[i * 4], gg = d[i * 4 + 1], b = d[i * 4 + 2]; if (d[i * 4 + 3] >= 250 && Math.abs(r - 0x26) < 8 && Math.abs(gg - 0x20) < 8 && Math.abs(b - 0x2B) < 8) dark[i] = 1; }   /* the ink itself, not its soft edge */
         /* the eye is the painter's small dark mark cut square — a filled rectangle no more than 2 px either way (a closed eye
-           is a bar 1.9 long); a nose is round and a beak is long, and neither is an eye */
+           is a bar 1.9 long); a nose is round and a beak is long, and neither is an eye. The kitten's eye (the cats' second
+           round, mq-v299) is round: a dark mark 2 to 3.2 px either way, nearly half filled or more, with its white light in it, and the
+           kitten's nose is pink, so nothing else round and dark on its card is taken for it. Until mq-v299 the cat's eye was
+           cut square too, and this guard found no round one */
         const seen = new Uint8Array(W * H); let sx = 0, sy = 0, n = 0;
         for (let i = 0; i < W * H; i++) { if (!dark[i] || seen[i]) continue; const st = [i], cells = []; seen[i] = 1;
           while (st.length) { const j = st.pop(); cells.push(j); const x = j % W, y = (j - x) / W;
             for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy, q = yy * W + xx; if (xx >= 0 && yy >= 0 && xx < W && yy < H && dark[q] && !seen[q]) { seen[q] = 1; st.push(q); } } }
           let x0 = W, x1 = 0, y0 = H, y1 = 0; cells.forEach(j => { const x = j % W, y = (j - x) / W; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
-          if (x1 - x0 < 2 * SC && y1 - y0 < 2 * SC && cells.length === (x1 - x0 + 1) * (y1 - y0 + 1)) cells.forEach(j => { sx += j % W; sy += Math.floor(j / W); n++; }); }
+          const bw = x1 - x0 + 1, bh = y1 - y0 + 1, square = x1 - x0 < 2 * SC && y1 - y0 < 2 * SC && cells.length === bw * bh;
+          let lit = 0; if (k === 'gato' && !square) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const q = (y * W + x) * 4; if (d[q + 3] >= 250 && d[q] > 240 && d[q + 1] > 240 && d[q + 2] > 240) lit++; }
+          const round = k === 'gato' && bw >= 2 * SC && bh >= 2 * SC && bw <= 3.2 * SC && bh <= 3.2 * SC && cells.length >= 0.45 * bw * bh && lit > 0;
+          if (square || round) cells.forEach(j => { sx += j % W; sy += Math.floor(j / W); n++; }); }
         EYE[k + '|' + pn + '|' + face] = n ? [sx / n, sy / n] : null; })));
       /* ---- PASS 2, the mode on ---- */
       seasonSet(aid); WL = (alebLooks() || []).findIndex(l => l.wings);
@@ -2585,7 +2591,9 @@ const CANDIDATES = [
             let off = 0;
             for (let r = 0; r < 4; r++) { const a1 = D[r], a2 = D[r + 4]; if (typeof a1 !== 'number' || typeof a2 !== 'number') continue;
               const d = (a2 - a1) / 2 / SC; if (Math.abs(d) > Math.abs(off)) off = d; }
-            if (miss || hits < 4 || onEye || Math.abs(off) > 1.75) {
+            /* the kitten's one ring goes round both its eyes inside its head (mq-v299), so every one of the eight ways out meets
+               it there: one that leaves its head first is a ring pushed off its eyes, which the clipping would otherwise hide */
+            if (miss || hits < (k === 'gato' ? 8 : 4) || onEye || Math.abs(off) > 1.75) {
               /* the words only, never the verdict: which way the colour went, from the middle of what it painted near his eye */
               let mx = 0, my = 0, mn = 0; const rr = (KE[2] + 2.5) * SC;
               for (let y = Math.max(0, Math.floor(E[1] - rr)); y < Math.min(H, E[1] + rr); y++) for (let x = Math.max(0, Math.floor(E[0] - rr)); x < Math.min(W, E[0] + rr); x++)
