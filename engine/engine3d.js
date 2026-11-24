@@ -2956,34 +2956,42 @@ function curlNum(C,f){return C&&typeof C[f]==="number"&&isFinite(C[f])?C[f]:null
    every point of the inner side deeper than G of the radius is drawn in toward the arc's middle and never reaches it. 0 or none:
    no gathering, the first version's barrel exactly. `tw` (the ring's `twist`) turns the barrel about its own length first, his
    back to the outside of the ring and his belly to its middle, so the colour of his back follows the ring round; 0 or none: not
-   turned. The key it is kept under names the bend, the side, his chest's width, the gathering and the turn, every number that
-   shapes it */
-function dogBarrelBend(B,A,sd,G,tw){let m=null;B.traverse(o=>{if(o.isMesh&&o.userData.trunk==="barrel")m=o;});if(!m)return null;
+   turned. `wr` (the ring's `wrap`): his rump behind his hips and his front past his chest, which run on straight from the arc's
+   two ends, follow the arc's own curve instead, so seen from above the ring is round all the way to its two ends and has no
+   straight side; 0 or none: straight, as before. The key it is kept under names the bend, the side, his chest's width, the
+   gathering, the turn and the wrap, every number that shapes it */
+function dogBarrelBend(B,A,sd,G,tw,wr){let m=null;B.traverse(o=>{if(o.isMesh&&o.userData.trunk==="barrel")m=o;});if(!m)return null;
   const P=m.geometry.attributes.position,u=m.userData;if(!u.barrelRest)u.barrelRest=new Float32Array(P.array);
   const g=typeof G==="number"&&isFinite(G)&&G>0&&G<1?G:0,w=A&&typeof tw==="number"&&isFinite(tw)?tw:0,cw=Math.cos(w),sw=Math.sin(w);
-  const sx=m.scale.x||1,key=A?A*sd+"|"+sx+(g?"|"+g:"")+(w?"|t"+w:""):"";if((u.barrelBend||"")===key)return m;   /* laid again only when the bend, his chest's width or the gathering moves */
+  const wp=A&&typeof wr==="number"&&isFinite(wr)?Math.max(0,Math.min(1,wr)):0;
+  const sx=m.scale.x||1,key=A?A*sd+"|"+sx+(g?"|"+g:"")+(w?"|t"+w:"")+(wp?"|w"+wp:""):"";if((u.barrelBend||"")===key)return m;   /* laid again only when the bend, his chest's width or the gathering moves */
   const rest=u.barrelRest,L=B.userData.skel.joints.chest[3],k=A/(2*L),R=A>0?1/k:0,o0=R*g;
   for(let i=0;i<P.count;i++){let x=rest[i*3];const y=rest[i*3+1];let nx=x,ny=y,nz=rest[i*3+2];
     if(w){const z=nz;x=rest[i*3]*cw+sd*z*sw;nz=-sd*rest[i*3]*sw+z*cw;}   /* turned about his length (the sheet's +z is his belly) */
     if(A>0){if(g){const o=sd*x*sx;if(o>o0)x=sd*(R-(R-o0)*Math.exp(-(o-o0)/(R-o0)))/sx;}   /* gathered: drawn in toward the middle, smoothly, never past it */
-      const d=y+L,th=Math.max(0,Math.min(2*L,d))*k,over=d>2*L?d-2*L:0,cx=(1-Math.cos(th))/k+over*Math.sin(A),cy=(d<0?d:Math.sin(th)/k+over*Math.cos(A))-L;
+      const d0=y+L,d=d0<0?d0*(1-wp):d0>2*L?2*L+(d0-2*L)*(1-wp):d0,dw=d0-d;   /* dw: how much of an end follows the arc (wrap) */
+      const th=(Math.max(0,Math.min(2*L,d))+dw)*k,over=d>2*L?d-2*L:0,under=d<0?d:0,run=over||under,cx=(1-Math.cos(th))/k+run*Math.sin(th),cy=(under?under*Math.cos(th):Math.sin(th)/k+over*Math.cos(th))-L;
       nx=sd*cx/sx+x*Math.cos(th);ny=cy-sd*x*sx*Math.sin(th);}   /* the part is stretched across him (sx): the arc is laid in his own measure */
     P.setXYZ(i,nx,ny,nz);}
   P.needsUpdate=true;m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();u.barrelBend=key;return m;}
 function dogCurlHold(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData,C=dogCurlAngles(B),sd=U.curlSide===-1?-1:1,L=S.joints.chest[3],A=C.back,k=A/(2*L);
   {const lf=curlNum(C,"lift");if(lf!==null)J.hips.position.y=S.limb.barrel*lf;}   /* the ring: his hips held a little higher than lying, a round loaf (none: as he lies) */
   {const rl=curlNum(C,"roll");if(rl!==null)J.hips.rotation.z+=sd*rl;}   /* the ring: rolled toward its inside, his belly and legs to its middle (dogHold sets it again each frame) */
-  dogBarrelBend(B,A,sd,curlNum(C,"gather"),curlNum(C,"twist"));
+  dogBarrelBend(B,A,sd,curlNum(C,"gather"),curlNum(C,"twist"),curlNum(C,"wrap"));
   /* his chest where the arc ends, turned on round and tipped forward until his head is on the ground */
   const nv=new THREE.Vector3(0,S.joints.neck[2]+S.joints.head[2],S.joints.neck[3]+S.joints.head[3]),len=nv.length(),
     tip=Math.acos(Math.max(-1,Math.min(1,(S.head*C.rest-J.hips.position.y)/Math.max(0.001,len))))-Math.atan2(nv.z,nv.y);
   J.chest.position.set(sd*(1-Math.cos(A))/k,0,Math.sin(A)/k-L);J.chest.rotation.set(tip,sd*(A+C.chest),0,"YXZ");
   J.neck.rotation.set(0,0,0);
   /* rolled (the ring), his chest is no longer at his hips' height: the tip is found again until his head's middle rests at
-     `rest` head sizes, as the first version's does by its sum (a few steps of the secant; none where nothing is rolled) */
-  if(curlNum(C,"roll")!==null){const inv=new THREE.Matrix4(),want=S.head*C.rest,hy=t=>{J.chest.rotation.set(t,sd*(A+C.chest),0,"YXZ");B.updateWorldMatrix(true,true);inv.copy(B.matrixWorld).invert();return J.head.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).y-want;};
-    let t0=tip,t1=tip+0.1,f0=hy(t0),f1=hy(t1);for(let i=0;i<6&&Math.abs(f1)>1e-5&&Math.abs(f1-f0)>1e-9;i++){const t2=t1-f1*(t1-t0)/(f1-f0);t0=t1;f0=f1;t1=Math.max(-1.5,Math.min(2.5,t2));f1=hy(t1);}
-    J.chest.rotation.set(t1,sd*(A+C.chest),0,"YXZ");}
+     `rest` head sizes, as the first version's does by its sum (a few steps of the secant; none where nothing is rolled). The
+     answer depends only on his build, his side and his version, so it is found once and kept (U.curlTip, under the key
+     curlMid is kept under), never again on every frame he lies curled */
+  if(curlNum(C,"roll")!==null){const key=sd+"|"+J.hips.position.y+"|"+(U.curlVer|0);
+    if(!U.curlTip||U.curlTip[0]!==key){const inv=new THREE.Matrix4(),want=S.head*C.rest,hy=t=>{J.chest.rotation.set(t,sd*(A+C.chest),0,"YXZ");B.updateWorldMatrix(true,true);inv.copy(B.matrixWorld).invert();return J.head.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).y-want;};
+      let t0=tip,t1=tip+0.1,f0=hy(t0),f1=hy(t1);for(let i=0;i<6&&Math.abs(f1)>1e-5&&Math.abs(f1-f0)>1e-9;i++){const t2=t1-f1*(t1-t0)/(f1-f0);t0=t1;f0=f1;t1=Math.max(-1.5,Math.min(2.5,t2));f1=hy(t1);}
+      U.curlTip=[key,t1];}
+    J.chest.rotation.set(U.curlTip[1],sd*(A+C.chest),0,"YXZ");}
   /* his head, by where it should face: round toward his tail, his nose a little down, lying a little on its cheek */
   {const up=new THREE.Quaternion();[J.hips,J.spine,J.chest,J.neck].forEach(j=>up.multiply(j.quaternion));
     const want=new THREE.Quaternion().setFromEuler(new THREE.Euler(C.nod,sd*(A+C.chest+C.head),-sd*C.cheek,"YXZ"));
@@ -3024,6 +3032,9 @@ const CATLICK=1800;   /* ms a turn of a cat's grooming takes: licking its paw, t
 function dogHold(B,held,howl,t){
   const S=B.userData.skel,J=B.userData.joints,b=S.build||DOGBUILDS.beagle,A=S.joints.hips[2],zc=S.joints.spine[3]+S.joints.chest[3];
   const rest=j=>(j.userData.rest||0);
+  /* a body that was curled is put back first, before this hold sets him, so nothing the hold sets (a cat's hind legs splayed
+     on its back, the first frame after a curl) is taken back after it; a body that was never curled is not touched */
+  if(held!=="curl"&&B.userData.curled)dogUncurl(B);
   let pitch=0,neck=0,head=0,roll=0,tail=rest(J.tail_1),tail2=rest(J.tail_2),shut=false,wide=1;
   const groom=held==="groom";   /* a cat grooming sits as it sits, then its head and a fore paw groom (below) (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
   if(held==="sit"||groom){const hy=S.limb.barrel*DOGSIT;pitch=Math.asin(Math.max(0,Math.min(0.95,(A-hy)/Math.max(0.01,zc))));
@@ -3060,8 +3071,14 @@ function dogHold(B,held,howl,t){
     if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}
     /* lying down, an upright ear relaxes back along his skull, as a resting dog lays his ears (mq-v281) */
     if(u.upEar){if(u.restX===undefined){u.restX=o.rotation.x;u.restZ=o.rotation.z;}const cu=held==="curl"?dogCurlAngles(B):null;o.rotation.x=u.restX+(cu?cu.ear:dogDown(held)&&!howl?-0.75:0);
-      o.rotation.z=u.restZ+(cu&&typeof cu.flat==="number"&&isFinite(cu.flat)?Math.sign(u.restZ||-o.position.x)*cu.flat:0);}});   /* the ring: an upright ear also laid out flat against his skull (`flat`, more of its splay), none in the first version */
-  if(held==="curl")dogCurlHold(B);else if(B.userData.curled)dogUncurl(B);   /* after his chest has filled out, which the bend reads; a body that was never curled is not touched */
+      o.rotation.z=u.restZ+(cu&&typeof cu.flat==="number"&&isFinite(cu.flat)?Math.sign(u.restZ||-(u.restP?u.restP.x:o.position.x))*cu.flat:0);   /* the ring: an upright ear also laid out flat against his skull (`flat`, more of its splay), none in the first version */
+      /* the ring (`earBase`, head sizes; none in the first version): the ear turned back from where it leaves his skull, that far
+         under its middle, not from its middle, so laid back it lies along the back of his skull and his neck, its tip inside his
+         head's outline, and nothing of it is left standing on top of his head as a brim. Set from where it was made on every frame */
+      const eb=cu?curlNum(cu,"earBase"):null;
+      if(eb!==null||u.restP){if(!u.restP)u.restP=o.position.clone();o.position.copy(u.restP);
+        if(eb!==null){const b=new THREE.Vector3(0,-eb*(u.earR||0),0),r0=b.clone().applyEuler(new THREE.Euler(u.restX,o.rotation.y,u.restZ)),r1=b.clone().applyEuler(o.rotation);o.position.add(r0).sub(r1);}}}});
+  if(held==="curl")dogCurlHold(B);   /* after his chest has filled out, which the bend reads (dogUncurl, the way back, runs first, above) */
   /* his note: over his head while he howls, rising and falling as his card's does */
   const n=B.userData.note;if(n){n.visible=howl;if(howl){B.updateWorldMatrix(true,true);const hp=B.worldToLocal(J.head.getWorldPosition(new THREE.Vector3()));
     n.position.set(hp.x,hp.y+S.head*2.1+Math.sin(t/200)*0.02,hp.z);}}}

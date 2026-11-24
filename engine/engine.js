@@ -3976,15 +3976,16 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+Math.random()*3500:400+Math.random()*900);
     let groomed=false;
     if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){groomed=true;cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    if(cr.catCurlT&&(groomed||!cr.sit))cr.catCurlT=0;   /* a sit that became a groom, or no sit, ends any curl (no roll drawn): a groom is never drawn curled up */
     /* asleep on its back (CATPOSES.back, mq-v299) or curled up in the closed ring (CATPOSES.curl, the curl's second version), where
        the world takes them: ONE roll among the three, rolled after the groom's roll, only for a sit that did not become a groom.
        Its first quarter is the back, its second the curl, the rest a plain sit; a world that takes the back and not the curl
        rolls and draws exactly what it did. Every sit's roll starts both afresh, so no sleep is left over from an earlier one */
-    if((CATPOSEON.has("back")||CATPOSEON.has("curl"))&&isCat(cr)&&cr.sit&&!groomed){const B=CATPOSES.back,C=CATPOSES.curl,x=Math.random();cr.backT=0;if(CATPOSEON.has("curl"))cr.curlT=0;
+    if((CATPOSEON.has("back")||CATPOSEON.has("curl"))&&isCat(cr)&&cr.sit&&!groomed){const B=CATPOSES.back,C=CATPOSES.curl,x=Math.random();cr.backT=0;if(CATPOSEON.has("curl"))cr.catCurlT=0;
       if(CATPOSEON.has("back")&&x<B.share){cr.backT=now+B.min+Math.random()*(B.max-B.min);cr.next=Math.max(cr.next,cr.backT);}
-      else if(CATPOSEON.has("curl")&&x>=B.share&&x<B.share+C.share){cr.curlT=now+C.min+Math.random()*(C.max-C.min);cr.next=Math.max(cr.next,cr.curlT);}}
+      else if(CATPOSEON.has("curl")&&x>=B.share&&x<B.share+C.share){cr.catCurlT=now+C.min+Math.random()*(C.max-C.min);cr.next=Math.max(cr.next,cr.catCurlT);}}
     return;}
-  cr.sit=false;
+  cr.sit=false;if(cr.catCurlT)cr.catCurlT=0;   /* a cat that walks off is no longer curled up */
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
   if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* a dog must never stay stuck (#268) */
     cr.next=now+900;return;}
@@ -4055,14 +4056,15 @@ const CATGROOM=Object.freeze({share:1/3,min:3000,max:6000,lick:450});   /* lick:
              that became a groom is not asked.
      curl  · curled up asleep in the closed ring (below).
    One reader answers which of them a cat is in (catPoseNow), and its card and its body both ask it: no list of timers to
-   keep in step. The record's three times (greetT, backT, curlT) live only while the game runs and are never saved */
+   keep in step. The record's three times (greetT, backT, catCurlT) live only while the game runs and are never saved */
 const CATPOSEON=new Set(typeof CATPOSETAKE!=="undefined"&&Array.isArray(CATPOSETAKE)?CATPOSETAKE.filter(k=>k==="greet"||k==="back"||k==="curl"):[]);
 const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze({share:1/4,min:6000,max:10000}),
   /* CURLED UP (the owner's confirmed goal of 2026-11-24, the session's recommendations taken under his word): a cat curls in the
      closed ring, its nose under its tail, its tail round to its nose, its paws tucked under, its ears UP, its eyes shut. Of a cat's
      sits that did not become a groom, 1 in 4 is the sleep on its back (as today) and 1 in 4 a curl: one roll decides among the
      three (back, curl, a plain sit), so a world that takes the back and not the curl rolls exactly as before. 6 to 10 s; a pet
-     wakes it and it greets you, as from its back. Its time is on the record (curlT, beside backT), catPoseNow answers "curl",
+     wakes it and it greets you, as from its back. Its time is on the record (catCurlT, beside backT: a cat's own name, never a dog's
+     curlT, which marks his curled nap), catPoseNow answers "curl",
      catWake ends it, the sit's one roll draws it, and the card (catCardHeld, drawGato's curled kitten) and the body (dogPose
      holds "curl" for a cat; its body takes CATCURL, the closed ring of its own build) read it through the reader */
   curl:Object.freeze({share:1/4,min:6000,max:10000})});
@@ -4072,7 +4074,7 @@ const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze(
 function catPoseNow(cr,nw){if(!isCat(cr)||!CATPOSEON.size)return null;if(nw===undefined)nw=wNow();
   /* on its back only while its record still sits it still: a cat stood up or stepped off (the road) is awake */
   if(CATPOSEON.has("back")&&cr.backT>nw&&cr.sit&&!cr.moving)return "back";
-  if(CATPOSEON.has("curl")&&cr.curlT>nw&&cr.sit&&!cr.moving)return "curl";   /* curled up, as long and as still */
+  if(CATPOSEON.has("curl")&&cr.catCurlT>nw&&cr.sit&&!cr.moving)return "curl";   /* curled up, as long and as still */
   /* the greeting's window is its 2.2 s ending at greetT (an aloof cat's starts when it turns to you); it stands for it, over a
      sit or a groom of its own, but never while it still faces away, not yet met or ignoring you */
   if(CATPOSEON.has("greet")&&cr.greetT>nw&&nw>=cr.greetT-CATPOSES.greet.ms&&!catAway(cr,nw))return "greet";
@@ -4082,7 +4084,7 @@ function catPoseNow(cr,nw){if(!isCat(cr)||!CATPOSEON.size)return null;if(nw===un
 function catGreet(cr,nw){if(!isCat(cr)||!CATPOSEON.has("greet"))return;
   cr.greetT=(typeof nw==="number"&&isFinite(nw)?nw:wNow())+CATPOSES.greet.ms;}   /* nw: when the greeting starts */
 function catWake(cr){if(!isCat(cr))return;
-  cr.backT=0;if(cr.curlT)cr.curlT=0;}
+  cr.backT=0;if(cr.catCurlT)cr.catCurlT=0;}
 /* catCardHeld(cr, nw): which of its drawings a cat's card is, from the pose reader and its record: "back", "curl", "groom", "sit"
    or "stand" (greeting, it stands; on its back or curled up over grooming). The card (drawGato) and what the night of alebrijes
    lays over it (ALEBGATO) ask it alike */
@@ -5183,24 +5185,32 @@ const DOGCURL=Object.freeze({back:1.2,chest:0.9,head:0.75,nod:0.2,cheek:0.2,rest
    and so is posed exactly as before:
      gather — the inner side of the barrel gathered, a share of the arc's radius, so a bend near a half turn creases and never
               passes through itself; twist — the barrel turned about its length, his back to the outside, so his coat's two
-              colours follow the ring; lift — his hips' height in barrel radii (lying is 0.72): a round loaf whose back is his
+              colours follow the ring; lift — his hips' height in barrel radii (lying is DOGLAY, engine/engine3d.js): a round loaf whose back is his
               highest point; roll — his body rolled toward the ring's inside, his belly and legs to its middle (his head's rest is
               found again for it);
      foreLevel — his fore legs folded from the ground, not from his chest tipped down; hind — his hind legs folded in under
               him [thigh, hock, paw, in toward the middle]; tip — his tail's last joint turned on along his nose, the tail round
               the OUTSIDE of him (its turn, the third and fourth of `tail`, the other way from the first version's);
-     flat — an upright ear laid out flat against his skull as well as back (`ear`); dropEar — a drop ear flat over his cheek on
-              his high side, and laid back along the ground under his head on his low side [high: x, z; low: x, z];
+     flat — an upright ear laid out flat against his skull as well as back (`ear`); earBase — how far under its middle (head
+              sizes) an upright ear is turned from, where it leaves his skull, so it lies back along his neck, its tip inside his
+              head's outline, never on top of his head as a brim; dropEar — a drop ear flat over his cheek on his high side, ending
+              at his jaw line, and tucked under his head, out of sight, on his low side [high: x, z; low: x, z];
+     wrap — how much of his rump and his front past his chest follow the arc's curve instead of running on straight (0 to 1);
      kinds — a breed's own numbers over the table's: the chihuahua's head is bigger than her barrel is round and the aussie's
               tail is a bob, so each lies at its own height and turn.
    Settled by a trial before any check was written: each breed posed and rendered from above and from the game's camera, and
    measured against the checks' own measures (round from above, his back the highest point, his nose by his hind leg, his tail's
-   tip outside and by his nose, his paws inside, nothing deeper into the ground than his paw is across) */
-const DOGCURL2=Object.freeze({back:2.9,gather:0.55,twist:1.4,lift:1.17,roll:0.1,chest:1.0,head:1.53,nod:0.13,cheek:0.48,rest:0.91,tail:Object.freeze([-2.08,-0.02,-2.16,-0.45]),tip:-0.27,fore:Object.freeze([-1.11,2.65]),foreLevel:true,hind:Object.freeze([-1.33,1.56,-0.63,0.81]),ear:-1.7,dropEar:Object.freeze([-0.29,0.19,0.99,0.71]),shadow:0.95,kinds:Object.freeze({lab:Object.freeze({lift:1.04,roll:0,chest:0.85,head:1.66,nod:-0.2,cheek:0.1,rest:0.86,tail:Object.freeze([-1.83,0.55,-1.53,-1.02]),tip:-0.42,fore:Object.freeze([-1.14,2.44]),hind:Object.freeze([-1.05,1.96,-0.1,0.58]),dropEar:Object.freeze([-0.56,0.41,1.04,1.08])}),chi:Object.freeze({lift:1.4,roll:0.51,chest:1.14,head:2.0,nod:0.11,cheek:0.48,rest:0.78,tail:Object.freeze([-1.4,0.37,-1.1,-0.15]),tip:-0.48,fore:Object.freeze([-1.68,2.75]),hind:Object.freeze([-1.07,1.91,0.52,0.61]),ear:-1.63,flat:-0.35,dropEar:Object.freeze([-0.4,0.5,1.24,2.52])}),aussie:Object.freeze({lift:1.27,roll:0.09,chest:1.01,head:1.72,nod:-0.36,cheek:-0.09,rest:0.86,tail:Object.freeze([-1.04,-0.05,-0.85,-0.81]),tip:0.6,fore:Object.freeze([-0.73,2.63]),hind:Object.freeze([-0.75,2.09,-0.41,1.64]),ear:-1.6,flat:-0.23,dropEar:Object.freeze([-0.4,0.5,1.03,1.3])})})});
+   tip outside and by his nose, his paws inside, nothing deeper into the ground than his paw is across). Tuned again the same day
+   (the fix round) from the game's own camera, his bandana on: his hips let down, so the top of his outline has no dip between
+   his head and his haunch and the knot of his bandana sits on its shoulder; the chihuahua's and the office dog's upright ears
+   laid back from their root; a drop ear over his cheek to his jaw line and the other under his head. The chihuahua's and the
+   office dog's rows name no drop ear (their ears are upright: one there would never be read) */
+const DOGCURL2=Object.freeze({back:2.75,gather:0.77,twist:1.4,wrap:0.5,lift:0.98,roll:0.26,chest:1.26,head:1.48,nod:-0.04,cheek:0.18,rest:0.72,tail:Object.freeze([-1.99,0.33,-2.3,0.16]),tip:-0.27,fore:Object.freeze([-1.11,2.65]),foreLevel:true,hind:Object.freeze([-2.06,0.62,-0.88,1.99]),ear:-1.7,dropEar:Object.freeze([-0.95,-0.25,-1.38,1.66]),shadow:0.95,kinds:Object.freeze({lab:Object.freeze({back:2.96,gather:0.69,wrap:0.94,lift:1.08,roll:0.07,chest:1,head:1.6,nod:-0.05,cheek:0.61,rest:0.87,tail:Object.freeze([-2.01,0.2,-1.49,-0.73]),tip:-0.42,fore:Object.freeze([-0.77,1.59]),hind:Object.freeze([-1.88,2.1,0.06,0.28]),dropEar:Object.freeze([-0.83,-0.46,1.24,1.93])}),chi:Object.freeze({back:2.77,gather:0.27,wrap:0.53,lift:0.81,roll:0.46,chest:1.5,head:1.74,nod:0.08,cheek:-0.21,rest:0.76,tail:Object.freeze([-1.31,0.17,-1.42,-0.77]),tip:0.07,fore:Object.freeze([-1.01,2.55]),hind:Object.freeze([-1.21,2.14,-0.49,0.88]),ear:-3.36,flat:0.86,earBase:0.94}),aussie:Object.freeze({back:3.01,gather:0.8,wrap:0.24,lift:0.99,roll:0.38,chest:1.14,head:1.63,nod:-0.31,cheek:-0.36,rest:0.8,tail:Object.freeze([-1.88,0,0.34,-0.1]),tip:-1.75,fore:Object.freeze([-0.73,2.63]),hind:Object.freeze([-1.44,2.05,0.31,2.84]),ear:-2.95,flat:0.65,earBase:0.29})})});
 /* A CAT CURLED UP (the owner's confirmed goal of 2026-11-24, the cats' curl): the same closed ring, its nose under its tail, its tail round
-   to its nose, its paws tucked under, its eyes shut, and its ears UP (`ear` 0: not laid back). Read for every cat's body, whichever
-   version a dog would be in (dogCurlAngles) */
-const CATCURL=Object.freeze({back:2.9,gather:0.55,twist:1.4,lift:1.17,roll:0.1,chest:1.0,head:1.53,nod:0.13,cheek:0.48,rest:0.91,tail:Object.freeze([-1.89,0.67,-1.57,-0.86]),tip:-0.16,fore:Object.freeze([-1.11,2.65]),foreLevel:true,hind:Object.freeze([-1.33,1.56,-0.63,0.81]),ear:0,shadow:0.95});
+   to its nose, its paws tucked under, its eyes shut, and its ears UP (`ear` 0: not laid back). Its barrel turned less than a dog's
+   (`twist`), so a grey-and-white cat's white stays under it and inside the ring, a thin edge of it at most, its grey on top; its hips
+   let down, one low dome from the game's camera. Read for every cat's body, whichever version a dog would be in (dogCurlAngles) */
+const CATCURL=Object.freeze({back:3.13,gather:0.37,twist:0.8,wrap:0.45,lift:0.7,roll:0.36,chest:1.12,head:1.49,nod:0.13,cheek:0.48,rest:0.72,tail:Object.freeze([-1.63,0.2,-0.86,-1.12]),tip:0.8,fore:Object.freeze([-1.97,2.37]),foreLevel:true,hind:Object.freeze([-2.2,1.85,-0.63,0.76]),ear:0,shadow:0.95});
 /* THE VERSIONS OF THE CURL (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). The curled pose is a
    LIST of versions, one picked at random for each curled lie-down. A version is one entry holding everything that differs
    between versions:
@@ -5445,7 +5455,11 @@ function drawAussie(g,cr,sx,sy){
   g.save();g.translate(cx,0);g.scale(P.face,1);g.translate(-cx,0);
   if(P.curl){   /* curled up asleep: his patches over his back, his cape on it, his upright ears laid back, his bob tucked away */
     dogCurlCard(g,cr,cx,sy,{body:A.coat,collar:W.collar,band:W.band,
-      back:(g,mx,my,rx,ry)=>{g.fillStyle=A.dark;g.beginPath();g.arc(mx-2.6,my-ry*0.35,2.4,0,7);g.fill();g.beginPath();g.arc(mx+2.2,my+ry*0.05,1.9,0,7);g.fill();
+      back:(g,mx,my,rx,ry,C)=>{
+        if(C&&C.ring){   /* the ring (his answer, 2026-11-24: his patched coat follows it, as the beagle's does): his patches round the outside of him, along his back, and his white chest in its middle */
+          g.fillStyle=A.dark;[[-0.62,-0.62,2.3],[0.05,-0.92,2],[0.66,-0.55,1.8],[-0.92,0.05,1.6]].forEach(([u,v,r])=>{g.beginPath();g.arc(mx+rx*u,my+ry*v,r,0,7);g.fill();});
+          g.fillStyle=A.white;g.beginPath();g.ellipse(mx+rx*0.25,my+ry*0.5,rx*0.5,ry*0.42,0,0,7);g.fill();}
+        else{g.fillStyle=A.dark;g.beginPath();g.arc(mx-2.6,my-ry*0.35,2.4,0,7);g.fill();g.beginPath();g.arc(mx+2.2,my+ry*0.05,1.9,0,7);g.fill();}
         if(W.cape){g.fillStyle=W.cape;g.beginPath();g.roundRect(mx-rx*0.75,my-ry*1.05,rx*1.1,ry*0.95,2.4);g.fill();}},
       head:g=>{g.fillStyle=A.head;g.beginPath();g.arc(0,0,4.6,0,7);g.fill();
         g.fillStyle=A.dark;g.beginPath();g.moveTo(-2.4,-3.6);g.lineTo(-6.4,-4.8);g.lineTo(-3.6,-1.6);g.closePath();g.fill();
