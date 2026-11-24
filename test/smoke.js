@@ -6197,29 +6197,41 @@ const CANDIDATES = [
      nobody did.
      This measures the thing itself: from the frame she leaves the rail row to the frame the tram
      first holds. It must be positive at whatever speed the pack is running. */
+  /* Which pigeon: the engine's own where a world keeps her, else the program's (Meridian's from mq-v297), stepped by the
+     one rule both share. A world with a pigeon beside a tram line and no pigeon found here is red, not silent: the check
+     found nothing and passed for Meridian from mq-v297 until 2026-11-23 (planted: the old lookup, red at that line). Every
+     other critter and neighbour is set aside while she is measured, so only she can be what the tram stops for. */
   const birdLead = await page.evaluate(() => {
     const P = [];
-    const L = (typeof troLine === 'function') ? troLine(typeof AW === 'function' ? AW('pig') : null) : null;
-    if (!L || typeof PIG === 'undefined') return P;
-    const keep = { w: world, px: px, py: py, x: PIG.x, y: PIG.y, st: TRO.state, tx: TRO.x };
+    if (typeof troLine !== 'function' || typeof pigStep !== 'function') return P;
+    const prog = (typeof CRIT !== 'undefined' ? CRIT : []).filter(c => c.kind === 'pigeon' && troLine(c.world));
+    const own = typeof PIG !== 'undefined' && PIG && typeof AW === 'function' && AW('pig') && troLine(AW('pig'));
+    const B = own ? PIG : prog[0];
+    if (!B) { if ((typeof CRIT !== 'undefined' ? CRIT : []).some(c => c.kind === 'pigeon' && troLine(c.world))) P.push('a pigeon stands beside a tram line and the check found no pigeon to measure'); return P; }
+    const L = troLine(own ? AW('pig') : B.world);
+    const others = (typeof CRIT !== 'undefined' ? CRIT : []).filter(c => c !== B).map(c => [c, c.world]), wl = WORLDS[L.world], npcs0 = wl.npcs;
+    others.forEach(([c]) => { c.world = '__held'; }); wl.npcs = [];
+    const PIG_ = B;
+    const keep = { w: world, px: px, py: py, x: PIG_.x, y: PIG_.y, st: TRO.state, tx: TRO.x };
     world = L.world; px = fx = 0; py = fy = 0;            /* the hero must not be what stops it */
     const mid = Math.round((L.from + L.to) / 2);
-    PIG.x = PIG.fx = mid; PIG.y = PIG.fy = L.row; PIG.lift = null; PIG.hop = 0;
-    PIG.moving = false; PIG.next = 1e9;
+    PIG_.x = PIG_.fx = mid; PIG_.y = PIG_.fy = L.row; PIG_.lift = null; PIG_.hop = 0;
+    PIG_.moving = false; PIG_.next = 1e9;
     TRO.dir = L.to >= L.from ? 1 : -1;
     TRO.x = mid - TRO.dir * 12; TRO.state = 'run'; TRO.t = 0;
     let clearAt = null, brakeAt = null;
     for (let i = 0; i < 220; i++) { const t = i * 16.67;
-      troUpdate(16.67); pigUpdate(16.67, performance.now() + t);
-      if (clearAt === null && Math.round(PIG.y) !== L.row) clearAt = t;
+      troUpdate(16.67); pigStep(PIG_, 16.67, performance.now() + t);
+      if (clearAt === null && Math.round(PIG_.y) !== L.row) clearAt = t;
       if (brakeAt === null && TRO.state === 'hold') brakeAt = t; }
     if (clearAt === null) P.push('the pigeon never gets off the trolley line at all — she is standing on the rails when the tram arrives and the lift never fires');
     else if (brakeAt !== null && brakeAt < clearAt)
       P.push('the tram brakes ' + Math.round(clearAt - brakeAt) + ' ms before the pigeon is clear of the rail — ' +
              'she is already in the air and it stops for her anyway, so every pass makes an unexplained stop in the middle of the street');
     world = keep.w; px = fx = keep.px; py = fy = keep.py;
-    PIG.x = PIG.fx = keep.x; PIG.y = PIG.fy = keep.y; PIG.lift = null; PIG.hop = 0;
+    PIG_.x = PIG_.fx = keep.x; PIG_.y = PIG_.fy = keep.y; PIG_.lift = null; PIG_.hop = 0;
     TRO.state = keep.st; TRO.x = keep.tx;
+    others.forEach(([c, w0]) => { c.world = w0; }); wl.npcs = npcs0;
     return P;
   });
   fails.push(...birdLead);
