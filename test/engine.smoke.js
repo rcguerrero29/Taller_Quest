@@ -7921,8 +7921,10 @@ function findChromium() {
               finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); } }
             if (!d) { P.push('no dog was curled up as the lazy routine\'s lie-down in 60 seeded walks, so whether the leash stands him up was not asked'); continue; }
             CRIT.push(d); mine.push(d); d.world = wid; world = wid; px = fx = d.x; py = fy = d.y; petTarget = d.kind; petCrit = d; later.length = 0;
-            const p0 = dogPose(d, now, D0); document.getElementById('leash').click(); while (later.length) later.shift()();
+            const p0 = dogPose(d, now, D0), was = LEASH; document.getElementById('leash').click(); while (later.length) later.shift()();
             const p = dogPose(d, now, D0);
+            /* a world whose only place is its park offers no leash there (the button does nothing in the park): not asked */
+            if (LEASH === was) { out.push('the leash was not offered beside the dog curled up in the lazy routine (' + (world === PL.park ? 'this world\'s dogs live in its park' : 'the button did nothing') + '), so whether it stands him up was not asked'); d.world = '__frozen'; continue; }
             out.push('a dog curled up in the ' + (v ? 'ring' : 'first version') + ' as the lazy routine\'s lie-down (' + (p0.curl ? 'curled, version ' + (p0.ver + 1) : 'not curled') + ') put on the leash: ' + (p.curl ? 'still curled' : p.lay ? 'still lying' : 'up') + (d.task ? ', still in his routine' : ', his routine ended') + (d.world === PL.park ? ', in the park with you' : ''));
             if (!p0.curl || p0.ver !== v) P.push('the dog walked into the lazy routine\'s lie-down was not curled in the ' + (v ? 'closed ring' : 'first version') + ', so whether the leash stands him up was not asked');
             else if (p.lay || p.curl || d.task) P.push('put on the leash curled up as the lazy routine\'s lie-down (the ' + (v ? 'closed ring' : 'first version') + '), a dog is ' + (p.curl ? 'still curled up' : p.lay ? 'still lying' : 'up') + (d.task ? ' and still in his routine' : '') + ': the leash ends that routine and stands him up, as it did before the ring');
