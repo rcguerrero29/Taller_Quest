@@ -1078,7 +1078,7 @@ const EARKINDS=Object.freeze(["chi"]);
 /* A CAT'S LOOK, cleaned, for its body (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats): its card's coat (CATCOAT: the body, the two bars, the muzzle), and what it
    wears (catWear: the kitchen cat's bandana and collar; none on any other cat). The body is made again when this changes */
 function catLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr);
-  return {kind:"gato",coat:P.body,bar:P.bar,muzzle:P.muzzle,collar:W.collar,band:W.band};}
+  return {kind:"gato",coat:P.body,bar:P.bar,muzzle:P.muzzle,collar:W.collar,band:W.band,cat:P};}
 function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
   const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
   const o={kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};
@@ -5416,34 +5416,79 @@ function catGroomCard(g,P,W,cx,sy,k){
 /* THE CATS' COATS """+CR+""": the card's paint, by name. grey is the street cat's, the default; ginger is the kitchen cat's, as
    drawCat paints her. A record names its coat (coat); each cat's own colour is a later item, for now, as today */
 const CATCOAT={grey:{tail:"#6E7278",body:"#8B8F98",bar:"#6E7278",leg:"#7B7F88",head:"#8B8F98",muzzle:"#D8DBE0"},
-  ginger:{tail:"#C97F3F",body:"#D98E4A",bar:"#B96F31",leg:"#C97F3F",head:"#D98E4A",muzzle:"#F1E3CE"}};
+  ginger:{tail:"#C97F3F",body:"#D98E4A",bar:"#B96F31",leg:"#C97F3F",head:"#D98E4A",muzzle:"#F1E3CE"},
+  tabby:{tail:"#6E563F",body:"#8E7256",bar:"#4A3829",leg:"#7D6349",head:"#8E7256",muzzle:"#E9DCC8",mark:"#4A3829"},
+  tabbywhite:{tail:"#6E563F",body:"#8E7256",bar:"#4A3829",leg:"#7D6349",head:"#8E7256",muzzle:"#F2EFE8",mark:"#4A3829",chest:"#F2EFE8",paws:"#F2EFE8",blaze:"#F2EFE8"},
+  calico:{tail:"#D98E4A",body:"#F2EFE8",bar:null,leg:"#E8E4DC",head:"#F2EFE8",muzzle:"#F7F4EE",patches:[["#D98E4A",0.3,0.35,0.22],["#3A3537",0.68,0.45,0.2],["#D98E4A",0.82,0.75,0.14]],headPatches:[["#3A3537",0.52,0.2,0.17,0.22],["#D98E4A",0.5,0.8,0.17,0.22]],ears:["#3A3537","#D98E4A"],whisker:"#A8A29A"},
+  tuxedo:{tail:"#2B2829",body:"#2B2829",bar:null,leg:"#2B2829",head:"#2B2829",muzzle:"#F2EFE8",chest:"#F2EFE8",paws:"#F2EFE8",ear:"#2B2829"},
+  points:{tail:"#4A3A31",body:"#EDE3D2",bar:null,leg:"#5A4A40",head:"#EDE3D2",muzzle:"#4A3A31",mask:"#4A3A31",ear:"#4A3A31"},
+  greywhite:{tail:"#7F848C",body:"#7F848C",bar:null,leg:"#F2EFE8",head:"#7F848C",muzzle:"#F2EFE8",chest:"#F2EFE8",paws:"#F2EFE8",belly:"#F2EFE8"}};
 /* what a cat wears: the cat the wardrobe dresses (wardrobe: true, the kitchen cat), its bandana and collar (wearCat); any other
    cat, none, for now, as today */
 const catWear=cr=>cr&&cr.wardrobe===true?{band:saveCol(wearCat.bandana),collar:saveCol(wearCat.collar)}:{band:null,collar:null};
-function drawGato(g,cr,sx,sy){ /* every cat: Canela's silhouette, in its record's coat (coat) and what it wears (catWear). The kitchen
-     cat, coat ginger, her tail's sway at her own clock (sway 0) and the wardrobe on, is drawCat's card pixel for pixel; a cat that
-     names neither is the street cat it always was, grey, its sway 7 on """+CR+""" */
+function drawGato(g,cr,sx,sy){ /* every cat, in its record's coat (coat, CATCOAT) and what it wears (catWear). From mq-v299 (round two)
+     the kitten of the owner's photographs: the card drawn below, the same for every cat; the kitchen cat is the ginger cat in her
+     wardrobe. A coat it does not know is the grey one */
   const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr),cx=sx+16,sw=Math.sin(Date.now()/300+(typeof cr.sway==="number"&&isFinite(cr.sway)?cr.sway:7));
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
   if(cr.groomT>wNow()||catAway(cr,wNow())){catGroomCard(g,P,W,cx,sy,Math.floor(Date.now()/CATGROOM.lick)%2);g.restore();return;}   /* grooming (mq-v296) */
-  g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,6.5,2.6,0,0,7);g.fill();
-  g.strokeStyle=P.tail;g.lineWidth=2.6;g.lineCap="round";
-  g.beginPath();g.moveTo(cx-6.5,sy+21);g.quadraticCurveTo(cx-11,sy+18+sw*2,cx-9.5,sy+13+sw*3);g.stroke();
-  g.fillStyle=P.body;g.beginPath();g.roundRect(cx-7,sy+18,12.5,7.5,3.8);g.fill();
-  g.fillStyle=P.bar;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
-  if(!cr.sit){g.fillStyle=P.leg;g.fillRect(cx-5.5,sy+24.5,2,3);g.fillRect(cx+2.5,sy+24.5,2,3);}
-  if(W.band){g.fillStyle=W.band; /* neckerchief tucks behind the head */
-    g.beginPath();g.moveTo(cx+2.2,sy+18.8);g.lineTo(cx+9.2,sy+18.8);g.lineTo(cx+5.7,sy+22.8);g.closePath();g.fill();}
-  g.fillStyle=P.head;g.beginPath();g.arc(cx+6,sy+17.5,4.2,0,7);g.fill();
-  g.beginPath();g.moveTo(cx+3.2,sy+15);g.lineTo(cx+4.2,sy+11.6);g.lineTo(cx+6,sy+14);g.closePath();g.fill();
-  g.beginPath();g.moveTo(cx+6.6,sy+13.8);g.lineTo(cx+8.6,sy+11.8);g.lineTo(cx+9,sy+15);g.closePath();g.fill();
-  g.fillStyle=P.muzzle;g.beginPath();g.arc(cx+7.3,sy+19.4,2,0,7);g.fill();
-  g.fillStyle="#26202B";
-  if(cr.sit){g.fillRect(cx+5.2,sy+17,1.8,0.7);g.fillRect(cx+8,sy+17,1.8,0.7);}
-  else{g.fillRect(cx+5.4,sy+16.6,1.1,1.1);g.fillRect(cx+8,sy+16.6,1.1,1.1);}
-  g.fillStyle="#C4586B";g.fillRect(cx+9.2,sy+18,1.1,0.9);
-  if(W.collar){g.fillStyle=W.collar;g.fillRect(cx+2.8,sy+20.6,5.2,1.4);
-    g.fillStyle="#E0B45C";g.beginPath();g.arc(cx+5.4,sy+22.5,0.9,0,7);g.fill();}
+  /* A KITTEN'S CARD (round two, from the owner's photographs): a head as wide as its body, wide-set round eyes low on its face, a
+     small pink nose over two pale pads, broad ears with pink inside, a short round body on short legs, a full tail carried up.
+     Sitting, it sits upright with its tail laid round its feet. Its face looks out of the card, as a kitten looks at you */
+  const sit=!!cr.sit,hx=sit?cx+2.6:cx+5.2,hy=sit?sy+14.4:sy+15.6,ell=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill();};
+  g.fillStyle="rgba(0,0,0,.15)";ell(cx,sy+27,6.5,2.6);
+  if(cr.back){   /* asleep on its back: its head laid back toward you with its eyes shut, its pale belly up, four paws in the air */
+    const bx=cx+5.4,by=sy+21.4;
+    g.strokeStyle=P.tail;g.lineWidth=3;g.lineCap="round";g.beginPath();g.moveTo(cx-6.4,sy+24.6);g.quadraticCurveTo(cx-10.4,sy+25.6,cx-11.4,sy+23.2);g.stroke();
+    g.fillStyle=P.body;g.beginPath();g.roundRect(cx-8,sy+19.6,11,7.2,3.6);g.fill();
+    if(P.belly||P.chest||!P.mask){g.fillStyle=P.belly||P.chest||P.muzzle;ell(cx-3,sy+21.6,4.4,2.2);}
+    [[-7,0.4],[-4.6,-0.4]].forEach(([dx,dy])=>{g.fillStyle=P.leg;g.fillRect(cx+dx,sy+16.4+dy,2.3,3.8);g.fillStyle=P.paws||P.leg;g.fillRect(cx+dx,sy+16+dy,2.3,1.5);});
+    [-1,1].forEach(sd=>{g.fillStyle=Array.isArray(P.ears)?P.ears[sd<0?0:1]:(P.ear||P.head);g.beginPath();g.moveTo(bx+sd*5.3,by+2.2);g.lineTo(bx+sd*4.4,by+7.4);g.lineTo(bx+sd*1,by+4.6);g.closePath();g.fill();
+      g.fillStyle="#F2B8C0";g.beginPath();g.moveTo(bx+sd*4.5,by+3.2);g.lineTo(bx+sd*4.1,by+6);g.lineTo(bx+sd*2.4,by+4.6);g.closePath();g.fill();});
+    g.fillStyle=P.head;ell(bx,by,5.8,5);
+    if(P.mask){g.fillStyle=P.mask;ell(bx,by-1.6,3.4,2.8);}
+    if(P.blaze){g.fillStyle=P.blaze;g.beginPath();g.moveTo(bx-0.6,by+3.6);g.lineTo(bx+0.6,by+3.6);g.lineTo(bx+1.9,by-1.4);g.lineTo(bx-1.9,by-1.4);g.closePath();g.fill();}
+    g.fillStyle=P.muzzle;ell(bx,by-2.6,2.6,1.7);
+    g.fillStyle="#E8919B";g.beginPath();g.moveTo(bx-0.9,by-1.5);g.lineTo(bx+0.9,by-1.5);g.lineTo(bx,by-2.5);g.closePath();g.fill();
+    g.strokeStyle="#26202B";g.lineWidth=0.8;g.lineCap="round";[-1,1].forEach(sd=>{g.beginPath();g.moveTo(bx+sd*1.6,by+0.1);g.quadraticCurveTo(bx+sd*2.7,by-0.9,bx+sd*3.8,by+0.1);g.stroke();});
+    [[-2.2,-0.6],[2.2,-0.6]].forEach(([dx,dy])=>{g.fillStyle=P.leg;g.fillRect(bx+dx-1.1,sy+14.2+dy,2.3,3.4);g.fillStyle=P.paws||P.leg;g.fillRect(bx+dx-1.1,sy+13.8+dy,2.3,1.5);});
+    g.restore();return;}
+  g.strokeStyle=P.tail;g.lineWidth=3;g.lineCap="round";g.beginPath();
+  if(cr.greet&&!sit){g.moveTo(cx-5.6,sy+21.6);g.quadraticCurveTo(cx-7.6,sy+17,cx-6.6,sy+11.4);g.quadraticCurveTo(cx-6.2,sy+8.6,cx-3.8,sy+9.6);}
+  else if(sit){g.moveTo(cx-5,sy+25.6);g.quadraticCurveTo(cx-6.5,sy+27.4+sw*0.3,cx-0.5,sy+27);}
+  else{g.moveTo(cx-5.6,sy+21.6);g.quadraticCurveTo(cx-10.5,sy+18+sw*2,cx-8.6,sy+12.6+sw*3);}
+  g.stroke();
+  const body=()=>{g.beginPath();if(sit)g.ellipse(cx-1,sy+22.2,4.9,5,0,0,7);else g.roundRect(cx-6.6,sy+18.4,11.2,7.4,3.7);};
+  g.fillStyle=P.body;body();g.fill();
+  g.save();body();g.clip();
+  if(P.bar){g.fillStyle=P.bar;if(sit){g.fillRect(cx-5.4,sy+19.6,1.6,5.4);g.fillRect(cx-3,sy+18.2,1.6,7);}else{g.fillRect(cx-4.4,sy+18.6,1.7,6);g.fillRect(cx-1.2,sy+18.6,1.7,6);}}
+  (P.patches||[]).forEach(([c,u,v,s])=>{g.fillStyle=c;ell(sit?cx-5.9+9.8*u:cx-6.6+11.2*u,sy+18.4+7.4*v,11.2*s,7.4*s*1.3);});
+  if(P.belly){g.fillStyle=P.belly;g.fillRect(cx-7,sy+23,12,3.4);}
+  if(P.chest){g.fillStyle=P.chest;if(sit)ell(cx+1.6,sy+22.8,2.9,4.2);else ell(cx+3.4,sy+22.6,2.5,3.3);}
+  g.restore();
+  if(sit){g.fillStyle=P.paws||P.leg;g.fillRect(cx-0.2,sy+25.6,2.2,1.9);g.fillRect(cx+2.4,sy+25.6,2.2,1.9);}
+  else{g.fillStyle=P.leg;g.fillRect(cx-5.4,sy+24.6,2.4,3);g.fillRect(cx+1.6,sy+24.6,2.4,3);
+    if(P.paws){g.fillStyle=P.paws;g.fillRect(cx-5.4,sy+26.3,2.4,1.3);g.fillRect(cx+1.6,sy+26.3,2.4,1.3);}}
+  if(W.band){g.fillStyle=W.band;g.beginPath();g.moveTo(hx-3.8,hy+4);g.lineTo(hx+3.8,hy+4);g.lineTo(hx,hy+8.2);g.closePath();g.fill();}   /* her neckerchief, under her chin */
+  const ears=(col,k)=>{[-1,1].forEach(sd=>{g.fillStyle=Array.isArray(col)?col[sd<0?0:1]:col;g.beginPath();g.moveTo(hx+sd*5.5*k,hy-2.2);g.lineTo(hx+sd*4.3,hy-2.2-5.9*k);g.lineTo(hx+sd*(4.3-3.7*k),hy-4.4);g.closePath();g.fill();});};
+  ears(P.ears||P.ear||P.head,1);
+  g.fillStyle=P.head;ell(hx,hy,6,5.1);
+  g.save();g.beginPath();g.ellipse(hx,hy,6,5.1,0,0,7);g.clip();
+  (P.headPatches||[]).forEach(([c],k)=>{g.fillStyle=c;ell(hx+(k?4.4:-4.4),hy-4.2,3.1,2.6);});
+  if(P.headPatch){g.fillStyle=P.headPatch;ell(hx-3.6,hy-3.4,3.6,3);}
+  if(P.mask){g.fillStyle=P.mask;ell(hx,hy+1.7,3.6,2.9);}
+  if(P.blaze){g.fillStyle=P.blaze;g.beginPath();g.moveTo(hx-0.6,hy-3.8);g.lineTo(hx+0.6,hy-3.8);g.lineTo(hx+2,hy+1.6);g.lineTo(hx-2,hy+1.6);g.closePath();g.fill();}
+  g.restore();
+  g.fillStyle="#F2B8C0";[-1,1].forEach(sd=>{g.beginPath();g.moveTo(hx+sd*4.7,hy-3.1);g.lineTo(hx+sd*4.2,hy-6.3);g.lineTo(hx+sd*2.4,hy-4.5);g.closePath();g.fill();});
+  if(P.mark){g.strokeStyle=P.mark;g.lineWidth=0.7;g.lineCap="butt";g.beginPath();g.moveTo(hx-1.6,hy-2.6);g.lineTo(hx-0.9,hy-4);g.lineTo(hx,hy-2.9);g.lineTo(hx+0.9,hy-4);g.lineTo(hx+1.6,hy-2.6);g.stroke();}
+  g.fillStyle=P.muzzle;ell(hx,hy+2.7,2.7,1.7);
+  g.fillStyle="#26202B";ell(hx-2.7,hy+0.5,1.35,1.45);ell(hx+2.7,hy+0.5,1.35,1.45);
+  g.fillStyle="#FFFFFF";g.fillRect(hx-3.3,hy-0.5,0.9,0.9);g.fillRect(hx+2.1,hy-0.5,0.9,0.9);
+  g.fillStyle="#E8919B";g.beginPath();g.moveTo(hx-0.9,hy+1.5);g.lineTo(hx+0.9,hy+1.5);g.lineTo(hx,hy+2.5);g.closePath();g.fill();
+  g.strokeStyle=P.mouth||"#4A3B3F";g.lineWidth=0.45;g.lineCap="round";g.beginPath();g.moveTo(hx,hy+2.5);g.lineTo(hx,hy+3.2);g.moveTo(hx,hy+3.2);g.quadraticCurveTo(hx-0.6,hy+4.1,hx-1.4,hy+3.5);g.moveTo(hx,hy+3.2);g.quadraticCurveTo(hx+0.6,hy+4.1,hx+1.4,hy+3.5);g.stroke();   /* its mouth */
+  g.strokeStyle=P.whisker||"#FFFFFF";g.globalAlpha=0.85;g.lineWidth=0.35;g.beginPath();[-1,1].forEach(sd=>{[[-0.5,-1.1],[0.3,0.2],[1.1,1.5]].forEach(([y0,y1])=>{g.moveTo(hx+sd*2.4,hy+2.6+y0);g.lineTo(hx+sd*7,hy+2.6+y1);});});g.stroke();g.globalAlpha=1;   /* its whiskers */
+  if(W.collar){g.fillStyle=W.collar;g.fillRect(hx-3,hy+4.4,6,1.3);
+    g.fillStyle="#E0B45C";g.beginPath();g.arc(hx,hy+6.4,0.9,0,7);g.fill();}
   g.restore();
 }
 /* El Portero (#8, Pili's first robot): a tin man with a clipboard, a shade too still. Square head,
