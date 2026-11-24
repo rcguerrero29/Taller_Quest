@@ -9799,9 +9799,16 @@ function findChromium() {
     const setLang = (p, L) => p.evaluate(L => { const b = document.getElementById(L === 'es' ? 'optEs' : 'optEn'); if (b) b.click(); else { lang = L; applyLang(); } }, L);
     const langsOf = p => p.evaluate(() => ['en', 'es'].filter(L => typeof UI !== 'undefined' && UI[L]));
     const inLang = L => L === 'es' ? 'in Spanish' : L === 'en' ? 'in English' : 'in ' + (L || 'its language');
-    /* everything this device keeps, but the engine's own log (it is written whenever the engine has something to say) */
-    const kept = p => p.evaluate(() => { const o = {}, lg = SK('log');
-      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k !== lg) o[k] = localStorage.getItem(k); } } catch (e) {}
+    /* everything this device keeps, but the engine's own log (it is written whenever the engine has something to say), and but
+       the animals' personalities in the park's record: from mq-v297 each animal's is drawn the first time it is asked and kept
+       every visit, whenever that is, so one first asked while the map was open read as the map saving it (red here under load
+       on 2026-11-23, "changed mqpark"). Everything else in that record is still compared (planted: the map opening drawing every
+       animal's personality, red on the old reading and green on this; the map writing a field of its own into the park's
+       record, red on both) */
+    const kept = p => p.evaluate(() => { const o = {}, lg = SK('log'), pk = SK('park');
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k === lg) continue; let v = localStorage.getItem(k);
+        if (k === pk) { try { const j = JSON.parse(v); if (j && typeof j === 'object') { delete j.persona; v = JSON.stringify(j); } } catch (e) {} }
+        o[k] = v; } } catch (e) {}
       return o; });
     const diffKeys = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => a[k] !== b[k]).sort();
     const pillSays = p => p.evaluate(() => { const e = document.getElementById('bearNav');
