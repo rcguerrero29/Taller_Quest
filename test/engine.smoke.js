@@ -7545,7 +7545,8 @@ function findChromium() {
            card; given a greeting while it stands, "greet", the body's tail up and the greeting card; nothing, neither.
        3 · PETTED: it greets standing for 2.2 s, then sits to the end of its 3.2 s; asleep on its back, a pet wakes it at once.
        4 · FIRST MET: it greets at once; an aloof cat greets when it turns to you, not when you meet it.
-       5 · ASLEEP ON ITS BACK: about 1 in 4 of its sits over a long seeded run, 6 to 10 s each, eyes shut on the body; a sit
+       5 · ASLEEP ON ITS BACK: about 1 in 4 of its sits over a long seeded run, 6 to 10 s each, eyes shut on the body, lying
+           across the camera's line of sight (his answer of 2026-11-24: seen from its feet it reads as a rabbit); a sit
            that became a groom is never one; the rolls a cat took before land where they did.
        6 · EVERY COAT: each coat in CATCOAT draws on the card and the body without a fault, in every pose; a coat it does not know
            is drawn grey; a mouth shape it does not know is drawn as the smile.
@@ -7697,10 +7698,14 @@ function findChromium() {
         out.push('first met, greeting: ' + got.join(', ')); }
       /* 5 · asleep on its back, on its body: its eyes shut, its eyes' light out */
       if (CATPOSEON.has('back') && has3d) { const c = cat; hold(c); c.sit = true; at(T0); screenIs(1280, 800); sizeCanvas(); camSet('3d'); const sq = near(c, 2); stand(c.world, sq[0], sq[1]);
-        const B0 = bodyOf(c), e0 = B0 && eyesOf(B0); c.backT = T0 + 8000; const B1 = bodyOf(c), e1 = B1 && eyesOf(B1);
+        const B0 = bodyOf(c), e0 = B0 && eyesOf(B0); if (B0) B0.userData.yaw = Math.atan2(B0.position.x - T3.cam.position.x, B0.position.z - T3.cam.position.z);   /* facing straight away from the camera: a body that does not turn lies feet-first */ c.backT = T0 + 8000; const B1 = bodyOf(c), e1 = B1 && eyesOf(B1);
         if (!B0 || !B1) P.push('the cat had no body two squares from you on a laptop, so its eyes on its back were not asked');
         else { if (!e1.n || e1.shut !== e1.n || e1.shine) P.push('asleep on its back, ' + e1.shut + ' of the cat\'s ' + e1.n + ' eye parts are shut and ' + e1.shine + ' lights show: its eyes shut');
           if (e0.shut) P.push('sitting awake, ' + e0.shut + ' of the cat\'s eye parts are shut: its eyes open sitting');
+          /* and it lies ACROSS the camera's line of sight (his answer of 2026-11-24): seen from its feet, four paws up read as a rabbit's ears */
+          const cd = Math.atan2(B1.position.x - T3.cam.position.x, B1.position.z - T3.cam.position.z), deg = Math.round(Math.abs(Math.atan2(Math.sin(B1.rotation.y - cd), Math.cos(B1.rotation.y - cd))) * 180 / Math.PI);
+          if (Math.abs(deg - 90) > 8) P.push('asleep on its back, the cat lies at ' + deg + '° to the camera\'s line of sight: it lies across it, at 90°, so the camera sees it from the side and not from its feet');
+          out.push('asleep on its back, it lies at ' + deg + '° to the camera\'s line of sight');
           out.push('asleep on its back, on its body: ' + e1.shut + ' of ' + e1.n + ' eye parts shut, ' + e1.shine + ' lights; sitting awake ' + e0.shut + ' shut'); }
         hold(c); }
       /* 6 · every coat, on the card and the body, in every pose; a coat or a mouth it does not know */

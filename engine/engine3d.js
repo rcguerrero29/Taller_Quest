@@ -3138,6 +3138,11 @@ function t3DogBodies(dt){
     else if(cr.metT&&!B.userData.turned&&!cr.moving){B.userData.turned=true;B.userData.yaw=Math.atan2(px+0.5-(cr.fx+0.5),py+0.5-(cr.fy+0.5));
       if(cr.persona==="eager"&&!(cr.happyT>nw))cr.happyT=nw+1500;
       if(CATK.has(cr.kind))cr.stretchT=nw+CATSTRETCH;}   /* a cat turns to you with a short stretch, its ears pricked (mq-v296) */
+    /* ASLEEP ON ITS BACK, SIDEWAYS TO THE CAMERA (round two; the owner's answer of 2026-11-24): seen from its feet, four paws up
+       read as a rabbit's ears, so a cat on its back lies across the camera's line of sight, as in the side view he approved,
+       turned the shorter way from where it was facing. Only "back" turns it; no dog is ever held so */
+    if(P.held==="back"){const c=Math.atan2(cr.fx+0.5-T3.cam.position.x,cr.fy+0.5-T3.cam.position.z),y=B.userData.yaw||0,
+      d=a=>Math.abs(Math.atan2(Math.sin(a-y),Math.cos(a-y)));B.userData.yaw=d(c+Math.PI/2)<=d(c-Math.PI/2)?c+Math.PI/2:c-Math.PI/2;}
     /* his pace follows his speed, held to a dog's (DOGSTEPS), as the person's is held to a person's: the ground he covered
        and the time it took are handed in, never read here; a jump (a door) is not walked */
     const at=B.userData.at,go=at?Math.hypot(cr.fx-at[0],cr.fy-at[1]):0;B.userData.at=[cr.fx,cr.fy];
