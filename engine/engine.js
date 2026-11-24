@@ -4052,8 +4052,16 @@ const CATGROOM=Object.freeze({share:1/3,min:3000,max:6000,lick:450});   /* lick:
              that became a groom is not asked.
    One reader answers which of them a cat is in (catPoseNow), and its card and its body both ask it: no list of timers to
    keep in step. The record's two times (greetT, backT) live only while the game runs and are never saved */
-const CATPOSEON=new Set(typeof CATPOSETAKE!=="undefined"&&Array.isArray(CATPOSETAKE)?CATPOSETAKE.filter(k=>k==="greet"||k==="back"):[]);
-const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze({share:1/4,min:6000,max:10000})});
+const CATPOSEON=new Set(typeof CATPOSETAKE!=="undefined"&&Array.isArray(CATPOSETAKE)?CATPOSETAKE.filter(k=>k==="greet"||k==="back"||k==="curl"):[]);
+const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze({share:1/4,min:6000,max:10000}),
+  /* CURLED UP (the owner's confirmed goal of 2026-11-24, the session's recommendations taken under his word): a cat curls in the
+     closed ring, its nose under its tail, its tail round to its nose, its paws tucked under, its ears UP, its eyes shut. Of a cat's
+     sits that did not become a groom, 1 in 4 is the sleep on its back (as today) and 1 in 4 a curl: one roll decides among the
+     three (back, curl, a plain sit), so a world that takes the back and not the curl rolls exactly as before. 6 to 10 s; a pet
+     wakes it and it greets you, as from its back. HANDOFF: its timer on the record (curlT, beside backT), catPoseNow answers
+     "curl", catWake ends it, the sit roll draws it, the card and the body read it through the reader (dogPose holds "curl" for a
+     cat; its body takes the closed ring's cat table) */
+  curl:Object.freeze({share:1/4,min:6000,max:10000})});
 /* catPoseNow(cr, nw): "back" while a cat sleeps on its back, else "greet" while its greeting lasts and it stands, else null.
    Asked of anything that is not a cat, or in a world that takes neither pose, it answers null */
 function catPoseNow(cr,nw){if(!isCat(cr)||!CATPOSEON.size)return null;if(nw===undefined)nw=wNow();
@@ -5158,11 +5166,21 @@ const DOGCURL=Object.freeze({back:1.2,chest:0.9,head:0.75,nod:0.2,cheek:0.2,rest
    ever rolled where a painter asks. With one version no roll is taken at all, so a world rolls exactly as before.
    Today's curl, nose round to tail lying on his side, is the first and for now the only one. */
 const CURLVERSIONS=Object.freeze([
-  Object.freeze({id:"nose to tail",w:1,card:CURLCARD,body:DOGCURL})
-  /* THE SECOND VERSION goes here, as one more entry (NOT built yet): planned from the owner's reference photographs, a
-     closed ring, his nose tucked into his hind leg or his flank, his tail wrapped round him, his legs hidden inside the
-     ring, his ears flat, a low round loaf. It needs its own CURLCARD-shaped rows (and, if its head is painted otherwise,
-     a way for each painter to paint that head), its own DOGCURL-shaped angles, and its weight */
+  Object.freeze({id:"nose to tail",w:1,card:CURLCARD,body:DOGCURL}),
+  /* THE SECOND VERSION, THE CLOSED RING (the owner's confirmed goal of 2026-11-24, from his reference photographs; plan
+     docs/plans/2026-11-22-curl-second-version.md in the private record, section 3): nearly round from above, his back bent
+     all the way round so his hips come up beside his shoulders; his nose tucked into his hind leg or flank, his head down on
+     or inside the ring; his tail round the OUTSIDE, its tip along his nose; his legs folded away inside, at most one paw
+     showing; his ears flat, a drop ear over his CHEEK (the shut eye and its seasonal ring still show); low and rounded, his
+     hip or shoulder the highest point; a two-coloured coat following the ring (the one-coloured breeds stay one colour).
+     Weight 1 against the first version's 1: half and half (his answer). Everything else is the first version's: the same
+     chances, eyes shut, tail still, woken as today, curled toward the side his card faces, his season's things still shown.
+     HANDOFF: CURLCARD2 (a CURLCARD-shaped table, a row for EVERY DOGK kind, with the optional fields the plan's step 2 names:
+     the tail drawn after the head along the nose, the head lower and inside the mound, a rounder mound, and `eye` at the
+     place each painter now draws the shut eye) and DOGCURL2 (a DOGCURL-shaped table in engine/engine3d.js with the optional
+     fields span, roll, hind, tuck, the tail's outside turn, flat and dropEar, plan step 3). Until both exist this entry draws
+     with the first version's tables; the pick's one roll (dogCurlPick) is taken from now on, after every other roll of the lie-down. */
+  Object.freeze({id:"closed ring",w:1,card:typeof CURLCARD2!=="undefined"?CURLCARD2:CURLCARD,body:typeof DOGCURL2!=="undefined"?DOGCURL2:DOGCURL})
 ]);
 /* the list in use: the engine's own; a check may stand a list of its own in for a moment */
 function curlVersions(){return CURLVERSIONS;}

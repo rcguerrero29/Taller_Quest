@@ -7760,6 +7760,31 @@ function findChromium() {
     return { P, out }; });
   catsTwo.out.forEach(l => console.log('  CATS TWO: ' + l));
   fails.push(...catsTwo.P.map(m => 'the cats, round two: ' + m));
+
+  /* ---- THE CURL, SECOND VERSION: THE CLOSED RING, FOR DOGS AND CATS (the owner's confirmed goal of 2026-11-24) ----
+     What he asked: the closed ring from his reference photographs, built now as the curl's second version, every recommendation
+     taken, and the cats curling too. Asked here, each red in its own sentence:
+       1 · THE LIST: two versions, weights 1 and 1; the closed ring has a card row and a body row for EVERY dog kind (a missing row
+           is red, never the beagle's row in its place); the first version is drawn and posed exactly as before, card pixel for
+           pixel and body angle for angle.
+       2 · THE PICK: over a long seeded run, about half the curled lie-downs are the ring; picked once per lie-down, after every
+           other roll it takes; the nap's half and the lazy routine's 1 in 3 unchanged; the lazy routine's curl gets no extra
+           seconds; a leash does not wake a curled dog before his nap ends; a world whose dogs do not curl rolls not one number more.
+       3 · THE RING ON THE BODY, every breed, from above and from the game's camera: nearly round seen from above; his hip or
+           shoulder the highest point, not his head; his legs inside the ring, at most one paw at its edge; his tail on the
+           outside, its tip near his nose; his nose by his hind leg or flank; his ears flat, a drop ear over his cheek with the
+           shut eye and its seasonal ring still seen; eyes shut, tail still.
+       4 · THE CARD: each breed's ring card is not the first version's; the seasonal ring sits round the eye the painter draws.
+       5 · THE CATS: a world takes the curl by naming it among its cat poses (Meridian does; the town, with no cat, rolls nothing
+           more); of the sits that did not become a groom, about 1 in 4 the back and 1 in 4 the curl over a long seeded run, one
+           roll among the three, so a world taking the back and not the curl rolls exactly as before; 6 to 10 s; a pet wakes it
+           and it greets; the reader, the card and the body agree; its body is the closed ring with its ears up.
+       6 · UNCURLED: everything the ring moved (the hips' roll, the hind legs, the ear rule, the barrel's bend) is put back, so a
+           dog or cat that stands up after a ring stands exactly as one that never curled.
+     HANDOFF: the block, one sentence at a time, each proven red by a planted fault in a copy outside the repository. */
+  const curlTwo = await page.evaluate(() => { const P = ['HANDOFF: the curl\'s second version is not built yet'], out = []; return { P, out }; });
+  curlTwo.out.forEach(l => console.log('  CURL TWO: ' + l));
+  fails.push(...curlTwo.P.map(m => 'the curl, second version: ' + m));
   /* the long seeded run (sentences 1 and 5): one cat alone among the critters, its every roll a fresh roll (put back on its home
      square, its last pose ended), each tick's numbers seeded by the tick, and each tick asked four ways from the same numbers:
      taking neither pose, the greeting only, the sleep only, and both. Taking neither, every tick draws exactly the numbers a
