@@ -64,7 +64,9 @@ const COURSETAKE=["pace","poles","tunnel","bar"];
 /* CURLED UP ASLEEP (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). Meridian's dogs sometimes lie
    down curled up, nose to tail, asleep: in about half of their naps and 1 time in 3 as the lazy routine's lie-down (the
    engine's CURLCHANCE_DEF), and a curled nap lasts 0 to 5 seconds longer (CURLLONGER; Meridian has no personalities, so
-   its dogs get the plain, even share). The switch is this list; without it no dog curls up and nothing is rolled for it. */
+   its dogs get the plain, even share). Two versions, half and half (the curl's second version, the closed ring, from mq-v300;
+   the owner's confirmed goal of 2026-11-24): this one list turns both on. The switch is this list; without it no dog curls up
+   and nothing is rolled for it. */
 const CURLTAKE=["dog"];
 /* Meridian Quest content pack — game tuning: level thresholds, total XP, chapters. */
 const LEVELS=[0,45,90,120];
