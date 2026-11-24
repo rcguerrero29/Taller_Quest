@@ -8015,7 +8015,7 @@ function findChromium() {
     if (!who) { P.push('nobody this world names to be a body stands in any world away from a window, so the light stand-in could not be asked'); return { P, out }; }
     const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who && !q.win)), w = WORLDS[wid], n = w.npcs.find(q => q.npc === who && !q.win);
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, bm: bodyMake, MR: Math.random,
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, idle: T3.peopleIdle, bm: bodyMake, MR: Math.random,
       dp: drawPerson, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
       n: { x: n.x, y: n.y, fx: n.fx, fy: n.fy, mv: n.mv, mt: n.mt, wnext: n.wnext, doc: n.doc }, lit: [...LIGHTON] };
     const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
@@ -8024,7 +8024,10 @@ function findChromium() {
     const full = () => T3.peopleOn && T3.peopleOn.get(n), lightOf = k => T3.lightOn && T3.lightOn.get(k);
     const standing = () => { const L = T3.lightShown && T3.lightShown.get(n); return !!(L && L.visible && L.parent === T3.scene && T3.peopleShown && T3.peopleShown.has(n)) ? L : null; };
     const fresh = () => { const B = full(); if (B) { B.parent && B.parent.remove(B); t3Dispose(B); T3.peopleOn.delete(n); } if (T3.peopleBad) T3.peopleBad.delete(n); lightDrop(n); };
-    const hold = () => { t3PeopleMake = () => {}; }, makeNow = () => { t3PeopleMake = keep.mk; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; }; };
+    const hold = () => { t3PeopleMake = () => {}; }, makeNow = () => { t3PeopleMake = keep.mk; T3.peopleIdle = false; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; }; };
+    /* T3.peopleIdle = false: a quiet moment the browser still owes a frame drawn before this check cannot come while the check runs
+       (it runs in one go), so the maker would wait for it and make nothing (found on the town, 2026-11-24: "guero's full body was not
+       made"); it is put back after, as the block on the bodies kept on leaving a room does */
     const ang = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
     const away = (x, y) => { const c = T3.cam.position; return Math.atan2((x + 0.5) - c.x, (y + 0.5) - c.z); }, toCam = (x, y) => { const c = T3.cam.position; return Math.atan2(c.x - (x + 0.5), c.z - (y + 0.5)); };
     /* the pixels a thing puts on the screen (the frame rendered with it and without it), and how many within a square of its tile */
@@ -8156,7 +8159,7 @@ function findChromium() {
       out.push('a world that says nothing: ' + who + ' ' + (painted.card ? 'a card' : 'no card') + ' while their body is made, ' + rolls + ' random numbers drawn');
     } finally {
       LIGHTON.clear(); keep.lit.forEach(k => LIGHTON.add(k));
-      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
+      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; T3.peopleIdle = keep.idle; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
       if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
       if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
       Object.assign(n, keep.n); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving;
