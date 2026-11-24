@@ -2510,16 +2510,22 @@ const DOGBUILDS=Object.freeze({
      size (`eye`, of his head), his ears smaller than the chi's against his head (`earSize`, his card's ears stand 3.2 px over a
      head 4.6 px round); a short bobbed tail ("bob"), a third of a tail long (`tailLen`) and thick for it */
   aussie:Object.freeze({size:1.1,length:1,legs:1.05,head:0.92,neck:1.3,chest:1.05,lie:1.15,jaw:1,ear:"up",earSize:0.6,tail:"bob",tailLen:0.35,muzzle:0.95,eye:0.16})});
-/* THE CAT'S BUILD (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), read off its card (drawGato) against the beagle's, on the same four-legged skeleton (a cat is
-   built as a dog is: hips, spine, chest, neck, head, four legs and a tail of three joints, so the walk every body shares trots
-   it with no change). The card: a body 12.5 px by 7.5 against the beagle's 14 by 8, so 0.85 of him, its back a little shorter;
-   short legs (3 px under the body, against his 4.5), so it stands low; a small round head over its front, carried high on a
-   short neck (the card's head sits above the front of its body, not before it); two small pointed ears ("up"), half the chi's
-   against its head (`earSize`); a short muzzle (`muzzle`) and small dark eyes (`eye`), the card's dots; a thick tail that
-   curves up from its rump ("up", the card's 2.6 px line). Read twice against the card: the first build's head, ears and
-   eyes were a mouse's */
+/* THE CAT'S BUILD (round two, mq-v299; the owner's confirmed goals of 2026-11-23 and 2026-11-24 on the cats' second round, shaped
+   from his photographs and approved in pictures): a kitten's proportions. A head as wide as its body (`head`, and `skull`, wider
+   at the cheeks than tall), set low on a short thick neck; a short round trunk (`length`, `tuck`) on short thick legs (`thick`
+   sizes each limb against the dog's); a full, even tail (`tailShape`, its thickness at root, middle, tip and end). Its chest is
+   a chest, flat and narrow from the throat down between its fore legs (`chestShape`); a chubby cat is another row with its own
+   numbers, made only when he asks. Its face: broad ears with pink inside, set at the corners of its head (`earSize`, `earTall`,
+   `earWide`, `earX`, `earY`, `earSplay`); large round eyes set wide and low, lying flat on its face, a coloured ring, a dark
+   pupil and a small light (`eye`, `eyeX`, `eyeY`, `eyeFlat`, `iris`, `shine`); a tiny pink nose (`nose`, `noseSize`, `noseY`,
+   `noseZ`) over two pale pads (`muzzleAt`, `muzzleSize`), its mouth drawn on them (CATMOUTHS); a jaw kept inside its face
+   (`jawSize`). Its eyes stay open sitting (`sitShut` false). Every field a dog does not name keeps the dog's own value, so
+   every dog is drawn as before */
 const CATBUILDS=Object.freeze({
-  gato:Object.freeze({sitTail:"up",sitShut:true,size:0.85,length:0.92,legs:0.72,head:0.95,neck:0.8,chest:0.92,lie:1.05,jaw:0.75,ear:"up",earSize:0.5,tail:"up",muzzle:0.55,eye:0.13})});
+  gato:Object.freeze({sitTail:"up",sitShut:false,size:0.85,length:0.8,legs:0.88,head:1.2,neck:0.92,chest:1,chestShape:Object.freeze([0.88,1.3,0.62]),lie:1.05,jaw:0.8,jawSize:0.02,ear:"up",earSize:0.64,earTall:0.86,earWide:1.5,earX:0.7,earY:0.74,earSplay:0.34,
+    skull:Object.freeze([1.2,0.94,1]),thick:Object.freeze({barrel:1.08,neck:1.45,leg:1.45,shin:1.45,paw:1.3,tail:1.15}),tailShape:Object.freeze([1,1,0.96,0.86]),tuck:Object.freeze([0.95,1]),
+    tail:"up",muzzle:0.4,muzzleAt:Object.freeze([-0.3,0.74]),muzzleSize:Object.freeze([0.3,1.15,0.8,0.9]),
+    eye:0.23,eyeX:0.47,eyeY:-0.02,eyeFlat:0.4,iris:"#A9B86B",nose:"#E8919B",noseSize:0.085,noseY:-0.13,noseZ:1.0,shine:true})});
 /* IS HE A BODY IN THIS POSE? From mq-v278, in every pose his card draws (the owner's confirmed goal of 2026-11-19): standing,
    walking and wagging, sitting, lying and howling (mq-v264), and now digging, his hearts, and the agility course: over the bar
    he is lifted with his legs tucked, through the poles his body takes the side step his record takes, and inside the tunnel
@@ -2540,7 +2546,7 @@ function dogPaintCard(cr){return typeof BODYPAINT!=="undefined"&&BODYPAINT==="ca
    names how he is held in one word (`held`). A word in this list is drawn by dogHold; any other word is a pose his body
    has not learned, and he is his card for it (dogBodyWants), which draws every pose: never a dog standing where his record
    says otherwise */
-const DOGHELDS=Object.freeze(["stand","sit","lay","curl","groom"]);   /* groom: a cat's (mq-v296); no dog is ever held so */
+const DOGHELDS=Object.freeze(["stand","sit","lay","curl","groom","back"]);   /* groom: a cat's (mq-v296); no dog is ever held so */
 /* HOW HE IS HELD, of the ways his body knows (mq-v264; curled up from mq-v290): the pose's own word where it has one his
    body knows; otherwise, as before, lying beats sitting, as on his card, and anything else is standing */
 function dogHeld(P){if(P&&DOGHELDS.includes(P.held))return P.held;return P&&P.lay?(P.curl?"curl":"lay"):P&&P.sit?"sit":"stand";}
@@ -2553,7 +2559,7 @@ function dogSkeleton(kind){const s=SKELETONS.dog,b=DOGBUILDS[kind]||CATBUILDS[ki
   J.jaw=[s.joints.jaw[0],0,s.joints.jaw[2]*b.size*b.head,s.joints.jaw[3]*b.size*b.head];   /* his jaw hangs on his head, so it follows his head's size */
   J.hips=[null,0,s.joints.hips[2]*b.size*b.legs,s.joints.hips[3]*b.size*b.length];   /* he stands as high as his legs are long */
   if(typeof b.tailLen==="number"&&isFinite(b.tailLen)&&b.tailLen>0)["tail_2","tail_tip"].forEach(n=>{const[p,x,y,z]=J[n];J[n]=[p,x*b.tailLen,y*b.tailLen,z*b.tailLen];});   /* a short tail (the aussie's bob, mq-v295); a breed that names none keeps the whole */
-  const limb={};Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.size;});
+  const limb={},th=b.thick&&typeof b.thick==="object"?b.thick:null;Object.keys(s.limb).forEach(k=>{limb[k]=s.limb[k]*b.size*(th&&typeof th[k]==="number"&&isFinite(th[k])&&th[k]>0?th[k]:1);});   /* a build may say how thick each limb is against the dog's (a cat's, fluffier) */
   return {...s,joints:J,limb,head:s.head*b.size*b.head,stride:s.stride*b.size*b.legs,lift:s.lift*b.size,drop:s.drop*b.size,build:b,kind};}
 /* THE CARD'S OWN PAINT, where a card does not paint with the dog's colour: the beagle's card is lemon and white whatever his
    record says (drawBeagle), so his body is too, and his record's coat is not read for him. Every other breed is painted in
@@ -2587,7 +2593,7 @@ function dogMake(skel,lk){
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
   const b=skel.build||DOGBUILDS.beagle,Lm=skel.limb,r=skel.head,at=n=>new THREE.Vector3(...skel.joints[n].slice(1));
-  const paint=DOGCARDPAINT[lk.kind]||{body:lk.coat,coat:lk.coat,bar:lk.bar,muzzle:lk.muzzle},   /* bar and muzzle: a cat's card colours (catLookOf); no dog's look has them */
+  const paint=DOGCARDPAINT[lk.kind]||{body:lk.coat,coat:lk.coat,bar:lk.bar,muzzle:lk.muzzle,cat:lk.cat||null},   /* bar and muzzle: a cat's card colours (catLookOf); no dog's look has them */
        bw=DOGCARDPAINT[lk.kind]?(DOGCARDPAINT[lk.kind].wears||"white"):"coat";
   const part=(j,geo,wears,col,x,y,z,s)=>{const c=new THREE.Color(col),m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:c.clone()}));
     m.position.set(x||0,y||0,z||0);if(s)m.scale.set(s[0],s[1],s[2]);m.userData={wears,base:c};J[j].add(m);return m;};
@@ -2614,11 +2620,13 @@ function dogMake(skel,lk){
     {const g=m.geometry,ps=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<ps.count;i++)uv.setY(i,Math.max(0,Math.min(1,ps.getY(i)/len+0.5)));uv.needsUpdate=true;
       /* a dog's trunk is not a sausage: deep at the chest, his belly drawn up toward his loins and his waist a little
          narrower than his ribs (DOGTUCK: how much of his depth below the spine, and of his width, is left at his hips) */
+      const tk=Array.isArray(b.tuck)&&b.tuck.length===2&&b.tuck.every(v=>typeof v==="number"&&isFinite(v)&&v>0)?b.tuck:DOGTUCK;   /* a build may name its own (a cat's round trunk) */
       for(let i=0;i<ps.count;i++){const s=Math.max(0,Math.min(1,ps.getY(i)/len+0.5)),z=ps.getZ(i);
-        if(z>0)ps.setZ(i,z*(DOGTUCK[0]+(1-DOGTUCK[0])*s)*DOGUNDER*ch);ps.setX(i,ps.getX(i)*(DOGTUCK[1]+(1-DOGTUCK[1])*s));}
+        if(z>0)ps.setZ(i,z*(tk[0]+(1-tk[0])*s)*DOGUNDER*ch);ps.setX(i,ps.getX(i)*(tk[1]+(1-tk[1])*s));}
       ps.needsUpdate=true;g.computeVertexNormals();}
     m.rotation.x=Math.PI/2;m.scale.set(1.02,1,1);M.barrelLen=len;coat(m,"barrel",128,128);m.userData.trunk="barrel";}
-  part("chest",ball(Lm.barrel*0.64*ch),bw,paint.body,0,-Lm.barrel*0.16,Lm.barrel*0.1,[0.95,1.05,0.9]).userData.trunk="chest";
+  {const cs=Array.isArray(b.chestShape)&&b.chestShape.length===3&&b.chestShape.every(v=>typeof v==="number"&&isFinite(v)&&v>0)?b.chestShape:[0.95,1.05,0.9];   /* a build may shape its own chest (a cat's, flatter and narrower: a chest, not a ball) */
+  part("chest",ball(Lm.barrel*0.64*ch),bw,paint.body,0,-Lm.barrel*0.16,Lm.barrel*0.1,cs).userData.trunk="chest";}
   /* the neck, from the chest up to the head, and the collar round it under his jaw: a thin band lying on the neck, where
      the card paints it under his head */
   const nv=at("neck").add(at("head")),nu=nv.clone().normalize(),nL=nv.length();
@@ -2653,15 +2661,27 @@ function dogMake(skel,lk){
   /* the head: the skull round its joint, the muzzle ahead of it and a little down, the nose at its end, the eyes over the
      muzzle, where the card puts its eye, and the ears by the breed's build. The skull's sheet runs over his head from his
      chin (the sheet's left edge) by his nose (a quarter along) and his crown (half) to his nape, and from ear to ear */
-  {const g=new THREE.SphereGeometry(r,24,16);g.rotateZ(Math.PI/2);coat(part("head",g,bw,paint.body,0,0,0),"skull",128,64);}
+  {const g=new THREE.SphereGeometry(r,24,16);g.rotateZ(Math.PI/2);const sk=Array.isArray(b.skull)&&b.skull.length===3&&b.skull.every(v=>typeof v==="number"&&isFinite(v)&&v>0)?b.skull:null;coat(part("head",g,bw,paint.body,0,0,0,sk),"skull",128,64);}
   const ml=typeof b.muzzle==="number"&&isFinite(b.muzzle)?b.muzzle:b.ear==="up"?0.75:1;   /* the chi's muzzle is short; a breed may name its own (the aussie's, mq-v295) */
-  coat(part("head",ball(r*0.55,14,10),bw,paint.body,0,-r*0.4,r*(0.45+0.4*ml),[1.02*(b.jaw||1),0.88*(b.jaw||1),1.35*ml]),"muzzle",64,32);
-  part("head",ball(r*0.26,10,8),"nose","#26202B",0,-r*0.26,r*(0.25+1.14*ml));
-  [1,-1].forEach(sd=>part("head",ball(r*(typeof b.eye==="number"&&isFinite(b.eye)?b.eye:b.ear==="up"?0.2:0.16),10,8),"eye","rgb(38,32,43)",sd*r*0.5,r*0.14,r*0.82));
+  {const ma=Array.isArray(b.muzzleAt)&&b.muzzleAt.length===2?b.muzzleAt:null,ms=Array.isArray(b.muzzleSize)&&b.muzzleSize.length===4?b.muzzleSize:null;   /* a build may place and size its own muzzle (a cat's two small pads under its nose) */
+  coat(part("head",ball(r*(ms?ms[0]:0.55),14,10),bw,paint.body,0,r*(ma?ma[0]:-0.4),r*(ma?ma[1]:0.45+0.4*ml),ms?[ms[1],ms[2],ms[3]]:[1.02*(b.jaw||1),0.88*(b.jaw||1),1.35*ml]),"muzzle",ms?256:64,ms?128:32);}
+  part("head",ball(r*(typeof b.noseSize==="number"&&isFinite(b.noseSize)?b.noseSize:0.26),10,8),"nose",typeof b.nose==="string"?b.nose:"#26202B",0,r*(typeof b.noseY==="number"&&isFinite(b.noseY)?b.noseY:-0.26),r*(typeof b.noseZ==="number"&&isFinite(b.noseZ)?b.noseZ:0.25+1.14*ml),typeof b.noseZ==="number"?[1.25,0.8,0.7]:null);
+  {const er=r*(typeof b.eye==="number"&&isFinite(b.eye)?b.eye:b.ear==="up"?0.2:0.16),num=(v,d)=>typeof v==="number"&&isFinite(v)?v:d,ex=num(b.eyeX,0.5),ey=num(b.eyeY,0.14);
+  if(typeof b.eyeFlat==="number"&&isFinite(b.eyeFlat)&&b.eyeFlat>0){
+    /* A CAT'S EYES LIE ON ITS FACE: a round coloured eye, a large dark pupil and a small light, each flat against the skull where
+       it stands (its normal there), wide apart and low, as a kitten's are */
+    const sk=Array.isArray(b.skull)&&b.skull.length===3?b.skull:[1,1,1],f=b.eyeFlat,z0=new THREE.Vector3(0,0,1),iris=(paint.cat&&typeof paint.cat.eye==="string"?paint.cat.eye:null)||(typeof b.iris==="string"?b.iris:"#26202B");
+    [1,-1].forEach(sd=>{const x=sd*ex,zz=sk[2]*Math.sqrt(Math.max(0.05,1-(x/sk[0])*(x/sk[0])-(ey/sk[1])*(ey/sk[1])));
+      const n=new THREE.Vector3(x/(sk[0]*sk[0]),ey/(sk[1]*sk[1]),zz/(sk[2]*sk[2])).normalize(),P=new THREE.Vector3(x*r,ey*r,zz*r);
+      const lay=(rad,wears,col,out,sc,dx,dy)=>{const q=P.clone().addScaledVector(n,out),m=part("head",ball(rad,14,10),wears,col,q.x+(dx||0),q.y+(dy||0),q.z,sc);m.quaternion.setFromUnitVectors(z0,n);return m;};
+      lay(er,"eye",iris,-er*f*0.5,[1,1.06,f]);lay(er*0.76,"eye","#1E1A22",er*f*0.02,[1,1.1,f]);
+      if(b.shine)lay(er*0.24,"shine","#FFFFFF",er*f*0.72,[1,1,0.4],-er*0.2,er*0.3);});}
+  else{const ez=num(b.eyeZ,0.82);[1,-1].forEach(sd=>{part("head",ball(er,10,8),"eye","rgb(38,32,43)",sd*r*ex,r*ey,r*ez);});}}
   /* his lower jaw, hung on its own joint under his muzzle, and the dark of his mouth lying on it: shut, both are inside
      his muzzle; they show when the joint drops (a howl) */
-  part("jaw",ball(r*0.42,12,8),bw,paint.body,0,-r*0.03,r*0.4*ml,[0.9*(b.jaw||1),0.34,1.15*ml]);
-  part("jaw",ball(r*0.36,10,6),"mouth","#3A1F2B",0,r*0.09,r*0.4*ml,[0.82*(b.jaw||1),0.34,1.05*ml]);
+  {const js=typeof b.jawSize==="number"&&isFinite(b.jawSize)&&b.jawSize>0?b.jawSize:1;   /* a small jaw stays inside a short face until it drops (a cat's) */
+  part("jaw",ball(r*0.42*js,12,8),bw,paint.body,0,-r*0.03,r*0.4*ml,[0.9*(b.jaw||1),0.34,1.15*ml]);
+  part("jaw",ball(r*0.36*js,10,6),"mouth","#3A1F2B",0,r*0.09,r*0.4*ml,[0.82*(b.jaw||1),0.34,1.05*ml]);}
   const earCol=lk.kind==="beagle"?paint.coat:b.ear==="up"?paint.coat:shadeHex(paint.coat,-0.25);
   [1,-1].forEach(sd=>{
     /* AN UPRIGHT EAR (mq-v281; the owner's confirmed goal of 2026-11-19): broad at the base and shorter than before, splayed
@@ -2685,11 +2705,11 @@ function dogMake(skel,lk){
       const m=part("head",g,"ear",col,0,0,0);m.material.side=THREE.DoubleSide;m.userData.earRest=rest;m.userData.earR=r;
       earBend(m,bend?EARBEND:0);if(bend)m.userData.foldable=true;return m;};
     const es=typeof b.earSize==="number"&&isFinite(b.earSize)&&b.earSize>0?b.earSize:1;   /* how big an upright ear is against the chi's (the aussie's smaller, mq-v295); 1 where a breed names none */
-    const upEar=(x,y,bend)=>{const o=shell(earCol,0.66*es,1.12*es,0.34*es,0,bend),n=shell(inPink,0.5*es,0.94*es,0.22*es,0.08,bend);
-      [o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*0.55);m.userData.upEar=true;});
+    const eh=typeof b.earTall==="number"&&isFinite(b.earTall)&&b.earTall>0?b.earTall:1,ew=typeof b.earWide==="number"&&isFinite(b.earWide)&&b.earWide>0?b.earWide:1,upEar=(x,y,bend)=>{const o=shell(earCol,0.66*es*ew,1.12*es*eh,0.34*es,0,bend),n=shell(inPink,0.5*es*ew,0.94*es*eh,0.22*es,0.08,bend);
+      const spl=(typeof b.earSplay==="number"&&isFinite(b.earSplay)?b.earSplay:0.55);[o,n].forEach((m,k)=>{m.position.set(sd*r*x,r*y,r*(k?0.05:0));m.rotation.set(0,Math.PI+sd*0.55,-sd*spl);m.userData.upEar=true;});
       n.userData.inside=true;n.material.side=THREE.BackSide;   /* the pink only where the cup opens: its other face, behind the coat, is not drawn */
       if(bend)o.userData.fold=true;return o;};
-    if(b.ear==="up")upEar(0.72,1.15,lk.ears==="mixed"&&sd<0);
+    if(b.ear==="up")upEar((typeof b.earX==="number"&&isFinite(b.earX)?b.earX:0.72),(typeof b.earY==="number"&&isFinite(b.earY)?b.earY:1.15),lk.ears==="mixed"&&sd<0);
     else{/* a drop ear: a long thin flap set low on the side of his skull, behind his eye, hanging past his jaw */
       /* hung from its root (mq-v285): a pivot where the flap meets his skull, so his ear can lift and turn from there as a dog's
          does with the small muscles at its base, and the flap swings below it */
@@ -2711,7 +2731,7 @@ function dogMake(skel,lk){
        a ball on it. Each stretch is a cone cut short (DOGTAIL: its thickness at the root, the middle joint, where the tip
        begins and the very end, against the breed's own tail), rounded at each joint so a bend stays whole; the last
        half of its second stretch is the tip, a part of its own on the tip's joint, which the beagle wears white */
-    const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:b.tail==="bob"?1.6:1),[k0,k1,k2,k3]=DOGTAIL;   /* a bob is short and thick (mq-v295) */
+    const tr=Lm.tail*(b.tail==="out"?1.15:b.tail==="curl"?0.75:b.tail==="bob"?1.6:1),[k0,k1,k2,k3]=Array.isArray(b.tailShape)&&b.tailShape.length===4?b.tailShape:DOGTAIL;   /* a bob is short and thick (mq-v295) */
     const taper=(j,v,r0,r1,wears)=>{const L=v.length(),m=part(j,new THREE.CylinderGeometry(r1,r0,L,12,1),wears,paint.coat,v.x/2,v.y/2,v.z/2);
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize());return m;};
     const v1=at("tail_2"),v2=at("tail_tip"),cut=v2.clone().multiplyScalar(0.45);
@@ -2817,14 +2837,46 @@ const DOGPART={
     J.chest.children.forEach(o=>{if(o.isMesh&&o.userData.trunk==="chest")tint(o,"#EDEDE8");});}};
 /* THE CAT'S COAT AND PARTS (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), from its card (drawGato): the two darker bars across its back, behind its middle, in the
    card's bar colour; its muzzle pale; its nose the card's small pink; the rest of it, head, ears and tail, all its coat */
+/* A CAT'S MOUTH, BY NAME (round two; the owner's word of 2026-11-24): each shape is drawn on the muzzle's sheet from under the
+   nose, the sheet's front a quarter of the way along (x). One shape today, the upturned one; another (a downturned mouth, say)
+   is one more row here and a coat or a record naming it (mouthShape), with no rebuild */
+const CATMOUTH="smile";
+const CATMOUTHS=Object.freeze({
+  smile(g,x,w,h){g.beginPath();g.moveTo(x,h*0.3);g.lineTo(x,h*0.5);g.stroke();
+    [-1,1].forEach(sd=>{g.beginPath();g.moveTo(x,h*0.5);g.bezierCurveTo(x+sd*w*0.012,h*0.55,x+sd*w*0.052,h*0.565,x+sd*w*0.072,h*0.52);g.stroke();});}});
 const CATCOATSHEET={
   gato:{
     /* the card's bars stand at 0.52 and 0.8 of its body from its front, each 0.14 of it wide, and run nearly down its sides */
-    barrel:[["bars",(g,w,h,paint)=>{g.fillStyle=paint.bar||"#6E7278";[0.52,0.8].forEach(v=>{g.fillRect(w*0.12,h*(v-0.07),w*0.76,h*0.14);});}]],
-    muzzle:[["muzzle",(g,w,h,paint)=>{g.fillStyle=paint.muzzle||"#D8DBE0";g.fillRect(0,0,w,h);}]]}};
+    barrel:[["bars",(g,w,h,paint)=>{const C=paint.cat;if(C&&!C.bar)return;g.fillStyle=paint.bar||"#6E7278";[0.52,0.8].forEach(v=>{g.fillRect(w*0.12,h*(v-0.07),w*0.76,h*0.14);});}],
+      ["patches",(g,w,h,paint)=>{const C=paint.cat;if(!C)return;(C.patches||[]).forEach(([c,u,v,s])=>{g.fillStyle=c;g.beginPath();g.ellipse(w*u,h*v,w*s,h*s*1.2,0,0,7);g.fill();});
+        if(C.belly){g.fillStyle=C.belly;g.fillRect(0,h*0,w*0.32,h);}}]],
+    skull:[["face",(g,w,h,paint)=>{const C=paint.cat;if(!C)return;
+      if(C.headPatch){g.fillStyle=C.headPatch;g.beginPath();g.ellipse(w*0.55,h*0.25,w*0.2,h*0.3,0,0,7);g.fill();}
+      (C.headPatches||[]).forEach(([c,u,v,su,sv])=>{g.fillStyle=c;g.beginPath();g.ellipse(w*u,h*v,w*su,h*sv,0,0,7);g.fill();});
+      if(C.mask){g.save();g.scale(1,2);const gr=g.createRadialGradient(w*0.2,h*0.25,0,w*0.2,h*0.25,w*0.13);gr.addColorStop(0,C.mask);gr.addColorStop(0.55,C.mask);gr.addColorStop(1,"rgba(0,0,0,0)");g.fillStyle=gr;g.fillRect(0,0,w,h/2);g.restore();}
+      if(C.blaze){g.fillStyle=C.blaze;g.beginPath();g.moveTo(0,h*0.2);g.lineTo(w*0.17,h*0.3);g.lineTo(w*0.25,h*0.43);g.lineTo(w*0.37,h*0.485);g.lineTo(w*0.37,h*0.515);g.lineTo(w*0.25,h*0.57);g.lineTo(w*0.17,h*0.7);g.lineTo(0,h*0.8);g.closePath();g.fill();}
+      if(C.mark){g.strokeStyle=C.mark;g.lineWidth=h*0.05;g.lineJoin="round";g.beginPath();g.moveTo(w*0.34,h*0.36);g.lineTo(w*0.4,h*0.42);g.lineTo(w*0.35,h*0.5);g.lineTo(w*0.4,h*0.58);g.lineTo(w*0.34,h*0.64);g.stroke();}}]],
+    muzzle:[["muzzle",(g,w,h,paint)=>{g.fillStyle=paint.muzzle||"#D8DBE0";g.fillRect(0,0,w,h);}],
+      /* ITS MOUTH (round two, as the owner drew it): a thin line down from its nose that parts into two short curves along the
+         bottom of its muzzle. The sheet wraps the muzzle; its front is a quarter of the way along */
+      ["mouth",(g,w,h,paint)=>{const C=paint.cat,draw=CATMOUTHS[C&&typeof C.mouthShape==="string"&&CATMOUTHS[C.mouthShape]?C.mouthShape:CATMOUTH];
+        g.strokeStyle=(C&&C.mouth)||"#4A3B3F";g.lineWidth=Math.max(1,h*0.02);g.lineCap="round";g.lineJoin="round";draw(g,w*0.25,w,h);}]]}};
 const CATPART={
   gato(M){const{J}=M,tint=(o,c)=>{o.userData.base=new THREE.Color(c);o.material.color.set(c);};
-    J.head.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="nose")tint(o,"#C4586B");});}};
+    J.head.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="nose")tint(o,"#E8919B");});
+    /* ITS WHISKERS (round two): three a side, very thin, from the sides of its muzzle out past its cheeks, drooping a little */
+    {const r=M.r,col=(M.paint&&M.paint.cat&&M.paint.cat.whisker)||"#FFFFFF",mat=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.9});
+      [1,-1].forEach(sd=>[[0.04,0.14,0.8],[-0.05,0.0,0.88],[-0.14,-0.16,0.74]].forEach(([y0,dy,len],k)=>{const pts=[];
+        for(let i=0;i<=6;i++){const u=i/6;pts.push(new THREE.Vector3(sd*r*(0.32+len*u),r*(-0.3+y0+dy*u-0.12*u*u),r*(0.93-0.36*u*u)));}
+        const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat);ln.userData={whisker:true};J.head.add(ln);}));}
+    const C=M.paint&&M.paint.cat;if(!C)return;
+    if(C.ear)J.head.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="ear"&&!o.userData.inside)tint(o,C.ear);});
+    if(Array.isArray(C.ears))J.head.children.forEach(o=>{if(o.isMesh&&o.userData.wears==="ear"&&!o.userData.inside)tint(o,C.ears[o.position.x>0?0:1]);});
+    if(C.chest&&J.chest)J.chest.children.forEach(o=>{if(o.isMesh&&o.userData.trunk==="chest")tint(o,C.chest);});
+    Object.keys(J).forEach(n=>{const paw=/paw/.test(n),shin=/^(wrist|hock)_/.test(n),tail=/^tail/.test(n);
+      J[n].children.forEach(o=>{if(!o.isMesh)return;
+        if(paw&&C.paws)tint(o,C.paws);else if((paw||shin)&&C.leg&&C.leg!==C.body)tint(o,C.leg);
+        else if(tail&&C.tail&&C.tail!==C.body&&(o.userData.wears==="tail"||o.userData.wears==="tip"))tint(o,C.tail);});});}};
 /* HOW HE IS HELD THIS FRAME: his legs by the walk every body shares, then what is a dog's own, read off the pose his card
    reads: his tail swung side to side by the pose's `wag`, card pixels at the tip, so the tip of the body's tail is as far
    to his side as the card's is behind or ahead of its rest; calm or happy, as dogPose says. Nothing else is decided here */
@@ -2844,6 +2896,9 @@ function t3DogPose(B,P,phase,moving,groundAt){
   dogHold(B,held,howl,P&&isFinite(P.t)?P.t:0);
   dogMore(B,P,held,P&&isFinite(P.t)?P.t:0);
   if(P&&P.stretch)catStretch(B,P);   /* a cat's greeting stretch (mq-v296); no dog has one */
+  /* A CAT'S GREETING (round two): its tail straight up, the tip hooked forward, as a cat carries it to say hello */
+  if(P&&P.greet&&held==="stand"){const J2=B.userData.joints;if(J2.tail_1&&J2.tail_2){J2.tail_1.rotation.x=0.42;J2.tail_2.rotation.x=0.3;if(J2.tail_tip)J2.tail_tip.rotation.x=0.55;}}
+  else if(B.userData.joints.tail_tip)B.userData.joints.tail_tip.rotation.x=0;
   dogEars(B,P,held,moving,phase);
   const J=B.userData.joints,t1=J.tail_1,tip=J.tail_tip;if(!t1||!tip)return;
   /* turned about its own fore-and-aft line, the tip goes to his side by its height over that line times the sine; lying
@@ -2945,6 +3000,13 @@ function dogHold(B,held,howl,t){
   else if(dogDown(held)){J.hips.position.y=S.limb.barrel*DOGLAY;neck=0.7;head=-0.4;tail=-1.3;tail2=0.45;shut=!howl;wide=typeof b.lie==="number"&&isFinite(b.lie)?Math.max(1,Math.min(1.4,b.lie)):1;
     S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(-Math.PI/2+0.22,0,0);J[kn].rotation.set(0,0,0);J[an].rotation.set(Math.PI/2-0.22,0,0);}
       else{J[hp].rotation.set(-Math.PI/2+0.3,0,0);J[kn].rotation.set(2.3,0,0);J[an].rotation.set(Math.PI/2-2.6,0,0);}});}
+  /* ASLEEP ON ITS BACK (round two; a cat's): rolled right over, its belly up and its four paws in the air, the fore paws folded
+     at its chest, its head laid back with its face to the sky and its eyes shut, its tail along the ground behind it */
+  let over=0;
+  if(held==="back"){over=Math.PI;J.hips.position.y=S.limb.barrel*1.12;neck=Math.PI/2-0.5;head=0.1;roll=0.35;tail=-1.15;tail2=-0.15;shut=true;
+    S.legs.forEach(([hp,kn,an])=>{const sd=/_l$/.test(hp)?1:-1;
+      if(/^fore/.test(hp)){J[hp].rotation.set(-0.75,0,sd*0.3);J[kn].rotation.set(1.7,0,0);J[an].rotation.set(0,0,0);}
+      else{J[hp].rotation.set(0.55,0,sd*0.5);J[kn].rotation.set(-1.1,0,0);J[an].rotation.set(0,0,0);}});}
   if(howl){neck-=0.45;head-=0.5;}
   /* GROOMING (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 6: its head down to its near fore paw, raised up in front of its face; a lick, a small bob of the
      head, for two thirds of each turn (CATLICK), then the paw wiped up over its ear, the head tipped to meet it; eyes shut */
@@ -2953,10 +3015,11 @@ function dogHold(B,held,howl,t){
     tail=pitch-1.3;tail2=0.45;   /* its tail laid down round it, as the grooming card curls it round its feet */
     if(fr&&wr){fr.rotation.set(pitch-(wipe?3.05:2.7),0,(nl?-1:1)*(wipe?0.35:0.15));wr.rotation.set(wipe?0.9:1.4,0,0);}
     if(wipe)roll=(nl?1:-1)*0.55;}   /* the wipe: its head tipped to that side, bringing its ear down to the paw */
-  J.hips.rotation.x=-pitch;J.neck.rotation.x=neck;J.head.rotation.x=head;J.head.rotation.z=roll;   /* roll: 0 for every dog and every pose but a cat's wipe */J.tail_1.rotation.x=tail;J.tail_2.rotation.x=tail2;
+  J.hips.rotation.x=-pitch;J.hips.rotation.z=over;J.neck.rotation.x=neck;J.head.rotation.x=head;J.head.rotation.z=roll;   /* roll: 0 for every dog and every pose but a cat's wipe */J.tail_1.rotation.x=tail;J.tail_2.rotation.x=tail2;
   if(J.jaw)J.jaw.rotation.x=howl?DOGJAW:0;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;
     if(u.wears==="eye"){if(u.open===undefined)u.open=o.scale.y;o.scale.y=u.open*(shut?0.22:1);}
+    if(u.wears==="shine")o.visible=!shut;
     if(u.trunk){if(u.wide===undefined)u.wide=o.scale.x;o.scale.x=u.wide*(u.trunk==="chest"?wide:1+(wide-1)*0.5);}
     /* lying down, an upright ear relaxes back along his skull, as a resting dog lays his ears (mq-v281) */
     if(u.upEar){if(u.restX===undefined)u.restX=o.rotation.x;o.rotation.x=u.restX+(held==="curl"?dogCurlAngles(B).ear:dogDown(held)&&!howl?-0.75:0);}});
@@ -3075,6 +3138,11 @@ function t3DogBodies(dt){
     else if(cr.metT&&!B.userData.turned&&!cr.moving){B.userData.turned=true;B.userData.yaw=Math.atan2(px+0.5-(cr.fx+0.5),py+0.5-(cr.fy+0.5));
       if(cr.persona==="eager"&&!(cr.happyT>nw))cr.happyT=nw+1500;
       if(CATK.has(cr.kind))cr.stretchT=nw+CATSTRETCH;}   /* a cat turns to you with a short stretch, its ears pricked (mq-v296) */
+    /* ASLEEP ON ITS BACK, SIDEWAYS TO THE CAMERA (round two; the owner's answer of 2026-11-24): seen from its feet, four paws up
+       read as a rabbit's ears, so a cat on its back lies across the camera's line of sight, as in the side view he approved,
+       turned the shorter way from where it was facing. Only "back" turns it; no dog is ever held so */
+    if(P.held==="back"){const c=Math.atan2(cr.fx+0.5-T3.cam.position.x,cr.fy+0.5-T3.cam.position.z),y=B.userData.yaw||0,
+      d=a=>Math.abs(Math.atan2(Math.sin(a-y),Math.cos(a-y)));B.userData.yaw=d(c+Math.PI/2)<=d(c-Math.PI/2)?c+Math.PI/2:c-Math.PI/2;}
     /* his pace follows his speed, held to a dog's (DOGSTEPS), as the person's is held to a person's: the ground he covered
        and the time it took are handed in, never read here; a jump (a door) is not walked */
     const at=B.userData.at,go=at?Math.hypot(cr.fx-at[0],cr.fy-at[1]):0;B.userData.at=[cr.fx,cr.fy];

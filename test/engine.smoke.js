@@ -7334,9 +7334,11 @@ function findChromium() {
      and a second cat system fails the build. Asked here, each red in its own sentence:
        1 · THE GUARD: in a world whose critters include a cat, the engine's own kitchen cat stands nowhere and its painter
            (drawCat) draws nothing, in every camera, and every critter its cat painter draws is a cat of CATK.
-       2 · HER CARD: the kitchen cat's card, through the critters' painter, is drawCat's pixel for pixel: standing and sitting,
-           facing either way, at three instants, with and without each bandana and collar (48 pictures); and a street cat's
-           card is the painter's of mq-v295, frozen here, pixel for pixel (its own colour still not read, for now, as today).
+       2 · HER CARD (from mq-v299, the cats' second round): the kitchen cat's card is the ginger cat's in her wardrobe:
+           with nothing on, pixel for pixel a ginger cat's that wears nothing, standing and sitting, facing either way, at three
+           instants; in her ginger; each bandana and collar showing on it; and drawCat, her card until then, draws nowhere a
+           cat of the critters stands. A street cat's card is the grey cat's (its own colour still not read, for now, as today),
+           and no longer the painter's of mq-v295, kept frozen here.
        3 · HER WAYS: her button's word (petCat), a 3.2 s sit when petted and one of her lines for 2.2 s; every cat a line of
            its own when it steps next to you, about 30 in 100; her whole kitchen; every cat sitting 70 in 100 of its rests.
        4 · THEIR BODIES: on a laptop (1280 by 800) each of the six cats is a body in its room, however far; at 479 by 900
@@ -7367,8 +7369,10 @@ function findChromium() {
     const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
     const open = (W, x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
     const near = (c, d) => { const W = WORLDS[c.world]; return [[0, d], [d, 0], [-d, 0], [0, -d], [1, d], [-1, d], [d, 1]].map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => open(W, x, y) && !(typeof portalAt === 'function' && portalAt(c.world, x, y))) || null; };
-    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0 });
+    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0, greetT: 0, backT: 0 });   /* greetT, backT: its two poses (mq-v299), ended */
     const pic = f => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; f(c.getContext('2d')); return c.toDataURL(); };
+    const ink = (f, hex) => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; const g = c.getContext('2d'); f(g); const d = g.getImageData(0, 0, 40, 40).data, h = parseInt(hex.slice(1), 16); let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] === 255 && d[i] === h >> 16 && d[i + 1] === ((h >> 8) & 255) && d[i + 2] === (h & 255)) n++; return n; };   /* the pixels painted exactly this colour */
     const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
     const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
     /* sections 1 to 6 ask the cats in their everyday poses, with no personality, whatever the world gives them (Meridian gives
@@ -7385,15 +7389,24 @@ function findChromium() {
           if (bad.size) P.push('the cats\' painter drew something that is not a cat: ' + [...bad].join(', '));
           out.push('the guard: ' + rooms.length + ' rooms with cats, every camera: the engine\'s own cat drawn ' + calls + ' times'); }
         finally { window.drawCat = keep.dc; window.drawGato = keep.dg; } }
-      /* 2 · her card, and a street cat's */
-      if (kc) { let same = 0, n = 0; const diff = [];
-        try { for (const t of [1.7e12, 1.7e12 + 470, 1.7e12 + 1234]) for (const sit of [false, true]) for (const face of [1, -1]) for (const [b, c] of [[null, null], ['#C0392B', null], [null, '#2E5FA8'], ['#E0B45C', '#26202B']]) {
-          Date.now = () => t; wearCat.bandana = b; wearCat.collar = c; Object.assign(CAT, { sit, face }); n++;
-          if (pic(g => drawCat(g, 4, 4)) === pic(g => drawGato(g, { ...kc, sit, face, groomT: 0, metT: 1 }, 4, 4))) same++; else diff.push([sit, face, b, c].join('/')); } }
-        finally { Date.now = keep.DN; Object.assign(wearCat, keep.wc); }
-        if (same !== n) P.push('the kitchen cat\'s card through the cats\' painter is drawCat\'s in ' + same + ' of ' + n + ' pictures (' + diff.slice(0, 3).join('; ') + '): her card is to be as it always was');
-        out.push('her card: ' + same + ' of ' + n + ' pictures drawCat\'s, pixel for pixel'); }
-      { /* the street cat's painter at mq-v295, frozen here, its near-black written as it was */
+      /* 2 · her card, and a street cat's. Until mq-v299 her card was drawCat's pixel for pixel and a street cat's the painter's of
+         mq-v295; from the cats' second round every cat is the kitten of the owner's photographs (approved in pictures), so
+         her card is the ginger cat's in her wardrobe, a street cat's the grey cat's, and drawCat draws nowhere a cat stands */
+      if (kc) { let same = 0, n = 0, gin = 0, worn = 0, wn = 0, calls = 0; const diff = [];
+        window.drawCat = function (...a) { calls++; return keep.dc.apply(this, a); };
+        try { for (const t of [1.7e12, 1.7e12 + 470, 1.7e12 + 1234]) for (const sit of [false, true]) for (const face of [1, -1]) {
+          Date.now = () => t; wearCat.bandana = null; wearCat.collar = null; n++; const r = { ...kc, sit, face, groomT: 0, metT: 1, greetT: 0, backT: 0 };
+          const hers = pic(g => drawGato(g, r, 4, 4));
+          if (hers === pic(g => drawGato(g, { ...r, wardrobe: false }, 4, 4))) same++; else diff.push([sit, face, t - 1.7e12].join('/'));
+          if (ink(g => drawGato(g, r, 4, 4), CATCOAT.ginger.body) > 0) gin++;
+          for (const [b, c] of [['#C0392B', null], [null, '#2E5FA8'], ['#E0B45C', '#26202B']]) { wearCat.bandana = b; wearCat.collar = c; wn++; if (pic(g => drawGato(g, r, 4, 4)) !== hers) worn++; } } }
+        finally { Date.now = keep.DN; Object.assign(wearCat, keep.wc); window.drawCat = keep.dc; }
+        if (same !== n) P.push('with nothing from her wardrobe on, the kitchen cat\'s card is the ginger cat\'s in ' + same + ' of ' + n + ' pictures (' + diff.slice(0, 3).join('; ') + '): her card is the ginger kitten\'s');
+        if (gin !== n) P.push('the kitchen cat\'s card shows her ginger coat in ' + gin + ' of ' + n + ' pictures');
+        if (worn !== wn) P.push('with a bandana or a collar from her wardrobe on, her card is as with nothing on in ' + (wn - worn) + ' of ' + wn + ' pictures: what she wears shows on her card');
+        if (calls) P.push('drawCat drew ' + calls + ' times while her card was drawn: drawCat\'s card is drawn nowhere a cat of the critters stands');
+        out.push('her card: the ginger cat\'s in ' + same + ' of ' + n + ' pictures, ginger in ' + gin + ', her wardrobe showing in ' + worn + ' of ' + wn + '; drawCat drawn ' + calls + ' times'); }
+      { /* the street cat's painter at mq-v295, frozen here, its near-black written as it was: no street cat is drawn so now */
         const old = function (g, cr, sx, sy) { const cx = sx + 16, sw = Math.sin(Date.now() / 300 + 7);
           g.save(); g.translate(cx, 0); g.scale(cr.face, 1); g.translate(-cx, 0);
           g.fillStyle = 'rgba(0,0,0,.15)'; g.beginPath(); g.ellipse(cx, sy + 27, 6.5, 2.6, 0, 0, 7); g.fill();
@@ -7410,12 +7423,15 @@ function findChromium() {
           if (cr.sit) { g.fillRect(cx + 5.2, sy + 17, 1.8, 0.7); g.fillRect(cx + 8, sy + 17, 1.8, 0.7); }
           else { g.fillRect(cx + 5.4, sy + 16.6, 1.1, 1.1); g.fillRect(cx + 8, sy + 16.6, 1.1, 1.1); }
           g.fillStyle = '#C4586B'; g.fillRect(cx + 9.2, sy + 18, 1.1, 0.9); g.restore(); };
-        let same = 0, n = 0;
+        let grey = 0, was = 0, inked = 0, n = 0;
         try { cats.filter(c => !c.wardrobe).forEach(c => { for (const t of [1.7e12, 1.7e12 + 777]) for (const sit of [false, true]) for (const face of [1, -1]) {
-          Date.now = () => t; n++; const r = { ...c, sit, face, groomT: 0, metT: 1 }; if (pic(g => old(g, r, 4, 4)) === pic(g => drawGato(g, r, 4, 4))) same++; } }); }
+          Date.now = () => t; n++; const r = { ...c, sit, face, groomT: 0, metT: 1, greetT: 0, backT: 0 }, mine = pic(g => drawGato(g, r, 4, 4));
+          if (mine === pic(g => drawGato(g, { ...r, coat: 'grey' }, 4, 4))) grey++; if (mine === pic(g => old(g, r, 4, 4))) was++; if (ink(g => drawGato(g, r, 4, 4), CATCOAT.grey.body) > 0) inked++; } }); }
         finally { Date.now = keep.DN; }
-        if (n && same !== n) P.push('the street cats\' cards are the painter\'s of mq-v295 in ' + same + ' of ' + n + ' pictures: each is to look as it always did');
-        out.push('the street cats\' cards: ' + same + ' of ' + n + ' as at mq-v295'); }
+        if (n && grey !== n) P.push('the street cats\' cards are the grey cat\'s in ' + grey + ' of ' + n + ' pictures: a street cat names no coat, so it is the grey kitten (its own colour still not read, for now, as today)');
+        if (n && inked !== n) P.push('the street cats\' cards show the grey coat in ' + inked + ' of ' + n + ' pictures');
+        if (was) P.push('the street cats\' cards are still the painter\'s of mq-v295 in ' + was + ' of ' + n + ' pictures: the kitten of the cats\' second round is to show');
+        out.push('the street cats\' cards: the grey cat\'s in ' + grey + ' of ' + n + ' pictures, grey in ' + inked + ', the mq-v295 card in ' + was); }
       /* 3 · her ways */
       if (kc) { const toasts = []; window.toast = (m, ms) => toasts.push([m, ms]);
         try { const sq = near(kc, 1); hold(kc); stand(kc.world, sq[0], sq[1]); fredCheck(); const lb = document.getElementById('treat').textContent;
@@ -7471,7 +7487,7 @@ function findChromium() {
         if (Math.abs(sh - 1 / 3) > 0.04) P.push('a cat grooms in ' + (100 * sh).toFixed(1) + ' in 100 of its sits: 1 in 3');
         if (!(lo >= 3000 && hi <= 6000 && hi - lo > 2000)) P.push('a groom lasts ' + lo.toFixed(0) + ' to ' + hi.toFixed(0) + ' ms: 3 to 6 s');
         out.push('grooming: ' + grooms + ' of ' + sits + ' sits (' + (100 * sh).toFixed(1) + '%), ' + (lo / 1000).toFixed(1) + ' to ' + (hi / 1000).toFixed(1) + ' s');
-        if (kc) { const nw = wNow(); kc.groomT = nw + 5000; kc.sit = true;
+        if (kc) { const nw = wNow(); kc.groomT = nw + 5000; kc.sit = true; kc.greetT = 0; kc.backT = 0;
           const Pg = dogPose(kc, nw, 0); if (Pg.held !== 'groom' || !Pg.sit) P.push('grooming, the kitchen cat\'s pose is held "' + Pg.held + '": "groom"');
           const a = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)), b = pic(g => drawGato(g, { ...kc, face: 1, groomT: 0 }, 4, 4));
           let f0, f1; Date.now = () => 0; try { f0 = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)); Date.now = () => CATGROOM.lick; f1 = pic(g => drawGato(g, { ...kc, face: 1 }, 4, 4)); } finally { Date.now = keep.DN; }
@@ -7518,6 +7534,314 @@ function findChromium() {
   });
   merCats.out.forEach(l => console.log('  CATS: ' + l));
   fails.push(...merCats.P.map(m => 'the cats: ' + m));
+
+  /* ---- THE CATS, ROUND TWO (mq-v299; the owner's confirmed goals of 2026-11-24 on the cats' second round) ----
+     What he asked: every cat a kitten of his photographs, card and body together (approved in pictures), and two poses, each a
+     world's to take (CATPOSETAKE): its tail straight up as a greeting, 2.2 s, when petted or first met; and asleep on its back,
+     1 in 4 of its sits, 6 to 10 s, woken by a pet. Asked here, each red in its own sentence:
+       1 · THE SWITCH: Meridian takes both; a word the engine does not know is dropped; asked of a dog, or in a world that takes
+           neither, the pose reader answers nothing, and that world rolls not one number more over a long seeded run.
+       2 · ONE READER: a cat given a sleep on its back answers "back", its body is held "back" and its card is the sleeping
+           card; given a greeting while it stands, "greet", the body's tail up and the greeting card; nothing, neither.
+       3 · PETTED: it greets standing for 2.2 s, then sits to the end of its 3.2 s; asleep on its back, a pet wakes it at once.
+       4 · FIRST MET: it greets at once; an aloof cat greets when it turns to you, not when you meet it.
+       5 · ASLEEP ON ITS BACK: about 1 in 4 of its sits over a long seeded run, 6 to 10 s each, eyes shut on the body, lying
+           across the camera's line of sight (his answer of 2026-11-24: seen from its feet it reads as a rabbit); a sit
+           that became a groom is never one; the rolls a cat took before land where they did.
+       6 · EVERY COAT: each coat in CATCOAT draws on the card and the body without a fault, in every pose; a coat it does not know
+           is drawn grey; a mouth shape it does not know is drawn as the smile.
+       7 · THE CAT'S PARTS: every cat body has its whiskers and its mouth, and no dog has either; every dog's card and body are
+           as they were (the dogs' own checks).
+     The world's clock is held still here (wStillAt) and every pose is asked through the reader at a time of the check's own
+     choosing; the dice are seeded, and the long run sweeps its outcomes rather than pinning one. Three parts: this page's
+     cats (2, 3, 4, the body and card halves of 5, 6, 7, and the reader's half of 1); the long seeded run (1 and 5); and, for
+     Meridian, two copies of its config, one naming a word the engine does not know and one naming no pose (1). Every state
+     touched here is put back. */
+  const catsTwo = await page.evaluate(() => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    if (typeof catPoseNow !== 'function' || typeof CATPOSEON === 'undefined') { P.push('the engine has no reader of a cat\'s pose (catPoseNow), so the two poses cannot be asked'); return { P, out }; }
+    /* 1 · the switch, in part */
+    if (MER && !(CATPOSEON.has('greet') && CATPOSEON.has('back') && CATPOSEON.size === 2)) P.push('Meridian does not take both cat poses (it takes ' + JSON.stringify([...CATPOSEON]) + '), where its config names greet and back');
+    const dog = CRIT.find(c => DOGK.has(c.kind)), cat = CRIT.find(isCat), kc = CRIT.find(c => isCat(c) && c.wardrobe === true), nw0 = wNow();
+    if (dog) { const k = { b: dog.backT, g: dog.greetT }; dog.backT = nw0 + 5000; dog.greetT = nw0 + 1000; try { if (catPoseNow(dog, nw0) !== null) P.push('asked of a dog, the cat\'s pose reader answered ' + JSON.stringify(catPoseNow(dog, nw0))); } finally { dog.backT = k.b; dog.greetT = k.g; } }
+    if (!cat) { if (MER) P.push('Meridian has no cat to ask'); else out.push('this world has no cat, so the cat\'s two poses were not asked' + (CATPOSEON.size ? '' : '; it takes neither')); return { P, out }; }
+    const el = document.getElementById('world');
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, TO: window.toast, pet: [petTarget, petCrit], pon: personaOn, on: [...CATPOSEON], reader: window.catPoseNow,
+      ws: wStillAt, lastBump, wc: { ...wearCat }, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      all: CRIT.map(c => [c, { ...c }]), ls: Object.keys(localStorage).map(k => [k, localStorage.getItem(k)]),
+      btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]), talk: document.getElementById('talk') ? document.getElementById('talk').hidden : null };
+    const others = () => CRIT.filter(c => !isCat(c)).forEach(c => Object.assign(c, { next: Infinity, task: null, moving: false, follow: false }));
+    const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
+    const open = (W, x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
+    const near = (c, d) => { const W = WORLDS[c.world]; return [[0, d], [d, 0], [-d, 0], [0, -d], [1, d], [-1, d], [d, 1]].map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => open(W, x, y) && !(typeof portalAt === 'function' && portalAt(c.world, x, y))) || null; };
+    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, sit: false, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0, greetT: 0, backT: 0 });
+    const pic = f => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; f(c.getContext('2d')); return c.toDataURL(); };
+    const ink = (f, hex) => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; const g = c.getContext('2d'); f(g); const d = g.getImageData(0, 0, 40, 40).data, h = parseInt(hex.slice(1), 16), R = h >> 16, G = (h >> 8) & 255, Bl = h & 255; let n = 0, any = 0;
+      for (let i = 0; i < d.length; i += 4) { if (d[i + 3]) any++; if (d[i + 3] === 255 && d[i] === R && d[i + 1] === G && d[i + 2] === Bl) n++; } return { n, any }; };
+    const card = (c, t) => { const D = Date.now; Date.now = () => (t === undefined ? 1.7e12 : t); try { return pic(g => drawGato(g, c, 4, 4)); } finally { Date.now = D; } };
+    const screenIs = (sw, sh) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
+    const poses = L => { CATPOSEON.clear(); L.forEach(k => CATPOSEON.add(k)); };
+    /* the world's clock held still at t: wNow() answers t until the clock is let go */
+    const at = t => { wStillAt = t + wStill; return wNow() === t; };
+    const T0 = Math.round(wNow()) + 100000;
+    const has3d = typeof T3 !== 'undefined' && !!window.THREE && typeof draw3d === 'function' && typeof CATBODYON !== 'undefined' && CATBODYON;
+    const bodyOf = (c, n) => { for (let k = 0; k < (n || 4); k++) draw3d(); const B = T3.dogOn && T3.dogOn.get(c); return B && B.visible && T3.dogShown && T3.dogShown.has(c) ? B : null; };
+    /* a cat's tail, read off its body: how far its root and its tip lean forward (toward its head) out of the upright, -1 to 1 */
+    const tailOf = B => { const J = B.userData.joints, w = n => J[n].getWorldPosition(new THREE.Vector3()), h = w('hips'), f = w('head').sub(h); f.y = 0; f.normalize();
+      const lean = (a, b) => { const d = b.clone().sub(a); return d.dot(f) / d.length(); }; return { root: lean(w('tail_1'), w('tail_2')), tip: lean(w('tail_2'), w('tail_tip')) }; };
+    const eyesOf = B => { let n = 0, shut = 0, shine = 0; B.traverse(o => { if (!o.isMesh) return; const u = o.userData; if (u.wears === 'eye' && u.open) { n++; if (o.scale.y < u.open * 0.5) shut++; } if (u.wears === 'shine' && o.visible) shine++; }); return { n, shut, shine }; };
+    const tap = c => { const sq = near(c, 1); if (!sq) return false; stand(c.world, sq[0], sq[1]); c.moving = false; fredCheck(); if (petCrit !== c) return false; document.getElementById('treat').click(); return true; };
+    personaOn = () => false;
+    try { el.hidden = false; if (document.getElementById('talk')) document.getElementById('talk').hidden = true; others(); window.toast = () => {};
+      if (!at(T0)) P.push('the world\'s clock could not be held still, so the poses were asked on a moving clock');
+      /* 1 · the switch: in a world that takes neither, a cat given both times answers nothing, and its card and body are as without them */
+      { const c = cat; hold(c); c.sit = true; poses([]);
+        try { c.backT = T0 + 8000; c.greetT = T0 + 1000; const a = catPoseNow(c, T0), d = dogPose(c, T0, 0), cd = card(c); c.backT = 0; c.greetT = 0; const plain = card(c);
+          if (a !== null) P.push('in a world that takes neither pose, a cat given a sleep on its back and a greeting answered ' + JSON.stringify(a) + ' to the pose reader: nothing');
+          if (d.held !== 'sit' || d.greet) P.push('in a world that takes neither pose, a sitting cat given both times is held ' + JSON.stringify(d.held) + (d.greet ? ', greeting' : '') + ': sitting, as before');
+          if (cd !== plain) P.push('in a world that takes neither pose, a sitting cat given both times has another card than without them');
+          out.push('the switch: Meridian takes ' + JSON.stringify(keep.on) + '; with neither taken, a cat given both times answers ' + JSON.stringify(a) + ', is held ' + JSON.stringify(d.held) + ', its card as without them'); }
+        finally { poses(keep.on); hold(c); }
+        /* and each pose by its own switch: taking only the one, a cat given the other's time answers nothing for it */
+        try { poses(['greet']); hold(c); c.sit = true; c.backT = T0 + 8000; const a1 = catPoseNow(c, T0), h1 = dogPose(c, T0, 0).held;
+          poses(['back']); hold(c); c.greetT = T0 + 1000; const a2 = catPoseNow(c, T0), d2 = dogPose(c, T0, 0);
+          if (a1 !== null || h1 === 'back') P.push('in a world that takes only the greeting, a sitting cat given a sleep on its back answered ' + JSON.stringify(a1) + ' and is held ' + JSON.stringify(h1) + ': it sits');
+          if (a2 !== null || d2.greet) P.push('in a world that takes only the sleep on its back, a standing cat given a greeting answered ' + JSON.stringify(a2) + (d2.greet ? ', greeting' : '') + ': nothing');
+          out.push('each pose by its own switch: only the greeting taken, a sleep given answers ' + JSON.stringify(a1) + '; only the sleep, a greeting given answers ' + JSON.stringify(a2)); }
+        finally { poses(keep.on); hold(c); } }
+      /* 2 · one reader: the card and the body ask it, not the record. The reader made to answer otherwise moves both */
+      { const c = cat; hold(c); c.sit = true; const sleep = CATPOSEON.has('back'), greet = CATPOSEON.has('greet'); let said = [];
+        if (sleep) { c.backT = T0 + 8000;
+          const a = catPoseNow(c, T0), d = dogPose(c, T0, 0);
+          if (a !== 'back') P.push('a cat given a sleep on its back 8 s long answered ' + JSON.stringify(a) + ' to the pose reader, where it is asleep on its back');
+          if (d.held !== 'back') P.push('a cat asleep on its back is held ' + JSON.stringify(d.held) + ' for its body, where it lies on its back');
+          const sleeping = card(c), sitting = card({ ...c, backT: 0 });
+          if (sleeping === sitting) P.push('a cat asleep on its back is drawn on its card sitting: the sleeping card is to show');
+          window.catPoseNow = () => null;
+          try { if (card(c) !== sitting) P.push('the card of a cat asleep on its back is the sleeping card when the pose reader answers nothing: the card reads the record, not the reader');
+            if (dogPose(c, T0, 0).held === 'back') P.push('the body of a cat asleep on its back is held on its back when the pose reader answers nothing: the body reads the record, not the reader'); }
+          finally { window.catPoseNow = keep.reader; }
+          window.catPoseNow = cr => isCat(cr) ? 'back' : null;
+          try { const r0 = { ...c, backT: 0 }; if (card(r0) !== sleeping) P.push('a sitting cat the pose reader answers "back" for is not drawn on the sleeping card: the card does not ask the reader');
+            if (dogPose(r0, T0, 0).held !== 'back') P.push('a sitting cat the pose reader answers "back" for is held ' + JSON.stringify(dogPose(r0, T0, 0).held) + ': the body does not ask the reader'); }
+          finally { window.catPoseNow = keep.reader; }
+          /* an unmet cat faces away grooming; asleep on its back, it is on its back, card and body alike */
+          personaOn = k => k === 'cat'; const sp = c.persona; c.persona = 'aloof';
+          try { if (!catAway(c, T0)) P.push('with cat personalities on, a cat not yet met does not face away, so on its back over its grooming was not asked');
+            else { if (dogPose(c, T0, 0).held !== 'back') P.push('a cat not yet met, asleep on its back, is held ' + JSON.stringify(dogPose(c, T0, 0).held) + ': on its back, over the grooming it does facing away');
+              if (card(c) !== sleeping) P.push('a cat not yet met, asleep on its back, is not drawn on the sleeping card: its card is to be asleep on its back as its body is'); } }
+          finally { personaOn = () => false; c.persona = sp; }
+          said.push('asleep on its back, the reader, the body and the card agree, the card and the body moving with the reader');
+          c.backT = 0; }
+        if (greet) { c.sit = false; c.greetT = T0 + 1500;
+          const a = catPoseNow(c, T0), d = dogPose(c, T0, 0);
+          if (a !== 'greet') P.push('a standing cat given a greeting answered ' + JSON.stringify(a) + ' to the pose reader, where it greets');
+          if (!d.greet || d.held !== 'stand' || d.sit) P.push('a cat greeting is held ' + JSON.stringify(d.held) + (d.greet ? '' : ' with no greeting') + (d.sit ? ', its pose sitting,' : '') + ' for its body, where it stands with its tail up');
+          const gc = card(c), plain = card({ ...c, greetT: 0 });
+          if (gc === plain) P.push('a cat greeting is drawn on its standing card: its tail is to stand up');
+          window.catPoseNow = () => null;
+          try { if (card(c) !== plain) P.push('the card of a cat greeting holds its tail up when the pose reader answers nothing: the card reads the record'); if (dogPose(c, T0, 0).greet) P.push('a cat greeting is posed greeting when the pose reader answers nothing: the body reads the record'); }
+          finally { window.catPoseNow = keep.reader; }
+          window.catPoseNow = cr => isCat(cr) ? 'greet' : null;
+          try { const r0 = { ...c, greetT: 0, sit: true }; if (card(r0) !== gc) P.push('a sitting cat the pose reader answers "greet" for is not drawn standing with its tail up: the card does not ask the reader');
+            const d0 = dogPose(r0, T0, 0); if (!d0.greet || d0.held !== 'stand' || d0.sit) P.push('a sitting cat the pose reader answers "greet" for is held ' + JSON.stringify(d0.held) + ': greeting, it stands'); }
+          finally { window.catPoseNow = keep.reader; }
+          if (has3d) { screenIs(1280, 800); sizeCanvas(); camSet('3d'); const sq = near(c, 2); stand(c.world, sq[0], sq[1]); c.greetT = 0; const B0 = bodyOf(c), t0 = B0 && tailOf(B0); c.greetT = T0 + 1500; const B1 = bodyOf(c), t1 = B1 && tailOf(B1);
+            if (!B0 || !B1) P.push('the cat had no body two squares from you on a laptop, so its tail was not asked');
+            else { if (!(Math.abs(t1.root) < 0.2 && t1.tip > 0.3)) P.push('a cat greeting carries its tail ' + (t1.root < 0 ? 'swept back' : 'leaning forward') + ' (' + t1.root.toFixed(2) + ' at its root, ' + t1.tip.toFixed(2) + ' at its tip): straight up, the tip hooked forward');
+              if (Math.abs(t0.root) < 0.2 && t0.tip > 0.3) P.push('a cat standing with no greeting carries its tail straight up with the tip hooked forward, so the greeting\'s tail could not be told from it');
+              said.push('greeting, its tail at its root ' + t1.root.toFixed(2) + ' and its tip ' + t1.tip.toFixed(2) + ' (standing ' + t0.root.toFixed(2) + ', ' + t0.tip.toFixed(2) + ')'); } }
+          c.greetT = 0; }
+        hold(c); const a = catPoseNow(c, T0), d = dogPose(c, T0, 0);
+        if (a !== null || d.greet || d.held !== 'stand') P.push('a standing cat given neither answered ' + JSON.stringify(a) + ' and is held ' + JSON.stringify(d.held) + (d.greet ? ', greeting' : ''));
+        /* the two times live only while the game runs: a save with both live holds neither */
+        cat.greetT = T0 + 1000; cat.backT = T0 + 8000; let saved = '';
+        try { localStorage.clear(); save(); saved = Object.keys(localStorage).map(k => localStorage.getItem(k)).join('\n'); }
+        finally { localStorage.clear(); keep.ls.forEach(([k, v]) => localStorage.setItem(k, v)); cat.greetT = 0; cat.backT = 0; }
+        if (!saved) P.push('the game saved nothing, so whether a cat\'s two times are saved was not asked');
+        else if (/greetT|backT/.test(saved)) P.push('a save made while a cat greets and sleeps on its back keeps its greeting\'s or its sleep\'s time: they are never saved');
+        out.push('one reader: ' + (said.join('; ') || 'neither pose taken') + '; neither, it stands; nothing of either is saved'); }
+      /* 3 · petted: greeting standing, then sitting to the end of its sit; asleep on its back, woken at once */
+      if (CATPOSEON.has('greet')) { const c = kc || cat; hold(c); at(T0);
+        if (!tap(c)) P.push('beside the cat its button did not reach it, so petting was not asked');
+        else { const seen = [0, 1000, 2199, 2201, 3000, 3199].map(dt => { const d = dogPose(c, T0 + dt, 0); return [dt, catPoseNow(c, T0 + dt), d.held + (d.sit ? '' : ' (up)')]; });
+          const wrong = seen.filter(([dt, a, h]) => dt < 2200 ? a !== 'greet' || h !== 'stand (up)' : a !== null || h !== 'sit');   /* 2.2 s, his number, not the engine's */
+          if (wrong.length) P.push('petted, a cat answers ' + wrong.map(([dt, a, h]) => JSON.stringify(a) + ' held ' + JSON.stringify(h) + ' at ' + (dt / 1000).toFixed(3) + ' s').join(', ') + ': greeting standing to 2.2 s, then sitting');
+          if (c.next !== T0 + 3200 || !c.sit) P.push('petted, a cat sits until ' + ((c.next - T0) / 1000) + ' s: its 3.2 s sit, its greeting standing in it');
+          out.push('petted: ' + seen.map(([dt, a, h]) => (dt / 1000) + ' s ' + (a || h)).join(', ') + '; it sits until ' + ((c.next - T0) / 1000) + ' s');
+          /* the greeting throws no dice: a pet draws as many numbers with it taken as without */
+          const draws = L => { poses(L); hold(c); at(T0); let n = 0; const sr = (s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; })(4711); Math.random = () => { n++; return sr(); };
+            try { tap(c); } finally { Math.random = keep.MR; poses(keep.on); } return n; };
+          const dn = [draws(keep.on.filter(k => k !== 'greet')), draws(keep.on)];
+          const nums = k => k + (k === 1 ? ' number' : ' numbers');
+          if (dn[0] !== dn[1]) P.push('a pet draws ' + nums(dn[1]) + ' with the greeting taken and ' + nums(dn[0]) + ' without: the greeting throws no dice');
+          out.push('a pet draws ' + nums(dn[1]) + ' with the greeting taken, ' + nums(dn[0]) + ' without'); hold(c); }
+        if (CATPOSEON.has('back')) { hold(c); c.sit = true; c.backT = T0 + 9000; at(T0); const was = catPoseNow(c, T0);
+          if (was !== 'back') P.push('a cat given a sleep on its back answered ' + JSON.stringify(was) + ', so whether a pet wakes it was not asked');
+          else if (!tap(c)) P.push('beside the sleeping cat its button did not reach it, so whether a pet wakes it was not asked');
+          else { const now = catPoseNow(c, T0), body = dogPose(c, T0, 0).held;
+            if (now === 'back' || body === 'back' || c.backT > T0) P.push('petted asleep on its back, a cat is still asleep on its back (' + JSON.stringify(now) + ', held ' + JSON.stringify(body) + '): a pet wakes it at once');
+            else if (now !== 'greet') P.push('petted asleep on its back, a cat wakes but answers ' + JSON.stringify(now) + ': woken by a pet, it greets you');
+            out.push('petted asleep on its back: ' + JSON.stringify(now) + ' at once'); } } }
+      /* 4 · first met, with cat personalities on (asked here by turning them on for this block only): at once, or, aloof,
+         when it turns to you; by the pet, and by the rule every animal is met by (animalMeet) */
+      if (CATPOSEON.has('greet') && typeof catAway === 'function') { const c = kc || cat, sp = c.persona; personaOn = k => k === 'cat'; const got = [];
+        try { for (const how of ['the pet', 'the meeting']) for (const pe of ['eager', 'patient', 'aloof']) { hold(c); c.persona = pe; at(T0);
+            if (how === 'the pet') { if (!tap(c)) { P.push('beside the cat its button did not reach it, so meeting it was not asked'); continue; } } else animalMeet(c);
+            if (!c.metT) { P.push('by ' + how + ', a ' + pe + ' cat not yet met is not met'); continue; }
+            const s = pe === 'aloof' ? T0 + PERSONAWAIT : T0, ask = [[T0, s === T0], [s, true], [s + 2199, true], [s + 2201, false]].concat(s === T0 ? [] : [[s - 1, false]]);   /* 2.2 s, his number */
+            const wrong = ask.filter(([t, g]) => (catPoseNow(c, t) === 'greet') !== g);
+            if (wrong.length) P.push('met by ' + how + ', a ' + pe + ' cat ' + wrong.map(([t, g]) => (g ? 'does not greet' : 'greets') + ' at ' + ((t - T0) / 1000).toFixed(3) + ' s').join(', ') + ': it greets ' + (pe === 'aloof' ? 'when it turns to you, ' + (PERSONAWAIT / 1000) + ' s on, not when you meet it' : 'at once') + ', for 2.2 s');
+            got.push(pe + ' by ' + how + ' from ' + ((s - T0) / 1000) + ' s'); } }
+        finally { personaOn = () => false; c.persona = sp; hold(c); }
+        out.push('first met, greeting: ' + got.join(', ')); }
+      /* 5 · asleep on its back, on its body: its eyes shut, its eyes' light out */
+      if (CATPOSEON.has('back') && has3d) { const c = cat; hold(c); c.sit = true; at(T0); screenIs(1280, 800); sizeCanvas(); camSet('3d'); const sq = near(c, 2); stand(c.world, sq[0], sq[1]);
+        const B0 = bodyOf(c), e0 = B0 && eyesOf(B0); if (B0) B0.userData.yaw = Math.atan2(B0.position.x - T3.cam.position.x, B0.position.z - T3.cam.position.z);   /* facing straight away from the camera: a body that does not turn lies feet-first */ c.backT = T0 + 8000; const B1 = bodyOf(c), e1 = B1 && eyesOf(B1);
+        if (!B0 || !B1) P.push('the cat had no body two squares from you on a laptop, so its eyes on its back were not asked');
+        else { if (!e1.n || e1.shut !== e1.n || e1.shine) P.push('asleep on its back, ' + e1.shut + ' of the cat\'s ' + e1.n + ' eye parts are shut and ' + e1.shine + ' lights show: its eyes shut');
+          if (e0.shut) P.push('sitting awake, ' + e0.shut + ' of the cat\'s eye parts are shut: its eyes open sitting');
+          /* and it lies ACROSS the camera's line of sight (his answer of 2026-11-24): seen from its feet, four paws up read as a rabbit's ears */
+          const cd = Math.atan2(B1.position.x - T3.cam.position.x, B1.position.z - T3.cam.position.z), deg = Math.round(Math.abs(Math.atan2(Math.sin(B1.rotation.y - cd), Math.cos(B1.rotation.y - cd))) * 180 / Math.PI);
+          if (Math.abs(deg - 90) > 8) P.push('asleep on its back, the cat lies at ' + deg + '° to the camera\'s line of sight: it lies across it, at 90°, so the camera sees it from the side and not from its feet');
+          out.push('asleep on its back, it lies at ' + deg + '° to the camera\'s line of sight');
+          out.push('asleep on its back, on its body: ' + e1.shut + ' of ' + e1.n + ' eye parts shut, ' + e1.shine + ' lights; sitting awake ' + e0.shut + ' shut'); }
+        hold(c); }
+      /* 6 · every coat, on the card and the body, in every pose; a coat or a mouth it does not know */
+      { const poseRec = (coat, q) => ({ kind: 'gato', coat, face: 1, metT: 1, moving: false, sit: q !== 'stand' && q !== 'greet', groomT: q === 'groom' ? T0 + 4000 : 0, greetT: q === 'greet' ? T0 + 1000 : 0, backT: q === 'back' ? T0 + 8000 : 0, x: cat.x, y: cat.y, world: cat.world });
+        const Q = ['stand', 'sit', 'groom'].concat(CATPOSEON.has('greet') ? ['greet'] : [], CATPOSEON.has('back') ? ['back'] : []), bad = [], pale = [], seen = [];
+        const free = B => B.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); });
+        for (const coat of Object.keys(CATCOAT)) { const C = CATCOAT[coat];
+          for (const q of Q) { const r = poseRec(coat, q); try { const k = ink(g => drawGato(g, r, 4, 4), C.body); if (!k.any) bad.push(coat + ' ' + q + ' card blank'); else if (!k.n) pale.push(coat + ' ' + q); } catch (e) { bad.push(coat + ' ' + q + ' card: ' + e.message); } }
+          if (has3d) { let B = null;
+            try { const lk = catLookOf({ coat }); if (lk.coat !== C.body) bad.push(coat + ' body painted ' + lk.coat + ' for ' + C.body); B = dogMake(dogSkeleton(lk.kind), lk);
+              for (const q of Q) { const r = poseRec(coat, q), Pq = { ...dogPose(r, T0, 0), heading: [0, 1] }; if (q !== 'stand' && Pq.held !== (q === 'greet' ? 'stand' : q)) bad.push(coat + ' ' + q + ' held ' + Pq.held);
+                t3DogPose(B, Pq, 0, false, () => 0); B.updateMatrixWorld(true); let nan = 0; B.traverse(o => { if (o.isMesh && !o.matrixWorld.elements.every(Number.isFinite)) nan++; }); if (nan) bad.push(coat + ' ' + q + ' body: ' + nan + ' parts nowhere'); }
+              seen.push(coat); }
+            catch (e) { bad.push(coat + ' body: ' + e.message); } finally { if (B) free(B); } } }
+        if (bad.length) P.push('a coat does not draw in every pose: ' + bad.slice(0, 4).join('; '));
+        if (pale.length) P.push('a coat\'s card shows none of its own body colour in ' + pale.slice(0, 4).join(', ') + ': each coat is drawn in itself');
+        const unk = Q.filter(q => card(poseRec('a coat it does not know', q)) !== card(poseRec('grey', q)));
+        if (unk.length) P.push('a cat whose coat the engine does not know is not drawn grey on its card, ' + unk.join(', '));
+        if (catLookOf({ coat: 'a coat it does not know' }).coat !== CATCOAT.grey.body) P.push('a cat whose coat the engine does not know has a body painted ' + catLookOf({ coat: 'a coat it does not know' }).coat + ': grey');
+        const mouthDraw = typeof CATCOATSHEET !== 'undefined' && CATCOATSHEET.gato && Array.isArray(CATCOATSHEET.gato.muzzle) ? (CATCOATSHEET.gato.muzzle.find(e => e[0] === 'mouth') || [])[1] : null;
+        if (typeof mouthDraw !== 'function') P.push('the cat\'s muzzle has no mouth drawn on it, so a mouth it does not know was not asked');
+        else { const m = cc => { const c = document.createElement('canvas'); c.width = 256; c.height = 128; mouthDraw(c.getContext('2d'), 256, 128, { cat: cc }); return c.toDataURL(); }, blank = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 128; return c.toDataURL(); })();
+          const smile = m({ ...CATCOAT.grey, mouthShape: 'smile' });
+          if (smile === blank) P.push('the smile draws nothing on the cat\'s muzzle');
+          if (m({ ...CATCOAT.grey, mouthShape: 'a shape it does not know' }) !== smile || m({ ...CATCOAT.grey }) !== smile) P.push('a mouth shape the engine does not know, or none, is not drawn as the smile'); }
+        /* on the night of alebrijes every cat of the critters, the kitchen cat among them, wears what is laid on the kitten's card
+           (ALEB_KIND.gato), not what was laid on drawCat's, which none of them is drawn as now */
+        if (typeof wildDraw === 'function' && typeof alebLooks === 'function' && typeof alebLookFor === 'function' && ALEB_KIND.gato) {
+          const kw = { wd: wildDraw, al: alebLooks, af: alebLookFor }, LK = { id: 'check', tint: '#FF00FF', pat: '#0000FF', accent: '#00FF00', wings: false }, kinds = new Map();
+          wildDraw = function (g, look, kind, ...a) { kinds.set(a[4] || null, kind); return kw.wd.call(this, g, look, kind, ...a); }; alebLooks = () => [LK]; alebLookFor = () => LK;
+          try { CRIT.filter(isCat).forEach(c => { try { pic(g => drawGato(g, { ...c, groomT: 0, greetT: 0, backT: 0, metT: 1 }, 4, 4)); } catch (e) { kinds.set(c, 'a fault: ' + e.message); } }); }
+          finally { wildDraw = kw.wd; alebLooks = kw.al; alebLookFor = kw.af; }
+          const off = [...kinds.entries()].filter(([, k]) => k !== 'gato');
+          if (!kinds.size) P.push('on the night of alebrijes no cat\'s card passed through the alebrije layer, so what it wears was not asked');
+          if (off.length) P.push('on the night of alebrijes ' + off.map(([c, k]) => (c && (c.name || (c.wardrobe ? 'the kitchen cat' : c.world))) + ' wears the marks of ' + JSON.stringify(k)).join(', ') + ': every cat of the critters wears the kitten\'s, its card\'s'); }
+        out.push('every coat: ' + Object.keys(CATCOAT).length + ' coats, ' + Q.length + ' poses each on the card' + (has3d ? ' and the body (' + seen.length + ' bodies)' : '') + '; a coat it does not know grey, a mouth it does not know the smile'); }
+      /* 7 · the cat's parts: its whiskers and its mouth, on every cat's body and on no dog's */
+      if (has3d) { const parts = B => { let wh = 0, mouth = 0; B.traverse(o => { if (o.userData && o.userData.whisker) wh++; if (o.isMesh && (o.userData.marks || []).includes('mouth')) mouth++; }); return { wh, mouth }; };
+        const free = B => B.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); });
+        const got = [];
+        for (const coat of Object.keys(CATCOAT)) { let p = null; try { const lk = catLookOf({ coat }), B = dogMake(dogSkeleton(lk.kind), lk); p = parts(B); free(B); } catch (e) { P.push('the ' + coat + ' cat\'s body could not be made (' + e.message + '), so its whiskers and its mouth were not asked'); continue; }
+          if (p.wh !== 6 || !p.mouth) P.push('the ' + coat + ' cat\'s body has ' + p.wh + ' whiskers and ' + (p.mouth ? 'its mouth' : 'no mouth') + ': three whiskers a side and a mouth on its muzzle'); }
+        for (const kind of DOGK) { let p = null; try { const lk = dogLookOf({ kind }), B = dogMake(dogSkeleton(lk.kind), lk); p = parts(B); free(B); } catch (e) { P.push('the ' + kind + '\'s body could not be made (' + e.message + '), so whether it has a cat\'s parts was not asked'); continue; }
+          if (p.wh || p.mouth) P.push('the ' + kind + '\'s body has ' + p.wh + ' whiskers and ' + p.mouth + ' mouths drawn on its muzzle: those are a cat\'s'); got.push(kind); }
+        out.push('the cat\'s parts: whiskers and a mouth on every coat\'s body, none on ' + got.join(', ') + ' (every dog\'s card and body are asked by the dogs\' own checks)'); }
+    } finally { personaOn = keep.pon; poses(keep.on); window.catPoseNow = keep.reader; wStillAt = keep.ws;
+      keep.all.forEach(([c, r]) => { Object.keys(c).forEach(k => { if (!(k in r)) delete c[k]; }); Object.assign(c, r); });
+      keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; }); if (keep.talk !== null) document.getElementById('talk').hidden = keep.talk;
+      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; Math.random = keep.MR; Date.now = keep.DN; window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1];
+      if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
+      stand(keep.world, keep.px, keep.py); fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; try { camSet(keep.cam); } catch (e) {} el.hidden = keep.hidden; sizeCanvas(); }
+    return { P, out }; });
+  catsTwo.out.forEach(l => console.log('  CATS TWO: ' + l));
+  fails.push(...catsTwo.P.map(m => 'the cats, round two: ' + m));
+  /* the long seeded run (sentences 1 and 5): one cat alone among the critters, its every roll a fresh roll (put back on its home
+     square, its last pose ended), each tick's numbers seeded by the tick, and each tick asked four ways from the same numbers:
+     taking neither pose, the greeting only, the sleep only, and both. Taking neither, every tick draws exactly the numbers a
+     cat's roll always drew (its rest and its time; sitting, the groom's roll, and its time where it grooms; walking, its way
+     and its time), so a world that says nothing rolls not one number more. Taking the sleep, a sit that is not a groom draws
+     one number more (two where it sleeps) and every roll before it lands where it did. A world may be handed in as it is
+     (`asIs`), and then only the first question is asked, of the poses it takes */
+  const catTicks = ({ N, asIs }) => { const P = [], out = [];
+    const cat = CRIT.find(isCat); if (!cat) return { P, out: ['this world has no cat, so no seeded run of a cat was asked'] };
+    const keep = { crit: CRIT.slice(), rec: { ...cat }, MR: Math.random, TO: window.toast, world, px, py, fx, fy, moving, held, on: [...CATPOSEON], lastBump };
+    const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+    const poses = L => { CATPOSEON.clear(); L.forEach(k => CATPOSEON.add(k)); };
+    const home = Array.isArray(cat.home) ? cat.home : [cat.x, cat.y];
+    const base = { next: 0, moving: false, mt: 0, task: null, follow: false, stayT: 0, sit: false, groomT: 0, backT: 0, greetT: 0, petT: 0, x: home[0], y: home[1], fx: home[0], fy: home[1] };
+    const now0 = 3e9;
+    const tick = (L, k) => { if (L) poses(L); Object.keys(cat).forEach(f => { if (!(f in keep.rec) && !(f in base)) delete cat[f]; }); Object.assign(cat, keep.rec, base);
+      const sr = seeded(90001 + k * 7919); let n = 0, first = null; Math.random = () => { const v = sr(); if (first === null) first = v; n++; return v; };
+      const now = now0 + k * 16; try { critUpdate(16, now); } finally { Math.random = keep.MR; }
+      return { n, first, now, sit: !!cat.sit, next: cat.next, groomT: cat.groomT || 0, backT: cat.backT || 0, x: cat.x, y: cat.y, moving: !!cat.moving }; };
+    /* what a cat's roll always drew: its rest's number, then sitting or resting its time and, sitting where grooming is on,
+       the groom's roll and its time where it grooms; walking, its way and its time; with no way open, nothing more */
+    const before = r => r.first < 0.55 ? 2 + (GROOMON && r.sit ? 1 + (r.groomT > r.now ? 1 : 0) : 0) : r.moving ? 3 : 1;
+    const same = (a, b) => a.sit === b.sit && a.groomT === b.groomT && a.x === b.x && a.y === b.y && a.moving === b.moving;
+    let asWas = 0, greetMoved = 0, more = 0, moved = 0, sits = 0, grooms = 0, asked = 0, backs = 0, groomBack = 0, standBack = 0, walks = 0, lo = Infinity, hi = 0; const ex = [];
+    try { CRIT.length = 0; CRIT.push(cat); window.toast = () => {}; world = cat.world; px = fx = home[0]; py = fy = home[1] + 3; moving = false; held = null;
+      for (let k = 0; k < N; k++) {
+        if (asIs) { const r = tick(null, k); if (r.n !== before(r)) { asWas++; if (ex.length < 3) ex.push(r.n + ' for ' + before(r)); } continue; }
+        const off = tick([], k), g = tick(['greet'], k), b = tick(['back'], k), gb = tick(['greet', 'back'], k);
+        if (off.n !== before(off)) { asWas++; if (ex.length < 3) ex.push(off.n + ' for ' + before(off)); }
+        if (g.n !== off.n || !same(g, off) || g.next !== off.next || g.backT) greetMoved++;
+        const slept = b.backT > b.now, extra = off.sit && !(off.groomT > off.now) ? 1 + (slept ? 1 : 0) : 0;
+        if (b.n !== off.n + extra) more++;
+        if (!same(b, off) || b.next !== (slept ? Math.max(off.next, b.backT) : off.next)) moved++;
+        if (gb.n !== b.n || !same(gb, b) || gb.next !== b.next || gb.backT !== b.backT) greetMoved++;
+        if (off.moving) walks++;
+        if (b.sit) { sits++; if (b.groomT > b.now) grooms++; else asked++; }
+        if (slept) { backs++; lo = Math.min(lo, b.backT - b.now); hi = Math.max(hi, b.backT - b.now); if (b.groomT > b.now) groomBack++; if (!b.sit) standBack++; } } }
+    finally { Math.random = keep.MR; window.toast = keep.TO; poses(keep.on); CRIT.length = 0; keep.crit.forEach(c => CRIT.push(c));
+      Object.keys(cat).forEach(f => { if (!(f in keep.rec)) delete cat[f]; }); Object.assign(cat, keep.rec);
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; held = keep.held; lastBump = keep.lastBump; }
+    if (asWas) P.push((asIs ? 'this world, which takes ' + JSON.stringify(keep.on) + ', ' : 'taking neither pose, a cat ') + 'drew other than the numbers a cat\'s roll always drew on ' + asWas + ' of ' + N + ' seeded ticks (' + ex.join(', ') + '): a world that says nothing would no longer roll as it did');
+    if (asIs) { out.push('this world as it is (taking ' + JSON.stringify(keep.on) + '): ' + N + ' seeded ticks of a cat, ' + (N - asWas) + ' drawing exactly what a cat\'s roll always drew'); return { P, out }; }
+    if (greetMoved) P.push('taking the greeting moves a cat\'s rolls on ' + greetMoved + ' of ' + (2 * N) + ' seeded ticks: the greeting throws no dice');
+    if (more) P.push('taking the sleep on its back, a cat does not draw exactly one number more for each sit that is not a groom (two where it sleeps) on ' + more + ' of ' + N + ' seeded ticks: its roll is taken out of its turn, or for a sit it is not asked of');
+    if (moved) P.push('taking the sleep on its back, ' + moved + ' of ' + N + ' seeded ticks do not land where they did without it (its sit, its groom, its step, or its time, which only a sleep makes longer): the rolls a cat took before are moved');
+    if (!walks || !grooms || !backs || !asked) P.push('the seeded run had ' + walks + ' walks, ' + grooms + ' grooms, ' + asked + ' sits not a groom and ' + backs + ' sleeps on its back, so it had nothing to measure');
+    const sh = asked ? backs / asked : 0;
+    if (Math.abs(sh - 0.25) > 0.035) P.push('a cat sleeps on its back in ' + (100 * sh).toFixed(1) + ' in 100 of its sits that are not a groom: 1 in 4');
+    if (!(lo >= 6000 && hi <= 10000 && hi - lo > 3000)) P.push('a sleep on its back lasts ' + lo.toFixed(0) + ' to ' + hi.toFixed(0) + ' ms: 6 to 10 s');
+    if (groomBack) P.push(groomBack + ' sits that became a groom were also a sleep on its back: a sit that became a groom is never asked');
+    if (standBack) P.push(standBack + ' rolls that stood a cat up gave it a sleep on its back');
+    out.push('the seeded run: ' + N + ' ticks four ways; taking neither, every tick as a cat\'s roll always drew (' + (N - asWas) + ' of ' + N + '); the greeting moves nothing; the sleep in ' + backs + ' of ' + asked + ' sits not a groom (' + (100 * sh).toFixed(1) + '%; ' + backs + ' of all ' + sits + ' sits), ' + (lo / 1000).toFixed(1) + ' to ' + (hi / 1000).toFixed(1) + ' s, never on a groom (' + grooms + '), every roll before it where it was');
+    return { P, out }; };
+  const catsRun = await page.evaluate(catTicks, { N: 8000, asIs: false });
+  catsRun.out.forEach(l => console.log('  CATS TWO: ' + l));
+  fails.push(...catsRun.P.map(m => 'the cats, round two: ' + m));
+  /* Meridian in two copies of its config: one whose list names a word the engine does not know, which is dropped; one that
+     names no pose, which takes neither: there the reader answers nothing and a long seeded run of its cats draws exactly
+     what a cat's roll always drew */
+  const catsWords = await (async () => { const P = [], out = [];
+    if (!(await page.evaluate(() => typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest'))) { out.push('this world is not Meridian, so its config was not copied'); return { P, out }; }
+    const cp = path.resolve(path.dirname(file), 'content/meridian/config.js'); let src = '';
+    try { src = fs.readFileSync(cp, 'utf8'); } catch (e) { P.push('Meridian\'s config could not be read, so a copy of it could not be made'); return { P, out }; }
+    const line = src.split('\n').filter(l => /^const CATPOSETAKE=/.test(l));
+    if (line.length !== 1) { P.push('Meridian\'s config has ' + line.length + ' lines naming its cat poses, where one was looked for, so a copy could not be made'); return { P, out }; }
+    for (const [what, body, want] of [['a word the engine does not know among its poses', src.replace(line[0], 'const CATPOSETAKE=["greet","purr","back","Back"," back"];'), ['greet', 'back']], ['no pose', src.replace(line[0], ''), []]]) {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      try { const p = await ctx.newPage(), err = []; p.on('pageerror', e => err.push(e.message));
+        await p.route('**', r => { const u = r.request().url(); if (u.startsWith('file://') && u.endsWith('/content/meridian/config.js')) return r.fulfill({ status: 200, contentType: 'application/javascript', body }); return u.startsWith('file://') ? r.continue() : r.abort(); });
+        await p.goto(require('url').pathToFileURL(file).href); await boot(p);
+        const got = await p.evaluate(() => { const c = CRIT.find(isCat), nw = wNow(); let a = 'no cat';
+          if (c) { const k = { ...c }; Object.assign(c, { sit: true, moving: false, backT: nw + 8000, greetT: nw + 1000, groomT: 0 }); try { a = catPoseNow(c, nw); } finally { Object.assign(c, k); } }
+          return { on: typeof CATPOSEON === 'undefined' ? null : [...CATPOSEON], a }; });
+        if (JSON.stringify(got.on) !== JSON.stringify(want)) P.push('with ' + what + ', Meridian takes ' + JSON.stringify(got.on) + ': ' + JSON.stringify(want));
+        if (!want.length) { if (got.a !== null) P.push('in Meridian with no pose named, a cat given both times answered ' + JSON.stringify(got.a) + ' to the pose reader: nothing');
+          const r = await p.evaluate(catTicks, { N: 4000, asIs: true }); P.push(...r.P.map(m => 'in Meridian with no pose named, ' + m)); out.push(...r.out.map(m => 'Meridian with no pose named: ' + m)); }
+        if (err.length) P.push('Meridian with ' + what + ' threw: ' + err.slice(0, 3).join(' | '));
+        out.push('Meridian with ' + what + ': it takes ' + JSON.stringify(got.on) + (want.length ? '' : ', a cat given both times answers ' + JSON.stringify(got.a))); }
+      finally { await ctx.close(); } }
+    return { P, out }; })();
+  catsWords.out.forEach(l => console.log('  CATS TWO: ' + l));
+  fails.push(...catsWords.P.map(m => 'the cats, round two: ' + m));
   /* ---- THE BIRDS (mq-v297; the owner's confirmed goals of 2026-11-23 on the birds and the parrot) ----
      Asked wherever a world has a bird among its critters; a world with none is told so and not asked.
        1 · ONE BIRD SYSTEM (the guard): where the critters hold a pigeon or a parrot, the engine's own PIG and LORO stand nowhere,
@@ -7691,7 +8015,7 @@ function findChromium() {
     if (!who) { P.push('nobody this world names to be a body stands in any world away from a window, so the light stand-in could not be asked'); return { P, out }; }
     const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who && !q.win)), w = WORLDS[wid], n = w.npcs.find(q => q.npc === who && !q.win);
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, bm: bodyMake, MR: Math.random,
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, idle: T3.peopleIdle, bm: bodyMake, MR: Math.random,
       dp: drawPerson, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
       n: { x: n.x, y: n.y, fx: n.fx, fy: n.fy, mv: n.mv, mt: n.mt, wnext: n.wnext, doc: n.doc }, lit: [...LIGHTON] };
     const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
@@ -7700,7 +8024,10 @@ function findChromium() {
     const full = () => T3.peopleOn && T3.peopleOn.get(n), lightOf = k => T3.lightOn && T3.lightOn.get(k);
     const standing = () => { const L = T3.lightShown && T3.lightShown.get(n); return !!(L && L.visible && L.parent === T3.scene && T3.peopleShown && T3.peopleShown.has(n)) ? L : null; };
     const fresh = () => { const B = full(); if (B) { B.parent && B.parent.remove(B); t3Dispose(B); T3.peopleOn.delete(n); } if (T3.peopleBad) T3.peopleBad.delete(n); lightDrop(n); };
-    const hold = () => { t3PeopleMake = () => {}; }, makeNow = () => { t3PeopleMake = keep.mk; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; }; };
+    const hold = () => { t3PeopleMake = () => {}; }, makeNow = () => { t3PeopleMake = keep.mk; T3.peopleIdle = false; window.requestIdleCallback = f => { f({ didTimeout: false, timeRemaining: () => 50 }); return 0; }; };
+    /* T3.peopleIdle = false: a quiet moment the browser still owes a frame drawn before this check cannot come while the check runs
+       (it runs in one go), so the maker would wait for it and make nothing (found on the town, 2026-11-24: "guero's full body was not
+       made"); it is put back after, as the block on the bodies kept on leaving a room does */
     const ang = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
     const away = (x, y) => { const c = T3.cam.position; return Math.atan2((x + 0.5) - c.x, (y + 0.5) - c.z); }, toCam = (x, y) => { const c = T3.cam.position; return Math.atan2(c.x - (x + 0.5), c.z - (y + 0.5)); };
     /* the pixels a thing puts on the screen (the frame rendered with it and without it), and how many within a square of its tile */
@@ -7832,7 +8159,7 @@ function findChromium() {
       out.push('a world that says nothing: ' + who + ' ' + (painted.card ? 'a card' : 'no card') + ' while their body is made, ' + rolls + ' random numbers drawn');
     } finally {
       LIGHTON.clear(); keep.lit.forEach(k => LIGHTON.add(k));
-      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
+      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; T3.peopleIdle = keep.idle; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
       if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
       if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
       Object.assign(n, keep.n); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving;

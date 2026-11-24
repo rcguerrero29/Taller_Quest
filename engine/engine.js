@@ -1078,7 +1078,7 @@ const EARKINDS=Object.freeze(["chi"]);
 /* A CAT'S LOOK, cleaned, for its body (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats): its card's coat (CATCOAT: the body, the two bars, the muzzle), and what it
    wears (catWear: the kitchen cat's bandana and collar; none on any other cat). The body is made again when this changes */
 function catLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr);
-  return {kind:"gato",coat:P.body,bar:P.bar,muzzle:P.muzzle,collar:W.collar,band:W.band};}
+  return {kind:"gato",coat:P.body,bar:P.bar,muzzle:P.muzzle,collar:W.collar,band:W.band,cat:P};}
 function dogLookOf(cr){cr=cr&&typeof cr==="object"?cr:{};
   const kind=typeof cr.kind==="string"&&DOGK.has(cr.kind)?cr.kind:"beagle",coats=(typeof BREEDS==="object"&&BREEDS&&Array.isArray(BREEDS[kind])&&BREEDS[kind])||[];
   const o={kind,coat:saveCol(cr.c)||saveCol(coats[0])||"#E8C46A",collar:saveCol(cr.collar)||"#2E5FA8",band:saveCol(cr.band)};
@@ -3974,7 +3974,12 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(isDog(cr)&&Math.random()<0.018){dogIdle(cr,now);return;}
   const r=Math.random(),idle=isCat(cr)?0.55:0.3;
   if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+Math.random()*3500:400+Math.random()*900);
-    if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    let groomed=false;
+    if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){groomed=true;cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    /* asleep on its back (CATPOSES.back, mq-v299), where the world takes it: rolled after the groom's roll, only for a sit that
+       did not become a groom; every sit's roll starts it afresh, so no sleep is left over from an earlier one */
+    if(CATPOSEON.has("back")&&isCat(cr)&&cr.sit&&!groomed){const B=CATPOSES.back;cr.backT=0;
+      if(Math.random()<B.share){cr.backT=now+B.min+Math.random()*(B.max-B.min);cr.next=Math.max(cr.next,cr.backT);}}
     return;}
   cr.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
@@ -4036,6 +4041,38 @@ const isCat=cr=>!!cr&&CATK.has(cr.kind);
    number more than before, and its cats never groom */
 const GROOMON=typeof GROOMTAKE!=="undefined"&&Array.isArray(GROOMTAKE)&&GROOMTAKE.includes("cat");
 const CATGROOM=Object.freeze({share:1/3,min:3000,max:6000,lick:450});   /* lick: ms each of the card's two lick frames shows */
+/* THE CAT'S TWO POSES (round two, mq-v299; the owner's confirmed goal of 2026-11-24 on the cats' second round, his answers to the
+   session's two questions). A world turns each on by naming it in its own CATPOSETAKE list; a word it does not know is dropped,
+   and a world that says nothing has neither and rolls not one number more than before.
+     greet · its tail straight up, standing, for 2.2 s (the time its heart shows) when it is petted or first met; an aloof cat
+             greets when it turns to you, not when you meet it. Petted, it greets standing, then sits for the rest of its
+             3.2 s sit. No dice.
+     back  · asleep on its back, belly up, four paws in the air, eyes shut: 1 in 4 of its sits, 6 to 10 s; a pet wakes it at
+             once. Rolled after every roll a cat already takes (the groom's among them), so those land where they did; a sit
+             that became a groom is not asked.
+   One reader answers which of them a cat is in (catPoseNow), and its card and its body both ask it: no list of timers to
+   keep in step. The record's two times (greetT, backT) live only while the game runs and are never saved */
+const CATPOSEON=new Set(typeof CATPOSETAKE!=="undefined"&&Array.isArray(CATPOSETAKE)?CATPOSETAKE.filter(k=>k==="greet"||k==="back"):[]);
+const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze({share:1/4,min:6000,max:10000})});
+/* catPoseNow(cr, nw): "back" while a cat sleeps on its back, else "greet" while its greeting lasts and it stands, else null.
+   Asked of anything that is not a cat, or in a world that takes neither pose, it answers null */
+function catPoseNow(cr,nw){if(!isCat(cr)||!CATPOSEON.size)return null;if(nw===undefined)nw=wNow();
+  /* on its back only while its record still sits it still: a cat stood up or stepped off (the road) is awake */
+  if(CATPOSEON.has("back")&&cr.backT>nw&&cr.sit&&!cr.moving)return "back";
+  /* the greeting's window is its 2.2 s ending at greetT (an aloof cat's starts when it turns to you); it stands for it, over a
+     sit or a groom of its own, but never while it still faces away, not yet met or ignoring you */
+  if(CATPOSEON.has("greet")&&cr.greetT>nw&&nw>=cr.greetT-CATPOSES.greet.ms&&!catAway(cr,nw))return "greet";
+  return null;}
+/* catGreet(cr, nw): starts its greeting (greetT), where the world takes it; standing; the caller decides when (petted, first met,
+   an aloof cat's turn). catWake(cr): ends a sleep on its back at once (a pet) */
+function catGreet(cr,nw){if(!isCat(cr)||!CATPOSEON.has("greet"))return;
+  cr.greetT=(typeof nw==="number"&&isFinite(nw)?nw:wNow())+CATPOSES.greet.ms;}   /* nw: when the greeting starts */
+function catWake(cr){if(!isCat(cr))return;
+  cr.backT=0;}
+/* catCardHeld(cr, nw): which of its drawings a cat's card is, from the pose reader and its record: "back", "groom", "sit" or
+   "stand" (greeting, it stands; on its back over grooming). The card (drawGato) and what the night of alebrijes lays over it
+   (ALEBGATO) ask it alike */
+function catCardHeld(cr,nw){const cp=catPoseNow(cr,nw);return cp==="back"?"back":cp===null&&(cr.groomT>nw||catAway(cr,nw))?"groom":cr.sit&&cp!=="greet"?"sit":"stand";}
 /* A CAT NOT YET MET (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 11: where a world gives cats a personality (cat named in its PERSONATAKE), a cat you have not met sits
    facing away, grooming, with a picture of a fish in its thought bubble, and an aloof one goes on ignoring you for a while after
    (PERSONAWAIT); petting meets it, and it turns to you with its ears pricked and a short stretch. A world with no cat personality
@@ -4646,9 +4683,10 @@ function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.no
     sniff=cr.sniffT>nw&&!cr.sit&&!lay&&!howl&&!(cr.digT>nw);
   const love=cr.loveT>nw,curl=lay&&!howl&&!happy&&!love&&(typeof cr.curlT==="number"?cr.curlT===cr.layT:cr.curlT===dogCurlMark(cr)),   /* the mark on this one nap, and nothing has woken him since (dogCurl); no dice here */
     rests=curl||(lay&&!happy&&!love&&!tailWags(cr,t));   /* lying down and neither happy nor loved, his tail lies still between its short wags; curled up, it does not wag at all */
-  const groom=CATK.has(cr.kind)&&(cr.groomT>nw||catAway(cr,nw)),stretch=CATK.has(cr.kind)&&cr.stretchT>nw,stretchLeft=stretch?cr.stretchT-nw:0;   /* a cat's groom and its greeting stretch (mq-v296); no dog has either */
-  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit||groom,lay,curl,groom,stretch,stretchLeft,held:curl?"curl":lay?"lay":groom?"groom":cr.sit?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
-    drop:lay?(curl&&K.curl!==undefined?K.curl:K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
+  const cpose=catPoseNow(cr,nw),back=cpose==="back",greet=cpose==="greet";   /* a cat's two poses (mq-v299): on its back over every other way of holding itself; greeting, it stands over a sit or a groom of its own */
+  const groom=CATK.has(cr.kind)&&!back&&!greet&&(cr.groomT>nw||catAway(cr,nw)),stretch=CATK.has(cr.kind)&&!back&&cr.stretchT>nw,stretchLeft=stretch?cr.stretchT-nw:0;   /* a cat's groom and its greeting stretch (mq-v296); no dog has either */
+  return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:back||(!greet&&(!!cr.sit||groom)),lay,curl,groom,stretch,stretchLeft,greet,held:back?"back":curl?"curl":lay?"lay":groom?"groom":cr.sit&&!greet?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
+    drop:lay?(curl&&K.curl!==undefined?K.curl:K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests||back?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),   /* asleep on its back, its tail lies still */
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
 function bodyRide(kind,a){const R={hid:false,lay:false,howl:false,lift:0,drop:0,nod:0,body:0,head:0},K=POSEPX[kind]||{};
   if(a&&DOGK.has(kind)){const D=dogPose(a);R.hid=D.hid;R.lift=D.lift;R.lay=D.lay;R.howl=D.howl;R.drop=D.drop;R.nod=D.nod;if(D.curl){R.curl=true;R.curlV=D.ver;}}
@@ -5416,34 +5454,80 @@ function catGroomCard(g,P,W,cx,sy,k){
 /* THE CATS' COATS """+CR+""": the card's paint, by name. grey is the street cat's, the default; ginger is the kitchen cat's, as
    drawCat paints her. A record names its coat (coat); each cat's own colour is a later item, for now, as today */
 const CATCOAT={grey:{tail:"#6E7278",body:"#8B8F98",bar:"#6E7278",leg:"#7B7F88",head:"#8B8F98",muzzle:"#D8DBE0"},
-  ginger:{tail:"#C97F3F",body:"#D98E4A",bar:"#B96F31",leg:"#C97F3F",head:"#D98E4A",muzzle:"#F1E3CE"}};
+  ginger:{tail:"#C97F3F",body:"#D98E4A",bar:"#B96F31",leg:"#C97F3F",head:"#D98E4A",muzzle:"#F1E3CE"},
+  tabby:{tail:"#6E563F",body:"#8E7256",bar:"#4A3829",leg:"#7D6349",head:"#8E7256",muzzle:"#E9DCC8",mark:"#4A3829"},
+  tabbywhite:{tail:"#6E563F",body:"#8E7256",bar:"#4A3829",leg:"#7D6349",head:"#8E7256",muzzle:"#F2EFE8",mark:"#4A3829",chest:"#F2EFE8",paws:"#F2EFE8",blaze:"#F2EFE8"},
+  calico:{tail:"#D98E4A",body:"#F2EFE8",bar:null,leg:"#E8E4DC",head:"#F2EFE8",muzzle:"#F7F4EE",patches:[["#D98E4A",0.3,0.35,0.22],["#3A3537",0.68,0.45,0.2],["#D98E4A",0.82,0.75,0.14]],headPatches:[["#3A3537",0.52,0.2,0.17,0.22],["#D98E4A",0.5,0.8,0.17,0.22]],ears:["#3A3537","#D98E4A"],whisker:"#A8A29A"},
+  tuxedo:{tail:"#2B2829",body:"#2B2829",bar:null,leg:"#2B2829",head:"#2B2829",muzzle:"#F2EFE8",chest:"#F2EFE8",paws:"#F2EFE8",ear:"#2B2829"},
+  points:{tail:"#4A3A31",body:"#EDE3D2",bar:null,leg:"#5A4A40",head:"#EDE3D2",muzzle:"#4A3A31",mask:"#4A3A31",ear:"#4A3A31"},
+  greywhite:{tail:"#7F848C",body:"#7F848C",bar:null,leg:"#F2EFE8",head:"#7F848C",muzzle:"#F2EFE8",chest:"#F2EFE8",paws:"#F2EFE8",belly:"#F2EFE8"}};
 /* what a cat wears: the cat the wardrobe dresses (wardrobe: true, the kitchen cat), its bandana and collar (wearCat); any other
    cat, none, for now, as today */
 const catWear=cr=>cr&&cr.wardrobe===true?{band:saveCol(wearCat.bandana),collar:saveCol(wearCat.collar)}:{band:null,collar:null};
-function drawGato(g,cr,sx,sy){ /* every cat: Canela's silhouette, in its record's coat (coat) and what it wears (catWear). The kitchen
-     cat, coat ginger, her tail's sway at her own clock (sway 0) and the wardrobe on, is drawCat's card pixel for pixel; a cat that
-     names neither is the street cat it always was, grey, its sway 7 on """+CR+""" */
+function drawGato(g,cr,sx,sy){ /* every cat, in its record's coat (coat, CATCOAT) and what it wears (catWear). From mq-v299 (round two)
+     the kitten of the owner's photographs: the card drawn below, the same for every cat; the kitchen cat is the ginger cat in her
+     wardrobe. A coat it does not know is the grey one */
   const P=CATCOAT[cr.coat]||CATCOAT.grey,W=catWear(cr),cx=sx+16,sw=Math.sin(Date.now()/300+(typeof cr.sway==="number"&&isFinite(cr.sway)?cr.sway:7));
   g.save();g.translate(cx,0);g.scale(cr.face,1);g.translate(-cx,0);
-  if(cr.groomT>wNow()||catAway(cr,wNow())){catGroomCard(g,P,W,cx,sy,Math.floor(Date.now()/CATGROOM.lick)%2);g.restore();return;}   /* grooming (mq-v296) */
-  g.fillStyle="rgba(0,0,0,.15)";g.beginPath();g.ellipse(cx,sy+27,6.5,2.6,0,0,7);g.fill();
-  g.strokeStyle=P.tail;g.lineWidth=2.6;g.lineCap="round";
-  g.beginPath();g.moveTo(cx-6.5,sy+21);g.quadraticCurveTo(cx-11,sy+18+sw*2,cx-9.5,sy+13+sw*3);g.stroke();
-  g.fillStyle=P.body;g.beginPath();g.roundRect(cx-7,sy+18,12.5,7.5,3.8);g.fill();
-  g.fillStyle=P.bar;g.fillRect(cx-4.5,sy+18.5,1.8,6);g.fillRect(cx-1,sy+18.5,1.8,6);
-  if(!cr.sit){g.fillStyle=P.leg;g.fillRect(cx-5.5,sy+24.5,2,3);g.fillRect(cx+2.5,sy+24.5,2,3);}
-  if(W.band){g.fillStyle=W.band; /* neckerchief tucks behind the head */
-    g.beginPath();g.moveTo(cx+2.2,sy+18.8);g.lineTo(cx+9.2,sy+18.8);g.lineTo(cx+5.7,sy+22.8);g.closePath();g.fill();}
-  g.fillStyle=P.head;g.beginPath();g.arc(cx+6,sy+17.5,4.2,0,7);g.fill();
-  g.beginPath();g.moveTo(cx+3.2,sy+15);g.lineTo(cx+4.2,sy+11.6);g.lineTo(cx+6,sy+14);g.closePath();g.fill();
-  g.beginPath();g.moveTo(cx+6.6,sy+13.8);g.lineTo(cx+8.6,sy+11.8);g.lineTo(cx+9,sy+15);g.closePath();g.fill();
-  g.fillStyle=P.muzzle;g.beginPath();g.arc(cx+7.3,sy+19.4,2,0,7);g.fill();
-  g.fillStyle="#26202B";
-  if(cr.sit){g.fillRect(cx+5.2,sy+17,1.8,0.7);g.fillRect(cx+8,sy+17,1.8,0.7);}
-  else{g.fillRect(cx+5.4,sy+16.6,1.1,1.1);g.fillRect(cx+8,sy+16.6,1.1,1.1);}
-  g.fillStyle="#C4586B";g.fillRect(cx+9.2,sy+18,1.1,0.9);
-  if(W.collar){g.fillStyle=W.collar;g.fillRect(cx+2.8,sy+20.6,5.2,1.4);
-    g.fillStyle="#E0B45C";g.beginPath();g.arc(cx+5.4,sy+22.5,0.9,0,7);g.fill();}
+  const cpose=catPoseNow(cr,wNow()),held=catCardHeld(cr,wNow());   /* the card asks the same reader as the body (mq-v299): on its back over grooming, and greeting, it stands */
+  if(held==="groom"){catGroomCard(g,P,W,cx,sy,Math.floor(Date.now()/CATGROOM.lick)%2);g.restore();return;}   /* grooming (mq-v296) */
+  /* A KITTEN'S CARD (round two, from the owner's photographs): a head as wide as its body, wide-set round eyes low on its face, a
+     small pink nose over two pale pads, broad ears with pink inside, a short round body on short legs, a full tail carried up.
+     Sitting, it sits upright with its tail laid round its feet. Its face looks out of the card, as a kitten looks at you */
+  const sit=held==="sit",hx=sit?cx+2.6:cx+5.2,hy=sit?sy+14.4:sy+15.6,ell=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill();};
+  g.fillStyle="rgba(0,0,0,.15)";ell(cx,sy+27,6.5,2.6);
+  if(held==="back"){   /* asleep on its back: its head laid back toward you with its eyes shut, its pale belly up, four paws in the air */
+    const bx=cx+5.4,by=sy+21.4;
+    g.strokeStyle=P.tail;g.lineWidth=3;g.lineCap="round";g.beginPath();g.moveTo(cx-6.4,sy+24.6);g.quadraticCurveTo(cx-10.4,sy+25.6,cx-11.4,sy+23.2);g.stroke();
+    g.fillStyle=P.body;g.beginPath();g.roundRect(cx-8,sy+19.6,11,7.2,3.6);g.fill();
+    if(P.belly||P.chest||!P.mask){g.fillStyle=P.belly||P.chest||P.muzzle;ell(cx-3,sy+21.6,4.4,2.2);}
+    [[-7,0.4],[-4.6,-0.4]].forEach(([dx,dy])=>{g.fillStyle=P.leg;g.fillRect(cx+dx,sy+16.4+dy,2.3,3.8);g.fillStyle=P.paws||P.leg;g.fillRect(cx+dx,sy+16+dy,2.3,1.5);});
+    [-1,1].forEach(sd=>{g.fillStyle=Array.isArray(P.ears)?P.ears[sd<0?0:1]:(P.ear||P.head);g.beginPath();g.moveTo(bx+sd*5.3,by+2.2);g.lineTo(bx+sd*4.4,by+7.4);g.lineTo(bx+sd*1,by+4.6);g.closePath();g.fill();
+      g.fillStyle="#F2B8C0";g.beginPath();g.moveTo(bx+sd*4.5,by+3.2);g.lineTo(bx+sd*4.1,by+6);g.lineTo(bx+sd*2.4,by+4.6);g.closePath();g.fill();});
+    g.fillStyle=P.head;ell(bx,by,5.8,5);
+    if(P.mask){g.fillStyle=P.mask;ell(bx,by-1.6,3.4,2.8);}
+    if(P.blaze){g.fillStyle=P.blaze;g.beginPath();g.moveTo(bx-0.6,by+3.6);g.lineTo(bx+0.6,by+3.6);g.lineTo(bx+1.9,by-1.4);g.lineTo(bx-1.9,by-1.4);g.closePath();g.fill();}
+    g.fillStyle=P.muzzle;ell(bx,by-2.6,2.6,1.7);
+    g.fillStyle="#E8919B";g.beginPath();g.moveTo(bx-0.9,by-1.5);g.lineTo(bx+0.9,by-1.5);g.lineTo(bx,by-2.5);g.closePath();g.fill();
+    g.strokeStyle="#26202B";g.lineWidth=0.8;g.lineCap="round";[-1,1].forEach(sd=>{g.beginPath();g.moveTo(bx+sd*1.6,by+0.1);g.quadraticCurveTo(bx+sd*2.7,by-0.9,bx+sd*3.8,by+0.1);g.stroke();});
+    [[-2.2,-0.6],[2.2,-0.6]].forEach(([dx,dy])=>{g.fillStyle=P.leg;g.fillRect(bx+dx-1.1,sy+14.2+dy,2.3,3.4);g.fillStyle=P.paws||P.leg;g.fillRect(bx+dx-1.1,sy+13.8+dy,2.3,1.5);});
+    g.restore();return;}
+  g.strokeStyle=P.tail;g.lineWidth=3;g.lineCap="round";g.beginPath();
+  if(cpose==="greet"){g.moveTo(cx-5.6,sy+21.6);g.quadraticCurveTo(cx-7.6,sy+17,cx-6.6,sy+11.4);g.quadraticCurveTo(cx-6.2,sy+8.6,cx-3.8,sy+9.6);}
+  else if(sit){g.moveTo(cx-5,sy+25.6);g.quadraticCurveTo(cx-6.5,sy+27.4+sw*0.3,cx-0.5,sy+27);}
+  else{g.moveTo(cx-5.6,sy+21.6);g.quadraticCurveTo(cx-10.5,sy+18+sw*2,cx-8.6,sy+12.6+sw*3);}
+  g.stroke();
+  const body=()=>{g.beginPath();if(sit)g.ellipse(cx-1,sy+22.2,4.9,5,0,0,7);else g.roundRect(cx-6.6,sy+18.4,11.2,7.4,3.7);};
+  g.fillStyle=P.body;body();g.fill();
+  g.save();body();g.clip();
+  if(P.bar){g.fillStyle=P.bar;if(sit){g.fillRect(cx-5.4,sy+19.6,1.6,5.4);g.fillRect(cx-3,sy+18.2,1.6,7);}else{g.fillRect(cx-4.4,sy+18.6,1.7,6);g.fillRect(cx-1.2,sy+18.6,1.7,6);}}
+  (P.patches||[]).forEach(([c,u,v,s])=>{g.fillStyle=c;ell(sit?cx-5.9+9.8*u:cx-6.6+11.2*u,sy+18.4+7.4*v,11.2*s,7.4*s*1.3);});
+  if(P.belly){g.fillStyle=P.belly;g.fillRect(cx-7,sy+23,12,3.4);}
+  if(P.chest){g.fillStyle=P.chest;if(sit)ell(cx+1.6,sy+22.8,2.9,4.2);else ell(cx+3.4,sy+22.6,2.5,3.3);}
+  g.restore();
+  if(sit){g.fillStyle=P.paws||P.leg;g.fillRect(cx-0.2,sy+25.6,2.2,1.9);g.fillRect(cx+2.4,sy+25.6,2.2,1.9);}
+  else{g.fillStyle=P.leg;g.fillRect(cx-5.4,sy+24.6,2.4,3);g.fillRect(cx+1.6,sy+24.6,2.4,3);
+    if(P.paws){g.fillStyle=P.paws;g.fillRect(cx-5.4,sy+26.3,2.4,1.3);g.fillRect(cx+1.6,sy+26.3,2.4,1.3);}}
+  if(W.band){g.fillStyle=W.band;g.beginPath();g.moveTo(hx-3.8,hy+4);g.lineTo(hx+3.8,hy+4);g.lineTo(hx,hy+8.2);g.closePath();g.fill();}   /* her neckerchief, under her chin */
+  const ears=(col,k)=>{[-1,1].forEach(sd=>{g.fillStyle=Array.isArray(col)?col[sd<0?0:1]:col;g.beginPath();g.moveTo(hx+sd*5.5*k,hy-2.2);g.lineTo(hx+sd*4.3,hy-2.2-5.9*k);g.lineTo(hx+sd*(4.3-3.7*k),hy-4.4);g.closePath();g.fill();});};
+  ears(P.ears||P.ear||P.head,1);
+  g.fillStyle=P.head;ell(hx,hy,6,5.1);
+  g.save();g.beginPath();g.ellipse(hx,hy,6,5.1,0,0,7);g.clip();
+  (P.headPatches||[]).forEach(([c],k)=>{g.fillStyle=c;ell(hx+(k?4.4:-4.4),hy-4.2,3.1,2.6);});
+  if(P.headPatch){g.fillStyle=P.headPatch;ell(hx-3.6,hy-3.4,3.6,3);}
+  if(P.mask){g.fillStyle=P.mask;ell(hx,hy+1.7,3.6,2.9);}
+  if(P.blaze){g.fillStyle=P.blaze;g.beginPath();g.moveTo(hx-0.6,hy-3.8);g.lineTo(hx+0.6,hy-3.8);g.lineTo(hx+2,hy+1.6);g.lineTo(hx-2,hy+1.6);g.closePath();g.fill();}
+  g.restore();
+  g.fillStyle="#F2B8C0";[-1,1].forEach(sd=>{g.beginPath();g.moveTo(hx+sd*4.7,hy-3.1);g.lineTo(hx+sd*4.2,hy-6.3);g.lineTo(hx+sd*2.4,hy-4.5);g.closePath();g.fill();});
+  if(P.mark){g.strokeStyle=P.mark;g.lineWidth=0.7;g.lineCap="butt";g.beginPath();g.moveTo(hx-1.6,hy-2.6);g.lineTo(hx-0.9,hy-4);g.lineTo(hx,hy-2.9);g.lineTo(hx+0.9,hy-4);g.lineTo(hx+1.6,hy-2.6);g.stroke();}
+  g.fillStyle=P.muzzle;ell(hx,hy+2.7,2.7,1.7);
+  g.fillStyle="#26202B";ell(hx-2.7,hy+0.5,1.35,1.45);ell(hx+2.7,hy+0.5,1.35,1.45);
+  g.fillStyle="#FFFFFF";g.fillRect(hx-3.3,hy-0.5,0.9,0.9);g.fillRect(hx+2.1,hy-0.5,0.9,0.9);
+  g.fillStyle="#E8919B";g.beginPath();g.moveTo(hx-0.9,hy+1.5);g.lineTo(hx+0.9,hy+1.5);g.lineTo(hx,hy+2.5);g.closePath();g.fill();
+  g.strokeStyle=P.mouth||"#4A3B3F";g.lineWidth=0.45;g.lineCap="round";g.beginPath();g.moveTo(hx,hy+2.5);g.lineTo(hx,hy+3.2);g.moveTo(hx,hy+3.2);g.quadraticCurveTo(hx-0.6,hy+4.1,hx-1.4,hy+3.5);g.moveTo(hx,hy+3.2);g.quadraticCurveTo(hx+0.6,hy+4.1,hx+1.4,hy+3.5);g.stroke();   /* its mouth */
+  g.strokeStyle=P.whisker||"#FFFFFF";g.globalAlpha=0.85;g.lineWidth=0.35;g.beginPath();[-1,1].forEach(sd=>{[[-0.5,-1.1],[0.3,0.2],[1.1,1.5]].forEach(([y0,y1])=>{g.moveTo(hx+sd*2.4,hy+2.6+y0);g.lineTo(hx+sd*7,hy+2.6+y1);});});g.stroke();g.globalAlpha=1;   /* its whiskers */
+  if(W.collar){g.fillStyle=W.collar;g.fillRect(hx-3,hy+4.4,6,1.3);
+    g.fillStyle="#E0B45C";g.beginPath();g.arc(hx,hy+6.4,0.9,0,7);g.fill();}
   g.restore();
 }
 /* El Portero (#8, Pili's first robot): a tin man with a clipboard, a shade too still. Square head,
@@ -5798,6 +5882,18 @@ function wildScratch(which,W,H){let c=wildTmp[which];if(!c||c.width!==W||c.heigh
    piñata's cone goes on with a tab: until mq-v234 they sat mid-back, 1–3 px above it, with daylight between); len is
    the forewing's, short enough that open or folded no tip rises above the head: the dog still looks like himself, with
    perhaps tiny wings, as this night was asked for at the top of this section. */
+/* THE NIGHT OF ALEBRIJES ON THE KITTEN'S CARD (mq-v299, the cats' second round redrew every cat's card): its wings at its withers,
+   the top of its back just behind its head; one ring round both its eyes, as the chi's goes round both of his, since it looks out
+   of its card; its marks on its two bars and its ear tips; each where that drawing of the card puts it (catCardHeld). Grooming,
+   the grooming card's, which is the card of round one, as they always were */
+const ALEBGATO=Object.freeze({
+  stand:{wings:[-1.6,19.6,6],eye:[5.2,16.1,5],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.4,sb+18.6,1.7,6);g.fillRect(cx-1.2,sb+18.6,1.7,6);
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx+1.1,sh+8.6,0.8,0,7);g.arc(cx+9.3,sh+8.6,0.8,0,7);g.fill();}},
+  sit:{wings:[-4.3,20.4,5],eye:[2.6,14.9,5],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-5.4,sb+19.6,1.6,5.4);g.fillRect(cx-3,sb+18.2,1.6,7);
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx-1.5,sh+7.3,0.8,0,7);g.arc(cx+6.7,sh+7.3,0.8,0,7);g.fill();}},
+  groom:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
+    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}},
+  back:{wings:[-4,20.8,5],eye:[5.4,21,4.6],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.accent;g.beginPath();g.arc(cx+1.3,sh+27.6,0.8,0,7);g.arc(cx+9.5,sh+27.6,0.8,0,7);g.fill();}}});
 const ALEB_KIND={
   beagle:{wings:[1,18,7],eye:[7.6,15.2,3.0],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;for(let i=0;i<4;i++){g.beginPath();g.arc(cx-4+i*2,sb+16.4,0.55,0,7);g.fill();}
     g.fillStyle=l.accent;g.fillRect(cx+3.4,sh+19.4,1.6,1.4);}}, /* spine on the saddle, the ear tip */
@@ -5809,8 +5905,7 @@ const ALEB_KIND={
     g.fillStyle=l.accent;g.beginPath();g.arc(cx-9.6,sb+16.5,1.2,0,7);g.fill();}}, /* the merle patches, the tail tip; the ring on his eye, not his nose (mq-v234) */
   cat:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
     g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}}, /* the two bars, the ear tips */
-  gato:{wings:[0.5,19.5,6],eye:[6.9,17.1,3.2],marks:(g,l,cx,sb,sh)=>{g.fillStyle=l.pat;g.fillRect(cx-4.5,sb+18.5,1.8,6);g.fillRect(cx-1,sb+18.5,1.8,6);
-    g.fillStyle=l.accent;g.beginPath();g.arc(cx+4.2,sh+12.4,0.8,0,7);g.arc(cx+8.6,sh+12.6,0.8,0,7);g.fill();}},
+  gato:{wings:an=>ALEBGATO[catCardHeld(an||{},wNow())].wings,eye:an=>ALEBGATO[catCardHeld(an||{},wNow())].eye,marks:(g,l,cx,sb,sh,an)=>ALEBGATO[catCardHeld(an||{},wNow())].marks(g,l,cx,sb,sh)},   /* by the drawing its card is (mq-v299) */
   pigeon:{eye:[4.35,18.25,2.2],marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;g.beginPath();g.moveTo(cx-3.5,sb+21.5);g.lineTo(cx-1.5,sb+20);g.lineTo(cx+0.5,sb+21.5);g.stroke();}}, /* one chevron */
   loro:{tint:0.75,eye:an=>loroCoatOf(an)?[4.0,15.3,2.0]:[0.6,4.9,2.2],   /* the macaw's eye is where his card draws it (mq-v297) */
     marks:(g,l,cx,sb)=>{g.strokeStyle=l.pat;g.lineWidth=0.9;[16,19].forEach(yy=>{g.beginPath();g.moveTo(cx-1.3,sb+yy+1);g.lineTo(cx,sb+yy);g.lineTo(cx+1.3,sb+yy+1);g.stroke();});}},
@@ -5865,7 +5960,7 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
     const im=tg.getImageData(0,0,W,H),d=im.data,o=ug.getImageData(0,0,W,H).data;
     for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;d[i]=d[i]*(0.55+0.45*o[i]/255);d[i+1]=d[i+1]*(0.55+0.45*o[i+1]/255);d[i+2]=d[i+2]*(0.55+0.45*o[i+2]/255);}
     tg.save();tg.setTransform(1,0,0,1,0,0);tg.putImageData(im,0,0);tg.restore();}
-  if(KD.marks){tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);KD.marks(tg,look,cx,sb,sh);tg.restore();} /* C: five marks at most */
+  if(KD.marks){tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);KD.marks(tg,look,cx,sb,sh,an);tg.restore();} /* C: five marks at most */
   if(KD.eye){ /* C½: colour round the eyes (the owner suggested colour around the eyes) — two rings, the accent and
        a thinner one in the pattern colour outside it (Pili: two rings is the alebrije look, one is a bruise), centred ON the eye
        and wider than it, so the pupil stays a pupil; inside the silhouette like everything else */
@@ -5873,18 +5968,19 @@ function wildDraw(g,look,kind,fn,sx,sy,face,an){
     tg.save();tg.globalCompositeOperation="source-atop";tg.translate(cx,0);tg.scale(face||1,1);tg.translate(-cx,0);
     tg.lineWidth=1.6;tg.globalAlpha=0.9;tg.strokeStyle=look.accent;tg.beginPath();tg.arc(cx+ex,sh+ey,er,0,7);tg.stroke();
     tg.lineWidth=0.7;tg.globalAlpha=0.6;tg.strokeStyle=look.pat;tg.beginPath();tg.arc(cx+ex,sh+ey,er+1.1,0,7);tg.stroke();tg.restore();}
-  if(look.wings&&KD.wings){ /* D: the wings, each painted whole on its own sheet and then laid behind the animal — the forewing
+  const KW=typeof KD.wings==="function"?KD.wings(an):KD.wings;   /* a kind whose wings move with its card's drawing (the kitten's, mq-v299) */
+  if(look.wings&&KW){ /* D: the wings, each painted whole on its own sheet and then laid behind the animal — the forewing
        first, so it is the one right behind him, then the hindwing behind that */
     const v=wildScratch("w",W,H),vg=v.getContext("2d"),open=aleBeat(an,(an&&an.name)||kind);
     [true,false].forEach(fore=>{vg.setTransform(1,0,0,1,0,0);vg.clearRect(0,0,W,H);vg.setTransform(...M());
-      vg.translate(cx,0);vg.scale(face||1,1);vg.translate(-cx,0);wildWing(vg,look,KD.wings,cx,sb,fore,open);
+      vg.translate(cx,0);vg.scale(face||1,1);vg.translate(-cx,0);wildWing(vg,look,KW,cx,sb,fore,open);
       tg.save();tg.setTransform(1,0,0,1,0,0);tg.globalCompositeOperation="destination-over";tg.drawImage(v,0,0);tg.restore();});}
   g.save();g.setTransform(1,0,0,1,0,0);g.drawImage(t,T.e+T.a*x0+T.c*y0,T.f+T.b*x0+T.d*y0);g.restore();
 }
 /* `who` names the animal itself (the critter handed to the painter, or the engine's own DOG, CAT, PIG, LORO): the layer
    reads its facing, its pose (bodyRide) and its step (aleBeat) from it */
 const wild=(fn,ai,kind,who)=>function(g,...a){const L=alebLooks();if(!L)return fn(g,...a);
-  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&(typeof cr.ale==="string"&&ALEB_KIND[cr.ale]?cr.ale:cr.kind)||kind,look=cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
+  const cr=ai?a[0]:null,an=who?who(cr):cr,k=cr&&(typeof cr.ale==="string"&&ALEB_KIND[cr.ale]&&!isCat(cr)?cr.ale:cr.kind)||kind,look=   /* a cat of the critters wears the kitten's marks, its card's (mq-v299); the kitchen cat's ale keeps her look and her pick, not drawCat's marks */cr?aleLookOf(cr):alebLookFor(k,null);if(!look)return fn(g,...a);
   return wildDraw(g,look,k,tg=>fn(tg,...a),a[ai],a[ai+1],an&&an.face||1,an);};
 drawDog=wild(drawDog,0,"dog",()=>DOG);drawCat=wild(drawCat,0,"cat",()=>CAT);drawPigeon=wild(drawPigeon,1,"pigeon",c=>c);drawLoro=wild(drawLoro,1,"loro",c=>c);
 drawBeagle=wild(drawBeagle,1,"beagle",c=>c);drawLab=wild(drawLab,1,"lab",c=>c);drawChi=wild(drawChi,1,"chi",c=>c);drawAussie=wild(drawAussie,1,"aussie",c=>c);drawGato=wild(drawGato,1,"gato",c=>c);
@@ -7162,6 +7258,7 @@ let petTarget=null,petCrit=null;
    draws no number */
 function animalMeet(cr){const pe=typeof personaOf==="function"?personaOf(cr):null;if(!pe)return false;
   const nw=wNow();cr.metT=nw;cr.turnT=nw+(pe==="aloof"?PERSONAWAIT:0);
+  catGreet(cr,cr.turnT);   /* a cat first met greets when it turns to you: at once, or, aloof, at turnT (mq-v299); nothing else is greeted */
   if(pe==="eager")return false;
   if(pe==="patient"){cr.sit=true;cr.next=nw+3200;}
   const ln=personaLine(cr,pe);if(ln)toast(ln,2600);return true;}
@@ -7263,8 +7360,9 @@ $("treat").addEventListener("click",()=>{
     if(g2){g2.next=dogHappy(g2,wNow())+1000;dogGlad(g2,wNow());}}
   else if(CATK.has(petTarget)){   /* every cat: a 3.2 s sit and its own lines for 2.2 s (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
     const g2=petCrit;
-    if(g2){g2.sit=true;g2.next=wNow()+3200;g2.petT=wNow();g2.groomT=0;   /* petT: the moment it was petted, its ears prick for it; a groom ends */
-      const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}}   /* met: it turns to you (catAway) */
+    if(g2){catWake(g2);g2.sit=true;g2.next=wNow()+3200;g2.petT=wNow();g2.groomT=0;   /* a pet wakes a cat asleep on its back (mq-v299); petT: the moment it was petted, its ears prick for it; a groom ends */
+      const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}   /* met: it turns to you (catAway) */
+      catGreet(g2,Math.max(wNow(),g2.turnT||0));}   /* it greets standing as it turns to you (at once, or an aloof cat at turnT), then sits to the end of its sit (mq-v299) */
     const L=catLines(g2);
     if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
   else if(petTarget==="pigeon"||petTarget==="loro"){   /* the birds of the program (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds) */
