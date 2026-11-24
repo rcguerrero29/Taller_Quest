@@ -18,6 +18,7 @@ const PERSONATAKE=["dog","cat","pigeon","parrot","hummingbird","butterfly"];
 /* the cats groom (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats, rule 6): 1 in 3 of a cat's sits, for 3 to 6 s, on its
    card and its body; petting ends it */
 const GROOMTAKE=["cat"];
+const CATPOSETAKE=["greet","back"];   /* the cat's two poses (mq-v299; the owner's confirmed goal of 2026-11-24): its tail up as a greeting, and asleep on its back */
 const PEOPLETAKE=["chuy","lupe","beto"];
 const BODYSCREEN=480;
 /* THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body): while a named person's full body

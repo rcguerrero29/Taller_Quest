@@ -7518,6 +7518,54 @@ function findChromium() {
   });
   merCats.out.forEach(l => console.log('  CATS: ' + l));
   fails.push(...merCats.P.map(m => 'the cats: ' + m));
+
+  /* ---- THE CATS, ROUND TWO (mq-v299; the owner's confirmed goals of 2026-11-24 on the cats' second round) ----
+     What he asked: every cat a kitten of his photographs, card and body together (approved in pictures), and two poses, each a
+     world's to take (CATPOSETAKE): its tail straight up as a greeting, 2.2 s, when petted or first met; and asleep on its back,
+     1 in 4 of its sits, 6 to 10 s, woken by a pet. Asked here, each red in its own sentence:
+       1 · THE SWITCH: Meridian takes both; a word the engine does not know is dropped; asked of a dog, or in a world that takes
+           neither, the pose reader answers nothing, and that world rolls not one number more over a long seeded run.
+       2 · ONE READER: a cat given a sleep on its back answers "back", its body is held "back" and its card is the sleeping
+           card; given a greeting while it stands, "greet", the body's tail up and the greeting card; nothing, neither.
+       3 · PETTED: it greets standing for 2.2 s, then sits to the end of its 3.2 s; asleep on its back, a pet wakes it at once.
+       4 · FIRST MET: it greets at once; an aloof cat greets when it turns to you, not when you meet it.
+       5 · ASLEEP ON ITS BACK: about 1 in 4 of its sits over a long seeded run, 6 to 10 s each, eyes shut on the body; a sit
+           that became a groom is never one; the rolls a cat took before land where they did.
+       6 · EVERY COAT: each coat in CATCOAT draws on the card and the body without a fault, in every pose; a coat it does not know
+           is drawn grey; a mouth shape it does not know is drawn as the smile.
+       7 · THE CAT'S PARTS: every cat body has its whiskers and its mouth, and no dog has either; every dog's card and body are
+           as they were (the dogs' own checks).
+     HANDOFF: sentence 1 is asked in part and 2 in part below, as the worked example; 1's seeded run and 3 to 7 are the
+     builder's, each proven by a fault planted in a copy outside the repository. The block above's sentence 2 (her card is
+     drawCat's pixel for pixel) is the builder's to rewrite: from mq-v299 her card is the ginger cat's in her wardrobe, so the
+     check asks that, and drawCat's own card is drawn nowhere a cat of the critters stands. No HANDOFF marker reaches a pull
+     request. */
+  const catsTwo = await page.evaluate(() => {
+    const P = [], out = [];
+    const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    if (typeof catPoseNow !== 'function' || typeof CATPOSEON === 'undefined') { P.push('the engine has no reader of a cat\'s pose (catPoseNow), so the two poses cannot be asked'); return { P, out }; }
+    /* 1 · the switch, in part */
+    if (MER && !(CATPOSEON.has('greet') && CATPOSEON.has('back') && CATPOSEON.size === 2)) P.push('Meridian does not take both cat poses (it takes ' + JSON.stringify([...CATPOSEON]) + '), where its config names greet and back');
+    const dog = CRIT.find(c => DOGK.has(c.kind)), cat = CRIT.find(isCat), nw = wNow();
+    if (dog) { const k = { b: dog.backT, g: dog.greetT }; dog.backT = nw + 5000; dog.greetT = nw + 5000; try { if (catPoseNow(dog, nw) !== null) P.push('asked of a dog, the cat\'s pose reader answered ' + JSON.stringify(catPoseNow(dog, nw))); } finally { dog.backT = k.b; dog.greetT = k.g; } }
+    /* 2 · one reader, in part: asleep on its back, the reader and the body's hold agree */
+    if (!cat) { if (MER) P.push('Meridian has no cat to ask'); else out.push('this world has no cat, so the cat\'s two poses were not asked'); return { P, out }; }
+    const k = { b: cat.backT, g: cat.greetT, s: cat.sit, m: cat.moving, gr: cat.groomT };
+    try {
+      cat.groomT = 0; cat.moving = false;
+      if (CATPOSEON.has('back')) {
+        cat.sit = true; cat.backT = nw + 8000; cat.greetT = 0;
+        const a = catPoseNow(cat, nw), d = dogPose(cat, nw);
+        if (a !== 'back') P.push('a cat given a sleep on its back 8 s long answered ' + JSON.stringify(a) + ' to the pose reader, where it is asleep on its back');
+        if (d.held !== 'back') P.push('a cat asleep on its back is held ' + JSON.stringify(d.held) + ' for its body, where it lies on its back');
+        else out.push('a cat given 8 s on its back reads "back" and its body is held on its back');
+      } else out.push('this world does not take the sleep on its back, so it was not asked');
+      /* HANDOFF: the greeting half of sentence 2, and the card asked through the same reader */
+    } finally { cat.backT = k.b; cat.greetT = k.g; cat.sit = k.s; cat.moving = k.m; cat.groomT = k.gr; }
+    /* HANDOFF: sentences 1 (the seeded run), 3, 4, 5, 6 and 7 */
+    return { P, out }; });
+  catsTwo.out.forEach(l => console.log('  CATS TWO: ' + l));
+  fails.push(...catsTwo.P.map(m => 'the cats, round two: ' + m));
   /* ---- THE BIRDS (mq-v297; the owner's confirmed goals of 2026-11-23 on the birds and the parrot) ----
      Asked wherever a world has a bird among its critters; a world with none is told so and not asked.
        1 · ONE BIRD SYSTEM (the guard): where the critters hold a pigeon or a parrot, the engine's own PIG and LORO stand nowhere,

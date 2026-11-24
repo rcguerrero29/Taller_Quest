@@ -3975,6 +3975,8 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   const r=Math.random(),idle=isCat(cr)?0.55:0.3;
   if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+Math.random()*3500:400+Math.random()*900);
     if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    /* HANDOFF: asleep on its back (CATPOSES.back), where the world takes it: rolled here, after the groom's roll, only for a sit
+       that did not become a groom (mq-v299) */
     return;}
   cr.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
@@ -4036,6 +4038,30 @@ const isCat=cr=>!!cr&&CATK.has(cr.kind);
    number more than before, and its cats never groom */
 const GROOMON=typeof GROOMTAKE!=="undefined"&&Array.isArray(GROOMTAKE)&&GROOMTAKE.includes("cat");
 const CATGROOM=Object.freeze({share:1/3,min:3000,max:6000,lick:450});   /* lick: ms each of the card's two lick frames shows */
+/* THE CAT'S TWO POSES (round two, mq-v299; the owner's confirmed goal of 2026-11-24 on the cats' second round, his answers to the
+   session's two questions). A world turns each on by naming it in its own CATPOSETAKE list; a word it does not know is dropped,
+   and a world that says nothing has neither and rolls not one number more than before.
+     greet · its tail straight up, standing, for 2.2 s (the time its heart shows) when it is petted or first met; an aloof cat
+             greets when it turns to you, not when you meet it. Petted, it greets standing, then sits for the rest of its
+             3.2 s sit. No dice.
+     back  · asleep on its back, belly up, four paws in the air, eyes shut: 1 in 4 of its sits, 6 to 10 s; a pet wakes it at
+             once. Rolled after every roll a cat already takes (the groom's among them), so those land where they did; a sit
+             that became a groom is not asked.
+   One reader answers which of them a cat is in (catPoseNow), and its card and its body both ask it: no list of timers to
+   keep in step. The record's two times (greetT, backT) live only while the game runs and are never saved */
+const CATPOSEON=new Set(typeof CATPOSETAKE!=="undefined"&&Array.isArray(CATPOSETAKE)?CATPOSETAKE.filter(k=>k==="greet"||k==="back"):[]);
+const CATPOSES=Object.freeze({greet:Object.freeze({ms:2200}),back:Object.freeze({share:1/4,min:6000,max:10000})});
+/* catPoseNow(cr, nw): "back" while a cat sleeps on its back, else "greet" while its greeting lasts and it stands, else null.
+   Asked of anything that is not a cat, or in a world that takes neither pose, it answers null */
+function catPoseNow(cr,nw){if(!isCat(cr)||!CATPOSEON.size)return null;
+  /* HANDOFF: the answer, from cr.backT and cr.greetT against nw, as the contract above says */
+  return null;}
+/* catGreet(cr, nw): starts its greeting (greetT), where the world takes it; standing; the caller decides when (petted, first met,
+   an aloof cat's turn). catWake(cr): ends a sleep on its back at once (a pet) */
+function catGreet(cr,nw){if(!isCat(cr)||!CATPOSEON.has("greet"))return;
+  /* HANDOFF */}
+function catWake(cr){if(!isCat(cr))return;
+  /* HANDOFF */}
 /* A CAT NOT YET MET (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 11: where a world gives cats a personality (cat named in its PERSONATAKE), a cat you have not met sits
    facing away, grooming, with a picture of a fish in its thought bubble, and an aloof one goes on ignoring you for a while after
    (PERSONAWAIT); petting meets it, and it turns to you with its ears pricked and a short stretch. A world with no cat personality
@@ -4647,6 +4673,7 @@ function dogPose(cr,nw,t){if(nw===undefined)nw=wNow();if(t===undefined)t=Date.no
   const love=cr.loveT>nw,curl=lay&&!howl&&!happy&&!love&&(typeof cr.curlT==="number"?cr.curlT===cr.layT:cr.curlT===dogCurlMark(cr)),   /* the mark on this one nap, and nothing has woken him since (dogCurl); no dice here */
     rests=curl||(lay&&!happy&&!love&&!tailWags(cr,t));   /* lying down and neither happy nor loved, his tail lies still between its short wags; curled up, it does not wag at all */
   const groom=CATK.has(cr.kind)&&(cr.groomT>nw||catAway(cr,nw)),stretch=CATK.has(cr.kind)&&cr.stretchT>nw,stretchLeft=stretch?cr.stretchT-nw:0;   /* a cat's groom and its greeting stretch (mq-v296); no dog has either */
+  const cpose=catPoseNow(cr,nw);   /* HANDOFF (mq-v299): held "back" for "back" (over every other way of holding itself), and greet:true for "greet" */
   return {t,hid:gp.hid,lift:gp.hop,side:gp.side,sit:!!cr.sit||groom,lay,curl,groom,stretch,stretchLeft,held:curl?"curl":lay?"lay":groom?"groom":cr.sit?"sit":"stand",ver:curl?curlVersionOf(cr):0,howl,dig:cr.digT>nw,happy,love,sniff,
     drop:lay?(curl&&K.curl!==undefined?K.curl:K.lay||0):0,nod:howl?(K.howl||0):sniff?(K.sniff||0)+Math.sin(t/110)*0.5:0,wag:rests?0:Math.sin(t/(happy?W[2]:W[0]))*(happy?W[3]:W[1]),
     face:cr.face,heading:[cr.dx||0,cr.dy||0],step:cr.moving?(cr.mt||0):null};}
@@ -5437,6 +5464,7 @@ function drawGato(g,cr,sx,sy){ /* every cat, in its record's coat (coat, CATCOAT
      Sitting, it sits upright with its tail laid round its feet. Its face looks out of the card, as a kitten looks at you */
   const sit=!!cr.sit,hx=sit?cx+2.6:cx+5.2,hy=sit?sy+14.4:sy+15.6,ell=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill();};
   g.fillStyle="rgba(0,0,0,.15)";ell(cx,sy+27,6.5,2.6);
+  const cpose=catPoseNow(cr,wNow());   /* HANDOFF (mq-v299): the card asks the same reader as the body; the two lines below read it, not the record's own flags */
   if(cr.back){   /* asleep on its back: its head laid back toward you with its eyes shut, its pale belly up, four paws in the air */
     const bx=cx+5.4,by=sy+21.4;
     g.strokeStyle=P.tail;g.lineWidth=3;g.lineCap="round";g.beginPath();g.moveTo(cx-6.4,sy+24.6);g.quadraticCurveTo(cx-10.4,sy+25.6,cx-11.4,sy+23.2);g.stroke();
@@ -7207,6 +7235,7 @@ let petTarget=null,petCrit=null;
    draws no number */
 function animalMeet(cr){const pe=typeof personaOf==="function"?personaOf(cr):null;if(!pe)return false;
   const nw=wNow();cr.metT=nw;cr.turnT=nw+(pe==="aloof"?PERSONAWAIT:0);
+  /* HANDOFF (mq-v299): a cat first met greets (catGreet): at once, or, aloof, when it turns to you (turnT) */
   if(pe==="eager")return false;
   if(pe==="patient"){cr.sit=true;cr.next=nw+3200;}
   const ln=personaLine(cr,pe);if(ln)toast(ln,2600);return true;}
@@ -7309,6 +7338,7 @@ $("treat").addEventListener("click",()=>{
   else if(CATK.has(petTarget)){   /* every cat: a 3.2 s sit and its own lines for 2.2 s (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */
     const g2=petCrit;
     if(g2){g2.sit=true;g2.next=wNow()+3200;g2.petT=wNow();g2.groomT=0;   /* petT: the moment it was petted, its ears prick for it; a groom ends */
+      /* HANDOFF (mq-v299): a pet wakes a cat asleep on its back (catWake), and it greets (catGreet) standing, then sits */
       const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}}   /* met: it turns to you (catAway) */
     const L=catLines(g2);
     if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
