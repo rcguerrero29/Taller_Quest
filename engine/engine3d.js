@@ -2890,7 +2890,9 @@ function catStretch(B,P){const S=B.userData.skel,J=B.userData.joints;if(!S||!J)r
     else{J[hp].rotation.set(-0.15*k,0,0);J[kn].rotation.set(0,0,0);J[an].rotation.set(0,0,0);}});}
 function t3DogPose(B,P,phase,moving,groundAt){
   const held=dogHeld(P),howl=!!(P&&P.howl);
-  if(B.userData.curled&&held!=="curl")B.userData.joints.hips.rotation.z=0;   /* the ring's roll put back before his legs are stood under his hips (only a curl rolls them; none in the first version) */
+  /* the ring's roll put back before his legs are stood under his hips (only a curl rolls them; none in the first version); and up
+     from his spine, all of him is put back first, so his chest hangs where it does before his fore legs are stood under it */
+  if(B.userData.curled&&held!=="curl"){B.userData.joints.hips.rotation.z=0;if(B.userData.spined)dogUncurl(B);}
   t3BodyPose(B,phase,moving&&held==="stand",groundAt);
   if(P&&(P.face===1||P.face===-1))B.userData.curlSide=P.face;   /* curled up, he curls toward the side his card faces */
   B.userData.curlVer=held==="curl"&&P&&Number.isInteger(P.ver)?P.ver:0;   /* and in the version of the curl his record keeps (dogPose's `ver`) */
@@ -2997,11 +2999,11 @@ function dogSpineLay(B,C,sd){const U=B.userData,S=U.skel,J=U.joints,sp=C.spine,b
   const num=(v,d)=>typeof v==="number"&&isFinite(v)?v:d,arr=(v,d)=>Array.isArray(v)&&v.length&&v.every(x=>typeof x==="number"&&isFinite(x))?v:d;
   const lo=S.joints.spine[3],L=S.joints.chest[3],T=lo+L,e=0.0725*b.size,r=Lm.barrel,len=T+2*e,
     N=Math.hypot(S.joints.neck[2]+S.joints.head[2],S.joints.neck[3]+S.joints.head[3]),
-    tb=arr(sp.trunk,[0.5,0.5,0.5,0.5]),nb=arr(sp.neck,[0.5,0.5]),rump=num(sp.rump,1),sl=arr(sp.slump,[1,1]),nR=arr(sp.neckR,[0.9,1.25]),
+    tb=arr(sp.trunk,[0.5,0.5,0.5,0.5]),nb=arr(sp.neck,[0.5,0.5]),rump=num(sp.rump,1),sl=arr(sp.slump,[1,1]),nR=arr(sp.neckR,[0.9,1.25]),arch=Math.max(0.5,Math.min(4,num(sp.arch,1))),
     g=Math.max(0,Math.min(0.95,num(C.gather,0.6))),tw=num(C.twist,0),ntw=num(sp.neckTwist,tw),headY=S.head*num(C.rest,0.75),sx=bar.scale.x||1,
     tk=Array.isArray(b.tuck)&&b.tuck.length===2&&b.tuck.every(v=>typeof v==="number"&&isFinite(v)&&v>0)?b.tuck:DOGTUCK,
     ch=typeof b.chest==="number"&&isFinite(b.chest)?Math.max(0.6,Math.min(1.4,b.chest)):1;
-  const key=[sd,sx,g,tw,ntw,headY,rump,tb,nb,sl,nR].join("|"),skin=dogSpineSkin(B,bar);
+  const key=[sd,sx,g,tw,ntw,headY,rump,arch,tb,nb,sl,nR].join("|"),skin=dogSpineSkin(B,bar);
   if(U.spineKey!==key){
     /* the curve, walked from his rump's end to his head: how far round he has turned (th), and where he is (u toward the side
        he curls to, z ahead), with his hips at its start */
@@ -3026,7 +3028,7 @@ function dogSpineLay(B,C,sd){const U=B.userData,S=U.skel,J=U.joints,sp=C.spine,b
        from his chest's height to where his head rests */
     const j0=G.cap,j1=G.cap+G.trunk;for(let a=0;a<j0;a++)cy[a]=cy[j0];
     {const c=cy.slice(j0,j1+1);for(let a=j0+1;a<j1;a++)cy[a]=(c[a-j0-1]+2*c[a-j0]+c[a-j0+1])/4;}
-    for(let a=j1+1;a<st.length;a++){const q=(st[a]-T)/N,w=q*q*(3-2*q);cy[a]=cy[j1]+(headY-cy[j1])*w;}
+    for(let a=j1+1;a<st.length;a++){const q=Math.pow((st[a]-T)/N,arch),w=q*q*(3-2*q);cy[a]=cy[j1]+(headY-cy[j1])*w;}
     const cAt=s=>{if(s<=st[j0])return cy[j0];for(let a=j0;a<st.length-1;a++)if(s<=st[a+1])return cy[a]+(cy[a+1]-cy[a])*(s-st[a])/(st[a+1]-st[a]);return cy[st.length-1];},hy=cAt(0);
     st.forEach((s,a)=>{const [t,u,z]=at(s),c=Math.cos(t),n=Math.sin(t);
       for(let i=0;i<W;i++){const x=xa[a*W+i];P.setXYZ(a*W+i,sd*u+x*c,cy[a]-zd[a*W+i]-hy,z-x*sd*n);V.setXY(a*W+i,i/G.round,Math.max(0,Math.min(1,(s+e)/len)));}});
@@ -3058,7 +3060,9 @@ function dogSpineLay(B,C,sd){const U=B.userData,S=U.skel,J=U.joints,sp=C.spine,b
 function dogSpineOff(B){const U=B.userData;if(!U.spined)return;const S=U.skel,J=U.joints;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;if(u.trunk==="barrel"||u.trunk==="chest"||u.neck===true)o.visible=true;});
   J.chest.children.forEach(o=>{const u=o.userData;if(o.isMesh&&u.seat0){o.position.copy(u.seat0[0]);o.quaternion.copy(u.seat0[1]);if(u.band==="point")o.visible=true;}});
-  if(U.spineSkin)U.spineSkin.visible=false;J.head.position.set(S.joints.head[1],S.joints.head[2],S.joints.head[3]);
+  /* the skin is thrown away, so a body up from the ring carries nothing a body that never curled does not (it is made again at his next ring) */
+  if(U.spineSkin){U.spineSkin.parent.remove(U.spineSkin);U.spineSkin.geometry.dispose();U.spineSkin=null;U.spineKey=null;U.spineSeat=null;}
+  J.head.position.set(S.joints.head[1],S.joints.head[2],S.joints.head[3]);
   J.tail_1.position.set(S.joints.tail_1[1],S.joints.tail_1[2],S.joints.tail_1[3]);U.spined=false;}
 function dogCurlHold(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData,C=dogCurlAngles(B),sd=U.curlSide===-1?-1:1,L=S.joints.chest[3],A=C.back,k=A/(2*L);
   const spine=C.spine&&typeof C.spine==="object"&&dogSpineLay(B,C,sd);   /* laid on his spine (the ring's second iteration): his trunk, his chest, his neck and his head are set there */
