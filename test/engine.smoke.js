@@ -5922,7 +5922,7 @@ function findChromium() {
         const pc = 100 * n / naps; out.push('the ' + k + ', idle, every roll swept: of ' + naps + ' naps curled up in ' + pc.toFixed(1) + '%');
         if (pc < 45 || pc > 55) P.push('an idle ' + k + ' is curled up in ' + pc.toFixed(0) + '% of his naps, where about half was asked'); }
 
-      /* 2 · the lazy routine's lie-down, 1 time in 3 (the owner's confirmed number): the routine pinned and
+      /* 2 · the lazy routine's lie-down, 1 time in 3 (the session's reading of his word, confirmed as built on 2026-11-24): the routine pinned and
          walked to its end, every roll it takes the one swept; a lie-down is the step seen lying and not singing */
       { const N = 120; let seen = 0, n = 0, sang = 0;
         for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, d = made(); let now = T0, lay = false, cu = false; Math.random = () => r;
@@ -6190,23 +6190,26 @@ function findChromium() {
       /* A plain nap (a high roll for the curl) draws one number more where it is on, and lasts what it lasts without it; a
          curled one (a low roll) draws two more, the curl's and how much longer, and lasts that plus 5 seconds times the
          last roll (a dog with no personality: the plain, even 0 to 5 seconds) */
+      /* a curled nap draws one number more again where the curl has more than one version (dogCurlPick, the version's pick, after
+         how much longer): asked of the list in use, so the count is what was drawn (the second version, mq-v300) */
+      const PK = keep.cv && keep.cv().length > 1 ? 1 : 0;
       { let cur = 0, same = 0, moved = 0, cmore = 0, clong = 0, asWas = 0; const N = 40, MOST = 5000;
         for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, plain = [0.2, 0.5, r, 0.99], curly = [0.2, 0.5, r, 0.01, 1 - r];
           curlOn = () => false; const off = nap(plain), offc = nap(curly); curlOn = () => true; const on = nap(plain), onc = nap(curly);
           if (dogPose(off.d, T0 + 1, D0).curl || dogPose(offc.d, T0 + 1, D0).curl) cur++;
           if (off.c !== 3 || offc.c !== 3 || Math.abs(off.d.layT - T0 - (6000 + 4000 * r)) > 1 || Math.abs(offc.d.layT - T0 - (6000 + 4000 * r)) > 1) asWas++;
           if (on.c !== off.c + 1) same++; if (on.d.layT !== off.d.layT || on.d.next !== off.d.next || dogPose(on.d, T0 + 1, D0).curl) moved++;
-          if (onc.c !== offc.c + 2) cmore++;
+          if (onc.c !== offc.c + 2 + PK) cmore++;
           const want = offc.d.layT + MOST * (1 - r);
           if (Math.abs(onc.d.layT - want) > 1 || onc.d.next !== onc.d.layT || !dogPose(onc.d, T0 + 1, D0).curl || !dogPose(onc.d, onc.d.layT - 1, D0).curl || dogPose(onc.d, onc.d.layT + 1, D0).lay) clong++; }
         curlOn = () => true;
-        out.push('naps on ' + N + ' rolls with the pose off and on: plain ones drew one number more ' + (N - same) + ' times and lasted the same ' + (N - moved) + ' times; curled ones drew two more ' + (N - cmore) + ' times and lasted the nap plus its extra ' + (N - clong) + ' times');
+        out.push('naps on ' + N + ' rolls with the pose off and on: plain ones drew one number more ' + (N - same) + ' times and lasted the same ' + (N - moved) + ' times; curled ones drew ' + (2 + PK) + ' more ' + (N - cmore) + ' times and lasted the nap plus its extra ' + (N - clong) + ' times');
         if (cur) P.push('in a world that has not turned the curled-up pose on, ' + cur + ' of ' + N + ' naps are curled up');
         /* with it off, a nap is what it always was: three numbers (its band, the cone's, its time) and 6 to 10 seconds by its time's roll */
         if (asWas) P.push('in a world that has not turned the curled-up pose on, ' + asWas + ' of ' + N + ' naps do not draw the three numbers a nap always drew or do not last 6 to 10 seconds by their roll, as a nap always did');
         if (same) P.push('a nap in a world that has not turned the curled-up pose on does not draw exactly one number fewer than a nap where it is on, on ' + same + ' of ' + N + ' rolls: a world that says nothing would no longer roll as it did');
         if (moved) P.push('where the curled-up pose is on, ' + moved + ' of ' + N + ' plain naps do not last what they last without it on the same rolls, or are curled on a high roll: its roll is not taken after the nap\'s own');
-        if (cmore) P.push('where the curled-up pose is on, ' + cmore + ' of ' + N + ' curled naps do not draw exactly two numbers more than the same nap with it off (the curl\'s and how much longer it lasts): a roll is taken out of its turn');
+        if (cmore) P.push('where the curled-up pose is on, ' + cmore + ' of ' + N + ' curled naps do not draw exactly ' + (2 + PK) + ' numbers more than the same nap with it off (the curl\'s, how much longer it lasts' + (PK ? ' and which version' : '') + '): a roll is taken out of its turn');
         if (clong) P.push('where the curled-up pose is on, ' + clong + ' of ' + N + ' curled naps do not last the nap plus 5 seconds times the roll handed last, curled up to their end and up after: how much longer is not the last roll, or is not added'); }
       /* the lazy routine the same: pinned and walked with the pose off and on, every roll swept on its own sequence. Off, no
          lie-down curled and one number fewer drawn over the whole routine; on, the sit and the lie-down last what they
@@ -6219,7 +6222,7 @@ function findChromium() {
           } finally { ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); curlOn = () => true; }
           return { c, sit, lay, curledSeen }; };
         for (let i = 0; i < N; i++) { const off = walk(false, i), on = walk(true, i);
-          if (off.curledSeen) cur++; if (on.curledSeen) onCurled++; if (on.c !== off.c + 1) more++; if (on.sit !== off.sit || on.lay !== off.lay) moved++; }
+          if (off.curledSeen) cur++; if (on.curledSeen) onCurled++; if (on.c !== off.c + 1 + (on.curledSeen ? PK : 0)) more++;   /* curled, the version's pick too */ if (on.sit !== off.sit || on.lay !== off.lay) moved++; }
         out.push('the lazy routine on ' + N + ' sweeps with the pose off and on: one number more drawn ' + (N - more) + ' times, its sit and lie-down as long ' + (N - moved) + ' times; curled up in ' + onCurled + ' of them');
         if (!onCurled) P.push('with the pose on, the lazy routine\'s lie-down is never curled up in ' + N + ' sweeps, so whether the curl moves the routine could not be asked');
         if (cur) P.push('in a world that has not turned the curled-up pose on, the lazy routine\'s lie-down is curled up in ' + cur + ' of ' + N + ' routines');
@@ -6250,7 +6253,7 @@ function findChromium() {
          nap keeps its version to its end, and drawing him rolls nothing; the pick is the last roll, so the nap lasts what
          it lasts with one version; and with one version not one more roll is taken than the curl's two */
       if (!keep.cv || typeof dogCurlPick !== 'function') P.push('the curl has no list of versions, so how a version is picked was not asked');
-      else { const one = keep.cv(), base = one[0], two = [Object.assign({}, base, { id: 'probe one', w: 3 }), Object.assign({}, base, { id: 'probe two', w: 1 })];
+      else { const one = [keep.cv()[0]], base = one[0],   /* one version: the first of the engine's list alone (the list has two from mq-v300) */ two = [Object.assign({}, base, { id: 'probe one', w: 3 }), Object.assign({}, base, { id: 'probe two', w: 1 })];
         const N = 200, pick = [0, 0]; let other = 0, lost = 0, drawn = 0, longer = 0, oneMore = 0, twoMore = 0;
         try { for (let i = 0; i < N; i++) { const z = (i + 0.5) / N, seq = [0.2, 0.5, 0.5, 0.01, 0.3, z];
             curlOn = () => false; const off = nap(seq); curlOn = () => true;
@@ -7562,7 +7565,7 @@ function findChromium() {
     const MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
     if (typeof catPoseNow !== 'function' || typeof CATPOSEON === 'undefined') { P.push('the engine has no reader of a cat\'s pose (catPoseNow), so the two poses cannot be asked'); return { P, out }; }
     /* 1 · the switch, in part */
-    if (MER && !(CATPOSEON.has('greet') && CATPOSEON.has('back') && CATPOSEON.size === 2)) P.push('Meridian does not take both cat poses (it takes ' + JSON.stringify([...CATPOSEON]) + '), where its config names greet and back');
+    if (MER && !(CATPOSEON.has('greet') && CATPOSEON.has('back') && [...CATPOSEON].every(k => ['greet', 'back', 'curl'].includes(k)))) P.push('Meridian does not take both cat poses (it takes ' + JSON.stringify([...CATPOSEON]) + '), where its config names greet and back');
     const dog = CRIT.find(c => DOGK.has(c.kind)), cat = CRIT.find(isCat), kc = CRIT.find(c => isCat(c) && c.wardrobe === true), nw0 = wNow();
     if (dog) { const k = { b: dog.backT, g: dog.greetT }; dog.backT = nw0 + 5000; dog.greetT = nw0 + 1000; try { if (catPoseNow(dog, nw0) !== null) P.push('asked of a dog, the cat\'s pose reader answered ' + JSON.stringify(catPoseNow(dog, nw0))); } finally { dog.backT = k.b; dog.greetT = k.g; } }
     if (!cat) { if (MER) P.push('Meridian has no cat to ask'); else out.push('this world has no cat, so the cat\'s two poses were not asked' + (CATPOSEON.size ? '' : '; it takes neither')); return { P, out }; }
@@ -7575,7 +7578,7 @@ function findChromium() {
     const stand = (wid, x, y) => { world = wid; px = fx = x; py = fy = y; moving = false; held = null; };
     const open = (W, x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
     const near = (c, d) => { const W = WORLDS[c.world]; return [[0, d], [d, 0], [-d, 0], [0, -d], [1, d], [-1, d], [d, 1]].map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => open(W, x, y) && !(typeof portalAt === 'function' && portalAt(c.world, x, y))) || null; };
-    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, sit: false, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0, greetT: 0, backT: 0 });
+    const hold = c => Object.assign(c, { next: Infinity, moving: false, mt: 0, fx: c.x, fy: c.y, sit: false, groomT: 0, petT: 0, metT: 0, turnT: 0, stretchT: 0, greetT: 0, backT: 0, catCurlT: 0 });   /* catCurlT: the curl's second version's (mq-v300), so a cat held is never left curled up by its own play */
     const pic = f => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; f(c.getContext('2d')); return c.toDataURL(); };
     const ink = (f, hex) => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; const g = c.getContext('2d'); f(g); const d = g.getImageData(0, 0, 40, 40).data, h = parseInt(hex.slice(1), 16), R = h >> 16, G = (h >> 8) & 255, Bl = h & 255; let n = 0, any = 0;
       for (let i = 0; i < d.length; i += 4) { if (d[i + 3]) any++; if (d[i + 3] === 255 && d[i] === R && d[i + 1] === G && d[i + 2] === Bl) n++; } return { n, any }; };
@@ -7760,6 +7763,583 @@ function findChromium() {
     return { P, out }; });
   catsTwo.out.forEach(l => console.log('  CATS TWO: ' + l));
   fails.push(...catsTwo.P.map(m => 'the cats, round two: ' + m));
+
+  /* ---- THE CURL, SECOND VERSION: THE CLOSED RING, FOR DOGS AND CATS (the owner's confirmed goal of 2026-11-24) ----
+     What he asked: the closed ring from his reference photographs, built now as the curl's second version, every recommendation
+     taken, and the cats curling too. Asked here, each red in its own sentence:
+       1 · THE LIST: two versions, weights 1 and 1; the closed ring has a card row and a body row for EVERY dog kind (a missing row
+           is red, never the beagle's row in its place); the first version is drawn and posed exactly as before, card pixel for
+           pixel and body angle for angle.
+       2 · THE PICK: over a long seeded run, about half the curled lie-downs are the ring; picked once per lie-down, after every
+           other roll it takes; the nap's half and the lazy routine's 1 in 3 unchanged; the lazy routine's curl gets no extra
+           seconds; a leash does not wake a dog curled up for his nap before the nap ends, and it still ends the lazy routine, so a
+           dog curled up as that routine's lie-down is stood up, exactly as before (his answer); a world whose dogs do not curl
+           rolls not one number more.
+       3 · THE RING ON THE BODY, every breed, from above and from the game's camera: nearly round seen from above; his hip or
+           shoulder the highest point, not his head; one low dome from the game's camera, his bandana on (no dip between two
+           humps); his legs inside the ring, at most one paw at its edge; his tail on the outside, its tip near his nose; his
+           nose by his hind leg or flank; his ears flat: an upright ear laid back along his neck, its tip inside his skull's
+           outline seen from behind (a brim is not flat), a chihuahua with one folded ear too; a drop ear over his cheek with the
+           shut eye and its seasonal ring still seen, ending at his jaw line and inside his head's outline, and the other one
+           under his head, out of sight; eyes shut, tail still.
+       4 · THE CARD: each breed's ring card is not the first version's; the seasonal ring sits round the eye the painter draws;
+           the lab and the chihuahua stay one colour; the beagle's and the office dog's coats go round the outside of him.
+       5 · THE CATS: a world takes the curl by naming it among its cat poses (Meridian does; the town, with no cat, rolls nothing
+           more); of the sits that did not become a groom, about 1 in 4 the back and 1 in 4 the curl over a long seeded run, one
+           roll among the three, so a world taking the back and not the curl rolls exactly as before; 6 to 10 s; a pet wakes it
+           and it greets; the reader, the card and the body agree; timed by what the reader says, step by step, each curl lasts
+           its own 6 to 10 s and ends when its time does (a groom after it is drawn grooming); its card is its own curled drawing,
+           lower than sitting; its body is the closed ring with its ears up, the grey-and-white cat's white under it.
+       6 · UNCURLED: everything the ring moved (the hips' roll, the hind legs, the ear rule, the barrel's bend) is put back, so a
+           dog or cat that stands up after a ring stands exactly as one that never curled, and a cat that goes from its curl
+           straight onto its back is on its back as one that never curled from the first frame.
+     Asked on clocks and rolls this check owns, of what a person sees (the pose, his card's pixels, his body's parts and a picture
+     of it from the game's camera), with the numbers typed here and not read off the engine's tables. Each sentence was proven red
+     by a fault planted in a copy outside the repository. Everything touched is put back. */
+  const curlTwo = await page.evaluate(() => {
+    const P = [], out = [];
+    if (typeof curlVersions !== 'function' || typeof CURLVERSIONS === 'undefined' || typeof dogCurlPick !== 'function' || typeof dogPose !== 'function') { P.push('the engine has no list of the curl\'s versions, so its second version could not be asked'); return { P, out }; }
+    const KS = [...DOGK], T0 = 5e6, D0 = 7e6, MER = typeof GAMENAME === 'string' && GAMENAME === 'Meridian Quest';
+    const wid = Object.keys(WORLDS).find(id => WORLDS[id]), w0 = WORLDS[wid];
+    let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
+    if (!at0) { P.push('this shell has no world to stand a dog in, so the curl\'s second version could not be asked'); return { P, out }; }
+    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, cv: curlVersions,
+      al: typeof alebLooks === 'function' ? alebLooks : null, alf: typeof alebLookFor === 'function' ? alebLookFor : null, sv: typeof save === 'function' ? save : null,
+      btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]),   /* a pet and the leash relabel and show the world's buttons */
+      world, px, py, fx, fy, dir, held, mv: moving, pt: petTarget, pc: petCrit, crit: CRIT.length, park: JSON.stringify(PARK), leash: typeof LEASH !== 'undefined' ? LEASH : null, decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0 };
+    const real = CRIT.filter(isDog).map(c => [c, c.world]), mine = [];
+    const made = o => Object.assign({ kind: 'beagle', name: 'Probe', world: wid, x: at0[0], y: at0[1], fx: at0[0], fy: at0[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
+      happyT: 0, loveT: 0, next: 0, home: at0.slice(), task: null, holdT: 0, stayT: 0, moving: false, mt: 0 }, o);
+    /* a dog curled up by hand in version v (0 the first, 1 the ring) for a nap that ends at `till`: the mark is the nap's end */
+    const ring = (o, till, v) => made(Object.assign({ layT: till, curlT: till, curlV: v }, o));
+    const tidy = () => { DECALS.length = keep.decals; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; };
+    const deg = a => (a * 180 / Math.PI).toFixed(0);
+    const has3d = typeof dogMake === 'function' && typeof THREE !== 'undefined' && typeof t3DogPose === 'function' && typeof dogLookOf === 'function';
+    let R3 = null;   /* one small renderer of this check's own, for the pictures sentences 3 and 5 count */
+    try {
+      window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
+      real.forEach(([c]) => { c.world = '__frozen'; });
+      personaOn = () => false;
+
+      /* ---- 1 · THE LIST ---- */
+      const L = keep.cv(), V2 = L[1];
+      out.push('the curl\'s versions: ' + L.map(v => JSON.stringify(v.id) + ' weight ' + v.w).join(', '));
+      if (L.length !== 2) P.push('the curl has ' + L.length + ' version(s), where two were asked: the first and the closed ring');
+      else if (!(L[0].w === 1 && L[1].w === 1)) P.push('the curl\'s two versions are weighted ' + L[0].w + ' and ' + L[1].w + ', where half and half was asked (1 and 1)');
+      if (V2) { const own = (t, k) => !!t && typeof t === 'object' && Object.prototype.hasOwnProperty.call(t, k);
+        const noCard = KS.filter(k => !own(V2.card, k) || !Array.isArray(V2.card[k].body) || !Array.isArray(V2.card[k].eye)), noBody = !V2.body || typeof V2.body.back !== 'number';
+        if (noCard.length) P.push('the closed ring has no card row for ' + noCard.join(', ') + ': ' + (noCard.length > 1 ? 'they would be drawn' : 'it would be drawn') + ' in another breed\'s row (the beagle\'s), never their own');
+        if (noBody) P.push('the closed ring has no body table, so its body would be posed as the first version\'s');
+        if (V2.card === L[0].card) P.push('the closed ring\'s card is the first version\'s card table');
+        if (V2.body === L[0].body) P.push('the closed ring\'s body is the first version\'s body table'); }
+      /* the first version, exactly as before: fingerprints taken on the engine before the ring was built (mq-v299, the same
+         day), of each breed's curled card facing right and left, and of his curled body (every part's place, turn and size, the
+         bent barrel's points and his ears' shape), on his right side and his left */
+      const fnv = (a, h) => { h = 2166136261; for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 16777619) >>> 0; } return h; };
+      /* drawn with the night of alebrijes off, as sentence 4 draws (a profile that picked that night would otherwise lay its marks on him) */
+      const cardPrint = (k, face) => { const paint = window['draw' + k[0].toUpperCase() + k.slice(1)]; if (typeof paint !== 'function') return null; const c = document.createElement('canvas'); c.width = c.height = 32;
+        const d = ring({ kind: k, face, band: '#C4586B', collar: '#2E5FA8', c: '#C9975C' }, wNow() + 6e4, 0); d.curlT = d.layT; if (keep.al) alebLooks = () => null;
+        try { paint(c.getContext('2d'), d, 0, 0); } finally { if (keep.al) alebLooks = keep.al; } return fnv(c.getContext('2d').getImageData(0, 0, 32, 32).data); };
+      const bodyPrint = (B) => { const r = x => Math.round(x * 1e5), a = [], inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), v = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+        B.traverse(o => { if (o === B) return; o.matrixWorld.clone().premultiply(inv).decompose(v, q, sc); a.push(o.name || o.type, o.visible ? 1 : 0, r(v.x), r(v.y), r(v.z), r(q.x), r(q.y), r(q.z), r(q.w), r(sc.x), r(sc.y), r(sc.z));
+          if (o.isMesh && (o.userData.trunk === 'barrel' || o.userData.earRest)) { const Q = o.geometry.attributes.position.array; for (let i = 0; i < Q.length; i++) a.push(r(Q[i])); } });
+        return fnv(new TextEncoder().encode(a.join(','))); };
+      const V1PIN = { beagle: { card: [2951277714, 1656347274], body: [1940648706, 3444495083] }, lab: { card: [2561210919, 1631490256], body: [2512539561, 2980527494] }, chi: { card: [1995067204, 3785211107], body: [677835041, 3561337710] }, aussie: { card: [3788417575, 3389530574], body: [3780052539, 2474611444] } };   /* taken on main at mq-v299, 2026-11-24, before the ring */
+      { const got = {};
+        if (!has3d) out.push('this shell has no 3D camera, so the first version\'s body fingerprint was not asked here');
+        for (const k of KS) { got[k] = { card: [cardPrint(k, 1), cardPrint(k, -1)], body: [] };
+          if (has3d) for (const face of [1, -1]) { const B = dogMake(dogSkeleton(k), dogLookOf({ kind: k })); try { t3DogPose(B, dogPose(ring({ kind: k, face }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); B.updateWorldMatrix(true, true); got[k].body.push(bodyPrint(B)); } finally { t3Dispose(B); } } }
+        out.push('the first version\'s fingerprints: ' + JSON.stringify(got));
+        if (!V1PIN) P.push('the first version\'s fingerprints are not pinned');
+        else for (const k of KS) { const w = V1PIN[k];
+          if (!w) { P.push('the first version has no fingerprint pinned for the ' + k + ', so whether it is drawn as before was not asked'); continue; }
+          if (w.card.join() !== got[k].card.join()) P.push('the first version\'s curled card of the ' + k + ' is not the picture it was before the ring was built (fingerprints ' + got[k].card.join(' / ') + ', where they were ' + w.card.join(' / ') + '), or the browser now draws differently: these are hashes of the pixels the browser drew, so take them again on main, and if main\'s match these, the change is the browser\'s, not the card\'s');
+          if (has3d && w.body.join() !== got[k].body.join()) P.push('the first version\'s curled body of the ' + k + ' is not posed as it was before the ring was built (fingerprints ' + got[k].body.join(' / ') + ', where they were ' + w.body.join(' / ') + ')'); } }
+
+      /* ---- 2 · THE PICK ---- */
+      curlOn = () => true; routineOn = () => true;
+      const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+      /* the long seeded run: idle dogs of every breed, each roll seeded, the pick read off the pose */
+      { const N = 4000; let naps = 0, nc = 0, lazy = 0, lc = 0, r1 = 0, rn = 0;
+        for (let i = 0; i < N; i++) { const d = made({ kind: KS[i % KS.length] }), sr = seeded(1000 + i * 7919); Math.random = sr;
+          try { dogIdle(d, T0); } finally { Math.random = keep.MR; tidy(); }
+          if (d.task && d.task.type === 'routine' && d.task.id === 'lazy') { let now = T0; Math.random = sr; let lay = false, cu = false, ver = -1;
+            try { for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay = true; if (p.curl) { cu = true; ver = p.ver; } } now += 100; dogStep(d, now); } } finally { Math.random = keep.MR; tidy(); }
+            if (lay) { lazy++; if (cu) { lc++; rn++; if (ver === 1) r1++; } } continue; }
+          if (d.task) continue;
+          const p = dogPose(d, T0 + 1, D0); if (p.lay) { naps++; if (p.curl) { nc++; rn++; if (p.ver === 1) r1++; } } }
+        const pn = 100 * nc / Math.max(1, naps), pl = 100 * lc / Math.max(1, lazy), pr = 100 * r1 / Math.max(1, rn);
+        out.push('the long seeded run, ' + N + ' idle choices of every breed: of ' + naps + ' naps ' + pn.toFixed(1) + '% curled, of ' + lazy + ' lazy lie-downs ' + pl.toFixed(1) + '% curled, and of ' + rn + ' curled lie-downs ' + pr.toFixed(1) + '% in the closed ring');
+        if (naps < 300 || lazy < 100) P.push('the seeded run had ' + naps + ' naps and ' + lazy + ' lazy lie-downs, too few to ask');
+        if (pn < 45 || pn > 55) P.push('with the ring among the versions, ' + pn.toFixed(0) + '% of naps are curled up, where about half was asked');
+        if (pl < 28 || pl > 39) P.push('with the ring among the versions, the lazy routine\'s lie-down is curled up ' + pl.toFixed(0) + '% of the time, where 1 time in 3 was asked');
+        if (pr < 45 || pr > 55) P.push('of the curled lie-downs, ' + pr.toFixed(0) + '% are the closed ring, where half and half was asked'); }
+      /* picked once, after every other roll of the lie-down: a nap on rolls held, the last one swept, against the same nap with
+         the first version alone; and kept: drawing him rolls nothing and his version never changes before his nap ends */
+      { const nap = (seq, list) => { let c = 0; Math.random = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; if (list) curlVersions = () => list; const d = made();
+          try { dogWhim(d, T0); } finally { Math.random = keep.MR; curlVersions = keep.cv; tidy(); } return { d, c }; };
+        let wrong = 0, notLast = 0, lost = 0, drawn = 0, picks = [0, 0]; const N = 100;
+        for (let i = 0; i < N; i++) { const z = (i + 0.5) / N, one = nap([0.2, 0.5, 0.5, 0.01, 0.3, z], [L[0]]), two = nap([0.2, 0.5, 0.5, 0.01, 0.3, z]);
+          const v = dogPose(two.d, T0 + 1, D0).ver; if (v === 0 || v === 1) picks[v]++;
+          if (two.c !== one.c + 1) wrong++; if (two.d.layT !== one.d.layT || two.d.next !== one.d.next || v !== (z < 0.5 ? 0 : 1)) notLast++;
+          const mr = Math.random; Math.random = () => { drawn++; return 0.5; };
+          try { for (let t = T0 + 1; t < two.d.layT; t += 500) if (dogPose(two.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { Math.random = mr; } }
+        out.push('a curled nap, the last roll swept: the first version ' + picks[0] + ' times, the ring ' + picks[1] + '; one number more than with the first version alone ' + (N - wrong) + ' of ' + N + ' times');
+        if (wrong) P.push('with the ring among the versions, ' + wrong + ' of ' + N + ' curled naps do not draw exactly one number more than with the first version alone: the version is to be picked once, by one roll');
+        if (notLast) P.push(notLast + ' of ' + N + ' curled naps with the ring among the versions do not last what they last with the first version alone on the same rolls, or are not picked by the last roll: the pick is to come after every other roll of the lie-down');
+        if (lost) P.push('in ' + lost + ' of ' + N + ' curled naps he changes version before his nap is over');
+        if (drawn) P.push('drawing a dog curled up rolls ' + drawn + ' number(s): the version is never picked where he is drawn'); }
+      /* the lazy routine's curl gets no extra seconds: walked with the ring picked and with the pose off, on the same rolls, its
+         lie-down lasts the same */
+      { let longer = 0, ringSeen = 0; const N = 30;
+        for (let i = 0; i < N; i++) { const walk = on => { curlOn = () => on; const sr = seeded(5000 + i * 131); let c = 0; Math.random = () => { c++; return sr(); }; const d = made({ kind: KS[i % KS.length] }); let now = T0, lay = 0, rg = false;
+            const pick = dogCurlPick; dogCurlPick = (cr, r) => { const x = Math.random(); return pick(cr, 0.75); };   /* the pick's own roll drawn, and the ring picked */
+            try { ROUTINEPIN = 'lazy'; dogIdle(d, now); for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay += 25; if (p.curl && p.ver === 1) rg = true; } now += 25; dogStep(d, now); } }
+            finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; Math.random = keep.MR; curlOn = () => true; tidy(); } return { lay, rg }; };
+          const a = walk(false), b = walk(true); if (b.rg) { ringSeen++; if (b.lay !== a.lay) longer++; } }
+        out.push('the lazy routine walked ' + N + ' times with the ring picked: curled in the ring ' + ringSeen + ' times, its lie-down as long as plain ' + (ringSeen - longer) + ' times');
+        if (!ringSeen) P.push('the lazy routine\'s lie-down was never curled in the ring, so whether it is made longer was not asked');
+        if (longer) P.push('curled in the ring, the lazy routine\'s lie-down lasts other than the same lie-down plain on the same rolls in ' + longer + ' of ' + ringSeen + ' routines: it gets no extra seconds'); }
+      /* a leash does not wake a dog curled up for his NAP: the button pressed beside him (its one deferred step run at once, the
+         game's save held off), he goes with you curled up in the version he was in until his nap ends, then he is up. The lazy
+         routine's lie-down is not a nap: the leash ends that routine, as it does today, and a dog curled up as its lie-down is
+         stood up (his answer, 2026-11-24) */
+      if (typeof PL === 'undefined' || !PL.park || !WORLDS[PL.park] || !document.getElementById('leash')) out.push('this world has no park to walk a dog to, so the leash was not asked');
+      else { const later = []; window.setTimeout = f => { later.push(f); return 0; }; if (keep.sv) save = () => {};
+        try { for (const v of [0, 1]) { const end = wNow() + 60000, d = ring({ kind: 'beagle' }, end, v); CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; later.length = 0;
+            document.getElementById('leash').click(); while (later.length) later.shift()();
+            const p = dogPose(d), aft = dogPose(d, end + 1);
+            out.push('a dog curled up in the ' + (v ? 'ring' : 'first version') + ' put on the leash: ' + (p.curl ? 'still curled, version ' + (p.ver + 1) : p.lay ? 'lying stretched out' : 'up') + (d.world === PL.park ? ', in the park with you' : ', where he was') + '; when his nap ends ' + (aft.lay ? 'still lying' : 'up'));
+            if (d.world !== PL.park) P.push('the leash did not take the curled-up dog to the park, so whether it wakes him was not asked');
+            else if (!p.curl || p.ver !== v) P.push('put on the leash, a dog curled up in the ' + (v ? 'closed ring' : 'first version') + ' is woken (' + (p.curl ? 'curled in the other version' : p.lay ? 'lying stretched out' : 'up') + '): a leash does not wake a curled dog before his nap ends');
+            if (aft.lay) P.push('put on the leash curled up, a dog is still lying down after his nap has ended');
+            d.world = '__frozen'; LEASH = keep.leash; }
+          /* curled up as the lazy routine's lie-down, in each version: walked on seeded rolls until he is curled in it, then leashed */
+          for (const v of [0, 1]) { let d = null, now = wNow(); const pick = dogCurlPick;
+            for (let i = 0; i < 60 && !d; i++) { const c = made({ kind: KS[i % KS.length] }), sr = seeded(9100 + i * 37); now = wNow(); Math.random = sr; dogCurlPick = (cr, r) => { Math.random(); return pick(cr, v ? 0.75 : 0.25); };
+              try { ROUTINEPIN = 'lazy'; dogIdle(c, now); for (let k = 0; k < 4000 && c.task; k++) { const q = dogPose(c, now, D0); if (q.curl && !q.howl && c.task && c.task.type === 'routine' && c.task.id === 'lazy') { d = c; break; } now += 25; dogStep(c, now); } }
+              finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); } }
+            if (!d) { P.push('no dog was curled up as the lazy routine\'s lie-down in 60 seeded walks, so whether the leash stands him up was not asked'); continue; }
+            CRIT.push(d); mine.push(d); d.world = wid; world = wid; px = fx = d.x; py = fy = d.y; petTarget = d.kind; petCrit = d; later.length = 0;
+            const p0 = dogPose(d, now, D0), was = LEASH; document.getElementById('leash').click(); while (later.length) later.shift()();
+            const p = dogPose(d, now, D0);
+            /* a world whose only place is its park offers no leash there (the button does nothing in the park): not asked */
+            if (LEASH === was) { out.push('the leash was not offered beside the dog curled up in the lazy routine (' + (world === PL.park ? 'this world\'s dogs live in its park' : 'the button did nothing') + '), so whether it stands him up was not asked'); d.world = '__frozen'; continue; }
+            out.push('a dog curled up in the ' + (v ? 'ring' : 'first version') + ' as the lazy routine\'s lie-down (' + (p0.curl ? 'curled, version ' + (p0.ver + 1) : 'not curled') + ') put on the leash: ' + (p.curl ? 'still curled' : p.lay ? 'still lying' : 'up') + (d.task ? ', still in his routine' : ', his routine ended') + (d.world === PL.park ? ', in the park with you' : ''));
+            if (!p0.curl || p0.ver !== v) P.push('the dog walked into the lazy routine\'s lie-down was not curled in the ' + (v ? 'closed ring' : 'first version') + ', so whether the leash stands him up was not asked');
+            else if (p.lay || p.curl || d.task) P.push('put on the leash curled up as the lazy routine\'s lie-down (the ' + (v ? 'closed ring' : 'first version') + '), a dog is ' + (p.curl ? 'still curled up' : p.lay ? 'still lying' : 'up') + (d.task ? ' and still in his routine' : '') + ': the leash ends that routine and stands him up, as it did before the ring');
+            d.world = '__frozen'; LEASH = keep.leash; } }
+        finally { window.setTimeout = () => 0; if (keep.sv) save = keep.sv; LEASH = keep.leash; world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; Object.assign(PARK, JSON.parse(keep.park)); } }
+      /* a world whose dogs do not curl: not one number more for the ring */
+      { const nap = on => { curlOn = () => on; let c = 0; Math.random = () => { c++; return 0.2; }; const d = made(); try { dogWhim(d, T0); } finally { Math.random = keep.MR; curlOn = () => true; tidy(); } return { c, d }; };
+        const off = nap(false), off1 = (() => { curlVersions = () => [L[0]]; try { return nap(false); } finally { curlVersions = keep.cv; } })();
+        if (off.c !== off1.c || dogPose(off.d, T0 + 1, D0).curl) P.push('in a world whose dogs do not curl up, a nap draws ' + off.c + ' numbers with the ring among the versions and ' + off1.c + ' without' + (dogPose(off.d, T0 + 1, D0).curl ? ', and is curled up' : '') + ': it is to roll not one number more');
+        out.push('a world whose dogs do not curl: a nap draws ' + off.c + ' numbers with the ring among the versions, ' + off1.c + ' without'); }
+
+      /* ---- 3 · THE RING ON HIS BODY ---- */
+      const groupOf = m => { const n = m.parent ? m.parent.name : ''; if (m.userData.trunk) return m.userData.trunk === 'chest' ? 'chest' : 'barrel';
+        if (m.userData.wears === 'ear' || (m.parent && m.parent.userData && m.parent.userData.earRoot !== undefined)) return 'ear';
+        if (n === 'head' || n === 'jaw') return 'head'; if (n === 'neck' || (n === 'chest' && !m.userData.trunk && m.userData.wears !== 'collar' && m.userData.wears !== 'band')) return 'neck';
+        if (/^(hind|hock|hpaw)/.test(n)) return 'hip'; if (/^(fore|wrist|fpaw)/.test(n)) return 'shoulder'; if (/^tail/.test(n)) return 'tail'; return n || 'other'; };
+      /* what the checks read off a posed body, in his own frame: how much of each kind of part is where */
+      const read = B => { B.updateWorldMatrix(true, true); const S = B.userData.skel, J = B.userData.joints, inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), at = n => J[n].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), v = new THREE.Vector3();
+        const lo = [Infinity, Infinity], hi = [-Infinity, -Infinity], tops = {}, pts = []; let low = Infinity, nose = null, earR = 0, eyes = [], shine = 0, tailTop = -Infinity;
+        const hc = J.head.getWorldPosition(new THREE.Vector3());
+        B.traverse(m => { if (!m.isMesh || !m.visible) return; const u = m.userData; if (u.shadow || u.dirt) return;
+          if (u.wears === 'eye' && u.open) eyes.push(m.scale.y / u.open); if (u.wears === 'shine') shine++; if (u.wears === 'nose') nose = m.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+          const g = groupOf(m), Q = m.geometry.attributes.position;
+          for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(m.matrixWorld); if (u.upEar) earR = Math.max(earR, v.distanceTo(hc) / S.head); v.applyMatrix4(inv);
+            lo[0] = Math.min(lo[0], v.x); hi[0] = Math.max(hi[0], v.x); lo[1] = Math.min(lo[1], v.z); hi[1] = Math.max(hi[1], v.z); low = Math.min(low, v.y); tops[g] = Math.max(tops[g] === undefined ? -Infinity : tops[g], v.y);
+            if (m.parent && (m.parent.name === 'tail_2' || m.parent.name === 'tail_tip')) tailTop = Math.max(tailTop, v.y);
+            if (u.trunk || g === 'head') pts.push([v.x, v.z]); } });
+        const ex = [hi[0] - lo[0], hi[1] - lo[1]], mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2], dm = q => Math.hypot(q.x - mid[0], q.z - mid[1]);
+        /* the top-down outline of his trunk and head (their hull), and which paws lie inside it */
+        const P2 = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), crs = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), Lw = [], Up = [];
+        for (const q of P2) { while (Lw.length >= 2 && crs(Lw[Lw.length - 2], Lw[Lw.length - 1], q) <= 0) Lw.pop(); Lw.push(q); } for (const q of P2.reverse()) { while (Up.length >= 2 && crs(Up[Up.length - 2], Up[Up.length - 1], q) <= 0) Up.pop(); Up.push(q); }
+        const H = Lw.slice(0, -1).concat(Up.slice(0, -1)), inH = q => H.length > 2 && H.every((a, i) => { const b = H[(i + 1) % H.length]; return (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]) >= 0; });
+        const paws = ['fpaw_l', 'fpaw_r', 'hpaw_l', 'hpaw_r'].filter(n => J[n]), pawsIn = paws.filter(n => { const q = at(n); return inH([q.x, q.z]); }).length;
+        /* how far round his chest is turned from his hips' heading, measured the way he curls (0 to 360) */
+        /* read off each joint's sideways line, which neither his chest's tip nor a small roll turns: a heading of a is the line (cos a, 0, -sin a) */
+        const fwd = n => { const q = new THREE.Vector3(1, 0, 0).transformDirection(J[n].matrixWorld).transformDirection(inv); return Math.atan2(-q.z, q.x); }, sd = B.userData.curlSide === -1 ? -1 : 1;
+        const turn = (((fwd('chest') - fwd('hips')) * sd) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+        const line = (dm(at('hips')) + dm(at('spine')) + dm(at('chest'))) / 3, tip = at('tail_tip');
+        const near = nose ? Math.min(...['hind_l', 'hind_r', 'hock_l', 'hock_r', 'hpaw_l', 'hpaw_r', 'tail_1'].filter(n => J[n]).map(n => at(n).distanceTo(nose))) : Infinity;
+        const tipNear = nose ? Math.min(tip.distanceTo(nose), ...['fpaw_l', 'fpaw_r'].map(n => at(n).distanceTo(tip))) : Infinity;
+        const topG = Object.entries(tops).sort((a, b) => b[1] - a[1]);
+        return { S, J, round: Math.min(...ex) / Math.max(...ex), turn, near, headMid: at('head').y, barrelTop: tops.barrel, tipOut: dm(tip) - line, tipNear, pawsIn, paws: paws.length, top: topG[0][1], topWho: topG[0][0], tops, low, earR, eyes, shine,
+          side: at('chest').x - at('hips').x, tailTop, hipY: at('hips').y, tail: [J.tail_1.rotation.x, J.tail_1.rotation.y, J.tail_1.rotation.z, J.tail_2.rotation.x, J.tail_2.rotation.z] }; };
+      /* his drop ear on his high side, in his head's frame: where its middle is against his eye (below it and ahead of its root:
+         over his cheek) and how near it comes to his eye */
+      const dropOf = B => { const J = B.userData.joints, inv = new THREE.Matrix4().copy(J.head.matrixWorld).invert(), sd = B.userData.curlSide === -1 ? -1 : 1, r = B.userData.skel.head; let ear = null, root = null, eye = null;
+        B.traverse(m => { if (m.isMesh && m.userData.dropEar === -sd) { ear = m; root = m.parent; } if (m.isMesh && m.userData.wears === 'eye' && Math.sign(m.position.x) === -sd) eye = m; });
+        if (!ear || !eye) return null; const e = eye.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), c = ear.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), o = root.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+        let gap = Infinity; const Q = ear.geometry.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(ear.matrixWorld).applyMatrix4(inv); gap = Math.min(gap, v.distanceTo(e)); }
+        return { below: (e.y - c.y) / r, ahead: (c.z - o.z) / r, gap: gap / r }; };
+      const PAWS = new Set(['fpaw_l', 'fpaw_r', 'hpaw_l', 'hpaw_r', 'wrist_l', 'wrist_r', 'hock_l', 'hock_r']);
+      /* a picture of him from the game's camera (40 degrees down, side on), counting the pixels of his paws and shins against all of him */
+      const pawShare = (B, face) => { const sc = new THREE.Scene(), was = new Map(); sc.add(B); const white = new THREE.MeshBasicMaterial({ color: 0xffffff }), grey = new THREE.MeshBasicMaterial({ color: 0x404040 });
+        B.traverse(m => { if (!m.isMesh) return; was.set(m, m.material); m.material = m.userData.shadow || m.userData.note || m.userData.heart || m.userData.bubble ? m.material : (PAWS.has(m.parent && m.parent.name) ? white : grey); });
+        const ry = B.rotation.y; B.rotation.y = (face === -1 ? -1 : 1) * Math.PI / 2; B.updateWorldMatrix(true, true); const cam = new THREE.PerspectiveCamera(26, 1, 0.01, 10), d = 2.0; cam.position.set(0, d * Math.sin(40 * Math.PI / 180), d * Math.cos(40 * Math.PI / 180)); cam.lookAt(0, 0.08, 0);
+        R3.setClearColor(0x000000, 1); R3.render(sc, cam); const g = R3.getContext(), n = 160, px2 = new Uint8Array(n * n * 4); g.readPixels(0, 0, n, n, g.RGBA, g.UNSIGNED_BYTE, px2);
+        let paw = 0, all = 0; for (let i = 0; i < px2.length; i += 4) { if (px2[i] > 200) { paw++; all++; } else if (px2[i] > 40) all++; }
+        B.rotation.y = ry; was.forEach((mt, m) => { m.material = mt; }); sc.remove(B); white.dispose(); grey.dispose(); B.updateWorldMatrix(true, true); return paw / Math.max(1, all); };
+      /* his ears in his head's frame, in head sizes: each upright ear's tip (the point of its coat furthest up its own length), his
+         skull's half width (his head and jaw, not his ears or eyes), the lowest point of his jaw and of his high drop ear */
+      const earsOf = B => { const J = B.userData.joints, r = B.userData.skel.head, inv = new THREE.Matrix4().copy(J.head.matrixWorld).invert(), sd = B.userData.curlSide === -1 ? -1 : 1, v = new THREE.Vector3(), tips = []; let headX = 0, jawLow = Infinity, hiLow = Infinity;
+        B.traverse(m => { if (!m.isMesh || !m.visible) return; const u = m.userData, Q = m.geometry.attributes.position;
+          if (u.upEar && !u.inside) { let ti = 0; for (let i = 1; i < Q.count; i++) if (Q.getY(i) > Q.getY(ti)) ti = i; v.fromBufferAttribute(Q, ti).applyMatrix4(m.matrixWorld).applyMatrix4(inv); tips.push([v.x / r, v.y / r, v.z / r]); return; }
+          const isHead = !u.upEar && u.dropEar === undefined && m.parent && (m.parent.name === 'head' || m.parent.name === 'jaw') && u.wears !== 'eye' && u.wears !== 'shine';
+          if (!isHead && u.dropEar !== -sd) return;
+          for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(m.matrixWorld).applyMatrix4(inv); if (isHead) { headX = Math.max(headX, Math.abs(v.x) / r); jawLow = Math.min(jawLow, v.y / r); } else hiLow = Math.min(hiLow, v.y / r); } });
+        return { tips, headX, jawLow, hiLow }; };
+      /* a picture of him, from the game's camera (40 degrees down, side on, near) or from straight above, his low drop ear in its own
+         colour: how many pixels of that ear show, and his outline's top, column by column. ONE DOME: the deepest dip between two
+         humps of that top line (lower than the highest of it on both sides), against his height in the picture */
+      const looksOf = (B, face, above) => { const sc = new THREE.Scene(), was = new Map(), sd = B.userData.curlSide === -1 ? -1 : 1; sc.add(B); const red = new THREE.MeshBasicMaterial({ color: 0xff0000 }), grey = new THREE.MeshBasicMaterial({ color: 0x404040 });
+        B.traverse(m => { if (!m.isMesh) return; was.set(m, [m.material, m.visible]); const u = m.userData; if (u.shadow || u.note || u.heart || u.bubble) { m.visible = false; return; } m.material = u.dropEar === sd ? red : grey; });
+        const ry = B.rotation.y; B.rotation.y = (face === -1 ? -1 : 1) * Math.PI / 2; B.updateWorldMatrix(true, true); const cam = new THREE.PerspectiveCamera(26, 1, 0.01, 10), d = 1.1;
+        if (above) { cam.position.set(0, d, 0.001); cam.lookAt(0, 0, 0); } else { cam.position.set(0, d * Math.sin(40 * Math.PI / 180), d * Math.cos(40 * Math.PI / 180)); cam.lookAt(0, 0.08, 0); }
+        R3.setClearColor(0x000000, 1); R3.render(sc, cam); const g = R3.getContext(), n = 160, px2 = new Uint8Array(n * n * 4); g.readPixels(0, 0, n, n, g.RGBA, g.UNSIGNED_BYTE, px2);
+        let lo = 0, all = 0, bot = n; const top = new Array(n).fill(-1);
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = (y * n + x) * 4; if (px2[i] < 30 && px2[i + 1] < 30) continue; all++; if (px2[i] > 200 && px2[i + 1] < 60) lo++; top[x] = Math.max(top[x], y); bot = Math.min(bot, y); }
+        const h = top.filter(t => t >= 0).map(t => t - bot), H = Math.max(1, ...h); let dip = 0;
+        for (let i = 0; i < h.length; i++) { let a = 0, b = 0; for (let j = 0; j <= i; j++) a = Math.max(a, h[j]); for (let j = i; j < h.length; j++) b = Math.max(b, h[j]); dip = Math.max(dip, Math.min(a, b) - h[i]); }
+        B.rotation.y = ry; was.forEach(([mt, vis], m) => { m.material = mt; m.visible = vis; }); sc.remove(B); red.dispose(); grey.dispose(); B.updateWorldMatrix(true, true); return { lo, all, dip: dip / H, H }; };
+      /* his high drop ear against his head's own outline from the game's camera: of the ear's pixels, the share outside the outline
+         of his head and jaw (each drawn alone). Over his cheek it lies inside it; hanging down past it, it reads as a leg */
+      const earOutOf = (B, face) => { const sc = new THREE.Scene(), was = new Map(), sd = B.userData.curlSide === -1 ? -1 : 1, wm = new THREE.MeshBasicMaterial({ color: 0xffffff }); sc.add(B);
+        const ry = B.rotation.y; B.rotation.y = (face === -1 ? -1 : 1) * Math.PI / 2; B.updateWorldMatrix(true, true); const cam = new THREE.PerspectiveCamera(26, 1, 0.01, 10), d = 1.1; cam.position.set(0, d * Math.sin(40 * Math.PI / 180), d * Math.cos(40 * Math.PI / 180)); cam.lookAt(0, 0.08, 0);
+        const pass = keepIt => { B.traverse(m => { if (!m.isMesh) return; if (!was.has(m)) was.set(m, [m.material, m.visible]); m.material = wm; m.visible = keepIt(m); }); R3.setClearColor(0x000000, 1); R3.render(sc, cam); const g = R3.getContext(), px2 = new Uint8Array(160 * 160 * 4); g.readPixels(0, 0, 160, 160, g.RGBA, g.UNSIGNED_BYTE, px2); return px2; };
+        const head = pass(m => { const u = m.userData; return !u.upEar && u.dropEar === undefined && !!m.parent && (m.parent.name === 'head' || m.parent.name === 'jaw') && u.wears !== 'eye' && u.wears !== 'shine'; }), ear = pass(m => m.userData.dropEar === -sd);
+        let n = 0, o = 0; for (let i = 0; i < ear.length; i += 4) if (ear[i] > 128) { n++; if (head[i] < 128) o++; }
+        B.rotation.y = ry; was.forEach(([mt, vis], m) => { m.material = mt; m.visible = vis; }); sc.remove(B); wm.dispose(); B.updateWorldMatrix(true, true); return { n, out: n ? o / n : 0 }; };
+      if (!has3d) out.push('a dog\'s body could not be made in this shell (it has no 3D camera), so the ring on his body was not asked here');
+      else { try { R3 = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true }); R3.setSize(160, 160, false); } catch (e) { R3 = null; }
+        if (!R3) P.push('no picture could be made in this shell, so how much of his paws shows from the game\'s camera was not asked');
+        const DOMEDIP = 0.08;
+        for (const k of KS) { const B = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), Bb = dogMake(dogSkeleton(k), dogLookOf({ kind: k, band: '#C4586B' })), bob = !!(DOGBUILDS[k] && DOGBUILDS[k].tail === 'bob'), up = !!(DOGBUILDS[k] && DOGBUILDS[k].ear === 'up');
+          try { const pl = dogPose(made({ kind: k, layT: T0 + 6e4 }), T0, D0);
+            t3DogPose(B, pl, 0, false, () => 0); const lay = read(B), layPaw = R3 ? pawShare(B) : 0;
+            const v1 = (() => { t3DogPose(B, dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); return read(B); })();
+            for (const face of [1, -1]) { const d = ring({ kind: k, face }, T0 + 6e4, 1), Pz = dogPose(d, T0, D0); t3DogPose(B, Pz, 0, false, () => 0); const m = read(B), drop = up ? null : dropOf(B), paw = R3 ? pawShare(B, face) : 0;
+              const Pl = dogPose(d, T0 + 700, D0 + 700); t3DogPose(B, Pl, 0, false, () => 0); const m2 = read(B);
+              const who = 'the ' + k + (face === 1 ? '' : ' facing left'), S = m.S, hd = S.head, pw = S.limb.paw;
+              out.push(who + ' in the ring: ' + m.round.toFixed(2) + ' as wide one way as the other from above (first version ' + v1.round.toFixed(2) + '), his chest turned ' + deg(m.turn) + ' degrees round from his hips (' + deg(v1.turn) + '); his nose ' + (m.near / hd).toFixed(2) + ' head sizes from his hind leg or tail\'s root (' + (v1.near / hd).toFixed(2) + '); his highest part his ' + m.topWho + ' at ' + m.top.toFixed(3) + ' (first version ' + v1.topWho + ' ' + v1.top.toFixed(3) + '), his head\'s middle ' + m.headMid.toFixed(3) + ' under his barrel\'s top ' + (m.barrelTop || 0).toFixed(3)
+                + (bob ? '' : '; his tail\'s tip ' + m.tipOut.toFixed(3) + ' outside his back\'s line (' + v1.tipOut.toFixed(3) + ') and ' + (m.tipNear / hd).toFixed(2) + ' head sizes from his nose or a fore paw') + '; ' + m.pawsIn + ' of ' + m.paws + ' paws inside him from above' + (R3 ? ', his paws ' + (100 * paw).toFixed(1) + '% of him from the game\'s camera (' + (100 * layPaw).toFixed(1) + '% lying stretched out)' : '')
+                + (up ? '; his upright ears reach ' + m.earR.toFixed(2) + ' head sizes from his head\'s middle (' + lay.earR.toFixed(2) + ' lying stretched out)' : drop ? '; his high drop ear ' + drop.below.toFixed(2) + ' head sizes under his eye and ' + drop.ahead.toFixed(2) + ' ahead of its root, ' + drop.gap.toFixed(2) + ' from his eye' : '') + '; ' + (-m.low).toFixed(3) + ' into the ground, his paw ' + pw.toFixed(3));
+              /* A · the ring: nearly round from above (0.8 at least), his chest turned 150 degrees round from his hips */
+              if (!(m.round >= 0.8)) P.push(who + ' in the closed ring is not round seen from above: ' + m.round.toFixed(2) + ' as wide one way as the other, where at least 0.8 was asked');
+              if (!(m.turn >= 150 * Math.PI / 180 && m.turn < 300 * Math.PI / 180)) P.push(who + ' in the closed ring has his chest turned ' + deg(m.turn) + ' degrees round from his hips\' heading, where his hips come up beside his shoulders (150 at least)');
+              /* B · his nose tucked into his hind leg (within one head size of his hip, hock or hind paw or his tail\'s root); his head
+                 down, its middle no higher than the top of his barrel */
+              if (!(m.near <= hd)) P.push(who + '\'s nose is ' + (m.near / hd).toFixed(2) + ' head sizes from his hind leg and his tail\'s root: in the closed ring it is tucked into his hind leg (within one)');
+              if (!(m.headMid <= m.barrelTop)) P.push(who + '\'s head is raised in the closed ring: its middle ' + m.headMid.toFixed(3) + ' high, over the top of his barrel ' + (m.barrelTop || 0).toFixed(3));
+              /* C · his tail round the outside, its tip further out than the line of his back by half his barrel's round at least, and
+                 within 1.5 head sizes of his nose or a fore paw (a bobbed tail is tucked away, as in the first version) */
+              if (!bob) { if (!(m.tipOut >= S.limb.barrel * 0.5)) P.push(who + '\'s tail is not round the outside of the ring: its tip is ' + m.tipOut.toFixed(3) + ' further from the ring\'s middle than the line of his back, where half his barrel\'s round (' + (S.limb.barrel * 0.5).toFixed(3) + ') was asked');
+                if (!(m.tipNear <= 1.5 * hd)) P.push(who + '\'s tail\'s tip is ' + (m.tipNear / hd).toFixed(2) + ' head sizes from his nose and his fore paws: in the closed ring it lies along his nose (within 1.5)');
+                if (!(m.tailTop <= m.hipY)) P.push(who + '\'s tail stands up out of the closed ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over his hips (' + m.hipY.toFixed(3) + '); it lies round him, low'); }
+              /* D · his legs inside: 3 of his 4 paws at least inside him from above, and from the game\'s camera his paws a third of
+                 what shows of them lying stretched out, at most */
+              if (m.pawsIn < 3) P.push(who + ' has ' + (m.paws - m.pawsIn) + ' paws outside the ring seen from above: his legs are folded inside it, at most one paw at its edge');
+              if (R3 && !(paw <= layPaw / 3)) P.push(who + '\'s paws are ' + (100 * paw).toFixed(1) + '% of him from the game\'s camera in the ring, and ' + (100 * layPaw).toFixed(1) + '% lying stretched out: folded inside, little of them shows (a third at most)');
+              /* E · his ears flat. AN UPRIGHT EAR LAID BACK ALONG HIS NECK, not standing and not splayed out as a brim: seen along his
+                 head from behind, each ear's tip inside his skull's outline (no further from his head's middle, across and up, than his
+                 skull's half width). How far an ear reaches is not asked: a brim reaches no further than an ear laid back. A DROP EAR
+                 on his high side over his cheek (its middle under his eye and ahead of its root), clear of his eye, and ending at his
+                 jaw line (its lowest point no lower than his jaw's): hanging past it, it reads as a leg. His LOW drop ear under his
+                 head, out of sight from the game's camera */
+              const ea = earsOf(B), lowEar = up || !R3 ? null : looksOf(B, face), hiOut = up || !R3 ? null : earOutOf(B, face);
+              if (up) { const outT = ea.tips.filter(t => !(Math.hypot(t[0], t[1]) <= ea.headX));
+                out.push(who + '\'s upright ears\' tips, across and up from his head\'s middle: ' + ea.tips.map(t => Math.hypot(t[0], t[1]).toFixed(2)).join(' and ') + ' head sizes, his skull ' + ea.headX.toFixed(2) + ' across');
+                if (ea.tips.length < 2) P.push(who + ' has ' + ea.tips.length + ' upright ear(s) to ask');
+                else if (outT.length) P.push(who + '\'s upright ears are not laid flat in the closed ring: seen along his head from behind, ' + outT.length + ' tip(s) stand out of his skull\'s outline (' + outT.map(t => 'across ' + t[0].toFixed(2) + ', up ' + t[1].toFixed(2)).join('; ') + ' head sizes, his skull ' + ea.headX.toFixed(2) + ' across): laid back along his neck, the tips are inside it'); }
+              if (!up) { if (!drop) P.push(who + ' has no drop ear on his high side to ask');
+                else if (!(drop.below > 0.2 && drop.ahead > 0 && drop.gap > 0.12)) P.push(who + '\'s drop ear on his high side is not over his cheek: its middle ' + drop.below.toFixed(2) + ' head sizes under his eye and ' + drop.ahead.toFixed(2) + ' ahead of its root, ' + drop.gap.toFixed(2) + ' from his eye (under it by 0.2, ahead of its root, clear of his eye by 0.12)');
+                out.push(who + '\'s high drop ear reaches ' + ea.hiLow.toFixed(2) + ' head sizes down his head, his jaw ' + ea.jawLow.toFixed(2) + (hiOut ? ', ' + (100 * hiOut.out).toFixed(0) + '% of it outside his head\'s outline from the game\'s camera' : '') + (lowEar ? '; his low drop ear ' + lowEar.lo + ' px of ' + lowEar.all + ' from the game\'s camera' : ''));
+                if (!(ea.hiLow >= ea.jawLow - 0.05)) P.push(who + '\'s drop ear on his high side hangs past his jaw line in the closed ring (its lowest point ' + ea.hiLow.toFixed(2) + ' head sizes down his head, his jaw ' + ea.jawLow.toFixed(2) + '): it ends at his jaw, or it reads as a leg');
+                if (hiOut && !(hiOut.n > 0 && hiOut.out <= 0.2)) P.push(who + '\'s drop ear on his high side ' + (hiOut.n ? 'sticks out of his head\'s outline from the game\'s camera (' + (100 * hiOut.out).toFixed(0) + '% of it, where a fifth at most was asked)' : 'does not show at all from the game\'s camera') + ': it lies flat over his cheek, inside his head\'s outline');
+                if (lowEar && lowEar.lo > 0) P.push(who + '\'s drop ear on his low side shows from the game\'s camera in the closed ring (' + lowEar.lo + ' px of ' + lowEar.all + '): it lies under his head, out of sight'); }
+              /* F · low and round: his highest point his barrel, chest, hip or shoulder, never his head, neck, ears or tail, and no
+                 higher than in the first version */
+              if (!['barrel', 'chest', 'hip', 'shoulder'].includes(m.topWho)) P.push(who + '\'s highest point in the closed ring is his ' + m.topWho + ' (' + m.top.toFixed(3) + '), where it is his hip or his shoulder, his back');
+              if (m.top > v1.top + 1e-6) P.push(who + ' in the closed ring stands ' + m.top.toFixed(3) + ' high, higher than in the first version (' + v1.top.toFixed(3) + '): it is a low loaf');
+              /* ONE LOW DOME from the game's camera, his bandana on: the top line of his outline has no dip between two humps (his head
+                 and his hips) deeper than DOMEDIP of his height. Filled in one colour, one bump, never a peanut */
+              if (R3) { t3DogPose(Bb, Pz, 0, false, () => 0); const dm = looksOf(Bb, face);
+                out.push(who + '\'s outline from the game\'s camera, his bandana on: its deepest dip ' + (100 * dm.dip).toFixed(1) + '% of his height (' + dm.H + ' px)');
+                if (!(dm.dip <= DOMEDIP)) P.push(who + ' in the closed ring is two lumps from the game\'s camera, not one low dome: the top of his outline dips ' + (100 * dm.dip).toFixed(1) + '% of his height between them, where ' + (100 * DOMEDIP).toFixed(0) + '% at most was asked'); }
+              /* asleep: his eyes shut, no light in them, his tail still; nothing deeper into the ground than his paw is across */
+              if (!m.eyes.length || !m.eyes.every(x => x < 0.5) || m.shine) P.push(who + '\'s eyes are open in the closed ring');
+              if (m.tail.some((x, i) => Math.abs(x - m2.tail[i]) > 1e-9) || Math.abs(m.tail[2]) > 1e-9) P.push(who + '\'s tail moves in the closed ring: it is still, asleep');
+              if (m.low < -pw) P.push('part of ' + who + ' goes ' + (-m.low).toFixed(3) + ' into the ground in the closed ring, more than his paw is across (' + pw.toFixed(3) + ')');
+              if (face === -1) { const r1 = (() => { t3DogPose(B, dogPose(ring({ kind: k, face: 1 }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); return read(B); })();
+                if (!(Math.sign(m.side) === -Math.sign(r1.side) && Math.abs(m.turn - r1.turn) < 0.02 && Math.abs(m.round - r1.round) < 0.02)) P.push('facing left, the ' + k + ' does not curl in the ring to his other side as far round (his chest ' + m.side.toFixed(3) + ' to the side of his hips, ' + r1.side.toFixed(3) + ' facing right; turned ' + deg(m.turn) + ' and ' + deg(r1.turn) + ' degrees)'); } }
+            /* G · the coat follows the ring (a two-coloured breed): seen from above, lit evenly, the outer band of him mostly the colour
+               of his back, his middle mostly the lighter colour (the beagle's lemon and white) */
+            if (k === 'beagle' && R3) { const d = ring({ kind: k }, T0 + 6e4, 1); t3DogPose(B, dogPose(d, T0, D0), 0, false, () => 0);
+              const sc = new THREE.Scene(); sc.add(new THREE.AmbientLight(0xffffff, 1)); sc.add(B); B.updateWorldMatrix(true, true); const ry = B.rotation.y;
+              const cam = new THREE.OrthographicCamera(-0.32, 0.32, 0.32, -0.32, 0.01, 5); cam.position.set(0, 2, 0); cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0);
+              B.children.forEach(o => { if (o.userData && o.userData.shadow) o.visible = false; }); R3.setClearColor(0x000000, 0); R3.render(sc, cam);
+              B.children.forEach(o => { if (o.userData && o.userData.shadow) o.visible = true; }); sc.remove(B); B.rotation.y = ry;
+              const g = R3.getContext(), n = 160, px2 = new Uint8Array(n * n * 4); g.readPixels(0, 0, n, n, g.RGBA, g.UNSIGNED_BYTE, px2);
+              const pts = []; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = (y * n + x) * 4; if (px2[i + 3] > 200) pts.push([x, y, px2[i], px2[i + 1], px2[i + 2]]); }
+              const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cy = pts.reduce((a, q) => a + q[1], 0) / pts.length, far = Math.max(...pts.map(q => Math.hypot(q[0] - cx, q[1] - cy)));
+              const lemon = q => q[2] > 150 && q[4] < q[2] * 0.72, white = q => q[4] > q[2] * 0.85 && q[2] > 150;
+              const band = pts.filter(q => Math.hypot(q[0] - cx, q[1] - cy) > far * 0.6), core = pts.filter(q => Math.hypot(q[0] - cx, q[1] - cy) < far * 0.4);
+              const bl = band.filter(lemon).length / Math.max(1, band.filter(q => lemon(q) || white(q)).length), cw = core.filter(white).length / Math.max(1, core.filter(q => lemon(q) || white(q)).length);
+              out.push('the beagle in the ring from above: his outer band ' + (100 * bl).toFixed(0) + '% lemon, his middle ' + (100 * cw).toFixed(0) + '% white (of what is lemon or white)');
+              if (!(bl > 0.5 && cw > 0.5)) P.push('the beagle\'s two colours do not follow the ring: seen from above his outer band is ' + (100 * bl).toFixed(0) + '% lemon and his middle ' + (100 * cw).toFixed(0) + '% white, where the lemon of his back goes round the outside and the white sits in the middle (more than half each)'); }
+            /* H · the barrel gathered, never crossed: no point of the bent barrel lies past the arc's middle */
+            { const d = ring({ kind: k }, T0 + 6e4, 1); t3DogPose(B, dogPose(d, T0, D0), 0, false, () => 0); let m = null; B.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') m = o; });
+              const C = dogCurlAngles(B), S = B.userData.skel, Lc = S.joints.chest[3], A = C.back, kk = A / (2 * Lc), sx = m.scale.x || 1, sd = 1, rest = m.userData.barrelRest, Q = m.geometry.attributes.position.array; let crossed = 0, n = 0;
+              for (let i = 0; i < Q.length / 3; i++) { const dd = rest[i * 3 + 1] + Lc; if (dd < 0 || dd > 2 * Lc) continue; n++; const th = dd * kk, ax = sd * (1 - Math.cos(th)) / kk, ay = Math.sin(th) / kk - Lc, cxx = sd / kk, ux = (ax - cxx), uy = ay + Lc, ul = Math.hypot(ux, uy);
+                const r = ((Q[i * 3] * sx - cxx) * ux + (Q[i * 3 + 1] + Lc) * uy) / ul; if (r <= 0) crossed++; }
+              out.push('the ' + k + '\'s barrel in the ring: ' + crossed + ' of ' + n + ' points on its arc past the arc\'s middle');
+              if (crossed) P.push('the ' + k + '\'s barrel passes through itself in the closed ring: ' + crossed + ' of its ' + n + ' points along the bend lie past the middle of the arc, where the inner side is gathered, never crossed'); } }
+          finally { t3Dispose(B); t3Dispose(Bb); } }
+        /* A CHIHUAHUA WITH ONE FOLDED EAR (ears "mixed": one upright ear folded over at its tip) in the ring, each way he faces: both
+           ears laid back flat as the upright pair's are, his eyes shut, nothing deeper into the ground than his paw is across */
+        if (typeof EARKINDS !== 'undefined' && EARKINDS.includes('chi')) { const lk = dogLookOf({ kind: 'chi', ears: 'mixed' });
+          if (lk.ears !== 'mixed') P.push('a chihuahua could not be given one folded ear, so the ring with one was not asked');
+          else { const B = dogMake(dogSkeleton('chi'), lk);
+            try { for (const face of [1, -1]) { t3DogPose(B, dogPose(ring({ kind: 'chi', face, ears: 'mixed' }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); const m = read(B), ea = earsOf(B), pw = B.userData.skel.limb.paw, who = 'the chihuahua with one folded ear' + (face === 1 ? '' : ' facing left'), outT = ea.tips.filter(t => !(Math.hypot(t[0], t[1]) <= ea.headX));
+                out.push(who + ' in the ring: her ears\' tips ' + ea.tips.map(t => Math.hypot(t[0], t[1]).toFixed(2)).join(' and ') + ' head sizes across and up (her skull ' + ea.headX.toFixed(2) + '), ' + (-m.low).toFixed(3) + ' into the ground');
+                if (ea.tips.length < 2 || outT.length) P.push(who + '\'s ears are not laid flat in the closed ring: ' + (ea.tips.length < 2 ? ea.tips.length + ' ear(s) found' : outT.length + ' tip(s) out of her skull\'s outline seen from behind (' + outT.map(t => 'across ' + t[0].toFixed(2) + ', up ' + t[1].toFixed(2)).join('; ') + ')'));
+                if (!m.eyes.length || !m.eyes.every(x => x < 0.5) || m.shine) P.push(who + '\'s eyes are open in the closed ring');
+                if (m.low < -pw) P.push('part of ' + who + ' goes ' + (-m.low).toFixed(3) + ' into the ground in the closed ring, more than her paw is across (' + pw.toFixed(3) + ')'); } }
+            finally { t3Dispose(B); } } } }
+
+      /* ---- 4 · THE CARD ---- */
+      { const Sx = 4, SW = 40 * Sx, BAND = [196, 88, 107], RING = { id: 'probe', tint: 'rgba(0,0,0,0)', accent: '#00FF00', pat: '#0000FF' };
+        const card = (paint, d) => { const cv = document.createElement('canvas'); cv.width = cv.height = SW; const g = cv.getContext('2d'); g.setTransform(Sx, 0, 0, Sx, 4 * Sx, 4 * Sx); paint(g, d, 0, 0);
+          const im = g.getImageData(0, 0, SW, SW).data; let top = -1, n = 0; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) if (im[(y * SW + x) * 4 + 3] > 128) { n++; if (top < 0) top = y; } return { top: top / Sx - 4, n, im }; };
+        const near = (im, c, r, is) => { const o = []; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) { const X = x / Sx - 20, Y = y / Sx - 4, i = (y * SW + x) * 4; if ((X - c[0]) ** 2 + (Y - c[1]) ** 2 <= r * r && is(im[i], im[i + 1], im[i + 2], im[i + 3])) o.push([X, Y]); } return o; };
+        const dark = (r, g, b, a) => a > 128 && r < 90 && g < 90 && b < 90, green = (r, g, b, a) => a > 128 && g > 150 && r < 120 && b < 120;
+        const mid = q => q.length ? [q.reduce((a, p) => a + p[0], 0) / q.length, q.reduce((a, p) => a + p[1], 0) / q.length] : null;
+        try { for (const k of KS) { const paint = window['draw' + k[0].toUpperCase() + k.slice(1)]; if (typeof paint !== 'function') { P.push('the ' + k + ' has no painter for his card'); continue; }
+            if (keep.al) alebLooks = () => null;
+            const dl = made({ kind: k, layT: Infinity }), d1 = ring({ kind: k }, Infinity, 0), d2 = ring({ kind: k }, Infinity, 1), lay = card(paint, dl), c1 = card(paint, d1), c2 = card(paint, d2);
+            let diff = 0; for (let i = 0; i < c1.im.length; i += 4) if (Math.abs(c1.im[i] - c2.im[i]) + Math.abs(c1.im[i + 1] - c2.im[i + 1]) + Math.abs(c1.im[i + 2] - c2.im[i + 2]) + Math.abs(c1.im[i + 3] - c2.im[i + 3]) > 60) diff++;
+            const eye = curlEyeAt(k, 1), e2 = eye ? near(c2.im, eye, 1.8, dark) : [];
+            const band = card(paint, Object.assign(ring({ kind: k }, Infinity, 1), { band: '#C4586B' })), bp = near(band.im, [0, 16], 30, (r, g, b, a) => a > 200 && Math.abs(r - BAND[0]) < 14 && Math.abs(g - BAND[1]) < 14 && Math.abs(b - BAND[2]) < 14).length / Sx / Sx;
+            /* the painted eye: the dark marks of his ring card within 3 px of where its row says his eye is, found on the picture itself */
+            const pe = eye ? mid(near(c2.im, eye, 3, dark).filter(([x, y]) => near(c2.im, [x, y], 0.6, dark).length >= 2)) : null;
+            let ringAt = null, ringAll = 0;
+            if (keep.al && keep.alf && eye) { alebLooks = () => [RING]; alebLookFor = () => RING; let rc = null; try { rc = card(paint, d2); } finally { alebLooks = () => null; alebLookFor = keep.alf; }
+              const gr = near(rc.im, [0, 16], 40, green); ringAll = gr.length / Sx / Sx; ringAt = mid(gr); }
+            const ld = ring({ kind: k, face: -1 }, Infinity, 1), lf = card(paint, ld); let mis = 0; for (let y = 0; y < SW; y++) for (let x = 0; x < SW; x++) if ((lf.im[(y * SW + x) * 4 + 3] > 128) !== (c2.im[(y * SW + SW - 1 - x) * 4 + 3] > 128)) mis++;
+            out.push('the ' + k + '\'s ring card: ' + (diff / Sx / Sx).toFixed(0) + ' px other than his first version\'s; his top ' + c2.top.toFixed(1) + ' px down his cell (' + lay.top.toFixed(1) + ' lying); ' + (bp).toFixed(1) + ' px of bandana; his painted eye at ' + (pe ? pe.map(x => x.toFixed(1)).join(', ') : 'nowhere') + ', the row\'s at ' + (eye ? eye.map(x => x.toFixed(1)).join(', ') : 'nowhere') + (ringAt ? ', a seasonal ring\'s middle at ' + ringAt.map(x => x.toFixed(1)).join(', ') : '') + '; facing left ' + (mis / Sx / Sx).toFixed(1) + ' px off the mirror');
+            if (diff < 20 * Sx * Sx) P.push('the ' + k + '\'s card in the closed ring is the first version\'s card: only ' + (diff / Sx / Sx).toFixed(0) + ' px differ');
+            if (!(c2.top >= lay.top + 1.5)) P.push('on his card the ' + k + ' in the closed ring is as tall as lying stretched out (his top ' + c2.top.toFixed(1) + ' px down his cell, ' + lay.top.toFixed(1) + ' lying)');
+            if (e2.length < 2) P.push('in the closed ring the ' + k + '\'s card has no shut eye where its row says his eye is');
+            if (bp < 2) P.push('in the closed ring the ' + k + '\'s bandana is gone from his card (' + bp.toFixed(1) + ' px)');
+            if (!pe) P.push('no eye is painted on the ' + k + '\'s ring card near where its row puts it, so the seasonal ring could not be asked');
+            else if (ringAt && Math.hypot(ringAt[0] - pe[0], ringAt[1] - pe[1]) > 1) P.push('in the closed ring the seasonal ring round the ' + k + '\'s eye is ' + Math.hypot(ringAt[0] - pe[0], ringAt[1] - pe[1]).toFixed(1) + ' px from the eye his painter draws: it goes round his shut eye (within 1 px)');
+            if (keep.al && ringAll < 4) P.push('in the closed ring the ' + k + '\'s card shows ' + ringAll.toFixed(1) + ' px of a seasonal ring round his eye');
+            if (mis > 3 * Sx * Sx) P.push('facing left, the ' + k + '\'s ring card is not the mirror of facing right (' + (mis / Sx / Sx).toFixed(0) + ' px off)');
+            /* HIS BODY ON THE CARD, off his head: inside his mound (1 px in from its edge) and off his head (further from its middle
+               than its half width and half a pixel), the pixels whose 3 by 3 block is all one solid colour (an edge's blend is never
+               counted) */
+            const solidIn = (im, row) => { const o = []; for (let y = 1; y < SW - 1; y++) for (let x = 1; x < SW - 1; x++) { const X = x / Sx - 20, Y = y / Sx - 4, [bx, by, rx, ry] = row.body;
+                if (((X - bx) / (rx - 1)) ** 2 + ((Y - by) / (ry - 1)) ** 2 > 1 || Math.hypot(X - row.head[0], Y - row.head[1]) <= row.r + 0.5) continue; const i = (y * SW + x) * 4; if (im[i + 3] < 250) continue;
+                let one = true; for (let dy = -1; dy <= 1 && one; dy++) for (let dx = -1; dx <= 1 && one; dx++) { const j = ((y + dy) * SW + x + dx) * 4; if (im[j] !== im[i] || im[j + 1] !== im[i + 1] || im[j + 2] !== im[i + 2] || im[j + 3] < 250) one = false; }
+                if (one) o.push([X, Y, im[i], im[i + 1], im[i + 2]]); } return o; };
+            /* A ONE-COLOURED BREED STAYS ONE COLOUR (rule 5): on the lab's and the chihuahua's ring card his body, off his head, is his
+               one coat colour (the colour most of his first version's body is): any other colour covers no more than 1.5 px of it (the
+               fold of his haunch, the edge of his ear) */
+            const rows = L[0] && L[0].card && L[0].card[k] && L[1] && L[1].card && L[1].card[k];   /* a missing row is sentence 1's red; nothing is asked of it here */
+            if (rows && (k === 'lab' || k === 'chi')) { const b1 = solidIn(c1.im, L[0].card[k]), b2 = solidIn(c2.im, L[1].card[k]), cnt = {};
+              b1.forEach(q => { const key = q.slice(2).join(','); cnt[key] = (cnt[key] || 0) + 1; }); const main = (Object.entries(cnt).sort((a, b) => b[1] - a[1])[0] || [''])[0].split(',').map(Number);
+              const other = b => b.filter(q => Math.abs(q[2] - main[0]) + Math.abs(q[3] - main[1]) + Math.abs(q[4] - main[2]) > 24), o2 = other(b2), o1 = other(b1);
+              out.push('the ' + k + '\'s ring card, his body off his head: ' + (b2.length / Sx / Sx).toFixed(0) + ' px, ' + (o2.length / Sx / Sx).toFixed(1) + ' px of them not his coat\'s one colour (rgb ' + main.join(' ') + '; his first version\'s body ' + (o1.length / Sx / Sx).toFixed(1) + ' px of ' + (b1.length / Sx / Sx).toFixed(0) + ')');
+              if (!b1.length || !b2.length) P.push('the ' + k + '\'s body could not be found on his card, so whether he stays one colour in the ring was not asked');
+              else if (o2.length > 1.5 * Sx * Sx) P.push('the ' + k + ' is one colour, and his ring card paints ' + (o2.length / Sx / Sx).toFixed(1) + ' px of his body in another colour (rgb ' + o2[0].slice(2).join(' ') + ', his coat rgb ' + main.join(' ') + '): a one-coloured breed stays one colour in the ring'); }
+            /* HIS PATCHED COAT FOLLOWS THE RING ON HIS CARD (the beagle's, and the office dog's by his answer): the colour of his back
+               goes round the outside of his body. The outer band: further out than 0.65 of the way to his mound's edge, off his head.
+               The beagle: of what is lemon or white there, more than 75% lemon (his first version's white flanks are not). The
+               office dog: of his dark patches on his body, more than 60% in that band (his first version's sit in his middle) */
+            if (rows && (k === 'beagle' || k === 'aussie')) { const share = (im, row) => { const body = solidIn(im, row), [bx, by, rx, ry] = row.body, out2 = q => Math.hypot((q[0] - bx) / rx, (q[1] - by) / ry) > 0.65;
+                if (k === 'beagle') { const isW = q => q[2] > 225 && q[3] > 225 && q[4] > 215, isL = q => q[2] > 200 && q[4] < q[2] * 0.6, band = body.filter(q => out2(q) && (isW(q) || isL(q))); return { v: band.filter(isL).length / Math.max(1, band.length), n: band.length }; }
+                const dark = body.filter(q => q[2] < 100 && q[3] < 100 && q[4] < 110); return { v: dark.filter(out2).length / Math.max(1, dark.length), n: dark.length }; };
+              const s2 = share(c2.im, L[1].card[k]), s1 = share(c1.im, L[0].card[k]), want = k === 'beagle' ? 0.75 : 0.6, what = k === 'beagle' ? 'of the outer band of his body (lemon or white) lemon' : 'of his dark patches on his body in its outer band';
+              out.push('the ' + k + '\'s ring card: ' + (100 * s2.v).toFixed(0) + '% ' + what + ' (his first version\'s card ' + (100 * s1.v).toFixed(0) + '%)');
+              if (!s2.n) P.push('the ' + k + '\'s coat could not be found on his ring card, so whether it follows the ring was not asked');
+              else if (!(s2.v > want)) P.push('on his ring card the ' + k + '\'s coat does not follow the ring: ' + (100 * s2.v).toFixed(0) + '% ' + what + ', where the colour of his back goes round the outside of him (more than ' + (100 * want).toFixed(0) + '%)'); } } }
+        finally { if (keep.al) alebLooks = keep.al; if (keep.alf) alebLookFor = keep.alf; } }
+
+      /* ---- 5 · THE CATS ---- */
+      { const cat = CRIT.find(isCat);
+        if (MER && !CATPOSEON.has('curl')) P.push('Meridian does not take the cat\'s curl (it takes ' + JSON.stringify([...CATPOSEON]) + '), where its config names it among its cat poses');
+        if (!cat) out.push('this world has no cat, so the cat\'s curl was not asked' + (CATPOSEON.has('curl') ? '' : '; it does not take it') + ', and its cats roll nothing for it');
+        else { const kr = { ...cat }, on = [...CATPOSEON], poses = Lp => { CATPOSEON.clear(); Lp.forEach(k => CATPOSEON.add(k)); };
+          const base = { next: 0, moving: false, mt: 0, task: null, follow: false, stayT: 0, sit: false, groomT: 0, backT: 0, catCurlT: 0, greetT: 0, petT: 0, metT: 1, turnT: 0, stretchT: 0 };
+          const home = Array.isArray(cat.home) ? cat.home : [cat.x, cat.y], crit = CRIT.slice(), now0 = 3e9;
+          const tick = (Lp, k) => { poses(Lp); Object.keys(cat).forEach(f => { if (!(f in kr) && !(f in base)) delete cat[f]; }); Object.assign(cat, kr, base, { x: home[0], y: home[1], fx: home[0], fy: home[1] });
+            const sr = seeded(424242 + k * 7919); let n = 0; Math.random = () => { n++; return sr(); }; const now = now0 + k * 16; try { critUpdate(16, now); } finally { Math.random = keep.MR; }
+            return { n, now, sit: !!cat.sit, next: cat.next, groomT: cat.groomT || 0, backT: cat.backT || 0, curlT: cat.catCurlT || 0, x: cat.x, y: cat.y, moving: !!cat.moving }; };
+          try { CRIT.length = 0; CRIT.push(cat); world = cat.world; px = fx = home[0]; py = fy = home[1] + 3;
+            /* the long seeded run: each tick from the same numbers four ways: the back alone, the curl alone, both, and neither */
+            const N = 8000; let asked = 0, backs = 0, curls = 0, both = 0, backMoved = 0, curlMoved = 0, more = 0, lo = Infinity, hi = 0, groomed = 0, offMore = 0;
+            for (let k = 0; k < N; k++) { const off = tick([], k), b = tick(['back'], k), c = tick(['curl'], k), bc = tick(['back', 'curl'], k);
+              if (!off.sit || off.groomT > off.now) { if (bc.curlT > bc.now || bc.backT > bc.now) groomed++; if (bc.n !== off.n) offMore++; continue; }
+              asked++; const isB = bc.backT > bc.now, isC = bc.curlT > bc.now; if (isB) backs++; if (isC) { curls++; lo = Math.min(lo, bc.curlT - bc.now); hi = Math.max(hi, bc.curlT - bc.now); } if (isB && isC) both++;
+              /* the back with the curl taken is the back without it: same numbers, same sleep; and where both are taken a curl is drawn on exactly
+                 the ticks the curl alone draws it */
+              if (b.n !== bc.n - (isC ? 1 : 0) || b.backT !== bc.backT || b.next !== (isC ? off.next : bc.next)) backMoved++;
+              if ((c.curlT > c.now) !== isC || (isC && c.curlT !== bc.curlT)) curlMoved++;
+              if (bc.n !== off.n + 1 + (isB || isC ? 1 : 0)) more++; }
+            const sb = backs / Math.max(1, asked), scu = curls / Math.max(1, asked);
+            out.push('the cats\' seeded run, ' + N + ' ticks four ways: of ' + asked + ' sits not a groom, ' + (100 * sb).toFixed(1) + '% on its back and ' + (100 * scu).toFixed(1) + '% curled up (' + (lo / 1000).toFixed(1) + ' to ' + (hi / 1000).toFixed(1) + ' s); taking the back and not the curl, as before on ' + (asked - backMoved) + ' of ' + asked);
+            if (!asked) P.push('the cats\' seeded run had no sit to ask');
+            if (Math.abs(sb - 0.25) > 0.035) P.push('with the curl taken, a cat sleeps on its back in ' + (100 * sb).toFixed(1) + ' in 100 of its sits that are not a groom: 1 in 4');
+            if (Math.abs(scu - 0.25) > 0.035) P.push('a cat curls up in ' + (100 * scu).toFixed(1) + ' in 100 of its sits that are not a groom: 1 in 4');
+            if (both) P.push(both + ' sits were both a sleep on its back and a curl: one roll decides among the three');
+            if (backMoved) P.push('taking the back and not the curl, ' + backMoved + ' of ' + asked + ' seeded sits do not roll and sleep exactly as with both taken but for the curl\'s own time: a world that takes the back and not the curl would not roll as before');
+            if (curlMoved) P.push(curlMoved + ' of ' + asked + ' seeded sits curl up otherwise with the back taken than without: the curl is not drawn by the same one roll');
+            if (more) P.push(more + ' of ' + asked + ' seeded sits do not draw exactly one number more for the roll among the three (two where it sleeps)');
+            if (groomed || offMore) P.push('a cat that did not sit, or sat and groomed, was given a sleep or drew more numbers on ' + (groomed + offMore) + ' ticks: a sit that became a groom is never asked');
+            if (!(lo >= 6000 && hi <= 10000 && hi - lo > 3000)) P.push('a cat curls up for ' + (lo / 1000).toFixed(1) + ' to ' + (hi / 1000).toFixed(1) + ' s: 6 to 10 s');
+            /* TIMED BY WHAT A PLAYER SEES, not by the deadline the roll wrote: the cat alone, its every roll seeded, the clock stepped
+               50 ms at a time for 20 game minutes and the reader asked at every step. Each curl rolled reads "curl" from the step it
+               was rolled until its own end (6 to 10 s after), and not after that unless a new roll has started another (a cat may
+               roll a curl, or a sleep on its back, straight after one ends: his answer). A cat that gets up early (its next roll not
+               held back) reads otherwise before its end */
+            { poses(on.includes('curl') ? on : on.concat(['curl'])); Object.assign(cat, kr, base, { x: home[0], y: home[1], fx: home[0], fy: home[1] });
+              const sr = seeded(777001); Math.random = sr; let now = 4e9, cur = null, curls = 0, early = 0, late = 0, lo2 = Infinity, hi2 = 0, firstEarly = '';
+              try { for (let k = 0; k < 24000; k++) { now += 50; critUpdate(50, now); const c = cat.catCurlT || 0;
+                  if (c > now && (!cur || c !== cur.end)) { if (cur && now < cur.end) { early++; if (!firstEarly) firstEarly = 'a curl of ' + ((cur.end - cur.start) / 1000).toFixed(1) + ' s ended by a new one after ' + ((now - cur.start) / 1000).toFixed(1) + ' s'; }
+                    cur = { start: now, end: c, bad: false }; curls++; lo2 = Math.min(lo2, c - now); hi2 = Math.max(hi2, c - now); }
+                  if (!cur) continue; const pz = catPoseNow(cat, now);
+                  if (now < cur.end && pz !== 'curl' && !cur.bad) { cur.bad = true; early++; if (!firstEarly) firstEarly = 'a curl of ' + ((cur.end - cur.start) / 1000).toFixed(1) + ' s read ' + JSON.stringify(pz) + ' after ' + ((now - cur.start) / 1000).toFixed(1) + ' s'; }
+                  if (now >= cur.end && pz === 'curl' && (cat.catCurlT || 0) === cur.end) late++; } }
+              finally { Math.random = keep.MR; }
+              out.push('a cat stepped 50 ms at a time for 20 game minutes: ' + curls + ' curls rolled, ' + (lo2 / 1000).toFixed(1) + ' to ' + (hi2 / 1000).toFixed(1) + ' s each; read curled up from their start to their end ' + (curls - early) + ' times, and after their end ' + late + ' steps');
+              if (curls < 10) P.push('a cat stepped for 20 game minutes curled up ' + curls + ' times, too few to time');
+              if (early) P.push('of ' + curls + ' curls a cat rolled, ' + early + ' do not read curled up all the way to their own end (' + firstEarly + '): a cat curled up stays curled up for its 6 to 10 s, as a player sees it');
+              if (late) P.push('a cat reads curled up for ' + late + ' steps of 50 ms after its curl\'s own end: the curl ends when its time does');
+              if (curls && !(lo2 >= 6000 && hi2 <= 10000)) P.push('a cat stepped through the game rolls curls of ' + (lo2 / 1000).toFixed(1) + ' to ' + (hi2 / 1000).toFixed(1) + ' s: 6 to 10 s each'); }
+            /* one reader: curled, the reader, the card and the body agree; a pet wakes it and it greets */
+            poses(on.includes('curl') ? on : on.concat(['curl']));
+            const nw = wNow(); Object.assign(cat, kr, base, { x: home[0], y: home[1], fx: home[0], fy: home[1], sit: true, catCurlT: nw + 8000, next: Infinity, metT: 1 });
+            const a = catPoseNow(cat, nw), ch = catCardHeld(cat, nw), dp = dogPose(cat, nw);
+            const pic = c => { const cv = document.createElement('canvas'); cv.width = cv.height = 40; drawGato(cv.getContext('2d'), c, 4, 4); return cv.toDataURL(); };
+            const cardCurl = pic(cat); cat.catCurlT = 0; const cardSit = pic(cat); cat.catCurlT = nw + 8000;
+            out.push('a cat curled up: the reader ' + JSON.stringify(a) + ', its card ' + JSON.stringify(ch) + ', its body held ' + JSON.stringify(dp.held) + (dp.curl && dp.lay && !dp.sit ? ', curled and lying' : ''));
+            if (a !== 'curl' || ch !== 'curl' || dp.held !== 'curl' || !dp.curl || dp.wag) P.push('a cat curled up is not curled up everywhere: the reader answers ' + JSON.stringify(a) + ', its card ' + JSON.stringify(ch) + ', its body is held ' + JSON.stringify(dp.held) + (dp.wag ? ' and its tail moves' : ''));
+            if (cardCurl === cardSit) P.push('a cat curled up has its sitting card');
+            /* ITS CARD IS THE CURLED DRAWING: not one of its other drawings (standing, sitting, on its back, grooming), and lower than
+               sitting, a round loaf (its top at least 1.5 px further down its cell than the sitting card's, drawn 4 times over) */
+            { const Sx = 4, draw = o => { const c = Object.assign({}, cat, { sit: true, catCurlT: 0, backT: 0, groomT: 0, greetT: 0, stretchT: 0, moving: false }, o), cv = document.createElement('canvas'); cv.width = cv.height = 40 * Sx; const g = cv.getContext('2d'); g.setTransform(Sx, 0, 0, Sx, 4 * Sx, 4 * Sx);
+                if (keep.al) alebLooks = () => null; try { drawGato(g, c, 0, 0); } finally { if (keep.al) alebLooks = keep.al; }
+                const im = g.getImageData(0, 0, cv.width, cv.height).data; let top = -1; for (let i = 3; i < im.length && top < 0; i += 4) if (im[i] > 128) top = Math.floor((i >> 2) / cv.width); return { url: cv.toDataURL(), top: top / Sx }; };
+              const others = { standing: draw({ sit: false }), sitting: draw({}), grooming: draw({ groomT: nw + 8000 }) }; if (CATPOSEON.has('back')) others['on its back'] = draw({ backT: nw + 8000 });
+              const cc = draw({ catCurlT: nw + 8000 }), same = Object.keys(others).filter(k => others[k].url === cc.url);
+              out.push('a cat\'s curled card: its top ' + cc.top.toFixed(2) + ' px down its cell (sitting ' + others.sitting.top.toFixed(2) + '), ' + (same.length ? 'the same as its card ' + same.join(', ') : 'unlike its ' + Object.keys(others).length + ' other drawings'));
+              if (same.length) P.push('a cat curled up is drawn as its card ' + same.join(' and ') + ': curled up, its card is its own curled drawing');
+              if (!(cc.top >= others.sitting.top + 1.5)) P.push('a cat curled up stands as tall on its card as sitting (its top ' + cc.top.toFixed(2) + ' px down its cell, sitting ' + others.sitting.top.toFixed(2) + '): curled up it is a low round loaf, 1.5 px lower at least'); }
+            /* THE CURL ENDS WHEN ITS TIME DOES: a step past its end it reads otherwise, and a sitting cat grooming whose curl time has
+               passed (still on its record) is drawn and held grooming */
+            { const end = nw + 8000; Object.assign(cat, { sit: true, catCurlT: end, groomT: 0, backT: 0, greetT: 0, moving: false });
+              const after = catPoseNow(cat, end + 1); Object.assign(cat, { catCurlT: nw - 1000, groomT: nw + 5000 }); const gc = catCardHeld(cat, nw), gb = dogPose(cat, nw).held;
+              out.push('a cat 1 ms after its curl\'s end: ' + JSON.stringify(after) + '; sitting and grooming with its curl time passed: its card ' + JSON.stringify(gc) + ', its body ' + JSON.stringify(gb));
+              if (after === 'curl') P.push('a cat reads curled up after its curl\'s time has ended: the curl ends when its time does');
+              if (gc !== 'groom' || gb !== 'groom') P.push('a sitting cat grooming whose curl time has passed is drawn ' + JSON.stringify(gc) + ' and held ' + JSON.stringify(gb) + ': it is grooming');
+              Object.assign(cat, { catCurlT: nw + 8000, groomT: 0 }); }
+            /* its card in every coat, a coat it does not know and its wardrobe: drawn, and never throwing */
+            { const thrown = [], blank = []; for (const coat of Object.keys(CATCOAT).concat(['__unknown__'])) for (const wd of [false, true]) { try { const cv = document.createElement('canvas'); cv.width = cv.height = 40; const g = cv.getContext('2d');
+                  drawGato(g, Object.assign({}, cat, { coat, wardrobe: wd }), 4, 4); const im = g.getImageData(0, 0, 40, 40).data; let n = 0; for (let i = 3; i < im.length; i += 4) if (im[i] > 128) n++; if (n < 40) blank.push(coat); } catch (e) { thrown.push(coat + ': ' + e.message); } }
+              if (thrown.length) P.push('a cat\'s curled card throws for ' + thrown.join('; '));
+              if (blank.length) P.push('a cat\'s curled card paints nearly nothing for ' + blank.join(', '));
+              /* and the night of alebrijes lays its marks on the curled card without throwing */
+              if (typeof ALEB_KIND !== 'undefined' && ALEB_KIND.gato) { try { const K = ALEB_KIND.gato, cv = document.createElement('canvas').getContext('2d'); K.wings(cat); K.eye(cat); K.marks(cv, { pat: '#0000FF', accent: '#00FF00' }, 16, 0, 0, cat); } catch (e) { P.push('the night of alebrijes throws on a curled cat\'s card: ' + e.message); } } }
+            /* petted: woken at once, and it greets */
+            { const sq = [[0, 1], [1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => [cat.x + dx, cat.y + dy]).find(([x, y]) => { const W = WORLDS[cat.world]; return x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N'; });
+              if (!sq) P.push('nowhere beside the cat to stand, so a pet was not asked');
+              else { world = cat.world; px = fx = sq[0]; py = fy = sq[1]; held = null; moving = false; cat.moving = false; const el = document.getElementById('world'), eh = el ? el.hidden : null; if (el) el.hidden = false;
+                try { if (typeof fredCheck === 'function') fredCheck(); } finally { if (el) el.hidden = eh; }
+                if (petCrit !== cat) P.push('beside the curled cat its button did not reach it, so a pet was not asked');
+                else { document.getElementById('treat').click(); const n2 = catPoseNow(cat, wNow()), h2 = dogPose(cat).held;
+                  out.push('petted curled up: ' + JSON.stringify(n2) + ', held ' + JSON.stringify(h2));
+                  if (n2 === 'curl' || h2 === 'curl' || cat.catCurlT > wNow()) P.push('petted curled up, a cat is still curled up: a pet wakes it at once');
+                  else if (CATPOSEON.has('greet') && n2 !== 'greet') P.push('petted curled up, a cat wakes but answers ' + JSON.stringify(n2) + ': woken by a pet, it greets you'); } } }
+            /* its body: the closed ring of its own build, its ears up, its eyes shut */
+            if (has3d) { const B = dogMake(dogSkeleton(cat.kind), catLookOf(cat));
+              try { Object.assign(cat, { sit: true, catCurlT: wNow() + 8000, greetT: 0, backT: 0, moving: false, stretchT: 0 }); t3DogPose(B, dogPose(cat), 0, false, () => 0); const m = read(B);
+                const st = dogMake(dogSkeleton(cat.kind), catLookOf(cat)); let s0 = null; try { cat.catCurlT = 0; cat.sit = false; t3DogPose(st, dogPose(cat), 0, false, () => 0); s0 = read(st); } finally { t3Dispose(st); }
+                const hd = m.S.head;
+                out.push('a cat\'s body curled up: ' + m.round.toFixed(2) + ' as wide one way as the other, its chest turned ' + deg(m.turn) + ' degrees round, its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg or tail\'s root, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose, ' + m.pawsIn + ' paws inside, its ears reaching ' + m.earR.toFixed(2) + ' head sizes (' + s0.earR.toFixed(2) + ' standing)');
+                if (!B.userData.curled) P.push('a cat curled up is not curled up on its body');
+                if (!(m.round >= 0.8 && m.turn >= 150 * Math.PI / 180 && m.turn < 300 * Math.PI / 180)) P.push('a cat\'s body curled up is not the closed ring: ' + m.round.toFixed(2) + ' round from above, its chest turned ' + deg(m.turn) + ' degrees');
+                if (!(m.tailTop <= m.hipY)) P.push('a cat curled up has its tail standing out of the ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over its hips (' + m.hipY.toFixed(3) + '); it lies round it, low');
+                if (!(m.near <= hd && m.tipNear <= 1.5 * hd)) P.push('a cat curled up does not have its nose tucked under its tail: its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose');
+                if (m.pawsIn < 3) P.push('a cat curled up has ' + (m.paws - m.pawsIn) + ' paws outside it: tucked under');
+                if (!(Math.abs(m.earR - s0.earR) < 0.05)) P.push('a cat curled up has its ears laid back (' + m.earR.toFixed(2) + ' head sizes, ' + s0.earR.toFixed(2) + ' standing): its ears stay up');
+                if (!m.eyes.length || !m.eyes.every(x => x < 0.5) || m.shine) P.push('a cat curled up has its eyes open');
+                if (m.low < -m.S.limb.paw) P.push('part of a cat curled up goes ' + (-m.low).toFixed(3) + ' into the ground');
+                /* THE GREY-AND-WHITE CAT'S WHITE UNDERNEATH: curled up, lit evenly, its white (its belly, chest, paws and muzzle) is no
+                   more than WHITECAP of what shows of it from above and from the game's camera: grey on top, its white under it and
+                   inside the ring, at most a thin crescent along the inner edge */
+                if (CATCOAT.greywhite && R3) { const W2 = dogMake(dogSkeleton(cat.kind), catLookOf({ kind: cat.kind, coat: 'greywhite' })), WHITECAP = 0.06;
+                  try { const sc = new THREE.Scene(); sc.add(new THREE.AmbientLight(0xffffff, 1)); sc.add(W2); const sh = [0, 0];
+                    for (const face of [1, -1]) for (const above of [true, false]) { const gw = Object.assign({}, cat, { coat: 'greywhite', face, sit: true, catCurlT: wNow() + 8000, greetT: 0, backT: 0, groomT: 0, moving: false, stretchT: 0 }), Pg = dogPose(gw); if (Pg.held !== 'curl') { P.push('the grey-and-white cat could not be curled up to ask where its white is'); continue; } t3DogPose(W2, Pg, 0, false, () => 0); W2.children.forEach(o => { if (o.userData && o.userData.shadow) o.visible = false; });
+                      W2.rotation.y = face * Math.PI / 2; W2.updateWorldMatrix(true, true); const cam = new THREE.PerspectiveCamera(26, 1, 0.01, 10), d = 1.1;
+                      if (above) { cam.position.set(0, d, 0.001); cam.lookAt(0, 0, 0); } else { cam.position.set(0, d * Math.sin(40 * Math.PI / 180), d * Math.cos(40 * Math.PI / 180)); cam.lookAt(0, 0.08, 0); }
+                      R3.setClearColor(0x000000, 0); R3.render(sc, cam); const g = R3.getContext(), px2 = new Uint8Array(160 * 160 * 4); g.readPixels(0, 0, 160, 160, g.RGBA, g.UNSIGNED_BYTE, px2);
+                      let all = 0, w = 0; for (let i = 0; i < px2.length; i += 4) { if (px2[i + 3] < 200) continue; all++; if (px2[i] > 215 && px2[i + 1] > 215 && px2[i + 2] > 205) w++; } const j = above ? 0 : 1; sh[j] = Math.max(sh[j], w / Math.max(1, all)); }
+                    sc.remove(W2); out.push('the grey-and-white cat curled up, lit evenly, facing either way: at most ' + (100 * sh[0]).toFixed(1) + '% of it white from above, ' + (100 * sh[1]).toFixed(1) + '% from the game\'s camera');
+                    if (!(sh[0] <= WHITECAP && sh[1] <= WHITECAP)) P.push('the grey-and-white cat curled up shows its white on top: ' + (100 * sh[0]).toFixed(1) + '% of it white from above and ' + (100 * sh[1]).toFixed(1) + '% from the game\'s camera, where its white is under it and inside the ring (' + (100 * WHITECAP).toFixed(0) + '% at most)'); }
+                  finally { t3Dispose(W2); } } }
+              finally { t3Dispose(B); } } }
+          finally { Math.random = keep.MR; poses(on); CRIT.length = 0; crit.forEach(c => CRIT.push(c)); Object.keys(cat).forEach(f => { if (!(f in kr)) delete cat[f]; }); Object.assign(cat, kr);
+            world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; held = keep.held; petTarget = keep.pt; petCrit = keep.pc; } } }
+
+      /* ---- 6 · UNCURLED ---- */
+      if (has3d) { const kinds = KS.concat(CATK.has('gato') ? ['gato'] : []), stood = [], lain = [], backed = [];
+        for (const k of kinds) { const cat = CATK.has(k), lk = cat ? catLookOf({ kind: k }) : dogLookOf({ kind: k }), fresh = dogMake(dogSkeleton(k), lk), used = dogMake(dogSkeleton(k), lk);
+          const rec = o => cat ? Object.assign({ kind: k, x: 0, y: 0, face: 1, dx: 0, dy: 0, moving: false, sit: false, backT: 0, greetT: 0, groomT: 0, metT: 1, catCurlT: 0 }, o) : made(Object.assign({ kind: k }, o));
+          const stand = rec({}), lie = cat ? null : rec({ layT: T0 + 6e4 }), curled = cat ? rec({ sit: true, catCurlT: wNow() + 6e4 }) : ring({ kind: k }, T0 + 6e4, 1);
+          /* any lie-down leaves his ears' spring laid back, and they prick again over the next moments (the clock is held, so here they
+             would not): the spring is started afresh after the ring, so only what the ring itself moved can differ */
+          const fresh0 = Bx => { delete Bx.userData.ear; delete Bx.userData.earV; };
+          try { const P0 = dogPose(stand, T0, D0); t3DogPose(fresh, P0, 0, false, () => 0); fresh.updateWorldMatrix(true, true); const a0 = bodyPrint(fresh);
+            t3DogPose(used, dogPose(curled, cat ? wNow() : T0, D0), 0, false, () => 0); fresh0(used); t3DogPose(used, P0, 0, false, () => 0); used.updateWorldMatrix(true, true);
+            if (bodyPrint(used) !== a0) stood.push(k);
+            if (lie) { const Pl = dogPose(lie, T0, D0); t3DogPose(fresh, Pl, 0, false, () => 0); const a1 = bodyPrint(fresh); t3DogPose(used, dogPose(curled, T0, D0), 0, false, () => 0); fresh0(used); t3DogPose(used, Pl, 0, false, () => 0); if (bodyPrint(used) !== a1) lain.push(k); }
+            /* a cat whose curl ends straight into a sleep on its back (the next sit's roll in the same tick): on its back from the very
+               first frame, its hind legs splayed, exactly as one that never curled */
+            if (cat) { const bk = rec({ sit: true, backT: wNow() + 6e4 }), Pb = dogPose(bk);
+              if (Pb.held === 'back') { t3DogPose(fresh, Pb, 0, false, () => 0); const a2 = bodyPrint(fresh); t3DogPose(used, dogPose(curled, wNow(), D0), 0, false, () => 0); fresh0(used); t3DogPose(used, Pb, 0, false, () => 0); if (bodyPrint(used) !== a2) backed.push(k); } } }
+          finally { t3Dispose(fresh); t3Dispose(used); } }
+        out.push('uncurled from the ring, ' + (kinds.length - stood.length) + ' of ' + kinds.length + ' kinds stand exactly as one that never curled' + (lain.length ? '' : ', and every dog lies as one never curled'));
+        if (stood.length) P.push('after the closed ring, ' + stood.join(', ') + ' do(es) not stand exactly as one that never curled (his hips, his hind legs, his ears or his barrel are left as the ring had them)');
+        if (lain.length) P.push('after the closed ring, ' + lain.join(', ') + ' do(es) not lie stretched out exactly as one that never curled');
+        if (backed.length) P.push('a cat whose curl ends straight into a sleep on its back is not, on that first frame, on its back exactly as one that never curled (' + backed.join(', ') + '): its hind legs are left drawn in');
+        out.push('a cat from its curl straight onto its back: ' + (backed.length ? 'not as one that never curled' : 'as one that never curled, from the first frame'));
+        /* the barrel's kept shape, against a list of this check's own: two versions with the same bend and side, the second with
+           the ring's gathering and turn; a body curled in the first and then the second has the barrel a body curled straight into
+           the second has */
+        { const one = L[0], two = Object.assign({}, one, { id: 'probe', body: Object.assign({}, one.body, { gather: 0.5, twist: 0.6 }) }), list = [one, two], bad = [];
+          curlVersions = () => list;
+          try { for (const k of KS) { const A = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), Bf = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), arr = Bb => { let m = null; Bb.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') m = o; }); return Array.from(m.geometry.attributes.position.array); };
+              try { t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); t3DogPose(Bf, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0);
+                const a = arr(A), b = arr(Bf); if (a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-7)) bad.push(k); }
+              finally { t3Dispose(A); t3Dispose(Bf); } } }
+          finally { curlVersions = keep.cv; }
+          out.push('two versions of one bend, the second gathered and turned: a body curled in one and then the other has the barrel of one curled straight into it for ' + (KS.length - bad.length) + ' of ' + KS.length + ' breeds');
+          if (bad.length) P.push('curled in one version and then another of the same bend, the ' + bad.join(', ') + '\'s barrel keeps the first one\'s shape: the barrel\'s kept shape does not name everything that shapes it'); } }
+    } finally {
+      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; curlVersions = keep.cv;
+      if (keep.al) alebLooks = keep.al; if (keep.alf) alebLookFor = keep.alf; if (keep.sv) save = keep.sv; if (typeof LEASH !== 'undefined') LEASH = keep.leash; Object.assign(PARK, JSON.parse(keep.park)); tidy();
+      mine.forEach(d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); }); real.forEach(([c, wd]) => { c.world = wd; });
+      world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; moving = keep.mv; petTarget = keep.pt; petCrit = keep.pc;
+      keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; });
+      if (R3) { R3.dispose(); R3.forceContextLoss && R3.forceContextLoss(); }
+      if (CRIT.length !== keep.crit) P.push('the check of the curl\'s second version left ' + (CRIT.length - keep.crit) + ' animal(s) of its own in the world');
+    }
+    return { P, out }; });
+  curlTwo.out.forEach(l => console.log('  CURL TWO: ' + l));
+  fails.push(...curlTwo.P.map(m => 'the curl, second version: ' + m));
   /* the long seeded run (sentences 1 and 5): one cat alone among the critters, its every roll a fresh roll (put back on its home
      square, its last pose ended), each tick's numbers seeded by the tick, and each tick asked four ways from the same numbers:
      taking neither pose, the greeting only, the sleep only, and both. Taking neither, every tick draws exactly the numbers a
