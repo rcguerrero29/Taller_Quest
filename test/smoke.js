@@ -64,7 +64,10 @@ const CANDIDATES = [
        `npc`) is in PEOPLETAKE, the list of the people who stand as bodies; the list names nobody the world does not hold, and
        nobody twice. Read off the pack's own files, so a person added to a station without a body is said here, in words */
     { const dir = path.resolve(__dirname, '..', 'content', 'meridian'), all = fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
-      const named = [...new Set((all.match(/npc:"[a-z_0-9-]+"/g) || []).map(t => t.slice(5, -1)))].sort();
+      /* a station is a person's entry, `npc:"…",q:[…]`; a quest names its person too (`npc:"…",title:…`), and one quest names the office
+         dog (`fred`, the dog's secret quest), who is a dog of the dog program and never a person's body (mq-v303: read off every `npc:`
+         this list took him in, and PEOPLETAKE named a dog) */
+      const named = [...new Set((all.match(/npc:"[a-z_0-9-]+",\s*q:\[/g) || []).map(t => t.match(/npc:"([^"]+)"/)[1]))].sort();
       const take = (() => { const m = cfg.match(/^const PEOPLETAKE=(\[[^\]]*\]);/m); try { const a = m ? JSON.parse(m[1]) : null; return Array.isArray(a) ? a : null; } catch (e) { return null; } })();
       if (!named.length) fails.push('Meridian names no person at any station, so whether its named people stand as bodies was not asked');
       else if (!take) fails.push('Meridian has no PEOPLETAKE list that can be read, so whether its named people stand as bodies was not asked');
