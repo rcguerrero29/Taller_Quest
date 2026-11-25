@@ -8118,14 +8118,18 @@ function findChromium() {
                 if (back) P.push('the ' + k + '\'s skin passes through itself in the closed ring: ' + back + ' of its ' + quads + ' pieces run backward along him, where the inner side of the ring is gathered, never crossed');
                 if (high || lowRing) P.push('the ' + k + '\'s trunk does not rest on the ground in the closed ring: ' + high + ' of its rings hang over it and ' + lowRing + ' go under it further than his paw is across: every ring of him lies on the ground');
                 if (!(dHip <= S.limb.barrel * 0.5 && dHead <= S.head)) P.push('the ' + k + '\'s skin is not one piece from his hips to his skull in the closed ring: it starts ' + dHip.toFixed(3) + ' from his hips and ends ' + (dHead / S.head).toFixed(2) + ' head sizes from his head\'s middle (inside his head, and at his hips, was asked)');
-                /* his collar and his bandana go with his neck: each of them within his neck's reach of the skin's own line, and the
-                   cloth's point, which would stand out of him, put away */
+                /* his collar and his bandana go with his neck: the band round his neck has its middle on the line of his neck (within
+                   BANDON of his neck's own thickness of the nearest ring's middle), its knot and ends within his neck's reach of it,
+                   and the cloth's point, which would stand out of him, put away */
                 t3DogPose(Bb, dogPose(d, T0, D0), 0, false, () => 0); Bb.updateWorldMatrix(true, true);
-                { const invb = new THREE.Matrix4().copy(Bb.matrixWorld).invert(), far = [], pts = []; let n2 = 0, point = 0;
-                  Bb.traverse(o => { if (!o.isMesh || o.userData.wears !== 'band') return; if (o.userData.band === 'point') { if (o.visible) point++; return; } n2++; const q = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(invb), dd = Math.min(...mid.slice(c0 + DOGSPINE.trunk).map(c => Math.hypot(c[0] - q.x, c[1] - q.z))); if (dd > S.limb.barrel * 1.2) far.push(dd.toFixed(3)); });
-                  out.push('the ' + k + '\'s bandana in the ring: ' + n2 + ' piece(s) of it, ' + far.length + ' off his neck, its point ' + (point ? 'showing' : 'put away'));
-                  if (!n2) P.push('the ' + k + ' in his bandana has no piece of it to ask in the closed ring');
-                  else if (far.length || point) P.push('the ' + k + '\'s bandana does not go with his neck in the closed ring: ' + far.length + ' piece(s) of it lie ' + far.join(', ') + ' from his neck\'s line (' + (S.limb.barrel * 1.2).toFixed(3) + ' at most)' + (point ? ', and its point stands out of him' : '')); } } } }
+                { const invb = new THREE.Matrix4().copy(Bb.matrixWorld).invert(), BANDON = 0.6, nr = S.limb.neck, w3 = new THREE.Vector3(); let skb = null; Bb.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') skb = o; });
+                  const mid3 = []; if (skb) { const Qb = skb.geometry.attributes.position; for (let a = c0 + DOGSPINE.trunk; a < Qb.count / W; a++) { let x = 0, y = 0, z = 0; for (let i = 0; i < W; i++) { w3.fromBufferAttribute(Qb, a * W + i).applyMatrix4(skb.matrixWorld).applyMatrix4(invb); x += w3.x; y += w3.y; z += w3.z; } mid3.push(new THREE.Vector3(x / W, y / W, z / W)); } }
+                  let rings2 = 0, point = 0, worstRing = 0, worstBit = 0, bits = 0;
+                  Bb.traverse(o => { if (!o.isMesh || (o.userData.wears !== 'band' && o.userData.wears !== 'collar')) return; if (o.userData.band === 'point') { if (o.visible) point++; return; }
+                    const q = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(invb), dd = mid3.length ? Math.min(...mid3.map(c => c.distanceTo(q))) : Infinity; if (o.userData.band) { bits++; worstBit = Math.max(worstBit, dd / nr); } else { rings2++; worstRing = Math.max(worstRing, dd / nr); } });
+                  out.push('the ' + k + '\'s collar and bandana in the ring: ' + rings2 + ' band(s) round his neck, the furthest ' + worstRing.toFixed(2) + ' neck thicknesses off his neck\'s line; its knot and ends ' + worstBit.toFixed(2) + ' off at most; its point ' + (point ? 'showing' : 'put away'));
+                  if (!rings2) P.push('the ' + k + ' in his bandana has no band round his neck to ask in the closed ring');
+                  else if (!(worstRing <= BANDON) || !(worstBit <= 3) || point) P.push('the ' + k + '\'s collar and bandana do not go with his neck in the closed ring: a band round his neck sits ' + worstRing.toFixed(2) + ' neck thicknesses off the line of his neck (' + BANDON + ' at most), its knot and ends ' + worstBit.toFixed(2) + ' (3 at most)' + (point ? ', and its point stands out of him' : '')); } } } }
           finally { t3Dispose(B); t3Dispose(Bb); } }
         /* A CHIHUAHUA WITH ONE FOLDED EAR (ears "mixed": one upright ear folded over at its tip) in the ring, each way he faces: both
            ears laid back flat as the upright pair's are, his eyes shut, nothing deeper into the ground than his paw is across */
