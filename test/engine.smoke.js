@@ -7848,6 +7848,19 @@ function findChromium() {
       const shape = B => { B.updateWorldMatrix(true, true); const inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), v = new THREE.Vector3(), a = [];
           B.traverse(m => { if (!m.isMesh || !m.visible || m.userData.shadow || m.userData.dirt) return; const Q = m.geometry.attributes.position; for (let i = 0; i < Q.count; i++) { v.fromBufferAttribute(Q, i).applyMatrix4(m.matrixWorld).applyMatrix4(inv); a.push(v.x, v.y, v.z); } }); return a; },
         moved = (a, b) => { if (a.length !== b.length) return Infinity; let d = 0; for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i] - b[i])); return d; };
+      /* HOW A SKIN IS LIT: its shading is worked out from where its points lie (the game's sun reads it; a picture lit evenly all
+         round does not). The furthest any point's shading is from that worked out afresh; Infinity where it has none */
+      const lit = o => { const N = o.geometry.attributes.normal; if (!N) return Infinity; const g2 = o.geometry.clone(); g2.computeVertexNormals(); const M2 = g2.attributes.normal; let d = 0;
+          for (let i = 0; i < N.count * 3; i++) d = Math.max(d, Math.abs(N.array[i] - M2.array[i])); g2.dispose(); return d; };
+      /* a skin laid on a spine, read in his own frame: how many of its pieces run back through him, how many rings of his trunk are off
+         the ground or under it, and how far its two ends are from his hips and his head's middle */
+      const skinRead = (B, sk) => { B.updateWorldMatrix(true, true); const S = B.userData.skel, J = B.userData.joints, W = DOGSPINE.round + 1, Q = sk.geometry.attributes.position, n = Q.count / W, inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), v = new THREE.Vector3(), rings = [], c0 = DOGSPINE.cap;
+        for (let a = 0; a < n; a++) { const r = []; for (let i = 0; i < W; i++) { v.fromBufferAttribute(Q, a * W + i).applyMatrix4(sk.matrixWorld).applyMatrix4(inv); r.push([v.x, v.y, v.z]); } rings.push(r); }
+        const mid = rings.map(r => [r.reduce((q, w) => q + w[0], 0) / W, r.reduce((q, w) => q + w[2], 0) / W]); let back = 0, quads = 0, high = 0, lowRing = 0;
+        for (let a = c0; a < n - 1; a++) { const ux = mid[a + 1][0] - mid[a][0], uz = mid[a + 1][1] - mid[a][1]; for (let i = 0; i < W - 1; i++) { quads++; if ((rings[a + 1][i][0] - rings[a][i][0]) * ux + (rings[a + 1][i][2] - rings[a][i][2]) * uz < -1e-7) back++; } }
+        for (let a = c0; a <= c0 + DOGSPINE.trunk; a++) { const lo = Math.min(...rings[a].map(w => w[1])); if (lo > 0.02) high++; if (lo < -S.limb.paw) lowRing++; }
+        const at = nm => J[nm].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), hp = at('hips'), hh = at('head');
+        return { back, quads, high, lowRing, dHip: Math.hypot(mid[c0][0] - hp.x, mid[c0][1] - hp.z), dHead: Math.hypot(mid[n - 1][0] - hh.x, mid[n - 1][1] - hh.z) / S.head }; };
       /* HIS TAIL ON ITS CURVE, read off a body curled in the ring (m: what `read` made of him): the skins laid for it and his tail's
          own parts, the middle and the thickness of each ring of it along him, and what is wrong with it, in words */
       const TAILKINK = 0.35, TAILGROUND = 0.02;
@@ -7857,6 +7870,7 @@ function findChromium() {
         if (bob) { if (shown.length || own.length) bad.push(who + '\'s bobbed tail shows in the closed ring (' + shown.length + ' skin(s) of it, ' + own.length + ' of its own parts): it is tucked out of sight, as on his card'); return { bad, say: 'his bobbed tail tucked out of sight' }; }
         const two = ['tail', 'tip'].map(n => shown.filter(o => o.userData.tail === n));
         if (two[0].length !== 1 || two[1].length !== 1) { bad.push(who + '\'s tail is not laid on a curve in the closed ring: ' + two[0].length + ' skin(s) of his tail and ' + two[1].length + ' of its tip show, where one of each was asked (two straight lengths cannot go round a ring)'); return { bad, say: 'no tail on a curve' }; }
+        { const d = Math.max(lit(two[0][0]), lit(two[1][0])); if (!(d <= 1e-3)) bad.push(who + '\'s tail is not lit as it lies in the closed ring: its shading is ' + (d === Infinity ? 'not worked out at all' : d.toFixed(3) + ' off what its points give') + ', so the game\'s light draws it dark or as another shape'); }
         if (own.length) bad.push(who + '\'s tail shows twice in the closed ring: ' + own.length + ' of its own straight parts still show under the skin laid on its curve');
         const mids = [], rads = []; let top = -Infinity, low = Infinity;
         two.forEach(([o], q) => { const Q = o.geometry.attributes.position, n = Q.count / W; for (let a = q ? 1 : 0; a < n; a++) { const r = []; for (let i = 0; i < W - 1; i++) { v.fromBufferAttribute(Q, a * W + i).applyMatrix4(o.matrixWorld).applyMatrix4(inv); r.push(v.clone()); top = Math.max(top, v.y); low = Math.min(low, v.y); }
@@ -8153,6 +8167,7 @@ function findChromium() {
                 const at = nm => J[nm].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), hp = at('hips'), hh = at('head'), dHip = Math.hypot(mid[c0][0] - hp.x, mid[c0][1] - hp.z), dHead = Math.hypot(mid[n - 1][0] - hh.x, mid[n - 1][1] - hh.z);
                 const v1k = (() => { const c = L[0].body; return c && typeof c.chest === 'number' ? c.chest : 0; })();
                 out.push('the ' + k + '\'s spine in the ring: ' + bends(sp.trunk) + ' bends along his trunk and ' + bends(sp.neck) + ' along his neck, one skin of ' + n + ' rings; from one ring to the next the line of his back turns ' + deg(kink) + ' degrees at most (the first version turns ' + deg(v1k) + ' at his chest alone); ' + back + ' of ' + quads + ' pieces of it run back through him; ' + high + ' ring(s) of his trunk off the ground; its ends ' + dHip.toFixed(3) + ' from his hips and ' + (dHead / S.head).toFixed(2) + ' head sizes from his head\'s middle');
+                { const d = lit(m); if (!(d <= 1e-3)) P.push('the ' + k + '\'s skin is not lit as it lies in the closed ring: its shading is ' + (d === Infinity ? 'not worked out at all' : d.toFixed(3) + ' off what its points give') + ', so the game\'s light draws him dark or as another shape (a picture lit evenly all round does not show it)'); }
                 if (!(kink <= KINK)) P.push('the ' + k + '\'s back has a kink in the closed ring: from one ring of his skin to the next it turns ' + deg(kink) + ' degrees, where ' + deg(KINK) + ' at most was asked: his spine bends a little at every segment, never all at one');
                 if (back) P.push('the ' + k + '\'s skin passes through itself in the closed ring: ' + back + ' of its ' + quads + ' pieces run backward along him, where the inner side of the ring is gathered, never crossed');
                 if (high || lowRing) P.push('the ' + k + '\'s trunk does not rest on the ground in the closed ring: ' + high + ' of its rings hang over it and ' + lowRing + ' go under it further than his paw is across: every ring of him lies on the ground');
@@ -8163,12 +8178,19 @@ function findChromium() {
                 t3DogPose(Bb, dogPose(d, T0, D0), 0, false, () => 0); Bb.updateWorldMatrix(true, true);
                 { const invb = new THREE.Matrix4().copy(Bb.matrixWorld).invert(), BANDON = 0.6, nr = S.limb.neck, w3 = new THREE.Vector3(); let skb = null; Bb.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') skb = o; });
                   const mid3 = []; if (skb) { const Qb = skb.geometry.attributes.position; for (let a = c0 + DOGSPINE.trunk; a < Qb.count / W; a++) { let x = 0, y = 0, z = 0; for (let i = 0; i < W; i++) { w3.fromBufferAttribute(Qb, a * W + i).applyMatrix4(skb.matrixWorld).applyMatrix4(invb); x += w3.x; y += w3.y; z += w3.z; } mid3.push(new THREE.Vector3(x / W, y / W, z / W)); } }
-                  let rings2 = 0, point = 0, worstRing = 0, worstBit = 0, bits = 0;
+                  let rings2 = 0, point = 0, worstRing = 0, worstBit = 0, bits = 0, worstTurn = 0; const BANDTURN = 0.8;
                   Bb.traverse(o => { if (!o.isMesh || (o.userData.wears !== 'band' && o.userData.wears !== 'collar')) return; if (o.userData.band === 'point') { if (o.visible) point++; return; }
-                    const q = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(invb), dd = mid3.length ? Math.min(...mid3.map(c => c.distanceTo(q))) : Infinity; if (o.userData.band) { bits++; worstBit = Math.max(worstBit, dd / nr); } else { rings2++; worstRing = Math.max(worstRing, dd / nr); } });
-                  out.push('the ' + k + '\'s collar and bandana in the ring: ' + rings2 + ' band(s) round his neck, the furthest ' + worstRing.toFixed(2) + ' neck thicknesses off his neck\'s line; its knot and ends ' + worstBit.toFixed(2) + ' off at most; its point ' + (point ? 'showing' : 'put away'));
+                    const q = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(invb), dd = mid3.length ? Math.min(...mid3.map(c => c.distanceTo(q))) : Infinity; if (o.userData.band) { bits++; worstBit = Math.max(worstBit, dd / nr); } else { rings2++; worstRing = Math.max(worstRing, dd / nr);
+                      /* and it is turned as his neck is turned there: the line through the band's hole (across which its points spread least) along the line of his neck */
+                      if (mid3.length > 2) { const Qo = o.geometry.attributes.position, pts = [], c = new THREE.Vector3(); for (let i = 0; i < Qo.count; i++) { const q2 = new THREE.Vector3().fromBufferAttribute(Qo, i).applyMatrix4(o.matrixWorld).applyMatrix4(invb); pts.push(q2); c.add(q2); } c.multiplyScalar(1 / pts.length);
+                        const C = [0, 0, 0, 0, 0, 0]; pts.forEach(q2 => { const x = q2.x - c.x, y = q2.y - c.y, z = q2.z - c.z; C[0] += x * x; C[1] += x * y; C[2] += x * z; C[3] += y * y; C[4] += y * z; C[5] += z * z; }); const tr = C[0] + C[3] + C[5]; let ax = new THREE.Vector3(1, 1, 1).normalize();
+                        for (let t = 0; t < 80; t++) ax.set((tr - C[0]) * ax.x - C[1] * ax.y - C[2] * ax.z, -C[1] * ax.x + (tr - C[3]) * ax.y - C[4] * ax.z, -C[2] * ax.x - C[4] * ax.y + (tr - C[5]) * ax.z).normalize();
+                        let ni = 0; mid3.forEach((m3, i) => { if (m3.distanceTo(q) < mid3[ni].distanceTo(q)) ni = i; }); const along = mid3[Math.min(mid3.length - 1, ni + 1)].clone().sub(mid3[Math.max(0, ni - 1)]).normalize();
+                        worstTurn = Math.max(worstTurn, Math.acos(Math.min(1, Math.abs(ax.dot(along))))); } } });
+                  out.push('the ' + k + '\'s collar and bandana in the ring: ' + rings2 + ' band(s) round his neck, the furthest ' + worstRing.toFixed(2) + ' neck thicknesses off his neck\'s line; its knot and ends ' + worstBit.toFixed(2) + ' off at most; turned ' + deg(worstTurn) + ' degrees off his neck\'s line at most; its point ' + (point ? 'showing' : 'put away'));
                   if (!rings2) P.push('the ' + k + ' in his bandana has no band round his neck to ask in the closed ring');
-                  else if (!(worstRing <= BANDON) || !(worstBit <= 3) || point) P.push('the ' + k + '\'s collar and bandana do not go with his neck in the closed ring: a band round his neck sits ' + worstRing.toFixed(2) + ' neck thicknesses off the line of his neck (' + BANDON + ' at most), its knot and ends ' + worstBit.toFixed(2) + ' (3 at most)' + (point ? ', and its point stands out of him' : '')); } } } }
+                  else if (!(worstRing <= BANDON) || !(worstBit <= 3) || point) P.push('the ' + k + '\'s collar and bandana do not go with his neck in the closed ring: a band round his neck sits ' + worstRing.toFixed(2) + ' neck thicknesses off the line of his neck (' + BANDON + ' at most), its knot and ends ' + worstBit.toFixed(2) + ' (3 at most)' + (point ? ', and its point stands out of him' : ''));
+                  else if (!(worstTurn <= BANDTURN)) P.push('the ' + k + '\'s collar or bandana is not turned with his neck in the closed ring: a band round his neck lies ' + deg(worstTurn) + ' degrees off the line of his neck there (' + deg(BANDTURN) + ' at most), so it sinks into his neck where it should go round it'); } } } }
           finally { t3Dispose(B); t3Dispose(Bb); } }
         /* A CHIHUAHUA WITH ONE FOLDED EAR (ears "mixed": one upright ear folded over at its tip) in the ring, each way he faces: both
            ears laid back flat as the upright pair's are, his eyes shut, nothing deeper into the ground than his paw is across */
@@ -8352,7 +8374,13 @@ function findChromium() {
                     for (let a = 0; a < n; a++) { v.fromBufferAttribute(Q, a * W + DOGSPINE.round / 2).applyMatrix4(sk.matrixWorld); mid.push([v.x, v.z]); }   /* the line of its back */
                     let kink = 0; for (let a = DOGSPINE.cap + 1; a < n - 1; a++) { if (Math.hypot(mid[a + 1][0] - mid[a][0], mid[a + 1][1] - mid[a][1]) < 1e-4 || Math.hypot(mid[a][0] - mid[a - 1][0], mid[a][1] - mid[a - 1][1]) < 1e-4) continue; let t = Math.abs(Math.atan2(mid[a + 1][0] - mid[a][0], mid[a + 1][1] - mid[a][1]) - Math.atan2(mid[a][0] - mid[a - 1][0], mid[a][1] - mid[a - 1][1])); if (t > Math.PI) t = 2 * Math.PI - t; kink = Math.max(kink, t); }
                     out.push('a cat\'s spine curled up: one skin of ' + n + ' rings, its back turning ' + deg(kink) + ' degrees at most from one ring to the next');
-                    if (!(kink <= 0.35)) P.push('a cat\'s back has a kink curled up: from one ring of its skin to the next it turns ' + deg(kink) + ' degrees, where ' + deg(0.35) + ' at most was asked'); } }
+                    if (!(kink <= 0.35)) P.push('a cat\'s back has a kink curled up: from one ring of its skin to the next it turns ' + deg(kink) + ' degrees, where ' + deg(0.35) + ' at most was asked');
+                    const sr = skinRead(B, sk), dl = lit(sk);
+                    out.push('a cat\'s skin curled up: ' + sr.back + ' of ' + sr.quads + ' pieces of it run back through it, ' + sr.high + ' ring(s) of its trunk off the ground, its ends ' + sr.dHip.toFixed(3) + ' from its hips and ' + sr.dHead.toFixed(2) + ' head sizes from its head\'s middle');
+                    if (sr.back) P.push('a cat\'s skin passes through itself curled up: ' + sr.back + ' of its ' + sr.quads + ' pieces run backward along it, where the inner side of the ring is gathered, never crossed');
+                    if (sr.high || sr.lowRing) P.push('a cat\'s trunk does not rest on the ground curled up: ' + sr.high + ' of its rings hang over it and ' + sr.lowRing + ' go under it further than its paw is across');
+                    if (!(sr.dHip <= m.S.limb.barrel && sr.dHead <= 1)) P.push('a cat\'s skin is not one piece from its hips to its skull curled up: it starts ' + sr.dHip.toFixed(3) + ' from its hips and ends ' + sr.dHead.toFixed(2) + ' head sizes from its head\'s middle');
+                    if (!(dl <= 1e-3)) P.push('a cat\'s skin is not lit as it lies curled up: its shading is ' + (dl === Infinity ? 'not worked out at all' : dl.toFixed(3) + ' off what its points give') + ', so the game\'s light draws it dark or as another shape'); } }
                 if (!(m.round >= 0.8 && m.turn >= 150 * Math.PI / 180 && m.turn < 300 * Math.PI / 180)) P.push('a cat\'s body curled up is not the closed ring: ' + m.round.toFixed(2) + ' round from above, its chest turned ' + deg(m.turn) + ' degrees');
                 if (!(m.tailTop <= m.hipY)) P.push('a cat curled up has its tail standing out of the ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over its hips (' + m.hipY.toFixed(3) + '); it lies round it, low');
                 if (!(m.near <= hd && m.tipNear <= 1.5 * hd)) P.push('a cat curled up does not have its nose tucked under its tail: its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose');
@@ -8378,7 +8406,7 @@ function findChromium() {
             world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; held = keep.held; petTarget = keep.pt; petCrit = keep.pc; } } }
 
       /* ---- 6 · UNCURLED ---- */
-      if (has3d) { const kinds = KS.concat(CATK.has('gato') ? ['gato'] : []), stood = [], lain = [], backed = [], skinLeft = [], skinFirst = [];
+      if (has3d) { const kinds = KS.concat(CATK.has('gato') ? ['gato'] : []), stood = [], lain = [], backed = [], skinLeft = [], skinFirst = [], again = [], straight = [];
         for (const k of kinds) { const cat = CATK.has(k), lk = cat ? catLookOf({ kind: k }) : dogLookOf({ kind: k }), fresh = dogMake(dogSkeleton(k), lk), used = dogMake(dogSkeleton(k), lk);
           const rec = o => cat ? Object.assign({ kind: k, x: 0, y: 0, face: 1, dx: 0, dy: 0, moving: false, sit: false, backT: 0, greetT: 0, groomT: 0, metT: 1, catCurlT: 0 }, o) : made(Object.assign({ kind: k }, o));
           const stand = rec({}), lie = cat ? null : rec({ layT: T0 + 6e4 }), curled = cat ? rec({ sit: true, catCurlT: wNow() + 6e4 }) : ring({ kind: k }, T0 + 6e4, 1);
@@ -8393,11 +8421,30 @@ function findChromium() {
             if (lie) { const Pl = dogPose(lie, T0, D0); t3DogPose(fresh, Pl, 0, false, () => 0); const a1 = bodyPrint(fresh); t3DogPose(used, dogPose(curled, T0, D0), 0, false, () => 0); fresh0(used); t3DogPose(used, Pl, 0, false, () => 0); if (bodyPrint(used) !== a1) lain.push(k); }
             /* a cat whose curl ends straight into a sleep on its back (the next sit's roll in the same tick): on its back from the very
                first frame, its hind legs splayed, exactly as one that never curled */
+            /* HIS SECOND RING on one body (curled, up, curled again): every point of him is a body's curled for the first time, so
+               nothing the ring keeps on him outlives his getting up as something else */
+            { const one = dogMake(dogSkeleton(k), lk); try { const Pr = dogPose(curled, cat ? wNow() : T0, D0); t3DogPose(one, Pr, 0, false, () => 0); const s1 = shape(one);
+                t3DogPose(used, Pr, 0, false, () => 0); fresh0(used); t3DogPose(used, P0, 0, false, () => 0); fresh0(used); t3DogPose(used, Pr, 0, false, () => 0); if (!(moved(shape(used), s1) <= 1e-6)) again.push(k); }
+              finally { t3Dispose(one); } }
+            /* FROM THE RING STRAIGHT INTO THE FIRST VERSION (a nap that ends into another, with no frame standing between): a dog
+               curled in the first version exactly as one who came to it standing */
+            if (!cat) { const a = dogMake(dogSkeleton(k), lk), b = dogMake(dogSkeleton(k), lk); try { const Pv = dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0);
+                t3DogPose(a, dogPose(curled, T0, D0), 0, false, () => 0); fresh0(a); t3DogPose(a, Pv, 0, false, () => 0); t3DogPose(b, P0, 0, false, () => 0); fresh0(b); t3DogPose(b, Pv, 0, false, () => 0);
+                a.updateWorldMatrix(true, true); b.updateWorldMatrix(true, true); if (bodyPrint(a) !== bodyPrint(b) || !(moved(shape(a), shape(b)) <= 1e-6)) straight.push(k); }
+              finally { t3Dispose(a); t3Dispose(b); } }
+            /* and IN A BANDANA: up from the ring he stands exactly as one that never curled, its band, its knot and its point as they were */
+            { const lb = Object.assign({}, lk, { band: '#C4586B' }), f2 = dogMake(dogSkeleton(k), lb), u2 = dogMake(dogSkeleton(k), lb);
+              try { t3DogPose(f2, P0, 0, false, () => 0); f2.updateWorldMatrix(true, true); const b0 = bodyPrint(f2); t3DogPose(u2, dogPose(curled, cat ? wNow() : T0, D0), 0, false, () => 0); fresh0(u2); t3DogPose(u2, P0, 0, false, () => 0); u2.updateWorldMatrix(true, true);
+                if (bodyPrint(u2) !== b0) stood.push(k + ' in a bandana'); }
+              finally { t3Dispose(f2); t3Dispose(u2); } }
             if (cat) { const bk = rec({ sit: true, backT: wNow() + 6e4 }), Pb = dogPose(bk);
               if (Pb.held === 'back') { t3DogPose(fresh, Pb, 0, false, () => 0); const a2 = bodyPrint(fresh); t3DogPose(used, dogPose(curled, wNow(), D0), 0, false, () => 0); fresh0(used); t3DogPose(used, Pb, 0, false, () => 0); if (bodyPrint(used) !== a2) backed.push(k); } } }
           finally { t3Dispose(fresh); t3Dispose(used); } }
         out.push('uncurled from the ring, ' + (kinds.length - stood.length) + ' of ' + kinds.length + ' kinds stand exactly as one that never curled' + (lain.length ? '' : ', and every dog lies as one never curled'));
-        if (stood.length) P.push('after the closed ring, ' + stood.join(', ') + ' do(es) not stand exactly as one that never curled (his hips, his hind legs, his ears or his barrel are left as the ring had them)');
+        if (stood.length) P.push('after the closed ring, ' + stood.join(', ') + ' do(es) not stand exactly as one that never curled (his hips, his hind legs, his ears, his barrel, his tail, his collar or his bandana are left as the ring had them)');
+        out.push('curled, up and curled again: as a body curled for the first time, every point, for ' + (kinds.length - again.length) + ' of ' + kinds.length + ' kinds; from the ring straight into the first version: as one who came to it standing for ' + (KS.length - straight.length) + ' of ' + KS.length + ' breeds');
+        if (again.length) P.push('curled in the closed ring a second time after getting up, ' + again.join(', ') + ' ' + (again.length > 1 ? 'are' : 'is') + ' not the body curled for the first time (a point of him elsewhere, or his skin gone): what the ring keeps on him must be made again at his next ring');
+        if (straight.length) P.push('from the closed ring straight into the first version, with no frame standing between, ' + straight.join(', ') + ' ' + (straight.length > 1 ? 'are' : 'is') + ' not curled as one who came to it standing: the ring\'s skin or its seats are left on him');
         if (lain.length) P.push('after the closed ring, ' + lain.join(', ') + ' do(es) not lie stretched out exactly as one that never curled');
         if (backed.length) P.push('a cat whose curl ends straight into a sleep on its back is not, on that first frame, on its back exactly as one that never curled (' + backed.join(', ') + '): its hind legs are left drawn in');
         out.push('the skins laid on his spine and for his tail: left on ' + skinLeft.length + ' of ' + kinds.length + ' kinds after they got up, made for ' + skinFirst.length + ' in the first version\'s curl');
@@ -8408,16 +8455,16 @@ function findChromium() {
         { const kc = KS.includes('aussie') ? 'aussie' : KS[0], CAPEREACH = 0.7, lkc = Object.assign({}, dogLookOf({ kind: kc }), { cape: '#7A3FE0' }), A = dogMake(dogSkeleton(kc), lkc), F = dogMake(dogSkeleton(kc), lkc);
           try { const capeOf = Bq => { let c = null; Bq.traverse(o => { if (o.isMesh && o.userData.cape) c = o; }); return c; }, P0 = dogPose(made({ kind: kc }), T0, D0);
             if (!capeOf(A)) out.push('no look of this world\'s dogs carries a cape, so the cape on the spine was not asked');
-            else { t3DogPose(F, P0, 0, false, () => 0); const rest = Array.from(capeOf(F).geometry.attributes.position.array);
+            else { t3DogPose(F, P0, 0, false, () => 0); const rest = Array.from(capeOf(F).geometry.attributes.position.array), restN = Array.from(capeOf(F).geometry.attributes.normal.array);
               t3DogPose(A, dogPose(ring({ kind: kc }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); A.updateWorldMatrix(true, true);
               let sk = null; A.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') sk = o; }); const cp = capeOf(A), v = new THREE.Vector3(), w = new THREE.Vector3(), rb = A.userData.skel.limb.barrel; let far = 0, worst = 0;
               if (sk) { const Qs = sk.geometry.attributes.position, Qc = cp.geometry.attributes.position, pts = []; for (let i = 0; i < Qs.count; i++) pts.push(v.fromBufferAttribute(Qs, i).applyMatrix4(sk.matrixWorld).clone());
                 for (let i = 0; i < Qc.count; i++) { w.fromBufferAttribute(Qc, i).applyMatrix4(cp.matrixWorld); let dmin = Infinity; for (const q of pts) { const dd = q.distanceTo(w); if (dd < dmin) dmin = dd; } worst = Math.max(worst, dmin / rb); if (dmin > CAPEREACH * rb) far++; }
                 const moved = Array.from(cp.geometry.attributes.position.array).some((x, i) => Math.abs(x - rest[i]) > 1e-4);
-                t3DogPose(A, P0, 0, false, () => 0); const back = Array.from(capeOf(A).geometry.attributes.position.array), same = back.length === rest.length && back.every((x, i) => Math.abs(x - rest[i]) < 1e-7);
+                t3DogPose(A, P0, 0, false, () => 0); const back = Array.from(capeOf(A).geometry.attributes.position.array), backN = capeOf(A).geometry.attributes.normal.array, same = back.length === rest.length && back.every((x, i) => Math.abs(x - rest[i]) < 1e-7) && restN.length === backN.length && restN.every((x, i) => Math.abs(x - backN[i]) < 1e-6);
                 out.push('the ' + kc + '\'s cape in the ring: ' + far + ' of ' + Qc.count + ' points of it further than ' + CAPEREACH + ' barrel radii from his skin (the furthest ' + worst.toFixed(2) + '); up again, ' + (same ? 'his cape laid straight, point for point' : 'not his cape as before'));
                 if (far || !moved) P.push('the ' + kc + '\'s cape does not ride his back in the closed ring: ' + (moved ? far + ' of its points lie further than ' + CAPEREACH + ' barrel radii from the skin laid on his spine (the furthest ' + worst.toFixed(2) + ')' : 'it is left straight over a back that curves') + ': it is laid along the curve with his back');
-                if (!same) P.push('up from the closed ring, the ' + kc + '\'s cape is not his cape laid straight along his back as before, point for point'); } } }
+                if (!same) P.push('up from the closed ring, the ' + kc + '\'s cape is not his cape laid straight along his back as before, point for point and shaded as before'); } } }
           finally { t3Dispose(A); t3Dispose(F); } }
         out.push('a cat from its curl straight onto its back: ' + (backed.length ? 'not as one that never curled' : 'as one that never curled, from the first frame'));
         /* the skin's kept shape, against a list of this check's own: two rings with the same side, the second with another trunk's
