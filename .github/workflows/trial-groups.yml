@@ -1,0 +1,176 @@
+name: Trial of the checks in groups, round 1 (temporary, never merged)
+# A TRIAL FILE. It lives only on the trial branch named below, for round 1 of the trial, and is taken off that branch
+# by the first commit of round 2. It is never merged, and no pull request is open while it is on the branch: it runs
+# on a push to that one branch, so the repository's own check (which runs on pull requests and on main) does not run
+# beside it.
+# What it does, on unchanged code (main plus this one file, which no check loads and no player caches):
+#  - `alone`: each group of the proposed check runs on its own machine, one group at a time (max-parallel: 1), so each
+#    group's time is the job's time in the list of jobs, with nothing else of the trial beside it.
+#  - `measure`: the engine's test, each of its three parts (map, body, rest), ten times, each run its own job, so the
+#    reds can be counted part by part. `measure-control` is one leg that must be red (a part name the test refuses),
+#    so a count that finds no red is not believed unless the control was counted red. `measure-content` is the game's
+#    own check, ten times, counted the same way.
+# It names no secret, asks for read-only access, and runs only on a push to this repository's own trial branch.
+# The engine group's three legs in the proposal are the `measure` legs here: their times are its times.
+on:
+  push:
+    branches: [claude/check-groups-trial]
+permissions:
+  contents: read
+concurrency:
+  group: trial-groups-${{ github.ref }}
+  cancel-in-progress: true
+# The trial branch is named in the trigger above and again in each job's `if:` below (a job's `if:` cannot read a
+# workflow `env:`). Every group is asked as a pull request into main would ask it: the base is main, the tip this commit.
+jobs:
+  alone:
+    if: ${{ github.ref == 'refs/heads/claude/check-groups-trial' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        group: [privacy-red-cases, gate-text, site, content, gauge-plain, gauge-3d, gauge-lib, horno]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: The base a pull request into main would be judged against
+        run: git fetch --no-tags origin main
+      - name: Install Playwright + Chromium (the browser groups only)
+        if: ${{ matrix.group != 'privacy-red-cases' && matrix.group != 'gate-text' }}
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: The group, alone
+        env:
+          GROUP: ${{ matrix.group }}
+          EVENT: pull_request
+          BASE_REF: main
+        run: |
+          set -e
+          t0=$(date +%s)
+          case "$GROUP" in
+            privacy-red-cases)
+              # every privacy step of the proposal but the private list, which this file is not handed
+              # one command a line: under bash -e, a red on the left of an && that is not the step's last line is NOT a stop
+              node test/authors.js --selftest
+              node test/protect.js --selftest
+              node test/keys.js --selftest
+              node test/pushguard.js --selftest
+              node scripts/clean-copy.js --selftest
+              node scripts/private-terms.js --selftest
+              node test/toolguard.js --selftest
+              node test/authors.js "origin/$BASE_REF" HEAD
+              node test/keys.js
+              node test/quotes.js --selftest
+              node test/quotes.js
+              node test/quotes.js --range "origin/$BASE_REF..HEAD" ;;
+            gate-text)
+              node test/vendored.js
+              node test/pointers.js --selftest
+              node test/pointers.js
+              node test/gate.js --selftest
+              node test/gate.js
+              node test/prims.js --selftest
+              node test/prims.js --ci ;;
+            site)
+              bash scripts/build-site.sh /tmp/_site
+              node test/public.js /tmp/_site
+              node test/offline.js
+              node test/bump.js "origin/$BASE_REF" ;;
+            content)
+              node test/smoke.js
+              node test/kitchen-seams.js ;;
+            gauge-plain) node test/gauge.js --world plain ;;
+            gauge-3d)    node test/gauge.js --world 3d ;;
+            gauge-lib)   node test/gauge.js --world lib ;;
+            horno)       node test/horno.js ;;
+            *) echo "FAIL: the trial was asked for a group it does not know ($GROUP)"; exit 2 ;;
+          esac
+          echo "| $GROUP | $(( $(date +%s) - t0 )) s |" >> "$GITHUB_STEP_SUMMARY"
+
+  measure:
+    if: ${{ github.ref == 'refs/heads/claude/check-groups-trial' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        part: [map, body, rest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      # The step a red is counted on. A red in any step above is the machine's, not the check's, and is counted apart.
+      - name: The engine, one part, unchanged code
+        env:
+          PART: ${{ matrix.part }}
+          RUN: ${{ matrix.run }}
+        run: |
+          t0=$(date +%s); s=0
+          node test/engine.smoke.js --index index.html --part "$PART" || s=$?
+          echo "| $PART | run $RUN | $(( $(date +%s) - t0 )) s | exit $s |" >> "$GITHUB_STEP_SUMMARY"
+          exit "$s"
+
+  measure-content:
+    if: ${{ github.ref == 'refs/heads/claude/check-groups-trial' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.63.0
+          npx playwright install --with-deps chromium
+      # The step a red is counted on, as in `measure`.
+      - name: The game's own check, unchanged code
+        env:
+          RUN: ${{ matrix.run }}
+        run: |
+          t0=$(date +%s); s=0
+          node test/smoke.js || s=$?
+          echo "| content | run $RUN | $(( $(date +%s) - t0 )) s | exit $s |" >> "$GITHUB_STEP_SUMMARY"
+          exit "$s"
+
+  measure-control:
+    if: ${{ github.ref == 'refs/heads/claude/check-groups-trial' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install playwright@1.63.0
+      # MUST BE RED: the engine's test refuses a part it does not know, before it opens a browser (exit 2).
+      - name: The engine, one part, unchanged code
+        run: node test/engine.smoke.js --index index.html --part control-must-be-red
