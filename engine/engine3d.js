@@ -2656,7 +2656,7 @@ function dogMake(skel,lk){
   /* HIS CAPE (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog), only where his look has one (the office dog's
      wardrobe): a cloth laid over the top of his back as his card's cape is, a little behind the middle of him, its two edges
      hanging down his sides; on the spine, so it goes with his back as he sits and lies */
-  if(lk.cape){const R=Lm.barrel*1.14,L=M.barrelLen*0.62,sp=Math.PI*0.95,g=new THREE.CylinderGeometry(R,R,L,20,1,true,Math.PI-sp/2,sp);g.rotateX(Math.PI/2);
+  if(lk.cape){const R=Lm.barrel*1.14,L=M.barrelLen*0.62,sp=Math.PI*0.95,g=new THREE.CylinderGeometry(R,R,L,20,DOGSPINE.cape,true,Math.PI-sp/2,sp);g.rotateX(Math.PI/2);   /* in rings along him (the same cloth standing), so it can be laid along his spine with his back (dogSpineLay) */
     const m=part("spine",g,"cape",lk.cape,0,Lm.barrel*0.03,-M.barrelLen*0.12);m.material.side=THREE.DoubleSide;m.userData.cape=true;}
   /* the head: the skull round its joint, the muzzle ahead of it and a little down, the nose at its end, the eyes over the
      muzzle, where the card puts its eye, and the ears by the breed's build. The skull's sheet runs over his head from his
@@ -2890,9 +2890,9 @@ function catStretch(B,P){const S=B.userData.skel,J=B.userData.joints;if(!S||!J)r
     else{J[hp].rotation.set(-0.15*k,0,0);J[kn].rotation.set(0,0,0);J[an].rotation.set(0,0,0);}});}
 function t3DogPose(B,P,phase,moving,groundAt){
   const held=dogHeld(P),howl=!!(P&&P.howl);
-  /* the ring's roll put back before his legs are stood under his hips (only a curl rolls them; none in the first version); and up
-     from his spine, all of him is put back first, so his chest hangs where it does before his fore legs are stood under it */
-  if(B.userData.curled&&held!=="curl"){B.userData.joints.hips.rotation.z=0;if(B.userData.spined)dogUncurl(B);}
+  /* up from his spine, all of him is put back before he is stood, so his chest hangs where it does when his fore legs are stood
+     under it (dogHold would put him back too, but after the walk has stood his legs) */
+  if(B.userData.spined&&held!=="curl")dogUncurl(B);
   t3BodyPose(B,phase,moving&&held==="stand",groundAt);
   if(P&&(P.face===1||P.face===-1))B.userData.curlSide=P.face;   /* curled up, he curls toward the side his card faces */
   B.userData.curlVer=held==="curl"&&P&&Number.isInteger(P.ver)?P.ver:0;   /* and in the version of the curl his record keeps (dogPose's `ver`) */
@@ -2952,41 +2952,36 @@ function curlFor(T,kd){if(!T||!T.kinds||!kd||!Object.prototype.hasOwnProperty.ca
 /* A NUMBER OF A CURL'S TABLE, where it names one: a field the first version does not carry is read as absent, so DOGCURL poses
    exactly as before */
 function curlNum(C,f){return C&&typeof C[f]==="number"&&isFinite(C[f])?C[f]:null;}
-/* THE BARREL BENT ROUND (mq-v290; the closed ring, the curl's second version, from mq-v300). Its points are laid over one arc from
-   his hips to his chest. A bend near a half turn (the closed ring) puts the arc's middle inside his own barrel, so the inner side
-   would pass through itself; `G`, a share of the arc's radius (the ring's `gather`), gathers it instead, as a dog's flank creases:
-   every point of the inner side deeper than G of the radius is drawn in toward the arc's middle and never reaches it. 0 or none:
-   no gathering, the first version's barrel exactly. `tw` (the ring's `twist`) turns the barrel about its own length first, his
-   back to the outside of the ring and his belly to its middle, so the colour of his back follows the ring round; 0 or none: not
-   turned. `wr` (the ring's `wrap`): his rump behind his hips and his front past his chest, which run on straight from the arc's
-   two ends, follow the arc's own curve instead, so seen from above the ring is round all the way to its two ends and has no
-   straight side; 0 or none: straight, as before. The key it is kept under names the bend, the side, his chest's width, the
-   gathering, the turn and the wrap, every number that shapes it */
-function dogBarrelBend(B,A,sd,G,tw,wr){let m=null;B.traverse(o=>{if(o.isMesh&&o.userData.trunk==="barrel")m=o;});if(!m)return null;
+/* THE BARREL BENT ROUND (mq-v290), the first version's: its points laid over one arc from his hips to his chest, his rump and his
+   front running on straight from the arc's two ends. The closed ring bent this barrel too until its second iteration; it lies on
+   his spine now (below), and this is again the first version's bend alone, exactly as it was before the ring. The key it is kept
+   under names the bend, the side and his chest's width */
+function dogBarrelBend(B,A,sd){let m=null;B.traverse(o=>{if(o.isMesh&&o.userData.trunk==="barrel")m=o;});if(!m)return null;
   const P=m.geometry.attributes.position,u=m.userData;if(!u.barrelRest)u.barrelRest=new Float32Array(P.array);
-  const g=typeof G==="number"&&isFinite(G)&&G>0&&G<1?G:0,w=A&&typeof tw==="number"&&isFinite(tw)?tw:0,cw=Math.cos(w),sw=Math.sin(w);
-  const wp=A&&typeof wr==="number"&&isFinite(wr)?Math.max(0,Math.min(1,wr)):0;
-  const sx=m.scale.x||1,key=A?A*sd+"|"+sx+(g?"|"+g:"")+(w?"|t"+w:"")+(wp?"|w"+wp:""):"";if((u.barrelBend||"")===key)return m;   /* laid again only when the bend, his chest's width or the gathering moves */
-  const rest=u.barrelRest,L=B.userData.skel.joints.chest[3],k=A/(2*L),R=A>0?1/k:0,o0=R*g;
-  for(let i=0;i<P.count;i++){let x=rest[i*3];const y=rest[i*3+1];let nx=x,ny=y,nz=rest[i*3+2];
-    if(w){const z=nz;x=rest[i*3]*cw+sd*z*sw;nz=-sd*rest[i*3]*sw+z*cw;}   /* turned about his length (the sheet's +z is his belly) */
-    if(A>0){if(g){const o=sd*x*sx;if(o>o0)x=sd*(R-(R-o0)*Math.exp(-(o-o0)/(R-o0)))/sx;}   /* gathered: drawn in toward the middle, smoothly, never past it */
-      const d0=y+L,d=d0<0?d0*(1-wp):d0>2*L?2*L+(d0-2*L)*(1-wp):d0,dw=d0-d;   /* dw: how much of an end follows the arc (wrap) */
-      const th=(Math.max(0,Math.min(2*L,d))+dw)*k,over=d>2*L?d-2*L:0,under=d<0?d:0,run=over||under,cx=(1-Math.cos(th))/k+run*Math.sin(th),cy=(under?under*Math.cos(th):Math.sin(th)/k+over*Math.cos(th))-L;
+  const sx=m.scale.x||1,key=A?A*sd+"|"+sx:"";if((u.barrelBend||"")===key)return m;   /* laid again only when the bend or his chest's width moves */
+  const rest=u.barrelRest,L=B.userData.skel.joints.chest[3],k=A/(2*L);
+  for(let i=0;i<P.count;i++){const x=rest[i*3],y=rest[i*3+1];let nx=x,ny=y;
+    if(A>0){const d=y+L,th=Math.max(0,Math.min(2*L,d))*k,over=d>2*L?d-2*L:0,cx=(1-Math.cos(th))/k+over*Math.sin(A),cy=(d<0?d:Math.sin(th)/k+over*Math.cos(A))-L;
       nx=sd*cx/sx+x*Math.cos(th);ny=cy-sd*x*sx*Math.sin(th);}   /* the part is stretched across him (sx): the arc is laid in his own measure */
-    P.setXYZ(i,nx,ny,nz);}
+    P.setXYZ(i,nx,ny,rest[i*3+2]);}
   P.needsUpdate=true;m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();u.barrelBend=key;return m;}
-/* HIS SPINE (the ring's second iteration; the owner's confirmed goal of 2026-11-24: the body is built with more segments along its
-   spine, so it curves as a real back does, starting with the curled ring of dogs and cats; other poses are brought onto the spine
-   later, each as an update). Standing, sitting and lying he is one stiff barrel, a chest and a neck, and bent as a whole that
-   barrel is a tube with a kink at each end. A pose that names a `spine` lays him on it instead: ONE skin from his rump to the
-   base of his skull, laid ring by ring along a curve that bends segment by segment (the table's `trunk` bends from his hips to
-   his chest, its `neck` bends from his chest to his head, in radians a segment), so his back is one curve and his neck carries
-   it on round to his head. The skin's rings are his barrel's own (its radius, its tucked belly, its narrower waist, its coat's
-   sheet), narrowing into his neck; each ring rests on the ground, so he is highest where he is deepest; his barrel, his chest
-   and his neck are put away while he lies on it and brought back when he gets up (dogSpineOff). DOGSPINE: how many rings the
-   skin has (its rump's cap, his trunk, his neck), how many points a ring, and how finely the curve is walked */
-const DOGSPINE=Object.freeze({cap:6,trunk:20,neck:12,round:24,steps:240});
+/* HIS SPINE (mq-v302, the ring's second iteration; the owner's confirmed goal of 2026-11-24: the body is built with more segments
+   along its spine, so it curves as a real back does, starting with the curled ring of dogs and cats; other poses are brought
+   onto the spine later, each as an update). Standing, sitting and lying he is one stiff barrel, a chest and a neck, and bent as a
+   whole that barrel is a tube with a kink at each end. A pose whose table names a `spine` lays him on it instead (dogSpineLay):
+     · ONE SKIN from his rump to the base of his skull, laid ring by ring along a curve that bends segment by segment (the
+       table's `trunk` bends from his hips to his chest, its `neck` bends from his chest to his head, in radians a segment), so
+       his back is one curve and his neck carries it on round to his head. Its rings are his barrel's own (its radius, its tucked
+       belly, its narrower waist, its coat's sheet), narrowing into his neck; each ring of his trunk rests on the ground, so he is
+       highest where he is deepest; where the curve is tighter than he is thick, his inner side is gathered and never crossed.
+     · HIS JOINTS ARE SEATED ON THE CURVE: his hips at its start, his chest where his trunk ends (his fore legs hang from it), his
+       head where his neck ends; his collar and his bandana go with his neck; his tail carries the curve on behind him; his cape,
+       where his look has one, is laid along the curve with his back.
+     · his barrel, his chest and his neck are put away while he lies on it. When he gets up (dogSpineOff) they are brought back,
+       everything seated is put back, and the skin is thrown away: a body up from his spine is exactly a body that never lay on it.
+   DOGSPINE: how many rings the skin has (its rump's cap, his trunk, his neck), how many points a ring, how finely the curve is
+   walked, and how many rings his cape has along him */
+const DOGSPINE=Object.freeze({cap:6,trunk:20,neck:12,round:24,steps:240,cape:8});
 function dogSpineSkin(B,bar){const U=B.userData;if(U.spineSkin)return U.spineSkin;
   const G=DOGSPINE,rings=G.cap+G.trunk+1+G.neck,W=G.round+1,pos=new Float32Array(rings*W*3),uv=new Float32Array(rings*W*2),idx=[];
   for(let a=0;a<rings-1;a++)for(let i=0;i<G.round;i++){const p=a*W+i,q=p+W;idx.push(p,p+1,q,p+1,q+1,q);}
@@ -3043,6 +3038,16 @@ function dogSpineLay(B,C,sd){const U=B.userData,S=U.skel,J=U.joints,sp=C.spine,b
       nu=new THREE.Vector3(0,(S.joints.neck[2]+S.joints.head[2])/N,(S.joints.neck[3]+S.joints.head[3])/N),b0=new THREE.Vector3(0,nu.z,-nu.y),
       R=new THREE.Matrix4().makeBasis(x1,b1,t1).multiply(new THREE.Matrix4().makeBasis(new THREE.Vector3(1,0,0),b0,nu).transpose()),
       c1=loc(new THREE.Vector3(sd*uC-sd*uT,cAt(sC)-cAt(T),zC-zT));
+    /* any other point of him that rides his back (his cape's): from where it is along him, across him and under his spine's
+       line, to where it lies on the curve, turned, let down and gathered as his skin is there; in his hips' own frame */
+    const lay=(s,xl,zl)=>{const t=s<=T?tw:tw+(ntw-tw)*Math.min(1,(s-T)/N),ct=Math.cos(t),sn=Math.sin(t),k=kap(s);let x=(xl*ct+sd*zl*sn)*sl[1];const z=(-sd*xl*sn+zl*ct)*sl[0];
+      if(k>1e-6&&g>0){const Rc=1/k,o0=Rc*g,o=sd*x;if(o>o0)x=sd*(Rc-(Rc-o0)*Math.exp(-(o-o0)/(Rc-o0)));}
+      const [th2,u2,z2]=at(s);return [sd*u2+x*Math.cos(th2),cAt(s)-z-hy,z2-x*sd*Math.sin(th2)];};
+    B.traverse(o=>{if(!o.isMesh||!o.userData.cape)return;const Q=o.geometry.attributes.position,u=o.userData;
+      if(!u.capeRest)u.capeRest=[new Float32Array(Q.array),new Float32Array(o.geometry.attributes.normal.array)];
+      for(let i=0;i<Q.count;i++){const q=lay(u.capeRest[0][i*3+2]+o.position.z+lo,u.capeRest[0][i*3]+o.position.x,-(u.capeRest[0][i*3+1]+o.position.y));
+        Q.setXYZ(i,q[0]-o.position.x,q[1]-o.position.y,q[2]-lo-o.position.z);}
+      Q.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();});
     U.spineKey=key;U.spineSeat={hy,chest:[sd*uT,cAt(T)-hy,zT,sd*tT],head:[sd*uE,headY-hy,zE,tE],collar:[nu.clone().multiplyScalar(cf*N),c1,new THREE.Quaternion().setFromRotationMatrix(R)]};}
   /* his joints seated on the curve: his hips at its start, his chest where his trunk ends, his head where his neck does */
   const Q=U.spineSeat;J.hips.position.y=Q.hy;J.hips.rotation.set(0,0,0);
@@ -3056,59 +3061,46 @@ function dogSpineLay(B,C,sd){const U=B.userData,S=U.skel,J=U.joints,sp=C.spine,b
       if(!u.seat0)u.seat0=[o.position.clone(),o.quaternion.clone()];
       o.position.copy(u.seat0[0]).sub(c0).applyQuaternion(q).add(c1);o.quaternion.copy(q).multiply(u.seat0[1]);
       if(u.band==="point")o.visible=sp.point===true;});}   /* the cloth's point lies under his chin, in the middle of him, out of sight */
+  /* his tail carries the curve on behind him. Its root goes round with his back as his skin is turned (`twist`): standing it is on
+     top of his rump, here on its outer side. Each of its two lengths is pointed where the table says, [how far round from straight
+     behind him, how far down] for the first and for the second, the tip going on with the second; the first by a turn and a tip,
+     none about its own length, which is his wag's (t3DogPose sets it after this) */
+  {const tl=arr(sp.tail,[0,0.6,0.8,0.2]),r0=S.joints.tail_1,dir=(a,d)=>new THREE.Vector3(sd*Math.sin(a)*Math.cos(d),-Math.sin(d),-Math.cos(a)*Math.cos(d)),
+      d1=new THREE.Vector3(...S.joints.tail_2.slice(1)).normalize(),d2=new THREE.Vector3(...S.joints.tail_tip.slice(1)).normalize(),w=dir(tl[0],tl[1]),h=-Math.hypot(w.x,w.z);
+    J.tail_1.position.set(r0[1]*Math.cos(tw)-sd*r0[2]*Math.sin(tw),r0[2]*Math.cos(tw)+sd*r0[1]*Math.sin(tw),r0[3]);
+    J.tail_1.rotation.set(Math.atan2(h,w.y)-Math.atan2(d1.z,d1.y),Math.atan2(-w.x,-w.z),0,"YXZ");
+    J.tail_2.quaternion.setFromUnitVectors(d2,dir(tl[2],tl[3]).applyQuaternion(J.tail_1.quaternion.clone().invert()));J.tail_tip.rotation.set(0,0,0);}
   skin.visible=true;bar.visible=false;if(nk)nk.visible=false;if(cb)cb.visible=sp.chest===true;U.spined=true;return true;}
 function dogSpineOff(B){const U=B.userData;if(!U.spined)return;const S=U.skel,J=U.joints;
   B.traverse(o=>{if(!o.isMesh)return;const u=o.userData;if(u.trunk==="barrel"||u.trunk==="chest"||u.neck===true)o.visible=true;});
   J.chest.children.forEach(o=>{const u=o.userData;if(o.isMesh&&u.seat0){o.position.copy(u.seat0[0]);o.quaternion.copy(u.seat0[1]);if(u.band==="point")o.visible=true;}});
+  B.traverse(o=>{const u=o.userData;if(!o.isMesh||!u.cape||!u.capeRest)return;o.geometry.attributes.position.array.set(u.capeRest[0]);o.geometry.attributes.normal.array.set(u.capeRest[1]);
+    o.geometry.attributes.position.needsUpdate=true;o.geometry.attributes.normal.needsUpdate=true;o.geometry.computeBoundingSphere();});   /* his cape laid straight along his back again */
   /* the skin is thrown away, so a body up from the ring carries nothing a body that never curled does not (it is made again at his next ring) */
   if(U.spineSkin){U.spineSkin.parent.remove(U.spineSkin);U.spineSkin.geometry.dispose();U.spineSkin=null;U.spineKey=null;U.spineSeat=null;}
   J.head.position.set(S.joints.head[1],S.joints.head[2],S.joints.head[3]);
   J.tail_1.position.set(S.joints.tail_1[1],S.joints.tail_1[2],S.joints.tail_1[3]);U.spined=false;}
-function dogCurlHold(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData,C=dogCurlAngles(B),sd=U.curlSide===-1?-1:1,L=S.joints.chest[3],A=C.back,k=A/(2*L);
-  const spine=C.spine&&typeof C.spine==="object"&&dogSpineLay(B,C,sd);   /* laid on his spine (the ring's second iteration): his trunk, his chest, his neck and his head are set there */
-  if(!spine){dogSpineOff(B);
-  {const lf=curlNum(C,"lift");if(lf!==null)J.hips.position.y=S.limb.barrel*lf;}   /* the ring: his hips held a little higher than lying, a round loaf (none: as he lies) */
-  {const rl=curlNum(C,"roll");if(rl!==null)J.hips.rotation.z+=sd*rl;}   /* the ring: rolled toward its inside, his belly and legs to its middle (dogHold sets it again each frame) */
-  dogBarrelBend(B,A,sd,curlNum(C,"gather"),curlNum(C,"twist"),curlNum(C,"wrap"));
-  /* his chest where the arc ends, turned on round and tipped forward until his head is on the ground */
-  const nv=new THREE.Vector3(0,S.joints.neck[2]+S.joints.head[2],S.joints.neck[3]+S.joints.head[3]),len=nv.length(),
-    tip=Math.acos(Math.max(-1,Math.min(1,(S.head*C.rest-J.hips.position.y)/Math.max(0.001,len))))-Math.atan2(nv.z,nv.y);
-  J.chest.position.set(sd*(1-Math.cos(A))/k,0,Math.sin(A)/k-L);J.chest.rotation.set(tip,sd*(A+C.chest),0,"YXZ");
-  J.neck.rotation.set(0,0,0);
-  /* rolled (the ring), his chest is no longer at his hips' height: the tip is found again until his head's middle rests at
-     `rest` head sizes, as the first version's does by its sum (a few steps of the secant; none where nothing is rolled). The
-     answer depends only on his build, his side and his version, so it is found once and kept (U.curlTip, under the key
-     curlMid is kept under), never again on every frame he lies curled */
-  if(curlNum(C,"roll")!==null){const key=sd+"|"+J.hips.position.y+"|"+(U.curlVer|0);
-    if(!U.curlTip||U.curlTip[0]!==key){const inv=new THREE.Matrix4(),want=S.head*C.rest,hy=t=>{J.chest.rotation.set(t,sd*(A+C.chest),0,"YXZ");B.updateWorldMatrix(true,true);inv.copy(B.matrixWorld).invert();return J.head.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).y-want;};
-      let t0=tip,t1=tip+0.1,f0=hy(t0),f1=hy(t1);for(let i=0;i<6&&Math.abs(f1)>1e-5&&Math.abs(f1-f0)>1e-9;i++){const t2=t1-f1*(t1-t0)/(f1-f0);t0=t1;f0=f1;t1=Math.max(-1.5,Math.min(2.5,t2));f1=hy(t1);}
-      U.curlTip=[key,t1];}
-    J.chest.rotation.set(U.curlTip[1],sd*(A+C.chest),0,"YXZ");}
-  /* his head, by where it should face: round toward his tail, his nose a little down, lying a little on its cheek */
-  {const up=new THREE.Quaternion();[J.hips,J.spine,J.chest,J.neck].forEach(j=>up.multiply(j.quaternion));
-    const want=new THREE.Quaternion().setFromEuler(new THREE.Euler(C.nod,sd*(A+C.chest+C.head),-sd*C.cheek,"YXZ"));
-    J.head.quaternion.copy(up.invert().multiply(want));}
-  }
+function dogCurlHold(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData,C=dogCurlAngles(B),sd=U.curlSide===-1?-1:1;
+  /* laid on his spine (the closed ring, from its second iteration): his trunk, his chest, his neck, his head and his tail are set there */
+  const spine=!!(C.spine&&typeof C.spine==="object")&&dogSpineLay(B,C,sd);
+  if(!spine){dogSpineOff(B);const L=S.joints.chest[3],A=C.back,k=A/(2*L);
+    dogBarrelBend(B,A,sd);
+    /* his chest where the arc ends, turned on round and tipped forward until his head is on the ground */
+    const nv=new THREE.Vector3(0,S.joints.neck[2]+S.joints.head[2],S.joints.neck[3]+S.joints.head[3]),len=nv.length(),
+      tip=Math.acos(Math.max(-1,Math.min(1,(S.head*C.rest-J.hips.position.y)/Math.max(0.001,len))))-Math.atan2(nv.z,nv.y);
+    J.chest.position.set(sd*(1-Math.cos(A))/k,0,Math.sin(A)/k-L);J.chest.rotation.set(tip,sd*(A+C.chest),0,"YXZ");
+    J.neck.rotation.set(0,0,0);
+    /* his head, by where it should face: round toward his tail, his nose a little down, lying a little on its cheek */
+    {const up=new THREE.Quaternion();[J.hips,J.spine,J.chest,J.neck].forEach(j=>up.multiply(j.quaternion));
+      const want=new THREE.Quaternion().setFromEuler(new THREE.Euler(C.nod,sd*(A+C.chest+C.head),-sd*C.cheek,"YXZ"));
+      J.head.quaternion.copy(up.invert().multiply(want));}
+    /* his tail down on the ground and round toward his nose */
+    J.tail_1.rotation.set(C.tail[0],-sd*C.tail[2],0,"YXZ");J.tail_2.rotation.set(C.tail[1],0,-sd*C.tail[3]);}
   /* his fore legs folded under his chest; his hind legs are folded beside him already (the lying hold) */
-  {const fl=C.foreLevel===true?J.chest.rotation.x:0;   /* the ring: his fore legs' fold measured from the ground, not from his chest tipped down to rest his head */
-  S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(C.fore[0]-fl,0,0);J[kn].rotation.set(C.fore[1],0,0);J[an].rotation.set(0,0,0);}});}
+  S.legs.forEach(([hp,kn,an])=>{if(/^fore/.test(hp)){J[hp].rotation.set(C.fore[0],0,0);J[kn].rotation.set(C.fore[1],0,0);J[an].rotation.set(0,0,0);}});
   /* the ring (`hind`, none in the first version): his hind legs folded forward under his belly and in toward the ring's middle,
      [the thigh's swing forward, the hock's fold, the paw's, and how far in toward the middle] */
   if(Array.isArray(C.hind)&&C.hind.length===4)S.legs.forEach(([hp,kn,an])=>{if(/^hind/.test(hp)){J[hp].rotation.set(C.hind[0],0,sd*C.hind[3],"XYZ");J[kn].rotation.set(C.hind[1],0,0);J[an].rotation.set(C.hind[2],0,0);}});
-  /* his tail down on the ground and round toward his nose (the ring: round the OUTSIDE of him, the tip turned on along his nose, `tip`) */
-  if(spine&&Array.isArray(C.spine.tail)&&C.spine.tail.length===4){
-    /* on his spine, his tail carries the curve on behind him: each of its two lengths is pointed where the table says, [how far
-       round from straight behind him, how far down] for the first and for the second, the tip going on with the second */
-    const tl=C.spine.tail,dir=(a,d)=>new THREE.Vector3(sd*Math.sin(a)*Math.cos(d),-Math.sin(d),-Math.cos(a)*Math.cos(d)),
-      d1=new THREE.Vector3(...S.joints.tail_2.slice(1)).normalize(),d2=new THREE.Vector3(...S.joints.tail_tip.slice(1)).normalize();
-    /* its root goes round with his back as his skin is turned (`twist`): standing it is on top of his rump, here on its outer side */
-    {const tw=curlNum(C,"twist")||0,r0=S.joints.tail_1;J.tail_1.position.set(r0[1]*Math.cos(tw)-sd*r0[2]*Math.sin(tw),r0[2]*Math.cos(tw)+sd*r0[1]*Math.sin(tw),r0[3]);}
-    /* the first by a turn and a tip, none about its own length, which is his wag's (t3DogPose sets it after this) */
-    {const w=dir(tl[0],tl[1]),h=-Math.hypot(w.x,w.z);J.tail_1.rotation.set(Math.atan2(h,w.y)-Math.atan2(d1.z,d1.y),Math.atan2(-w.x,-w.z),0,"YXZ");}
-    J.tail_2.quaternion.setFromUnitVectors(d2,dir(tl[2],tl[3]).applyQuaternion(J.tail_1.quaternion.clone().invert()));J.tail_tip.rotation.set(0,0,0);}
-  else{
-  J.tail_1.rotation.set(C.tail[0],-sd*C.tail[2],0,"YXZ");J.tail_2.rotation.set(C.tail[1],0,-sd*C.tail[3]);
-  {const tp=curlNum(C,"tip");if(tp!==null)J.tail_tip.rotation.set(J.tail_tip.rotation.x,0,-sd*tp);}}
   /* the round of him over the middle of his square: the middle of what his hips, chest, head, nose and tail cover, measured
      once for this side with his hips where they stand, then his hips moved by that much */
   {const key=sd+"|"+J.hips.position.y+"|"+(U.curlVer|0);if(!U.curlMid||U.curlMid[0]!==key){J.hips.position.x=0;J.hips.position.z=S.joints.hips[3];B.updateWorldMatrix(true,true);
@@ -3126,7 +3118,6 @@ function dogUncurl(B){const S=B.userData.skel,J=B.userData.joints,U=B.userData;
   J.chest.position.set(S.joints.chest[1],S.joints.chest[2],S.joints.chest[3]);J.chest.rotation.set(0,0,0,"XYZ");
   J.neck.rotation.set(J.neck.rotation.x,0,0);J.head.rotation.set(J.head.rotation.x,0,0,"XYZ");
   J.tail_1.rotation.set(J.tail_1.rotation.x,0,0,"XYZ");J.tail_2.rotation.set(J.tail_2.rotation.x,0,0);J.hips.position.x=0;J.hips.position.z=S.joints.hips[3];
-  if(J.tail_tip)J.tail_tip.rotation.set(J.tail_tip.rotation.x,0,0);   /* the ring's tip turned along his nose */
   S.legs.forEach(([hp])=>{if(/^hind/.test(hp))J[hp].rotation.set(J[hp].rotation.x,0,0,"XYZ");});   /* the ring's hind legs drawn in (the next hold sets their swing) */
   B.children.forEach(o=>{const u=o.userData;if(u&&u.shadow&&u.restScale){o.scale.copy(u.restScale);o.position.copy(u.restPos);}});
   U.curled=false;}

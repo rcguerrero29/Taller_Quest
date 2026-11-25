@@ -7827,9 +7827,9 @@ function findChromium() {
       if (L.length !== 2) P.push('the curl has ' + L.length + ' version(s), where two were asked: the first and the closed ring');
       else if (!(L[0].w === 1 && L[1].w === 1)) P.push('the curl\'s two versions are weighted ' + L[0].w + ' and ' + L[1].w + ', where half and half was asked (1 and 1)');
       if (V2) { const own = (t, k) => !!t && typeof t === 'object' && Object.prototype.hasOwnProperty.call(t, k);
-        const noCard = KS.filter(k => !own(V2.card, k) || !Array.isArray(V2.card[k].body) || !Array.isArray(V2.card[k].eye)), noBody = !V2.body || typeof V2.body.back !== 'number';
+        const noCard = KS.filter(k => !own(V2.card, k) || !Array.isArray(V2.card[k].body) || !Array.isArray(V2.card[k].eye)), noBody = !V2.body || !V2.body.spine || !Array.isArray(V2.body.spine.trunk) || !Array.isArray(V2.body.spine.neck);
         if (noCard.length) P.push('the closed ring has no card row for ' + noCard.join(', ') + ': ' + (noCard.length > 1 ? 'they would be drawn' : 'it would be drawn') + ' in another breed\'s row (the beagle\'s), never their own');
-        if (noBody) P.push('the closed ring has no body table, so its body would be posed as the first version\'s');
+        if (noBody) P.push('the closed ring has no body table laid on a spine (the bends of its trunk and of its neck), so its body would be posed as the first version\'s, one stiff barrel');
         if (V2.card === L[0].card) P.push('the closed ring\'s card is the first version\'s card table');
         if (V2.body === L[0].body) P.push('the closed ring\'s body is the first version\'s body table'); }
       /* the first version, exactly as before: fingerprints taken on the engine before the ring was built (mq-v299, the same
@@ -8090,13 +8090,42 @@ function findChromium() {
               const bl = band.filter(lemon).length / Math.max(1, band.filter(q => lemon(q) || white(q)).length), cw = core.filter(white).length / Math.max(1, core.filter(q => lemon(q) || white(q)).length);
               out.push('the beagle in the ring from above: his outer band ' + (100 * bl).toFixed(0) + '% lemon, his middle ' + (100 * cw).toFixed(0) + '% white (of what is lemon or white)');
               if (!(bl > 0.5 && cw > 0.5)) P.push('the beagle\'s two colours do not follow the ring: seen from above his outer band is ' + (100 * bl).toFixed(0) + '% lemon and his middle ' + (100 * cw).toFixed(0) + '% white, where the lemon of his back goes round the outside and the white sits in the middle (more than half each)'); }
-            /* H · the barrel gathered, never crossed: no point of the bent barrel lies past the arc's middle */
-            { const d = ring({ kind: k }, T0 + 6e4, 1); t3DogPose(B, dogPose(d, T0, D0), 0, false, () => 0); let m = null; B.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') m = o; });
-              const C = dogCurlAngles(B), S = B.userData.skel, Lc = S.joints.chest[3], A = C.back, kk = A / (2 * Lc), sx = m.scale.x || 1, sd = 1, rest = m.userData.barrelRest, Q = m.geometry.attributes.position.array; let crossed = 0, n = 0;
-              for (let i = 0; i < Q.length / 3; i++) { const dd = rest[i * 3 + 1] + Lc; if (dd < 0 || dd > 2 * Lc) continue; n++; const th = dd * kk, ax = sd * (1 - Math.cos(th)) / kk, ay = Math.sin(th) / kk - Lc, cxx = sd / kk, ux = (ax - cxx), uy = ay + Lc, ul = Math.hypot(ux, uy);
-                const r = ((Q[i * 3] * sx - cxx) * ux + (Q[i * 3 + 1] + Lc) * uy) / ul; if (r <= 0) crossed++; }
-              out.push('the ' + k + '\'s barrel in the ring: ' + crossed + ' of ' + n + ' points on its arc past the arc\'s middle');
-              if (crossed) P.push('the ' + k + '\'s barrel passes through itself in the closed ring: ' + crossed + ' of its ' + n + ' points along the bend lie past the middle of the arc, where the inner side is gathered, never crossed'); } }
+            /* H · HIS SPINE (the ring's second iteration; the owner's confirmed goal of 2026-11-24: more segments along his spine, so
+               his body curves as a real back does). Curled in the ring he is ONE skin from his rump to the base of his skull, laid
+               along a curve that bends segment by segment; his stiff barrel and his neck are put away. Asked of that skin:
+               the table names the bends (4 at least along his trunk, 2 at least along his neck, each of them a bend); there is one
+               skin and it shows, his barrel and his neck do not; NO KINK: from one ring of it to the next his back turns KINK at
+               most, where the first version turns all of its chest's turn at one joint; it never runs back through itself; every
+               ring of his trunk rests on the ground; it starts at his hips and ends inside his head */
+            { const d = ring({ kind: k }, T0 + 6e4, 1); t3DogPose(B, dogPose(d, T0, D0), 0, false, () => 0); B.updateWorldMatrix(true, true);
+              const C = dogCurlAngles(B), S = B.userData.skel, J = B.userData.joints, sp = C.spine || {}, KINK = 0.35, GROUND = 0.02;
+              const bends = a => Array.isArray(a) && a.every(x => typeof x === 'number' && isFinite(x) && x > 0) ? a.length : 0;
+              if (bends(sp.trunk) < 4 || bends(sp.neck) < 2) P.push('the ' + k + '\'s spine has ' + bends(sp.trunk) + ' bend(s) along his trunk and ' + bends(sp.neck) + ' along his neck in the closed ring\'s table: more segments were asked, 4 at least and 2 at least, each of them a bend');
+              const skins = [], shown = { barrel: 0, neck: 0 }; B.traverse(o => { if (!o.isMesh) return; if (o.userData.trunk === 'spine') skins.push(o); if (o.userData.trunk === 'barrel' && o.visible) shown.barrel++; if (o.userData.neck === true && o.visible) shown.neck++; });
+              if (skins.length !== 1 || !skins[0].visible) P.push('the ' + k + ' curled in the closed ring has ' + skins.length + ' skin(s) laid on his spine' + (skins.length === 1 ? ', and it does not show' : '') + ': one, and it shows');
+              else if (shown.barrel || shown.neck) P.push('the ' + k + ' curled in the closed ring still shows his stiff ' + [shown.barrel ? 'barrel' : '', shown.neck ? 'neck' : ''].filter(Boolean).join(' and ') + ' under the skin laid on his spine: they are put away while he lies on it');
+              else { const m = skins[0], W = DOGSPINE.round + 1, Q = m.geometry.attributes.position, n = Q.count / W, inv = new THREE.Matrix4().copy(B.matrixWorld).invert(), v = new THREE.Vector3(), rings = [];
+                for (let a = 0; a < n; a++) { const r = []; for (let i = 0; i < W; i++) { v.fromBufferAttribute(Q, a * W + i).applyMatrix4(m.matrixWorld).applyMatrix4(inv); r.push([v.x, v.y, v.z]); } rings.push(r); }
+                const mid = rings.map(r => [r.reduce((q, w) => q + w[0], 0) / W, r.reduce((q, w) => q + w[2], 0) / W]), c0 = DOGSPINE.cap, hd = (a, b) => Math.atan2(mid[b][0] - mid[a][0], mid[b][1] - mid[a][1]);
+                let kink = 0, back = 0, quads = 0, high = 0, lowRing = 0; const bk = rings.map(r => r[DOGSPINE.round / 2]), hb = (a, b) => Math.atan2(bk[b][0] - bk[a][0], bk[b][2] - bk[a][2]);   /* the line of his back: the point of each ring that is the top of his back standing */
+                for (let a = c0 + 1; a < n - 1; a++) { if (Math.hypot(bk[a + 1][0] - bk[a][0], bk[a + 1][2] - bk[a][2]) < 1e-4 || Math.hypot(bk[a][0] - bk[a - 1][0], bk[a][2] - bk[a - 1][2]) < 1e-4) continue; let t = Math.abs(hb(a, a + 1) - hb(a - 1, a)); if (t > Math.PI) t = 2 * Math.PI - t; kink = Math.max(kink, t); }
+                for (let a = c0; a < n - 1; a++) { const ux = mid[a + 1][0] - mid[a][0], uz = mid[a + 1][1] - mid[a][1]; for (let i = 0; i < W - 1; i++) { quads++; if ((rings[a + 1][i][0] - rings[a][i][0]) * ux + (rings[a + 1][i][2] - rings[a][i][2]) * uz < -1e-7) back++; } }
+                for (let a = c0; a <= c0 + DOGSPINE.trunk; a++) { const lo = Math.min(...rings[a].map(w => w[1])); if (lo > GROUND) high++; if (lo < -S.limb.paw) lowRing++; }
+                const at = nm => J[nm].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), hp = at('hips'), hh = at('head'), dHip = Math.hypot(mid[c0][0] - hp.x, mid[c0][1] - hp.z), dHead = Math.hypot(mid[n - 1][0] - hh.x, mid[n - 1][1] - hh.z);
+                const v1k = (() => { const c = L[0].body; return c && typeof c.chest === 'number' ? c.chest : 0; })();
+                out.push('the ' + k + '\'s spine in the ring: ' + bends(sp.trunk) + ' bends along his trunk and ' + bends(sp.neck) + ' along his neck, one skin of ' + n + ' rings; from one ring to the next the line of his back turns ' + deg(kink) + ' degrees at most (the first version turns ' + deg(v1k) + ' at his chest alone); ' + back + ' of ' + quads + ' pieces of it run back through him; ' + high + ' ring(s) of his trunk off the ground; its ends ' + dHip.toFixed(3) + ' from his hips and ' + (dHead / S.head).toFixed(2) + ' head sizes from his head\'s middle');
+                if (!(kink <= KINK)) P.push('the ' + k + '\'s back has a kink in the closed ring: from one ring of his skin to the next it turns ' + deg(kink) + ' degrees, where ' + deg(KINK) + ' at most was asked: his spine bends a little at every segment, never all at one');
+                if (back) P.push('the ' + k + '\'s skin passes through itself in the closed ring: ' + back + ' of its ' + quads + ' pieces run backward along him, where the inner side of the ring is gathered, never crossed');
+                if (high || lowRing) P.push('the ' + k + '\'s trunk does not rest on the ground in the closed ring: ' + high + ' of its rings hang over it and ' + lowRing + ' go under it further than his paw is across: every ring of him lies on the ground');
+                if (!(dHip <= S.limb.barrel * 0.5 && dHead <= S.head)) P.push('the ' + k + '\'s skin is not one piece from his hips to his skull in the closed ring: it starts ' + dHip.toFixed(3) + ' from his hips and ends ' + (dHead / S.head).toFixed(2) + ' head sizes from his head\'s middle (inside his head, and at his hips, was asked)');
+                /* his collar and his bandana go with his neck: each of them within his neck's reach of the skin's own line, and the
+                   cloth's point, which would stand out of him, put away */
+                t3DogPose(Bb, dogPose(d, T0, D0), 0, false, () => 0); Bb.updateWorldMatrix(true, true);
+                { const invb = new THREE.Matrix4().copy(Bb.matrixWorld).invert(), far = [], pts = []; let n2 = 0, point = 0;
+                  Bb.traverse(o => { if (!o.isMesh || o.userData.wears !== 'band') return; if (o.userData.band === 'point') { if (o.visible) point++; return; } n2++; const q = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(invb), dd = Math.min(...mid.slice(c0 + DOGSPINE.trunk).map(c => Math.hypot(c[0] - q.x, c[1] - q.z))); if (dd > S.limb.barrel * 1.2) far.push(dd.toFixed(3)); });
+                  out.push('the ' + k + '\'s bandana in the ring: ' + n2 + ' piece(s) of it, ' + far.length + ' off his neck, its point ' + (point ? 'showing' : 'put away'));
+                  if (!n2) P.push('the ' + k + ' in his bandana has no piece of it to ask in the closed ring');
+                  else if (far.length || point) P.push('the ' + k + '\'s bandana does not go with his neck in the closed ring: ' + far.length + ' piece(s) of it lie ' + far.join(', ') + ' from his neck\'s line (' + (S.limb.barrel * 1.2).toFixed(3) + ' at most)' + (point ? ', and its point stands out of him' : '')); } } } }
           finally { t3Dispose(B); t3Dispose(Bb); } }
         /* A CHIHUAHUA WITH ONE FOLDED EAR (ears "mixed": one upright ear folded over at its tip) in the ring, each way he faces: both
            ears laid back flat as the upright pair's are, his eyes shut, nothing deeper into the ground than his paw is across */
@@ -8270,6 +8299,15 @@ function findChromium() {
                 const hd = m.S.head;
                 out.push('a cat\'s body curled up: ' + m.round.toFixed(2) + ' as wide one way as the other, its chest turned ' + deg(m.turn) + ' degrees round, its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg or tail\'s root, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose, ' + m.pawsIn + ' paws inside, its ears reaching ' + m.earR.toFixed(2) + ' head sizes (' + s0.earR.toFixed(2) + ' standing)');
                 if (!B.userData.curled) P.push('a cat curled up is not curled up on its body');
+                /* a cat curled up lies on its spine as a dog does: one skin showing, its stiff barrel and neck put away, and no kink
+                   from one ring of it to the next */
+                { const skins = [], shown = []; B.traverse(o => { if (!o.isMesh) return; if (o.userData.trunk === 'spine') skins.push(o); if ((o.userData.trunk === 'barrel' || o.userData.neck === true) && o.visible) shown.push(o.userData.trunk || 'neck'); });
+                  if (skins.length !== 1 || !skins[0].visible || shown.length) P.push('a cat curled up is not laid on its spine: ' + skins.length + ' skin(s)' + (shown.length ? ', its stiff ' + shown.join(' and ') + ' still showing' : '') + ' (one skin, its barrel and its neck put away)');
+                  else { const sk = skins[0], W = DOGSPINE.round + 1, Q = sk.geometry.attributes.position, n = Q.count / W, v = new THREE.Vector3(), mid = [];
+                    for (let a = 0; a < n; a++) { v.fromBufferAttribute(Q, a * W + DOGSPINE.round / 2).applyMatrix4(sk.matrixWorld); mid.push([v.x, v.z]); }   /* the line of its back */
+                    let kink = 0; for (let a = DOGSPINE.cap + 1; a < n - 1; a++) { if (Math.hypot(mid[a + 1][0] - mid[a][0], mid[a + 1][1] - mid[a][1]) < 1e-4 || Math.hypot(mid[a][0] - mid[a - 1][0], mid[a][1] - mid[a - 1][1]) < 1e-4) continue; let t = Math.abs(Math.atan2(mid[a + 1][0] - mid[a][0], mid[a + 1][1] - mid[a][1]) - Math.atan2(mid[a][0] - mid[a - 1][0], mid[a][1] - mid[a - 1][1])); if (t > Math.PI) t = 2 * Math.PI - t; kink = Math.max(kink, t); }
+                    out.push('a cat\'s spine curled up: one skin of ' + n + ' rings, its back turning ' + deg(kink) + ' degrees at most from one ring to the next');
+                    if (!(kink <= 0.35)) P.push('a cat\'s back has a kink curled up: from one ring of its skin to the next it turns ' + deg(kink) + ' degrees, where ' + deg(0.35) + ' at most was asked'); } }
                 if (!(m.round >= 0.8 && m.turn >= 150 * Math.PI / 180 && m.turn < 300 * Math.PI / 180)) P.push('a cat\'s body curled up is not the closed ring: ' + m.round.toFixed(2) + ' round from above, its chest turned ' + deg(m.turn) + ' degrees');
                 if (!(m.tailTop <= m.hipY)) P.push('a cat curled up has its tail standing out of the ring: its outer half reaches ' + m.tailTop.toFixed(3) + ' high, over its hips (' + m.hipY.toFixed(3) + '); it lies round it, low');
                 if (!(m.near <= hd && m.tipNear <= 1.5 * hd)) P.push('a cat curled up does not have its nose tucked under its tail: its nose ' + (m.near / hd).toFixed(2) + ' head sizes from its hind leg, its tail\'s tip ' + (m.tipNear / hd).toFixed(2) + ' from its nose');
@@ -8295,7 +8333,7 @@ function findChromium() {
             world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; held = keep.held; petTarget = keep.pt; petCrit = keep.pc; } } }
 
       /* ---- 6 · UNCURLED ---- */
-      if (has3d) { const kinds = KS.concat(CATK.has('gato') ? ['gato'] : []), stood = [], lain = [], backed = [];
+      if (has3d) { const kinds = KS.concat(CATK.has('gato') ? ['gato'] : []), stood = [], lain = [], backed = [], skinLeft = [], skinFirst = [];
         for (const k of kinds) { const cat = CATK.has(k), lk = cat ? catLookOf({ kind: k }) : dogLookOf({ kind: k }), fresh = dogMake(dogSkeleton(k), lk), used = dogMake(dogSkeleton(k), lk);
           const rec = o => cat ? Object.assign({ kind: k, x: 0, y: 0, face: 1, dx: 0, dy: 0, moving: false, sit: false, backT: 0, greetT: 0, groomT: 0, metT: 1, catCurlT: 0 }, o) : made(Object.assign({ kind: k }, o));
           const stand = rec({}), lie = cat ? null : rec({ layT: T0 + 6e4 }), curled = cat ? rec({ sit: true, catCurlT: wNow() + 6e4 }) : ring({ kind: k }, T0 + 6e4, 1);
@@ -8305,6 +8343,8 @@ function findChromium() {
           try { const P0 = dogPose(stand, T0, D0); t3DogPose(fresh, P0, 0, false, () => 0); fresh.updateWorldMatrix(true, true); const a0 = bodyPrint(fresh);
             t3DogPose(used, dogPose(curled, cat ? wNow() : T0, D0), 0, false, () => 0); fresh0(used); t3DogPose(used, P0, 0, false, () => 0); used.updateWorldMatrix(true, true);
             if (bodyPrint(used) !== a0) stood.push(k);
+            { let left = 0; used.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') left++; }); if (left) skinLeft.push(k); }
+            if (!cat) { t3DogPose(fresh, dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); let made1 = 0; fresh.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') made1++; }); if (made1) skinFirst.push(k); t3DogPose(fresh, P0, 0, false, () => 0); }
             if (lie) { const Pl = dogPose(lie, T0, D0); t3DogPose(fresh, Pl, 0, false, () => 0); const a1 = bodyPrint(fresh); t3DogPose(used, dogPose(curled, T0, D0), 0, false, () => 0); fresh0(used); t3DogPose(used, Pl, 0, false, () => 0); if (bodyPrint(used) !== a1) lain.push(k); }
             /* a cat whose curl ends straight into a sleep on its back (the next sit's roll in the same tick): on its back from the very
                first frame, its hind legs splayed, exactly as one that never curled */
@@ -8315,19 +8355,38 @@ function findChromium() {
         if (stood.length) P.push('after the closed ring, ' + stood.join(', ') + ' do(es) not stand exactly as one that never curled (his hips, his hind legs, his ears or his barrel are left as the ring had them)');
         if (lain.length) P.push('after the closed ring, ' + lain.join(', ') + ' do(es) not lie stretched out exactly as one that never curled');
         if (backed.length) P.push('a cat whose curl ends straight into a sleep on its back is not, on that first frame, on its back exactly as one that never curled (' + backed.join(', ') + '): its hind legs are left drawn in');
+        out.push('the skin laid on his spine: left on ' + skinLeft.length + ' of ' + kinds.length + ' kinds after they got up, made for ' + skinFirst.length + ' in the first version\'s curl');
+        if (skinLeft.length) P.push('up from the closed ring, ' + skinLeft.join(', ') + ' still carr' + (skinLeft.length > 1 ? 'y' : 'ies') + ' the skin laid on the spine: it is thrown away when he gets up, so he is exactly a body that never curled');
+        if (skinFirst.length) P.push('curled in the first version, ' + skinFirst.join(', ') + ' ha' + (skinFirst.length > 1 ? 've' : 's') + ' a skin laid on a spine: only the closed ring lies on his spine, the first version is his one barrel bent, as before');
+        /* HIS CAPE (a look that has one, the office dog's wardrobe) rides his back along the curve: curled in the ring every point of
+           it lies within CAPEREACH barrel radii of his skin, and up again it is his cape laid straight, point for point */
+        { const kc = KS.includes('aussie') ? 'aussie' : KS[0], CAPEREACH = 0.7, lkc = Object.assign({}, dogLookOf({ kind: kc }), { cape: '#7A3FE0' }), A = dogMake(dogSkeleton(kc), lkc), F = dogMake(dogSkeleton(kc), lkc);
+          try { const capeOf = Bq => { let c = null; Bq.traverse(o => { if (o.isMesh && o.userData.cape) c = o; }); return c; }, P0 = dogPose(made({ kind: kc }), T0, D0);
+            if (!capeOf(A)) out.push('no look of this world\'s dogs carries a cape, so the cape on the spine was not asked');
+            else { t3DogPose(F, P0, 0, false, () => 0); const rest = Array.from(capeOf(F).geometry.attributes.position.array);
+              t3DogPose(A, dogPose(ring({ kind: kc }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); A.updateWorldMatrix(true, true);
+              let sk = null; A.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') sk = o; }); const cp = capeOf(A), v = new THREE.Vector3(), w = new THREE.Vector3(), rb = A.userData.skel.limb.barrel; let far = 0, worst = 0;
+              if (sk) { const Qs = sk.geometry.attributes.position, Qc = cp.geometry.attributes.position, pts = []; for (let i = 0; i < Qs.count; i++) pts.push(v.fromBufferAttribute(Qs, i).applyMatrix4(sk.matrixWorld).clone());
+                for (let i = 0; i < Qc.count; i++) { w.fromBufferAttribute(Qc, i).applyMatrix4(cp.matrixWorld); let dmin = Infinity; for (const q of pts) { const dd = q.distanceTo(w); if (dd < dmin) dmin = dd; } worst = Math.max(worst, dmin / rb); if (dmin > CAPEREACH * rb) far++; }
+                const moved = Array.from(cp.geometry.attributes.position.array).some((x, i) => Math.abs(x - rest[i]) > 1e-4);
+                t3DogPose(A, P0, 0, false, () => 0); const back = Array.from(capeOf(A).geometry.attributes.position.array), same = back.length === rest.length && back.every((x, i) => Math.abs(x - rest[i]) < 1e-7);
+                out.push('the ' + kc + '\'s cape in the ring: ' + far + ' of ' + Qc.count + ' points of it further than ' + CAPEREACH + ' barrel radii from his skin (the furthest ' + worst.toFixed(2) + '); up again, ' + (same ? 'his cape laid straight, point for point' : 'not his cape as before'));
+                if (far || !moved) P.push('the ' + kc + '\'s cape does not ride his back in the closed ring: ' + (moved ? far + ' of its points lie further than ' + CAPEREACH + ' barrel radii from the skin laid on his spine (the furthest ' + worst.toFixed(2) + ')' : 'it is left straight over a back that curves') + ': it is laid along the curve with his back');
+                if (!same) P.push('up from the closed ring, the ' + kc + '\'s cape is not his cape laid straight along his back as before, point for point'); } } }
+          finally { t3Dispose(A); t3Dispose(F); } }
         out.push('a cat from its curl straight onto its back: ' + (backed.length ? 'not as one that never curled' : 'as one that never curled, from the first frame'));
-        /* the barrel's kept shape, against a list of this check's own: two versions with the same bend and side, the second with
-           the ring's gathering and turn; a body curled in the first and then the second has the barrel a body curled straight into
-           the second has */
-        { const one = L[0], two = Object.assign({}, one, { id: 'probe', body: Object.assign({}, one.body, { gather: 0.5, twist: 0.6 }) }), list = [one, two], bad = [];
+        /* the skin's kept shape, against a list of this check's own: two rings with the same side, the second with another trunk's
+           bends, turn and gathering; a body curled in the first and then the second has the skin a body curled straight into the
+           second has, so everything that shapes it is in what it is kept under */
+        { const one = L[1], sp2 = Object.assign({}, one.body.spine, { trunk: one.body.spine.trunk.map(x => x * 0.8), neck: one.body.spine.neck.map(x => x * 1.1), slump: [0.8, 1.1] }), two = Object.assign({}, one, { id: 'probe', body: Object.assign({}, one.body, { spine: sp2, gather: 0.4, twist: 0.9, rest: 0.8, kinds: undefined }) }), list = [Object.assign({}, one, { body: Object.assign({}, one.body, { kinds: undefined }) }), two], bad = [];
           curlVersions = () => list;
-          try { for (const k of KS) { const A = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), Bf = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), arr = Bb => { let m = null; Bb.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') m = o; }); return Array.from(m.geometry.attributes.position.array); };
-              try { t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); t3DogPose(Bf, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0);
-                const a = arr(A), b = arr(Bf); if (a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-7)) bad.push(k); }
+          try { for (const k of KS) { const A = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), Bf = dogMake(dogSkeleton(k), dogLookOf({ kind: k })), arr = Bb => { let m = null; Bb.traverse(o => { if (o.isMesh && o.userData.trunk === 'spine') m = o; }); return m ? Array.from(m.geometry.attributes.position.array) : []; };
+              try { t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 0), T0, D0), 0, false, () => 0); const first = arr(A); t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); t3DogPose(Bf, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0);
+                const a = arr(A), b = arr(Bf); if (!a.length || a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-7) || !first.some((x, i) => Math.abs(x - b[i]) > 1e-4)) bad.push(k); }
               finally { t3Dispose(A); t3Dispose(Bf); } } }
           finally { curlVersions = keep.cv; }
-          out.push('two versions of one bend, the second gathered and turned: a body curled in one and then the other has the barrel of one curled straight into it for ' + (KS.length - bad.length) + ' of ' + KS.length + ' breeds');
-          if (bad.length) P.push('curled in one version and then another of the same bend, the ' + bad.join(', ') + '\'s barrel keeps the first one\'s shape: the barrel\'s kept shape does not name everything that shapes it'); } }
+          out.push('two rings on one spine, the second bent, turned and gathered otherwise: a body curled in one and then the other has the skin of one curled straight into it for ' + (KS.length - bad.length) + ' of ' + KS.length + ' breeds');
+          if (bad.length) P.push('curled in one ring and then another on his spine, the ' + bad.join(', ') + '\'s skin keeps the first one\'s shape (or the two are the same shape): what the skin is kept under does not name everything that shapes it'); } }
     } finally {
       Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; curlVersions = keep.cv;
       if (keep.al) alebLooks = keep.al; if (keep.alf) alebLookFor = keep.alf; if (keep.sv) save = keep.sv; if (typeof LEASH !== 'undefined') LEASH = keep.leash; Object.assign(PARK, JSON.parse(keep.park)); tidy();
