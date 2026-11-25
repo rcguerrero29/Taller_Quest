@@ -8458,10 +8458,11 @@ function findChromium() {
           /* a body with no barrel to take the skin's shape from curls the first version's way, by the first version's own numbers */
           { const k = KS[0], A = dogMake(dogSkeleton(k), dogLookOf({ kind: k }));
             try { A.traverse(o => { if (o.isMesh && o.userData.trunk === 'barrel') o.userData.trunk = 'drum'; });
-              t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); A.updateWorldMatrix(true, true); const J = A.userData.joints, nan = Object.keys(J).filter(n => ![J[n].position.x, J[n].position.y, J[n].position.z, J[n].quaternion.x, J[n].quaternion.y, J[n].quaternion.z, J[n].quaternion.w].every(x => typeof x === 'number' && isFinite(x)));
+              let threw = null; try { t3DogPose(A, dogPose(ring({ kind: k }, T0 + 6e4, 1), T0, D0), 0, false, () => 0); } catch (e) { threw = String(e && e.message || e); }
+              A.updateWorldMatrix(true, true); const J = A.userData.joints, nan = Object.keys(J).filter(n => ![J[n].position.x, J[n].position.y, J[n].position.z, J[n].quaternion.x, J[n].quaternion.y, J[n].quaternion.z, J[n].quaternion.w].every(x => typeof x === 'number' && isFinite(x)));
               let skn = 0; A.traverse(o => { if (o.isMesh && (o.userData.trunk === 'spine' || o.userData.tail)) skn++; });
               out.push('a ' + k + ' with no barrel to lay on a spine, curled in the ring: ' + (nan.length ? nan.length + ' joint(s) nowhere' : 'every joint somewhere') + ', ' + skn + ' skin(s) made, curled ' + !!A.userData.curled);
-              if (nan.length || skn || !A.userData.curled) P.push('a body with no barrel to take the skin\'s shape from does not curl the first version\'s way in the closed ring: ' + (nan.length ? 'its ' + nan.join(', ') + ' stand nowhere (not a number)' : skn ? skn + ' skin(s) made for it' : 'it is not curled')); }
+              if (threw || nan.length || skn || !A.userData.curled) P.push('a body with no barrel to take the skin\'s shape from does not curl the first version\'s way in the closed ring: ' + (threw ? 'posing it stops with an error (' + threw + ')' : nan.length ? 'its ' + nan.join(', ') + ' stand nowhere (not a number)' : skn ? skn + ' skin(s) made for it' : 'it is not curled')); }
             finally { t3Dispose(A); } } } }
     } finally {
       Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; curlVersions = keep.cv;
