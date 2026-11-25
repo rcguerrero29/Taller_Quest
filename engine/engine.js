@@ -5180,37 +5180,42 @@ function curlEyeAt(kind,ver){const CC=curlVersion(ver).card||CURLCARD,C=CC[kind]
 /* HIS CURLED BODY'S ANGLES, first version (the numbers engine/engine3d.js's dogCurlHold lays over the lying hold; what each
    is, is written there). Kept here, beside his curled card, because the two together are one version of the curl */
 const DOGCURL=Object.freeze({back:1.2,chest:0.9,head:0.75,nod:0.2,cheek:0.2,rest:1.15,tail:Object.freeze([-1.75,0.85,0.75,1.0]),fore:Object.freeze([-0.7,2.3]),ear:-2.0,shadow:0.95});
-/* HIS CURLED BODY'S NUMBERS, second version: THE CLOSED RING (the owner's confirmed goal of 2026-11-24; read by dogCurlHold, dogBarrelBend
-   and dogEars, engine/engine3d.js). Every field of the first version's, and the ring's own, which the first version does not carry
-   and so is posed exactly as before:
-     gather — the inner side of the barrel gathered, a share of the arc's radius, so a bend near a half turn creases and never
-              passes through itself; twist — the barrel turned about its length, his back to the outside, so his coat's two
-              colours follow the ring; lift — his hips' height in barrel radii (lying is DOGLAY, engine/engine3d.js): a round loaf whose back is his
-              highest point; roll — his body rolled toward the ring's inside, his belly and legs to its middle (his head's rest is
-              found again for it);
-     foreLevel — his fore legs folded from the ground, not from his chest tipped down; hind — his hind legs folded in under
-              him [thigh, hock, paw, in toward the middle]; tip — his tail's last joint turned on along his nose, the tail round
-              the OUTSIDE of him (its turn, the third and fourth of `tail`, the other way from the first version's);
-     flat — an upright ear laid out flat against his skull as well as back (`ear`); earBase — how far under its middle (head
-              sizes) an upright ear is turned from, where it leaves his skull, so it lies back along his neck, its tip inside his
-              head's outline, never on top of his head as a brim; dropEar — a drop ear flat over his cheek on his high side, ending
-              at his jaw line, and tucked under his head, out of sight, on his low side [high: x, z; low: x, z];
-     wrap — how much of his rump and his front past his chest follow the arc's curve instead of running on straight (0 to 1);
-     kinds — a breed's own numbers over the table's: the chihuahua's head is bigger than her barrel is round and the aussie's
-              tail is a bob, so each lies at its own height and turn.
-   Settled by a trial before any check was written: each breed posed and rendered from above and from the game's camera, and
-   measured against the checks' own measures (round from above, his back the highest point, his nose by his hind leg, his tail's
-   tip outside and by his nose, his paws inside, nothing deeper into the ground than his paw is across). Tuned again the same day
-   (the fix round) from the game's own camera, his bandana on: his hips let down, so the top of his outline has no dip between
-   his head and his haunch and the knot of his bandana sits on its shoulder; the chihuahua's and the office dog's upright ears
-   laid back from their root; a drop ear over his cheek to his jaw line and the other under his head. The chihuahua's and the
-   office dog's rows name no drop ear (their ears are upright: one there would never be read) */
-const DOGCURL2=Object.freeze({back:2.75,gather:0.77,twist:1.4,wrap:0.5,lift:0.98,roll:0.26,chest:1.26,head:1.48,nod:-0.04,cheek:0.18,rest:0.72,tail:Object.freeze([-1.99,0.33,-2.3,0.16]),tip:-0.27,fore:Object.freeze([-1.11,2.65]),foreLevel:true,hind:Object.freeze([-2.06,0.62,-0.88,1.99]),ear:-1.7,dropEar:Object.freeze([-0.95,-0.25,-1.38,1.66]),shadow:0.95,kinds:Object.freeze({lab:Object.freeze({back:2.96,gather:0.69,wrap:0.94,lift:1.08,roll:0.07,chest:1,head:1.6,nod:-0.05,cheek:0.61,rest:0.87,tail:Object.freeze([-2.01,0.2,-1.49,-0.73]),tip:-0.42,fore:Object.freeze([-0.77,1.59]),hind:Object.freeze([-1.88,2.1,0.06,0.28]),dropEar:Object.freeze([-0.83,-0.46,1.24,1.93])}),chi:Object.freeze({back:2.77,gather:0.27,wrap:0.53,lift:0.81,roll:0.46,chest:1.5,head:1.74,nod:0.08,cheek:-0.21,rest:0.76,tail:Object.freeze([-1.31,0.17,-1.42,-0.77]),tip:0.07,fore:Object.freeze([-1.01,2.55]),hind:Object.freeze([-1.21,2.14,-0.49,0.88]),ear:-3.36,flat:0.86,earBase:0.94}),aussie:Object.freeze({back:3.01,gather:0.8,wrap:0.24,lift:0.99,roll:0.38,chest:1.14,head:1.63,nod:-0.31,cheek:-0.36,rest:0.8,tail:Object.freeze([-1.88,0,0.34,-0.1]),tip:-1.75,fore:Object.freeze([-0.73,2.63]),hind:Object.freeze([-1.44,2.05,0.31,2.84]),ear:-2.95,flat:0.65,earBase:0.29})})});
-/* A CAT CURLED UP (the owner's confirmed goal of 2026-11-24, the cats' curl): the same closed ring, its nose under its tail, its tail round
-   to its nose, its paws tucked under, its eyes shut, and its ears UP (`ear` 0: not laid back). Its barrel turned less than a dog's
-   (`twist`), so a grey-and-white cat's white stays under it and inside the ring, a thin edge of it at most, its grey on top; its hips
-   let down, one low dome from the game's camera. Read for every cat's body, whichever version a dog would be in (dogCurlAngles) */
-const CATCURL=Object.freeze({back:3.13,gather:0.37,twist:0.8,wrap:0.45,lift:0.7,roll:0.36,chest:1.12,head:1.49,nod:0.13,cheek:0.48,rest:0.72,tail:Object.freeze([-1.63,0.2,-0.86,-1.12]),tip:0.8,fore:Object.freeze([-1.97,2.37]),foreLevel:true,hind:Object.freeze([-2.2,1.85,-0.63,0.76]),ear:0,shadow:0.95});
+/* HIS CURLED BODY'S NUMBERS, second version: THE CLOSED RING (the owner's confirmed goals of 2026-11-24: the ring, and its second
+   iteration, a body with more segments along its spine so it curves as a real back does; read by dogSpineLay, dogCurlHold and
+   dogEars, engine/engine3d.js). The first version is one stiff barrel bent as a whole (DOGCURL, above), and is posed exactly as
+   before. The ring lies on his SPINE:
+     spine — trunk: how far his back bends at each segment from his hips to his chest, in radians (more near his loins, less
+               along his ribs, as a dog's does); neck: the same for each segment of his neck, from his chest to his head; rump: how
+               much of the first bend his rump carries on behind his hips; slump: how he settles lying, [his height, his width]
+               against standing; neckR: how thick his neck is where it leaves his chest (in barrel radii) and where it meets his
+               head (in neck radii); arch: how long his neck stays as high as his shoulders before it comes down to his head (1 even,
+               more for longer); neckTwist: how far his neck is still turned where it meets his head (his trunk's is `twist`);
+               tail: his tail laid on a curve of its own round the outside of him (dogTailLay): lead, the share of its length it
+               takes to come out from under his rump to his outline; gap, how far off his outline it lies, in tail thicknesses;
+               past, how far past his nose it may reach, in head sizes (none named: its whole length); hide, a bobbed tail tucked
+               out of sight, as on his card.
+     gather — the inner side of him gathered, a share of the curve's radius there, so a tight bend creases and never passes
+              through itself; twist — his trunk turned about its own length, his back to the outside, so his coat's two colours
+              follow the ring; rest — how high his head's middle rests, in head sizes; head, nod, cheek — his head turned on past
+              the end of his neck, his nose down, lying on its cheek;
+     fore — his fore legs folded under his chest; hind — his hind legs folded in under him [thigh, hock, paw, in toward the middle];
+     ear, flat, earBase — an upright ear laid back, laid out flat against his skull, and turned from where it leaves his skull,
+              so it lies back along his neck, its tip inside his head's outline; dropEar — a drop ear flat over his cheek on his
+              high side, ending at his jaw line, and folded in under his head, out of sight, on his low side [high: x, z; low: x, z];
+     kinds — a breed's own numbers over the table's (a `spine` there is whole): the lab is short in the back, the chihuahua's
+              head is bigger than her barrel is round, the office dog's neck is long and his tail a bob.
+   Settled against the checks' own measures (round from above, his nose by his hind leg, his tail round the outside with its tip
+   by his nose, his paws inside, his back his highest point, one low dome from the game's camera, nothing deeper into the ground
+   than his paw is across) AND by eye: a search that only counted the measures laid his tail across his face, so the tail may not
+   lie on his head or his muzzle, and his face shows. His tail was two straight lengths until the ring's reviews of 2026-11-25:
+   two straight lengths cannot go round a ring (bent down they read as a paw over his face, laid flat as a bar past his chin),
+   so it is one skin on a curve too, on the ground round the outside of his chin and his muzzle */
+const DOGCURL2=Object.freeze({spine:Object.freeze({trunk:Object.freeze([0.6,0.6,0.55,0.5,0.45]),neck:Object.freeze([0.51,0.55,0.51]),rump:1,slump:Object.freeze([0.95,1.05]),neckR:Object.freeze([0.85,1.15]),neckTwist:0.7,tail:Object.freeze({lead:0.15,gap:0.1,past:1}),arch:2}),gather:0.6,twist:1.4,rest:0.72,head:0.8,nod:0.05,cheek:0.25,fore:Object.freeze([-1.11,2.65]),hind:Object.freeze([-2.06,0.62,-0.88,1.99]),ear:-1.7,dropEar:Object.freeze([-0.95,-0.25,0.2,-1.25]),shadow:0.95,kinds:Object.freeze({chi:Object.freeze({ear:-3.36,flat:0.86,earBase:0.94,head:0.5,spine:Object.freeze({trunk:Object.freeze([0.6,0.6,0.55,0.5,0.45]),neck:Object.freeze([0.765,0.825,0.765]),rump:1,slump:Object.freeze([1.15,1.0]),neckR:Object.freeze([0.95,1.35]),neckTwist:0.7,tail:Object.freeze({lead:0.15,gap:0.1,past:1}),arch:3})}),aussie:Object.freeze({ear:-3,flat:0.9,earBase:0.9,head:0.5,spine:Object.freeze({trunk:Object.freeze([0.6,0.6,0.55,0.5,0.45]),neck:Object.freeze([0.663,0.715,0.663]),rump:1,slump:Object.freeze([1.0,1.05]),neckR:Object.freeze([0.95,1.35]),neckTwist:0.7,tail:Object.freeze({hide:true}),arch:3})}),lab:Object.freeze({head:0.5,spine:Object.freeze({trunk:Object.freeze([0.6,0.6,0.55,0.5,0.45]),neck:Object.freeze([0.586,0.632,0.586]),rump:1,slump:Object.freeze([0.95,1.05]),neckR:Object.freeze([0.85,1.15]),neckTwist:0.7,tail:Object.freeze({lead:0.15,gap:0.1,past:1}),arch:2})})})});
+/* A CAT CURLED UP (the owner's confirmed goal of 2026-11-24, the cats' curl): the same closed ring on its own spine, its nose behind its
+   tail, its tail on the ground round the outside of its chin to its nose and on, its paws tucked under, its eyes shut, and its ears UP (`ear` 0: not laid back). Its trunk is
+   turned less than a dog's (`twist`), so a grey-and-white cat's white stays under it and in the ring's middle, a sliver of its
+   chest at most, its grey on top. Read for every cat's body, whichever version a dog would be in (dogCurlAngles) */
+const CATCURL=Object.freeze({spine:Object.freeze({trunk:Object.freeze([0.6,0.6,0.55,0.5,0.45]),neck:Object.freeze([0.58,0.65,0.58]),rump:1,slump:Object.freeze([0.9,1.05]),neckR:Object.freeze([0.9,1.1]),neckTwist:0.5,tail:Object.freeze({lead:0.15,gap:0.1,past:1})}),gather:0.5,twist:0.8,rest:0.72,head:0.6,nod:0.05,cheek:0.25,fore:Object.freeze([-1.97,2.37]),hind:Object.freeze([-2.2,1.85,-0.63,0.76]),ear:0,shadow:0.95});
 /* THE VERSIONS OF THE CURL (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). The curled pose is a
    LIST of versions, one picked at random for each curled lie-down. A version is one entry holding everything that differs
    between versions:

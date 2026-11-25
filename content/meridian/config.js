@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v301";
+const GAMEV="mq-v302";
 /* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
    and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
    bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
@@ -64,7 +64,7 @@ const COURSETAKE=["pace","poles","tunnel","bar"];
 /* CURLED UP ASLEEP (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). Meridian's dogs sometimes lie
    down curled up, nose to tail, asleep: in about half of their naps and 1 time in 3 as the lazy routine's lie-down (the
    engine's CURLCHANCE_DEF), and a curled nap lasts 0 to 5 seconds longer (CURLLONGER; Meridian has no personalities, so
-   its dogs get the plain, even share). Two versions, half and half (the curl's second version, the closed ring, from mq-v300;
+   its dogs get the plain, even share). Two versions, half and half (the curl's second version, the closed ring, from mq-v300, laid on his spine from mq-v302;
    the owner's confirmed goal of 2026-11-24): this one list turns both on. The switch is this list; without it no dog curls up
    and nothing is rolled for it. */
 const CURLTAKE=["dog"];
