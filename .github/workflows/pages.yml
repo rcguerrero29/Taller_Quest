@@ -1,6 +1,6 @@
 name: Pages
 # The city record (#14 ❗El expediente — the owner approved the crew's recommendations):
-# the site is deployed from this job's artifact with status.json written beside the game from the
+# the site is deployed from this run's artifact with status.json written beside the game from the
 # GitHub API — version and permits, nothing more. CI still never pushes a commit (contents: read).
 # THE SWITCH HAS BEEN MADE. Checked 2026-09-15 against the API rather than asked again: GitHub's own
 # `pages-build-deployment` last ran 2026-09-10 (run #158) and has been silent through every merge
@@ -12,35 +12,52 @@ name: Pages
 # while the switch was still unmade — but once it was made they became a SILENT ZERO (docs/GAUGE.md):
 # a failed deploy would have left CI green and the site stale, and a Source switched back to a branch
 # would have skipped upload and deploy through the `if:` and said nothing at all. A deploy that does
-# not happen has to be a red, not a quiet one.
-permissions:
-  contents: read
-  pull-requests: read
-  checks: read
-  pages: write
-  id-token: write
+# not happen has to be a red, not a quiet one. test/publish.js now fails the build check if either
+# comes back, or any `if:`.
+#
+# TWO JOBS, FROM 2026-11-26 (the owner's confirmed goal of 2026-11-26). Until then one job uploaded the
+# site and published it in two steps back to back. deploy-pages asks GitHub once for the list of this
+# run's artifacts and stops if the upload is not in it; it retries a server error, never an empty list
+# (its src/internal/api-client.js, getArtifactMetadata, at the pinned commit). On four of eleven merges
+# (publish runs 115, 122, 124 and 125) the list, asked less than half a second after the upload was
+# stored, did not hold it yet: "No artifacts named github-pages were found", the live game stayed on an
+# older version, and the build check stayed green. So `record` builds, checks and uploads, and `publish`
+# waits for it (`needs: record`) on a runner of its own, as GitHub's own starter workflows do for a site
+# that is built. That wait is the fix: it is time between the upload and the question, not a promise from
+# GitHub that the list is current, so a publish run that still finds nothing is a red to read, not to re-run.
+#
+# ACCESS, ONE JOB AT A TIME. Nothing at the top: a job here holds only what it says it holds, so a job
+# added tomorrow starts with nothing. `record` reads (the code, the pull requests and their checks, for
+# the city record). `publish` alone may publish (`pages: write`, `id-token: write`) and runs none of this
+# repository's code: no checkout, no `run:`, only deploy-pages. Until 2026-11-26 the whole workflow held
+# the right to publish, so the steps that run this repository's own scripts held it too.
+# configure-pages came off the same day: nothing here read what it wrote (its outputs are for site
+# generators), deploy-pages fails on its own when Pages is not set up, and kept in `record` it would have
+# needed access to Pages there.
+permissions: {}
 on:
   push:
     branches: [main]
 # workflow_dispatch: dropped 2026-09-21 (docs/SECURITY.md, the critic's finding 15). Never used in
 # 49 of 49 runs, and a classic `repo` token carries Actions: write — enough to dispatch a deploy by
 # hand. One door: a push to main, which the rulesets guard.
+# One publish run at a time. A new merge cancels the run before it, wherever that run is: building, or
+# its `publish` waiting for the owner's approval, so the approval waiting is for the newest main (publish
+# runs waiting for approval were seen cancelled this way in October 2026, when the whole job waited).
 concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
   record:
     runs-on: ubuntu-latest
-    # Finding CI-2 (2026-09-21): a required reviewer on the github-pages environment gates ONLY a job
-    # that declares the environment. Without this key the setting the owner flips does nothing.
-    # With it, and with "Required reviewers: rcguerrero29" set under Settings → Environments →
-    # github-pages, deploy-pages waits for his click — a bad push to main stays off the internet.
-    # Until he sets it, this key changes nothing: the environment exists with no rules.
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read        # the checkout
+      pull-requests: read   # the city record reads the owner's open pull requests
+      checks: read          # and their checks
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false   # no step after the checkout needs the job's key in git's settings
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22
@@ -71,10 +88,28 @@ jobs:
       # the last thing is put in it, or you are checking a different box.
       - name: R10 — nothing private is in the upload
         run: node test/public.js _site
-      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b  # v5
-        id: pages
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
         with:
           path: _site
+  publish:
+    needs: record
+    runs-on: ubuntu-latest
+    # Finding CI-2 (2026-09-21): a required reviewer on the github-pages environment gates ONLY a job
+    # that declares the environment. Without this key the setting the owner flips does nothing.
+    # With it, and with "Required reviewers: rcguerrero29" set under Settings → Environments →
+    # github-pages, deploy-pages waits for his click — a bad push to main stays off the live game. (Not off the
+    # internet: `record` runs before his click, and the site it builds is kept as this run's artifact for one day,
+    # which anyone signed in to GitHub can download. It holds only what main already serves, checked by R10.)
+    # It is set: publish runs 123 to 125 each carry one approval for github-pages (read from the runs on
+    # 2026-11-26). Until that day the key sat on the one job, so the build waited for his click too; now it
+    # sits on this job alone, so `record` has built, checked and uploaded the site before he is asked, a
+    # `record` that fails asks him nothing, and his click starts the publish and nothing else.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write      # to publish the uploaded site
+      id-token: write   # deploy-pages proves to Pages which run it is
+    steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4

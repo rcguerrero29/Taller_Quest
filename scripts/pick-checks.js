@@ -46,6 +46,7 @@ const CHECKS = [
   { self: 'test/quotes.js', run: 'node test/quotes.js --range {base}..HEAD', selftest: 'node test/quotes.js --selftest', quick: true, reads: ['*'] },
   { self: 'test/pointers.js', run: 'node test/pointers.js', selftest: 'node test/pointers.js --selftest', quick: true, reads: NOTES },
   { self: 'test/gate.js', run: 'node test/gate.js', selftest: 'node test/gate.js --selftest', quick: true, reads: ['.github/'] },
+  { self: 'test/publish.js', run: 'node test/publish.js', selftest: 'node test/publish.js --selftest', quick: true, reads: ['.github/workflows/pages.yml'] },
   { self: 'test/protect.js', selftest: 'node test/protect.js --selftest', quick: true, reads: ['.github/'] },
   { self: 'test/pushguard.js', selftest: 'node test/pushguard.js --selftest', quick: true, reads: ['.claude/'] },
   { self: 'scripts/clean-copy.js', selftest: 'node scripts/clean-copy.js --selftest', quick: true, reads: [] },
