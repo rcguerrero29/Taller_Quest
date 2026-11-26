@@ -22085,11 +22085,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           const all = await p.evaluate(async () => {
             const out = [], el = document.getElementById('world'), keep = { w: world, cam: camMode, hidden: el.hidden, fx, fy, px, py, moving };
             const cols = B => { const s = new Set(); B.traverse(o => { if (o.isMesh) { const c = o.userData.base || o.material.userData.base; if (c) s.add('#' + c.getHexString().toUpperCase()); } }); return [...s]; };
+            const painted = B => { let p = false; B.traverse(o => { if (o.isMesh && o.userData.wears === 'shirt' && o.material && o.material.map) p = true; }); return p; };   /* a patterned shirt is painted on, its colour in the picture, not the material */
             const wears = B => { const s = {}; B.traverse(o => { if (o.isMesh && o.userData.wears) s[o.userData.wears] = (s[o.userData.wears] || 0) + 1; }); return s; };
             try {
               for (const who of PEOPLETAKE) { const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who));
                 if (!wid) { out.push({ who, why: 'stands at no station in any world' }); continue; }
                 world = wid; const w = CW(), n = w.npcs.find(q => q.npc === who), held = { wnext: n.wnext, mv: n.mv };
+                /* not someone who keeps a window (their body stands against the counter, facing the street: PEOPLEWIN) and not someone
+                   who roams the street (`roams`: they are gone from the square looked at, held or not): the rows above leave both out for the same reasons,
+                   and so does this one, by name (found on the town, 2026-11-26) */
+                if (n.win || n.roams) { out.push({ who, skip: n.win ? 'keeps a window' : 'roams the street' }); continue; }   /* one who only wanders is held still above, and asked */
                 try { n.mv = null; n.wnext = Infinity; n.fx = n.x; n.fy = n.y;
                   let at = null, best = Infinity;
                   for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N' || stairLift(w, x, y)) continue;
@@ -22105,7 +22110,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   for (let k = 0; k < 20 && !(T3.peopleOn && T3.peopleOn.get(n) && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); k++) { await new Promise(res => setTimeout(res, 100)); draw3d(); }
                   const B = T3.peopleOn && T3.peopleOn.get(n);
                   r.full = !!(B && B.visible && B.parent === T3.scene && T3.peopleShown.has(n));
-                  if (B) { r.fullKey = B.userData.key === key; r.cols = cols(B); r.wears = wears(B); r.robotParts = !!B.userData.robot; }
+                  if (B) { r.fullKey = B.userData.key === key; r.cols = cols(B); r.wears = wears(B); r.robotParts = !!B.userData.robot; r.painted = painted(B); }
                   r.bad = !!(T3.peopleBad && T3.peopleBad.has(n)); r.kept = T3.peopleOn ? T3.peopleOn.size : 0;
                   out.push(r);
                 } finally { n.wnext = held.wnext; n.mv = held.mv; n.fx = n.x; n.fy = n.y; } }
@@ -22121,7 +22126,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45) return true;
             const q = x.map((v, i) => (v + 4) / (y[i] + 4)), m = (q[0] + q[1] + q[2]) / 3; return m >= 0.55 && m <= 1.2 && q.every(v => Math.abs(v - m) <= 0.07); };
           let fine = 0, maxKept = 0;
-          for (const r of all.people) { if (r.why) { say(0, 'every person: ' + r.who + ', named in PEOPLETAKE, ' + r.why + ', so whether they stand as a body could not be asked'); continue; }
+          const skipped = all.people.filter(r => r.skip);
+          for (const r of all.people) { if (r.skip) continue; if (r.why) { say(0, 'every person: ' + r.who + ', named in PEOPLETAKE, ' + r.why + ', so whether they stand as a body could not be asked'); continue; }
             const at = r.who + ' (in ' + r.wid + ')', before = PB.length; maxKept = Math.max(maxKept, r.kept);
             if (r.lit) { if (!r.first.light) say(0, 'every person: when ' + at + ' came into view, no light body stood in for them while their body was made' + (r.first.full ? ': their full body was made in that very frame' : ''));
               else { if (!r.first.lightKey) say(0, 'every person: ' + at + '\'s light body was not made from the look their card is painted with');
@@ -22131,13 +22137,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             if (r.bad) { say(0, 'every person: ' + at + '\'s body could not be made (the maker threw), so they stay their stand-in all session'); continue; }
             if (!r.full) { say(0, 'every person: ' + at + ', two squares from you on a laptop, never stood as a full body: ' + (r.lit ? 'their light body' : 'their card') + ' stayed'); continue; }
             if (!r.fullKey) say(0, 'every person: ' + at + '\'s body was not made from the look their card is painted with');
-            { const miss = ['shirt', 'skin'].concat(r.bald || r.robot ? [] : ['hair']).filter(k => !r.cols.some(c => nearJ(c, r.lk[k])));   /* a tin man's card paints no hair: its tin is the shirt, its head the skin (drawRobot) */
+            { const miss = (r.painted ? [] : ['shirt']).concat(['skin']).concat(r.bald || r.robot ? [] : ['hair']).filter(k => !r.cols.some(c => nearJ(c, r.lk[k])));   /* a painted shirt's colour is the shirt's own rows' to ask */   /* a tin man's card paints no hair: its tin is the shirt, its head the skin (drawRobot) */
               if (miss.length) say(0, 'every person: ' + at + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its colours are ' + r.cols.join(' ')); }
             if (r.hat !== !!r.wears.hat) say(0, 'every person: ' + at + (r.hat ? ' wears the hard hat on their card and none on their body' : ' wears no hat on their card and ' + r.wears.hat + ' hat parts on their body'));
             if (r.formal !== !!(r.wears.collar && r.wears.necktie)) say(0, 'every person: ' + at + (r.formal ? '\'s card wears a collar and tie (formal) and their body does not' : '\'s body wears a collar and tie their card does not'));
             if (r.robot !== r.robotParts) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card (robot) and a person of flesh on their body: grey skin, hair and a shirt' : '\'s body is a tin man and their card is not'));
             if (PB.length === before) fine++; }
-          say(1, 'every person: ' + fine + ' of ' + all.people.length + ' named people stood as a light body first and then as a full body that reads as their card; at most ' + maxKept + ' bodies kept while they were asked one after another');
+          if (skipped.length) say(1, 'every person: ' + skipped.map(r => r.who + ' (' + r.skip + ')').join(', ') + ' not asked by this row, as the rows above leave them out');
+          say(1, 'every person: ' + fine + ' of ' + (all.people.length - skipped.length) + ' named people stood as a light body first and then as a full body that reads as their card; at most ' + maxKept + ' bodies kept while they were asked one after another');
           /* K · the fullest room, and the bound on bodies kept */
           const F = all.fullest;
           if (F.most > F.max) say(0, 'in ' + F.world + ', the room with the most named people (' + F.named + '), ' + F.most + ' stood as bodies at once, more than the engine\'s limit of ' + F.max);
