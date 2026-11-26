@@ -1649,7 +1649,7 @@ const GARMENTPART={
      sleeve over each of his arms, on the same joints, so it moves with them; the inside of it a shade darker, seen down the
      front and into the collar. Every size is read off his shirt as it was made (its torso part) and his limbs, so it fits
      every build and every hang. Its collar is left wide, the hood's to fill (hoodMake) */
-  jacket(M,row,root){const{J,part,cap,bone,Lm,H}=M,col=row.colours[0],rib=M.shade(col),inside="#"+new THREE.Color(col).multiplyScalar(0.55).getHexString();
+  jacket(M,row,root){const{J,part,cap,bone,Lm,H}=M,col=row.colours[0],rib=M.shade(col),inside=(row.linings&&row.linings[0])||"#"+new THREE.Color(col).multiplyScalar(0.55).getHexString();   /* a contrasting lining (GARMENTS) */
     const shirt=J.spine.children.find(o=>o.isMesh&&o.userData.wears==="shirt");if(!shirt)return;
     shirt.geometry.computeBoundingBox();const bb=shirt.geometry.boundingBox,sy=shirt.scale.y,
       lo=shirt.position.y+bb.min.y*sy,hi=shirt.position.y+bb.max.y*sy,tw=bb.max.x*shirt.scale.x,td=bb.max.z*shirt.scale.z,
@@ -1669,7 +1669,10 @@ const GARMENTPART={
       part("elbow_"+s,new THREE.SphereGeometry(Math.max(ra,rf)*1.06,14,10),"jacket",M.shade(col),0,0,0);});
     if(row.hood){const n=J.chest.position.clone().add(J.neck.position);   /* the neck joint, in the spine's frame */
       const hd=hoodMake(M,{arm:garmentArm(row.arm,M.lk),joint:"neck",y:top-n.y,rx:JACKETNECK*sx,rz:JACKETNECK*sz,bx:sx,bz:sz,gap:gap(top),col,inside,pull:row.pull});
-      root.userData.hoodPiece=hd;root.userData.hood="up";}}
+      root.userData.hoodPiece=hd;root.userData.hood="up";
+      /* HIS HAIR UNDER THE HOOD (the owner's answer of 2026-11-26: long hair is hidden while the hood is up): every part of his
+         hair is put away while the hood is up and comes back as the hood goes down over the back of his head (hoodPull) */
+      const hair=[];J.head.traverse(o=>{if(o.isMesh&&o.userData.wears==="hair")hair.push(o);});root.userData.hoodHair=hair;hair.forEach(o=>{o.visible=false;});}}
 };
 /* the arm a garment's row names, "right" or "left"; for "either", one of the two chosen once a person by his look (its colours
    and style), so the same person always takes his hood down with the same hand, whenever his body is made */
@@ -1789,6 +1792,7 @@ function hoodPull(B,t){const H=B&&B.userData.hoodPiece;if(!H)return;
   const curve=(a,b,x)=>{const m=a.clone().lerp(b,0.5).add(new THREE.Vector3(sd*0.04,0.02,0.07).multiplyScalar(B.userData.build&&B.userData.build.height||1));
     return a.clone().multiplyScalar((1-x)*(1-x)).addScaledVector(m,2*x*(1-x)).addScaledVector(b,x*x);};
   B.userData.hood=u>=1?"down":u>0?"pulling":"up";
+  {const show=u>=T0+0.6*(T1-T0);(B.userData.hoodHair||[]).forEach(o=>{o.visible=show;});}   /* his hair back once the hood has passed over the crown */
   if(u<=T1){const at=u<=T0?curve(rest,grip(0),e(u/T0)):grip(e((u-T0)/(T1-T0)));B.updateMatrixWorld(true);armReach(B,s,ch.localToWorld(at),u<=T0?e(u/T0/0.25):1);}
   else{   /* letting go: the arm comes down from where it let the hood go, turning at the shoulder and the elbow, to rest */
     const x=e((u-T1)/(1-T1)),at=grip(1);B.updateMatrixWorld(true);armReach(B,s,ch.localToWorld(at),1);
@@ -3820,7 +3824,7 @@ const LIGHTGEO={};const LIGHTMAT=new Map();
 function lightGeo(k){return LIGHTGEO[k]||(LIGHTGEO[k]=k==="ball"?new THREE.SphereGeometry(1,12,8):k==="ground"?new THREE.CircleGeometry(1,16):new THREE.CapsuleGeometry(1,2,3,8));}   /* a capsule 4 tall, radius 1 */
 function lightMat(col){const c=new THREE.Color(col),h=c.getHexString();let m=LIGHTMAT.get(h);
   if(!m){m=new THREE.MeshLambertMaterial({color:c.clone()});m.userData.base=c;LIGHTMAT.set(h,m);}return m;}
-function lightMake(skel,lk){
+function lightMake(skel,lk){const jk=garmentsOf(lk).includes("jacket")?GARMENTS.jacket:null,top=jk?jk.colours[0]:lk.shirt,hood=!!(jk&&jk.hood);   /* a jacket over the shirt (THE HOODED JACKET) */
   const root=new THREE.Group();root.name="lightbody";const J={},Lm=skel.limb,H=skel.build.height,b=skel.build,r=skel.head;
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
@@ -3830,15 +3834,18 @@ function lightMake(skel,lk){
   const limb=(a,c,rad,wears,col)=>{const[x,y,z]=at(c),L=Math.hypot(x,y,z);part(a,"cap",wears,col,x/2,y/2,z/2,rad,(L+rad)/4,rad);};
   const trousers=trousersOf(lk);
   ["l","r"].forEach(s=>{limb("upleg_"+s,"knee_"+s,Lm.leg,"trousers",trousers);limb("knee_"+s,"ankle_"+s,Lm.shin,"trousers",trousers);
-    limb("shoulder_"+s,"elbow_"+s,Lm.arm,"shirt",lk.shirt);limb("elbow_"+s,"wrist_"+s,Lm.forearm,"shirt",lk.shirt);
+    limb("shoulder_"+s,"elbow_"+s,Lm.arm,"shirt",top);limb("elbow_"+s,"wrist_"+s,Lm.forearm,"shirt",top);
     part("wrist_"+s,"ball","skin",lk.skin,0,-Lm.hand*0.5,0,Lm.hand,Lm.hand,Lm.hand);});
   const hx=Math.abs(at("upleg_l")[0])+Lm.leg,tw=Math.abs(at("shoulder_l")[0]),td=tw*0.85,sp=at("spine"),ch=at("chest"),nk=at("neck"),hd=at("head");
   part("hips","ball","trousers",trousers,0,0.01*H,0,hx,0.07*H,td*0.9);
-  {const lo=-sp[1]-0.09*H*b.hang,hi=ch[1]+nk[1]+0.04*H;part("spine","cap","shirt",lk.shirt,0,(lo+hi)/2,0,tw,(hi-lo)/4,td);}
+  {const lo=-sp[1]-0.09*H*b.hang,hi=ch[1]+nk[1]+0.04*H;part("spine","cap","shirt",top,0,(lo+hi)/2,0,tw,(hi-lo)/4,td);}
   part("neck","cap","skin",lk.skin,0,hd[1]/2,0,0.045*H,(hd[1]+0.045*H)/4,0.045*H);
   /* the head as a ball, its centre 0.7 of a radius over its joint as the full body's; the hair a cap over its crown and back */
   part("head","ball","skin",lk.skin,0,0.7*r,0,r,r,r);
-  if(hairStyleOf(lk)!=="bald")part("head","ball","hair",lk.hair,0,0.82*r,-0.1*r,1.06*r,1.0*r,1.04*r);
+  /* IN A HOODED JACKET (the owner's answers of 2026-11-26: the hood matters most here, where the light body stands in, turned
+     away): the jacket's colour on its body and arms, and the hood up over its head and down the back of the neck, its hair hidden */
+  if(hood)part("head","ball","hood",top,0,0.72*r,-0.12*r,1.2*r,1.14*r,1.2*r);
+  else if(hairStyleOf(lk)!=="bald")part("head","ball","hair",lk.hair,0,0.82*r,-0.1*r,1.06*r,1.0*r,1.04*r);
   const sh=new THREE.Mesh(lightGeo("ground"),LIGHTMAT.get("ground")||(LIGHTMAT.set("ground",new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false})),LIGHTMAT.get("ground")));
   sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};root.add(sh);
   root.userData.joints=J;root.userData.skel=skel;root.userData.light=true;return root;}
@@ -3929,6 +3936,16 @@ function t3PeopleMake(){
       T3.scene.add(B);on.set(e.n,B);}
     catch(err){t3Note("person's body",err);(T3.peopleBad||(T3.peopleBad=new Set())).add(e.n);}
     if(wait.length>1)T3.peopleWait=wait.filter(x=>x!==e),t3PeopleMake();});}
+/* THE HOOD COMES DOWN (the owner's answers of 2026-11-26): a person wearing a hooded jacket stands as a full body with the hood up;
+   a few seconds later (between the garment's two `wait`s, a different moment for each person, read off their look), the arm takes
+   it down (hoodPull). The person keeps it down for the rest of the visit: it is written on the person (n.hoodDown), so a body made
+   again later, in this room or after another, stands with the hood already down */
+function peopleHood(B,n,dt){const g=GARMENTS.jacket,P=g.pull;
+  if(n.hoodDown){if(B.userData.hood!=="down")hoodPull(B,P);return;}
+  if(B.userData.hoodWait===undefined){const lk=npcWhimsy(n);let h=0;[lk.skin,lk.hair,lk.shirt,lk.style,n.npc||""].join("|").split("").forEach(c=>{h=(h*31+c.charCodeAt(0))|0;});
+    B.userData.hoodWait=g.wait[0]+((h>>>0)%1000)/1000*(g.wait[1]-g.wait[0]);B.userData.hoodT=0;}
+  B.userData.hoodT+=Math.max(0,dt||0);const t=B.userData.hoodT-B.userData.hoodWait;
+  if(t>0){hoodPull(B,Math.min(P,t));if(t>=P)n.hoodDown=true;}}
 function t3PeopleBodies(dt){
   const on=T3.peopleOn||(T3.peopleOn=new Map()),shown=new Set();
   const drop=n=>{const B=on.get(n);if(B){B.parent&&B.parent.remove(B);t3Dispose(B);}on.delete(n);};
@@ -3970,6 +3987,7 @@ function t3PeopleBodies(dt){
     B.visible=true;B.userData.seen=tick;B.userData.world=world;B.position.set(x+0.5+(open?open[0]*PEOPLEWIN:0),lift,y+0.5+(open?open[1]*PEOPLEWIN:0));B.rotation.set(0,B.userData.turn?lightTurn(B,B.userData.yaw,dt):B.userData.yaw,0);B.scale.setScalar(sc);
     t3BodyLight(B);
     t3BodyPose(B,B.userData.phase||0,walking,(a,b)=>stairLift(w,Math.floor(a),Math.floor(b)));
+    if(B.userData.hoodPiece)peopleHood(B,n,dt);
     shown.add(n);});
   if(wait.length){T3.peopleWait=wait;t3PeopleMake();}
   if(lit&&(light.size||T3.lightOn&&T3.lightOn.has("me")))lightLit();

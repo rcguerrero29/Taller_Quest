@@ -5717,7 +5717,10 @@ const OUTFITOWN=["apron"];   /* the drawings a world turns on; `formal` is every
    down: "right" or "left", or "either" for one chosen at random per person, room left for later (the owner's answer of
    2026-11-26: the right arm for now); and `pull`, how many seconds the arm takes. Today one garment, worn by no world: it is
    seen on one test body until the owner approves its pictures. */
-const GARMENTS=Object.freeze({jacket:Object.freeze({hood:true,colours:Object.freeze(["#2C3E50","#3A3D42","#3E4A36"]),arm:"right",pull:1.0})});
+/* `linings`: the lining that goes with each of the colours, a contrasting one (the owner's answer of 2026-11-26), so the inside
+   of the hood and the front read against the cloth, the hood down above all. `wait`: seconds after a person's full body first
+   stands before the pull starts, the least and the most, a different moment for each person (the owner's answer of 2026-11-26) */
+const GARMENTS=Object.freeze({jacket:Object.freeze({hood:true,colours:Object.freeze(["#2C3E50","#3A3D42","#3E4A36"]),linings:Object.freeze(["#C9B48C","#B7774A","#C8BBA2"]),arm:"right",pull:1.0,wait:Object.freeze([2,4])})});
 const garmentsOf=lk=>Array.isArray(lk&&lk.wear)?lk.wear.filter((g,i,a)=>typeof g==="string"&&Object.prototype.hasOwnProperty.call(GARMENTS,g)&&a.indexOf(g)===i):[];
 const OUTFITON=new Set(typeof OUTFITTAKE!=="undefined"&&Array.isArray(OUTFITTAKE)?OUTFITOWN.filter(o=>OUTFITTAKE.includes(o)):[]);
 /* what a world may say in OUTFITTAKE, checked at boot as BUILDER is (buildAudit): a list written wrong turns nothing on, and
