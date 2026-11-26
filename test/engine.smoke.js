@@ -6784,7 +6784,11 @@ function findChromium() {
         const sized = await p.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, [w, h], { timeout: 15000, polling: 100 }).then(() => true, () => false); await rafs(p, 2);
         const s = await look(), on = 'in a real window ' + w + ' by ' + h + ' (its shorter side ' + Math.min(w, h) + ' px), ';
         got.push(w + ' by ' + h + ' ' + (!s.ok ? 'not drawn' : s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither'));
-        if (!sized) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
+        /* AND BY WHAT IT READ AFTER (2026-11-26): the wait above runs inside the page, so a page busy drawing for longer than its
+           limit never runs it, and on GitHub's machines it gave up 3 times in 10 on unchanged code while the page, read the moment
+           after, had its size (a trial of the build check, ten runs of each part of this test). The reading `look` takes after the
+           wait is asked from outside the page and is answered when the page is free: a window read at its size there was read */
+        if (!sized && !(s.w === w && s.h === h)) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
         if (!s.ok) P.push(on + 'the 3D camera could not draw, so whether the star dog stands as a body there could not be asked');
         else if (want === 'body') { if (!s.body) P.push(on + 'the star dog two squares from you is his flat card: under 480 px they stay cards, for now, and from 480 px up they are bodies');
           else if (s.card) P.push(on + 'the star dog is drawn twice: his card stands in the same place as his body'); }
