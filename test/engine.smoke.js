@@ -21822,7 +21822,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      HOODED JACKET; GARMENTS in engine/engine.js). Asked on bodies made here, in every build from the smallest to the largest, and
      on a body that wears nothing. Each sentence is what a person would say if that part broke. Red on the skeleton of mq-v304
      (garmentMake, hoodArmOf and hoodPull written to do nothing). MQ_ONLY_PEOPLE=1 asks it too. */
-  if (typeof GARMENTS !== 'undefined' || await page.evaluate(() => typeof GARMENTS !== 'undefined')) {
+  /* asked only where bodies can be made: a world with no 3D camera loads no three.js (the gauge's plain world, found on GitHub on
+     2026-11-26), and there the jacket is never drawn, so it says so instead */
+  const jacketCan = await page.evaluate(() => typeof GARMENTS !== 'undefined' && !!window.THREE && typeof bodyMake === 'function' && typeof bodySkeleton === 'function');
+  if (!jacketCan) console.log('  COUNT-ONLY: the hooded jacket: this world makes no 3D bodies (no three.js or no body maker), so the jacket was not asked');
+  else {
     const JK = [], jsay = m => JK.push('the hooded jacket: ' + m);
     const r = await page.evaluate(() => {
       const out = { builds: [] }, look0 = { shirt: '#8A939B', skin: '#C08356', hair: '#2E2630', style: 'buzz' };
