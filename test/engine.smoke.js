@@ -22101,7 +22101,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                     bald: hairStyleOf(lk) === 'bald', hat: lk.hat === 'hard', formal: lk.outfit === 'formal', robot: !!lk.robot, lit: LIGHTON.has('person') };
                   draw3d();
                   const L = T3.lightShown && T3.lightShown.get(n), F0 = T3.peopleOn && T3.peopleOn.get(n);
-                  r.first = { light: !!(L && L.visible && L.parent === T3.scene), full: !!(F0 && F0.visible), lightKey: L ? L.userData.key === key : null, lightCols: L ? cols(L) : [] };
+                  r.first = { light: !!(L && L.visible && L.parent === T3.scene), full: !!(F0 && F0.visible), lightKey: L ? L.userData.key === key : null, lightCols: L ? cols(L) : [], lightRobot: !!(L && L.userData.robot) };
                   for (let k = 0; k < 20 && !(T3.peopleOn && T3.peopleOn.get(n) && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); k++) { await new Promise(res => setTimeout(res, 100)); draw3d(); }
                   const B = T3.peopleOn && T3.peopleOn.get(n);
                   r.full = !!(B && B.visible && B.parent === T3.scene && T3.peopleShown.has(n));
@@ -22125,7 +22125,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const at = r.who + ' (in ' + r.wid + ')', before = PB.length; maxKept = Math.max(maxKept, r.kept);
             if (r.lit) { if (!r.first.light) say(0, 'every person: when ' + at + ' came into view, no light body stood in for them while their body was made' + (r.first.full ? ': their full body was made in that very frame' : ''));
               else { if (!r.first.lightKey) say(0, 'every person: ' + at + '\'s light body was not made from the look their card is painted with');
-                const lm = ['shirt', 'skin'].concat(r.bald ? [] : ['hair']).filter(k => !r.first.lightCols.some(c => nearJ(c, r.lk[k])));
+                const lm = ['shirt', 'skin'].concat(r.bald || r.robot ? [] : ['hair']).filter(k => !r.first.lightCols.some(c => nearJ(c, r.lk[k])));
+                if (r.robot !== r.first.lightRobot) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card and their light body is a round person, not his blocks' : '\'s light body is a tin man and their card is not'));
                 if (lm.length) say(0, 'every person: ' + at + '\'s light body does not wear their card\'s ' + lm.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its colours are ' + r.first.lightCols.join(' ')); } }
             if (r.bad) { say(0, 'every person: ' + at + '\'s body could not be made (the maker threw), so they stay their stand-in all session'); continue; }
             if (!r.full) { say(0, 'every person: ' + at + ', two squares from you on a laptop, never stood as a full body: ' + (r.lit ? 'their light body' : 'their card') + ' stayed'); continue; }

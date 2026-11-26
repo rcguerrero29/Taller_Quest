@@ -3715,15 +3715,16 @@ function lightStand(who,lk,x,y,lift,yaw,walking,dt,groundAt){
   const on=T3.lightOn||(T3.lightOn=new Map());let B=on.get(who);
   const key=peopleKey(lk);
   if(B&&(B.userData.key!==key||B.parent!==T3.scene)){B.parent&&B.parent.remove(B);on.delete(who);B=null;}
-  if(!B){const Ch=bodyChoicesOf(lk.body);B=lightMake(bodySkeleton("person",Ch),{...lk,body:Ch});B.userData.key=key;T3.scene.add(B);on.set(who,B);}
+  if(!B){const Ch=bodyChoicesOf(lk.body);B=lk.robot?robotMake(bodySkeleton("person",Ch),lk):lightMake(bodySkeleton("person",Ch),{...lk,body:Ch});B.userData.key=key;T3.scene.add(B);on.set(who,B);}   /* a tin man stands in as his blocks: he is quick to make (A TIN MAN'S BODY), and a round light body read as a grey person, not a tin man (the owner's confirmed goal of 2026-11-26) */
   const S=B.userData.skel,sc=T3PERSON/0.92,a=B.userData.at,go=a?Math.hypot(x-a[0],y-a[1]):0;B.userData.at=[x,y];
   if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
   B.visible=true;B.position.set(x+0.5,lift,y+0.5);B.rotation.set(0,yaw,0);B.scale.setScalar(sc);B.userData.yaw=yaw;
   t3BodyPose(B,B.userData.phase||0,walking,groundAt);
+  if(B.userData.robot)t3BodyLight(B);   /* his blocks are lit as a full body is (lightLit lights the shared colours only) */
   if(B.userData.top===undefined)B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;
   return B;}
-/* take a light body away (never disposed: its shapes and colours are shared); the yaw it stood at, for the turn round */
-function lightDrop(who){const on=T3.lightOn,B=on&&on.get(who);if(!B)return null;B.parent&&B.parent.remove(B);on.delete(who);return B.visible?B.userData.yaw:null;}
+/* take a light body away (never disposed: its shapes and colours are shared, a tin man's blocks apart); the yaw it stood at, for the turn round */
+function lightDrop(who){const on=T3.lightOn,B=on&&on.get(who);if(!B)return null;B.parent&&B.parent.remove(B);on.delete(who);if(B.userData.robot)t3Dispose(B);return B.visible?B.userData.yaw:null;}   /* a tin man's blocks are his own, not the shared light colours, so they go with him */
 /* the turn round, each frame: from where the light body faced to `to`, over LIGHTTURN seconds of the time handed in */
 function lightTurn(B,to,dt){const t=B.userData.turn;if(!t)return to;
   t.t+=Math.max(0,dt||0);const k=Math.min(1,t.t/LIGHTTURN),e=k*k*(3-2*k),d=Math.atan2(Math.sin(to-t.from),Math.cos(to-t.from));
