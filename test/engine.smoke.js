@@ -21813,6 +21813,82 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   }   /* the end of what MQ_ONLY_PEOPLE passes over */
 
+  /* ---- THE HOODED JACKET (mq-v304; the owner's confirmed goals of 2026-11-26) ----
+     A jacket worn over a person's outfit, its hood up and then pulled down by one arm (engine/engine3d.js, its block THE
+     HOODED JACKET; GARMENTS in engine/engine.js). Asked on bodies made here, in every build from the smallest to the largest, and
+     on a body that wears nothing. Each sentence is what a person would say if that part broke. Red on the skeleton of mq-v304
+     (garmentMake, hoodArmOf and hoodPull written to do nothing). MQ_ONLY_PEOPLE=1 asks it too. */
+  if (typeof GARMENTS !== 'undefined' || await page.evaluate(() => typeof GARMENTS !== 'undefined')) {
+    const JK = [], jsay = m => JK.push('the hooded jacket: ' + m);
+    const r = await page.evaluate(() => {
+      const out = { builds: [] }, look0 = { shirt: '#8A939B', skin: '#C08356', hair: '#2E2630', style: 'buzz' };
+      const make = (lk, build) => { const Ch = { ...bodyChoicesOf(lk.body), ...(build || {}) }; const B = bodyMake(bodySkeleton('person', Ch), { ...lk, body: Ch }, Ch); t3BodyPose(B, 0, false); B.updateMatrixWorld(true); return B; };
+      const boxOf = (B, w) => { const bb = new THREE.Box3(); B.traverse(o => { if (o.isMesh && o.userData.wears === w) bb.expandByObject(o); }); return bb.isEmpty() ? null : bb; };
+      const print = B => { const a = []; B.traverse(o => { if (o.isMesh) { const pp = o.geometry.attributes.position.array; let h = 0; for (let k = 0; k < pp.length; k += 7) h = (h * 31 + Math.round(pp[k] * 1e4)) | 0; a.push((o.userData.wears || '') + h + o.matrixWorld.elements.map(v => Math.round(v * 1e4)).join(',')); } }); return a.join(';'); };
+      const wp = (B, n) => { const v = new THREE.Vector3(); B.userData.joints[n].getWorldPosition(v); return v; };
+      /* the points of the hood's cloth where they stand (mq-v304, the builder's: a box round the hood is a proxy for the hood,
+         and a hand in front of his face is inside it) */
+      const cloth = B => { const a = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'hood') { const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) a.push(new THREE.Vector3().fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld)); } }); return a; };
+      const near = (B, w) => { let m = Infinity; cloth(B).forEach(v => { m = Math.min(m, v.distanceTo(w)); }); return m; };
+      /* nothing worn: exactly the body it was, and no jacket or hood part */
+      /* and "the body it was" is a body made with no garment maker at all (mq-v304, the builder's: compared only with each
+         other, three bodies that all pass through the maker cannot see a part it hangs on everybody) */
+      { const gm = garmentMake; let O = null; try { garmentMake = function () {}; O = make({ ...look0 }); } finally { garmentMake = gm; }
+        const A = make({ ...look0 }), Z = make({ ...look0, wear: [] }), U = make({ ...look0, wear: ['no such garment'] });
+        out.same = print(O) === print(A) && print(A) === print(Z) && print(A) === print(U); out.bare = !boxOf(A, 'jacket') && !boxOf(A, 'hood'); out.bareHood = A.userData.hood; }
+      out.arm = typeof hoodArmOf === 'function' ? hoodArmOf(make({ ...look0, wear: ['jacket'] })) : null;
+      for (const build of [{}, { height: 0.75 }, { height: 1.25 }, { width: 0.6 }, { width: 1.35 }]) {
+        /* the build handed in (mq-v304, the builder's: until then every row was made in the default build and said the build's name) */
+        const B = make({ ...look0, wear: ['jacket'] }, build), sk = B.userData.skel, row = { build: JSON.stringify(build), stands: [wp(B, 'head').y, wp(B, 'shoulder_l').x].map(v => v.toFixed(3)).join(' ') };
+        const jb = boxOf(B, 'jacket'), hb = boxOf(B, 'hood'), sb = boxOf(B, 'shirt');
+        row.jacket = !!jb; row.hood = !!hb; row.state = B.userData.hood;
+        const hc = wp(B, 'head').add(new THREE.Vector3(0, 0.7 * sk.head * B.scale.y, 0)), hr = sk.head * B.scale.y;
+        /* the hood up frames his face: none of its cloth in front of his eyes, brows and mouth */
+        const eb = boxOf(B, 'eye'), mb = boxOf(B, 'mouth'), bw = boxOf(B, 'brow');
+        if (hb && eb && mb && bw) row.face = cloth(B).filter(v => v.x > eb.min.x && v.x < eb.max.x && v.y > mb.min.y && v.y < bw.max.y && v.z > eb.min.z).length;
+        if (hb) { row.hoodTop = +(hb.max.y - (hc.y + hr)).toFixed(3); row.hoodBack = +((hc.z - hr) - hb.min.z).toFixed(3); row.hoodSide = +Math.min(hb.max.x - (hc.x + hr * 0.9), (hc.x - hr * 0.9) - hb.min.x).toFixed(3); }
+        if (jb && sb) { const ch = wp(B, 'chest').y; row.jacketWide = +Math.min(jb.max.x - sb.max.x, sb.min.x - jb.min.x).toFixed(3); row.jacketDeep = +Math.min(jb.max.z - sb.max.z, sb.min.z - jb.min.z).toFixed(3); row.jacketSpan = jb.min.y < ch && jb.max.y > ch; }
+        /* the pull: the hand at the hood by the middle, the hood down and the arm at rest at the end */
+        const arm = (typeof hoodArmOf === 'function' ? hoodArmOf(B) : 'right') === 'left' ? 'l' : 'r', P = GARMENTS.jacket.pull;
+        const rest = wp(B, 'wrist_' + arm).clone();
+        if (typeof hoodPull === 'function') {
+          hoodPull(B, P / 2); B.updateMatrixWorld(true); const hm = boxOf(B, 'hood'), w = wp(B, 'wrist_' + arm);
+          row.reach = hm ? +hm.distanceToPoint(w).toFixed(3) : null; row.rose = +(w.y - rest.y).toFixed(3);
+          const hand = sk.limb.hand * B.scale.y; row.hand = +(2 * hand).toFixed(3); row.on = hm ? +near(B, w).toFixed(3) : null;
+          /* after the middle, the hood on its way down with the hand on it, at some moment */
+          const way = []; for (let k = 11; k <= 19; k++) { hoodPull(B, P * k / 20); B.updateMatrixWorld(true); const b2 = boxOf(B, 'hood'), w2 = wp(B, 'wrist_' + arm); way.push([b2 ? b2.max.y : null, near(B, w2)]); }
+          hoodPull(B, P); B.updateMatrixWorld(true); const he = boxOf(B, 'hood'); row.end = B.userData.hood;
+          if (hb && he) { const drop = hb.max.y - he.max.y; row.follow = way.some(([y, d]) => y !== null && hb.max.y - y >= drop / 3 && hb.max.y - y <= drop * 0.95 && d <= 2 * hand); }
+          /* down, it lies on his back: most of its cloth behind the middle of his chest */
+          { const cl = cloth(B), cz = wp(B, 'chest').z; row.behind = cl.length ? +(cl.filter(v => v.z < cz).length / cl.length).toFixed(2) : null; }
+          row.downTop = he ? +(he.max.y - wp(B, 'head').y).toFixed(3) : null; row.armBack = +wp(B, 'wrist_' + arm).distanceTo(rest).toFixed(4); }
+        out.builds.push(row); t3Dispose(B); }
+      out.key = typeof peopleKey === 'function' ? [peopleKey({ ...look0 }) === peopleKey({ ...look0, wear: [] }), peopleKey({ ...look0 }) !== peopleKey({ ...look0, wear: ['jacket'] })] : null;
+      return out; });
+    if (!r.same) jsay('a body that wears nothing (or a garment that does not exist) is not exactly the body it was without the jacket');
+    if (!r.bare || r.bareHood !== undefined) jsay('a body that wears nothing has a jacket or a hood on it');
+    if (r.arm !== 'right') jsay('the arm that takes the hood down is ' + r.arm + ', where the owner asked for the right arm for now');
+    if (new Set(r.builds.map(b => b.stands)).size !== r.builds.length) jsay('two of the builds asked stand alike, their heads as high and their shoulders as wide (' + r.builds.map(b => b.build + ': ' + b.stands).join('; ') + '): the builds are not reaching the bodies made');
+    for (const b of r.builds) { const at = 'in the build ' + b.build + ', ';
+      if (!b.jacket) { jsay(at + 'a body that wears the jacket has no jacket part'); continue; }
+      if (!b.hood) jsay(at + 'the jacket has no hood');
+      if (b.state !== 'up') jsay(at + 'the hood does not start up (it is ' + b.state + ')');
+      if (b.hoodTop !== undefined && (b.hoodTop < 0 || b.hoodBack < 0 || b.hoodSide < 0)) jsay(at + 'the hood up does not cover the head: over its top by ' + b.hoodTop + ', behind its back by ' + b.hoodBack + ', past its sides by ' + b.hoodSide + ' (each at least 0)');
+      if (!(b.jacketWide >= 0 && b.jacketDeep >= 0 && b.jacketSpan)) jsay(at + 'the jacket does not wrap the shirt: outside it by ' + b.jacketWide + ' to the sides and ' + b.jacketDeep + ' front and back, across the chest: ' + b.jacketSpan);
+      if (!(b.reach <= 0.04)) jsay(at + 'half way through the pull the hand is ' + b.reach + ' from the hood, where it takes the hood (0.04 at most)');
+      else if (!(b.on <= b.hand)) jsay(at + 'half way through the pull the hand is inside the hood\'s box but ' + b.on + ' from its cloth (' + b.hand + ' at most, two hands\' width): it is not holding the hood');
+      if (b.face !== undefined && b.face > 0) jsay(at + 'the hood up covers his face: ' + b.face + ' points of its cloth stand in front of his eyes, brows and mouth');
+      if (b.follow === false) jsay(at + 'the hood does not go down with the hand: at no moment after the middle of the pull is the hand on the hood while the hood is on its way down');
+      if (b.behind !== null && b.behind !== undefined && !(b.behind >= 0.7)) jsay(at + 'the hood down does not lie on his back: only ' + Math.round(100 * b.behind) + '% of its cloth is behind the middle of his chest (70% at least)');
+      if (!(b.rose > 0.15)) jsay(at + 'half way through the pull the hand has risen ' + b.rose + ', not up to the hood');
+      if (b.end !== 'down') jsay(at + 'at the end of the pull the hood is ' + b.end + ', not down');
+      if (!(b.downTop < 0)) jsay(at + 'the hood down still reaches ' + b.downTop + ' above the head\'s joint: it lies on the shoulders, under the head');
+      if (!(b.armBack < 0.002)) jsay(at + 'the arm is not back at rest at the end of the pull (its hand ' + b.armBack + ' from where it was)'); }
+    if (!r.key || !r.key[0] || !r.key[1]) jsay('the people\'s body key does not follow what a look wears, or changes for a look that wears nothing');
+    fails.push(...JK);
+    if (!JK.length) console.log('  COUNT-ONLY: the hooded jacket: on ' + r.builds.length + ' builds the hood covers the head and leaves the face clear, the jacket wraps the shirt, the right hand takes the hood\'s cloth half way through the pull and goes down with it, and the hood ends down on his back with the arm at rest; a body that wears nothing is the body it was');
+  }
+
   /* ---- THE OTHER PEOPLE'S BODIES (mq-v274) ----
      A world that names people in its own PEOPLETAKE list, and takes the person's body (BODYTAKE names `person`), sees each of
      them near the camera's focus in the 3D camera as a jointed body made from their look, the card standing in until the body

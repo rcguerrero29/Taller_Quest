@@ -5709,6 +5709,16 @@ function shirtPattern(g,lk,x,y,w,h){const f=Object.prototype.hasOwnProperty.call
    written wrong (a word where a list goes, a word in capitals) turns nothing on and says so once at boot (outfitAudit). A
    word from a save is only ever compared with it, never looked up (test/engine.smoke.js, grep "THE APRON IS DRAWN ONLY"). */
 const OUTFITOWN=["apron"];   /* the drawings a world turns on; `formal` is every world's, and not one of them */
+/* THE GARMENTS (mq-v304; the owner's confirmed goals of 2026-11-26 on the hooded jacket): clothing worn over a person's
+   outfit, made in the body's own shapes from the body's own measures (engine/engine3d.js, its block THE HOODED JACKET). A look
+   names what it wears in `wear`, a list of the names below; a name not here is worn by nobody, and a look that names none is
+   drawn exactly as before. Each row says what the garment is: `hood`, whether it has one; `colours`, the plain colours one is
+   chosen from once per person (the owner's answer of 2026-11-26: three plain dark colours); `arm`, which arm takes the hood
+   down: "right" or "left", or "either" for one chosen at random per person, room left for later (the owner's answer of
+   2026-11-26: the right arm for now); and `pull`, how many seconds the arm takes. Today one garment, worn by no world: it is
+   seen on one test body until the owner approves its pictures. */
+const GARMENTS=Object.freeze({jacket:Object.freeze({hood:true,colours:Object.freeze(["#2C3E50","#3A3D42","#3E4A36"]),arm:"right",pull:1.0})});
+const garmentsOf=lk=>Array.isArray(lk&&lk.wear)?lk.wear.filter((g,i,a)=>typeof g==="string"&&Object.prototype.hasOwnProperty.call(GARMENTS,g)&&a.indexOf(g)===i):[];
 const OUTFITON=new Set(typeof OUTFITTAKE!=="undefined"&&Array.isArray(OUTFITTAKE)?OUTFITOWN.filter(o=>OUTFITTAKE.includes(o)):[]);
 /* what a world may say in OUTFITTAKE, checked at boot as BUILDER is (buildAudit): a list written wrong turns nothing on, and
    whoever wrote it would see no apron and have no way to find out why. Only a world that declares the list is asked, and it

@@ -1420,7 +1420,7 @@ function bodyMake(skel,lk,build){
     return "#"+(l<0.2?c.lerp(new THREE.Color(1,1,1),0.16):c.multiplyScalar(0.8)).getHexString();};
   const nose=col=>"#"+new THREE.Color(col).multiply(new THREE.Color(0.86,0.7,0.64)).getHexString();   /* a warmer, deeper shade of the skin, as a nose catches colour */
   const knob=(j,r,col)=>part(j,new THREE.SphereGeometry(r*1.12,14,10),"joint",shade(col),0,0,0);
-  const M={J,skel,lk,b,H,Lm,part,cap,bone,knob,head:skel.head,C};   /* what a part function is handed */
+  const M={J,skel,lk,b,H,Lm,part,cap,bone,knob,shade,head:skel.head,C};   /* what a part function is handed */
   /* legs: trousers to the ankle, as thick as the card's legs are wide, the knee showing; and a shoe flat under each, its sole
      at the ankle's rest height below the joint, from behind the heel to past the toe's joint */
   ["l","r"].forEach(s=>{
@@ -1619,7 +1619,183 @@ function bodyMake(skel,lk,build){
   root.add(sh);
   M.paint();   /* his head's sheet, painted once now that every layer is laid (PAINTED ONCE, above) */
   shirtPaint(root,{...lk,body:C});
+  garmentMake(root,J,skel,{...lk,body:C},b,M);   /* what he wears over his outfit (THE HOODED JACKET); nothing for a look that wears nothing */
   root.userData.joints=J;root.userData.skel=skel;root.userData.build=b;root.userData.choices=C;return root;}
+/* ---- THE HOODED JACKET (mq-v304; the owner's confirmed goals of 2026-11-26) ----
+   A jacket worn over a person's outfit, in two versions: the hood up, covering the head, and the hood down, lying on the back
+   of the shoulders. A person in it with the hood up reaches back with one arm, takes the hood and pulls it down; the hood moves
+   with the hand. Built by hand in the body's own shapes, every size read off the skeleton and the build, so it fits every
+   build; its hood made so it can later be hung on other clothing.
+   THE CONTRACTS (the skeleton; test/engine.smoke.js, grep "THE HOODED JACKET", asks each):
+   garmentMake(root,J,skel,lk,build,M) hangs each garment the look wears (garmentsOf, engine/engine.js) on the joints, by its
+     part function in GARMENTPART, handed the maker's own kit M (its `part`, so a garment's parts are lit, drawn through walls
+     and put away as the body's are). Every part says what it is in userData.wears: "jacket" (its body and sleeves) or "hood".
+     A look that wears nothing gets nothing, and its body is exactly what it was before. A body with a hood starts with
+     root.userData.hood = "up", and keeps the hood itself as root.userData.hoodPiece (hoodMake).
+   hoodArmOf(B) is "right" or "left": the garment's arm, or for "either" one chosen once per body.
+   hoodPull(B,t) poses the pull t seconds in, 0 to the garment's `pull`: the hand reaches the hood by the middle, the hood goes
+     back and down with the hand, and from the end the hood is "down" and the arm is back at rest.
+   peopleKey (THE OTHER PEOPLE'S BODIES) gains what a look wears, for a look that wears something only, so every other key is
+     the string it was. */
+function garmentMake(root,J,skel,lk,build,M){root.userData.hood=undefined;
+  const wear=garmentsOf(lk);if(!wear.length||!M)return;
+  wear.forEach(g=>{if(typeof GARMENTPART[g]==="function")GARMENTPART[g](M,GARMENTS[g],root);});}
+/* THE GARMENTS' PART FUNCTIONS, one for each row of GARMENTS (engine/engine.js) that draws something, by the row's name, as
+   BODYPART is for the body's options: each is handed what the maker knows (M) and its row, and hangs its parts on the joints */
+const GARMENTPART={
+  /* THE JACKET: its body over his shirt, from just below the shirt's hem to round his shoulders, a little wider and deeper
+     than the shirt everywhere and open down the front, wider at the chest, so his shirt shows between its two fronts (the
+     outline that says "jacket" and not "a bigger shirt"); a ribbed band at the hem and at each cuff a shade off the cloth; a
+     sleeve over each of his arms, on the same joints, so it moves with them; the inside of it a shade darker, seen down the
+     front and into the collar. Every size is read off his shirt as it was made (its torso part) and his limbs, so it fits
+     every build and every hang. Its collar is left wide, the hood's to fill (hoodMake) */
+  jacket(M,row,root){const{J,part,cap,bone,Lm,H}=M,col=row.colours[0],rib=M.shade(col),inside="#"+new THREE.Color(col).multiplyScalar(0.55).getHexString();
+    const shirt=J.spine.children.find(o=>o.isMesh&&o.userData.wears==="shirt");if(!shirt)return;
+    shirt.geometry.computeBoundingBox();const bb=shirt.geometry.boundingBox,sy=shirt.scale.y,
+      lo=shirt.position.y+bb.min.y*sy,hi=shirt.position.y+bb.max.y*sy,tw=bb.max.x*shirt.scale.x,td=bb.max.z*shirt.scale.z,
+      capH=(shirt.geometry.parameters&&shirt.geometry.parameters.radius||1)*sy;
+    const sx=tw*JACKETFIT[0],sz=td*JACKETFIT[1],hem=lo-0.012*H,top=hi-0.3*capH,
+      gap=y=>JACKETGAP[0]+(JACKETGAP[1]-JACKETGAP[0])*hsm((lo+hi)/2,top,y);
+    const prof=[[1,hem+0.02*H],[1.03,(lo+hi)/2],[1.02,hi-capH],[0.97,hi-0.65*capH],[JACKETNECK,top]];
+    const body=garmentShell(prof,sx,sz,gap);
+    part("spine",body,"jacket",col,0,0,0);part("spine",body,"jacket",inside,0,0,0).material.side=THREE.BackSide;
+    part("spine",garmentShell([[0.94,hem],[0.97,hem+0.03*H]],sx,sz,gap),"jacket",rib,0,0,0).material.side=THREE.DoubleSide;
+    /* the sleeves: each over the shirt's (or the bare arm's) as far as the cuff, the cuff to the wrist, the elbow's ball a shade off */
+    ["l","r"].forEach(s=>{let[L,x,y,z]=bone("shoulder_"+s,"elbow_"+s);const ra=Lm.arm*1.25,rf=Lm.forearm*1.3,cuff=0.03*H;
+      part("shoulder_"+s,cap(ra,L),"jacket",col,x,y,z);
+      [L,x,y,z]=bone("elbow_"+s,"wrist_"+s);const k=(L-cuff)/L;
+      part("elbow_"+s,cap(rf,L-cuff),"jacket",col,x*k,y*k,z*k);   /* the forearm's sleeve, from the elbow to the cuff */
+      part("elbow_"+s,new THREE.CylinderGeometry(rf*0.92,rf*0.92,cuff,16),"jacket",rib,2*x*(1-0.5*cuff/L),2*y*(1-0.5*cuff/L),2*z*(1-0.5*cuff/L));
+      part("elbow_"+s,new THREE.SphereGeometry(Math.max(ra,rf)*1.06,14,10),"jacket",M.shade(col),0,0,0);});
+    if(row.hood){const n=J.chest.position.clone().add(J.neck.position);   /* the neck joint, in the spine's frame */
+      const hd=hoodMake(M,{arm:garmentArm(row.arm,M.lk),joint:"neck",y:top-n.y,rx:JACKETNECK*sx,rz:JACKETNECK*sz,bx:sx,bz:sz,gap:gap(top),col,inside,pull:row.pull});
+      root.userData.hoodPiece=hd;root.userData.hood="up";}}
+};
+/* the arm a garment's row names, "right" or "left"; for "either", one of the two chosen once a person by his look (its colours
+   and style), so the same person always takes his hood down with the same hand, whenever his body is made */
+function garmentArm(a,lk){if(a==="right"||a==="left")return a;let h=0;[lk.skin,lk.hair,lk.shirt,lk.style].join("|").split("").forEach(ch=>{h=(h*31+ch.charCodeAt(0))|0;});return h&1?"left":"right";}
+const JACKETFIT=[1.14,1.2],JACKETGAP=[0.14,0.34],JACKETNECK=0.84;   /* wider and deeper than his shirt; open down the front (radians each side, hem to collar); the collar's share of the body */
+/* a garment's shell round an upright axis: rows of [share of the half width, height] up a profile, each row round the body from
+   one edge of its front opening to the other (gap(y) radians either side of the front; 0 or none is closed). One surface: its
+   inside is a second part on the same shape, drawn from behind (BackSide) */
+function garmentShell(prof,sx,sz,gap,seg){const n=seg||32,pos=[],idx=[];
+  prof.forEach(([q,y])=>{const g=gap?gap(y):0;for(let j=0;j<=n;j++){const a=g+(2*Math.PI-2*g)*j/n;pos.push(q*sx*Math.sin(a),y,q*sz*Math.cos(a));}});
+  for(let i=0;i<prof.length-1;i++)for(let j=0;j<n;j++){const a=i*(n+1)+j,b=a+n+1;idx.push(a,a+1,b,b,a+1,b+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();garmentSeams(g);return g;}
+/* where a shell meets itself (a closed row's two ends, a pole), one normal, so no line shows there */
+function garmentSeams(g){const p=g.attributes.position,n=g.attributes.normal,at=new Map(),k=i=>[p.getX(i),p.getY(i),p.getZ(i)].map(v=>Math.round(v*1e5)).join(",");
+  for(let i=0;i<p.count;i++){const s=k(i);if(!at.has(s))at.set(s,[]);at.get(s).push(i);}
+  const v=new THREE.Vector3();at.forEach(l=>{if(l.length<2)return;v.set(0,0,0);l.forEach(i=>v.add(new THREE.Vector3().fromBufferAttribute(n,i)));v.normalize();l.forEach(i=>n.setXYZ(i,v.x,v.y,v.z));});
+  n.needsUpdate=true;}
+/* THE HOOD, ONE PIECE (made so it can be hung on other clothing): hoodMake(M,o) hangs it on the joint o.joint, sewn to a collar
+   ring there (o.y its height in that joint's frame, o.rx and o.rz its half width and depth, o.gap the front opening's half
+   angle at the collar), in the colours o.col (outside) and o.inside (its lining), and answers the piece, which hoodSet moves
+   between up (0) and down (1). UP, it is a dome round his head, sized to what is on his head (the skull, his hair and ears,
+   above the jaw) and a little more, peaked at the back as a hood is, open in front from his brow down to the collar so his
+   face is framed by the lining, and its foot runs down to the collar ring. DOWN, the same cloth folded back off his head:
+   turned back over it, flattened, lying on the back of his shoulders below his head, its foot still sewn to the collar.
+   Between them each point of it goes back round his head (never through it), so the cloth slides back off his crown */
+const HOODFIT={over:1.1,peak:0.1,brow:0.55,open:0.92,drop:0.95,thick:0.28,wide:0.9,lean:0.12,band:0.22};   /* up: how far it stands off his head, the peak, the brow's height (head radii over its centre), the opening's half angle; down: how far the fold hangs below the collar and how thick it lies (head radii), how wide (its share of the garment's back), and how far its foot stands off his back for each unit it hangs (so it faces the sky a little more than his back does, and is seen as a flap on it); and how much lighter the band round its edge is (a share of the way to white) */
+function hoodMake(M,o){const{J,part,r,hc}=M,jt=J[o.joint],hj=J.head,NR=24,NC=36,F=HOODFIT;
+  /* the head's centre in the joint's frame, and how far out what covers the head reaches, above his jaw */
+  const hp=new THREE.Vector3();for(let q=hj;q&&q!==jt;q=q.parent)hp.add(q.position);
+  const c=hp.clone().add(new THREE.Vector3(0,hc,0));let R=r;
+  hj.children.forEach(m=>{if(!m.isMesh||!/^(skin|hair|ear|brow)$/.test(m.userData.wears))return;const p=m.geometry.attributes.position,v=new THREE.Vector3();
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).multiply(m.scale).applyQuaternion(m.quaternion).add(m.position);if(v.y>hc-0.45*r)R=Math.max(R,Math.hypot(v.x,v.y-hc,v.z));}});
+  R*=F.over;
+  const top=Math.acos(Math.max(-1,Math.min(1,F.brow*r/R))),foot=Math.PI*0.62;   /* the opening's top (its brow), and where the dome turns down to the collar */
+  const fw=th=>th<top?0:F.open*Math.sqrt(Math.min(1,(th-top)/0.45))*(1-hsm(foot,Math.PI,th))+o.gap*hsm(foot,Math.PI,th);
+  const up=[],pin=[],tone=[],back=new THREE.Vector3(0,0.6,-0.8).normalize();
+  for(let i=0;i<=NR;i++){const th=Math.PI*i/NR,w=fw(th),s=hsm(foot,Math.PI,th);
+    for(let j=0;j<=NC;j++){const ph=w+(2*Math.PI-2*w)*j/NC,d=new THREE.Vector3(Math.sin(th)*Math.sin(ph),Math.cos(th),Math.sin(th)*Math.cos(ph));
+      const p=c.clone().addScaledVector(d,R*(1+F.peak*hsm(0.5,1,d.dot(back)))),q=new THREE.Vector3(o.rx*Math.sin(ph),o.y,o.rz*Math.cos(ph));
+      up.push(p.lerp(q,s));pin.push(s);
+      /* its edge round his face, a band a shade off the cloth (as the jacket's hem and cuffs are); and, down, its sides and
+         the fold at its foot a shade deeper, as cloth folded over is: painted in, as the light gives no shadow */
+      const edge=th<top-0.06?0:j<=1||j>=NC-1?1:j===2||j===NC-2?0.4:0;
+      tone.push([edge,Math.max(hsm(0.35,0,th),hsm(0.55,0.95,Math.abs(d.x)))]);}}
+  /* DOWN: folded back off his head, as a hood is. Seen from the side, round the head's centre, its cloth runs from the nape
+     (sewn to the collar's back) over the crown to the brow. Down, that run is folded at the crown: the half from the nape to
+     the crown lies against his back, going down from the collar, the crown is the fold at the foot, and the half from the
+     crown to the brow lies over it going back up, its rim at the top: a flap on the back of his shoulders under his head.
+     As wide as it was, a little narrowed toward the fold; its foot kept where it is sewn */
+  const side=v=>Math.atan2(-(v.z-c.z),v.y-c.y),aB=side(new THREE.Vector3(0,o.y,-o.rz)),aF=top;
+  const zb=x=>-o.bz*Math.sqrt(Math.max(0.25,1-(x/o.bx)**2));   /* his back (the garment's), across */
+  const down=up.map((u,i)=>{const a=side(u),t=a>=0?Math.min(1,a/aB):Math.max(-1,a/aF),x=u.x/R*F.wide*o.bx*(0.75+0.25*Math.abs(t));
+    const y=o.y-0.01*M.H-F.drop*R*Math.cos(t*Math.PI/2),v=new THREE.Vector3(x,y,zb(x)-F.thick*R*(0.5-0.5*Math.sin(t*Math.PI/2))-F.lean*(o.y-y));
+    return v.lerp(u,pin[i]);});
+  const geo=new THREE.BufferGeometry(),pos=new Float32Array(up.length*3),idx=[];
+  for(let i=0;i<NR;i++)for(let j=0;j<NC;j++){const a=i*(NC+1)+j,b=a+NC+1;idx.push(a,b,a+1,b,b+1,a+1);}
+  geo.setAttribute("position",new THREE.BufferAttribute(pos,3));geo.setIndex(idx);geo.setAttribute("color",new THREE.BufferAttribute(new Float32Array(up.length*3),3));
+  /* each point's way down, never through his head. Over it: round the head's centre seen from the side (its angle 0 over the
+     head and growing to the back), how far it turns, and its distance from the centre at each end. The cloth low on the
+     hood (round his jaw and neck) goes round it instead, seen from above, round his neck to his back; between the two,
+     a share of each, so the cloth stays whole */
+  const way=up.map((u,i)=>{const d=down[i],au=side(u),ad=side(d),bu=Math.atan2(u.x,u.z-c.z);let t=ad-au,b=Math.atan2(d.x,d.z-c.z)-bu;
+    while(t<=-Math.PI/4)t+=2*Math.PI;while(t>1.75*Math.PI)t-=2*Math.PI;while(b<=-Math.PI)b+=2*Math.PI;while(b>Math.PI)b-=2*Math.PI;
+    return [au,t,Math.hypot(u.y-c.y,u.z-c.z),Math.hypot(d.y-c.y,d.z-c.z),bu,b,Math.hypot(u.x,u.z-c.z),Math.hypot(d.x,d.z-c.z),hsm(-0.25*R,-0.7*R,u.y-c.y)];});
+  const out=part(o.joint,geo,"hood",o.col,0,0,0),lin=part(o.joint,geo,"hood",o.inside,0,0,0);lin.material.side=THREE.BackSide;out.material.vertexColors=true;
+  const c0=new THREE.Color(o.col),c1=new THREE.Color(o.col).lerp(new THREE.Color(1,1,1),HOODFIT.band),band=[c1.r/Math.max(0.01,c0.r),c1.g/Math.max(0.01,c0.g),c1.b/Math.max(0.01,c0.b)];
+  const H={arm:o.arm==="left"?"left":"right",joint:o.joint,geo,up,down,way,c,tone,band,k:-1,pull:o.pull||1,parts:[out,lin],grab:{}};
+  hoodSet(H,0);return H;}
+/* the hood k of the way down (0 up, 1 down) */
+function hoodSet(H,k){k=Math.max(0,Math.min(1,k));if(H.k===k)return;H.k=k;const p=H.geo.attributes.position,v=new THREE.Vector3();
+  const cl=H.geo.attributes.color;
+  H.up.forEach((u,i)=>{hoodAt(H,i,k,v);p.setXYZ(i,v.x,v.y,v.z);const[e,f]=H.tone[i],dk=1-0.3*f*k;cl.setXYZ(i,(1+(H.band[0]-1)*e)*dk,(1+(H.band[1]-1)*e)*dk,(1+(H.band[2]-1)*e)*dk);});
+  p.needsUpdate=true;cl.needsUpdate=true;H.geo.computeVertexNormals();garmentSeams(H.geo);H.geo.computeBoundingBox();H.geo.computeBoundingSphere();}
+/* where the hood's point i is, k of the way down, into v (in the frame of the joint it hangs on) */
+function hoodAt(H,i,k,v){const u=H.up[i],d=H.down[i],c=H.c,[au,t,ru,rd,bu,b,hu,hd,m]=H.way[i];
+  const a=au+t*k,rr=ru+(rd-ru)*k,over=[u.x+(d.x-u.x)*k,c.y+rr*Math.cos(a),c.z-rr*Math.sin(a)];
+  const e=bu+b*k,hh=hu+(hd-hu)*k,round=[hh*Math.sin(e),u.y+(d.y-u.y)*k,c.z+hh*Math.cos(e)];
+  return v.set(over[0]+(round[0]-over[0])*m,over[1]+(round[1]-over[1])*m,over[2]+(round[2]-over[2])*m);}
+/* the point of the hood a hand takes, for an arm ("l" or "r"): of the points of the hood on that side, the one whose way down
+   stays nearest the hand's reach all the way, and of those the highest; chosen once a hood and arm, from the body at rest */
+function hoodGrab(B,s){const H=B.userData.hoodPiece;if(H.grab[s]!==undefined)return H.grab[s];
+  const J=B.userData.joints,sh=J["shoulder_"+s],reach=0.97*(J["elbow_"+s].position.length()+J["wrist_"+s].position.length()),sd=s==="l"?1:-1;
+  const toChest=new THREE.Vector3();for(let q=J[H.joint];q&&q!==sh.parent;q=q.parent)toChest.add(q.position);
+  let best=-1,bs=Infinity;
+  H.up.forEach((u,i)=>{if(u.x*sd<=0.02)return;let worst=0;
+    [0,0.25,0.5,0.75,1].forEach(k=>{const v=hoodAt(H,i,k,new THREE.Vector3()).add(toChest);worst=Math.max(worst,v.distanceTo(sh.position)-reach);});
+    const sc=Math.max(0,worst)*10-(u.y+toChest.y)*0.1;if(sc<bs){bs=sc;best=i;}});
+  return H.grab[s]=best;}
+/* which arm takes the hood down (the contract's): the one the hood was made with (hoodMake, o.arm) */
+function hoodArmOf(B){const H=B&&B.userData.hoodPiece;return H&&H.arm==="left"?"left":"right";}
+/* an arm reaching for a point (world), by `w` of the way from its rest at his side (0) to there (1), its elbow out and down */
+function armReach(B,s,at,w){const J=B.userData.joints,sh=J["shoulder_"+s],el=J["elbow_"+s],wr=J["wrist_"+s],sd=s==="l"?1:-1;
+  if(!(w>0)){sh.rotation.set(0,0,sd*ARMREST[0]);el.rotation.set(-ARMREST[1],0,0);return;}
+  const L1=el.position.length(),L2=wr.position.length(),T=sh.parent.worldToLocal(at.clone()).sub(sh.position);
+  const d=Math.max(Math.abs(L1-L2)+1e-4,Math.min(L1+L2-1e-4,T.length())),be=Math.acos(Math.max(-1,Math.min(1,(L1*L1+L2*L2-d*d)/(2*L1*L2)))),bend=-(Math.PI-be);
+  const w0=el.position.clone().add(wr.position.clone().applyAxisAngle(new THREE.Vector3(1,0,0),bend)),dir=T.clone().normalize();
+  const q=new THREE.Quaternion().setFromUnitVectors(w0.clone().normalize(),dir);
+  const e1=el.position.clone().applyQuaternion(q),pole=new THREE.Vector3(sd*0.5,-1,-0.2),perp=v=>v.clone().addScaledVector(dir,-v.dot(dir));
+  const a=perp(e1),b=perp(pole);if(a.lengthSq()>1e-12&&b.lengthSq()>1e-12){a.normalize();b.normalize();
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(dir,Math.atan2(new THREE.Vector3().crossVectors(a,b).dot(dir),a.dot(b))));}
+  const r0=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,sd*ARMREST[0]));
+  sh.quaternion.copy(r0.slerp(q,w));el.rotation.set(-ARMREST[1]+(bend+ARMREST[1])*w,0,0);}
+/* THE PULL: t seconds in, 0 to the garment's `pull`. The first half, the hand rises to its point of the hood (hoodGrab), there
+   by the middle; then the hood goes back and down and the hand goes with it, holding that point; then the hand lets go and
+   goes back to his side, at rest by the end, the hood down. Called after his stance each frame while it runs (t3BodyPose
+   puts the arm at rest, and this lifts it from there); from the end on it is done, and need not be called */
+const HOODTIME=[0.5,0.85];   /* shares of the pull: the hand at the hood; the hood down and the hand letting go */
+function hoodPull(B,t){const H=B&&B.userData.hoodPiece;if(!H)return;
+  const u=Math.max(0,Math.min(1,t/H.pull)),e=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);},s=hoodArmOf(B)==="left"?"l":"r",sd=s==="l"?1:-1;
+  const J=B.userData.joints,ch=J["shoulder_"+s].parent,T0=HOODTIME[0],T1=HOODTIME[1],hand=B.userData.skel.limb.hand;
+  /* where the hand holds the hood, k of the way down, in the chest's frame: on the cloth, not in it */
+  const grip=k=>{hoodSet(H,k);const v=hoodAt(H,hoodGrab(B,s),k,new THREE.Vector3()),o=v.clone().sub(H.c).normalize();v.addScaledVector(o,hand*0.8);
+    for(let q=J[H.joint];q&&q!==ch;q=q.parent)v.add(q.position);return v;};
+  /* the hand at rest, in the chest's frame */
+  armReach(B,s,null,0);B.updateMatrixWorld(true);const rest=ch.worldToLocal(J["wrist_"+s].getWorldPosition(new THREE.Vector3()));
+  /* from one place to the other on a curve that comes up in front of him and a little out, never out to the side and round */
+  const curve=(a,b,x)=>{const m=a.clone().lerp(b,0.5).add(new THREE.Vector3(sd*0.04,0.02,0.07).multiplyScalar(B.userData.build&&B.userData.build.height||1));
+    return a.clone().multiplyScalar((1-x)*(1-x)).addScaledVector(m,2*x*(1-x)).addScaledVector(b,x*x);};
+  B.userData.hood=u>=1?"down":u>0?"pulling":"up";
+  if(u<=T1){const at=u<=T0?curve(rest,grip(0),e(u/T0)):grip(e((u-T0)/(T1-T0)));B.updateMatrixWorld(true);armReach(B,s,ch.localToWorld(at),u<=T0?e(u/T0/0.25):1);}
+  else{   /* letting go: the arm comes down from where it let the hood go, turning at the shoulder and the elbow, to rest */
+    const x=e((u-T1)/(1-T1)),at=grip(1);B.updateMatrixWorld(true);armReach(B,s,ch.localToWorld(at),1);
+    const sh=J["shoulder_"+s],el=J["elbow_"+s],q=sh.quaternion.clone(),b=el.rotation.x;
+    if(x>=1)armReach(B,s,null,0);
+    else{sh.quaternion.copy(q.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,sd*ARMREST[0])),x));el.rotation.set(b+(-ARMREST[1]-b)*x,0,0);}}
+  B.updateMatrixWorld(true);}
 /* HIS SHIRT'S PATTERN ON HIS BODY, as on his card (mq-v273; the owner's confirmed goal of 2026-11-17). The card draws the
    pattern in its 14 by 13 shirt; here the same drawing is laid round his body: the card's shirt is the FRONT half of his
    torso, its left edge at his right side and its right edge at his left, its top at his collar and its foot at his hem.
@@ -2261,6 +2437,7 @@ const HAIRPART={
   /* /HAIR:bald */
 };
 /* THE WALK: every joint turned for this phase of the cycle (moving) or at rest; the ground asked under each foot */
+const ARMREST=[0.1,0.15];   /* an arm at rest: how far out from his side it hangs, and how far its elbow is bent (radians); the pull (hoodPull) puts it back here */
 function t3BodyPose(B,phase,moving,groundAt){
   const S=B.userData.skel,J=B.userData.joints,gnd=groundAt||(()=>0);
   B.updateWorldMatrix(true,false);
@@ -2283,7 +2460,7 @@ function t3BodyPose(B,phase,moving,groundAt){
     const al=Math.acos(Math.max(-1,Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d)))),be=Math.acos(Math.max(-1,Math.min(1,(L1*L1+L2*L2-d*d)/(2*L1*L2))));
     J[hp].rotation.set(-(th+al),0,0);J[kn].rotation.set(Math.PI-be,0,0);J[an].rotation.set((th+al)-(Math.PI-be),0,0);});
   S.arms.forEach(([sh,el,off])=>{const sw=moving?S.swing*Math.sin(phase+off):0,sd=sh.endsWith("_l")?1:-1;
-    J[sh].rotation.set(-sw,0,sd*0.1);J[el].rotation.set(-0.15-(moving?0.25*Math.max(0,Math.sin(phase+off)):0),0,0);});
+    J[sh].rotation.set(-sw,0,sd*ARMREST[0]);J[el].rotation.set(-ARMREST[1]-(moving?0.25*Math.max(0,Math.sin(phase+off)):0),0,0);});
   B.updateWorldMatrix(true,true);}
 /* THE PETAL MOMENT, ON HIS BODY (mq-v286; the owner's wish of 2026-09-07, confirmed for his body on 2026-11-21). Standing still on
    the bridge in season for a breath (petalMoment, engine/engine.js, which also says the line), his card raises a petal; his body
@@ -3621,7 +3798,7 @@ const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
    at the street edge of it (grep "a person at work inside this wall"): a body there stood whole above the counter, feet and all.
    Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
 const PEOPLEWIN=0.2;
-const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].concat(lk.robot?["robot"]:[]).join("|");   /* the hat is in it from mq-v277; a tin man from mq-v303 (A TIN MAN'S BODY), added only to his own key so every other key is the string it was */
+const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].concat(lk.robot?["robot"]:[]).concat(garmentsOf(lk).length?["wear:"+garmentsOf(lk).join(",")]:[]).join("|");   /* the hat is in it from mq-v277; a tin man from mq-v303 (A TIN MAN'S BODY), added only to his own key so every other key is the string it was; what a look wears from mq-v304 (THE HOODED JACKET), added only for a look that wears something, for the same reason */
 /* ---- THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body) ----
    A full body takes time to make (its head, scalp and hair are painted), so until it is made a person a world names stood as
    their card. A world that names `person` in its own LIGHTTAKE list (engine/engine.js) has, instead, a LIGHT BODY stand in,
