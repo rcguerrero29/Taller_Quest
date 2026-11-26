@@ -6784,7 +6784,11 @@ function findChromium() {
         const sized = await p.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, [w, h], { timeout: 15000, polling: 100 }).then(() => true, () => false); await rafs(p, 2);
         const s = await look(), on = 'in a real window ' + w + ' by ' + h + ' (its shorter side ' + Math.min(w, h) + ' px), ';
         got.push(w + ' by ' + h + ' ' + (!s.ok ? 'not drawn' : s.body ? (s.card ? 'a body and his card' : 'a body') : s.card ? 'his card' : 'neither'));
-        if (!sized) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
+        /* AND BY WHAT IT READ AFTER (2026-11-26): the wait above runs inside the page, so a page busy drawing for longer than its
+           limit never runs it, and on GitHub's machines it gave up 3 times in 10 on unchanged code while the page, read the moment
+           after, had its size (a trial of the build check, ten runs of each part of this test). The reading `look` takes after the
+           wait is asked from outside the page and is answered when the page is free: a window read at its size there was read */
+        if (!sized && !(s.w === w && s.h === h)) { P.push(on + 'the page never read its window as that size (it read ' + s.w + ' by ' + s.h + '), so what a dog is there could not be asked'); continue; }
         if (!s.ok) P.push(on + 'the 3D camera could not draw, so whether the star dog stands as a body there could not be asked');
         else if (want === 'body') { if (!s.body) P.push(on + 'the star dog two squares from you is his flat card: under 480 px they stay cards, for now, and from 480 px up they are bodies');
           else if (s.card) P.push(on + 'the star dog is drawn twice: his card stands in the same place as his body'); }
@@ -18925,6 +18929,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   }
   if (runs('body')) {   /* ---- the part `body`: the person's and the dog's jointed bodies ---- */
+  /* MQ_ONLY_PEOPLE=1 asks only THE OTHER PEOPLE'S BODIES below, as 8a and 8b can be asked alone: everything before it in this part is
+     passed over (mq-v303; a builder's red-first rounds on the people's checks took the whole part each time) */
+  if (!process.env.MQ_ONLY_PEOPLE) {
   /* ---- THE PERSON YOU STEER STANDS AS A JOINTED BODY, ONLY WHERE THE WORLD ASKS (mq-v259) ----
      A world that names `person` in its own `BODYTAKE` list sees the person you steer, up close in the 3D camera, as a body of
      rounded parts hung on a skeleton of named joints (engine/engine3d.js, grep "THE JOINTED BODY"); farther than BODYNEAR
@@ -21808,6 +21815,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     fails.push(...DP, ...DN);
   }
 
+  }   /* the end of what MQ_ONLY_PEOPLE passes over */
+
   /* ---- THE OTHER PEOPLE'S BODIES (mq-v274) ----
      A world that names people in its own PEOPLETAKE list, and takes the person's body (BODYTAKE names `person`), sees each of
      them near the camera's focus in the 3D camera as a jointed body made from their look, the card standing in until the body
@@ -21938,7 +21947,11 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
         const run = async (k, me, card) => {
           if (!free(me[0], me[1]) || (card && !free(card[0], card[1]))) { out.cases[k] = { why: 'no free square for ' + k + ' beside ' + who + ', so it was not asked' }; return; }
           px = fx = me[0]; py = fy = me[1]; dir = 'up';
-          let planted = null; if (card) { const key = Object.keys(NPCLOOK).find(q => NPCLOOK[q] && !PEOPLEON.has(q));
+          /* the card between: a stranger with no `npc`, so no list can name them and they stay a card whoever the world names. Their look
+             is a row of NPCLOOK the list does not name, else any row (mq-v303: Meridian names all its people, so the first such row is a
+             map letter); with no row at all there is no card to stand there, and the case says so */
+          let planted = null; if (card) { const key = Object.keys(NPCLOOK).find(q => NPCLOOK[q] && !PEOPLEON.has(q)) || Object.keys(NPCLOOK).find(q => NPCLOOK[q]);
+            if (key === undefined) { out.cases[k] = { why: 'NPCLOOK has no look to paint a stranger\'s card with, so ' + k + ' was not asked' }; return; }
             planted = { key, x: card[0], y: card[1], fx: card[0], fy: card[1], q: [], wnext: Infinity, mv: null, face: 1 }; w.npcs.push(planted); }
           try {
             for (let i = 0; i < 12 && !(T3.peopleShown && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); i++) { draw3d(); await new Promise(r => setTimeout(r, 120)); }   /* mq-v294: their full body, not a light body standing in for it (THE LIGHT STAND-IN) */
@@ -22062,6 +22075,86 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           if (!hat.key) say(0, 'on ' + dev + ', putting the hard hat on a named person does not make their body again: the hat is not in the key their body is made from');
           err.forEach(m => say(0, 'the page that names ' + who + ' threw on ' + dev + ': ' + m));
         }
+        /* ---- J · EVERY PERSON THE WORLD NAMES, not one (mq-v303; the owner's confirmed goal of 2026-11-24 on all of Meridian's named
+           people as bodies): each, in their own room with the person you steer two squares from them, first stands as a light body
+           (where the world asks for it) made from the look their card is painted with, and then as a full body made from that same
+           look: its key is the look's, it wears the card's shirt, skin and hair, a hard hat only where the card wears one, a collar
+           and tie only where the card's outfit is formal, and a tin man's parts only where the card is a tin man. On a laptop: the
+           phone's screen is H's. Their body, if one was made while someone else was asked, is thrown away first, so each is asked
+           light body first. ---- */
+        if (ownBody !== null && !(Array.isArray(ownBody) && ownBody.includes('person'))) say(1, 'this world takes no person\'s body, so every person it names was not asked');
+        else if (ownPpl === null) say(1, 'this world names nobody in PEOPLETAKE, so every person it names was not asked');
+        else { const pack = own.body === null ? 'const BODYTAKE=["person"];\n' : '';
+          const { p, err } = await openWith(pack, { width: 1280, height: 800 });
+          const all = await p.evaluate(async () => {
+            const out = [], el = document.getElementById('world'), keep = { w: world, cam: camMode, hidden: el.hidden, fx, fy, px, py, moving };
+            const cols = B => { const s = new Set(); B.traverse(o => { if (o.isMesh) { const c = o.userData.base || o.material.userData.base; if (c) s.add('#' + c.getHexString().toUpperCase()); } }); return [...s]; };
+            const painted = B => { let p = false; B.traverse(o => { if (o.isMesh && o.userData.wears === 'shirt' && o.material && o.material.map) p = true; }); return p; };   /* a patterned shirt is painted on, its colour in the picture, not the material */
+            const wears = B => { const s = {}; B.traverse(o => { if (o.isMesh && o.userData.wears) s[o.userData.wears] = (s[o.userData.wears] || 0) + 1; }); return s; };
+            try {
+              for (const who of PEOPLETAKE) { const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who));
+                if (!wid) { out.push({ who, why: 'stands at no station in any world' }); continue; }
+                world = wid; const w = CW(), n = w.npcs.find(q => q.npc === who), held = { wnext: n.wnext, mv: n.mv };
+                /* not someone who keeps a window (their body stands against the counter, facing the street: PEOPLEWIN) and not someone
+                   who roams the street (`roams`: they are gone from the square looked at, held or not): the rows above leave both out for the same reasons,
+                   and so does this one, by name (found on the town, 2026-11-26) */
+                if (n.win || n.roams) { out.push({ who, skip: n.win ? 'keeps a window' : 'roams the street' }); continue; }   /* one who only wanders is held still above, and asked */
+                try { n.mv = null; n.wnext = Infinity; n.fx = n.x; n.fy = n.y;
+                  let at = null, best = Infinity;
+                  for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N' || stairLift(w, x, y)) continue;
+                    const d = Math.hypot(x - n.x, y - n.y), e = Math.abs(d - 2); if (d >= 1.99 && e < best) { best = e; at = [x, y]; } }
+                  if (!at) { out.push({ who, why: 'has no free square two from them in ' + wid }); continue; }
+                  px = fx = at[0]; py = fy = at[1]; moving = false; el.hidden = false; camSet('3d'); sizeCanvas();
+                  const old = T3.peopleOn && T3.peopleOn.get(n); if (old) { old.parent && old.parent.remove(old); t3Dispose(old); T3.peopleOn.delete(n); }
+                  const lk = npcWhimsy(n), key = peopleKey(lk), r = { who, wid, key: n.key, lk: { shirt: lk.shirt.toUpperCase(), skin: lk.skin.toUpperCase(), hair: lk.hair.toUpperCase() },
+                    bald: hairStyleOf(lk) === 'bald', hat: lk.hat === 'hard', formal: lk.outfit === 'formal', robot: !!lk.robot, lit: LIGHTON.has('person') };
+                  draw3d();
+                  const L = T3.lightShown && T3.lightShown.get(n), F0 = T3.peopleOn && T3.peopleOn.get(n);
+                  r.first = { light: !!(L && L.visible && L.parent === T3.scene), full: !!(F0 && F0.visible), lightKey: L ? L.userData.key === key : null, lightCols: L ? cols(L) : [], lightRobot: !!(L && L.userData.robot) };
+                  for (let k = 0; k < 20 && !(T3.peopleOn && T3.peopleOn.get(n) && T3.peopleShown.has(n) && !(T3.lightShown && T3.lightShown.has(n))); k++) { await new Promise(res => setTimeout(res, 100)); draw3d(); }
+                  const B = T3.peopleOn && T3.peopleOn.get(n);
+                  r.full = !!(B && B.visible && B.parent === T3.scene && T3.peopleShown.has(n));
+                  if (B) { r.fullKey = B.userData.key === key; r.cols = cols(B); r.wears = wears(B); r.robotParts = !!B.userData.robot; r.painted = painted(B); }
+                  r.bad = !!(T3.peopleBad && T3.peopleBad.has(n)); r.kept = T3.peopleOn ? T3.peopleOn.size : 0;
+                  out.push(r);
+                } finally { n.wnext = held.wnext; n.mv = held.mv; n.fx = n.x; n.fy = n.y; } }
+              /* K · the room with the most named people: him at its middle, frames until every wanted body is made */
+              const counts = Object.keys(WORLDS).map(id => [id, (WORLDS[id].npcs || []).filter(q => q.npc && PEOPLEON.has(q.npc)).length]).sort((a, b) => b[1] - a[1]);
+              const [fid, fn] = counts[0]; world = fid; const w = CW(); let at = null, best = Infinity; const mid = w.npcs.filter(q => q.npc && PEOPLEON.has(q.npc)), mx = mid.reduce((s, q) => s + q.x, 0) / mid.length, my = mid.reduce((s, q) => s + q.y, 0) / mid.length;
+              for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) { if (SOLID.has(w.grid[y][x]) || w.grid[y][x] === 'N' || stairLift(w, x, y)) continue; const d = Math.hypot(x - mx, y - my); if (d < best) { best = d; at = [x, y]; } }
+              px = fx = at[0]; py = fy = at[1]; moving = false; camSet('3d'); sizeCanvas();
+              let most = 0; for (let k = 0; k < 40; k++) { draw3d(); most = Math.max(most, T3.peopleShown.size); if (!(T3.peopleWait && T3.peopleWait.length) && !(T3.lightShown && T3.lightShown.size)) break; await new Promise(res => setTimeout(res, 100)); }
+              return { people: out, fullest: { world: fid, named: fn, most, kept: T3.peopleOn.size, max: PEOPLEMAX, keep: PEOPLEKEEP } };
+            } finally { world = keep.w; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; } });
+          const hexJ = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), nearJ = (a, b) => { const x = hexJ(a), y = hexJ(b);
+            if (Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) <= 45) return true;
+            const q = x.map((v, i) => (v + 4) / (y[i] + 4)), m = (q[0] + q[1] + q[2]) / 3; return m >= 0.55 && m <= 1.2 && q.every(v => Math.abs(v - m) <= 0.07); };
+          let fine = 0, maxKept = 0;
+          const skipped = all.people.filter(r => r.skip);
+          for (const r of all.people) { if (r.skip) continue; if (r.why) { say(0, 'every person: ' + r.who + ', named in PEOPLETAKE, ' + r.why + ', so whether they stand as a body could not be asked'); continue; }
+            const at = r.who + ' (in ' + r.wid + ')', before = PB.length; maxKept = Math.max(maxKept, r.kept);
+            if (r.lit) { if (!r.first.light) say(0, 'every person: when ' + at + ' came into view, no light body stood in for them while their body was made' + (r.first.full ? ': their full body was made in that very frame' : ''));
+              else { if (!r.first.lightKey) say(0, 'every person: ' + at + '\'s light body was not made from the look their card is painted with');
+                const lm = ['shirt', 'skin'].concat(r.bald || r.robot ? [] : ['hair']).filter(k => !r.first.lightCols.some(c => nearJ(c, r.lk[k])));
+                if (r.robot !== r.first.lightRobot) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card and their light body is a round person, not his blocks' : '\'s light body is a tin man and their card is not'));
+                if (lm.length) say(0, 'every person: ' + at + '\'s light body does not wear their card\'s ' + lm.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its colours are ' + r.first.lightCols.join(' ')); } }
+            if (r.bad) { say(0, 'every person: ' + at + '\'s body could not be made (the maker threw), so they stay their stand-in all session'); continue; }
+            if (!r.full) { say(0, 'every person: ' + at + ', two squares from you on a laptop, never stood as a full body: ' + (r.lit ? 'their light body' : 'their card') + ' stayed'); continue; }
+            if (!r.fullKey) say(0, 'every person: ' + at + '\'s body was not made from the look their card is painted with');
+            { const miss = (r.painted ? [] : ['shirt']).concat(['skin']).concat(r.bald || r.robot ? [] : ['hair']).filter(k => !r.cols.some(c => nearJ(c, r.lk[k])));   /* a painted shirt's colour is the shirt's own rows' to ask */   /* a tin man's card paints no hair: its tin is the shirt, its head the skin (drawRobot) */
+              if (miss.length) say(0, 'every person: ' + at + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its colours are ' + r.cols.join(' ')); }
+            if (r.hat !== !!r.wears.hat) say(0, 'every person: ' + at + (r.hat ? ' wears the hard hat on their card and none on their body' : ' wears no hat on their card and ' + r.wears.hat + ' hat parts on their body'));
+            if (r.formal !== !!(r.wears.collar && r.wears.necktie)) say(0, 'every person: ' + at + (r.formal ? '\'s card wears a collar and tie (formal) and their body does not' : '\'s body wears a collar and tie their card does not'));
+            if (r.robot !== r.robotParts) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card (robot) and a person of flesh on their body: grey skin, hair and a shirt' : '\'s body is a tin man and their card is not'));
+            if (PB.length === before) fine++; }
+          if (skipped.length) say(1, 'every person: ' + skipped.map(r => r.who + ' (' + r.skip + ')').join(', ') + ' not asked by this row, as the rows above leave them out');
+          say(1, 'every person: ' + fine + ' of ' + (all.people.length - skipped.length) + ' named people stood as a light body first and then as a full body that reads as their card; at most ' + maxKept + ' bodies kept while they were asked one after another');
+          /* K · the fullest room, and the bound on bodies kept */
+          const F = all.fullest;
+          if (F.most > F.max) say(0, 'in ' + F.world + ', the room with the most named people (' + F.named + '), ' + F.most + ' stood as bodies at once, more than the engine\'s limit of ' + F.max);
+          if (maxKept > F.keep || F.kept > F.keep) say(0, 'after walking past every named person, ' + Math.max(maxKept, F.kept) + ' bodies were kept between rooms, more than the engine\'s limit of ' + F.keep);
+          say(1, 'in ' + F.world + ', the room with the most named people (' + F.named + '): ' + F.most + ' stood as bodies at once (the limit ' + F.max + '), ' + F.kept + ' kept (the limit ' + F.keep + ')');
+          err.forEach(m => say(0, 'the page that asks every named person threw: ' + m)); }
         /* ---- H · on which screens (BODYSCREEN, mq-v277): below the world's number every body is a card, at or above it a body.
            This world's own number if it sets one; else 600, put before the engine with the lists, as A to G put theirs ---- */
         if (ownBody !== null && !(Array.isArray(ownBody) && ownBody.includes('person'))) say(1, 'this world takes no person\'s body, so on which screens the bodies stand was not asked');

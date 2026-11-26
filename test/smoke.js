@@ -60,6 +60,21 @@ const CANDIDATES = [
     const swv = (sw.match(/CACHE = "(mq-v\d+)"/) || [])[1];
     const gv = (cfg.match(/GAMEV="(mq-v\d+)"/) || [])[1];
     if (!swv || !gv || swv !== gv) fails.push(`version lockstep broken: sw=${swv} config=${gv}`);
+    /* MERIDIAN'S NAMED PEOPLE ALL STAND AS BODIES (the owner's confirmed goal of 2026-11-24): every person a station names (its
+       `npc`) is in PEOPLETAKE, the list of the people who stand as bodies; the list names nobody the world does not hold, and
+       nobody twice. Read off the pack's own files, so a person added to a station without a body is said here, in words */
+    { const dir = path.resolve(__dirname, '..', 'content', 'meridian'), all = fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+      /* a station is a person's entry, `npc:"…",q:[…]`; a quest names its person too (`npc:"…",title:…`), and one quest names the office
+         dog (`fred`, the dog's secret quest), who is a dog of the dog program and never a person's body (mq-v303: read off every `npc:`
+         this list took him in, and PEOPLETAKE named a dog) */
+      const named = [...new Set((all.match(/npc:"[a-z_0-9-]+",\s*q:\[/g) || []).map(t => t.match(/npc:"([^"]+)"/)[1]))].sort();
+      const take = (() => { const m = cfg.match(/^const PEOPLETAKE=(\[[^\]]*\]);/m); try { const a = m ? JSON.parse(m[1]) : null; return Array.isArray(a) ? a : null; } catch (e) { return null; } })();
+      if (!named.length) fails.push('Meridian names no person at any station, so whether its named people stand as bodies was not asked');
+      else if (!take) fails.push('Meridian has no PEOPLETAKE list that can be read, so whether its named people stand as bodies was not asked');
+      else { const missing = named.filter(k => !take.includes(k)), extra = take.filter(k => !named.includes(k)), twice = [...new Set(take.filter((k, i) => take.indexOf(k) !== i))];
+        if (missing.length) fails.push(missing.length + ' of Meridian\'s ' + named.length + ' named people do not stand as bodies (they are not in PEOPLETAKE): ' + missing.join(', '));
+        if (extra.length) fails.push('PEOPLETAKE names ' + extra.length + ' people Meridian does not hold at any station: ' + extra.join(', '));
+        if (twice.length) fails.push('PEOPLETAKE names ' + twice.join(', ') + ' more than once'); } }
     // the city record (#14): status.json is served network-first, before the cache-first path, or a clerk is stale forever
     const rec = sw.indexOf('status.json'), cf = sw.indexOf('caches.match(e.request, { cacheName: CACHE }).then(hit => hit || fetch');
     if (rec < 0 || cf < 0 || rec > cf) fails.push('sw.js does not serve status.json network-first');

@@ -1,6 +1,6 @@
 /* game version — MUST match sw.js CACHE (the smoke test enforces the lockstep) */
 const GAMENAME="Meridian Quest"; /* the engine prints the name; the pack owns it */
-const GAMEV="mq-v302";
+const GAMEV="mq-v303";
 /* mq-v271: Meridian takes the engine's customizing panel (the owner's goal confirmed 2026-11-16, step two). A new game
    and the barber's chair open the creator as one panel: the title pinned at its top, the main button in a foot at its
    bottom and wholly on the screen (it sat 23 px below it at a new game, and was 41 px tall where a finger wants 44),
@@ -19,7 +19,7 @@ const PERSONATAKE=["dog","cat","pigeon","parrot","hummingbird","butterfly"];
    card and its body; petting ends it */
 const GROOMTAKE=["cat"];
 const CATPOSETAKE=["greet","back","curl"];   /* the cat's poses (mq-v299 and the curl's second version; the owner's confirmed goals of 2026-11-24): its tail up as a greeting, asleep on its back, and curled up in the closed ring */
-const PEOPLETAKE=["chuy","lupe","beto"];
+const PEOPLETAKE=["chuy","lupe","beto","bere","camila","ceo","chava","chelo","chente","cto","junior","karla","kike","legal","licha","marcus","mari","meche","moy","nando","naye","nolasco","perla","portero","priya","rigo","rosa","sol","tacho","tencha","tito","tovar","vero","xochi","yesenia"];   /* every named person of Meridian (each `npc` a station names), from mq-v303: its first three, then the other 32 (the owner's confirmed goal of 2026-11-24, which counted 33: the 33rd was the office dog, whose secret quest names him `fred` and who stands as a dog). test/smoke.js reads that the list and the stations agree */
 const BODYSCREEN=480;
 /* THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body): while a named person's full body
    is being made, a light body of plain shapes in their own colours stands in, turned away from the camera, instead of their card;

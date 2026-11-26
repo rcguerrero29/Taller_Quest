@@ -3621,7 +3621,7 @@ const PEOPLEMARK=28/32,PEOPLEMARKGAP=0.05;
    at the street edge of it (grep "a person at work inside this wall"): a body there stood whole above the counter, feet and all.
    Their body stands PEOPLEWIN toward the street, up against the counter so it hides them to the waist, and faces the street */
 const PEOPLEWIN=0.2;
-const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].join("|");   /* the hat is in it from mq-v277 */
+const peopleKey=lk=>[lk.skin,lk.hair,lk.shirt,lk.outfit,lk.pattern,hairStyleOf(lk),beardOf(lk),lk.hat||"",JSON.stringify(bodyChoicesOf(lk.body))].concat(lk.robot?["robot"]:[]).join("|");   /* the hat is in it from mq-v277; a tin man from mq-v303 (A TIN MAN'S BODY), added only to his own key so every other key is the string it was */
 /* ---- THE LIGHT STAND-IN (mq-v294; the owner's confirmed goal of 2026-11-22 on the light stand-in body) ----
    A full body takes time to make (its head, scalp and hair are painted), so until it is made a person a world names stood as
    their card. A world that names `person` in its own LIGHTTAKE list (engine/engine.js) has, instead, a LIGHT BODY stand in,
@@ -3665,6 +3665,41 @@ function lightMake(skel,lk){
   const sh=new THREE.Mesh(lightGeo("ground"),LIGHTMAT.get("ground")||(LIGHTMAT.set("ground",new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false})),LIGHTMAT.get("ground")));
   sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(tw*1.4,tw*1.4,1);sh.userData={shadow:true};root.add(sh);
   root.userData.joints=J;root.userData.skel=skel;root.userData.light=true;return root;}
+/* A TIN MAN'S BODY (mq-v303; the owner's confirmed goal of 2026-11-24 that each body looks like its own card). A look with
+   `robot` is painted on its card by drawRobot (engine/engine.js), never by drawPerson's skin, hair and shirt, so the one maker made
+   such a person a person of flesh in grey. Here the card's own drawing is stood up, part for part and at its own proportions: a card
+   pixel is RBPX of a square, the ground is the card's row 28, and every part is the card's rectangle with a depth. Tread feet, the
+   barrel in the look's `shirt` (the card's tin), its four rivets, the clipboard with three lines, arms straight down, the square head
+   in the look's `skin`, its antenna with the red tip, the two amber lamps in their dark frames and the slot of a mouth, on the same
+   joints as every person, so it stands, walks and swings its arms as they do. Its colours are its card's (drawRobot's own). */
+const RBPX=0.92/32;   /* a card pixel in a body's own units: a card is 32 pixels to T3PERSON, and every body stands scaled by T3PERSON/0.92 (grep it) */
+function robotMake(skel,lk){
+  const root=new THREE.Group();root.name="body";const J={};
+  Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
+  Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
+  root.updateMatrixWorld(true);
+  const tin=lk.shirt||"#9AA3AD",dark="#5B6470",ink="#2B2536",mats=new Map(),u=RBPX,X=x=>(x-16)*u,Y=y=>(28-y)*u;
+  const mat=col=>{let m=mats.get(col);if(!m){m=new THREE.MeshLambertMaterial({color:new THREE.Color(col)});mats.set(col,m);}return m;};
+  /* a card rectangle (x0,y0)-(x1,y1) with depth d pixels, its front at z pixels, hung on joint j where it stands at rest */
+  const box=(j,wears,col,x0,y0,x1,y1,d,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry((x1-x0)*u,(y1-y0)*u,d*u),mat(col));
+    const w=new THREE.Vector3(X((x0+x1)/2),Y((y0+y1)/2),(z-d/2)*u);J[j].worldToLocal(w);m.position.copy(w);
+    m.userData={wears,base:new THREE.Color(col)};J[j].add(m);return m;};
+  const side=(a,x)=>(J[a+"_l"].getWorldPosition(new THREE.Vector3()).x>0)===(X(x)>0)?a+"_l":a+"_r";   /* the joint on the side the card draws it */
+  box(side("ankle",12),"tin",dark,9,24,15,28,8,4);box(side("ankle",20),"tin",dark,17,24,23,28,8,4);   /* tread feet */
+  box("spine","tin",tin,8,11,24,24,12,6);   /* the barrel */
+  [[11,14],[20,14],[11,21],[20,21]].forEach(([x,y])=>box("spine","tin",dark,x,y,x+1.4,y+1.4,0.6,6.3));   /* rivets */
+  box("spine","clipboard","#DDE4EA",13,15,19,22,0.6,6.4);[16.5,18,19.5].forEach(y=>box("spine","clipboard",ink,14,y,18,y+0.7,0.3,6.6));
+  box(side("shoulder",6.5),"tin",tin,5,12,8,20,3,1.5);box(side("shoulder",25.5),"tin",tin,24,12,27,20,3,1.5);   /* arms, straight down */
+  box("head","head",lk.skin||"#B8C0C8",9.5,-1,22.5,11,11,5.5);   /* the square head */
+  box("head","antenna",dark,15.4,-5,16.6,-0.5,1.2,0.6);
+  {const m=new THREE.Mesh(new THREE.SphereGeometry(1.4*u,10,8),mat("#D9342B"));const w=new THREE.Vector3(X(16),Y(-5.4),0);J.head.worldToLocal(w);
+    m.position.copy(w);m.userData={wears:"antenna",base:new THREE.Color("#D9342B")};J.head.add(m);}
+  box("head","lamp",ink,11.5,2.5,15.5,6.1,0.4,5.8);box("head","lamp",ink,16.5,2.5,20.5,6.1,0.4,5.8);
+  box("head","lamp","#F2B705",12.3,3.3,14.7,5.3,0.4,6.0);box("head","lamp","#F2B705",17.3,3.3,19.7,5.3,0.4,6.0);
+  box("head","lamp",ink,13,8,19,9,0.4,5.8);   /* the slot of a mouth */
+  const sh=new THREE.Mesh(new THREE.CircleGeometry(8*u,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));
+  sh.rotation.x=-Math.PI/2;sh.position.y=0.006;sh.scale.set(1,3.5/8,1);sh.userData={shadow:true};root.add(sh);   /* the card's shadow, 8 by 3.5 */
+  root.userData.joints=J;root.userData.skel=skel;root.userData.robot=true;return root;}
 /* the yaw of a light body at (x,y): turned away from the camera, or the way it walks (LIGHTWALK) */
 function lightYaw(x,y,mv,fromX,fromY){const cam=T3.cam.position;
   if(mv&&LIGHTWALK==="way"){const hx=mv[0]-fromX,hy=mv[1]-fromY;if(hx||hy)return Math.atan2(hx,hy);}
@@ -3680,15 +3715,16 @@ function lightStand(who,lk,x,y,lift,yaw,walking,dt,groundAt){
   const on=T3.lightOn||(T3.lightOn=new Map());let B=on.get(who);
   const key=peopleKey(lk);
   if(B&&(B.userData.key!==key||B.parent!==T3.scene)){B.parent&&B.parent.remove(B);on.delete(who);B=null;}
-  if(!B){const Ch=bodyChoicesOf(lk.body);B=lightMake(bodySkeleton("person",Ch),{...lk,body:Ch});B.userData.key=key;T3.scene.add(B);on.set(who,B);}
+  if(!B){const Ch=bodyChoicesOf(lk.body);B=lk.robot?robotMake(bodySkeleton("person",Ch),lk):lightMake(bodySkeleton("person",Ch),{...lk,body:Ch});B.userData.key=key;T3.scene.add(B);on.set(who,B);}   /* a tin man stands in as his blocks: he is quick to make (A TIN MAN'S BODY), and a round light body read as a grey person, not a tin man (the owner's confirmed goal of 2026-11-26) */
   const S=B.userData.skel,sc=T3PERSON/0.92,a=B.userData.at,go=a?Math.hypot(x-a[0],y-a[1]):0;B.userData.at=[x,y];
   if(walking&&go>0&&go<1&&dt>0){const k=Math.min(BODYSTEPS[1],Math.max(BODYSTEPS[0],go/dt/(2*S.stride*sc)));B.userData.phase=(B.userData.phase||0)+Math.PI*k*dt;}
   B.visible=true;B.position.set(x+0.5,lift,y+0.5);B.rotation.set(0,yaw,0);B.scale.setScalar(sc);B.userData.yaw=yaw;
   t3BodyPose(B,B.userData.phase||0,walking,groundAt);
+  if(B.userData.robot)t3BodyLight(B);   /* his blocks are lit as a full body is (lightLit lights the shared colours only) */
   if(B.userData.top===undefined)B.userData.top=new THREE.Box3().setFromObject(B).max.y-B.position.y;
   return B;}
-/* take a light body away (never disposed: its shapes and colours are shared); the yaw it stood at, for the turn round */
-function lightDrop(who){const on=T3.lightOn,B=on&&on.get(who);if(!B)return null;B.parent&&B.parent.remove(B);on.delete(who);return B.visible?B.userData.yaw:null;}
+/* take a light body away (never disposed: its shapes and colours are shared, a tin man's blocks apart); the yaw it stood at, for the turn round */
+function lightDrop(who){const on=T3.lightOn,B=on&&on.get(who);if(!B)return null;B.parent&&B.parent.remove(B);on.delete(who);if(B.userData.robot)t3Dispose(B);return B.visible?B.userData.yaw:null;}   /* a tin man's blocks are his own, not the shared light colours, so they go with him */
 /* the turn round, each frame: from where the light body faced to `to`, over LIGHTTURN seconds of the time handed in */
 function lightTurn(B,to,dt){const t=B.userData.turn;if(!t)return to;
   t.t+=Math.max(0,dt||0);const k=Math.min(1,t.t/LIGHTTURN),e=k*k*(3-2*k),d=Math.atan2(Math.sin(to-t.from),Math.cos(to-t.from));
@@ -3703,7 +3739,7 @@ function t3PeopleMake(){
     const wait=T3.peopleWait||[],on=T3.peopleOn;T3.peopleWait=[];
     const e=wait.find(e=>on&&!on.has(e.n)&&T3.scene&&CW().npcs.includes(e.n));
     if(!e)return;
-    try{const lk=npcWhimsy(e.n),Ch=bodyChoicesOf(lk.body),B=bodyMake(bodySkeleton("person",Ch),{...lk,body:Ch},Ch);
+    try{const lk=npcWhimsy(e.n),Ch=bodyChoicesOf(lk.body),B=lk.robot?robotMake(bodySkeleton("person",Ch),lk):bodyMake(bodySkeleton("person",Ch),{...lk,body:Ch},Ch);   /* a tin man as his card draws him (A TIN MAN'S BODY) */
       /* NOT THROUGH A WALL: the maker puts every part on layer 1, the layer t3BodyThrough draws again over the street so a wall
          never hides the person you steer. Another person is hidden by a wall as their card is, so their parts leave it (found on
          the first pictures, 2026-11-17: a body at a window was drawn over the counter in front of it) */
