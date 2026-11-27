@@ -37,7 +37,7 @@ jobs:
     # THE GATE. `needs` makes this job wait for every part; `always()` makes it run even when a part failed, because a
     # required job that is SKIPPED counts as passed on GitHub, and a red part would then let a merge through. Its first
     # step fails unless every part's result is exactly "success" (a cancelled or skipped part is a red, not a pass).
-    needs: [content, engine, gauge, horno, site]
+    needs: [privacy, content, engine, gauge, horno, site]
     if: ${{ always() }}
     steps:
       - name: Every part of the check passed (a part that failed, was cancelled or did not run is a red here)
@@ -45,7 +45,7 @@ jobs:
           PARTS: ${{ toJSON(needs) }}
         run: |
           node -e '
-            const want = ["content", "engine", "gauge", "horno", "site"];
+            const want = ["privacy", "content", "engine", "gauge", "horno", "site"];
             let parts; try { parts = JSON.parse(process.env.PARTS || ""); } catch (e) { parts = null; }
             if (!parts || typeof parts !== "object") { console.log("FAIL: the results of the parts could not be read, so nobody can say they passed"); process.exit(1); }
             const bad = want.filter(n => !parts[n] || parts[n].result !== "success").map(n => n + ": " + (parts[n] ? parts[n].result : "did not run"));
@@ -57,6 +57,50 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
           fetch-depth: 0   # the address check reads every commit a pull request brings
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22
+      - name: Every pointer that says grep these words in that file still finds its line (and the check's own red cases first)
+        run: node test/pointers.js --selftest && node test/pointers.js
+      # The gate above only knows the parts it is told about: a part added below and left out of `needs`, or out of the
+      # list the first step asks about, would fail and block nothing. test/gate.js reads this file and is red for that.
+      - name: The gate names every part of the check (and the check's own red cases first)
+        run: node test/gate.js --selftest && node test/gate.js
+      - name: The guards' own red cases
+        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
+      - name: The game is uploaded by one job and published by another that waits for it (and the check's own red cases first)
+        run: node test/publish.js --selftest && node test/publish.js
+      - name: The game's own dice, every line apart and set by checks only, and the old rolls counted (and the check's own red cases first)
+        run: node test/dice.js --selftest && node test/dice.js
+      # #316: every literal part the games draw is built through the shape builder on this change's engine and
+      # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
+      # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
+      # because a gate that cannot go red protects nothing. Exactly these two lines and nothing else: which base
+      # to compare with is decided inside test/prims.js (--ci), where its self-test plants every branch, and
+      # test/prims.js reads this step and fails if it changes. Keep them in one step.
+      - name: Every literal part the games draw still builds the same through the shape builder (and the shape gate's own red cases)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          node test/prims.js --selftest
+          node test/prims.js --ci
+
+  # PART: the game's own content test and the kitchen's seams
+
+  # PART, AND FIRST: THE PRIVACY SCANS (the owner's confirmed goal of 2026-11-25: privacy first, so nothing else starts until
+  # the privacy scans are green). Every other part waits for this one (`needs: [privacy]`), and test/gate.js is red for a
+  # part that does not. The scans and what they read are as they were in the gate: the commits this run brings, the
+  # private list, the addresses, the fingerprints, the keys and the quotes.
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0   # the address and quote checks read every commit a pull request brings
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
@@ -157,35 +201,9 @@ jobs:
             fi
             node test/quotes.js --range 'HEAD^1..HEAD^2'
           fi
-      - name: Every pointer that says grep these words in that file still finds its line (and the check's own red cases first)
-        run: node test/pointers.js --selftest && node test/pointers.js
-      # The gate above only knows the parts it is told about: a part added below and left out of `needs`, or out of the
-      # list the first step asks about, would fail and block nothing. test/gate.js reads this file and is red for that.
-      - name: The gate names every part of the check (and the check's own red cases first)
-        run: node test/gate.js --selftest && node test/gate.js
-      - name: The guards' own red cases
-        run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
-      - name: The game is uploaded by one job and published by another that waits for it (and the check's own red cases first)
-        run: node test/publish.js --selftest && node test/publish.js
-      - name: The game's own dice, every line apart and set by checks only, and the old rolls counted (and the check's own red cases first)
-        run: node test/dice.js --selftest && node test/dice.js
-      # #316: every literal part the games draw is built through the shape builder on this change's engine and
-      # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
-      # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,
-      # because a gate that cannot go red protects nothing. Exactly these two lines and nothing else: which base
-      # to compare with is decided inside test/prims.js (--ci), where its self-test plants every branch, and
-      # test/prims.js reads this step and fails if it changes. Keep them in one step.
-      - name: Every literal part the games draw still builds the same through the shape builder (and the shape gate's own red cases)
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          node test/prims.js --selftest
-          node test/prims.js --ci
 
-  # PART: the game's own content test and the kitchen's seams
   content:
+    needs: [privacy]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -212,9 +230,18 @@ jobs:
         run: node test/kitchen-seams.js
 
   # PART: the engine's test against the game, the longest single run (about ten minutes on 2026-11-12)
+  # PART: the engine, its three parts side by side (the owner's confirmed goal of 2026-11-25; timed alone on the trial branch
+  # on 2026-11-25: map about 11 min, body about 5, rest about 6, where the whole was about 18). test/engine.smoke.js knows
+  # the same three (`--part`), and test/gate.js is red when this list and the file's parts differ. One part failing does not
+  # stop the other two.
   engine:
+    needs: [privacy]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [map, body, rest]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
@@ -233,12 +260,15 @@ jobs:
         run: |
           npm install playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: The engine, against the game
-        run: node test/engine.smoke.js --index index.html
+      - name: The engine, against the game (this part of it)
+        env:
+          PART: ${{ matrix.part }}
+        run: node test/engine.smoke.js --index index.html --part "$PART"
 
   # PART: the gauge, each of its three worlds a run of its own, side by side (together they were the longest stretch:
   # 182 s, 286 s and more than 300 s on 2026-11-12). One world failing does not stop the other two.
   gauge:
+    needs: [privacy]
     runs-on: ubuntu-latest
     # 35 min: test/gauge.js runs its world in three parts one after another, each stopped at 480 s (24 min), plus setup
     timeout-minutes: 35
@@ -271,6 +301,7 @@ jobs:
 
   # PART: the oven world
   horno:
+    needs: [privacy]
     runs-on: ubuntu-latest
     # 35 min: test/horno.js runs the oven world in three parts one after another, each stopped at 480 s (24 min), plus setup
     timeout-minutes: 35
@@ -297,6 +328,7 @@ jobs:
 
   # PART: what would be published, offline play, and the version check
   site:
+    needs: [privacy]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
