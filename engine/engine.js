@@ -260,7 +260,7 @@ function wanderUpdate(dt){
           walks past a tree. */
         n.x=n.mv[0];n.y=n.mv[1];n.fx=n.x;n.fy=n.y;petalDrop(world,n.x,n.y,n);
         if(w.grid[n.y])w.grid[n.y][n.x]="N";
-        n.mv=null;n.wnext=now+1600+Math.random()*3200;}
+        n.mv=null;n.wnext=now+1600+DICE.roll("people")*3200;}
       return;}
     if(!wanders(n)||now<n.wnext)return;
     if(Math.abs(n.x-px)+Math.abs(n.y-py)<=1){n.wnext=now+1500;return;}
@@ -281,7 +281,7 @@ function wanderUpdate(dt){
       &&!(x===px&&y===py)
       &&!(x===Math.round(fx)&&y===Math.round(fy)));   /* nor the square you are still standing on as you step off it (mq-v275) */
     if(!opts.length){n.wnext=now+2500;return;}
-    const t=opts[(Math.random()*opts.length)|0];
+    const t=opts[(DICE.roll("people")*opts.length)|0];
     n.face=t[0]>n.x?1:t[0]<n.x?-1:n.face;
     n.mv=t;n.mt=0;
     /* THE SQUARE IS CLAIMED WHEN THE STEP STARTS (mq-v275; Chava, run 2026-11-17-claude-5d3e: a walker walked into the person
@@ -2569,7 +2569,7 @@ const HEROFEET={}; /* what the hero's shoes carry off the deck */
 let deckIdle=0,petalMoment=false,petalSaid=false;
 function petalMomentTick(dt){const w=CW();
   if(!moving&&w&&petalsOn()&&bridgeDist(w,px,py)===0){deckIdle+=dt;
-    if(deckIdle>=2200&&!petalSaid){petalSaid=true;petalMoment=true;const L=(T().petalLines||[]);if(L.length)toast(L[Math.floor(Math.random()*L.length)],4200);}}
+    if(deckIdle>=2200&&!petalSaid){petalSaid=true;petalMoment=true;const L=(T().petalLines||[]);if(L.length)toast(L[Math.floor(DICE.roll("festival")*L.length)],4200);}}
   else{deckIdle=0;petalMoment=false;if(!w||bridgeDist(w,px,py)!==0)petalSaid=false;}}
 const petalHeap=g=>!!(TILES[g]&&TILES[g].petals); /* a tile a world declares as LOOSE PETALS lying on the ground */
 function petalDrop(wid,x,y,feet){ /* the owner wanted the trail on the bridge only — a step on the deck scatters
@@ -3795,17 +3795,17 @@ function pigStep(P,dt,now){
     else{P.fx=P.x-P.dx*(1-P.mt);P.fy=P.y-P.dy*(1-P.mt);}return;}
   if(world!==pigWorld(P)){P.next=now+1000;return;}
   if(now<P.next)return;
-  const r=Math.random();
-  if(r<0.5){P.peck=r<0.3;P.next=now+500+Math.random()*1400;return;}
+  const r=DICE.roll("pigeon");
+  if(r<0.5){P.peck=r<0.3;P.next=now+500+DICE.roll("pigeon")*1400;return;}
   P.peck=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>pigFree(P,P.x+d[0],P.y+d[1]));
   if(!dirs.length){P.next=now+900;return;}
-  const d=dirs[Math.floor(Math.random()*dirs.length)];
+  const d=dirs[Math.floor(DICE.roll("pigeon")*dirs.length)];
   P.dx=d[0];P.dy=d[1];if(d[0])P.face=d[0];
   P.x+=d[0];P.y+=d[1];P.moving=true;P.mt=0;
-  P.next=now+300+Math.random()*1200;
-  if(Math.abs(P.x-px)+Math.abs(P.y-py)===1&&Math.random()<0.25&&wDate()-lastBump>3000){
-    lastBump=wDate();const L=T().pigeon;toast(L[Math.floor(Math.random()*L.length)],1700);}
+  P.next=now+300+DICE.roll("pigeon")*1200;
+  if(Math.abs(P.x-px)+Math.abs(P.y-py)===1&&DICE.roll("pigeon")<0.25&&wDate()-lastBump>3000){
+    lastBump=wDate();const L=T().pigeon;toast(L[Math.floor(DICE.roll("pigeon")*L.length)],1700);}
 }
 function drawPigeon(g,P,sx,sy){
   const R=bodyRide("pigeon",P);
@@ -3827,8 +3827,8 @@ function loroTick(now){loroStep(LORO,now);}
 function loroStep(L,now){
   if(world!==(L===LORO?AW("loro"):L.world))return;
   if(now<L.next)return;L.next=now+2000;
-  if(Math.abs(L.x-px)+Math.abs(L.y-py)<=2&&Math.random()<0.45&&wDate()-lastBump>2600){
-    lastBump=wDate();const L=T().loro;toast("🦜 "+L[Math.floor(Math.random()*L.length)],2000);}
+  if(Math.abs(L.x-px)+Math.abs(L.y-py)<=2&&DICE.roll("bird")<0.45&&wDate()-lastBump>2600){
+    lastBump=wDate();const L=T().loro;toast("🦜 "+L[Math.floor(DICE.roll("bird")*L.length)],2000);}
 }
 /* ---- THE PARROT AS A REAL PARROT (mq-v297; the owner's confirmed goals of 2026-11-23 on the parrot) ----
    A parrot whose record names a coat (coat) is drawn as a macaw, the shape the owner shaped in the session from his own
@@ -4040,9 +4040,10 @@ const CATK=new Set(["gato"]);
 const isCat=cr=>!!cr&&CATK.has(cr.kind);
 /* THE DICE, BY ANIMAL (grep "THE GAME'S OWN DICE" in engine/dice.js). Dogs and cats share the street's machinery (the step,
    the whim, the curl), so a roll made for an animal goes on that animal's own line: a cat's on the cat's, a dog's on the dog's,
-   anything else in the street on the critter line. A cat doing something new changes nothing a dog does. */
+   a pigeon's on the pigeon's, the parrot's on the bird line, anything else in the street on the critter line. A cat doing something new changes nothing a dog does. */
 function dogRoll(cr){return isCat(cr)?DICE.roll("cat"):DICE.roll("dog");}
-function critRoll(cr){return isCat(cr)?DICE.roll("cat"):isDog(cr)?DICE.roll("dog"):DICE.roll("critter");}
+function kindRoll(k){return CATK.has(k)?DICE.roll("cat"):DOGK.has(k)?DICE.roll("dog"):k==="pigeon"?DICE.roll("pigeon"):k==="loro"?DICE.roll("bird"):DICE.roll("critter");}
+function critRoll(cr){return kindRoll(cr?cr.kind:null);}
 /* GROOMING (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 6: a world turns it on by naming cat in its own GROOMTAKE list, as it turns on the dogs' routines. Where it
    is on, 1 in 3 of a cat's sits becomes a groom of 3 to 6 s (CATGROOM): sitting, its head down to a raised fore paw, licking it,
    and the paw wiped over an ear; on its card (the card he approved on 2026-11-23) and on its body. The roll is taken after every
@@ -4552,7 +4553,10 @@ function gearBarDown(wid,x,y){if(wid==null)wid=world;return GEARBARS.has(wid+"|"
 /* ...AND NOT ONE NUMBER OFF THE GAME'S DICE FOR IT: the 3D library names every piece it makes with numbers it takes from
    Math.random, and a pole that leans is stood again many times a second. Taken off the game's dice, those would move
    every roll the game makes for as long as a dog is in the poles (measured: some 370 numbers for one pass of the three
-   pieces). So while a piece of gear is built again the library draws its names from a small generator kept here. */
+   pieces). So while a piece of gear is built again the library draws its names from a small generator kept here.
+   Since the game's own dice (engine/dice.js), no roll of the game comes from Math.random, so the library's numbers move none
+   of them; this stays while the checks still count the browser's numbers and steer through them (the dice's bridge,
+   test/dice.js), and comes out with the bridge. */
 let GEARSEED=0x9E3779B9;
 const gearRnd=()=>{GEARSEED=(Math.imul(GEARSEED,1664525)+1013904223)>>>0;return GEARSEED/4294967296;};
 function gearReshape(wid,x,y){if(wid!==world||typeof t3Reshape!=="function"||typeof T3!=="object"||!T3||String(T3.builtKey||"").indexOf(world+"|")!==0)return false;
@@ -4578,7 +4582,7 @@ function gearBarsHome(fromW){if(fromW===world)return false;const pre=world+"|";l
    (dogStep), never by a painter. 1, and nothing drawn or kept, where the world does not take it. */
 const paceOk=v=>typeof v==="number"&&isFinite(v)&&v>=COURSENUM.pace[0]&&v<=COURSENUM.pace[1];
 function paceDraw(r){const a=COURSENUM.pace[0],b=COURSENUM.pace[1];
-  return Math.round((a+(b-a)*(typeof r==="number"&&r>=0&&r<1?r:Math.random()))*100)/100;}
+  return Math.round((a+(b-a)*(typeof r==="number"&&r>=0&&r<1?r:DICE.roll("dog")))*100)/100;}
 /* the kept paces, cleaned where they are read: a name of at most 40 letters and a number inside the table's range, in a map with no prototype */
 function paceClean(o){const m=Object.create(null);if(o&&typeof o==="object"&&!Array.isArray(o))
   Object.keys(o).slice(0,64).forEach(k=>{const v=o[k];if(typeof k==="string"&&k.length<=40&&paceOk(v))m[k]=v;});return m;}
@@ -4888,7 +4892,7 @@ const ROUTINES=Object.freeze({
   lazy:Object.freeze([{pose:"sit"},{pose:"lay",curl:"lazy"},{pose:"howl",held:"lay",short:true},{pose:"normal"}])});
 /* how long this step lasts for this dog: its pose's own time (dogTime); `part` is a share of it (the sniff that stands in for
    the hole is half a sniff), `short` draws from the lower half of the range (the lazy routine's howl is a short one) */
-function routineTime(cr,st){return dogTime(st.pose,cr,st.short?Math.random()*0.5:undefined)*(typeof st.part==="number"?st.part:1);}
+function routineTime(cr,st){return dogTime(st.pose,cr,st.short?dogRoll(cr)*0.5:undefined)*(typeof st.part==="number"?st.part:1);}
 const ROUTINECHANCE_DEF=Object.freeze({dog:Object.freeze({free:50,curious:25,lazy:25})});
 const ROUTINETILT_DEF=Object.freeze({dog:Object.freeze({eager:Object.freeze({curious:10,lazy:-10}),patient:Object.freeze({}),aloof:Object.freeze({curious:-10,lazy:10})})});
 const DIGSHARE=0.08;
@@ -4904,7 +4908,7 @@ function routineOdds(cr){const k=personaKind(cr),own=(o,def)=>o&&typeof o==="obj
   ROUTINEMODES.forEach(m=>{n[m]/=tot;});return n;}
 /* one draw of his mode; r, a number from 0 to 1, may be handed in so a check can hold it still */
 function routineDraw(cr,r){if(ROUTINEMODES.includes(ROUTINEPIN))return ROUTINEPIN;
-  const o=routineOdds(cr);let x=typeof r==="number"&&r>=0&&r<1?r:Math.random();
+  const o=routineOdds(cr);let x=typeof r==="number"&&r>=0&&r<1?r:dogRoll(cr);
   for(const m of ROUTINEMODES){x-=o[m];if(x<0)return m;}return "free";}
 /* how often the curious routine's hole happens, for this dog, so that DIGSHARE of all his idle choices include one */
 function routineDigChance(cr){const o=routineOdds(cr);
@@ -4923,14 +4927,14 @@ function routinePose(cr,st,now,ms){const p=st.pose;
 /* the next step of his routine, or its end; dogStep calls it when the step before has run its time (tk.wait) */
 function routineStep(cr,tk,now){const steps=ROUTINES[tk.id]||[];tk.i++;
   dogNormal(cr);
-  if(tk.i>=steps.length){cr.task=null;cr.next=now+400+Math.random()*900;return;}
+  if(tk.i>=steps.length){cr.task=null;cr.next=now+400+dogRoll(cr)*900;return;}
   let st=steps[tk.i];if(st.roll==="dig"&&!tk.dig)st=st.or||{pose:"normal",part:0};
   const ms=routineTime(cr,st);routinePose(cr,st,now,ms);
   if(st.curl&&dogCurl(cr,st.curl))dogCurlPick(cr);   /* a lie-down that may be curled up (mq-v290): its roll after the step's own; curled, which version */
   tk.pose=st.pose;tk.wait=now+ms;}
 /* r, a number from 0 to 1, may be handed in for the hole's own roll */
 function routineStart(cr,id,now,r){const steps=ROUTINES[id];if(!steps||!steps.length)return false;
-  cr.task={type:"routine",id,i:-1,pose:"normal",dig:!dogTidy(cr)&&(ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:Math.random())<routineDigChance(cr))};   /* a tidy dog's hole is never rolled: he sniffs in its place (mq-v295) */
+  cr.task={type:"routine",id,i:-1,pose:"normal",dig:!dogTidy(cr)&&(ROUTINEPIN===id||(typeof r==="number"&&r>=0&&r<1?r:dogRoll(cr))<routineDigChance(cr))};   /* a tidy dog's hole is never rolled: he sniffs in its place (mq-v295) */
   routineStep(cr,cr.task,now);return true;}
 /* a hand on him ends his routine at once (a treat, his love, a ball, a leash, a command): he is yours, standing, that instant */
 function routineStop(cr){if(cr&&cr.task&&cr.task.type==="routine"){cr.task=null;dogNormal(cr);}}
@@ -6155,7 +6159,7 @@ function tryStep(){
     const ch=(ny>=0&&ny<w.H&&nx>=0&&nx<w.W)?w.rows[ny][nx]:"#";
     const F=T().flavor;
     if(F[ch]&&wDate()-lastBump>1800){lastBump=wDate();
-      toast(F[ch][Math.floor(Math.random()*F[ch].length)],2000);}
+      toast(F[ch][Math.floor(DICE.roll("world")*F[ch].length)],2000);}
     return;
   }
   kickProp(nx,ny,dx,dy); /* a cone is a thing you nudge with a foot, not a wall to go around */
@@ -6443,7 +6447,7 @@ function droneRecs(){if(droneKept)return droneKept;droneKept=[];
       const o={id:r.id},n=sanName(r.n);if(n)o.n=n;droneKept.push(o);});}catch(e){}
   return droneKept;}
 function droneRec(make){const L=droneRecs();
-  if(!L.length&&make)L.push({id:"dr"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)});
+  if(!L.length&&make)L.push({id:"dr"+Date.now().toString(36)+DICE.below("world",2176782336).toString(36).padStart(6,"0")});
   return L[0]||null;}
 function droneOwnName(){const r=buildOK()?droneRec(false):null;return r&&r.n?r.n:"";}
 function droneRename(v){const r=droneRec(true),n=sanName(v);
@@ -7376,7 +7380,7 @@ $("talk").addEventListener("click",()=>{
        alike on a phone screen (the owner found people hard to tell
        apart and asked for a name on what they say). Tile flavour stays unsigned on purpose —
        the crosswalk is not a person. */
-    if(L.length){let ln=L[Math.floor(Math.random()*L.length)];if(typeof ln==="function")ln=ln(); /* a line may be counted at the moment it is said (El Portero, #8) */
+    if(L.length){let ln=L[Math.floor(DICE.roll("world")*L.length)];if(typeof ln==="function")ln=ln(); /* a line may be counted at the moment it is said (El Portero, #8) */
       const crit=!!(ln&&ln.crit);ln=(ln&&ln.t!==undefined)?ln.t:ln;toast(sayAs(tb.dataset.chatn,ln),2800,crit);}return;}
   questStart(+tb.dataset.qi);});
 /* the service button. It only ever exists beside a quest, so it has exactly one job. */
@@ -7458,11 +7462,11 @@ $("treat").addEventListener("click",()=>{
     return;
   }
   if(petTarget==="cat"){CAT.sit=true;CAT.next=wNow()+3200;
-    const L=T().cat;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
+    const L=T().cat;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(DICE.roll("cat")*L.length)],2000);}
   else if(petTarget==="pig"){PIG.peck=true;PIG.next=wNow()+2200;
-    const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
+    const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(DICE.roll("pigeon")*L.length)],2000);}
   else if(petTarget==="loro"){
-    const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}
+    const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(DICE.roll("bird")*L.length)],2200);}
   else if(DOGK.has(petTarget)&&petCrit&&petCrit.role==="office"){ /* the office dog's treat (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog):
        DOG's own words and count, so three treats open his side quest as they always did, and a dog's treat from the program */
     const g2=petCrit;routineStop(g2);
@@ -7485,9 +7489,9 @@ $("treat").addEventListener("click",()=>{
     if(g2){g2.sit=true;g2.layT=0;
       g2.fedT=wNow();g2.fseq=null; /* food-driven: the next cycle rolls at 6/7 */
       if(world===PL.park)PARK.t++;}
-    const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&Math.random()<0.35)?eggLines(g2.egg,g2.name)
+    const L=(g2&&g2.egg&&EGGSAFE[g2.egg]&&DICE.roll("dog")<0.35)?eggLines(g2.egg,g2.name)
            :(T().beagleTreat||T().gato);
-    if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(Math.random()*L.length)],2400);   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
+    if(Array.isArray(L)&&L.length)toast("🦴 "+L[Math.floor(DICE.roll("dog")*L.length)],2400);   /* a world with dogs and no words for a treat says nothing, where it threw (mq-v279) */
     /* his happy wag for its own time (dogTime), then a beat before he moves on; and a beagle often sings about it. Drawn
        AFTER the treat's line: the rolls that pick the line are the ones they always were, and these come after them */
     if(g2){g2.next=dogHappy(g2,wNow())+1000;dogGlad(g2,wNow());}}
@@ -7497,16 +7501,16 @@ $("treat").addEventListener("click",()=>{
       const pe=typeof personaOf==="function"?personaOf(g2):null;if(pe&&!g2.metT){g2.metT=wNow();g2.turnT=wNow()+(pe==="aloof"?PERSONAWAIT:0);}   /* met: it turns to you (catAway) */
       catGreet(g2,Math.max(wNow(),g2.turnT||0));}   /* it greets standing as it turns to you (at once, or an aloof cat at turnT), then sits to the end of its sit (mq-v299) */
     const L=catLines(g2);
-    if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2200);}
+    if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(DICE.roll("cat")*L.length)],2200);}
   else if(petTarget==="pigeon"||petTarget==="loro"){   /* the birds of the program (mq-v297; the owner's confirmed goal of 2026-11-23 on the birds) */
     const g2=petCrit;if(g2&&animalMeet(g2))return;
-    if(petTarget==="pigeon"){if(g2){g2.peck=true;g2.next=wNow()+2200;}const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(Math.random()*L.length)],2000);}
-    else{const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(Math.random()*L.length)],2200);}}
+    if(petTarget==="pigeon"){if(g2){g2.peck=true;g2.next=wNow()+2200;}const L=T().pigeon;if(Array.isArray(L)&&L.length)toast("❤ "+L[Math.floor(DICE.roll("pigeon")*L.length)],2000);}
+    else{const L=T().loro;if(Array.isArray(L)&&L.length)toast("🦜 "+L[Math.floor(DICE.roll("bird")*L.length)],2200);}}
   else if(petTarget==="butterfly"||petTarget==="colibri"){
     const g2=petCrit;if(g2&&animalMeet(g2))return;   /* its personality first, where the world gives one (mq-v297) */
     if(g2){g2.sit=true;g2.moving=false;g2.next=wNow()+2600;} /* it pauses for you */
     const L=petTarget==="butterfly"?T().mariposa:T().colibri;
-    if(Array.isArray(L)&&L.length)toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(Math.random()*L.length)],2200);}
+    if(Array.isArray(L)&&L.length)toast((petTarget==="butterfly"?"🦋 ":"🌺 ")+L[Math.floor(DICE.roll("critter")*L.length)],2200);}
 });
 /* ---------- quest overlay ---------- */
 let wasFs=false;
@@ -7536,7 +7540,7 @@ function nodeShow(){
     if(typeof hd==="string"&&!handedDocs.has(hd)){handedDocs.add(hd);save();}}else npcHeld=null;
   $("cdxLb").textContent=T().codexLb;$("codex").textContent=t.codex;$("q").textContent=t.q;
   const box=$("choices");box.innerHTML="";
-  const list=[...t.ch].sort(()=>Math.random()-0.5); /* shuffled every time — no more middle-answer tell */
+  const list=[...t.ch].sort(()=>DICE.roll("world")-0.5); /* shuffled every time — no more middle-answer tell */
   list.forEach(c=>{const b=document.createElement("button");b.textContent=c.t;
     b.addEventListener("click",()=>pick(c,b,{ch:list}));box.appendChild(b);});
   $("verdict").hidden=true;$("next").hidden=true;$("levelup").hidden=true;hud();
@@ -8025,7 +8029,7 @@ let chairHow=null,chairFs=false;
 function openChair(who,how){const t=T();chairOpen=true;chairHow=how||null;BODYPV.hold=false;
   chairFs=$("vp").classList.contains("fs");if(chairFs)document.body.classList.remove("noscroll");
   $("crTitle").textContent=(how&&how.title)||t.chairTitle||t.crTitle;$("lbName").hidden=true;$("heroname").hidden=true;
-  const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(Math.random()*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
+  const note=$("crNote");if(note){const L=how?[]:(t.chat||{})[who]||[];let ln=L.length?L[Math.floor(DICE.roll("people")*L.length)]:"";if(typeof ln==="function")ln=ln();ln=(ln&&ln.t!==undefined)?ln.t:ln;note.textContent=ln?sayAs(who,ln):"";note.hidden=!ln;}
   buildSwatches();buildOpts("rowStyle",t.styles,"style");buildOpts("rowOutfit",t.outfits,"outfit");if(t.patterns)buildOpts("rowPattern",t.patterns,"pattern");buildPaintRow();buildBodyRows();pvDraw();
   $("begin").textContent=(how&&how.done)||t.chairDone||t.begin;$("world").hidden=true;$("creator").hidden=false;held=null;
   /* #126: the chair opens over the world, and the page was left scrolled wherever the world had it — so the panel
@@ -8459,8 +8463,8 @@ function musVoice(m,t0,dur,type,peak,bright){
 }
 function musTick(){
   const c=MUSIC.ctx,d=musDef(),t0=c.currentTime+0.08,st=MUSIC.step++;
-  if(Math.random()<0.58){ /* melody: random walk on the pentatonic — dense enough to read as a tune */
-    MUSIC.mel+=[1,-1,2,-2,1,-1,0][Math.floor(Math.random()*7)];
+  if(DICE.roll("music")<0.58){ /* melody: random walk on the pentatonic — dense enough to read as a tune */
+    MUSIC.mel+=[1,-1,2,-2,1,-1,0][Math.floor(DICE.roll("music")*7)];
     MUSIC.mel=Math.max(-3,Math.min(9,MUSIC.mel));
     const deg=((MUSIC.mel%5)+5)%5,oct=Math.floor(MUSIC.mel/5);
     musVoice(d.root+12+oct*12+d.scale[deg],t0,0.55,d.lead,0.19,d.bright);
@@ -9813,7 +9817,7 @@ function mapRandomDest(){
     pool.push({w:id,x:n.x,y:n.y,who:n.npc,gx:pn?n.x+pn.ox:at.gx,gy:pn?n.y+pn.oy:at.gy,inside:!!(door&&!pn&&at.gx===door[0]&&at.gy===door[1])});});});
   const away=pool.filter(q=>!q.inside),from=away.length?away:pool;   /* the building you are in, only when nobody else can be reached */
   if(!from.length)return false;
-  const p2=from[(Math.random()*from.length)|0];
+  const p2=from[(DICE.roll("world")*from.length)|0];
   mapDest={w:p2.w,x:p2.x,y:p2.y,gx:p2.gx,gy:p2.gy,who:p2.who};
   drawTown();setWorldTag();mapNoteSet();
   return true;
@@ -10164,7 +10168,7 @@ const sanName=s2=>String(s2||"").replace(/[\u0000-\u001f<>]/g,"").trim().slice(0
    it is only ever shown through textContent, so a "<3" stays a "<3" */
 const sanLine=s2=>String(s2||"").replace(/[\u0000-\u001f]/g,"").trim().slice(0,140);
 const hexOK=v=>typeof v==="string"&&/^#[0-9A-Fa-f]{6}$/.test(v);
-function randLook(){const pick=a=>a[Math.floor(Math.random()*a.length)];
+function randLook(){const pick=a=>a[Math.floor(DICE.roll("people")*a.length)];
   return {shirt:pick(SWATCH.shirt),skin:pick(SWATCH.skin),hair:pick(SWATCH.hair),style:pick(NPCSTYLES)};}
 let myNpcs=[];
 try{myNpcs=(JSON.parse(localStorage.getItem(SK("npcs"))||"[]")||[]).slice(0,12);}catch(e){}
@@ -10212,7 +10216,7 @@ function personaKind(cr){return !cr?null:DOGK.has(cr.kind)?"dog":cr.kind==="gato
 function personaOn(k){return typeof PERSONATAKE!=="undefined"&&Array.isArray(PERSONATAKE)&&PERSONATAKE.includes(k);}
 /* one draw from the kind's chances; r, a number from 0 to 1, may be handed in so a check can hold it still */
 function personaDraw(k,r){const w=personaChance(k),n=p=>w&&isFinite(+w[p])?Math.max(0,+w[p]):0;let tot=0;PERSONAS.forEach(p=>{tot+=n(p);});
-  if(!(tot>0))return "patient";let x=(typeof r==="number"&&r>=0&&r<1?r:Math.random())*tot;
+  if(!(tot>0))return "patient";let x=(typeof r==="number"&&r>=0&&r<1?r:kindRoll(k))*tot;
   for(const p of PERSONAS){x-=n(p);if(x<0)return p;}return PERSONAS[PERSONAS.length-1];}
 /* the kept draws, cleaned where they are read: a name of at most 40 letters and one of the three words, in a map with no prototype */
 function personaClean(o){const m=Object.create(null);if(o&&typeof o==="object"&&!Array.isArray(o))
@@ -10231,7 +10235,7 @@ function personaOf(cr){const k=personaKind(cr);if(!k||!personaOn(k))return null;
 function personaLine(cr,pe){const W=T().persona,k=personaKind(cr),L=W&&W[k]&&Array.isArray(W[k][pe])?W[k][pe]:null;
   /* an animal with no name is called by the world's word for its kind (personaWho), so no line has a gap in it (mq-v297) */
   const who=cr.name||((T().personaWho||{})[k])||"";
-  return L&&L.length?String(L[Math.floor(Math.random()*L.length)]).replace(/\{n\}/g,who):null;}
+  return L&&L.length?String(L[Math.floor(critRoll(cr)*L.length)]).replace(/\{n\}/g,who):null;}
 const parkPrefs={band:Object.create(null),collar:Object.create(null),dogs:[],train:{}};
 /* THE PARK'S RECORD, READ AND CLEANED: one function, so a check can hand it a record and see what the game keeps of it
    (the course's kept paces, mq-v292); it is called once, here, as the page loads, exactly as the lines it holds ran before */
@@ -10296,9 +10300,9 @@ const FRIENDW=PL.friends.filter(w=>WORLDS[w]); /* a role the pack has no world f
 function pickFriend(){ /* only townsfolk with room beside them for a dog */
   for(let i=0;i<12;i++){
     if(!FRIENDW.length)return null;
-    const w=FRIENDW[Math.floor(Math.random()*FRIENDW.length)];
+    const w=FRIENDW[Math.floor(DICE.roll("dog")*FRIENDW.length)];
     const ns=WORLDS[w].npcs;if(!ns.length)continue;
-    const fr={w,key:ns[Math.floor(Math.random()*ns.length)].key};
+    const fr={w,key:ns[Math.floor(DICE.roll("dog")*ns.length)].key};
     if(friendSpot(fr))return fr;
   }
   return null;}
@@ -10398,10 +10402,10 @@ function alePress(random){
   const L=alebLooks();
   const c=(L&&DOGK.has(petTarget)&&petCrit)?petCrit:null;
   if(c){const key=aleKeyOf(c),cur=L.indexOf(aleLookOf(c));let i=(cur+1)%L.length;
-    if(random){do{i=Math.floor(Math.random()*L.length);}while(i===cur&&L.length>1);}
+    if(random){do{i=Math.floor(DICE.roll("dog")*L.length);}while(i===cur&&L.length>1);}
     aleSetPick(key,i);}
   else{const F=faceLooks();if(!F)return;const cur=alePick.hero%F.length;let i=(cur+1)%F.length;
-    if(random){do{i=Math.floor(Math.random()*F.length);}while(i===cur&&F.length>1);}
+    if(random){do{i=Math.floor(DICE.roll("people")*F.length);}while(i===cur&&F.length>1);}
     aleSetPick("you",i);}
 }
 /* one door for every pick — the buttons beside the bandana, the Settings menu, a barber's chair later */
@@ -10438,7 +10442,7 @@ $("love").addEventListener("click",()=>{ /* a button to tell him you love him (a
   c.loveT=dogHappy(c,wNow());
   c.sit=true;c.layT=0;c.next=c.loveT+200;
   try{musChirp();}catch(e){}
-  const L=T().loveLines||[];if(L.length)toast("💗 "+L[Math.floor(Math.random()*L.length)],3200);
+  const L=T().loveLines||[];if(L.length)toast("💗 "+L[Math.floor(DICE.roll("people")*L.length)],3200);
 });
 /* breeds and coats: a beagle is lemon by canon; labs and chihuahuas choose */
 const BREEDS={beagle:["#E8C46A"],

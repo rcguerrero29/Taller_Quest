@@ -2344,7 +2344,11 @@ const CANDIDATES = [
       else { const keep = { cam: camMode, world, px, py, ale: JSON.stringify(alePick) };
         const now0 = Date.now; Date.now = () => 1700000000000; /* the tail wags with the clock: freeze it so two bakes differ only by the treatment */
         const bake = (fn, sc) => { sc = sc || 1; const c = document.createElement('canvas'); c.width = 44 * sc; c.height = 44 * sc; const g = c.getContext('2d'); g.setTransform(sc, 0, 0, sc, 6 * sc, 12 * sc); fn(g); return g.getImageData(0, 0, 44 * sc, 44 * sc).data; };
-        const dog = () => bake(g => drawBeagle(g, star, 0, 0));
+        /* HIM STANDING, whatever he happens to be doing: a dog curled up in the ring wears his wings folded on his back (7 pixels
+           where the card's wings add 19), so a check that drew him as he was went red on any run whose dice had him curled when
+           it looked. The wings in every pose, curled too, are asked by ALEBRIJE WINGS below; this asks the standing card. */
+        const standing = Object.assign({}, star, { sit: false, layT: 0, curlT: 0, howlT: 0, happyT: 0, loveT: 0, digT: 0, sniffT: 0, moving: false, task: null });
+        const dog = () => bake(g => drawBeagle(g, standing, 0, 0));
         const alpha = d => { const a = []; for (let i = 3; i < d.length; i += 4) a.push(d[i] > 40 ? 1 : 0); return a; };
         const hues = d => { const B = new Set(); for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 200) continue; const r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2, sat = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1)); if (sat < 0.35 || l < 0.12 || l > 0.9) continue; let h = 0; if (mx === r) h = ((gg - b) / (mx - mn)) % 6; else if (mx === gg) h = (b - r) / (mx - mn) + 2; else h = (r - gg) / (mx - mn) + 4; B.add(Math.floor(((h * 60 + 360) % 360) / 30)); } return B.size; };
         seasonSet('off'); const off = dog();

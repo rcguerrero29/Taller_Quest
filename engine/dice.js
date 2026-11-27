@@ -21,11 +21,11 @@
    system moved onto its line rolls exactly as often, at the same moments, as it did before, so a player
    sees the same game. */
 const DICELINES=Object.freeze([
-  "dog",       /* every dog: whims, steps, curls, the stick, the howl, the follow, what he says */
+  "dog",       /* every dog: whims, steps, curls, routines, the course's pace, the stick, the howl, the follow, what he says */
   "cat",       /* every cat: steps, grooming, the bump */
-  "pig",       /* the pig's steps */
-  "bird",      /* the birds and the parrot's perch */
-  "critter",   /* the small animals of the street, and an office visitor's bump */
+  "pigeon",    /* every pigeon: its steps, its pecks, what is said when it is petted */
+  "bird",      /* the parrot: its perch, what it says */
+  "critter",   /* everything else in the street that moves on its own: the butterfly, the hummingbird */
   "ball",      /* where the ball is thrown */
   "body",      /* the small motions a body is drawn with (an ear's twitch): drawn each frame, so kept apart from what an
                   animal decides, which a run with the same starting number then repeats whatever the frame rate */
