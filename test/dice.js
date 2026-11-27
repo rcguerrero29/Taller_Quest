@@ -27,6 +27,9 @@
       down with it in the same change, so the count is always the truth. The dice file itself asks once, its fallback
       when the browser has no strong source
    L  the dice load in every world, before the engine, and the game offline has them
+   N  ONE ANIMAL'S ASSIGNED ROLL (the owner's first test of the dice): from each of five set starting numbers, the dog's line
+      gives the three rolls pinned here, to the last digit. A change to how the dice work moves them, and a run kept by its
+      starting number would not play again: test/engine.smoke.js asks the dog's whim from the same five numbers
    M  EVERY LINE AT ONCE, for the checks: with `DICE.all` set, every line rolls it, and reading it gives it back; set to
       null or to the browser's own number it comes off, and reading it gives the browser's own number; a new starting
       number takes it off; and the browser's number, replaced, steers no line at all (the bridge that stood while the
@@ -141,6 +144,12 @@ function check(T) {
     Dm.all = f; Dm.reseed(31); if (Dm.roll(a) === 0.375 || Dm.all !== own) say('M', 'a new starting number left every line set at once');
     let threw = false; try { Dm.all = 7; } catch (e) { threw = true; } if (!threw) say('M', 'every line at once took 7, which is not a function');
   } catch (e) { say('M', 'every line at once could not be asked (' + e.message + ')'); }
+  /* N */
+  const PINNED = { 1: [0.6225536132697016, 0.6718737569171935, 0.4449618721846491], 7: [0.9663864960893989, 0.5070763719268143, 0.18625189061276615],
+    42: [0.16067541670054197, 0.347162545658648, 0.4288440716918558], 2026: [0.9989391060080379, 0.8922560035716742, 0.6574491697829217],
+    4294967295: [0.09338936675339937, 0.7426602419000119, 0.04305020393803716] };
+  if (LINES.includes('dog')) Object.keys(PINNED).forEach(k => { D.reseed(+k); const got = rolls(D, 'dog', 3); if (!same(got, PINNED[k])) say('N', 'from the starting number ' + k + ' the dog\'s line rolled ' + got.join(', ') + ', where its pinned rolls are ' + PINNED[k].join(', ')); });
+  else say('N', 'the dice have no dog line, so his assigned roll could not be asked');
   /* I, J, K */
   const game = Object.keys(T).filter(f => !/^test\//.test(f));
   let old = 0, stubs = 0, inDice = 0;
@@ -201,6 +210,7 @@ const PLANTS = [
   ['M', 'every line at once left on by a new starting number', 'engine/dice.js', 'function reset(){shared=null;', 'function reset(){'],
   ['M', 'reading it gives nothing when none is set', 'engine/dice.js', 'get all(){return shared||NATIVE;},', 'get all(){return shared;},'],
   ['I', 'the game setting every line at once', 'engine/engine.js', 'const SK=k=>', 'DICE.all=()=>0.5;const SK=k=>'],
+  ['N', 'a line\'s rolls that move with a change to the mix', 'engine/dice.js', 'h^=h>>>16;h=Math.imul(h,0x85ebca6b);', 'h^=h>>>15;h=Math.imul(h,0x85ebca6b);'],
   ['L', 'the dice loaded after the engine', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('  w("engine/kitchen-room.js");', '  w("engine/dice.js");\n  w("engine/kitchen-room.js");')],
   ['L', 'the dice only in a world with 3D', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('w("engine/shapes.js");}', 'w("engine/shapes.js");w("engine/dice.js");}')],
   ['L', 'the game offline with no dice', 'sw.js', '"./engine/dice.js", ', ''],
