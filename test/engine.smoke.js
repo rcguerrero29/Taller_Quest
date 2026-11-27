@@ -21882,6 +21882,16 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* the lining, a contrasting colour (the owner's answer of 2026-11-26) */
       { const B = make({ ...look0, wear: ['jacket'] }), lin = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'hood' && o.material.side === THREE.BackSide) lin.push('#' + o.userData.base.getHexString().toUpperCase()); });
         out.lining = lin; out.liningWant = GARMENTS.jacket.linings[0].toUpperCase(); t3Dispose(B); }
+      /* THE HOODIE (mq-v305): the jacket's hood on his own shirt, in his shirt's colour, its lining a lighter shade of it; no jacket */
+      if (GARMENTS.hoodie) { const lk = { ...look0, style: 'long', wear: ['hoodie'] }, B = make(lk), sk = B.userData.skel, hb = boxOf(B, 'hood'), outC = [], linC = [];
+        B.traverse(o => { if (o.isMesh && o.userData.wears === 'hood') (o.material.side === THREE.BackSide ? linC : outC).push('#' + o.userData.base.getHexString().toUpperCase()); });
+        const hc = wp(B, 'head').add(new THREE.Vector3(0, 0.7 * sk.head * B.scale.y, 0)), hr = sk.head * B.scale.y, hair = []; B.traverse(o => { if (o.isMesh && o.userData.wears === 'hair') hair.push(o.visible); });
+        const want = '#' + new THREE.Color(lk.shirt).lerp(new THREE.Color(1, 1, 1), GARMENTS.hoodie.lining).getHexString().toUpperCase();
+        out.hoodie = { jacket: !!boxOf(B, 'jacket'), hood: !!hb, state: B.userData.hood, out: outC, lin: linC, shirt: lk.shirt.toUpperCase(), linWant: want,
+          covers: hb ? Math.min(hb.max.y - (hc.y + hr), (hc.z - hr) - hb.min.z) : null, hairShown: hair.filter(Boolean).length, hairAll: hair.length };
+        hoodPull(B, GARMENTS.hoodie.pull); out.hoodie.end = B.userData.hood; t3Dispose(B);
+        const Ch = bodyChoicesOf(undefined), L = lightMake(bodySkeleton('person', Ch), { ...lk, body: Ch }), lw = {}; L.traverse(o => { if (o.isMesh && o.userData.wears) lw[o.userData.wears] = '#' + o.material.userData.base.getHexString().toUpperCase(); });
+        out.hoodie.light = lw; }
       return out; });
     if (!r.same) jsay('a body that wears nothing (or a garment that does not exist) is not exactly the body it was without the jacket');
     if (!r.bare || r.bareHood !== undefined) jsay('a body that wears nothing has a jacket or a hood on it');
@@ -21906,6 +21916,15 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     if (!(r.hairDown && r.hairDown[0] === r.hairDown[1] && r.hairDown[1] > 0)) jsay('after the pull, a long-haired body shows ' + (r.hairDown && r.hairDown[0]) + ' of its ' + (r.hairDown && r.hairDown[1]) + ' parts of hair: all of it comes back with the hood down');
     if (!(r.light && r.light.hood > 0 && r.light.hair === 0 && r.light.jacket && !r.light.shirt)) jsay('the light stand-in of a person in the jacket does not stand in the jacket with its hood up: ' + JSON.stringify(r.light));
     if (!(r.lining && r.lining.length && r.lining.every(c => c === r.liningWant))) jsay('the hood\'s lining is not the contrasting lining of the jacket\'s row (' + r.liningWant + '): it is ' + JSON.stringify(r.lining));
+    if (r.hoodie) { const h = r.hoodie;
+      if (h.jacket) jsay('a body in the hoodie wears the jacket too: the hoodie is his own shirt with a hood');
+      if (!h.hood || h.state !== 'up') jsay('a body in the hoodie has no hood up (' + h.hood + ', ' + h.state + ')');
+      if (!(h.out.length && h.out.every(c => c === h.shirt))) jsay('the hoodie\'s hood is not his shirt\'s colour (' + h.shirt + '): it is ' + JSON.stringify(h.out));
+      if (!(h.lin.length && h.lin.every(c => c === h.linWant))) jsay('the hoodie\'s lining is not a lighter shade of his shirt (' + h.linWant + '): it is ' + JSON.stringify(h.lin));
+      if (!(h.covers >= 0)) jsay('the hoodie\'s hood up does not cover the head over its top and behind it (' + h.covers + ', at least 0)');
+      if (h.hairAll === 0 || h.hairShown !== 0) jsay('a long-haired body in the hoodie shows ' + h.hairShown + ' of its ' + h.hairAll + ' parts of hair with the hood up');
+      if (h.end !== 'down') jsay('the hoodie\'s hood is ' + h.end + ' at the end of the pull, not down');
+      if (!(h.light.hood === h.shirt && h.light.shirt === h.shirt && !h.light.hair)) jsay('the light stand-in in the hoodie does not stand in its shirt\'s colour with the hood up: ' + JSON.stringify(h.light)); }
     if (!r.key || !r.key[0] || !r.key[1]) jsay('the people\'s body key does not follow what a look wears, or changes for a look that wears nothing');
     fails.push(...JK);
     if (!JK.length) console.log('  COUNT-ONLY: the hooded jacket: on ' + r.builds.length + ' builds the hood covers the head and leaves the face clear, the jacket wraps the shirt, the right hand takes the hood\'s cloth half way through the pull and goes down with it, and the hood ends down on his back with the arm at rest; a body that wears nothing is the body it was');
@@ -22202,7 +22221,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   const old = T3.peopleOn && T3.peopleOn.get(n); if (old) { old.parent && old.parent.remove(old); t3Dispose(old); T3.peopleOn.delete(n); }
                   const lk = npcWhimsy(n), key = peopleKey(lk), r = { who, wid, key: n.key, lk: { shirt: lk.shirt.toUpperCase(), skin: lk.skin.toUpperCase(), hair: lk.hair.toUpperCase() },
                     bald: hairStyleOf(lk) === 'bald', hat: lk.hat === 'hard', formal: lk.outfit === 'formal', robot: !!lk.robot, lit: LIGHTON.has('person'),
-                    jacket: garmentsOf(lk).includes('jacket') ? GARMENTS.jacket.colours[0].toUpperCase() : null };
+                    jacket: garmentsOf(lk).includes('jacket') ? GARMENTS.jacket.colours[0].toUpperCase() : null, hooded: garmentsOf(lk).some(g => GARMENTS[g].hood) };
                   draw3d();
                   const L = T3.lightShown && T3.lightShown.get(n), F0 = T3.peopleOn && T3.peopleOn.get(n);
                   r.first = { light: !!(L && L.visible && L.parent === T3.scene), full: !!(F0 && F0.visible), lightKey: L ? L.userData.key === key : null, lightCols: L ? cols(L) : [], lightRobot: !!(L && L.userData.robot) };
@@ -22212,7 +22231,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                   if (B) { r.fullKey = B.userData.key === key; r.cols = cols(B); r.wears = wears(B); r.robotParts = !!B.userData.robot; r.painted = painted(B);
                     /* THE HOOD COMES DOWN, for a person the world dresses in the hooded jacket: up as the body stands, down after the wait
                        and the pull, and still down on a body made again for them (peopleHood) */
-                    if (r.jacket) { const g = GARMENTS.jacket, keepDown = n.hoodDown; n.hoodDown = false; delete B.userData.hoodWait; r.hoodStart = B.userData.hood;
+                    if (r.hooded) { const g = B.userData.hoodRow || GARMENTS.jacket, keepDown = n.hoodDown; n.hoodDown = false; delete B.userData.hoodWait; r.hoodStart = B.userData.hood;
                       peopleHood(B, n, 0); peopleHood(B, n, g.wait[1] + g.pull + 0.01); r.hoodEnd = B.userData.hood; r.hoodKept = !!n.hoodDown;
                       const B2 = bodyMake(bodySkeleton('person', bodyChoicesOf(lk.body)), { ...lk, body: bodyChoicesOf(lk.body) }, bodyChoicesOf(lk.body)); peopleHood(B2, n, 0); r.hoodAgain = B2.userData.hood; t3Dispose(B2);
                       if (!keepDown) n.hoodDown = keepDown; } }
@@ -22236,7 +22255,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
             const at = r.who + ' (in ' + r.wid + ')', before = PB.length; maxKept = Math.max(maxKept, r.kept);
             if (r.lit) { if (!r.first.light) say(0, 'every person: when ' + at + ' came into view, no light body stood in for them while their body was made' + (r.first.full ? ': their full body was made in that very frame' : ''));
               else { if (!r.first.lightKey) say(0, 'every person: ' + at + '\'s light body was not made from the look their card is painted with');
-                const want = { ...r.lk, shirt: r.jacket || r.lk.shirt }, lm = ['shirt', 'skin'].concat(r.bald || r.robot || r.jacket ? [] : ['hair']).filter(k => !r.first.lightCols.some(c => nearJ(c, want[k])));   /* in the jacket: its colour on the body, its hood over the hair */
+                const want = { ...r.lk, shirt: r.jacket || r.lk.shirt }, lm = ['shirt', 'skin'].concat(r.bald || r.robot || r.hooded ? [] : ['hair']).filter(k => !r.first.lightCols.some(c => nearJ(c, want[k])));   /* in the jacket: its colour on the body, its hood over the hair */
                 if (r.robot !== r.first.lightRobot) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card and their light body is a round person, not his blocks' : '\'s light body is a tin man and their card is not'));
                 if (lm.length) say(0, 'every person: ' + at + '\'s light body does not wear their card\'s ' + lm.map(k => k + ' (' + want[k] + ')').join(', ') + ': its colours are ' + r.first.lightCols.join(' ')); } }
             if (r.bad) { say(0, 'every person: ' + at + '\'s body could not be made (the maker threw), so they stay their stand-in all session'); continue; }
@@ -22246,7 +22265,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               if (miss.length) say(0, 'every person: ' + at + '\'s body does not wear their card\'s ' + miss.map(k => k + ' (' + r.lk[k] + ')').join(', ') + ': its colours are ' + r.cols.join(' ')); }
             if (r.hat !== !!r.wears.hat) say(0, 'every person: ' + at + (r.hat ? ' wears the hard hat on their card and none on their body' : ' wears no hat on their card and ' + r.wears.hat + ' hat parts on their body'));
             if (r.formal !== !!(r.wears.collar && r.wears.necktie)) say(0, 'every person: ' + at + (r.formal ? '\'s card wears a collar and tie (formal) and their body does not' : '\'s body wears a collar and tie their card does not'));
-            if (r.jacket && (r.hoodStart !== 'up' || r.hoodEnd !== 'down' || !r.hoodKept || r.hoodAgain !== 'down')) say(0, 'every person: ' + at + ' wears the hooded jacket and their hood does not come down and stay down: up as they stand (' + r.hoodStart + '), down after the wait and the pull (' + r.hoodEnd + '), kept on the person (' + r.hoodKept + '), down on a body made again (' + r.hoodAgain + ')');
+            if (r.hooded && (r.hoodStart !== 'up' || r.hoodEnd !== 'down' || !r.hoodKept || r.hoodAgain !== 'down')) say(0, 'every person: ' + at + ' wears a hood and it does not come down and stay down: up as they stand (' + r.hoodStart + '), down after the wait and the pull (' + r.hoodEnd + '), kept on the person (' + r.hoodKept + '), down on a body made again (' + r.hoodAgain + ')');
             if (r.robot !== r.robotParts) say(0, 'every person: ' + at + (r.robot ? ' is a tin man on their card (robot) and a person of flesh on their body: grey skin, hair and a shirt' : '\'s body is a tin man and their card is not'));
             if (PB.length === before) fine++; }
           if (skipped.length) say(1, 'every person: ' + skipped.map(r => r.who + ' (' + r.skip + ')').join(', ') + ' not asked by this row, as the rows above leave them out');

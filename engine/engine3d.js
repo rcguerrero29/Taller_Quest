@@ -1669,13 +1669,26 @@ const GARMENTPART={
       part("elbow_"+s,new THREE.SphereGeometry(Math.max(ra,rf)*1.06,14,10),"jacket",M.shade(col),0,0,0);});
     if(row.hood){const n=J.chest.position.clone().add(J.neck.position);   /* the neck joint, in the spine's frame */
       const hd=hoodMake(M,{arm:garmentArm(row.arm,M.lk),joint:"neck",y:top-n.y,rx:JACKETNECK*sx,rz:JACKETNECK*sz,bx:sx,bz:sz,gap:gap(top),col,inside,pull:row.pull});
-      root.userData.hoodPiece=hd;root.userData.hood="up";
-      /* HIS HAIR UNDER THE HOOD (the owner's answer of 2026-11-26: long hair is hidden while the hood is up): every part of his
-         hair is put away while the hood is up and comes back as the hood goes down over the back of his head (hoodPull) */
-      const hair=[];J.head.traverse(o=>{if(o.isMesh&&o.userData.wears==="hair")hair.push(o);});root.userData.hoodHair=hair;hair.forEach(o=>{o.visible=false;});}}
+      hoodOn(root,J,hd,row);}},
+  /* THE HOODIE (mq-v305; the owner's confirmed goal of 2026-11-27): the jacket's hood hung on his own shirt's collar, in his shirt's
+     own colour, its lining a lighter shade of it, so he keeps his own look. No shell and no sleeves: his shirt is the hoodie. The
+     collar ring is the jacket's, as wide as the head's bottom (a narrower one cuts into the jaw), and the hood folds down onto his
+     shirt's own back */
+  hoodie(M,row,root){const{J}=M,col=M.lk.shirt,inside="#"+new THREE.Color(col).lerp(new THREE.Color(1,1,1),row.lining).getHexString();
+    const shirt=J.spine.children.find(o=>o.isMesh&&o.userData.wears==="shirt");if(!shirt)return;
+    shirt.geometry.computeBoundingBox();const bb=shirt.geometry.boundingBox,sy=shirt.scale.y,hi=shirt.position.y+bb.max.y*sy,
+      tw=bb.max.x*shirt.scale.x,td=bb.max.z*shirt.scale.z,capH=(shirt.geometry.parameters&&shirt.geometry.parameters.radius||1)*sy,top=hi-0.3*capH;
+    const n=J.chest.position.clone().add(J.neck.position),sx=tw*JACKETFIT[0],sz=td*JACKETFIT[1];
+    const hd=hoodMake(M,{arm:garmentArm(row.arm,M.lk),joint:"neck",y:top-n.y,rx:JACKETNECK*sx,rz:JACKETNECK*sz,bx:tw*1.03,bz:td*1.03,gap:JACKETGAP[0],col,inside,pull:row.pull});
+    hoodOn(root,J,hd,row);}
 };
 /* the arm a garment's row names, "right" or "left"; for "either", one of the two chosen once a person by his look (its colours
    and style), so the same person always takes his hood down with the same hand, whenever his body is made */
+/* a hood made and hung (hoodMake): the body knows it, its state is "up", the row it came from is kept (its wait and pull), and
+   every part of his hair is put away while the hood is up (the owner's answer of 2026-11-26: long hair is hidden while the hood is
+   up); hoodPull brings it back as the hood passes over his crown. Shared by every garment with a hood */
+function hoodOn(root,J,hd,row){root.userData.hoodPiece=hd;root.userData.hood="up";root.userData.hoodRow=row;
+  const hair=[];J.head.traverse(o=>{if(o.isMesh&&o.userData.wears==="hair")hair.push(o);});root.userData.hoodHair=hair;hair.forEach(o=>{o.visible=false;});}
 function garmentArm(a,lk){if(a==="right"||a==="left")return a;let h=0;[lk.skin,lk.hair,lk.shirt,lk.style].join("|").split("").forEach(ch=>{h=(h*31+ch.charCodeAt(0))|0;});return h&1?"left":"right";}
 const JACKETFIT=[1.14,1.2],JACKETGAP=[0.14,0.34],JACKETNECK=0.84;   /* wider and deeper than his shirt; open down the front (radians each side, hem to collar); the collar's share of the body */
 /* a garment's shell round an upright axis: rows of [share of the half width, height] up a profile, each row round the body from
@@ -3824,7 +3837,7 @@ const LIGHTGEO={};const LIGHTMAT=new Map();
 function lightGeo(k){return LIGHTGEO[k]||(LIGHTGEO[k]=k==="ball"?new THREE.SphereGeometry(1,12,8):k==="ground"?new THREE.CircleGeometry(1,16):new THREE.CapsuleGeometry(1,2,3,8));}   /* a capsule 4 tall, radius 1 */
 function lightMat(col){const c=new THREE.Color(col),h=c.getHexString();let m=LIGHTMAT.get(h);
   if(!m){m=new THREE.MeshLambertMaterial({color:c.clone()});m.userData.base=c;LIGHTMAT.set(h,m);}return m;}
-function lightMake(skel,lk){const jk=garmentsOf(lk).includes("jacket")?GARMENTS.jacket:null,top=jk?jk.colours[0]:lk.shirt,hood=!!(jk&&jk.hood);   /* a jacket over the shirt (THE HOODED JACKET) */
+function lightMake(skel,lk){const gw=garmentsOf(lk),jk=gw.includes("jacket")?GARMENTS.jacket:null,top=jk?jk.colours[0]:lk.shirt,hood=gw.some(g=>GARMENTS[g].hood);   /* a jacket over the shirt, or a hood on it (THE HOODED JACKET, THE HOODIE) */
   const root=new THREE.Group();root.name="lightbody";const J={},Lm=skel.limb,H=skel.build.height,b=skel.build,r=skel.head;
   Object.keys(skel.joints).forEach(n=>{const o=new THREE.Object3D();o.name=n;J[n]=o;});
   Object.keys(skel.joints).forEach(n=>{const[p,x,y,z]=skel.joints[n];J[n].position.set(x,y,z);(p?J[p]:root).add(J[n]);});
@@ -3940,7 +3953,7 @@ function t3PeopleMake(){
    a few seconds later (between the garment's two `wait`s, a different moment for each person, read off their look), the arm takes
    it down (hoodPull). The person keeps it down for the rest of the visit: it is written on the person (n.hoodDown), so a body made
    again later, in this room or after another, stands with the hood already down */
-function peopleHood(B,n,dt){const g=GARMENTS.jacket,P=g.pull;
+function peopleHood(B,n,dt){const g=B.userData.hoodRow||GARMENTS.jacket,P=g.pull;
   if(n.hoodDown){if(B.userData.hood!=="down")hoodPull(B,P);return;}
   if(B.userData.hoodWait===undefined){const lk=npcWhimsy(n);let h=0;[lk.skin,lk.hair,lk.shirt,lk.style,n.npc||""].join("|").split("").forEach(c=>{h=(h*31+c.charCodeAt(0))|0;});
     B.userData.hoodWait=g.wait[0]+((h>>>0)%1000)/1000*(g.wait[1]-g.wait[0]);B.userData.hoodT=0;}

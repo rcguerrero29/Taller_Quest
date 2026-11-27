@@ -29,19 +29,19 @@ const WNPC={hq:STATIONS,lc:{r:{npc:"rosa",q:[10]},y:{npc:"chuy",q:[11]}},st:{e:{
    either of them gets for free. `pattern` reads as apron weave up close and vanishes at ten tiles,
    which is honest: it is a close-up gift, not silhouette work. */
 const NPCLOOK={rigo:{shirt:"#9FB6D4",skin:"#B97E52",hair:"#26202B",style:"buzz",outfit:"formal"},meche:{shirt:"#7A3B2E",skin:"#B97E52",hair:"#B9B9C0",style:"buns",pattern:"stripes"},
-               tencha:{shirt:"#4E7A5A",skin:"#D9995F",hair:"#9A9AA2",style:"long",wear:["jacket"]},
+               tencha:{shirt:"#4E7A5A",skin:"#D9995F",hair:"#9A9AA2",style:"long",wear:["hoodie"]},
                portero:{robot:true,shirt:"#9AA3AD",skin:"#B8C0C8",hair:"#5B6470",style:"cap"}, /* the tin man (#8); `robot` sends drawPerson to drawRobot */
   naye:{shirt:"#2FA5A0",skin:"#C08356",hair:"#171219",style:"afro"}, /* Naye Robles, 29 — Doña Chelo's niece, Xochi's apprentice; the chair (Nacho, 2026-09-07) */
-  tacho:{shirt:"#3A3F46",skin:"#B97E52",hair:"#8E8E96",style:"buzz"},yesenia:{shirt:"#B3352B",skin:"#D9995F",hair:"#171219",style:"long",wear:["jacket"]},
+  tacho:{shirt:"#3A3F46",skin:"#B97E52",hair:"#8E8E96",style:"buzz"},yesenia:{shirt:"#B3352B",skin:"#D9995F",hair:"#171219",style:"long",wear:["hoodie"]},
   moy:{shirt:"#2AA47C",skin:"#C08356",hair:"#26202B",style:"curly"},licha:{shirt:"#D9A441",skin:"#E5AC82",hair:"#8E8E96",style:"braids"},
   tito:{shirt:"#31446E",skin:"#8C5A33",hair:"#171219",style:"cap"},sol:{shirt:"#E8B85A",skin:"#F1CDA9",hair:"#7A4A22",style:"curly"},
   vero:{shirt:"#3FA3A0",skin:"#C08356",hair:"#26202B",style:"buns"},chente:{shirt:"#1F5A58",skin:"#B97E52",hair:"#171219",style:"buzz"},
   karla:{shirt:"#52B8B4",skin:"#E5AC82",hair:"#241B26",style:"braids"},nolasco:{shirt:"#6E2F4A",skin:"#D9995F",hair:"#5C5C66",style:"buzz",outfit:"formal"},
-  /* THE HOODED JACKET (mq-v304; the owner's confirmed goals of 2026-11-26): the seven people with long hair or a flat top wear it,
-     the hood up as they come into view and down a few seconds later. Four of them share their look with others through a map
+  /* THE HOODIE (mq-v305; the owner's confirmed goal of 2026-11-27, which follows the hooded jacket of 2026-11-26): the seven people
+     with long hair or a flat top wear a hood on their own shirt, up as they come into view and down a few seconds later. Four of them share their look with others through a map
      letter, so each has their own row here, their letter's look and the jacket; their cards are drawn as before */
-  legal:{shirt:"#25423C",skin:"#F0C9A6",hair:"#2C1C12",style:"long",outfit:"formal",wear:["jacket"]},priya:{shirt:"#C2543F",skin:"#B97E52",hair:"#171219",style:"long",wear:["jacket"]},rosa:{shirt:"#B23A48",skin:"#C08356",hair:"#B9B9C0",style:"long",wear:["jacket"]},ceo:{shirt:"#2C2637",skin:"#D9995F",hair:"#5C5C66",style:"flat",outfit:"formal",wear:["jacket"]},
-  bere:{shirt:"#84405E",skin:"#EFC49A",hair:"#2C1C12",style:"long",wear:["jacket"]},
+  legal:{shirt:"#25423C",skin:"#F0C9A6",hair:"#2C1C12",style:"long",outfit:"formal",wear:["hoodie"]},priya:{shirt:"#C2543F",skin:"#B97E52",hair:"#171219",style:"long",wear:["hoodie"]},rosa:{shirt:"#B23A48",skin:"#C08356",hair:"#B9B9C0",style:"long",wear:["hoodie"]},ceo:{shirt:"#2C2637",skin:"#D9995F",hair:"#5C5C66",style:"flat",outfit:"formal",wear:["hoodie"]},
+  bere:{shirt:"#84405E",skin:"#EFC49A",hair:"#2C1C12",style:"long",wear:["hoodie"]},
   p:{shirt:"#C2543F",skin:"#B97E52",hair:"#171219",style:"long"},j:{shirt:"#3E8ED0",skin:"#EFC49A",hair:"#7A4A22",style:"curly"},
   c:{shirt:"#2C2637",skin:"#D9995F",hair:"#5C5C66",style:"flat",outfit:"formal"},l:{shirt:"#25423C",skin:"#F0C9A6",hair:"#2C1C12",style:"long",outfit:"formal"},
   t:{shirt:"#D08A2E",skin:"#C08356",hair:"#1E1620",style:"cap"},a:{shirt:"#B04A78",skin:"#8C5A33",hair:"#241B26",style:"curly"},
