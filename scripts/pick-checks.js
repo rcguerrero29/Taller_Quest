@@ -53,6 +53,7 @@ const CHECKS = [
   { self: 'scripts/private-terms.js', selftest: 'node scripts/private-terms.js --selftest', quick: true, reads: ['*'],
     gh: 'its run over a range needs the private list of terms, which a session runs among its scans before every push' },
   { self: 'test/toolguard.js', selftest: 'node test/toolguard.js --selftest', quick: true, reads: ['.claude/', 'docs/'] },
+  { self: 'test/dice.js', run: 'node test/dice.js', selftest: 'node test/dice.js --selftest', quick: true, reads: ['engine/', 'content/', 'test/', 'sw.js'] },
   { self: 'test/bump.js', run: 'node test/bump.js {base}', quick: true, reads: ['engine/', 'content/meridian/config.js', 'content/horno/config.js', 'content/gauge/', 'sw.js'] },
   /* --ci reads what the workflow hands it; by hand it is told it is a pull request into main, as GitHub would tell it */
   { self: 'test/prims.js', run: 'EVENT=pull_request BASE_REF=main node test/prims.js --ci', selftest: 'node test/prims.js --selftest', reads: ['content/meridian/', 'content/horno/', 'engine/engine3d.js', 'engine/shapes.js', 'vendor/'] },

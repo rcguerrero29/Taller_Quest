@@ -7,7 +7,7 @@ const CACHE = "mq-v305";
 const PFX = "mq-"; /* the cache names this worker owns */
 const ASSETS = ["./", "./index.html", "./shell.css", "./frame-guard.js", "./sw-register.js", "./qr.js",
   "./vendor/fonts/fonts.css", "./vendor/fonts/unbounded-latin-500-normal.woff2", "./vendor/fonts/unbounded-latin-700-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-400-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-500-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-600-normal.woff2", "./vendor/fonts/ibm-plex-sans-latin-400-italic.woff2", "./vendor/fonts/ibm-plex-mono-latin-400-normal.woff2", "./vendor/fonts/ibm-plex-mono-latin-500-normal.woff2", "./engine/boot.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
-  "./engine/engine.js", "./engine/kitchen-room.js", "./engine/shapes.js", "./engine/engine3d.js", "./vendor/three.min.js",
+  "./engine/dice.js", "./engine/engine.js", "./engine/kitchen-room.js", "./engine/shapes.js", "./engine/engine3d.js", "./vendor/three.min.js",
   "./content/meridian/strings.js", "./content/meridian/quests.en.js", "./content/meridian/quests.es.js",
   "./content/meridian/npcs.js", "./content/meridian/maps.js", "./content/meridian/config.js",
   "./content/meridian/art.js", "./content/meridian/room.js", "./content/meridian/docs.js"];

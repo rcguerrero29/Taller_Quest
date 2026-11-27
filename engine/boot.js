@@ -38,6 +38,9 @@
        to its own letters as it builds TILES, and `document.write` from a parser-inserted script
        keeps that order exactly. */
     w("engine/shapes.js");}
+  /* the game's own dice: every line of rolls from one starting number (grep "THE GAME'S OWN DICE" in engine/dice.js).
+     Before engine.js, so every system finds its line already there; it always loads, a world with no animals rolls too. */
+  w("engine/dice.js");
   w("engine/engine.js");
   /* the kitchen's room, wall, things, hand, closet and builder (sprint 8a): a file of its own, after engine.js (it reads the
      engine's names when it runs, and lays the kitchens a world declares once the engine's rooms stand) and before engine3d.js.
