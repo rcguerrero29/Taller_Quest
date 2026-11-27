@@ -8850,10 +8850,11 @@ function findChromium() {
         const t0 = performance.now(); for (let k = 0; k < 5; k++) lightMake(bodySkeleton('person', bodyChoicesOf(lk.body)), lk); const tl = (performance.now() - t0) / 5;
         const t1 = performance.now(), FB = bodyMake(bodySkeleton('person', bodyChoicesOf(lk.body)), { ...lk, body: bodyChoicesOf(lk.body) }, bodyChoicesOf(lk.body)), tf = performance.now() - t1; t3Dispose(FB);
         if (!(tl * 5 < tf)) P.push('a light body takes ' + tl.toFixed(1) + ' ms to make, against ' + tf.toFixed(1) + ' ms for the full body: it is not cheap beside it');
-        /* dice: the 3D library names every new part with four random numbers (its own ids), so the frame a light body is made draws
-           four for each of its parts and joints and not one more; a frame after that draws none */
-        let things = 0; L.traverse(() => { things++; });
-        if (rolls !== 4 * things) P.push('standing the light body in for ' + who + ' drew ' + rolls + ' random numbers in the frame it was made, where the 3D library\'s names for its ' + things + ' parts and joints draw ' + 4 * things + ': something in it rolls dice');
+        /* dice: the frame a light body is made rolls none of the game's dice, and a frame after that rolls none either. (Before the
+           game's own dice this counted the browser's numbers, four for each part and joint the 3D library named, and asked for
+           exactly that many; the library's names come from the browser and move no roll of the game now, so the game's dice
+           are counted, and there are none to allow for.) */
+        if (rolls !== 0) P.push('standing the light body in for ' + who + ' rolled ' + rolls + ' of the game\'s dice in the frame it was made, where it rolls none: something in it rolls dice');
         rolls = 0; counting = true; frame(); counting = false;
         if (rolls) P.push('every frame ' + who + '\'s light body stands, ' + rolls + ' random numbers are drawn, where nothing drawn every frame may roll');
         out.push('the frame ' + who + ' came into view: a light body of ' + meshes.length + ' parts, ' + px1.all + ' pixels (' + px1.here + ' on their square), made in ' + tl.toFixed(2) + ' ms against ' + tf.toFixed(1) + ' ms for the full body; their card ' + (painted.card ? 'drawn' : 'not drawn'));
