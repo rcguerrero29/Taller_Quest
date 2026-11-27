@@ -33,7 +33,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const OLDROLLS = 41, STUBS = 194;
+const OLDROLLS = 0, STUBS = 194;
 
 /* the tree this check reads: every file git tracks under the folders it asks about, as text */
 function tree() {
@@ -187,7 +187,7 @@ const PLANTS = [
   ['J', 'a line misspelt', 'engine/engine.js', 'const SK=k=>', 'const dgo=()=>DICE.roll("dgo");const SK=k=>'],
   ['J', 'a line worked out', 'engine/engine.js', 'const SK=k=>', 'const any=n=>DICE.pick(n,[1,2]);const SK=k=>'],
   ['K', 'a new old-style roll', 'engine/engine.js', 'const SK=k=>', 'const coin=()=>Math.random()<0.5;const SK=k=>'],
-  ['K', 'an old roll gone and the count left high', 'engine/engine.js', /Math\.random\s*\(\)/, 'DICE.roll("world")'],
+  ['K', 'the count left high after an old roll went', 'test/dice.js', /OLDROLLS = \d+/, 'OLDROLLS = 1'],
   ['K', 'a new check replacing the browser\'s number', 'test/smoke.js', null, s => s + '\nMath.random = () => 0.5;\n'],
   ['K', 'a second old roll in the dice file', 'engine/dice.js', 'let start=fresh();', 'let start=fresh();Math.random();'],
   ['M', 'no bridge while the checks still replace the number', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', ''],
