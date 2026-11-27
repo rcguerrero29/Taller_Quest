@@ -86,12 +86,22 @@ const CANDIDATES = [
   // to the watcher, so a check added later with a browser of its own is watched without anybody remembering to.
   // The first draft called watchPolicy() at each place a page was opened; two checks landed on main the same day
   // and opened pages that draft never saw. Since style-src is 'self' a refused style is a silent visual break.
+  /* THE DICE'S STARTING NUMBER, FOR EVERY PAGE THIS FILE OPENS (the owner's confirmed goal of 2026-11-27): one number for the
+     run, from DICESEED when it is given and new otherwise, handed to each page as the first number its strong source gives,
+     which is the number the dice start from (engine/dice.js, fresh()). It is printed at the start and with every red, so the
+     run can be played again from the same dice: DICESEED=<that number> and the same command. The game itself reads nothing
+     new: only this check's browser is handed the number. */
+  const DICESEED = (() => { const v = process.env.DICESEED; if (v === undefined || v === '') return require('crypto').randomBytes(4).readUInt32BE(0);
+    const n = Number(v); if (!(/^\d+$/.test(v) && Number.isInteger(n) && n <= 4294967295)) { console.error('DICESEED is a whole number from 0 to 4294967295, not ' + JSON.stringify(v)); process.exit(1); } return n; })();
+  const diceInit = { content: '(()=>{const g=crypto.getRandomValues.bind(crypto);let first=true;crypto.getRandomValues=a=>{if(first&&a instanceof Uint32Array&&a.length===1){first=false;a[0]=' + DICESEED + ';return a;}return g(a);};})();' };
+  const diceSays = () => 'the dice started from ' + DICESEED + ' on every page; to play this run again from the same dice: DICESEED=' + DICESEED + ' node ' + process.argv.slice(1).map(a => require('path').relative(process.cwd(), a) || a).join(' ');
+  console.log('  THE DICE: ' + diceSays());
   const refused = [], watched = new WeakSet();
   const watchPolicy = p => { if (watched.has(p)) return; watched.add(p); watchPolicy.n = (watchPolicy.n || 0) + 1;
     p.on('console', m => { if (/Content Security Policy/i.test(m.text())) refused.push(m.text().slice(0, 220)); }); };
   { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
-    browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
-    browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
+    browser.newContext = async (...a) => { const c = await ctx0(...a); await c.addInitScript(diceInit); c.on('page', watchPolicy); return c; };
+    browser.newPage = async (...a) => { const p = await page0(...a); await p.addInitScript(diceInit); watchPolicy(p); return p; }; }
   const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', e => pageErrors.push(e.message));
@@ -103,6 +113,8 @@ const CANDIDATES = [
   const index = 'file://' + path.resolve(__dirname, '..', 'index.html');
   await page.goto(index);
   await page.waitForTimeout(1200);
+  { const st = await page.evaluate(() => typeof DICE === 'object' && DICE ? DICE.start : null);   /* the run's number reached the page, so a red can be played again */
+    if (st !== DICESEED) fails.push('the dice on the first page started from ' + st + ', not from this run\'s ' + DICESEED + ', so a red here could not be played again from the same dice'); }
 
   // ---- 1. boot: no JS errors, no validator warnings (WORLD/PORTAL/REACH) ----
   if (pageErrors.length) fails.push('page errors: ' + pageErrors.join(' | '));
@@ -7147,6 +7159,6 @@ const CANDIDATES = [
 
   console.log('  NOTE: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
   if (refused.length) fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254) — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 3).join(' | '));
-  if (fails.length) { console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
+  if (fails.length) { console.log('  THE DICE: ' + diceSays()); console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log(`OK — ${stat.quests} quests, maxXP ${stat.maxXP}, all invariants hold.`);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

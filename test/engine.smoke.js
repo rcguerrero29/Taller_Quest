@@ -64,12 +64,22 @@ function findChromium() {
   // policy refusing it was the door working. Since style-src is 'self' a <style> written into the page is refused
   // itself, so the paper is parsed in a constructed sheet, which never fetches an @import at all. A refusal for
   // example.invalid now means something parses pack CSS the old way again, and that is a red like any other.
+  /* THE DICE'S STARTING NUMBER, FOR EVERY PAGE THIS FILE OPENS (the owner's confirmed goal of 2026-11-27): one number for the
+     run, from DICESEED when it is given and new otherwise, handed to each page as the first number its strong source gives,
+     which is the number the dice start from (engine/dice.js, fresh()). It is printed at the start and with every red, so the
+     run can be played again from the same dice: DICESEED=<that number> and the same command. The game itself reads nothing
+     new: only this check's browser is handed the number. */
+  const DICESEED = (() => { const v = process.env.DICESEED; if (v === undefined || v === '') return require('crypto').randomBytes(4).readUInt32BE(0);
+    const n = Number(v); if (!(/^\d+$/.test(v) && Number.isInteger(n) && n <= 4294967295)) { console.error('DICESEED is a whole number from 0 to 4294967295, not ' + JSON.stringify(v)); process.exit(1); } return n; })();
+  const diceInit = { content: '(()=>{const g=crypto.getRandomValues.bind(crypto);let first=true;crypto.getRandomValues=a=>{if(first&&a instanceof Uint32Array&&a.length===1){first=false;a[0]=' + DICESEED + ';return a;}return g(a);};})();' };
+  const diceSays = () => 'the dice started from ' + DICESEED + ' on every page; to play this run again from the same dice: DICESEED=' + DICESEED + ' node ' + process.argv.slice(1).map(a => require('path').relative(process.cwd(), a) || a).join(' ');
+  console.log('  THE DICE: ' + diceSays());
   const refused = [], watched = new WeakSet();
   const watchPolicy = p => { if (watched.has(p)) return; watched.add(p); watchPolicy.n = (watchPolicy.n || 0) + 1;
     p.on('console', m => { const s = m.text(); if (/Content Security Policy/i.test(s)) refused.push(s.slice(0, 220)); }); };
   { const ctx0 = browser.newContext.bind(browser), page0 = browser.newPage.bind(browser);
-    browser.newContext = async (...a) => { const c = await ctx0(...a); c.on('page', watchPolicy); return c; };
-    browser.newPage = async (...a) => { const p = await page0(...a); watchPolicy(p); return p; }; }
+    browser.newContext = async (...a) => { const c = await ctx0(...a); await c.addInitScript(diceInit); c.on('page', watchPolicy); return c; };
+    browser.newPage = async (...a) => { const p = await page0(...a); await p.addInitScript(diceInit); watchPolicy(p); return p; }; }
   /* WAIT ON WHAT THE NEXT LINE READS, NOT ON THE CLOCK (the owner's confirmed goal of 2026-11-02).
      This file used to sleep a fixed time wherever a page needed to be ready, and on a slow machine the
      sleeps alone were over half the run (103 s of 184 s on the library shell). A fixed sleep both wastes
@@ -127,6 +137,8 @@ function findChromium() {
      after boot (measured on the library shell: 12 of 12 against 13 of 13). This sleep is the time passing, so it stays. */
   await page.waitForTimeout(1500);
   let fails = [];
+  { const st = await page.evaluate(() => typeof DICE === 'object' && DICE ? DICE.start : null);   /* the run's number reached the page, so a red can be played again */
+    if (st !== DICESEED) fails.push('the dice on the first page started from ' + st + ', not from this run\'s ' + DICESEED + ', so a red here could not be played again from the same dice'); }
   let r = null;   /* the first section's findings and the letters still flat, read again by the closing line */
 
   if (runs('rest')) {   /* ---- the part `rest`, first stretch (its sections keep their own indent) ---- */
@@ -22318,6 +22330,55 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
 
   }
   if (runs('rest')) {   /* ---- the part `rest`, last stretch ---- */
+  /* ---- THE DICE, HIS THREE TESTS (the owner's confirmed goal of 2026-11-26, the game's own dice) ----
+     1 · ONE ANIMAL'S ASSIGNED ROLL, FROM A SET STARTING NUMBER. For each of five set starting numbers the dog's line gives the
+         first roll test/dice.js pins for it, and a dog's whim from that number is the one its roll's band names: a nap below
+         0.40, a song below 0.71, his own stick below 0.77, a restaurant door below 0.83, a romp below 0.90, a hole below 0.97,
+         the mess above. Away from the park the stick, the door and the romp each pass quietly when they cannot happen (the
+         first run of 3 found a door that does, from the player's first square), so for those a whim that passes fits too.
+         Twice from the same number, the same whim.
+     2 · EACH LINE APART. Twelve whims of a dog from one starting number are the same twelve whims when, before each, every
+         other line rolls three times and a cat's personality is drawn: what another system does moves nothing the dog does.
+     3 · THE HARDEST STARTING NUMBERS, kept here with what each reaches: the first roll of each lies closest to one edge of a
+         band, on one side or the other, of all the starting numbers below two million (chosen in node from the dice file on
+         2026-11-27). A dog's whim from each is the one its band names, as in 1. They are milliseconds, so they run every time. */
+  { const SET = [1, 7, 42, 2026, 4294967295];
+    const HARD = [[44989, '0.40 from below'], [1347796, '0.40 from above'], [1949341, '0.71 from below'], [170787, '0.71 from above'],
+      [871718, '0.77 from below'], [1896889, '0.77 from above'], [758553, '0.83 from below'], [1893236, '0.83 from above'],
+      [1147076, '0.90 from below'], [62344, '0.90 from above'], [1431697, '0.97 from below'], [1955209, '0.97 from above']];
+    const PIN = { 1: 0.6225536132697016, 7: 0.9663864960893989, 42: 0.16067541670054197, 2026: 0.9989391060080379, 4294967295: 0.09338936675339937 };
+    const R = await page.evaluate(({ SET, HARD, PIN }) => {
+      const P = [], N = [];
+      if (typeof DICE !== 'object' || typeof dogWhim !== 'function' || !DOGK.size) { N.push('no dog in this world to roll for, so the dice\'s three tests were not asked'); return { P, N }; }
+      const wid = PL.home, [x, y] = PL.spawn, kind = [...DOGK][0];
+      const probe = () => ({ kind, name: 'Probe', world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, next: 0, home: [x, y], task: null, persona: 'patient' });
+      const band = r => r < 0.40 ? 'nap' : r < 0.71 ? 'song' : r < 0.77 ? 'stick' : r < 0.83 ? 'door' : r < 0.90 ? 'romp' : r < 0.97 ? 'dig' : 'mess';
+      const now = wNow(), keep = DICE.start;
+      const whim = () => { const d = probe(), dec0 = DECALS.length; if (dogTidy(d)) return 'tidy';
+        dogWhim(d, now); const got = d.layT > now ? 'nap' : d.howlT > now ? 'song' : d.digT > now ? 'dig' : d.task ? d.task.type : DECALS.length > dec0 ? 'mess' : 'passed';
+        DECALS.length = dec0; return got; };
+      const fits = (b, got) => b === got || ((b === 'stick' || b === 'door' || b === 'romp') && got === 'passed');   /* away from the park these pass when they cannot happen (dogWhim, THE ODDS) */
+      const one = (s, why) => { DICE.reseed(s); const r = DICE.roll('dog'); DICE.reseed(s); const a = whim(); DICE.reseed(s); const b2 = whim();
+        if (a === 'tidy') { P.push('the probe dog is a tidy dog here, whose roll is laid over the bands, so its whim from ' + s + ' could not be read'); return null; }
+        if (!fits(band(r), a)) P.push('from the starting number ' + s + (why ? ' (' + why + ')' : '') + ' the dog\'s roll is ' + r + ', the band of ' + band(r) + ', and his whim was ' + a);
+        if (a !== b2) P.push('twice from the starting number ' + s + ' the dog\'s whim was ' + a + ' and then ' + b2);
+        return [s, r, a]; };
+      try {
+        /* 1 */
+        SET.forEach(s => { DICE.reseed(s); const r = DICE.roll('dog'); if (r !== PIN[s]) P.push('from the starting number ' + s + ' the dog\'s first roll is ' + r + ', where it is pinned at ' + PIN[s]); one(s); });
+        /* 2 */
+        const seq = (busy) => { DICE.reseed(2026); const out = []; for (let i = 0; i < 12; i++) { if (busy) { DICE.lines.forEach(n => { if (n !== 'dog') for (let k = 0; k < 3; k++) DICE.roll(n); }); if (typeof personaDraw === 'function') personaDraw([...CATK][0] || 'cat'); } out.push(whim()); } return out; };
+        const quiet = seq(false), busy = seq(true);
+        if (quiet.join() !== busy.join()) P.push('a dog\'s twelve whims from one starting number were ' + quiet.join(', ') + ' alone, and ' + busy.join(', ') + ' with every other line rolling in between');
+        N.push('each line apart: twelve whims from 2026, ' + quiet.join(' '));
+        /* 3 */
+        const hard = HARD.map(([s, why]) => one(s, why)).filter(Boolean);
+        N.push('the hardest starting numbers: ' + hard.map(([s, r, a]) => s + '→' + a).join(', '));
+      } finally { DICE.reseed(keep); }
+      return { P, N };
+    }, { SET, HARD, PIN });
+    fails.push(...R.P.map(m => 'the dice: ' + m)); R.N.forEach(n => console.log('  THE DICE: ' + n));
+  }
   /* ---- A WORLD'S OWN WORD COMES FIRST, AND WHERE IT NAMES NONE THE ENGINE'S STANDS IN ----
      The engine shows a world's words through T(). A word a world left out used to come out as nothing: in the two small
      worlds the Talk button read "undefined" before the person's name, a Trolley Pass link threw before its card showed,
@@ -23118,6 +23179,6 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /inline script|inline event/i.test(r) ? 'script(s) written inside the page' : /script/i.test(r) ? 'script file(s)' : 'other request(s)'; kinds[k] = (kinds[k] || 0) + 1; });
     fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254, #256): ' +
       Object.entries(kinds).map(([k, n]) => n + ' ' + k).join(', ') + ' — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 2).join(' | ')); }
-  if (fails.length) { console.log('FAIL (' + idx + ')\n- ' + fails.join('\n- ')); process.exit(1); }
+  if (fails.length) { console.log('  THE DICE: ' + diceSays()); console.log('FAIL (' + idx + ')\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log('OK — ' + idx + ': the worlds hang together, every person is reachable and named, every document builds, every camera draws every world, every door stands in 3D, every animal has ground, and storage stays under its prefix. Still flat in 3D (#39): ' + (r && r.stillFlat && r.stillFlat.length ? r.stillFlat.join(' ') : r ? 'nothing' : 'not asked in this part') + '.');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
