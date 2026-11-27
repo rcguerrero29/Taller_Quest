@@ -3951,7 +3951,7 @@ function findChromium() {
     const ROLL = 0.8;   /* inside the band of dogWhim's odds that means "run the course"; step 1 proves it */
     const keepRows = w.rows.slice(), keepGrid = w.grid.map(r => r.slice());
     const keepPark = JSON.stringify(PARK), keepDecals = DECALS.length;
-    const MR = Math.random, ST = window.setTimeout;
+    const MR = DICE.all, ST = window.setTimeout;
     const put = (x, y, g) => { w.rows[y] = w.rows[y].slice(0, x) + g + w.rows[y].slice(x + 1); w.grid[y][x] = g; };
     const isGear = g => g === '3' || g === '4' || g === '5' || (TILES[g] || {}).kind === 'gear';
     const NAME = { '3': 'hurdle', '4': 'tunnel', '5': 'weave' };
@@ -3960,7 +3960,7 @@ function findChromium() {
     const dog = () => ({ kind: [...DOGK][0], world: wid, x: dx0, y: dy0, fx: dx0, fy: dy0, face: 1, dx: 0, dy: 0,
       sit: false, layT: 0, next: 0, home: [dx0, dy0], task: null });
     try {
-      Math.random = () => ROLL;
+      DICE.all = () => ROLL;
       window.setTimeout = () => 0;   /* a whim that digs schedules its hole; a wrong answer here must not leave one in the park */
       /* the gear this park has today — and then none of it */
       const had = new Set();
@@ -4009,7 +4009,7 @@ function findChromium() {
         ', the roll that means "run the course" made the dog ' + did.join(' and ') +
         '. A park with no course has nothing to run, and the roll must not pass to anything else — digging is the puppy phase canon keeps rare');
     } finally {
-      Math.random = MR; window.setTimeout = ST;
+      DICE.all = MR; window.setTimeout = ST;
       keepRows.forEach((r, i) => { w.rows[i] = r; });
       keepGrid.forEach((row, y) => row.forEach((g, x) => { w.grid[y][x] = g; }));
       Object.assign(PARK, JSON.parse(keepPark)); DECALS.length = keepDecals;
@@ -4391,7 +4391,7 @@ function findChromium() {
     if (WORLDS[PL.park]) places.push({ name: 'in the park alone', wid: PL.park }, { name: 'in the park with another dog beside him', wid: PL.park, pal: true });
     if (!places.length) { P.push('this shell has no world in which to ask how often a dog digs'); return { P, out }; }
     const hasCourse = !!WORLDS[PL.park] && WORLDS[PL.park].rows.some(row => [...row].some(g => (TILES[g] || {}).kind === 'gear'));
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, park: JSON.stringify(PARK), decals: DECALS.length };
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, park: JSON.stringify(PARK), decals: DECALS.length };
     const real = CRIT.filter(isDog).map(c => [c, c.world]);
     const seen = [];
     try {
@@ -4407,7 +4407,7 @@ function findChromium() {
         try {
           for (let i = 0; i < N; i++) {
             const r = (i + 0.5) / N; let first = true;
-            Math.random = () => { if (first) { first = false; return r; } return 0.5; };
+            DICE.all = () => { if (first) { first = false; return r; } return 0.5; };
             const d = { kind: K, world: pl.wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null };
             const dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0;
             dogWhim(d, performance.now());
@@ -4433,7 +4433,7 @@ function findChromium() {
           (100 * hi.n[k] / N).toFixed(1) + '% of his whims, and ' + lo.pl.name + ' on ' + (100 * lo.n[k] / N).toFixed(1) + '%: a whim that cannot happen ' + hi.pl.name + ' is turning into that instead of passing quietly');
       });
     } finally {
-      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
+      DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
       real.forEach(([c, w]) => { c.world = w; });
       Object.assign(PARK, JSON.parse(keep.park)); DECALS.length = keep.decals;
     }
@@ -4477,7 +4477,7 @@ function findChromium() {
     const wid = WORLDS[PL.park] && spot(PL.park) ? PL.park : Object.keys(WORLDS).find(id => spot(id));
     if (!wid) { P.push('this shell has no world to stand a dog in, so his routines could not be asked'); return { P, out }; }
     const [x0, y0] = spot(wid);
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, ac: agilityCourse, pin: ROUTINEPIN,
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, ac: agilityCourse, pin: ROUTINEPIN,
       park: JSON.stringify(PARK), train: JSON.stringify(parkPrefs.train || {}), decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0,
       world, px, py, fx, fy, pt: petTarget, pc: petCrit, crit: CRIT.length };
     const real = CRIT.filter(isDog).map(c => [c, c.world]);
@@ -4508,14 +4508,14 @@ function findChromium() {
       const tally = pe => { personaOn = pe ? (k => k === 'dog') : (() => false); routineOn = () => true;
         const N = 60, M = 60, n = { free: 0, curious: 0, lazy: 0, dig: 0 };
         for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { let c = 0; const r1 = (i + 0.5) / N, r2 = (j + 0.5) / M;
-          Math.random = () => { c++; return c === 1 ? r1 : c === 2 ? r2 : 0.5; };
+          DICE.all = () => { c++; return c === 1 ? r1 : c === 2 ? r2 : 0.5; };
           const d = made({ persona: pe || undefined }); let now = T0, dug = false;
           dogIdle(d, now);
           const mode = d.task && d.task.type === 'routine' ? d.task.id : 'free'; n[mode]++;
           if (mode === 'free') dug = d.digT > now;
           else for (let k = 0; k < 4000 && d.task; k++) { if (dogPose(d, now, now).dig) dug = true; now += 100; dogStep(d, now); }
           if (dug) n.dig++; tidy(); }
-        Math.random = keep.MR; const tot = N * M, pc = {}; Object.keys(n).forEach(k => { pc[k] = 100 * n[k] / tot; });
+        DICE.all = keep.MR; const tot = N * M, pc = {}; Object.keys(n).forEach(k => { pc[k] = 100 * n[k] / tot; });
         const who = pe ? (/^[aeiou]/.test(pe) ? 'an ' : 'a ') + pe + ' dog' : 'a dog with no personality';
         out.push(who + ': free ' + pc.free.toFixed(1) + '% · curious ' + pc.curious.toFixed(1) + '% · lazy ' + pc.lazy.toFixed(1) + '% of his idle choices; a hole in ' + pc.dig.toFixed(1) + '%');
         if (pc.dig < 7 || pc.dig > 9) P.push(who + ' digs in ' + pc.dig.toFixed(1) + '% of his idle choices, his free whims and both routines together; it is kept at about 8% (settled 2026-09-29, and as a probability on 2026-11-20)');
@@ -4528,10 +4528,10 @@ function findChromium() {
 
       /* 3 · where routines are off, an idle dog is his whim and nothing else */
       { routineOn = () => false; let differ = 0, more = 0;
-        for (let i = 0; i < 40; i++) { const r = (i + 0.5) / 40, sig = (f) => { let c = 0; Math.random = () => { c++; return c === 1 ? r : 0.5; };
+        for (let i = 0; i < 40; i++) { const r = (i + 0.5) / 40, sig = (f) => { let c = 0; DICE.all = () => { c++; return c === 1 ? r : 0.5; };
             const d = made(); f(d, T0); const s = [d.sit, d.layT, d.howlT, d.digT, d.sniffT || 0, d.next, d.task ? d.task.type : ''].join('|'); tidy(); return [s, c]; };
           const a = sig(dogIdle), b = sig(dogWhim); if (a[0] !== b[0]) differ++; if (a[1] !== b[1]) more++; }
-        Math.random = keep.MR;
+        DICE.all = keep.MR;
         if (differ) P.push('in a world that has not turned routines on, ' + differ + ' of 40 rolls leave an idle dog doing something other than his whim does on the same roll');
         if (more) P.push('in a world that has not turned routines on, an idle dog draws a different count of numbers than his whim alone on ' + more + ' of 40 rolls, so every roll after it lands elsewhere than it did');
         if (typeof ROUTINETAKE !== 'undefined') out.push('this world declares ROUTINETAKE itself (' + JSON.stringify(ROUTINETAKE) + '), so a world that says nothing was asked by turning the switch off, not by a world that leaves it out'); }
@@ -4546,7 +4546,7 @@ function findChromium() {
         } finally { CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); } };
       handed('a treat', d => { petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); });
       handed('telling him he is loved', d => { petTarget = d.kind; petCrit = d; document.getElementById('love').click(); });
-      handed('a command he obeys (sit)', () => { Math.random = () => 0; try { dogCmd('sit'); } finally { Math.random = keep.MR; } });
+      handed('a command he obeys (sit)', () => { DICE.all = () => 0; try { dogCmd('sit'); } finally { DICE.all = keep.MR; } });
 
       /* 5 and 6 · the course at your word */
       const park = PL.park, btn = document.getElementById('cmdCourse'), gear = WORLDS[park] ? agilityCourse(park) : [];
@@ -4572,7 +4572,7 @@ function findChromium() {
           /* 6 · his personality answers, and the run ends with his treat. One answer, the eager dog's: on the worst roll he still
              sets off at once. */
           const answer = (pe, roll) => { personaOn = pe ? (k => k === 'dog') : (() => false); const d = dog(pe); stand(park); said.length = 0;
-            Math.random = () => roll; try { dogCmd('course'); } finally { Math.random = keep.MR; }
+            DICE.all = () => roll; try { dogCmd('course'); } finally { DICE.all = keep.MR; }
             return { d, went: !!d.task && d.task.type === 'run', wait: d.task && d.task.wait ? d.task.wait - wNow() : 0, said: said.slice() }; };
           { const a = answer('eager', 0.999), d = a.d;
             try {
@@ -4615,7 +4615,7 @@ function findChromium() {
         }
       }
     } finally {
-      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; agilityCourse = keep.ac; ROUTINEPIN = keep.pin;
+      DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; agilityCourse = keep.ac; ROUTINEPIN = keep.pin;
       real.forEach(([c, wd]) => { c.world = wd; }); CRIT.length = Math.min(CRIT.length, keep.crit);
       /* RE-AIMED at mq-v292: sent round the course, this check's named dog is given a pace of his own where a world takes it,
          kept with the park's picks; it is taken out again (and any bar he knocked off set back) before the record is written */
@@ -4654,7 +4654,7 @@ function findChromium() {
     const wid = Object.keys(WORLDS).find(id => WORLDS[id]) , w0 = WORLDS[wid];
     let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
     if (!at0) { P.push('this shell has no world to stand a dog in, so how long his poses last could not be asked'); return { P, out }; }
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, pin: ROUTINEPIN, park: JSON.stringify(PARK), decals: DECALS.length,
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: routineOn, pon: personaOn, pin: ROUTINEPIN, park: JSON.stringify(PARK), decals: DECALS.length,
       things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, world, px, py, fx, fy, pt: petTarget, pc: petCrit };
     const real = CRIT.filter(isDog).map(c => [c, c.world]);
     const made = o => Object.assign({ kind: K, name: 'Probe', world: wid, x: at0[0], y: at0[1], fx: at0[0], fy: at0[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0,
@@ -4672,10 +4672,10 @@ function findChromium() {
 
       /* 1 · in his routines */
       const NAMES = { sniff: 'a sniff', dig: 'a hole', happy: 'a happy wag', sit: 'a sit', lay: 'lying down', 'lay+howl': 'the lazy routine\'s short howl', normal: 'the normal beat' };
-      const timed = (id, roll) => { const d = made(), seq = []; let now = T0; Math.random = () => roll;
+      const timed = (id, roll) => { const d = made(), seq = []; let now = T0; DICE.all = () => roll;
         ROUTINEPIN = id; try { dogIdle(d, now); } finally { ROUTINEPIN = keep.pin; }
         for (let k = 0; k < 8000 && d.task; k++) { const h = held(d, now); if (!seq.length || seq[seq.length - 1][0] !== h) seq.push([h, 0]); seq[seq.length - 1][1] += 25; now += 25; dogStep(d, now); }
-        Math.random = keep.MR; tidy(); return seq; };
+        DICE.all = keep.MR; tidy(); return seq; };
       Object.keys(ROUTINES).forEach(id => { const lo = timed(id, 0.02), hi = timed(id, 0.98);
         if (!lo.length) { P.push('pinned to the ' + id + ' routine, an idle dog shows no pose at all, so how long each lasts could not be asked'); return; }
         out.push('the ' + id + ' routine, low roll then high: ' + lo.map((s, i) => s[0] + ' ' + sec(s[1]) + '/' + (hi[i] ? sec(hi[i][1]) : '?')).join(' · '));
@@ -4685,7 +4685,7 @@ function findChromium() {
           if (other && other[0] === pose && !(other[1] - ms > (range[1] - range[0]) * 0.5)) P.push('in the ' + id + ' routine, ' + NAMES[pose] + ' lasts ' + sec(ms) + ' on a low roll and ' + sec(other[1]) + ' on a high one: its time is not drawn from its range, so every one is alike'); }); });
 
       /* 2 · in his free whims: the band's roll first, the cone's roll held off, then the roll for the time */
-      const whim = (kind, band, roll) => { let c = 0; Math.random = () => { c++; return c === 1 ? band : c === 2 ? 0.5 : roll; }; const d = made({ kind }); dogWhim(d, T0); Math.random = keep.MR; tidy(); return d; };
+      const whim = (kind, band, roll) => { let c = 0; DICE.all = () => { c++; return c === 1 ? band : c === 2 ? 0.5 : roll; }; const d = made({ kind }); dogWhim(d, T0); DICE.all = keep.MR; tidy(); return d; };
       [['a nap', 0.2, 'layT', WANT.lay], ['a hole', 0.93, 'digT', WANT.dig], ['a song', 0.5, 'howlT', HOWL[K] || HOWL.other]].forEach(([what, band, clock, range]) => {
         const lo = whim(K, band, 0.02)[clock] - T0, hi = whim(K, band, 0.98)[clock] - T0;
         out.push('a free whim, ' + what + ' (' + K + '): ' + sec(lo) + ' on a low roll, ' + sec(hi) + ' on a high one');
@@ -4700,9 +4700,9 @@ function findChromium() {
       /* 3 · made happy by a treat, a beagle sings about 1 time in 3 */
       const sings = kind => { const N = 60; let n = 0; const d = made({ kind }); CRIT.push(d);
         try { world = wid; px = fx = at0[0]; py = fy = at0[1];
-          for (let i = 0; i < N; i++) { const r = (i + 0.5) / N; Math.random = () => r;   /* every roll the treat takes is this one, so whichever of them decides the song, it is swept */
+          for (let i = 0; i < N; i++) { const r = (i + 0.5) / N; DICE.all = () => r;   /* every roll the treat takes is this one, so whichever of them decides the song, it is swept */
             d.howlT = 0; d.sit = false; d.task = null; petTarget = d.kind; petCrit = d; document.getElementById('treat').click(); if (d.howlT > wNow()) n++; }
-        } finally { Math.random = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
+        } finally { DICE.all = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
         return 100 * n / N; };
       if (K === 'beagle') { const b = sings('beagle'); out.push('given a treat, a beagle sings ' + b.toFixed(0) + '% of the time' + (OTHER ? ', a ' + OTHER + ' ' + sings(OTHER).toFixed(0) + '%' : ''));
         if (b < 28 || b > 39) P.push('given a treat, a beagle sings about it ' + b.toFixed(0) + '% of the time, where 1 time in 3 was asked');
@@ -4724,17 +4724,17 @@ function findChromium() {
       /* 5 · told he is loved, his happy wag lasts its own time, as a free whim's pose does: the love button on a low roll and
          on a high one, the wag read off his pose on this check's clock from the moment of the click */
       { const loved = roll => { const d = made(); CRIT.push(d); let seen = NaN;
-          try { world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => roll;
-            const n0 = wNow(); document.getElementById('love').click(); Math.random = keep.MR;
+          try { world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; DICE.all = () => roll;
+            const n0 = wNow(); document.getElementById('love').click(); DICE.all = keep.MR;
             let now = n0; for (let k = 0; k < 800 && dogPose(d, now, now).happy; k++) now += 25; seen = now - n0;
-          } finally { Math.random = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
+          } finally { DICE.all = keep.MR; CRIT.splice(CRIT.indexOf(d), 1); petTarget = keep.pt; petCrit = keep.pc; tidy(); }
           return seen; };
         const lo = loved(0.02), hi = loved(0.98);
         out.push('told he is loved, his happy wag: ' + sec(lo) + ' on a low roll, ' + sec(hi) + ' on a high one');
         [['a low roll', lo], ['a high roll', hi]].forEach(([how, t]) => { if (!inside(t, WANT.happy)) P.push('told he is loved, on ' + how + ', his happy wag lasts ' + (isFinite(t) && t > 0 ? sec(t) : 'no time at all') + ', where ' + sec(WANT.happy[0]) + ' to ' + sec(WANT.happy[1]) + ' was asked'); });
         if (!(hi - lo > (WANT.happy[1] - WANT.happy[0]) * 0.5)) P.push('told he is loved, his happy wag lasts ' + sec(lo) + ' on a low roll and ' + sec(hi) + ' on a high one: its time is not drawn from its range, so every one is alike'); }
     } finally {
-      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; ROUTINEPIN = keep.pin;
+      DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; routineOn = keep.on; personaOn = keep.pon; ROUTINEPIN = keep.pin;
       real.forEach(([c, wd]) => { c.world = wd; }); Object.assign(PARK, JSON.parse(keep.park)); tidy();
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; petTarget = keep.pt; petCrit = keep.pc;
     }
@@ -4804,7 +4804,7 @@ function findChromium() {
     const PACE = [1.0, 1.5], POLES = 4, FALL = 1 / 6, WERE = 6, GAP = 0.26, LEAN = 0.07;   /* and the poles' spacing and lean, confirmed as built */
     const roleOf = p => GEARROLE[w.rows[p[1]][p[0]]], piece = r => course.find(p => roleOf(p) === r), hur = piece('hurdle'), tun = piece('tunnel'), wea = piece('weave');
     const at = p => '(' + p[0] + ',' + p[1] + ')', K = (CRIT.find(c => c.role === 'star' && isDog(c)) || {}).kind || [...DOGK][0];
-    const keep = { MR: Math.random, PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: courseOn, persist: parkPersist,
+    const keep = { MR: DICE.all, PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, on: courseOn, persist: parkPersist,
       pace: parkPrefs.pace, hadPace: Object.prototype.hasOwnProperty.call(parkPrefs, 'pace'), train: JSON.stringify(parkPrefs.train || {}), bars: [...GEARBARS], park: JSON.stringify(PARK), world, px, py, fx, fy, dir, held, moving, warpT, cam: camMode,
       decals: typeof DECALS !== 'undefined' ? DECALS.length : 0, npcs: w ? w.npcs.length : 0,
       yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0, ball: BALL, leash: LEASH, pet: [petTarget, petCrit], portalT, portalHold, rows: w ? w.rows.slice() : [], grid: w ? w.grid.map(r => r.slice()) : [],
@@ -4884,7 +4884,7 @@ function findChromium() {
       return { bad, short }; };
     try {
       performance.now = () => T; Date.now = () => D0 + (T - T0); window.setTimeout = () => 0; window.toast = () => {}; window.musHowl = () => {};
-      Math.random = () => { rolls++; return roll(); };
+      DICE.all = () => { rolls++; return roll(); };
       parkPersist = () => {}; parkPrefs.pace = Object.create(null);
       save = () => {}; destCheck = () => {}; propsReset = () => {}; dogsFollow = () => {}; dogsRoam = () => {}; alePersist = () => {}; aleRowBuild = () => {};   /* nothing written, nobody else moved */
       real.forEach(([c]) => { c.world = '__frozen'; }); GEARBARS.clear();
@@ -5370,12 +5370,12 @@ function findChromium() {
            labelled by the code that asked for it, not by the dice that answered */
         { const site = () => { const l = (new Error().stack || '').split('\n').slice(3).find(x => !/\/engine\/dice\.js:|\bat (dogRoll|critRoll) /.test(x)) || ''; return l.replace(/^\s*at\s*/, '').replace(/\(?[a-z]+:\/\/[^)]*\/([^/)]+)\)?/, '$1'); };
           const DS = dogStep; let seq = null, n = 0;
-          const take = (how, ons) => { courseOn = ons; GEARBARS.clear(); const d = made(home); seq = [[]]; n = 0; roll = () => 0.8; const was = Math.random;
-            Math.random = () => { if (seq) seq[seq.length - 1].push(site()); rolls++; return roll(); };
+          const take = (how, ons) => { courseOn = ons; GEARBARS.clear(); const d = made(home); seq = [[]]; n = 0; roll = () => 0.8; const was = DICE.all;
+            DICE.all = () => { if (seq) seq[seq.length - 1].push(site()); rolls++; return roll(); };
             dogStep = (c, now) => { if (c === d) { n++; seq.push([]); } return DS(c, now); };
             try { if (how === 'whim') { dogWhim(d, T); } else { CRIT.push(d); world = wid; px = fx = home[0]; py = fy = home[1]; roll = () => 0.001; try { dogCmd('course'); } finally { gone(d); px = fx = -9; py = fy = -9; } if (d.task) d.task.wait = 0; roll = () => 0.8; }
               if (d.task && d.task.type === 'run') go(d, 'run'); }
-            finally { dogStep = DS; Math.random = was; courseOn = () => true; }
+            finally { dogStep = DS; DICE.all = was; courseOn = () => true; }
             const s2 = seq; seq = null; return s2; };
           ['whim', 'your word'].forEach(how => { const off = take(how, () => false), on = take(how, () => true);
             if (off.length !== on.length) { P.push('on a run sent by ' + how + ' the dog took ' + (on.length - 1) + ' steps with the course\'s parts taken and ' + (off.length - 1) + ' without, on the same dice, so the order of the rolls could not be asked'); return; }
@@ -5428,7 +5428,7 @@ function findChromium() {
       { const A = JSON.parse(keep.ale); Object.keys(alePick).forEach(k => delete alePick[k]); Object.assign(alePick, A); }
       parkPrefs.stubs = keep.stubs; if (keep.stubs === undefined) delete parkPrefs.stubs; parkPrefs.dogs.splice(0, parkPrefs.dogs.length, ...keep.dogs);
       BALL = keep.ball; LEASH = keep.leash; [petTarget, petCrit] = keep.pet; portalT = keep.portalT; portalHold = keep.portalHold;
-      Math.random = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; courseOn = keep.on; parkPersist = keep.persist;
+      DICE.all = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; courseOn = keep.on; parkPersist = keep.persist;
       if (keep.hadPace) parkPrefs.pace = keep.pace; else delete parkPrefs.pace;
       parkPrefs.train = JSON.parse(keep.train); if (typeof DECALS !== 'undefined') DECALS.length = Math.min(DECALS.length, keep.decals);
       if (w) w.npcs.splice(keep.npcs).forEach(n => [[n.x, n.y]].concat(n.mv ? [n.mv] : []).forEach(([x, y]) => { if (w.grid[y] && w.grid[y][x] === 'N') w.grid[y][x] = w.rows[y][x]; }));
@@ -5514,7 +5514,7 @@ function findChromium() {
        turn('none') names nothing, turn(OLDP) names the old picture character, turn(<a look's name>) names that look. */
     const own = typeof MESSLOOK === 'undefined' ? null : MESSLOOK, namesOld = Array.isArray(own) && own.includes(OLDP), ownList = Array.isArray(own) ? own.slice() : null;
     const RD = Date, FT = CanvasRenderingContext2D.prototype.fillText;
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, lk: messLook, dd: drawDecal, world, px, py, fx, fy, dir, mv: moving, cam: camMode, st: TRO.state,
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, lk: messLook, dd: drawDecal, world, px, py, fx, fy, dir, mv: moving, cam: camMode, st: TRO.state,
       season: typeof seasonPick !== 'undefined' ? seasonPick : null, yaw: typeof T3 !== 'undefined' ? T3.yaw : 0, turn: typeof T3 !== 'undefined' ? T3.turn : null, fail: typeof T3 !== 'undefined' ? T3.messFail : undefined,
       decals: DECALS.slice(), things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, park: JSON.stringify(PARK), hid: document.getElementById('world').hidden, looks: MESSLOOKS.slice() };
     const turn = mode => { const list = mode === 'none' ? [] : [mode];
@@ -5532,16 +5532,16 @@ function findChromium() {
       happyT: 0, loveT: 0, next: 0, home: [spot.x, spot.y], task: null, holdT: 0, stayT: 0, moving: false, mt: 0 });
     /* his own whim, the roll swept from the top until a mess is on the ground: what he left, and how many numbers the whim drew */
     const leave = () => { for (let i = 399; i >= 0; i--) { const r = (i + 0.5) / 400, n0 = DECALS.length, t0 = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0; let c = 0;
-        Math.random = () => { c++; return c === 1 ? r : 0.5; }; const d = made(); dogWhim(d, 5e6); Math.random = keep.MR;
+        DICE.all = () => { c++; return c === 1 ? r : 0.5; }; const d = made(); dogWhim(d, 5e6); DICE.all = keep.MR;
         const got = DECALS.slice(n0), things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length - t0 : 0; DECALS.length = n0; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = t0;
         if (got.some(dc => dc.kind === 'poop')) return { got, things, rolls: c, dog: d }; }
       return null; };
     /* one frame of a flat camera: its pixels, every character it wrote, and how many random numbers it drew */
-    const frame = () => { wrote = []; const r0 = rolls; Math.random = roll; try { draw(); } finally { Math.random = keep.MR; }
+    const frame = () => { wrote = []; const r0 = rolls; DICE.all = roll; try { draw(); } finally { DICE.all = keep.MR; }
       return { d: g2.getImageData(0, 0, cv2.width, cv2.height).data, wrote: wrote.slice(), r: rolls - r0 }; };
     /* one frame of the 3D camera at quarter turn q, you standing at at3; f reads what it wants of the scene and the picture */
     const in3d = (q, f) => { camSet('3d'); sizeCanvas(); T3.turn = null; T3.yaw = q * QT; px = fx = at3[0]; py = fy = at3[1]; wrote = []; painted = 0; const r0 = rolls; let ok = false;
-      Math.random = roll; try { ok = draw3d(); } finally { Math.random = keep.MR; px = fx = spot.x - 1; py = fy = spot.y; }
+      DICE.all = roll; try { ok = draw3d(); } finally { DICE.all = keep.MR; px = fx = spot.x - 1; py = fy = spot.y; }
       if (!ok) return null; drew3d = true; return Object.assign({ r: rolls - r0 }, f ? f() : {}); };
     const shot3 = () => { const c3 = T3.renderer.domElement, c = document.createElement('canvas'); c.width = c3.width; c.height = c3.height;
       const g = c.getContext('2d'); g.drawImage(c3, 0, 0); return { d: g.getImageData(0, 0, c.width, c.height).data, w: c.width }; };
@@ -5728,7 +5728,7 @@ function findChromium() {
         if (!stair) out.push('this shell has no stair, so a mess left on a step was not asked');
         else { const flatMark = mark, wasW = world; mark = Object.assign({}, flatMark, { world: stair.wid, x: stair.x, y: stair.y });
           try { world = stair.wid; NOW = T0 + 1000; mark.until = wDate() + lies; put(); camSet('3d'); sizeCanvas(); T3.turn = null; T3.yaw = 0; px = fx = stair.x; py = fy = stair.y;
-            let ok = false; Math.random = roll; try { ok = draw3d(); } finally { Math.random = keep.MR; } if (ok) drew3d = true;
+            let ok = false; DICE.all = roll; try { ok = draw3d(); } finally { DICE.all = keep.MR; } if (ok) drew3d = true;
             const got = ok ? shapes() : [];
             if (!ok) P.push('the 3D camera could not draw the world with a stair in it, so a mess left on a step was not looked for');
             else if (got.length !== 1) P.push('a mess left on the stair at (' + stair.x + ',' + stair.y + ') in ' + stair.wid + ' has ' + (got.length ? got.length + ' shapes' : 'no shape') + ' standing on it in the 3D camera, where one small shape was asked');
@@ -5822,7 +5822,7 @@ function findChromium() {
           const n = A && B ? exact(A, B) : NaN; same.push('3d ' + n); if (n !== 0) P.push('in the 3D camera a world that names the first look sees the mess ' + n + ' pixels off what a world that names nothing sees: with one look, naming it is to change nothing'); }
         lift(); out.push('naming the first look against naming nothing, pixels apart: ' + same.join(', ')); }
     } finally {
-      window.Date = RD; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; messLook = keep.lk; drawDecal = keep.dd;
+      window.Date = RD; DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; messLook = keep.lk; drawDecal = keep.dd;
       if (Array.isArray(own)) { own.length = 0; ownList.forEach(t => own.push(t)); } else if (own === null) delete window.MESSLOOK;
       MESSLOOKS.length = 0; keep.looks.forEach(l => MESSLOOKS.push(l)); if (typeof SHAPES === 'object' && SHAPES) delete SHAPES.__messProbeSecond;
       CanvasRenderingContext2D.prototype.fillText = FT;
@@ -5888,7 +5888,7 @@ function findChromium() {
     const wid = Object.keys(WORLDS).find(id => WORLDS[id]), w0 = WORLDS[wid];
     let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
     if (!at0) { P.push('this shell has no world to stand a dog in, so his curled-up pose could not be asked'); return { P, out }; }
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, al: typeof alebLooks === 'function' ? alebLooks : null,
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, al: typeof alebLooks === 'function' ? alebLooks : null,
       cv: typeof curlVersions === 'function' ? curlVersions : null, ball: typeof BALL !== 'undefined' ? BALL : null, ccOwn: typeof CURLCHANCE !== 'undefined',
       park: JSON.stringify(PARK), decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, world, px, py, fx, fy, pt: petTarget, pc: petCrit, crit: CRIT.length };
     const real = CRIT.filter(isDog).map(c => [c, c.world]), mine = [];
@@ -5905,7 +5905,7 @@ function findChromium() {
 
       /* 1 · about half of his naps. The whim's rolls, in the order it takes them: the band (a nap), the cone's held off,
          then every roll after those is the one swept, so whichever of them decides the curl, it is swept */
-      const nap = (seq, o) => { let c = 0; Math.random = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; const d = made(o); try { dogWhim(d, T0); } finally { Math.random = keep.MR; tidy(); } return { d, c }; };
+      const nap = (seq, o) => { let c = 0; DICE.all = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; const d = made(o); try { dogWhim(d, T0); } finally { DICE.all = keep.MR; tidy(); } return { d, c }; };
       /* every roll swept at once: roll number c of try i is i + 1 written backwards in a base of its own (a prime: 2, 3,
          5…) after the point, so each roll runs evenly through 0 to 1 on its own sequence and no two rolls move together */
       const G = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29], back = (n, q) => { let f = 1, v = 0; while (n > 0) { f /= q; v += f * (n % q); n = Math.floor(n / q); } return v; },
@@ -5918,7 +5918,7 @@ function findChromium() {
       /* and through his idle choice (dogIdle: his mode, then the whim), every roll he takes swept, for each breed: about half
          of all his naps, however he came to them */
       for (const k of KS) { const N = 1000; let naps = 0, n = 0;
-        for (let i = 0; i < N; i++) { const d = made({ kind: k }); Math.random = swept(i); try { dogIdle(d, T0); } finally { Math.random = keep.MR; tidy(); }
+        for (let i = 0; i < N; i++) { const d = made({ kind: k }); DICE.all = swept(i); try { dogIdle(d, T0); } finally { DICE.all = keep.MR; tidy(); }
           if (d.task) continue; const p = dogPose(d, T0 + 1, D0); if (p.lay) { naps++; if (p.curl) n++; } }
         if (naps < 100) { P.push('every roll swept, an idle ' + k + ' naps only ' + naps + ' times in ' + N + ', so how often his naps are curled up could not be asked'); continue; }
         const pc = 100 * n / naps; out.push('the ' + k + ', idle, every roll swept: of ' + naps + ' naps curled up in ' + pc.toFixed(1) + '%');
@@ -5927,10 +5927,10 @@ function findChromium() {
       /* 2 · the lazy routine's lie-down, 1 time in 3 (the session's reading of his word, confirmed as built on 2026-11-24): the routine pinned and
          walked to its end, every roll it takes the one swept; a lie-down is the step seen lying and not singing */
       { const N = 120; let seen = 0, n = 0, sang = 0;
-        for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, d = made(); let now = T0, lay = false, cu = false; Math.random = () => r;
+        for (let i = 0; i < N; i++) { const r = (i + 0.5) / N, d = made(); let now = T0, lay = false, cu = false; DICE.all = () => r;
           ROUTINEPIN = 'lazy'; try { dogIdle(d, now); } finally { ROUTINEPIN = keep.pin; }
           for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay = true; if (p.curl) cu = true; } if (p.howl && p.curl) sang++; now += 100; dogStep(d, now); }
-          Math.random = keep.MR; tidy(); if (lay) seen++; if (cu) n++; }
+          DICE.all = keep.MR; tidy(); if (lay) seen++; if (cu) n++; }
         if (seen < N) P.push('the lazy routine reaches its lie-down only ' + seen + ' times in ' + N + ', so how often that lie-down is curled up could not be asked');
         else { const pc = 100 * n / seen; out.push('of ' + seen + ' lie-downs of the lazy routine, every roll swept: curled up in ' + pc.toFixed(1) + '%');
           if (pc < 28 || pc > 39) P.push('the lazy routine\'s lie-down is curled up ' + pc.toFixed(0) + '% of the time, where 1 time in 3 was asked');
@@ -5940,10 +5940,10 @@ function findChromium() {
          which is the curl's) */
       { const LAY = [6000, 10000], SL = 120;
         for (const [how, roll] of [['a low roll', d => 0.02], ['a high roll', d => d.layT > 0 && !d.curlT ? 0.02 : 0.98]]) {
-          const d = made(); let now = T0, curledMs = 0, lay = 0; Math.random = () => roll(d);
+          const d = made(); let now = T0, curledMs = 0, lay = 0; DICE.all = () => roll(d);
           try { ROUTINEPIN = 'lazy'; dogIdle(d, now);
             for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay += 25; if (p.curl) curledMs += 25; } now += 25; dogStep(d, now); }
-          } finally { ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); }
+          } finally { ROUTINEPIN = keep.pin; DICE.all = keep.MR; tidy(); }
           const end = dogPose(d, now, D0);
           out.push('the lazy routine on ' + how + ': lying ' + sec(lay) + ', curled up ' + sec(curledMs) + ' of it; at its end he is ' + (end.lay ? 'lying' : end.sit ? 'sitting' : 'standing'));
           if (!curledMs) P.push('on ' + how + ' held for the curl, the lazy routine\'s lie-down is not curled up, so how long a curled lie-down lasts was not asked');
@@ -6105,15 +6105,15 @@ function findChromium() {
       { const d = curlUp({}, wNow() + 60000);
         if (!d || !dogPose(d).curl) P.push('a dog could not be curled up for a nap, so what a treat does to it was not asked');
         else { CRIT.push(d); mine.push(d);
-          world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => 0.99;   /* a high roll: no song about the treat, so the treat alone is asked */
-          try { document.getElementById('treat').click(); } finally { Math.random = keep.MR; }
+          world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; DICE.all = () => 0.99;   /* a high roll: no song about the treat, so the treat alone is asked */
+          try { document.getElementById('treat').click(); } finally { DICE.all = keep.MR; }
           const p = dogPose(d);
           if (p.curl) P.push('a treat does not wake a dog curled up asleep: he stays curled up');
           else if (p.lay) P.push('a treat leaves a dog who was curled up asleep lying down, where a treat ends any nap and sits him up');
           else if (!p.happy) P.push('a treat wakes a dog curled up asleep and he is not glad of it: no happy wag follows'); } }
       { const d = curlUp({}, T0 + 60000);
         if (!d) P.push('a dog could not be curled up for a nap, so what a song does to it was not asked');
-        else { Math.random = () => 0.99; try { dogHowl(d, T0, 2000); } finally { Math.random = keep.MR; }
+        else { DICE.all = () => 0.99; try { dogHowl(d, T0, 2000); } finally { DICE.all = keep.MR; }
           const during = dogPose(d, T0 + 1000, D0), after = dogPose(d, T0 + 3000, D0);
           if (!during.howl) P.push('a dog made to sing for two seconds is not singing one second in, so what a song does to a curl was not asked');
           else if (during.curl) P.push('singing, he is still curled up asleep');
@@ -6138,8 +6138,8 @@ function findChromium() {
       /* his love shown ends it as it ends any nap (the button that tells him he is loved): not curled, not lying, loved */
       { const d = curlUp({}, wNow() + 60000), mc = window.musChirp;
         if (!d || !dogPose(d).curl) P.push('a dog could not be curled up for a nap, so what telling him he is loved does to it was not asked');
-        else { CRIT.push(d); mine.push(d); petTarget = d.kind; petCrit = d; window.musChirp = () => {}; Math.random = () => 0.99;
-          try { document.getElementById('love').click(); } finally { Math.random = keep.MR; window.musChirp = mc; }
+        else { CRIT.push(d); mine.push(d); petTarget = d.kind; petCrit = d; window.musChirp = () => {}; DICE.all = () => 0.99;
+          try { document.getElementById('love').click(); } finally { DICE.all = keep.MR; window.musChirp = mc; }
           const p = dogPose(d);
           if (p.curl) P.push('told he is loved, a dog curled up asleep stays curled up');
           else if (p.lay) P.push('told he is loved, a dog who was curled up is left lying down, where his love shown ends any nap and sits him up');
@@ -6156,7 +6156,7 @@ function findChromium() {
             if (!d || !dogPose(d).curl) { P.push('a dog could not be curled up for a nap, so what the command to ' + cmd + ' does to it was not asked'); continue; }
             CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1];
             if (nearestDog() !== d) P.push('the command to ' + cmd + ' would not reach the dog curled up beside you, so what it does to his curl was not asked');
-            else { Math.random = () => 0; try { dogCmd(cmd); } finally { Math.random = keep.MR; }
+            else { DICE.all = () => 0; try { dogCmd(cmd); } finally { DICE.all = keep.MR; }
               const p = dogPose(d), is = p.curl ? 'curled up asleep' : p.lay ? 'lying stretched out' : p.sit ? 'sitting' : 'standing';
               if (is !== want) P.push('told to ' + (cmd === 'down' ? 'lie down' : cmd) + ' and obeying, a dog who was curled up asleep is ' + is + ', where he is to be ' + want); }
             d.world = '__frozen'; } }
@@ -6181,8 +6181,8 @@ function findChromium() {
       for (const [pe, stays] of [['patient', true], ['aloof', true], ['eager', false]]) {
         const d = curlUp({ persona: pe }, wNow() + 60000);
         if (!d || !dogPose(d).curl) { P.push('a ' + pe + ' dog could not be curled up for a nap, so what a treat does to it was not asked'); continue; }
-        CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; Math.random = () => 0.99; personaOn = () => true;
-        try { document.getElementById('treat').click(); } finally { Math.random = keep.MR; personaOn = () => false; }
+        CRIT.push(d); mine.push(d); world = wid; px = fx = at0[0]; py = fy = at0[1]; petTarget = d.kind; petCrit = d; DICE.all = () => 0.99; personaOn = () => true;
+        try { document.getElementById('treat').click(); } finally { DICE.all = keep.MR; personaOn = () => false; }
         const p = dogPose(d); d.world = '__frozen';
         if (stays && !p.curl) P.push('given a treat while curled up asleep, a ' + pe + ' dog wakes, where a ' + pe + ' dog does not take a treat in his nap and stays curled up');
         if (!stays && (p.curl || p.lay)) P.push('given a treat while curled up asleep, an eager dog stays ' + (p.curl ? 'curled up' : 'lying down') + ', where an eager dog takes it, as a dog with no personality does'); }
@@ -6217,11 +6217,11 @@ function findChromium() {
          lie-down curled and one number fewer drawn over the whole routine; on, the sit and the lie-down last what they
          did (its lie-down is not made longer, and nothing it rolls before the curl moves) */
       { let cur = 0, more = 0, moved = 0, onCurled = 0; const N = 30;
-        const walk = (on, i) => { curlOn = () => on; let c = 0; const sw = swept(i); Math.random = () => { c++; return sw(); };
+        const walk = (on, i) => { curlOn = () => on; let c = 0; const sw = swept(i); DICE.all = () => { c++; return sw(); };
           const d = made(); let now = T0, sit = 0, lay = 0, curledSeen = false;
           try { ROUTINEPIN = 'lazy'; dogIdle(d, now);
             for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.curl) curledSeen = true; if (p.lay && !p.howl) lay += 25; else if (p.sit && !p.lay) sit += 25; now += 25; dogStep(d, now); }
-          } finally { ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); curlOn = () => true; }
+          } finally { ROUTINEPIN = keep.pin; DICE.all = keep.MR; tidy(); curlOn = () => true; }
           return { c, sit, lay, curledSeen }; };
         for (let i = 0; i < N; i++) { const off = walk(false, i), on = walk(true, i);
           if (off.curledSeen) cur++; if (on.curledSeen) onCurled++; if (on.c !== off.c + 1 + (on.curledSeen ? PK : 0)) more++;   /* curled, the version's pick too */ if (on.sit !== off.sit || on.lay !== off.lay) moved++; }
@@ -6262,8 +6262,8 @@ function findChromium() {
             curlVersions = () => one; const a1 = nap(seq); curlVersions = () => two; const a2 = nap(seq);
             if (a1.c !== off.c + 2) oneMore++; if (a2.c !== a1.c + 1) twoMore++; if (a2.d.layT !== a1.d.layT) longer++;
             const v = dogPose(a2.d, T0 + 1, D0).ver; if (v === 0 || v === 1) pick[v]++; else other++;
-            const mr = Math.random; Math.random = () => { drawn++; return 0.5; };
-            try { for (let t = T0 + 1; t < a2.d.layT; t += 250) if (dogPose(a2.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { Math.random = mr; } } }
+            const mr = DICE.all; DICE.all = () => { drawn++; return 0.5; };
+            try { for (let t = T0 + 1; t < a2.d.layT; t += 250) if (dogPose(a2.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { DICE.all = mr; } } }
         finally { curlVersions = keep.cv; curlOn = () => true; }
         const p0 = 100 * pick[0] / N, p1 = 100 * pick[1] / N;
         out.push('two versions weighted 3 to 1, over ' + N + ' curled naps: the first picked ' + p0.toFixed(1) + '%, the second ' + p1.toFixed(1) + '%; with one version ' + (N - oneMore) + ' naps drew no roll for it');
@@ -6281,8 +6281,8 @@ function findChromium() {
          drawn and the roll that always curls him curls him */
       { curlOn = keep.con;
         const has = typeof CURLTAKE !== 'undefined', says = has && Array.isArray(CURLTAKE) && CURLTAKE.includes('dog');
-        const ask = () => { const d = made({ layT: T0 + 60000 }); let c = 0, cu = false; Math.random = () => { c++; return 0; };
-          try { cu = dogCurl(d, 'nap'); } finally { Math.random = keep.MR; } return { on: !!curlOn(d), cu, c }; };
+        const ask = () => { const d = made({ layT: T0 + 60000 }); let c = 0, cu = false; DICE.all = () => { c++; return 0; };
+          try { cu = dogCurl(d, 'nap'); } finally { DICE.all = keep.MR; } return { on: !!curlOn(d), cu, c }; };
         const as = ask(); let off = null, on = null;
         if (has && Array.isArray(CURLTAKE) && !Object.isFrozen(CURLTAKE)) { const was = CURLTAKE.slice();
           try { CURLTAKE.length = 0; off = ask(); CURLTAKE.push('dog'); on = ask(); } finally { CURLTAKE.length = 0; was.forEach(x => CURLTAKE.push(x)); } }
@@ -6295,7 +6295,7 @@ function findChromium() {
         if (on && !(on.on && on.cu)) P.push('with dogs in the world\'s list of who curls up, a dog does not curl up on the roll that always curls him: the engine does not hear the list');
         if (on && on.c !== 1) P.push('with dogs in the world\'s list of who curls up, a nap draws ' + on.c + ' numbers for the curl, where it draws one'); }
     } finally {
-      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; if (keep.al) alebLooks = keep.al;
+      DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; if (keep.al) alebLooks = keep.al;
       if (keep.cv) curlVersions = keep.cv; if (typeof keep.ball !== 'undefined' && typeof BALL !== 'undefined') BALL = keep.ball; if (!keep.ccOwn) delete window.CURLCHANCE;
       mine.forEach(d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); }); real.forEach(([c, wd]) => { c.world = wd; }); Object.assign(PARK, JSON.parse(keep.park)); tidy();
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; petTarget = keep.pt; petCrit = keep.pc;
@@ -6377,7 +6377,7 @@ function findChromium() {
     const wid = star.world, w = WORLDS[wid], el = document.getElementById('world');
     const openIn = (id, x, y) => { const W = WORLDS[id]; return x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N' && (TILES[W.rows[y][x]] || {}).kind !== 'gear' && !(typeof portalAt === 'function' && portalAt(id, x, y)); };
     const openAt = (x, y) => openIn(wid, x, y);
-    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, crit: CRIT.length, MR: Math.random, kd: t3DogBodies, dd: typeof drawDog === 'function' ? drawDog : null, painters: {}, season: seasonPick,
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, crit: CRIT.length, MR: DICE.all, kd: t3DogBodies, dd: typeof drawDog === 'function' ? drawDog : null, painters: {}, season: seasonPick,
       fail: T3.fail, said: T3.said, errs: T3.errors.length, err3d: (() => { try { return localStorage.getItem(SK('err3d')); } catch (e) { return null; } })(), picks: [],
       iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), real: dogs.map(c => [c, c.world]) };
     const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
@@ -6414,7 +6414,7 @@ function findChromium() {
       /* where the office dog is held still in 7: the square his world puts him on (ANI), where he starts every game, in full view
          of the camera there. Held where he happened to be when the check began, he once stood where 6 pixels of him showed */
       { const home = typeof ANI === 'function' ? ANI('dog') : null; officeKeep0 = home && isFinite(home.x) && isFinite(home.y) ? [home.x | 0, home.y | 0] : [Math.round(DOG.x), Math.round(DOG.y)]; }   /* the office dog's own painter, counted, and the billboard it painted him on */
-      Math.random = () => { if (inDogs) rolls++; return keep.MR(); };
+      DICE.all = () => { if (inDogs) rolls++; return keep.MR(); };
       t3DogBodies = dt => { inDogs = true; try { return keep.kd(dt); } finally { inDogs = false; } };   /* the engine's own, watched for dice and nothing else */
       el.hidden = false; camSet('3d'); sizeCanvas(); moving = false;
       if (!screenIs(LAPTOP)) { P.push('the size of the screen could not be set on this page, so on which screens a dog stands as a body could not be asked'); return { P, out }; }
@@ -6719,8 +6719,8 @@ function findChromium() {
             if (s.ok && office && q) { const src = f => { try { return Function.prototype.toString.call(f); } catch (e) { return ''; } }, gl = T3.renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
               const readers = Object.keys(window).filter(k => { let f = null; try { f = k === 't3DogBodies' ? keep.kd : window[k]; } catch (e) { return false; } return typeof f === 'function' && /\bDOGBODYON\b/.test(src(f)); });
               let swap = null; try { swap = readers.map(k => [k, window[k], (0, eval)('(function(){let DOGBODYON=false;return (' + src(k === 't3DogBodies' ? keep.kd : window[k]) + ');})()')]); } catch (e) { swap = null; }
-              const k0 = { dog: Object.assign({}, DOG), pn: performance.now, dn: Date.now, mr: Math.random }, T0 = performance.now(), D0 = Date.now();
-              const shot = () => { let z = 0x9e3779b9; Math.random = () => { z ^= z << 13; z ^= z >>> 17; z ^= z << 5; return ((z >>> 0) % 1e6) / 1e6; };
+              const k0 = { dog: Object.assign({}, DOG), pn: performance.now, dn: Date.now, mr: DICE.all }, T0 = performance.now(), D0 = Date.now();
+              const shot = () => { let z = 0x9e3779b9; DICE.all = () => { z ^= z << 13; z ^= z >>> 17; z ^= z << 5; return ((z >>> 0) % 1e6) / 1e6; };
                 draw3d(); T3.renderer.render(T3.scene, T3.cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); return b; };
               const differ = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
               if (!readers.length || !swap || swap.some(([, , f]) => typeof f !== 'function')) P.push('the engine\'s reading of whether this world takes the dog\'s body could not be rebuilt without the dog, so the office dog could not be compared pixel for pixel');
@@ -6735,12 +6735,12 @@ function findChromium() {
                     if (!seenOff) P.push('the office dog, ' + how + ', is not painted as his card, so he could not be compared pixel for pixel');
                     else if (same) P.push('where the office dog lives the same frame drawn twice differs by ' + same + ' pixels with the clock and the dice held, so he could not be compared pixel for pixel ' + how);
                     else if (n) P.push('the office dog, ' + how + ', is not exactly as he was: ' + n + ' pixels of the screen where he lives differ from this world with the dog taken out of its own list'); } }
-                finally { performance.now = k0.pn; Date.now = k0.dn; Math.random = k0.mr; Object.keys(DOG).forEach(k => { if (!(k in k0.dog)) delete DOG[k]; }); Object.assign(DOG, k0.dog); }
+                finally { performance.now = k0.pn; Date.now = k0.dn; DICE.all = k0.mr; Object.keys(DOG).forEach(k => { if (!(k in k0.dog)) delete DOG[k]; }); Object.assign(DOG, k0.dog); }
                 out.push('the office dog pixel for pixel against this world with the dog taken out of its own list (' + readers.length + ' function' + (readers.length === 1 ? '' : 's') + ' rebuilt), pixels that differ: ' + got.join(', ')); } } } } }
     } finally {
       if (officeKeep) Object.assign(DOG, officeKeep);
       CRIT.length = Math.min(CRIT.length, keep.crit); keep.real.forEach(([c, wd]) => { c.world = wd; });
-      Math.random = keep.MR; t3DogBodies = keep.kd; if (keep.dd) drawDog = keep.dd; Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); seasonPick = keep.season;
+      DICE.all = keep.MR; t3DogBodies = keep.kd; if (keep.dd) drawDog = keep.dd; Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); seasonPick = keep.season;
       while (keep.picks.length) { const [o, k, had, v] = keep.picks.pop(); if (had) o[k] = v; else delete o[k]; }
       /* a frame that failed here (a red above) is not left behind: the camera's own note of it is taken back */
       T3.fail = keep.fail; T3.said = keep.said; T3.errors.length = Math.min(T3.errors.length, keep.errs); try { if (keep.err3d === null) localStorage.removeItem(SK('err3d')); else localStorage.setItem(SK('err3d'), keep.err3d); } catch (e) {}
@@ -6856,7 +6856,7 @@ function findChromium() {
       else out.push('this world declares no office dog in the dog program (its own later step), so nothing was asked of it here; the block after this one asks that its own office dog is as he was');
       return { P, out }; }
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: DICE.all, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
       season: typeof seasonPick !== 'undefined' ? seasonPick : null, wear: { ...wear }, treats, fredQ, lastBump, pin: ROUTINEPIN, crit: CRIT.length, decals: DECALS.length, park: JSON.stringify(PARK),
       dd: typeof drawDog === 'function' ? drawDog : null, painters: {}, od: { ...od }, odHome: od.home.slice(), dig: dogDig, wd: typeof wdPet !== 'undefined' ? wdPet : null,
       iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), real: CRIT.filter(isDog).map(c => [c, c.world, c.x, c.y, c.fx, c.fy, c.next, c.task, c.follow]),
@@ -6985,7 +6985,7 @@ function findChromium() {
               if (!nb) { P.push('there is no open tile near the park\'s dog spot for another dog, so the greeting\'s branch could not be asked'); continue; }
               pal = made({ name: 'ProbePal', world: wid, x: nb[0], y: nb[1], fx: nb[0], fy: nb[1], home: nb.slice() }); }
             const counts = {};
-            try { for (const tidy of [true, false]) { Math.random = seeded(295); const c = { hole: 0, mess: 0, nap: 0, song: 0, greet: 0 };
+            try { for (const tidy of [true, false]) { DICE.all = seeded(295); const c = { hole: 0, mess: 0, nap: 0, song: 0, greet: 0 };
                 for (let i = 0; i < N; i++) { const d = { ...od, tidy, world: wid, x: ax, y: ay, fx: ax, fy: ay, home: [ax, ay], task: null, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, curlT: 0, next: 0, face: 1, dx: 0, dy: 0, __probe: true };
                   if (pal) Object.assign(pal, { task: null, sit: false, layT: 0, world: wid });
                   const dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, visits = typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0, d0 = digs;
@@ -7009,7 +7009,7 @@ function findChromium() {
           if (pt === null) out.push('this world has no curious routine, so the pinned routine was not walked'); 
           else { if (pt) P.push('the curious routine pinned (every step\'s own pose) dug ' + pt + ' times for the office dog, tidy'); if (pu !== 1) P.push('the curious routine pinned dug ' + pu + ' times for the same dog untidy, where it digs once: the pinned walk cannot be said to see a hole'); }
           out.push('tidy: ' + N + ' seeded idle choices each, the program\'s rates ' + pct(wantHole, 1) + ' holes and ' + pct(wantMess, 1) + ' messes — ' + said.join('; ') + '; the curious routine pinned: ' + pt + ' holes tidy, ' + pu + ' untidy');
-        } finally { away.forEach(([c, w]) => { c.world = w; }); dogDig = keep.dig; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; ROUTINEPIN = keep.pin; DECALS.length = keep.decals; Object.assign(PARK, JSON.parse(keep.park)); } }
+        } finally { away.forEach(([c, w]) => { c.world = w; }); dogDig = keep.dig; DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; ROUTINEPIN = keep.pin; DECALS.length = keep.decals; Object.assign(PARK, JSON.parse(keep.park)); } }
 
       /* 4 · leash-only */
       { const W = WORLDS[od.world]; let door = null;
@@ -7018,7 +7018,7 @@ function findChromium() {
         else { const by = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => [door.x + dx, door.y + dy]).filter(([x, y]) => open(W, x, y) && !portalAt(od.world, x, y));
           const W0 = keep.od.world;   /* his room, read once: he is the dog asked, so it is never read off him while he is being moved */
           const go = (c, how) => { stand(W0, door.x, door.y); hold(c); c.world = W0; c.x = c.fx = by[0][0]; c.y = c.fy = by[0][1]; c.home = by[0].slice(); if (how === 'told') c.follow = true;
-            Math.random = () => 0; try { stand(door.p.to, door.p.x, door.p.y); dogsFollow(W0, door.x, door.y); } finally { Math.random = keep.MR; } return c.world !== W0; };
+            DICE.all = () => 0; try { stand(door.p.to, door.p.x, door.p.y); dogsFollow(W0, door.x, door.y); } finally { DICE.all = keep.MR; } return c.world !== W0; };
           if (!by.length) P.push('there is no open tile beside the office dog\'s door, so whether he follows you through it could not be asked');
           else { const res = [];
             for (const how of ['whim', 'told']) { let him = false, it = false, ctl = null;
@@ -7040,7 +7040,7 @@ function findChromium() {
               if (!ex) P.push('the park has no way out, so coming home from it could not be asked');
               else { const nx = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => [ex.x + dx, ex.y + dy]).find(([x, y]) => open(PW, x, y) && !portalAt(park, x, y));
                 hold(od); od.world = park; if (nx) { od.x = od.fx = nx[0]; od.y = od.fy = nx[1]; }
-                Math.random = () => 0; try { stand(ex.p.to, ex.p.x, ex.p.y); dogsFollow(park, ex.x, ex.y); } finally { Math.random = keep.MR; }
+                DICE.all = () => 0; try { stand(ex.p.to, ex.p.x, ex.p.y); dogsFollow(park, ex.x, ex.y); } finally { DICE.all = keep.MR; }
                 const came = od.world === ex.p.to; parkExit(); const pc = document.getElementById('parkCard'); if (pc) pc.hidden = true;
                 if (!came) P.push('on the leash, the office dog did not come out of the park with you');
                 if (od.world !== keep.od.world || od.x !== home0[0] || od.y !== home0[1]) P.push('after the park the office dog is in ' + od.world + ' at ' + od.x + ',' + od.y + ', not back in his room on his own square (' + home0 + ')');
@@ -7057,10 +7057,10 @@ function findChromium() {
           else { const DI = window.dogIdle, sq = new Set(), dec = DECALS.length, things = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, visits = typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0;
             let steps = 0, whims = 0, left = null, maxd = 0, now = 1e9; const S0 = snapAll();
             try { stand(W0, far[0], far[1]); hold(od); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), next: 0, follow: false, stepT: now });
-              window.dogIdle = function (...a) { whims++; return DI.apply(this, a); }; window.toast = () => {}; window.musHowl = () => {}; window.setTimeout = () => 0; ROUTINEPIN = null; Math.random = seeded(2951);
+              window.dogIdle = function (...a) { whims++; return DI.apply(this, a); }; window.toast = () => {}; window.musHowl = () => {}; window.setTimeout = () => 0; ROUTINEPIN = null; DICE.all = seeded(2951);
               for (let k = 0; k < 6000; k++) { const was = od.x + ',' + od.y; critUpdate(50, now); now += 50;
                 if (od.world !== W0 && !left) left = od.world + ' at tick ' + k; if (od.x + ',' + od.y !== was) steps++; sq.add(od.x + ',' + od.y); maxd = Math.max(maxd, Math.abs(od.x - keep.odHome[0]) + Math.abs(od.y - keep.odHome[1])); keep.real.forEach(([c]) => { if (c !== od) hold(c); }); } }
-            finally { window.dogIdle = DI; window.toast = keep.TO; window.musHowl = keep.MH; window.setTimeout = keep.ST; ROUTINEPIN = keep.pin; Math.random = keep.MR;
+            finally { window.dogIdle = DI; window.toast = keep.TO; window.musHowl = keep.MH; window.setTimeout = keep.ST; ROUTINEPIN = keep.pin; DICE.all = keep.MR;
               DECALS.length = dec; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = things; if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = visits; if (typeof BALL !== 'undefined' && BALL && BALL.dog === od) BALL = null;
               unsnap(S0); hold(od); Object.assign(od, { world: W0, x: keep.od.x, y: keep.od.y, fx: keep.od.x, fy: keep.od.y, home: keep.odHome.slice(), follow: false }); stand(keep.world, keep.px, keep.py); }
             if (left) P.push('off the leash, left to himself with you in his room, the office dog left it (' + left + '): off the leash he stays in his room');
@@ -7103,11 +7103,11 @@ function findChromium() {
               const otherW = Object.keys(WORLDS).find(id => id !== W0 && id !== PL.park && WORLDS[id]), nb = besideOf(od, 1);
               if (!at || !nb || !otherW) throw new Error('no square two to four from him, none beside him, or no other world to whistle from');
               hold(sd); sd.world = otherW; stand(W0, at[0], at[1]); fromRoom = nearestDog();
-              window.toast = m => { st.push(String(m)); }; window.setTimeout = () => 0; Math.random = () => 0;
+              window.toast = m => { st.push(String(m)); }; window.setTimeout = () => 0; DICE.all = () => 0;
               if (fromRoom === sd) { dogCmd('come'); came = sd.world; }
               hold(od); stand(W0, nb[0], nb[1]); bes = nearestDog(); if (bes === od) { dogCmd('sit'); sat = !!od.sit && od.holdT > 0; } }
               catch (e) { P.push('the paw menu in his room could not be asked: ' + e.message); } }
-            finally { window.toast = keep.TO; window.setTimeout = keep.ST; Math.random = keep.MR; Object.keys(sd).forEach(k => { if (!(k in s0)) delete sd[k]; }); Object.assign(sd, s0);
+            finally { window.toast = keep.TO; window.setTimeout = keep.ST; DICE.all = keep.MR; Object.keys(sd).forEach(k => { if (!(k in s0)) delete sd[k]; }); Object.assign(sd, s0);
               if (parkPrefs.train) { const t0 = JSON.parse(tr); Object.keys(parkPrefs.train).forEach(k => { if (!(k in t0)) delete parkPrefs.train[k]; }); Object.assign(parkPrefs.train, t0); }
               try { parkPersist(); } catch (e) {} if (dp) dp.hidden = dph; hold(od); Object.assign(od, { holdT: 0, sit: false }); stand(keep.world, keep.px, keep.py); }
             if (fromRoom !== sd) P.push('in the office dog\'s room, not beside him, the paw menu reaches ' + (fromRoom === od ? 'the office dog' : fromRoom ? (fromRoom.name || fromRoom.kind) : 'nobody') + ': there it reaches the star dog, as it did before he was in the program');
@@ -7138,7 +7138,7 @@ function findChromium() {
                 if (started !== 1) P.push('the treat after the third ' + (started ? 'started his side quest ' + started + ' times' : 'did not start his side quest') + ': the side quest his treats open starts from him, once'); }
               [['his heart', T().fredHeart], ['the side quest\'s line', T().fredUnlock], ['the care pack\'s line', T().carePackToast]].forEach(([nm, s]) => { if (s && !said.includes(s)) P.push('the treats did not say ' + nm); });
               /* a step that ends beside you */
-              said.length = 0; Math.random = () => 0; lastBump = -1e15; try { officeBump(od); } finally { Math.random = keep.MR; }
+              said.length = 0; DICE.all = () => 0; lastBump = -1e15; try { officeBump(od); } finally { DICE.all = keep.MR; }
               const L = T().dog || []; if (L.length && !said.some(s => L.includes(s))) P.push('a step of the office dog\'s that ends beside you said none of the world\'s dog lines');
               out.push('the treat button: "' + btn.textContent + '"; side quest after treats ' + q.join(', ') + '; beside you he says ' + (said[0] ? '"' + said[0] + '"' : 'nothing')); }
           } finally { window.toast = keep.TO; window.setTimeout = keep.ST; treats = keep.treats; fredQ = keep.fredQ; lastBump = keep.lastBump; if (talk) talk.hidden = th; try { save(); } catch (e) {} } } }
@@ -7227,7 +7227,7 @@ function findChromium() {
           } finally { if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight; seasonPick = keep.season; } } }
     } finally {
       Object.entries(keep.painters).forEach(([n, f]) => { window[n] = f; }); if (keep.dd) drawDog = keep.dd;
-      Math.random = keep.MR; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; dogDig = keep.dig; ROUTINEPIN = keep.pin;
+      DICE.all = keep.MR; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; dogDig = keep.dig; ROUTINEPIN = keep.pin;
       Object.assign(wear, keep.wear); treats = keep.treats; fredQ = keep.fredQ; lastBump = keep.lastBump; LEASH = null;
       while (CRIT.length > keep.crit) CRIT.pop();
       keep.real.forEach(([c, w, x, y, fx0, fy0, nx, tk, fo]) => { Object.assign(c, { world: w, x, y, fx: fx0, fy: fy0, next: nx, task: tk, follow: fo, moving: false }); });
@@ -7264,7 +7264,7 @@ function findChromium() {
       const aw = AW('dog'), el = document.getElementById('world');
       if (!aw || typeof DOG === 'undefined') { P.push('the engine\'s own office dog stands nowhere'); return { P, out }; }
       if (CRIT.some(c => isDog(c) && (c.role === 'office' || (typeof DOGSOLE !== 'undefined' && DOGSOLE.has(c.kind))))) P.push('a dog of the program is the office dog here as well');
-      const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, ST: window.setTimeout, TO: window.toast, dog: { ...DOG }, treats, fredQ, wear: { ...wear },
+      const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: DICE.all, ST: window.setTimeout, TO: window.toast, dog: { ...DOG }, treats, fredQ, wear: { ...wear },
         dd: drawDog, da: typeof drawAussie === 'function' ? drawAussie : null, wd: typeof wdPet !== 'undefined' ? wdPet : null,
         pet: [petTarget, petCrit], btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]) };
       let nd = 0, na = 0; const W = WORLDS[aw], open = (x, y) => x >= 0 && y >= 0 && x < W.W && y < W.H && !SOLID.has(W.grid[y][x]) && W.grid[y][x] !== 'N';
@@ -7302,20 +7302,20 @@ function findChromium() {
           else if (!spot.length) P.push('there is no row of three open squares in his room, so his bump lines could not be asked');
           else { const said = [], seq = [0.5, 0, 0, 0, 0]; let i = 0, lb = lastBump;
             try { Object.assign(DOG, { x: spot[0], y: spot[1], fx: spot[0], fy: spot[1], next: 0, moving: false, sit: false, face: 1 }); world = aw; px = fx = spot[0] + 2; py = fy = spot[1];
-              lastBump = -1e15; window.toast = m => { said.push(String(m)); }; Math.random = () => (i < seq.length ? seq[i++] : 0);
+              lastBump = -1e15; window.toast = m => { said.push(String(m)); }; DICE.all = () => (i < seq.length ? seq[i++] : 0);
               dogUpdate(16, 1e9); }
-            finally { Math.random = keep.MR; window.toast = keep.TO; lastBump = lb; Object.assign(DOG, { x: keep.dog.x, y: keep.dog.y, fx: keep.dog.x, fy: keep.dog.y, moving: false, mt: 0, next: Infinity }); px = fx = nb[0]; py = fy = nb[1]; }
+            finally { DICE.all = keep.MR; window.toast = keep.TO; lastBump = lb; Object.assign(DOG, { x: keep.dog.x, y: keep.dog.y, fx: keep.dog.x, fy: keep.dog.y, moving: false, mt: 0, next: Infinity }); px = fx = nb[0]; py = fy = nb[1]; }
             bump = said.find(m => L.includes(m)) || null;
             if (!bump) P.push('a step of his that ends beside you said ' + (said.length ? '"' + said[0] + '"' : 'nothing') + ', none of the world\'s dog lines: he says them as he always did');
             bump = bump ? '"' + bump + '"' : 'nothing'; } }
         /* left to himself: a seeded run of his own update, you two rooms away */
-        let st = 0, sat = 0; { let s = 295; Math.random = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+        let st = 0, sat = 0; { let s = 295; DICE.all = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
           window.toast = () => {}; Object.assign(DOG, { next: 0, moving: false, sit: false }); px = fx = -50; py = fy = -50; let now = 1e6;
-          try { for (let k = 0; k < 2000; k++) { const was = [DOG.x, DOG.y]; dogUpdate(100, now); now += 100; if (DOG.x !== was[0] || DOG.y !== was[1]) st++; if (DOG.sit) sat++; } } finally { Math.random = keep.MR; window.toast = keep.TO; } }
+          try { for (let k = 0; k < 2000; k++) { const was = [DOG.x, DOG.y]; dogUpdate(100, now); now += 100; if (DOG.x !== was[0] || DOG.y !== was[1]) st++; if (DOG.sit) sat++; } } finally { DICE.all = keep.MR; window.toast = keep.TO; } }
         if (!st || !sat) P.push('left to himself for 200 s he stepped ' + st + ' times and sat ' + sat + ' ticks: he does not wander and sit as he did');
         out.push('the office dog kept outside the program, in ' + aw + ': painted by his own painter in ' + per.join(', ') + '; the treat button "' + petTarget + '", side quest after treats ' + q.join(', ') + '; the preview ' + pv + '; a step that ends beside you says ' + bump + '; left to himself ' + st + ' steps, ' + sat + ' ticks sitting');
       } finally { [petTarget, petCrit] = keep.pet; keep.btns.forEach(([b, h, t]) => { b.hidden = h; if (b.textContent !== t) b.textContent = t; });
-        drawDog = keep.dd; if (keep.da) drawAussie = keep.da; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; Object.assign(DOG, keep.dog); Object.assign(wear, keep.wear); if (keep.wd !== null) wdPet = keep.wd;
+        drawDog = keep.dd; if (keep.da) drawAussie = keep.da; DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; Object.assign(DOG, keep.dog); Object.assign(wear, keep.wear); if (keep.wd !== null) wdPet = keep.wd;
         world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; camSet(keep.cam); sizeCanvas(); el.hidden = keep.hidden; try { draw(); } catch (e) {} }
       return { P, out }; });
     try {
@@ -7367,7 +7367,7 @@ function findChromium() {
     if (!cats.length) { if (MER) P.push('Meridian has no cat among its critters'); else out.push('this world has no cat, so nothing was asked of cats here'); return { P, out }; }
     if (MER && (cats.length !== 6 || !kc)) P.push('Meridian has ' + cats.length + ' cats among its critters, ' + (kc ? 'the kitchen cat among them' : 'and no kitchen cat'), ': six, the kitchen cat one of them');
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, TO: window.toast, wc: { ...wearCat }, lastBump, pet: [petTarget, petCrit],
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: DICE.all, DN: Date.now, TO: window.toast, wc: { ...wearCat }, lastBump, pet: [petTarget, petCrit],
       iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'), dc: window.drawCat, dg: window.drawGato,
       rec: cats.map(c => [c, { ...c }]), pt: Object.getOwnPropertyDescriptor(window, 'PERSONATAKE'), pon: personaOn,
       all: CRIT.map(c => [c, { ...c }]), visits: typeof DOGVISIT !== 'undefined' ? DOGVISIT.length : 0, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, decals: DECALS.length,
@@ -7454,16 +7454,16 @@ function findChromium() {
         finally { window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1]; } }
       { /* the lines when a cat steps next to you, and the sits, over a seeded run of every cat */
         let bumps = 0, beside = 0, rests = 0, sits = 0, own = 0; const N0 = Date.now; let now = 1e9;
-        window.toast = (m) => { bumps++; }; Math.random = seeded(4242);
+        window.toast = (m) => { bumps++; }; DICE.all = seeded(4242);
         try { others(); for (const c of cats) { stand(c.world, c.x, c.y + 3);
           for (let k = 0; k < 4000; k++) { const was = c.sit, stepped = c.x + ',' + c.y; lastBump = -1e12; Object.assign(c, { next: 0, moving: false, mt: 0, task: null });
             if (Math.abs(c.x - px) + Math.abs(c.y - py) === 0) stand(c.world, c.x, c.y + 3);
-            const b0 = bumps, r0 = Math.random; let first = null; Math.random = () => { const v = r0(); if (first === null) first = v; return v; };
-            const save = { ...c }; critUpdate(16, now); now += 16; Math.random = r0;
+            const b0 = bumps, r0 = DICE.all; let first = null; DICE.all = () => { const v = r0(); if (first === null) first = v; return v; };
+            const save = { ...c }; critUpdate(16, now); now += 16; DICE.all = r0;
             if (first !== null && first < 0.55) { rests++; if (c.sit) sits++; }
             if (c.moving && Math.abs(c.x - px) + Math.abs(c.y - py) === 1) { beside++; if (bumps > b0) own++; }
             c.moving = false; c.fx = c.x; c.fy = c.y; } } }
-        finally { window.toast = keep.TO; Math.random = keep.MR; }
+        finally { window.toast = keep.TO; DICE.all = keep.MR; }
         const sh = rests ? sits / rests : 0, bs = beside ? own / beside : 0;
         if (Math.abs(sh - 0.7) > 0.04) P.push('a cat sits in ' + (100 * sh).toFixed(1) + ' in 100 of its rests: 70 in 100, every cat alike');
         if (beside < 60 || Math.abs(bs - 0.3) > 0.08) P.push('a cat that steps next to you says a line ' + (100 * bs).toFixed(1) + ' times in 100 (' + beside + ' steps): about 30 in 100, every cat');
@@ -7487,11 +7487,11 @@ function findChromium() {
           out.push('their bodies: ' + cats.length + ' cats, ' + got.join(', ')); } }
       /* 5 · grooming */
       if (typeof GROOMON === 'undefined' || !GROOMON) { if (MER) P.push('Meridian does not turn grooming on (GROOMTAKE)'); }
-      else { let sits = 0, grooms = 0, lo = Infinity, hi = 0; let now = 2e9; Math.random = seeded(777);
+      else { let sits = 0, grooms = 0, lo = Infinity, hi = 0; let now = 2e9; DICE.all = seeded(777);
         try { others(); const c = cats[0]; stand(c.world, c.x, c.y + 3);
           for (let k = 0; k < 20000; k++) { Object.assign(c, { next: 0, moving: false, groomT: 0, x: c.home[0], y: c.home[1] }); critUpdate(16, now);
             if (!c.moving && c.sit) { sits++; if (c.groomT > now) { grooms++; const d = c.groomT - now; lo = Math.min(lo, d); hi = Math.max(hi, d); } } now += 16; } }
-        finally { Math.random = keep.MR; }
+        finally { DICE.all = keep.MR; }
         const sh = sits ? grooms / sits : 0;
         if (Math.abs(sh - 1 / 3) > 0.04) P.push('a cat grooms in ' + (100 * sh).toFixed(1) + ' in 100 of its sits: 1 in 3');
         if (!(lo >= 3000 && hi <= 6000 && hi - lo > 2000)) P.push('a groom lasts ' + lo.toFixed(0) + ' to ' + hi.toFixed(0) + ' ms: 3 to 6 s');
@@ -7535,7 +7535,7 @@ function findChromium() {
       keep.all.forEach(([c, r]) => { Object.keys(c).forEach(k => { if (!(k in r)) delete c[k]; }); Object.assign(c, r); });
       if (typeof DOGVISIT !== 'undefined') DOGVISIT.length = keep.visits; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things; DECALS.length = keep.decals; if (typeof BALL !== 'undefined') BALL = keep.ball;
       keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; }); if (keep.talk !== null) document.getElementById('talk').hidden = keep.talk;
-      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; Math.random = keep.MR; Date.now = keep.DN; window.toast = keep.TO;
+      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; DICE.all = keep.MR; Date.now = keep.DN; window.toast = keep.TO;
       if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
       stand(keep.world, keep.px, keep.py); fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; try { camSet(keep.cam); } catch (e) {} el.hidden = keep.hidden; sizeCanvas();
     }
@@ -7576,7 +7576,7 @@ function findChromium() {
     if (dog) { const k = { b: dog.backT, g: dog.greetT }; dog.backT = nw0 + 5000; dog.greetT = nw0 + 1000; try { if (catPoseNow(dog, nw0) !== null) P.push('asked of a dog, the cat\'s pose reader answered ' + JSON.stringify(catPoseNow(dog, nw0))); } finally { dog.backT = k.b; dog.greetT = k.g; } }
     if (!cat) { if (MER) P.push('Meridian has no cat to ask'); else out.push('this world has no cat, so the cat\'s two poses were not asked' + (CATPOSEON.size ? '' : '; it takes neither')); return { P, out }; }
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: Math.random, DN: Date.now, TO: window.toast, pet: [petTarget, petCrit], pon: personaOn, on: [...CATPOSEON], reader: window.catPoseNow,
+    const keep = { world, px, py, fx, fy, dir, moving, held, cam: camMode, hidden: el.hidden, MR: DICE.all, DN: Date.now, TO: window.toast, pet: [petTarget, petCrit], pon: personaOn, on: [...CATPOSEON], reader: window.catPoseNow,
       ws: wStillAt, lastBump, wc: { ...wearCat }, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
       all: CRIT.map(c => [c, { ...c }]), ls: Object.keys(localStorage).map(k => [k, localStorage.getItem(k)]),
       btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]), talk: document.getElementById('talk') ? document.getElementById('talk').hidden : null };
@@ -7680,8 +7680,8 @@ function findChromium() {
           if (c.next !== T0 + 3200 || !c.sit) P.push('petted, a cat sits until ' + ((c.next - T0) / 1000) + ' s: its 3.2 s sit, its greeting standing in it');
           out.push('petted: ' + seen.map(([dt, a, h]) => (dt / 1000) + ' s ' + (a || h)).join(', ') + '; it sits until ' + ((c.next - T0) / 1000) + ' s');
           /* the greeting throws no dice: a pet draws as many numbers with it taken as without */
-          const draws = L => { poses(L); hold(c); at(T0); let n = 0; const sr = (s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; })(4711); Math.random = () => { n++; return sr(); };
-            try { tap(c); } finally { Math.random = keep.MR; poses(keep.on); } return n; };
+          const draws = L => { poses(L); hold(c); at(T0); let n = 0; const sr = (s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; })(4711); DICE.all = () => { n++; return sr(); };
+            try { tap(c); } finally { DICE.all = keep.MR; poses(keep.on); } return n; };
           const dn = [draws(keep.on.filter(k => k !== 'greet')), draws(keep.on)];
           const nums = k => k + (k === 1 ? ' number' : ' numbers');
           if (dn[0] !== dn[1]) P.push('a pet draws ' + nums(dn[1]) + ' with the greeting taken and ' + nums(dn[0]) + ' without: the greeting throws no dice');
@@ -7763,7 +7763,7 @@ function findChromium() {
     } finally { personaOn = keep.pon; poses(keep.on); window.catPoseNow = keep.reader; wStillAt = keep.ws;
       keep.all.forEach(([c, r]) => { Object.keys(c).forEach(k => { if (!(k in r)) delete c[k]; }); Object.assign(c, r); });
       keep.btns.forEach(([b, h, t]) => { b.hidden = h; b.textContent = t; }); if (keep.talk !== null) document.getElementById('talk').hidden = keep.talk;
-      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; Math.random = keep.MR; Date.now = keep.DN; window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1];
+      Object.assign(wearCat, keep.wc); lastBump = keep.lastBump; DICE.all = keep.MR; Date.now = keep.DN; window.toast = keep.TO; petTarget = keep.pet[0]; petCrit = keep.pet[1];
       if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth; if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
       stand(keep.world, keep.px, keep.py); fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving; held = keep.held; try { camSet(keep.cam); } catch (e) {} el.hidden = keep.hidden; sizeCanvas(); }
     return { P, out }; });
@@ -7809,7 +7809,7 @@ function findChromium() {
     const wid = Object.keys(WORLDS).find(id => WORLDS[id]), w0 = WORLDS[wid];
     let at0 = null; for (let y = 0; y < w0.H && !at0; y++) for (let x = 0; x < w0.W && !at0; x++) if (!SOLID.has(w0.grid[y][x]) && w0.grid[y][x] !== 'N' && (TILES[w0.rows[y][x]] || {}).kind !== 'gear') at0 = [x, y];
     if (!at0) { P.push('this shell has no world to stand a dog in, so the curl\'s second version could not be asked'); return { P, out }; }
-    const keep = { MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, cv: curlVersions,
+    const keep = { MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, con: curlOn, ron: routineOn, pon: personaOn, pin: ROUTINEPIN, cv: curlVersions,
       al: typeof alebLooks === 'function' ? alebLooks : null, alf: typeof alebLookFor === 'function' ? alebLookFor : null, sv: typeof save === 'function' ? save : null,
       btns: [...document.querySelectorAll('button')].map(b => [b, b.hidden, b.textContent]),   /* a pet and the leash relabel and show the world's buttons */
       world, px, py, fx, fy, dir, held, mv: moving, pt: petTarget, pc: petCrit, crit: CRIT.length, park: JSON.stringify(PARK), leash: typeof LEASH !== 'undefined' ? LEASH : null, decals: DECALS.length, things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0 };
@@ -7913,10 +7913,10 @@ function findChromium() {
       const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
       /* the long seeded run: idle dogs of every breed, each roll seeded, the pick read off the pose */
       { const N = 4000; let naps = 0, nc = 0, lazy = 0, lc = 0, r1 = 0, rn = 0;
-        for (let i = 0; i < N; i++) { const d = made({ kind: KS[i % KS.length] }), sr = seeded(1000 + i * 7919); Math.random = sr;
-          try { dogIdle(d, T0); } finally { Math.random = keep.MR; tidy(); }
-          if (d.task && d.task.type === 'routine' && d.task.id === 'lazy') { let now = T0; Math.random = sr; let lay = false, cu = false, ver = -1;
-            try { for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay = true; if (p.curl) { cu = true; ver = p.ver; } } now += 100; dogStep(d, now); } } finally { Math.random = keep.MR; tidy(); }
+        for (let i = 0; i < N; i++) { const d = made({ kind: KS[i % KS.length] }), sr = seeded(1000 + i * 7919); DICE.all = sr;
+          try { dogIdle(d, T0); } finally { DICE.all = keep.MR; tidy(); }
+          if (d.task && d.task.type === 'routine' && d.task.id === 'lazy') { let now = T0; DICE.all = sr; let lay = false, cu = false, ver = -1;
+            try { for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay = true; if (p.curl) { cu = true; ver = p.ver; } } now += 100; dogStep(d, now); } } finally { DICE.all = keep.MR; tidy(); }
             if (lay) { lazy++; if (cu) { lc++; rn++; if (ver === 1) r1++; } } continue; }
           if (d.task) continue;
           const p = dogPose(d, T0 + 1, D0); if (p.lay) { naps++; if (p.curl) { nc++; rn++; if (p.ver === 1) r1++; } } }
@@ -7928,14 +7928,14 @@ function findChromium() {
         if (pr < 45 || pr > 55) P.push('of the curled lie-downs, ' + pr.toFixed(0) + '% are the closed ring, where half and half was asked'); }
       /* picked once, after every other roll of the lie-down: a nap on rolls held, the last one swept, against the same nap with
          the first version alone; and kept: drawing him rolls nothing and his version never changes before his nap ends */
-      { const nap = (seq, list) => { let c = 0; Math.random = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; if (list) curlVersions = () => list; const d = made();
-          try { dogWhim(d, T0); } finally { Math.random = keep.MR; curlVersions = keep.cv; tidy(); } return { d, c }; };
+      { const nap = (seq, list) => { let c = 0; DICE.all = () => { const v = seq[Math.min(c, seq.length - 1)]; c++; return v; }; if (list) curlVersions = () => list; const d = made();
+          try { dogWhim(d, T0); } finally { DICE.all = keep.MR; curlVersions = keep.cv; tidy(); } return { d, c }; };
         let wrong = 0, notLast = 0, lost = 0, drawn = 0, picks = [0, 0]; const N = 100;
         for (let i = 0; i < N; i++) { const z = (i + 0.5) / N, one = nap([0.2, 0.5, 0.5, 0.01, 0.3, z], [L[0]]), two = nap([0.2, 0.5, 0.5, 0.01, 0.3, z]);
           const v = dogPose(two.d, T0 + 1, D0).ver; if (v === 0 || v === 1) picks[v]++;
           if (two.c !== one.c + 1) wrong++; if (two.d.layT !== one.d.layT || two.d.next !== one.d.next || v !== (z < 0.5 ? 0 : 1)) notLast++;
-          const mr = Math.random; Math.random = () => { drawn++; return 0.5; };
-          try { for (let t = T0 + 1; t < two.d.layT; t += 500) if (dogPose(two.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { Math.random = mr; } }
+          const mr = DICE.all; DICE.all = () => { drawn++; return 0.5; };
+          try { for (let t = T0 + 1; t < two.d.layT; t += 500) if (dogPose(two.d, t, D0 + t - T0).ver !== v) { lost++; break; } } finally { DICE.all = mr; } }
         out.push('a curled nap, the last roll swept: the first version ' + picks[0] + ' times, the ring ' + picks[1] + '; one number more than with the first version alone ' + (N - wrong) + ' of ' + N + ' times');
         if (wrong) P.push('with the ring among the versions, ' + wrong + ' of ' + N + ' curled naps do not draw exactly one number more than with the first version alone: the version is to be picked once, by one roll');
         if (notLast) P.push(notLast + ' of ' + N + ' curled naps with the ring among the versions do not last what they last with the first version alone on the same rolls, or are not picked by the last roll: the pick is to come after every other roll of the lie-down');
@@ -7944,10 +7944,10 @@ function findChromium() {
       /* the lazy routine's curl gets no extra seconds: walked with the ring picked and with the pose off, on the same rolls, its
          lie-down lasts the same */
       { let longer = 0, ringSeen = 0; const N = 30;
-        for (let i = 0; i < N; i++) { const walk = on => { curlOn = () => on; const sr = seeded(5000 + i * 131); let c = 0; Math.random = () => { c++; return sr(); }; const d = made({ kind: KS[i % KS.length] }); let now = T0, lay = 0, rg = false;
+        for (let i = 0; i < N; i++) { const walk = on => { curlOn = () => on; const sr = seeded(5000 + i * 131); let c = 0; DICE.all = () => { c++; return sr(); }; const d = made({ kind: KS[i % KS.length] }); let now = T0, lay = 0, rg = false;
             const pick = dogCurlPick; dogCurlPick = (cr, r) => { const x = Math.random(); return pick(cr, 0.75); };   /* the pick's own roll drawn, and the ring picked */
             try { ROUTINEPIN = 'lazy'; dogIdle(d, now); for (let k = 0; k < 4000 && d.task; k++) { const p = dogPose(d, now, D0); if (p.lay && !p.howl) { lay += 25; if (p.curl && p.ver === 1) rg = true; } now += 25; dogStep(d, now); } }
-            finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; Math.random = keep.MR; curlOn = () => true; tidy(); } return { lay, rg }; };
+            finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; DICE.all = keep.MR; curlOn = () => true; tidy(); } return { lay, rg }; };
           const a = walk(false), b = walk(true); if (b.rg) { ringSeen++; if (b.lay !== a.lay) longer++; } }
         out.push('the lazy routine walked ' + N + ' times with the ring picked: curled in the ring ' + ringSeen + ' times, its lie-down as long as plain ' + (ringSeen - longer) + ' times');
         if (!ringSeen) P.push('the lazy routine\'s lie-down was never curled in the ring, so whether it is made longer was not asked');
@@ -7968,9 +7968,9 @@ function findChromium() {
             d.world = '__frozen'; LEASH = keep.leash; }
           /* curled up as the lazy routine's lie-down, in each version: walked on seeded rolls until he is curled in it, then leashed */
           for (const v of [0, 1]) { let d = null, now = wNow(); const pick = dogCurlPick;
-            for (let i = 0; i < 60 && !d; i++) { const c = made({ kind: KS[i % KS.length] }), sr = seeded(9100 + i * 37); now = wNow(); Math.random = sr; dogCurlPick = (cr, r) => { Math.random(); return pick(cr, v ? 0.75 : 0.25); };
+            for (let i = 0; i < 60 && !d; i++) { const c = made({ kind: KS[i % KS.length] }), sr = seeded(9100 + i * 37); now = wNow(); DICE.all = sr; dogCurlPick = (cr, r) => { Math.random(); return pick(cr, v ? 0.75 : 0.25); };
               try { ROUTINEPIN = 'lazy'; dogIdle(c, now); for (let k = 0; k < 4000 && c.task; k++) { const q = dogPose(c, now, D0); if (q.curl && !q.howl && c.task && c.task.type === 'routine' && c.task.id === 'lazy') { d = c; break; } now += 25; dogStep(c, now); } }
-              finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; Math.random = keep.MR; tidy(); } }
+              finally { dogCurlPick = pick; ROUTINEPIN = keep.pin; DICE.all = keep.MR; tidy(); } }
             if (!d) { P.push('no dog was curled up as the lazy routine\'s lie-down in 60 seeded walks, so whether the leash stands him up was not asked'); continue; }
             CRIT.push(d); mine.push(d); d.world = wid; world = wid; px = fx = d.x; py = fy = d.y; petTarget = d.kind; petCrit = d; later.length = 0;
             const p0 = dogPose(d, now, D0), was = LEASH; document.getElementById('leash').click(); while (later.length) later.shift()();
@@ -7983,7 +7983,7 @@ function findChromium() {
             d.world = '__frozen'; LEASH = keep.leash; } }
         finally { window.setTimeout = () => 0; if (keep.sv) save = keep.sv; LEASH = keep.leash; world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; Object.assign(PARK, JSON.parse(keep.park)); } }
       /* a world whose dogs do not curl: not one number more for the ring */
-      { const nap = on => { curlOn = () => on; let c = 0; Math.random = () => { c++; return 0.2; }; const d = made(); try { dogWhim(d, T0); } finally { Math.random = keep.MR; curlOn = () => true; tidy(); } return { c, d }; };
+      { const nap = on => { curlOn = () => on; let c = 0; DICE.all = () => { c++; return 0.2; }; const d = made(); try { dogWhim(d, T0); } finally { DICE.all = keep.MR; curlOn = () => true; tidy(); } return { c, d }; };
         const off = nap(false), off1 = (() => { curlVersions = () => [L[0]]; try { return nap(false); } finally { curlVersions = keep.cv; } })();
         if (off.c !== off1.c || dogPose(off.d, T0 + 1, D0).curl) P.push('in a world whose dogs do not curl up, a nap draws ' + off.c + ' numbers with the ring among the versions and ' + off1.c + ' without' + (dogPose(off.d, T0 + 1, D0).curl ? ', and is curled up' : '') + ': it is to roll not one number more');
         out.push('a world whose dogs do not curl: a nap draws ' + off.c + ' numbers with the ring among the versions, ' + off1.c + ' without'); }
@@ -8277,7 +8277,7 @@ function findChromium() {
           const base = { next: 0, moving: false, mt: 0, task: null, follow: false, stayT: 0, sit: false, groomT: 0, backT: 0, catCurlT: 0, greetT: 0, petT: 0, metT: 1, turnT: 0, stretchT: 0 };
           const home = Array.isArray(cat.home) ? cat.home : [cat.x, cat.y], crit = CRIT.slice(), now0 = 3e9;
           const tick = (Lp, k) => { poses(Lp); Object.keys(cat).forEach(f => { if (!(f in kr) && !(f in base)) delete cat[f]; }); Object.assign(cat, kr, base, { x: home[0], y: home[1], fx: home[0], fy: home[1] });
-            const sr = seeded(424242 + k * 7919); let n = 0; Math.random = () => { n++; return sr(); }; const now = now0 + k * 16; try { critUpdate(16, now); } finally { Math.random = keep.MR; }
+            const sr = seeded(424242 + k * 7919); let n = 0; DICE.all = () => { n++; return sr(); }; const now = now0 + k * 16; try { critUpdate(16, now); } finally { DICE.all = keep.MR; }
             return { n, now, sit: !!cat.sit, next: cat.next, groomT: cat.groomT || 0, backT: cat.backT || 0, curlT: cat.catCurlT || 0, x: cat.x, y: cat.y, moving: !!cat.moving }; };
           try { CRIT.length = 0; CRIT.push(cat); world = cat.world; px = fx = home[0]; py = fy = home[1] + 3;
             /* the long seeded run: each tick from the same numbers four ways: the back alone, the curl alone, both, and neither */
@@ -8307,14 +8307,14 @@ function findChromium() {
                roll a curl, or a sleep on its back, straight after one ends: his answer). A cat that gets up early (its next roll not
                held back) reads otherwise before its end */
             { poses(on.includes('curl') ? on : on.concat(['curl'])); Object.assign(cat, kr, base, { x: home[0], y: home[1], fx: home[0], fy: home[1] });
-              const sr = seeded(777001); Math.random = sr; let now = 4e9, cur = null, curls = 0, early = 0, late = 0, lo2 = Infinity, hi2 = 0, firstEarly = '';
+              const sr = seeded(777001); DICE.all = sr; let now = 4e9, cur = null, curls = 0, early = 0, late = 0, lo2 = Infinity, hi2 = 0, firstEarly = '';
               try { for (let k = 0; k < 24000; k++) { now += 50; critUpdate(50, now); const c = cat.catCurlT || 0;
                   if (c > now && (!cur || c !== cur.end)) { if (cur && now < cur.end) { early++; if (!firstEarly) firstEarly = 'a curl of ' + ((cur.end - cur.start) / 1000).toFixed(1) + ' s ended by a new one after ' + ((now - cur.start) / 1000).toFixed(1) + ' s'; }
                     cur = { start: now, end: c, bad: false }; curls++; lo2 = Math.min(lo2, c - now); hi2 = Math.max(hi2, c - now); }
                   if (!cur) continue; const pz = catPoseNow(cat, now);
                   if (now < cur.end && pz !== 'curl' && !cur.bad) { cur.bad = true; early++; if (!firstEarly) firstEarly = 'a curl of ' + ((cur.end - cur.start) / 1000).toFixed(1) + ' s read ' + JSON.stringify(pz) + ' after ' + ((now - cur.start) / 1000).toFixed(1) + ' s'; }
                   if (now >= cur.end && pz === 'curl' && (cat.catCurlT || 0) === cur.end) late++; } }
-              finally { Math.random = keep.MR; }
+              finally { DICE.all = keep.MR; }
               out.push('a cat stepped 50 ms at a time for 20 game minutes: ' + curls + ' curls rolled, ' + (lo2 / 1000).toFixed(1) + ' to ' + (hi2 / 1000).toFixed(1) + ' s each; read curled up from their start to their end ' + (curls - early) + ' times, and after their end ' + late + ' steps');
               if (curls < 10) P.push('a cat stepped for 20 game minutes curled up ' + curls + ' times, too few to time');
               if (early) P.push('of ' + curls + ' curls a cat rolled, ' + early + ' do not read curled up all the way to their own end (' + firstEarly + '): a cat curled up stays curled up for its 6 to 10 s, as a player sees it');
@@ -8409,7 +8409,7 @@ function findChromium() {
                     if (!(sh[0] <= WHITECAP && sh[1] <= WHITECAP)) P.push('the grey-and-white cat curled up shows its white on top: ' + (100 * sh[0]).toFixed(1) + '% of it white from above and ' + (100 * sh[1]).toFixed(1) + '% from the game\'s camera, where its white is under it and inside the ring (' + (100 * WHITECAP).toFixed(0) + '% at most)'); }
                   finally { t3Dispose(W2); } } }
               finally { t3Dispose(B); } } }
-          finally { Math.random = keep.MR; poses(on); CRIT.length = 0; crit.forEach(c => CRIT.push(c)); Object.keys(cat).forEach(f => { if (!(f in kr)) delete cat[f]; }); Object.assign(cat, kr);
+          finally { DICE.all = keep.MR; poses(on); CRIT.length = 0; crit.forEach(c => CRIT.push(c)); Object.keys(cat).forEach(f => { if (!(f in kr)) delete cat[f]; }); Object.assign(cat, kr);
             world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; held = keep.held; petTarget = keep.pt; petCrit = keep.pc; } } }
 
       /* ---- 6 · UNCURLED ---- */
@@ -8519,7 +8519,7 @@ function findChromium() {
               if (threw || nan.length || skn || !A.userData.curled) P.push('a body with no barrel to take the skin\'s shape from does not curl the first version\'s way in the closed ring: ' + (threw ? 'posing it stops with an error (' + threw + ')' : nan.length ? 'its ' + nan.join(', ') + ' stand nowhere (not a number)' : skn ? skn + ' skin(s) made for it' : 'it is not curled')); }
             finally { t3Dispose(A); } } } }
     } finally {
-      Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; curlVersions = keep.cv;
+      DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; curlOn = keep.con; routineOn = keep.ron; personaOn = keep.pon; ROUTINEPIN = keep.pin; curlVersions = keep.cv;
       if (keep.al) alebLooks = keep.al; if (keep.alf) alebLookFor = keep.alf; if (keep.sv) save = keep.sv; if (typeof LEASH !== 'undefined') LEASH = keep.leash; Object.assign(PARK, JSON.parse(keep.park)); tidy();
       mine.forEach(d => { const i = CRIT.indexOf(d); if (i >= 0) CRIT.splice(i, 1); }); real.forEach(([c, wd]) => { c.world = wd; });
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; held = keep.held; moving = keep.mv; petTarget = keep.pt; petCrit = keep.pc;
@@ -8539,15 +8539,15 @@ function findChromium() {
      (`asIs`), and then only the first question is asked, of the poses it takes */
   const catTicks = ({ N, asIs }) => { const P = [], out = [];
     const cat = CRIT.find(isCat); if (!cat) return { P, out: ['this world has no cat, so no seeded run of a cat was asked'] };
-    const keep = { crit: CRIT.slice(), rec: { ...cat }, MR: Math.random, TO: window.toast, world, px, py, fx, fy, moving, held, on: [...CATPOSEON], lastBump };
+    const keep = { crit: CRIT.slice(), rec: { ...cat }, MR: DICE.all, TO: window.toast, world, px, py, fx, fy, moving, held, on: [...CATPOSEON], lastBump };
     const seeded = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
     const poses = L => { CATPOSEON.clear(); L.forEach(k => CATPOSEON.add(k)); };
     const home = Array.isArray(cat.home) ? cat.home : [cat.x, cat.y];
     const base = { next: 0, moving: false, mt: 0, task: null, follow: false, stayT: 0, sit: false, groomT: 0, backT: 0, greetT: 0, petT: 0, x: home[0], y: home[1], fx: home[0], fy: home[1] };
     const now0 = 3e9;
     const tick = (L, k) => { if (L) poses(L); Object.keys(cat).forEach(f => { if (!(f in keep.rec) && !(f in base)) delete cat[f]; }); Object.assign(cat, keep.rec, base);
-      const sr = seeded(90001 + k * 7919); let n = 0, first = null; Math.random = () => { const v = sr(); if (first === null) first = v; n++; return v; };
-      const now = now0 + k * 16; try { critUpdate(16, now); } finally { Math.random = keep.MR; }
+      const sr = seeded(90001 + k * 7919); let n = 0, first = null; DICE.all = () => { const v = sr(); if (first === null) first = v; n++; return v; };
+      const now = now0 + k * 16; try { critUpdate(16, now); } finally { DICE.all = keep.MR; }
       return { n, first, now, sit: !!cat.sit, next: cat.next, groomT: cat.groomT || 0, backT: cat.backT || 0, x: cat.x, y: cat.y, moving: !!cat.moving }; };
     /* what a cat's roll always drew: its rest's number, then sitting or resting its time and, sitting where grooming is on,
        the groom's roll and its time where it grooms; walking, its way and its time; with no way open, nothing more */
@@ -8567,7 +8567,7 @@ function findChromium() {
         if (off.moving) walks++;
         if (b.sit) { sits++; if (b.groomT > b.now) grooms++; else asked++; }
         if (slept) { backs++; lo = Math.min(lo, b.backT - b.now); hi = Math.max(hi, b.backT - b.now); if (b.groomT > b.now) groomBack++; if (!b.sit) standBack++; } } }
-    finally { Math.random = keep.MR; window.toast = keep.TO; poses(keep.on); CRIT.length = 0; keep.crit.forEach(c => CRIT.push(c));
+    finally { DICE.all = keep.MR; window.toast = keep.TO; poses(keep.on); CRIT.length = 0; keep.crit.forEach(c => CRIT.push(c));
       Object.keys(cat).forEach(f => { if (!(f in keep.rec)) delete cat[f]; }); Object.assign(cat, keep.rec);
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; held = keep.held; lastBump = keep.lastBump; }
     if (asWas) P.push((asIs ? 'this world, which takes ' + JSON.stringify(keep.on) + ', ' : 'taking neither pose, a cat ') + 'drew other than the numbers a cat\'s roll always drew on ' + asWas + ' of ' + N + ' seeded ticks (' + ex.join(', ') + '): a world that says nothing would no longer roll as it did');
@@ -8785,7 +8785,7 @@ function findChromium() {
     if (!who) { P.push('nobody this world names to be a body stands in any world away from a window, so the light stand-in could not be asked'); return { P, out }; }
     const wid = Object.keys(WORLDS).find(id => (WORLDS[id].npcs || []).some(q => q.npc === who && !q.win)), w = WORLDS[wid], n = w.npcs.find(q => q.npc === who && !q.win);
     const el = document.getElementById('world');
-    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, idle: T3.peopleIdle, bm: bodyMake, MR: Math.random,
+    const keep = { world, px, py, fx, fy, dir, moving, cam: camMode, hidden: el.hidden, yaw: T3.yaw, mk: t3PeopleMake, pb: t3PeopleBodies, tb: t3Body, ric: window.requestIdleCallback, idle: T3.peopleIdle, bm: bodyMake, MR: DICE.all,
       dp: drawPerson, iw: Object.getOwnPropertyDescriptor(window, 'innerWidth'), ih: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
       n: { x: n.x, y: n.y, fx: n.fx, fy: n.fy, mv: n.mv, mt: n.mt, wnext: n.wnext, doc: n.doc }, lit: [...LIGHTON] };
     const screenIs = ([sw, sh]) => { Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => sw }); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => sh }); return innerWidth === sw && innerHeight === sh; };
@@ -8812,7 +8812,7 @@ function findChromium() {
       return { all, here }; };
     try {
       drawPerson = function (g, sx, sy, lk, o) { if (o && o.who === who) painted.card++; if (o && o.hero) painted.hero++; return keep.dp.apply(this, arguments); };
-      Math.random = function () { if (counting && inBodies) rolls++; return keep.MR.apply(this, arguments); };
+      DICE.all = function () { if (counting && inBodies) rolls++; return keep.MR.apply(this, arguments); };
       /* the engine's own steps for the bodies, watched for dice and nothing else: the street's own painters may draw theirs */
       t3PeopleBodies = function () { inBodies = true; try { return keep.pb.apply(this, arguments); } finally { inBodies = false; } };
       t3Body = function () { inBodies = true; try { return keep.tb.apply(this, arguments); } finally { inBodies = false; } };
@@ -8929,7 +8929,7 @@ function findChromium() {
       out.push('a world that says nothing: ' + who + ' ' + (painted.card ? 'a card' : 'no card') + ' while their body is made, ' + rolls + ' random numbers drawn');
     } finally {
       LIGHTON.clear(); keep.lit.forEach(k => LIGHTON.add(k));
-      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; T3.peopleIdle = keep.idle; bodyMake = keep.bm; Math.random = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
+      t3PeopleMake = keep.mk; t3PeopleBodies = keep.pb; t3Body = keep.tb; window.requestIdleCallback = keep.ric; T3.peopleIdle = keep.idle; bodyMake = keep.bm; DICE.all = keep.MR; drawPerson = keep.dp; T3.yaw = keep.yaw; T3.bodyBad = null;
       if (keep.iw) Object.defineProperty(window, 'innerWidth', keep.iw); else delete window.innerWidth;
       if (keep.ih) Object.defineProperty(window, 'innerHeight', keep.ih); else delete window.innerHeight;
       Object.assign(n, keep.n); world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; moving = keep.moving;
@@ -9089,7 +9089,7 @@ function findChromium() {
      makes is taken away again before it returns. */
   const busy = await page.evaluate(() => {
     const P = [];
-    const K = [...DOGK][0], MR = Math.random;
+    const K = [...DOGK][0], MR = DICE.all;
     const keep = { world, px, py, fx, fy, cam: camMode };
     const THINGS = typeof DOGTHINGS !== 'undefined' ? DOGTHINGS : null, thingsBefore = THINGS ? THINGS.length : 0;
     const VISITS = typeof DOGVISIT !== 'undefined' ? DOGVISIT : null;
@@ -9130,10 +9130,10 @@ function findChromium() {
             if (dd >= 3 && dd <= 5 && rs[yy * w.W + xx] && open(away, xx, yy)) s = [x, y]; } }
         if (s) {
           world = away; px = fx = w.W - 1; py = fy = w.H - 1;
-          Math.random = () => 0.74;   /* inside the band that, away from the park, means "his own stick" */
+          DICE.all = () => 0.74;   /* inside the band that, away from the park, means "his own stick" */
           const d = made(away, s[0], s[1]);
           dogWhim(d, T);
-          Math.random = MR;
+          DICE.all = MR;
           if (!d.task || d.task.type !== 'stick') P.push('away from the park the dog never goes after his own stick: the roll that should send him ' +
             (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he runs after his own stick)');
           else {
@@ -9154,7 +9154,7 @@ function findChromium() {
       if (!eats.length) {
         if (away) { const w = WORLDS[away]; let s = null;
           for (let y = 0; y < w.H && !s; y++) for (let x = 0; x < w.W && !s; x++) if (open(away, x, y)) s = [x, y];
-          if (s) { world = away; Math.random = () => 0.80; const d = made(away, s[0], s[1]); dogWhim(d, T); Math.random = MR;
+          if (s) { world = away; DICE.all = () => 0.80; const d = made(away, s[0], s[1]); dogWhim(d, T); DICE.all = MR;
             if (d.task || d.howlT || d.layT || d.digT) P.push('this pack serves no food, and the roll for a restaurant door still made the dog ' + (d.task ? 'set off to ' + d.task.type : 'do something') + ' — with no restaurant it must pass quietly'); } }
       } else {
         /* a door INTO the place, in a world that is not the park; its steps are the open tiles either side */
@@ -9178,10 +9178,10 @@ function findChromium() {
           else if (worker) {
             const name = npcName(worker.npc).split(' ·')[0], glyph = steps.map(([x, y]) => w.grid[y][x]).join('');
             world = door.wid; px = fx = w.W - 1; py = fy = w.H - 1;
-            Math.random = () => 0.80;   /* inside the band that, away from the park, means "a restaurant door" */
+            DICE.all = () => 0.80;   /* inside the band that, away from the park, means "a restaurant door" */
             const d = made(door.wid, s[0], s[1]);
             dogWhim(d, T);
-            Math.random = MR;
+            DICE.all = MR;
             if (!d.task || d.task.type !== 'door') P.push('a dog in ' + door.wid + ' never goes to sing at ' + name + '\'s door: the roll that should send him ' +
               (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he howls at a restaurant door and a worker brings water)');
             else {
@@ -9207,7 +9207,7 @@ function findChromium() {
         }
       }
     } finally {
-      Math.random = MR;
+      DICE.all = MR;
       if (THINGS) THINGS.length = thingsBefore;
       if (VISITS) { VISITS.forEach(v => removeChill(v.key)); VISITS.length = 0; }
       real.forEach(([c, w]) => { c.world = w; });
@@ -9274,7 +9274,7 @@ function findChromium() {
       return spot && spot.n === 9; });
     if (!spot) { P.push('there is no open ground a person can stand on in any world of this shell, so where the dog leaves things could not be looked at — that is a red, not a pass'); return P; }
     const realNow = Date.now, keep = { world, px, py, fx, fy, cam: camMode, mv: moving, st: TRO.state, season: typeof seasonPick !== 'undefined' ? seasonPick : null,
-      yaw: has3d ? T3.yaw : 0, MR: Math.random, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, dp: drawPerson,
+      yaw: has3d ? T3.yaw : 0, MR: DICE.all, ST: window.setTimeout, TO: window.toast, MH: window.musHowl, dp: drawPerson,
       decals: DECALS.slice(), things: typeof DOGTHINGS !== 'undefined' ? DOGTHINGS.length : 0, park: JSON.stringify(PARK), hid: document.getElementById('world').hidden };
     const parked = CRIT.filter(c => c.world === spot.wid).map(c => [c, c.world]), people = WORLDS[spot.wid].npcs;
     let NOW = realNow(), heroOn = true, drew3d = false;
@@ -9303,10 +9303,10 @@ function findChromium() {
       const marks = [], MK = (wid, x, y) => ({ kind: K, world: wid, x, y, fx: x, fy: y, face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: [x, y], task: null, holdT: 0, stayT: 0 });
       for (let i = 0; i < 400; i++) {
         const r = (i + 0.5) / 400; let first = true;
-        Math.random = () => { if (first) { first = false; return r; } return 0.5; };
+        DICE.all = () => { if (first) { first = false; return r; } return 0.5; };
         const n0 = DECALS.length;
         dogWhim(MK(spot.wid, spot.x, spot.y), performance.now());
-        Math.random = keep.MR;
+        DICE.all = keep.MR;
         const got = DECALS.slice(n0);
         DECALS.length = n0; if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
         got.forEach(dc => { if (!marks.some(m => m.kind === dc.kind)) marks.push(dc); });
@@ -9388,7 +9388,7 @@ function findChromium() {
           TIMES.map(t => (-t / 1000).toFixed(1)).join('/') + ' s before it is gone: ' + fades.join(', '));
       });
     } finally {
-      Date.now = realNow; Math.random = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; drawPerson = keep.dp;
+      Date.now = realNow; DICE.all = keep.MR; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH; drawPerson = keep.dp;
       DECALS.length = 0; keep.decals.forEach(d => DECALS.push(d));
       if (typeof DOGTHINGS !== 'undefined') DOGTHINGS.length = keep.things;
       Object.assign(PARK, JSON.parse(keep.park));
@@ -9641,7 +9641,7 @@ function findChromium() {
      (drawEmote), by reading what it writes. Same clock rules as above; nobody real moves. */
   const romp = await page.evaluate(() => {
     const P = [];
-    const K = [...DOGK][0], MR = Math.random, keep = { world, px, py, fx, fy };
+    const K = [...DOGK][0], MR = DICE.all, keep = { world, px, py, fx, fy };
     const real = CRIT.filter(isDog).map(c => [c, c.world]);
     const at = p => '(' + p[0] + ',' + p[1] + ')';
     const tick = typeof dogThingsUpdate === 'function' ? dogThingsUpdate : () => {};
@@ -9674,9 +9674,9 @@ function findChromium() {
       real.forEach(([c]) => { c.world = '__frozen'; });
       world = pick.wid; px = fx = w.W - 1; py = fy = w.H - 1;
       const d = { kind: K, name: 'Probe', world: pick.wid, x: pick.s[0], y: pick.s[1], fx: pick.s[0], fy: pick.s[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, next: 0, home: pick.s.slice(), task: null, holdT: 0, stayT: 0 };
-      Math.random = () => 0.86;   /* inside the band that, away from the park, means "a romp with somebody" */
+      DICE.all = () => 0.86;   /* inside the band that, away from the park, means "a romp with somebody" */
       dogWhim(d, T);
-      Math.random = MR;
+      DICE.all = MR;
       const n = d.task && d.task.type === 'romp' ? d.task.n : null;
       if (!n) { P.push('away from the park the dog never romps with anybody near: the roll that should send him ' + (d.task ? 'sent him to ' + d.task.type : 'did nothing') + ' (the owner asked for it: he chases another character)'); return P; }
       const name = npcName(n.npc || n.key).split(' ·')[0], home = [n.x, n.y], round = new Set();
@@ -9699,7 +9699,7 @@ function findChromium() {
       else if (laughed && laughDrawn !== '😄') P.push('while the dog romps round ' + name + ' the one painter every camera shares writes ' + JSON.stringify(laughDrawn) + ' over their head, not the laugh');
       if (d.task) P.push('the dog never finished his romp with ' + name);
     } finally {
-      Math.random = MR;
+      DICE.all = MR;
       real.forEach(([c, ww]) => { c.world = ww; });
       world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy;
     }
@@ -9717,7 +9717,7 @@ function findChromium() {
      that, once for 22 minutes on end (8 simulated hours).
      Asked by driving the REAL update loop (critUpdate, ballUpdate, dogThingsUpdate: what every frame
      calls) for a dog made here, on clocks this check HOLDS (performance.now and Date.now both read its
-     own T), with Math.random seeded and only the dog's own choice pinned. Where a person would press
+     own T), with the dice seeded and only the dog's own choice pinned. Where a person would press
      something it is pressed: the ball, and the paw menu's Come and Sit. Swept over four seeds and two
      frame rates. Nothing is copied from the engine (no leash radius, no wait): every bound is measured
      here first, by a CONTROL:
@@ -9760,7 +9760,7 @@ function findChromium() {
       .sort((a, b) => Math.min(...pts.map(p => md(p, b))) - Math.min(...pts.map(p => md(p, a))))[0] || [-9, -9];
 
     /* ---- the world held still: clocks, dice, every critter, every person; all put back in `finally` ---- */
-    const keep = { MR: Math.random, PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
+    const keep = { MR: DICE.all, PN: performance.now, DN: Date.now, ST: window.setTimeout, TO: window.toast, MH: window.musHowl,
       world, px, py, fx, fy, park: JSON.stringify(PARK), decals: DECALS.length, prefs: JSON.stringify(parkPrefs),
       tro: Object.assign({}, TRO), lastBump, petTarget, petCrit, ball: BALL, things: DOGTHINGS.slice(), visits: DOGVISIT.slice(), props: propEdits.length };
     const T0 = keep.PN.call(performance), D0 = keep.DN.call(Date);
@@ -9801,7 +9801,7 @@ function findChromium() {
       return r; };
     /* one case, over every seed and frame rate; `body` returns {fail}, {none} (nothing to ask), or {} */
     const runs = body => { const out = []; SEEDS.forEach(seed => RATES.forEach(rate => { DT = rate; prng = mul(seed * 7919 + Math.round(rate)); queue = [];
-      Math.random = () => queue.length ? queue.shift() : prng();
+      DICE.all = () => queue.length ? queue.shift() : prng();
       let res; try { res = body(); } catch (e) { res = { fail: 'the check itself threw: ' + e.message }; } finally { unmake(); }
       out.push(Object.assign({ tag: 'seed ' + seed + ', a frame every ' + rate + ' ms' }, res || {})); })); return out; };
     const report = (name, out) => { const bad = out.filter(o => o.fail), none = out.filter(o => o.none);
@@ -10050,7 +10050,7 @@ function findChromium() {
             return null; }); }
       } else NOTE.push('no world in this shell has a dog with room to wander, so the romp, the call and walling him in could not be asked');
     } finally {
-      Math.random = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
+      DICE.all = keep.MR; performance.now = keep.PN; Date.now = keep.DN; window.setTimeout = keep.ST; window.toast = keep.TO; window.musHowl = keep.MH;
       unmake();
       real.forEach(r => { r.c.world = r.world; r.c.next = r.next; if (r.stepT === undefined) delete r.c.stepT; else r.c.stepT = r.stepT; });
       people.forEach(([n, v, l]) => { n.wnext = v; if (l === undefined) delete n.laughUntil; else n.laughUntil = l; });
@@ -10526,12 +10526,12 @@ function findChromium() {
      Chava's playtest of run 2026-11-17-claude-5d3e: a walker walked into the person you steer and stood inside them for over a
      minute. The grid marked a walker's next square only when the step was done, so for the step's length the person you steer
      could step onto it as well; and a walker could choose the square you are stepping off. Asked on the first walker of the
-     first world that has one with an open square beside it, its next step forced (Math.random held) toward each open side in
+     first world that has one with an open square beside it, its next step forced (the dice held) toward each open side in
      turn, with you two squares off, then with you stepping off a square beside it. Red on mq-v274: the square was not taken. */
   const claims = await page.evaluate(() => {
     const P = [];
     if (typeof wanderUpdate !== 'function' || typeof wanders !== 'function') { P.push('COUNT-ONLY: the walker\'s claim: the engine has no wanderUpdate() or wanders(), so nothing was asked'); return P; }
-    const keep = { world, px, py, fx, fy, moving, rnd: Math.random, card: $('card').hidden, reader: $('reader').hidden };
+    const keep = { world, px, py, fx, fy, moving, rnd: DICE.all, card: $('card').hidden, reader: $('reader').hidden };
     /* every room as it stands, to prove this check leaves none of them changed (the next check reads the grid) */
     const roomsNow = () => JSON.stringify(Object.keys(WORLDS).map(id => [id, WORLDS[id].grid.map(r => r.join('')), (WORLDS[id].npcs || []).map(q => [q.x, q.y, q.mv])]));
     const before = roomsNow();
@@ -10549,8 +10549,8 @@ function findChromium() {
              square it claimed, would be read by the next check as somebody standing there (the gauge's library world on
              Taller_Quest #93's CI, 2026-11-18) */
           const step = (r) => { const g0 = w.grid.map(row => row.slice()), s0 = w.npcs.map(q => ({ q, x: q.x, y: q.y, fx: q.fx, fy: q.fy, mv: q.mv, mt: q.mt, wnext: q.wnext, face: q.face }));
-            n.wnext = 0; Math.random = () => r;
-            try { wanderUpdate(1); } finally { Math.random = keep.rnd; }
+            n.wnext = 0; DICE.all = () => r;
+            try { wanderUpdate(1); } finally { DICE.all = keep.rnd; }
             const t = n.mv; let taken = null, solid = null;
             if (t) { taken = w.grid[t[1]][t[0]] === 'N'; solid = isSolid(t[0], t[1]); }
             g0.forEach((row, y) => { w.grid[y] = row; }); s0.forEach(o => Object.assign(o.q, { x: o.x, y: o.y, fx: o.fx, fy: o.fy, mv: o.mv, mt: o.mt, wnext: o.wnext, face: o.face }));
@@ -10567,7 +10567,7 @@ function findChromium() {
             if (bad) { P.push('in ' + id + ', ' + (n.npc || n.key) + ' chose the square (' + bx + ',' + by + ') the person you steer is still stepping off'); break; } }
           if (asked) break; }
         if (asked) break; }
-    } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; Math.random = keep.rnd; $('card').hidden = keep.card; $('reader').hidden = keep.reader; }
+    } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; moving = keep.moving; DICE.all = keep.rnd; $('card').hidden = keep.card; $('reader').hidden = keep.reader; }
     if (!asked) P.push('COUNT-ONLY: the walker\'s claim: no walker with an open square beside it, so nothing was asked');
     if (roomsNow() !== before) P.push('the walker\'s claim: this check left a room changed (a square marked, or a walker moved or mid-step), so every check after it reads a world nobody is playing');
     return P; });
@@ -11386,9 +11386,9 @@ function findChromium() {
               let a = await p.evaluate(anyNow), wheel = 0;
               for (; !a.gone && !a.ok && wheel < 12; wheel++) { await p.mouse.move(a.bx, a.by); await p.mouse.wheel(0, 100); await settle(p); a = await p.evaluate(anyNow); }
               if (!a.ok) { MP.push('I scrolled the map with the wheel ' + wheel + ' time(s) (' + where + ') and "Somewhere to go" never came wholly into view' + (a.gone ? ': there is no "Somewhere to go"' : ' (the box scrolled ' + a.scroll + ' px)') + ', so the map was not opened a second time from there'); await mapShut(p); continue; }
-              await p.evaluate(() => { window.__mqRandom = Math.random; Math.random = () => 0.5; });   /* the same "somewhere" every run */
+              await p.evaluate(() => { window.__mqRandom = DICE.all; DICE.all = () => 0.5; });   /* the same "somewhere" every run */
               await p.mouse.click(a.x, a.y); await rafs(p);
-              await p.evaluate(() => { if (window.__mqRandom) { Math.random = window.__mqRandom; delete window.__mqRandom; } });
+              await p.evaluate(() => { if (window.__mqRandom) { DICE.all = window.__mqRandom; delete window.__mqRandom; } });
               if (out === 'Close') { const c = await p.evaluate(() => { const e = document.getElementById('mapClose'), r = e && e.getBoundingClientRect(); return r && r.width ? [r.left + r.width / 2, r.top + r.height / 2] : null; });
                 if (c) await p.mouse.click(c[0], c[1]); }
               else await p.keyboard.press('Escape');
@@ -11566,7 +11566,7 @@ function findChromium() {
       dest: mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null }));
     /* "Somewhere to go", pressed with its random number held at v (the button's own click, from a state with nothing chosen) */
     const anyAt = (p, v) => p.evaluate(v => { mapDest = null; drawTown(); if (typeof mapNoteSet === 'function') mapNoteSet(); if (typeof setWorldTag === 'function') setWorldTag();
-      const r = Math.random; Math.random = () => v; try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { Math.random = r; }
+      const r = DICE.all; DICE.all = () => v; try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { DICE.all = r; }
       return mapDest ? { w: mapDest.w, x: mapDest.x, y: mapDest.y } : null; }, v);
     const unchoose = p => p.evaluate(() => { mapDest = null; drawTown(); if (typeof mapNoteSet === 'function') mapNoteSet(); if (typeof setWorldTag === 'function') setWorldTag(); });
 
@@ -11720,7 +11720,7 @@ function findChromium() {
           const isV = (r, g2, b) => { const a = r - 122, q = g2 - 63, e = b - 224; return a * a + q * q + e * e < 900; };
           const median = list => { if (!list.length) return null; const m = k => { const v = list.map(c => c[k]).sort((a, b) => a - b); return v[v.length >> 1]; }; return [m(0), m(1), m(2)]; };
           const was = { world, px, py, fx, fy, mapDest, done: new Set(done), chSeen };
-          const real = { drawPlanMarks, planMarks, drawMark, random: Math.random };
+          const real = { drawPlanMarks, planMarks, drawMark, random: DICE.all };
           try {
             if (typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); }
             /* the ◉ on the first street the plan draws, and the paper where no street is drawn. THE PLAN'S SCALE IS READ ONCE THE
@@ -11747,7 +11747,7 @@ function findChromium() {
             world = nowhere; px = fx = 2; py = fy = 2;
             const marks = planMarks(), dests = [];
             marks.forEach(m => dests.push({ name: m.who ? (npcName(m.who) || m.who) : __mqMap.placeName(m.w) + '\'s door', pick: () => { mapDest = null; return mapPick(m.gx + 0.5, m.gy + 0.5); } }));
-            dests.push({ name: 'where “Somewhere to go” sent me', pick: () => { mapDest = null; Math.random = () => 0.5; try { const b = document.getElementById('mapAny'); if (b) b.click(); else mapRandomDest(); } finally { Math.random = real.random; } return !!mapDest; } });
+            dests.push({ name: 'where “Somewhere to go” sent me', pick: () => { mapDest = null; DICE.all = () => 0.5; try { const b = document.getElementById('mapAny'); if (b) b.click(); else mapRandomDest(); } finally { DICE.all = real.random; } return !!mapDest; } });
             out.n = marks.length;
             dests.forEach(D => {
               if (!D.pick() || !mapDest) { if (D.name !== 'where “Somewhere to go” sent me') out.why.push('choosing ' + D.name + ' with a tap on its own tile chose nothing'); return; }
@@ -11796,7 +11796,7 @@ function findChromium() {
               if (off) out.off.push([D.name, off, side < 0 ? 'above' : 'below']);
               Object.keys(parts).forEach(k => { const c = median(parts[k]); out.parts.push({ m: D.name, k, c: c ? c.map(Math.round) : null, n: parts[k].length }); });
             });
-          } finally { delete WORLDS[nowhere]; drawPlanMarks = real.drawPlanMarks; planMarks = real.planMarks; drawMark = real.drawMark; Math.random = real.random;
+          } finally { delete WORLDS[nowhere]; drawPlanMarks = real.drawPlanMarks; planMarks = real.planMarks; drawMark = real.drawMark; DICE.all = real.random;
             world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; done.clear(); was.done.forEach(q => done.add(q)); chSeen = was.chSeen;
             if (typeof applyGrowth === 'function') applyGrowth(); drawTown(); }
           return out; });
@@ -11876,7 +11876,7 @@ function findChromium() {
               [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => seed(id, x + dx, y + dy)); }
             return seen; };
           const was = { done: new Set(done), chSeen, world, px, py, fx, fy, mapDest };
-          const real = { random: Math.random, drawMark };
+          const real = { random: DICE.all, drawMark };
           const people = Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0), M = Math.max(8, people + 2);
           const plan = document.getElementById('mapcv');
           let prevNB = null;
@@ -11888,9 +11888,9 @@ function findChromium() {
               mapDest = null;
               const nb = notBuilt(), seen = reachNow(), picks = new Map();
               for (let i = 0; i < M; i++) {
-                Math.random = () => (i + 0.5) / M; mapDest = null; let at = null;
+                DICE.all = () => (i + 0.5) / M; mapDest = null; let at = null;
                 drawMark = function (g2, cx, cy) { if (g2 && g2.canvas === plan) at = [cx, cy]; return real.drawMark.apply(this, arguments); };
-                try { btn.click(); } finally { drawMark = real.drawMark; Math.random = real.random; }
+                try { btn.click(); } finally { drawMark = real.drawMark; DICE.all = real.random; }
                 if (!mapDest) continue;
                 const key = mapDest.w + '|' + mapDest.who;
                 if (!picks.has(key)) picks.set(key, { dest: Object.assign({}, mapDest), at, tag: (document.getElementById('worldTag') || {}).textContent || '' }); }
@@ -11933,12 +11933,12 @@ function findChromium() {
               if (beside) break; }
             if (!beside) out.besideNone = true;
             else { world = beside.w; px = fx = beside.at[0]; py = fy = beside.at[1]; const near = new Set(); let n2 = 0;
-              for (let i = 0; i < M; i++) { Math.random = () => (i + 0.5) / M; mapDest = null; try { btn.click(); } finally { Math.random = real.random; }
+              for (let i = 0; i < M; i++) { DICE.all = () => (i + 0.5) / M; mapDest = null; try { btn.click(); } finally { DICE.all = real.random; }
                 if (!mapDest) continue; n2++;
                 const d = mapDest.w === world ? Math.abs(mapDest.x - px) + Math.abs(mapDest.y - py) : 99;
                 if (d <= 2) near.add((npcName(mapDest.who) || mapDest.who) + ', ' + d + ' step(s) away'); }
               out.beside = { who: beside.who, near: [...near], n: n2 }; }
-          } finally { drawMark = real.drawMark; Math.random = real.random; done.clear(); was.done.forEach(q => done.add(q)); chSeen = was.chSeen;
+          } finally { drawMark = real.drawMark; DICE.all = real.random; done.clear(); was.done.forEach(q => done.add(q)); chSeen = was.chSeen;
             if (typeof applyGrowth === 'function') applyGrowth(); world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown(); }
           return out; });
         any.why.forEach(w => MP.push('“Somewhere to go” was not asked where it sends you: ' + w));
@@ -12438,8 +12438,8 @@ function findChromium() {
               const marks = await p.evaluate(() => planMarks().map(m => ({ gx: m.gx, gy: m.gy, name: m.who ? (npcName(m.who) || m.who) : __mqMap.placeName(m.w) + '\'s door' })));
               const picks = marks.map(m => ({ name: m.name, how: [m.gx + 0.5, m.gy + 0.5] })).concat([{ name: 'where “Somewhere to go” sent me', how: 'any' }]);
               for (const k of picks) {
-                const pick = how => { mapDest = null; if (how === 'any') { const r0 = Math.random; Math.random = () => 0.5;
-                    try { const b0 = document.getElementById('mapAny'); if (b0) b0.click(); else if (typeof mapRandomDest === 'function') mapRandomDest(); } finally { Math.random = r0; } }
+                const pick = how => { mapDest = null; if (how === 'any') { const r0 = DICE.all; DICE.all = () => 0.5;
+                    try { const b0 = document.getElementById('mapAny'); if (b0) b0.click(); else if (typeof mapRandomDest === 'function') mapRandomDest(); } finally { DICE.all = r0; } }
                   else mapPick(how[0], how[1]); return true; };
                 await p.evaluate(pick, k.how); await o.evaluate(pick, k.how);
                 const a = await p.evaluate(snapNow), b = await o.evaluate(snapNow);
@@ -12504,7 +12504,7 @@ function findChromium() {
         const before = { note: ((document.getElementById('mapNote') || {}).textContent || '').trim(), tag: ((document.getElementById('worldTag') || {}).textContent || '').trim() };
         /* pressed with the number that picked them before; and where people walk about, so that the people it picks from
            have changed, the number swept again until it picks them */
-        const press = v2 => { mapDest = null; const r = Math.random; Math.random = () => v2; try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { Math.random = r; }
+        const press = v2 => { mapDest = null; const r = DICE.all; DICE.all = () => v2; try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { DICE.all = r; }
           return !!mapDest && mapDest.w === kw && (mapDest.who || null) === kwho; };
         if (!press(v)) { let i = 0; while (i < 160 && !press((i + 0.5) / 160)) i++; if (i === 160) { mapDest = null; drawTown(); return { repick: true }; } }
         const dest = { w: mapDest.w, x: mapDest.x, y: mapDest.y };
@@ -12527,8 +12527,8 @@ function findChromium() {
           K = await P.evaluate(() => {
             const out = {}, drawn = new Set(planPanels().map(q => q.world)), marks = planMarks();
             for (let i = 0; i < 160; i++) { const v = (i + 0.5) / 160;
-              mapDest = null; const r = Math.random; Math.random = () => v;
-              try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { Math.random = r; }
+              mapDest = null; const r = DICE.all; DICE.all = () => v;
+              try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { DICE.all = r; }
               if (!mapDest) continue;
               const d = mapDest, gx = d.gx === undefined ? d.x : d.gx, gy = d.gy === undefined ? d.y : d.gy;
               const at = marks.find(m => m.gx === gx && m.gy === gy), k = drawn.has(d.w) ? 'a street' : at ? 'a door with a marker' : 'a bare door';
@@ -12624,7 +12624,7 @@ function findChromium() {
                   out.places++;
                   (destsBy[L] || []).forEach(D => {
                     if (D.how === 'tap') { mapDest = null; mapPick(D.gx + 0.5, D.gy + 0.5); }
-                    else { mapDest = null; const r = Math.random; Math.random = () => D.v; try { document.getElementById('mapAny').click(); } finally { Math.random = r; } }
+                    else { mapDest = null; const r = DICE.all; DICE.all = () => D.v; try { document.getElementById('mapAny').click(); } finally { DICE.all = r; } }
                     if (!mapDest) return;
                     const name = ((document.getElementById('mapNote') || {}).textContent || '').trim(), t1 = top(); clearIt(); const t2 = top();
                     if (Math.abs(t1 - t0) > 0.5 || Math.abs(t2 - t0) > 0.5) out.moved.push([L, on, pl.name, name, +(t1 - t0).toFixed(1), +(t2 - t0).toFixed(1)]); });
@@ -12636,8 +12636,8 @@ function findChromium() {
            and the longest; with every place the map opens from */
         const destsFor = langs => {
           const was = { world, px, py, fx, fy, lang }, people = new Map(), out = {};
-          for (let i = 0; i < 128; i++) { const v = (i + 0.5) / 128; mapDest = null; const r = Math.random; Math.random = () => v;
-            try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { Math.random = r; }
+          for (let i = 0; i < 128; i++) { const v = (i + 0.5) / 128; mapDest = null; const r = DICE.all; DICE.all = () => v;
+            try { const b = document.getElementById('mapAny'); if (b) b.click(); } finally { DICE.all = r; }
             if (mapDest) { const k = mapDest.w + ':' + mapDest.x + ',' + mapDest.y; if (!people.has(k)) people.set(k, { v, who: mapDest.who, w: mapDest.w }); } }
           mapDest = null;
           const two = list => { if (!list.length) return []; const q = list.slice().sort((a, b) => a.len - b.len); return q.length > 1 ? [q[0], q[q.length - 1]] : [q[0]]; };
@@ -12705,9 +12705,9 @@ function findChromium() {
           const building = id => { const at = shownAt(id); return new Set(Object.keys(WORLDS).filter(w => !drawn.has(w) && !/^__/.test(w) && shownAt(w) === at)); };
           const named = B => [...B].some(w => (WORLDS[w].npcs || []).some(q => npcName(q.npc)));
           const people = Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0), M = Math.max(8, people + 2);   /* every place in the list it picks from, as section 13 sweeps it */
-          const real = Math.random, was = { world, px, py, fx, fy, mapDest };
+          const real = DICE.all, was = { world, px, py, fx, fy, mapDest };
           const sweep = () => { const picks = new Map();
-            for (let i = 0; i < M; i++) { Math.random = () => (i + 0.5) / M; mapDest = null; try { btn.click(); } finally { Math.random = real; }
+            for (let i = 0; i < M; i++) { DICE.all = () => (i + 0.5) / M; mapDest = null; try { btn.click(); } finally { DICE.all = real; }
               if (mapDest && !picks.has(mapDest.w + '|' + mapDest.who)) picks.set(mapDest.w + '|' + mapDest.who, { w: mapDest.w, x: mapDest.x, y: mapDest.y, who: mapDest.who }); }
             mapDest = null; return [...picks.values()]; };
           const nm = q => (npcName(q.who) || q.who) + ' (' + __mqMap.placeName(q.w) + ')';
@@ -12744,7 +12744,7 @@ function findChromium() {
               world = pl.id; px = fx = pl.at[0]; py = fy = pl.at[1]; mapDest = null;
               const all = sweep();
               out.streets.push({ name: pl.name, n: all.length, home: all.filter(q => home.has(q.w)).length, homeName: __mqMap.placeName(PL.home) }); });
-          } finally { Math.random = real; world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown();
+          } finally { DICE.all = real; world = was.world; px = was.px; py = was.py; fx = was.fx; fy = was.fy; mapDest = was.mapDest; drawTown();
             if (typeof setWorldTag === 'function') setWorldTag(); if (typeof mapNoteSet === 'function') mapNoteSet(); }
           return out; });
         S.why.forEach(w => MP.push('“Somewhere to go” was not asked whether it skips the building I am in: ' + w));
@@ -12781,8 +12781,8 @@ function findChromium() {
               const marks = planMarks().map(m => ({ how: 'tap', gx: m.gx, gy: m.gy, len: line(m.who, m.w) })).sort((a, b) => b.len - a.len);
               if (marks.length) out.push(marks[0]);
               const btn = document.getElementById('mapAny'), people = [], M = Math.max(8, Object.keys(WORLDS).reduce((n, id) => n + (WORLDS[id].npcs || []).length, 0) + 2);
-              if (btn) { for (let i = 0; i < M; i++) { const v = (i + 0.5) / M; mapDest = null; const r = Math.random; Math.random = () => v;   /* every place in the list it picks from */
-                  try { btn.click(); } finally { Math.random = r; }
+              if (btn) { for (let i = 0; i < M; i++) { const v = (i + 0.5) / M; mapDest = null; const r = DICE.all; DICE.all = () => v;   /* every place in the list it picks from */
+                  try { btn.click(); } finally { DICE.all = r; }
                   if (mapDest) people.push({ how: 'any', v, len: line(mapDest.who, mapDest.w) }); } }
               people.sort((a, b) => b.len - a.len); if (people.length) out.push(people[0]);
               mapDest = null; drawTown(); if (typeof mapNoteSet === 'function') mapNoteSet(); if (typeof setWorldTag === 'function') setWorldTag();
@@ -12802,7 +12802,7 @@ function findChromium() {
               D.forEach(d => {
                 mapDest = null;
                 if (d.how === 'tap') mapPick(d.gx + 0.5, d.gy + 0.5);
-                else { const r = Math.random; Math.random = () => d.v; try { document.getElementById('mapAny').click(); } finally { Math.random = r; } }
+                else { const r = DICE.all; DICE.all = () => d.v; try { document.getElementById('mapAny').click(); } finally { DICE.all = r; } }
                 if (!mapDest) return;
                 const name = ((note || {}).textContent || '').trim(), t1 = top(), n = lines();
                 mapPick((mapDest.gx === undefined ? mapDest.x : mapDest.gx) + 0.5, (mapDest.gy === undefined ? mapDest.y : mapDest.gy) + 0.5);
@@ -13421,9 +13421,9 @@ function findChromium() {
           /* the time the game gives a ball as it lands a tile away, and the person as their next step ends, read in the frame after */
           const ballLife = () => p.evaluate(() => new Promise(res => { BALL = { world, sx: px, sy: py, fx: px, fy: py, tx: px + 1, ty: py, t: 0, phase: 'fly', dog: null };
             let k = 0; const f = () => { if (BALL && BALL.phase === 'ground' && BALL.until) return res(BALL.until - __clk.WD()); if (!BALL || ++k > 300) return res(null); requestAnimationFrame(f); }; requestAnimationFrame(f); }));
-          const waitLife = () => i < 0 ? null : p.evaluate(i => new Promise(res => { const n = WORLDS[world].npcs[i], r = Math.random; Math.random = () => 0.5; n.wnext = 0; let k = 0, went = false;
-            const f = () => { if (n.mv) went = true; else if (went) { Math.random = r; return res(n.wnext - __clk.W()); }
-              if (++k > 300) { Math.random = r; return res(null); } requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
+          const waitLife = () => i < 0 ? null : p.evaluate(i => new Promise(res => { const n = WORLDS[world].npcs[i], r = DICE.all; DICE.all = () => 0.5; n.wnext = 0; let k = 0, went = false;
+            const f = () => { if (n.mv) went = true; else if (went) { DICE.all = r; return res(n.wnext - __clk.W()); }
+              if (++k > 300) { DICE.all = r; return res(null); } requestAnimationFrame(f); }; requestAnimationFrame(f); }), i);
           const life0 = await ballLife(); await p.evaluate(() => { BALL = null; }); const wait0 = await waitLife();
           /* the things that fade: a petal on the ground, a hole the dog dug on your own tile and the first dog brought to your
              side, sitting, on its leash; anything else this world had of the first two is put aside while they are asked */
@@ -14760,8 +14760,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           showing: $('toast').classList.contains('on') ? $('toast').textContent : null, copied: S.copied,
           copy: !!$('docCopy') && !$('docCopy').hidden && $('docCopy').offsetParent !== null });
         S.stand = s => { world = s.wid; px = fx = s.x; py = fy = s.y; moving = false; held = null; checkTalk(); };
-        S.pin = k => { if (!S.MR) S.MR = Math.random; Math.random = () => k; };
-        S.unpin = () => { if (S.MR) { Math.random = S.MR; S.MR = null; } };
+        S.pin = k => { if (!S.MR) S.MR = DICE.all; DICE.all = () => k; };
+        S.unpin = () => { if (S.MR) { DICE.all = S.MR; S.MR = null; } };
         const plain = (wid, x, y) => { world = wid; return !isSolid(x, y) && !portalAt(wid, x, y) && !troIsStop(wid, x, y); };
         const txt = l => typeof l === 'string' ? l : (l && typeof l.t === 'string' ? l.t : null);
         const start = { wid: world, x: px, y: py };
@@ -15490,8 +15490,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       S['probe-taped-far'] = season([{ world: YL, from: [0, 1], to: [WL - 1, 1], mount: 'wall' }, { world: YC, from: [0, 4], to: [W - 1, 4], mount: 'wall' }]);
       const PAINT = { world: Y, x: 2, y: 0, deco: 'probe-paint' };   /* paint on the north wall, under the first stretch's string */
       const keep = { w: world, px, py, cam: camMode, mv: moving, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
-      const dn = Date.now, rnd = Math.random, T0 = dn();
-      Date.now = () => T0; let sd = 7; const seed = () => { sd = 7; }; Math.random = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+      const dn = Date.now, rnd = DICE.all, T0 = dn();
+      Date.now = () => T0; let sd = 7; const seed = () => { sd = 7; }; DICE.all = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
       let has3d = typeof T3 !== 'undefined' && !!window.THREE && CAMS.includes('3d'), c3 = null; const seen3 = [];
       try {
         document.getElementById('world').hidden = false;
@@ -15770,7 +15770,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
           delete WORLDS[YR];
         }
       } finally {
-        Date.now = dn; Math.random = rnd;
+        Date.now = dn; DICE.all = rnd;
         { const i = DECOS.indexOf(PAINT); if (i >= 0) DECOS.splice(i, 1); } delete DECODRAW['probe-paint'];
         SIDS.forEach(id => { delete S[id]; });
         seasonSet(pick0); world = keep.w; px = fx = keep.px; py = fy = keep.py; moving = keep.mv; if (typeof T3 !== 'undefined' && T3) T3.yaw = keep.yaw;
@@ -19946,9 +19946,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
               const step = Math.max(1, Math.floor(p.count / (every || 400)));
               for (let i = 0; i < p.count; i += step) { v.fromBufferAttribute(p, i); o.localToWorld(v); sk.worldToLocal(v); const L = v.length(); out.push({ o: (L - R(v.clone().normalize())) / r, x: v.x / r, y: v.y / r, z: v.z / r }); }
               return out; };
-            const kr = Math.random, kn = Date.now;
-            const hold = (s, t) => { Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => t; performance.now = () => t / 1000; };
-            const back = () => { Math.random = kr; Date.now = kn; delete performance.now; };
+            const kr = DICE.all, kn = Date.now;
+            const hold = (s, t) => { DICE.all = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => t; performance.now = () => t / 1000; };
+            const back = () => { DICE.all = kr; Date.now = kn; delete performance.now; };
             /* ---- K · his hair: the same twice, his colour, and (with L) what stands off his head and his ears ---- */
             const TEAL = '#2A9D8F', HAS = {};
             for (const st of HAIRSTYLES) { let X = null, s1 = null, s2 = null;
@@ -20579,9 +20579,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                  "const set=(k,v)"): a colour, his clothes or his style written into that look, and a row of his body put back
                  through bodyChoicesOf with his other rows as they were. A body made again only when it is handed another look
                  passes the first and is a red in the second */
-              { const kr = Math.random, kn = Date.now;
-                const hold = () => { let s = 7; Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => 1.8e12; };
-                const back = () => { Math.random = kr; Date.now = kn; };
+              { const kr = DICE.all, kn = Date.now;
+                const hold = () => { let s = 7; DICE.all = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; Date.now = () => 1.8e12; };
+                const back = () => { DICE.all = kr; Date.now = kn; };
                 const hashA = (a, h) => { for (let i = 0; i < a.length; i += 3) h = Math.imul(h ^ Math.round(a[i] * 1e3), 16777619) >>> 0; return h; };
                 const sigOf = X => { if (!X) return null; const s = []; X.traverse(o => { if (!o.isMesh) return; let h = hashA(o.geometry.attributes.position.array, 2166136261); o.updateMatrix(); o.matrix.elements.forEach(v => { h = Math.imul(h ^ Math.round(v * 1e4), 16777619) >>> 0; });   /* where the part sits and how it is scaled (his nose is a ball scaled to his measures) */
                     const im = o.material && o.material.map && o.material.map.image; if (im && im.getContext) h = hashA(im.getContext('2d').getImageData(0, 0, im.width, im.height).data, h);

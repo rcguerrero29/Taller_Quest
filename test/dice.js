@@ -24,16 +24,17 @@
    J  every roll names its line as a plain name from the list, so a typo cannot open a line of its own
    K  THE OLD ROLLS ARE COUNTED: the game's own files still ask the browser for a number OLDROLLS times and the checks
       replace the browser's number STUBS times. Each count may only go down, and when one does, its number here goes
-      down with it in the same change, so the count is always the truth. The dice file itself asks twice: its fallback
-      when the browser has no strong source, and the bridge (M) while it stands; once the bridge is out, once
+      down with it in the same change, so the count is always the truth. The dice file itself asks once, its fallback
+      when the browser has no strong source
    L  the dice load in every world, before the engine, and the game offline has them
-   M  THE BRIDGE: while the checks still replace the browser's number (STUBS above 0), a line with no stub follows a
-      replaced number, a line with a stub rolls its stub, and with the browser's own number every line rolls its own; once
-      STUBS is 0, the bridge is gone from the dice */
+   M  EVERY LINE AT ONCE, for the checks: with `DICE.all` set, every line rolls it, and reading it gives it back; set to
+      null or to the browser's own number it comes off, and reading it gives the browser's own number; a new starting
+      number takes it off; and the browser's number, replaced, steers no line at all (the bridge that stood while the
+      checks moved over is gone) */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const OLDROLLS = 0, STUBS = 194;
+const OLDROLLS = 0, STUBS = 0;
 
 /* the tree this check reads: every file git tracks under the folders it asks about, as text */
 function tree() {
@@ -127,21 +128,26 @@ function check(T) {
   try {
     const Dm = load(src).DICE, mathOf = load.last, own = mathOf.random;
     Dm.reseed(31); const m0 = rolls(Dm, a, 3);
-    mathOf.random = () => 0.125; const m1 = rolls(Dm, a, 3); Dm.stub(b, () => 0.75); const m2 = Dm.roll(b); Dm.stub(b, null);
-    mathOf.random = own; Dm.reseed(31); const m3 = rolls(Dm, a, 3);
-    const bridged = m1.every(v => v === 0.125);
-    if (STUBS > 0 && !bridged) say('M', 'with the browser\'s number replaced, the line ' + a + ' rolled ' + m1.join(', ') + ', not the replaced number: the ' + STUBS + ' checks that still replace it steer nothing');
-    if (STUBS === 0 && bridged) say('M', 'no check replaces the browser\'s number any more, and the dice still follow a replaced one: take the bridge out');
-    if (m2 !== 0.75) say('M', 'a line with a stub rolled ' + m2 + ' while the browser\'s number was replaced, not its stub');
-    if (!same(m0, m3)) say('M', 'with the browser\'s own number, the line ' + a + ' did not roll its own rolls');
-  } catch (e) { say('M', 'the bridge could not be asked (' + e.message + ')'); }
+    Dm.reseed(31); mathOf.random = () => 0.125; const m1 = rolls(Dm, a, 3); mathOf.random = own;
+    if (!same(m0, m1)) say('M', 'with the browser\'s number replaced, the line ' + a + ' rolled ' + m1.join(', ') + ' and not its own rolls: the browser\'s number still steers the dice');
+    const f = () => 0.375; Dm.all = f;
+    const m2 = LINES.map(n => Dm.roll(n));
+    if (!m2.every(v => v === 0.375)) say('M', 'with every line set at once, the lines rolled ' + m2.join(', ') + ', not the one number set');
+    if (Dm.all !== f) say('M', 'every line set at once does not give back the function it was set to');
+    Dm.all = null; if (Dm.all !== own) say('M', 'with every line taken off, reading it does not give the browser\'s own number');
+    Dm.reseed(31); const m3 = rolls(Dm, a, 3); if (!same(m0, m3)) say('M', 'taken off, the line ' + a + ' did not roll its own rolls again');
+    Dm.reseed(31); Dm.all = f; Dm.all = own; const m4 = rolls(Dm, a, 3);
+    if (!same(m0, m4) || Dm.all !== own) say('M', 'set to the browser\'s own number, every line at once did not come off: the line ' + a + ' rolled ' + m4.join(', '));
+    Dm.all = f; Dm.reseed(31); if (Dm.roll(a) === 0.375 || Dm.all !== own) say('M', 'a new starting number left every line set at once');
+    let threw = false; try { Dm.all = 7; } catch (e) { threw = true; } if (!threw) say('M', 'every line at once took 7, which is not a function');
+  } catch (e) { say('M', 'every line at once could not be asked (' + e.message + ')'); }
   /* I, J, K */
   const game = Object.keys(T).filter(f => !/^test\//.test(f));
   let old = 0, stubs = 0, inDice = 0;
   game.forEach(f => {
     const t = T[f], lines = t.split('\n');
     lines.forEach((l, i) => {
-      if (/\bDICE\s*\.\s*(reseed|stub)\s*\(/.test(l) && f !== 'engine/dice.js') say('I', f + ':' + (i + 1) + ' sets the dice, and only a check may');
+      if ((/\bDICE\s*\.\s*(reseed|stub)\s*\(/.test(l) || /\bDICE\s*\.\s*all\s*=(?!=)/.test(l)) && f !== 'engine/dice.js') say('I', f + ':' + (i + 1) + ' sets the dice, and only a check may');
       const re = /\bDICE\s*\.\s*(roll|below|pick|count)\s*\(\s*([^,)]*)/g; let m;
       while ((m = re.exec(l))) { const arg = m[2].trim(), lit = arg.match(/^(["'])([^"']*)\1$/);
         if (!lit) say('J', f + ':' + (i + 1) + ' rolls on a line named by ' + (arg || 'nothing') + ', not a plain name from the list');
@@ -150,8 +156,7 @@ function check(T) {
     if (/^(engine|content)\//.test(f)) { const n = (bare(t).match(/Math\.random\s*\(/g) || []).length; if (f === 'engine/dice.js') inDice = n; else old += n; }
   });
   Object.keys(T).filter(f => /^test\/.*\.js$/.test(f) && f !== 'test/dice.js').forEach(f => { stubs += (bare(T[f]).match(/Math\.random\s*=(?!=)/g) || []).length; });
-  const want = STUBS > 0 ? 2 : 1;   /* its fallback, and the bridge while it stands */
-  if (inDice !== want) say('K', 'engine/dice.js asks the browser for a number ' + inDice + ' times, where its fallback' + (STUBS > 0 ? ' and the bridge are twice' : ' is once'));
+  if (inDice !== 1) say('K', 'engine/dice.js asks the browser for a number ' + inDice + ' times, where its one fallback is once');
   if (old > OLDROLLS) say('K', 'the game asks the browser for a number ' + old + ' times, more than the ' + OLDROLLS + ' counted: a new roll goes on a line of the dice');
   if (old < OLDROLLS) say('K', 'the game asks the browser for a number ' + old + ' times now, fewer than the ' + OLDROLLS + ' counted: lower OLDROLLS in test/dice.js to ' + old + ' in this change');
   if (stubs > STUBS) say('K', 'the checks replace the browser\'s number ' + stubs + ' times, more than the ' + STUBS + ' counted: a new check sets a line of the dice instead');
@@ -170,7 +175,7 @@ const PLANTS = [
   ['A', 'an unknown line given a number', 'engine/dice.js', 'if(!L)throw new Error("DICE: no line named "+String(name)+" (the lines are named in DICELINES)");return L;', 'return L||lines.world;'],
   ['A', 'the dice left open to change', 'engine/dice.js', 'return Object.freeze({', 'return ({'],
   ['B', 'a starting number that does not start the lines again', 'engine/dice.js', 'start=n>>>0;reset();},', 'start=n>>>0;},'],
-  ['C', 'one state shared by every line', 'engine/dice.js', 'function reset(){DICELINES.forEach(n=>{lines[n]={s:mix(start,n),n:0,stub:null};});}', 'function reset(){const one={s:mix(start,""),n:0,stub:null};DICELINES.forEach(n=>{lines[n]=one;});}'],
+  ['C', 'one state shared by every line', 'engine/dice.js', 'function reset(){shared=null;DICELINES.forEach(n=>{lines[n]={s:mix(start,n),n:0,stub:null};});}', 'function reset(){shared=null;const one={s:mix(start,""),n:0,stub:null};DICELINES.forEach(n=>{lines[n]=one;});}'],
   ['C', 'a roll not counted', 'engine/dice.js', 'function roll(name){const L=line(name);L.n++;', 'function roll(name){const L=line(name);'],
   ['D', 'the line\'s name left out of its start', 'engine/dice.js', 'for(let i=0;i<name.length;i++){h^=name.charCodeAt(i);h=Math.imul(h,0x01000193);}', ''],
   ['D', 'the starting number left out', 'engine/dice.js', 'let h=0x811c9dc5^(start>>>0);', 'let h=0x811c9dc5;'],
@@ -190,10 +195,12 @@ const PLANTS = [
   ['K', 'the count left high after an old roll went', 'test/dice.js', /OLDROLLS = \d+/, 'OLDROLLS = 1'],
   ['K', 'a new check replacing the browser\'s number', 'test/smoke.js', null, s => s + '\nMath.random = () => 0.5;\n'],
   ['K', 'a second old roll in the dice file', 'engine/dice.js', 'let start=fresh();', 'let start=fresh();Math.random();'],
-  ['M', 'no bridge while the checks still replace the number', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', ''],
-  ['M', 'a bridge over a stub', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', 'if(Math.random!==NATIVE)return Math.random();'],
-  ['M', 'a bridge that is always on', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', 'if(!L.stub)return Math.random();'],
-  ['M', 'the bridge left in after the last check moved', 'test/dice.js', /STUBS = \d+;/, 'STUBS = 0;'],
+  ['M', 'the bridge left in', 'engine/dice.js', "    if(L.stub){const v=+L.stub();", "    if(!L.stub&&Math.random!==NATIVE)return Math.random();\n    if(L.stub){const v=+L.stub();"],
+  ['M', 'every line at once that steers nothing', 'engine/dice.js', 'shared=f||null;DICELINES.forEach(n=>{lines[n].stub=shared;});', 'shared=f||null;'],
+  ['M', 'every line at once that cannot be taken off', 'engine/dice.js', 'const f=fn===NATIVE?null:fn;', 'const f=fn;'],
+  ['M', 'every line at once left on by a new starting number', 'engine/dice.js', 'function reset(){shared=null;', 'function reset(){'],
+  ['M', 'reading it gives nothing when none is set', 'engine/dice.js', 'get all(){return shared||NATIVE;},', 'get all(){return shared;},'],
+  ['I', 'the game setting every line at once', 'engine/engine.js', 'const SK=k=>', 'DICE.all=()=>0.5;const SK=k=>'],
   ['L', 'the dice loaded after the engine', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('  w("engine/kitchen-room.js");', '  w("engine/dice.js");\n  w("engine/kitchen-room.js");')],
   ['L', 'the dice only in a world with 3D', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('w("engine/shapes.js");}', 'w("engine/shapes.js");w("engine/dice.js");}')],
   ['L', 'the game offline with no dice', 'sw.js', '"./engine/dice.js", ', ''],
@@ -224,4 +231,4 @@ if (process.argv.includes('--selftest')) {
 }
 const red = check(T);
 if (red.length) { console.log('FAIL — the dice\n- ' + red.join('\n- ')); process.exit(1); }
-console.log('OK — the dice: ' + require(path.join(ROOT, 'engine', 'dice.js')).DICELINES.length + ' lines from one starting number, each apart, new each load, set by checks only; ' + OLDROLLS + ' old rolls in the game and ' + STUBS + ' old stubs in the checks still to move onto them');
+console.log('OK — the dice: ' + require(path.join(ROOT, 'engine', 'dice.js')).DICELINES.length + ' lines from one starting number, each apart, new each load, set by checks only; ' + (OLDROLLS || STUBS ? OLDROLLS + ' old rolls in the game and ' + STUBS + ' old stubs in the checks still to move onto them' : 'no roll in the game asks the browser for a number, and no check replaces it'));
