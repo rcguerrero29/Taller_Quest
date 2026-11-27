@@ -21,12 +21,14 @@
    system moved onto its line rolls exactly as often, at the same moments, as it did before, so a player
    sees the same game. */
 const DICELINES=Object.freeze([
-  "dog",       /* every dog: whims, steps, curls, the stick, the howl, the ears */
+  "dog",       /* every dog: whims, steps, curls, the stick, the howl, the follow, what he says */
   "cat",       /* every cat: steps, grooming, the bump */
   "pig",       /* the pig's steps */
   "bird",      /* the birds and the parrot's perch */
   "critter",   /* the small animals of the street, and an office visitor's bump */
-  "ball",      /* the ball when it is thrown */
+  "ball",      /* where the ball is thrown */
+  "body",      /* the small motions a body is drawn with (an ear's twitch): drawn each frame, so kept apart from what an
+                  animal decides, which a run with the same starting number then repeats whatever the frame rate */
   "people",    /* a person's wander, a friend picked, a look, a routine's time, a line said */
   "music",     /* the tune's next note */
   "festival",  /* petals and ribbons */
@@ -52,11 +54,18 @@ const DICE=(function(){
     t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);
     return ((t^(t>>>14))>>>0)/4294967296;}
   let start=fresh();const lines={};
+  /* THE BRIDGE, while the checks move onto their lines: until now a check steered a system by replacing the browser's number
+     for the whole page. While any check still does (test/dice.js counts them), a line with no stub of its own follows a
+     replaced number, so every such check still steers what it steered, in the same order, and means what it meant. In play
+     the browser's number is the browser's own, so every line rolls on its own. When the last check has moved onto its
+     line, the bridge comes out, and test/dice.js is red if it is still here then. */
+  const NATIVE=Math.random;
   function reset(){DICELINES.forEach(n=>{lines[n]={s:mix(start,n),n:0,stub:null};});}
   reset();
   function line(name){const L=typeof name==="string"&&Object.prototype.hasOwnProperty.call(lines,name)?lines[name]:null;
     if(!L)throw new Error("DICE: no line named "+String(name)+" (the lines are named in DICELINES)");return L;}
   function roll(name){const L=line(name);L.n++;
+    if(!L.stub&&Math.random!==NATIVE)return Math.random();
     if(L.stub){const v=+L.stub();if(!(v>=0&&v<1))throw new Error("DICE: the stub on "+name+" gave "+v+", not a number from 0 up to 1");return v;}
     return next(L);}
   return Object.freeze({

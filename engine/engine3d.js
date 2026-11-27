@@ -3466,8 +3466,8 @@ function dogEars(B,P,held,moving,phase){const U=B.userData,dt=U.earHold?0:Math.m
   const aim=dogDown(held)?0:(typeof U.earAim==="number"?U.earAim:0.35),k=U.earSpeed||EARSPRING.patient;
   let e=typeof U.ear==="number"?U.ear:aim,v=U.earV||0;
   if(dt>0){v+=(k*k*(aim-e)-2*EARDAMP*k*v)*dt;e+=v*dt;}
-  if(U.twitchAt===undefined)U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);
-  if(dt>0&&now>=U.twitchAt){if(!dogDown(held))v+=k*EARTWITCHKICK;U.twitchAt=now+EARTWITCH[0]+Math.random()*(EARTWITCH[1]-EARTWITCH[0]);}
+  if(U.twitchAt===undefined)U.twitchAt=now+EARTWITCH[0]+DICE.roll("body")*(EARTWITCH[1]-EARTWITCH[0]);
+  if(dt>0&&now>=U.twitchAt){if(!dogDown(held))v+=k*EARTWITCHKICK;U.twitchAt=now+EARTWITCH[0]+DICE.roll("body")*(EARTWITCH[1]-EARTWITCH[0]);}
   if(Math.abs(e-aim)<0.002&&Math.abs(v)<0.002){e=aim;v=0;}
   U.ear=e;U.earV=v;const perk=Math.max(0,Math.min(1.15,e)),up=Math.max(0,Math.min(1,(perk-0.4)/0.6));
   const dl=held==="curl"?dogCurlAngles(B).dropEar:null,dropLie=Array.isArray(dl)&&dl.length===4&&dl.every(Number.isFinite)?dl:null;   /* a drop ear's place curled up, where the curl's table names one (the ring's; none in the first version) */

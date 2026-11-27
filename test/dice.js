@@ -24,13 +24,16 @@
    J  every roll names its line as a plain name from the list, so a typo cannot open a line of its own
    K  THE OLD ROLLS ARE COUNTED: the game's own files still ask the browser for a number OLDROLLS times and the checks
       replace the browser's number STUBS times. Each count may only go down, and when one does, its number here goes
-      down with it in the same change, so the count is always the truth. The dice file itself asks once (its fallback
-      when the browser has no strong source), and only once
-   L  the dice load in every world, before the engine, and the game offline has them */
+      down with it in the same change, so the count is always the truth. The dice file itself asks twice: its fallback
+      when the browser has no strong source, and the bridge (M) while it stands; once the bridge is out, once
+   L  the dice load in every world, before the engine, and the game offline has them
+   M  THE BRIDGE: while the checks still replace the browser's number (STUBS above 0), a line with no stub follows a
+      replaced number, a line with a stub rolls its stub, and with the browser's own number every line rolls its own; once
+      STUBS is 0, the bridge is gone from the dice */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const OLDROLLS = 98, STUBS = 194;
+const OLDROLLS = 41, STUBS = 194;
 
 /* the tree this check reads: every file git tracks under the folders it asks about, as text */
 function tree() {
@@ -41,10 +44,10 @@ function tree() {
 }
 /* the dice loaded from a file's text into a context of their own. `crypto` is the context's own unless given. */
 function load(src, opts) {
-  const o = opts || {}, ctx = { module: { exports: {} }, Math, Uint32Array, Error, Object, Number, String };
+  const o = opts || {}, ctx = { module: { exports: {} }, Math: Object.create(Math), Uint32Array, Error, Object, Number, String };
   if (o.crypto !== null) ctx.crypto = o.crypto || require('crypto').webcrypto;
   if (o.location) ctx.location = o.location;
-  vm.createContext(ctx);
+  load.last = ctx.Math; vm.createContext(ctx);
   vm.runInContext(src, ctx, { filename: 'engine/dice.js' });
   return ctx.module.exports;
 }
@@ -55,6 +58,10 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 function check(T) {
   const red = [], say = (k, s) => red.push(k + '  ' + s);
+  /* the two counts as this tree writes them, so a planted copy of this file is read as it stands */
+  const mine = T['test/dice.js'] || '', num = k => { const m = mine.match(new RegExp('\\b' + k + ' = (\\d+)')); return m ? +m[1] : NaN; };
+  const OLDROLLS = num('OLDROLLS'), STUBS = num('STUBS');
+  if (!Number.isInteger(OLDROLLS) || !Number.isInteger(STUBS)) { say('K', 'test/dice.js gives no OLDROLLS or STUBS to count against'); return red; }
   const src = T['engine/dice.js'];
   if (typeof src !== 'string') { say('A', 'engine/dice.js is not in the repository, so the game has no dice of its own'); return red; }
   let M;
@@ -116,6 +123,18 @@ function check(T) {
   ['location', 'localStorage', 'sessionStorage', 'cookie', 'URLSearchParams', 'indexedDB', 'fetch', 'XMLHttpRequest', 'postMessage'].forEach(w => {
     if (new RegExp('\\b' + w + '\\b').test(code)) say('H', 'engine/dice.js names ' + w + ', and the dice read nothing a player can set');
   });
+  /* M */
+  try {
+    const Dm = load(src).DICE, mathOf = load.last, own = mathOf.random;
+    Dm.reseed(31); const m0 = rolls(Dm, a, 3);
+    mathOf.random = () => 0.125; const m1 = rolls(Dm, a, 3); Dm.stub(b, () => 0.75); const m2 = Dm.roll(b); Dm.stub(b, null);
+    mathOf.random = own; Dm.reseed(31); const m3 = rolls(Dm, a, 3);
+    const bridged = m1.every(v => v === 0.125);
+    if (STUBS > 0 && !bridged) say('M', 'with the browser\'s number replaced, the line ' + a + ' rolled ' + m1.join(', ') + ', not the replaced number: the ' + STUBS + ' checks that still replace it steer nothing');
+    if (STUBS === 0 && bridged) say('M', 'no check replaces the browser\'s number any more, and the dice still follow a replaced one: take the bridge out');
+    if (m2 !== 0.75) say('M', 'a line with a stub rolled ' + m2 + ' while the browser\'s number was replaced, not its stub');
+    if (!same(m0, m3)) say('M', 'with the browser\'s own number, the line ' + a + ' did not roll its own rolls');
+  } catch (e) { say('M', 'the bridge could not be asked (' + e.message + ')'); }
   /* I, J, K */
   const game = Object.keys(T).filter(f => !/^test\//.test(f));
   let old = 0, stubs = 0, inDice = 0;
@@ -131,7 +150,8 @@ function check(T) {
     if (/^(engine|content)\//.test(f)) { const n = (bare(t).match(/Math\.random\s*\(/g) || []).length; if (f === 'engine/dice.js') inDice = n; else old += n; }
   });
   Object.keys(T).filter(f => /^test\/.*\.js$/.test(f) && f !== 'test/dice.js').forEach(f => { stubs += (bare(T[f]).match(/Math\.random\s*=(?!=)/g) || []).length; });
-  if (inDice !== 1) say('K', 'engine/dice.js asks the browser for a number ' + inDice + ' times, where its one fallback is once');
+  const want = STUBS > 0 ? 2 : 1;   /* its fallback, and the bridge while it stands */
+  if (inDice !== want) say('K', 'engine/dice.js asks the browser for a number ' + inDice + ' times, where its fallback' + (STUBS > 0 ? ' and the bridge are twice' : ' is once'));
   if (old > OLDROLLS) say('K', 'the game asks the browser for a number ' + old + ' times, more than the ' + OLDROLLS + ' counted: a new roll goes on a line of the dice');
   if (old < OLDROLLS) say('K', 'the game asks the browser for a number ' + old + ' times now, fewer than the ' + OLDROLLS + ' counted: lower OLDROLLS in test/dice.js to ' + old + ' in this change');
   if (stubs > STUBS) say('K', 'the checks replace the browser\'s number ' + stubs + ' times, more than the ' + STUBS + ' counted: a new check sets a line of the dice instead');
@@ -170,6 +190,10 @@ const PLANTS = [
   ['K', 'an old roll gone and the count left high', 'engine/engine.js', /Math\.random\s*\(\)/, 'DICE.roll("world")'],
   ['K', 'a new check replacing the browser\'s number', 'test/smoke.js', null, s => s + '\nMath.random = () => 0.5;\n'],
   ['K', 'a second old roll in the dice file', 'engine/dice.js', 'let start=fresh();', 'let start=fresh();Math.random();'],
+  ['M', 'no bridge while the checks still replace the number', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', ''],
+  ['M', 'a bridge over a stub', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', 'if(Math.random!==NATIVE)return Math.random();'],
+  ['M', 'a bridge that is always on', 'engine/dice.js', 'if(!L.stub&&Math.random!==NATIVE)return Math.random();', 'if(!L.stub)return Math.random();'],
+  ['M', 'the bridge left in after the last check moved', 'test/dice.js', /STUBS = \d+;/, 'STUBS = 0;'],
   ['L', 'the dice loaded after the engine', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('  w("engine/kitchen-room.js");', '  w("engine/dice.js");\n  w("engine/kitchen-room.js");')],
   ['L', 'the dice only in a world with 3D', 'engine/boot.js', null, s => s.replace('  w("engine/dice.js");\n', '').replace('w("engine/shapes.js");}', 'w("engine/shapes.js");w("engine/dice.js");}')],
   ['L', 'the game offline with no dice', 'sw.js', '"./engine/dice.js", ', ''],
