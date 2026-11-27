@@ -5720,7 +5720,11 @@ const OUTFITOWN=["apron"];   /* the drawings a world turns on; `formal` is every
 /* `linings`: the lining that goes with each of the colours, a contrasting one (the owner's answer of 2026-11-26), so the inside
    of the hood and the front read against the cloth, the hood down above all. `wait`: seconds after a person's full body first
    stands before the pull starts, the least and the most, a different moment for each person (the owner's answer of 2026-11-26) */
-const GARMENTS=Object.freeze({jacket:Object.freeze({hood:true,colours:Object.freeze(["#2C3E50","#3A3D42","#3E4A36"]),linings:Object.freeze(["#C9B48C","#B7774A","#C8BBA2"]),arm:"right",pull:1.0,wait:Object.freeze([2,4])})});
+const GARMENTS=Object.freeze({jacket:Object.freeze({hood:true,colours:Object.freeze(["#2C3E50","#3A3D42","#3E4A36"]),linings:Object.freeze(["#C9B48C","#B7774A","#C8BBA2"]),arm:"right",pull:1.0,wait:Object.freeze([2,4])}),
+  /* THE HOODIE (mq-v305; the owner's confirmed goal of 2026-11-27): the jacket's hood hung on a person's own shirt, in the shirt's
+     own colour (no `colours`: the look's shirt), its lining a lighter shade of it (`lining`, the share of white mixed in), so each
+     wearer keeps their own look; the same arm, pull and wait as the jacket */
+  hoodie:Object.freeze({hood:true,lining:0.4,arm:"right",pull:1.0,wait:Object.freeze([2,4])})});
 const garmentsOf=lk=>Array.isArray(lk&&lk.wear)?lk.wear.filter((g,i,a)=>typeof g==="string"&&Object.prototype.hasOwnProperty.call(GARMENTS,g)&&a.indexOf(g)===i):[];
 const OUTFITON=new Set(typeof OUTFITTAKE!=="undefined"&&Array.isArray(OUTFITTAKE)?OUTFITOWN.filter(o=>OUTFITTAKE.includes(o)):[]);
 /* what a world may say in OUTFITTAKE, checked at boot as BUILDER is (buildAudit): a list written wrong turns nothing on, and
