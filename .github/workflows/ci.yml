@@ -167,6 +167,8 @@ jobs:
         run: node test/authors.js --selftest && node test/protect.js --selftest && node test/keys.js --selftest && node test/pushguard.js --selftest && node scripts/clean-copy.js --selftest && node scripts/private-terms.js --selftest && node test/toolguard.js --selftest
       - name: The game is uploaded by one job and published by another that waits for it (and the check's own red cases first)
         run: node test/publish.js --selftest && node test/publish.js
+      - name: The game's own dice, every line apart and set by checks only, and the old rolls counted (and the check's own red cases first)
+        run: node test/dice.js --selftest && node test/dice.js
       # #316: every literal part the games draw is built through the shape builder on this change's engine and
       # on the base's (each on its own three.js), and one byte of difference, or one setting of the material it
       # is drawn with, is a red. Plain node, so it runs before the browser install. Its self-test runs first,

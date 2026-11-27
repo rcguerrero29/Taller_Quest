@@ -5366,7 +5366,9 @@ function findChromium() {
            ones come after it: his pace the last roll of his first step, the bar the last of the step he clears it on. Each roll
            is labelled by the place in the code that took it, and grouped by the step of his job it fell in; the same dog runs
            with no part taken and with every part taken, on the same dice (planted: the bar rolled before the step's other rolls) */
-        { const site = () => { const l = (new Error().stack || '').split('\n')[3] || ''; return l.replace(/^\s*at\s*/, '').replace(/\(?[a-z]+:\/\/[^)]*\/([^/)]+)\)?/, '$1'); };
+        /* the place is the first frame past the dice (engine/dice.js, and the helpers that choose an animal's line): a roll is
+           labelled by the code that asked for it, not by the dice that answered */
+        { const site = () => { const l = (new Error().stack || '').split('\n').slice(3).find(x => !/\/engine\/dice\.js:|\bat (dogRoll|critRoll) /.test(x)) || ''; return l.replace(/^\s*at\s*/, '').replace(/\(?[a-z]+:\/\/[^)]*\/([^/)]+)\)?/, '$1'); };
           const DS = dogStep; let seq = null, n = 0;
           const take = (how, ons) => { courseOn = ons; GEARBARS.clear(); const d = made(home); seq = [[]]; n = 0; roll = () => 0.8; const was = Math.random;
             Math.random = () => { if (seq) seq[seq.length - 1].push(site()); rolls++; return roll(); };

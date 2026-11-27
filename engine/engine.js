@@ -3650,17 +3650,17 @@ function dogUpdate(dt,now){
     return;
   }
   if(now<DOG.next)return;
-  const r=Math.random();
-  if(r<0.35){DOG.sit=r<0.15;DOG.next=now+900+Math.random()*2200;return;}
+  const r=DICE.roll("dog");
+  if(r<0.35){DOG.sit=r<0.15;DOG.next=now+900+DICE.roll("dog")*2200;return;}
   DOG.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>dogFree(DOG.x+d[0],DOG.y+d[1]));
   if(!dirs.length){DOG.next=now+1200;return;}
-  const d=dirs[Math.floor(Math.random()*dirs.length)];
+  const d=dirs[Math.floor(DICE.roll("dog")*dirs.length)];
   DOG.dx=d[0];DOG.dy=d[1];if(d[0])DOG.face=d[0];
   DOG.x+=d[0];DOG.y+=d[1];DOG.moving=true;DOG.mt=0;
-  DOG.next=now+600+Math.random()*1800;
-  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
-    lastBump=wDate();const L=T().dog;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  DOG.next=now+600+DICE.roll("dog")*1800;
+  if(Math.abs(DOG.x-px)+Math.abs(DOG.y-py)===1&&DICE.roll("dog")<0.35&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().dog;toast(L[Math.floor(DICE.roll("dog")*L.length)],1800);}
 }
 function drawDog(g,sx,sy){
   const cx=sx+16,wob=DOG.moving?Math.sin(Date.now()/90)*0.8:0;
@@ -3702,17 +3702,17 @@ function catUpdate(dt,now){
     else{CAT.fx=CAT.x-CAT.dx*(1-CAT.mt);CAT.fy=CAT.y-CAT.dy*(1-CAT.mt);}return;}
   if(world!==AW("cat")){CAT.next=now+1000;return;}
   if(now<CAT.next)return;
-  const r=Math.random();
-  if(r<0.55){CAT.sit=r<0.4;CAT.next=now+1500+Math.random()*3500;return;}
+  const r=DICE.roll("cat");
+  if(r<0.55){CAT.sit=r<0.4;CAT.next=now+1500+DICE.roll("cat")*3500;return;}
   CAT.sit=false;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>catFree(CAT.x+d[0],CAT.y+d[1]));
   if(!dirs.length){CAT.next=now+1500;return;}
-  const d=dirs[Math.floor(Math.random()*dirs.length)];
+  const d=dirs[Math.floor(DICE.roll("cat")*dirs.length)];
   CAT.dx=d[0];CAT.dy=d[1];if(d[0])CAT.face=d[0];
   CAT.x+=d[0];CAT.y+=d[1];CAT.moving=true;CAT.mt=0;
-  CAT.next=now+900+Math.random()*2600;
-  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&Math.random()<0.3&&wDate()-lastBump>2500){
-    lastBump=wDate();const L=T().cat;toast(L[Math.floor(Math.random()*L.length)],1800);}
+  CAT.next=now+900+DICE.roll("cat")*2600;
+  if(Math.abs(CAT.x-px)+Math.abs(CAT.y-py)===1&&DICE.roll("cat")<0.3&&wDate()-lastBump>2500){
+    lastBump=wDate();const L=T().cat;toast(L[Math.floor(DICE.roll("cat")*L.length)],1800);}
 }
 function drawCat(g,sx,sy){
   const cx=sx+16,sw=Math.sin(Date.now()/300);
@@ -3965,34 +3965,34 @@ function critUpdate(dt,now){CRIT.forEach(cr=>{
   if(cr.follow){ /* off-leash but loyal: keeps up MOST of the time (canon) */
     const d=Math.abs(cr.x-px)+Math.abs(cr.y-py);
     if(d>2){
-      if(Math.random()<0.10){cr.next=now+700;return;} /* something smelled important */
+      if(critRoll(cr)<0.10){cr.next=now+700;return;} /* something smelled important */
       const st=bfsStep(cr,px,py);
       if(st&&(st[0]||st[1])&&!(cr.x+st[0]===px&&cr.y+st[1]===py)&&!troDanger(cr.world,cr.x+st[0],cr.y+st[1])){
         cr.dx=st[0];cr.dy=st[1];if(st[0])cr.face=st[0];cr.sit=false;
         cr.x+=st[0];cr.y+=st[1];cr.moving=true;cr.mt=0;cr.next=now+60;return;}}
   }
-  if(isDog(cr)&&Math.random()<0.018){dogIdle(cr,now);return;}
-  const r=Math.random(),idle=isCat(cr)?0.55:0.3;
-  if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+Math.random()*3500:400+Math.random()*900);
+  if(isDog(cr)&&critRoll(cr)<0.018){dogIdle(cr,now);return;}
+  const r=critRoll(cr),idle=isCat(cr)?0.55:0.3;
+  if(r<idle){cr.sit=r<idle*0.7;cr.next=now+(isCat(cr)?1500+critRoll(cr)*3500:400+critRoll(cr)*900);
     let groomed=false;
-    if(GROOMON&&isCat(cr)&&cr.sit&&Math.random()<CATGROOM.share){groomed=true;cr.groomT=now+CATGROOM.min+Math.random()*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
+    if(GROOMON&&isCat(cr)&&cr.sit&&critRoll(cr)<CATGROOM.share){groomed=true;cr.groomT=now+CATGROOM.min+critRoll(cr)*(CATGROOM.max-CATGROOM.min);cr.next=Math.max(cr.next,cr.groomT);}   /* a groom, after every roll it took before */
     if(cr.catCurlT&&(groomed||!cr.sit))cr.catCurlT=0;   /* a sit that became a groom, or no sit, ends any curl (no roll drawn): a groom is never drawn curled up */
     /* asleep on its back (CATPOSES.back, mq-v299) or curled up in the closed ring (CATPOSES.curl, the curl's second version), where
        the world takes them: ONE roll among the three, rolled after the groom's roll, only for a sit that did not become a groom.
        Its first quarter is the back, its second the curl, the rest a plain sit; a world that takes the back and not the curl
        rolls and draws exactly what it did. Every sit's roll starts both afresh, so no sleep is left over from an earlier one */
-    if((CATPOSEON.has("back")||CATPOSEON.has("curl"))&&isCat(cr)&&cr.sit&&!groomed){const B=CATPOSES.back,C=CATPOSES.curl,x=Math.random();cr.backT=0;if(CATPOSEON.has("curl"))cr.catCurlT=0;
-      if(CATPOSEON.has("back")&&x<B.share){cr.backT=now+B.min+Math.random()*(B.max-B.min);cr.next=Math.max(cr.next,cr.backT);}
-      else if(CATPOSEON.has("curl")&&x>=B.share&&x<B.share+C.share){cr.catCurlT=now+C.min+Math.random()*(C.max-C.min);cr.next=Math.max(cr.next,cr.catCurlT);}}
+    if((CATPOSEON.has("back")||CATPOSEON.has("curl"))&&isCat(cr)&&cr.sit&&!groomed){const B=CATPOSES.back,C=CATPOSES.curl,x=critRoll(cr);cr.backT=0;if(CATPOSEON.has("curl"))cr.catCurlT=0;
+      if(CATPOSEON.has("back")&&x<B.share){cr.backT=now+B.min+critRoll(cr)*(B.max-B.min);cr.next=Math.max(cr.next,cr.backT);}
+      else if(CATPOSEON.has("curl")&&x>=B.share&&x<B.share+C.share){cr.catCurlT=now+C.min+critRoll(cr)*(C.max-C.min);cr.next=Math.max(cr.next,cr.catCurlT);}}
     return;}
   cr.sit=false;if(cr.catCurlT)cr.catCurlT=0;   /* a cat that walks off is no longer curled up */
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>critFree(cr,cr.x+d[0],cr.y+d[1]));
   if(!dirs.length){if(isDog(cr)&&now-cr.stepT>=DOG_STUCK&&dogUnstick(cr,now))return; /* a dog must never stay stuck (#268) */
     cr.next=now+900;return;}
-  const d=dirs[Math.floor(Math.random()*dirs.length)];
+  const d=dirs[Math.floor(critRoll(cr)*dirs.length)];
   cr.dx=d[0];cr.dy=d[1];if(d[0])cr.face=d[0];
   cr.x+=d[0];cr.y+=d[1];cr.moving=true;cr.mt=0;
-  cr.next=now+(isCat(cr)?900+Math.random()*2600:250+Math.random()*900);
+  cr.next=now+(isCat(cr)?900+critRoll(cr)*2600:250+critRoll(cr)*900);
   if(cr.role==="office"&&isDog(cr))officeBump(cr);
   else if(isCat(cr))catBump(cr);   /* every cat says its own lines when it steps next to you (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats) */   /* the office dog's lines, as DOG said them (mq-v295) */
 });gearLive();}   /* the poles a dog is passing, stood again in the 3D camera as they lean; nothing where no world takes them */
@@ -4020,11 +4020,11 @@ function catLines(cr){const t=T();
   if(cr&&typeof cr.say==="string"&&Array.isArray(t[cr.say]))return t[cr.say];
   return (cr&&cr.egg&&EGGSAFE[cr.egg])?eggLines(cr.egg,cr.name):t.gato;}
 function catBump(cr){
-  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&Math.random()<0.3&&wDate()-lastBump>2500){
-    const L=catLines(cr);if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(Math.random()*L.length)],1800);}}}
+  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&DICE.roll("cat")<0.3&&wDate()-lastBump>2500){
+    const L=catLines(cr);if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(DICE.roll("cat")*L.length)],1800);}}}
 function officeBump(cr){
-  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&Math.random()<0.35&&wDate()-lastBump>2500){
-    const L=T().dog;if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(Math.random()*L.length)],1800);}}}
+  if(Math.abs(cr.x-px)+Math.abs(cr.y-py)===1&&critRoll(cr)<0.35&&wDate()-lastBump>2500){
+    const L=T().dog;if(Array.isArray(L)&&L.length){lastBump=wDate();toast(L[Math.floor(critRoll(cr)*L.length)],1800);}}}
 /* ---------- the dog program (IDEAS §11) ----------
    Any beagle gets a real life: a ball he fetches exactly 4 times in 7 (a shuffled
    cycle, so it feels like a dog and not a coin), a howl, a proper lie-down, holes,
@@ -4038,6 +4038,11 @@ const isDog=cr=>!!cr&&DOGK.has(cr.kind);
    so a rule written for cats reaches every cat (his rule of 2026-11-22 for every animal) */
 const CATK=new Set(["gato"]);
 const isCat=cr=>!!cr&&CATK.has(cr.kind);
+/* THE DICE, BY ANIMAL (grep "THE GAME'S OWN DICE" in engine/dice.js). Dogs and cats share the street's machinery (the step,
+   the whim, the curl), so a roll made for an animal goes on that animal's own line: a cat's on the cat's, a dog's on the dog's,
+   anything else in the street on the critter line. A cat doing something new changes nothing a dog does. */
+function dogRoll(cr){return isCat(cr)?DICE.roll("cat"):DICE.roll("dog");}
+function critRoll(cr){return isCat(cr)?DICE.roll("cat"):isDog(cr)?DICE.roll("dog"):DICE.roll("critter");}
 /* GROOMING (mq-v296; the owner's confirmed goal of 2026-11-22 on the cats), rule 6: a world turns it on by naming cat in its own GROOMTAKE list, as it turns on the dogs' routines. Where it
    is on, 1 in 3 of a cat's sits becomes a groom of 3 to 6 s (CATGROOM): sitting, its head down to a raised fore paw, licking it,
    and the paw wiped over an ear; on its card (the card he approved on 2026-11-23) and on its body. The roll is taken after every
@@ -4127,7 +4132,7 @@ const FED_ODDS=[1,1,1,1,1,1,0]; /* food-driven: a recent treat buys a 6-of-7 cyc
 const dogFed=cr=>!!cr.fedT&&wNow()-cr.fedT<240000; /* ~4 min of motivation */
 function fetchRoll(cr){ /* a fresh shuffled 7-cycle per dog — streaks stay dog-like */
   if(!cr.fseq||cr.fi>=7){cr.fseq=(dogFed(cr)?FED_ODDS:FETCH_ODDS).slice();
-    for(let i=6;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cr.fseq[i],cr.fseq[j]]=[cr.fseq[j],cr.fseq[i]];}
+    for(let i=6;i>0;i--){const j=Math.floor(DICE.roll("dog")*(i+1));[cr.fseq[i],cr.fseq[j]]=[cr.fseq[j],cr.fseq[i]];}
     cr.fi=0;}
   return !!cr.fseq[cr.fi++];}
 function taskFree(cr,x,y){const w=WORLDS[cr.world]; /* the home leash comes off on a job; the rails do not */
@@ -4189,7 +4194,7 @@ function dogsFollow(fromW,fromX,fromY){
     if(dogLeashOnly(c)&&!(LEASH&&LEASH.cr===c))return;   /* a dog who leaves his room only on the leash stays in it, on a whim or told to follow (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
     if(c.holdT>now||c.stayT>now)return;      /* told to sit, lie down or stay: he holds, and you leave without him */
     const d=Math.abs(c.x-fromX)+Math.abs(c.y-fromY);
-    if(c.follow?d>FOLLOW_REACH:!(d<=1&&Math.random()<FOLLOW_WHIM))return;
+    if(c.follow?d>FOLLOW_REACH:!(d<=1&&DICE.roll("dog")<FOLLOW_WHIM))return;
     const spot=dogSpotNear(px,py,taken);
     if(!spot)return;                          /* nowhere to put him — he waits where he is, never stranded in a wall */
     taken.push(spot);
@@ -4275,7 +4280,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     if(tk.phase==="return"&&d<=1){
       BALL=null;cr.task=null;cr.sit=true;
       if(cr.world===PL.park)PARK.f++;
-      const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(Math.random()*L.length)],2600);
+      const L=T().fetchYes||[];if(L.length)toast("🎾 "+L[Math.floor(dogRoll(cr)*L.length)],2600);
       cr.next=dogHappy(cr,now)+600;dogGlad(cr,now);   /* the ball brought back: his happy wag for its own time, and a beagle often sings about it; drawn after the line's own roll, which is the one it always was */
       return;}
     if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
@@ -4312,7 +4317,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     if(cr.x===wp[0]&&cr.y===wp[1]){
       /* OVER THE BAR, and about 1 jump in 6 it comes off (mq-v292): he is at the top of his hop, level with it. Only a
          bar he took off over while it was in its cups, and the roll is the last thing this step takes */
-      if(tk.over===wp[0]+","+wp[1]&&courseOn("bar")&&!gearBarDown(cr.world,wp[0],wp[1])&&Math.random()<COURSENUM.fall)gearBarSet(cr.world,wp[0],wp[1],true);
+      if(tk.over===wp[0]+","+wp[1]&&courseOn("bar")&&!gearBarDown(cr.world,wp[0],wp[1])&&dogRoll(cr)<COURSENUM.fall)gearBarSet(cr.world,wp[0],wp[1],true);
       tk.i++;return;}
     /* EACH PIECE TAKEN ALONG ITS LINE: first the tile before it, its run-up, then through it. Without this the
        shortest way in decides how he meets it, and from two tiles north or south of Meridian's hurdle that is
@@ -4340,7 +4345,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
         o.phase="carried";tk.phase="back";tk.steps=0;return;}
       o.phase="ground";o.dog=null;o.fx=cr.x+0.34*cr.face;o.fy=cr.y+0.08;o.until=now+8000; /* put down beside him */
       cr.task=null;cr.sit=true;cr.next=dogHappy(cr,now)+200;
-      if(cr.world===world&&Math.random()<0.5&&T().stickToast)toast("🐶 "+T().stickToast,2400);
+      if(cr.world===world&&dogRoll(cr)<0.5&&T().stickToast)toast("🐶 "+T().stickToast,2400);
       return;}
     if(tk.phase==="back")cr.happyT=now+400;        /* the proud trot: tail up the whole way back */
     if(!dogWalk(cr,tgt[0],tgt[1])){cr.task=null;
@@ -4382,7 +4387,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
     const d=Math.abs(cr.x-o.x)+Math.abs(cr.y-o.y);
     if(d<=1){cr.task=null;cr.sit=true;cr.next=now+2000;o.sit=true;o.next=now+1600;
       cr.face=Math.sign(o.x-cr.x)||cr.face;
-      if(Math.random()<0.4)toast("🐶 "+(T().sniff||"👃"),2200);
+      if(dogRoll(cr)<0.4)toast("🐶 "+(T().sniff||"👃"),2200);
       return;}
     if(!dogWalk(cr,o.x,o.y))cr.task=null;
     return;}
@@ -4392,7 +4397,7 @@ function dogStep(cr,now){ /* the task router: every job a dog can hold */
       if(!o||o.world!==cr.world){cr.task=null;return;}
       if(!dogWalk(cr,o.x,o.y)){cr.task=null;}return;}
     const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(dd=>taskFree(cr,cr.x+dd[0],cr.y+dd[1]));
-    if(dirs.length){const dd=dirs[Math.floor(Math.random()*dirs.length)];
+    if(dirs.length){const dd=dirs[Math.floor(dogRoll(cr)*dirs.length)];
       cr.dx=dd[0];cr.dy=dd[1];if(dd[0])cr.face=dd[0];
       cr.x+=dd[0];cr.y+=dd[1];cr.moving=true;cr.mt=0;}
     return;}
@@ -4750,7 +4755,7 @@ function curlChance(cr,when){if(!curlOn(cr))return 0;
 /* he has just lain down (layT is set): does he curl up for it? Answers whether he did */
 function dogCurlMark(cr){return cr.layT+"|"+(cr.howlT||0)+"|"+(cr.happyT||0)+"|"+(cr.loveT||0);}   /* this nap's end, and his song's, his happy wag's and his love's clocks as they stand */
 function dogCurl(cr,when,r){const c=curlChance(cr,when);
-  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:Math.random())<c){cr.curlT=dogCurlMark(cr);cr.curlV=0;return true;}
+  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:dogRoll(cr))<c){cr.curlT=dogCurlMark(cr);cr.curlV=0;return true;}
   if(cr.curlT)cr.curlT=0;return false;}
 /* A CURLED NAP LASTS A LITTLE LONGER (mq-v290; the owner's confirmed goal of 2026-11-21 on the curled-up pose). To the nap's
    own 6 to 10 seconds (DOGTIME.lay) 0 to 5 seconds more are added, from one roll r from 0 to 1, shaped by his personality:
@@ -4763,7 +4768,7 @@ function dogCurl(cr,when,r){const c=curlChance(cr,when);
 const CURLLONGER=Object.freeze({most:5000,lean:Object.freeze({eager:r=>r*r,patient:r=>r,aloof:r=>1-(1-r)*(1-r),none:r=>r})});
 /* how much longer this dog's curled nap lasts, in ms: his personality's shape of one roll (r may be handed in for a check) */
 function curlExtra(cr,r){const pe=personaOf(cr),L=CURLLONGER.lean,f=pe&&Object.prototype.hasOwnProperty.call(L,pe)?L[pe]:L.none,
-    x=typeof r==="number"&&r>=0&&r<1?r:Math.random(),s=+f(x);
+    x=typeof r==="number"&&r>=0&&r<1?r:dogRoll(cr),s=+f(x);
   return (isFinite(s)?Math.max(0,Math.min(1,s)):0)*CURLLONGER.most;}
 /* he has just curled up for a nap of his free whims: the nap is made longer, his next move waits for its end, and the mark
    is written again for the nap's new end. Answers the ms added */
@@ -4780,18 +4785,18 @@ const DOGHOWLTIME=Object.freeze({beagle:[2500,5000],other:[1200,2500]});
 const DOGGLADHOWL=Object.freeze({beagle:1/3});
 /* one draw of a pose's time for this dog; r, a number from 0 to 1, may be handed in so a check can hold it still */
 function dogTime(pose,cr,r){const k=pose==="howl"?(cr&&DOGHOWLTIME[cr.kind])||DOGHOWLTIME.other:DOGTIME[pose];
-  return k?k[0]+(k[1]-k[0])*(typeof r==="number"&&r>=0&&r<1?r:Math.random()):0;}
+  return k?k[0]+(k[1]-k[0])*(typeof r==="number"&&r>=0&&r<1?r:DICE.roll("dog")):0;}
 /* his happy wag, for its own time: answers when it ends, so what follows it can be timed by it */
 function dogHappy(cr,now){cr.happyT=now+dogTime("happy",cr);return cr.happyT;}
 /* made happy (a treat taken, a ball brought back, the course run), a dog whose breed is known for it sings about it, as
    often as DOGGLADHOWL says; a breed not named there draws nothing. r may be handed in for a check */
 function dogGlad(cr,now,r){const c=DOGGLADHOWL[cr.kind]||0;
-  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:Math.random())<c){dogHowl(cr,now);return true;}return false;}
+  if(c>0&&(typeof r==="number"&&r>=0&&r<1?r:DICE.roll("dog"))<c){dogHowl(cr,now);return true;}return false;}
 const DOGDIGBAND=Object.freeze([0.90,0.97]);   /* the band of the whim's roll that is a hole: its width is the share of his free choices that dig */
 function dogHowl(cr,now,ms){if(!(ms>0))ms=dogTime("howl",cr);cr.howlT=now+ms;cr.next=now+ms+700;
   if(cr.world===PL.park)PARK.h++;
   try{musHowl();}catch(e){} /* an actual tiny howl, when the sound is on */
-  if(Math.random()<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
+  if(DICE.roll("dog")<0.5)toast("🐶 "+(T().howl||"AWOOOOO…"),1800);}
 function dogDig(cr,now,ms){if(!(ms>0))ms=dogTime("dig",cr);cr.digT=now+ms;cr.next=now+ms+700; /* the rare nod to the puppy phase */
   if(cr.world===PL.park)PARK.d++;
   const hx=cr.x,hy=cr.y,hw=cr.world;
@@ -4799,12 +4804,12 @@ function dogDig(cr,now,ms){if(!(ms>0))ms=dogTime("dig",cr);cr.digT=now+ms;cr.nex
 function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
   puppy phase (canon) — it stays in the repertoire, barely. In the park:
   zoomies through its agility course, if it has one, and the ancient greeting between dogs. */
-  const r=Math.random()*(dogTidy(cr)?DOGDIGBAND[0]:1),park=cr.world===PL.park;   /* a tidy dog's one roll is laid over the whims below the hole's band, so the hole and the mess are never drawn (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
+  const r=DICE.roll("dog")*(dogTidy(cr)?DOGDIGBAND[0]:1),park=cr.world===PL.park;   /* a tidy dog's one roll is laid over the whims below the hole's band, so the hole and the mess are never drawn (mq-v295; the owner's confirmed goal of 2026-11-22 on the office dog) */
   /* the cone (2026-09-04: the dog can even rip it). Checked before the rest of
      the repertoire so a cone right under his nose beats a nap — but it is one roll in twenty-five,
      so it stays a thing that happened once and not a thing he does. It comes back when you leave
      the room, like every other light prop. */
-  if(typeof isLight==="function"&&Math.random()<0.04){
+  if(typeof isLight==="function"&&DICE.roll("dog")<0.04){
     const near=[[1,0],[-1,0],[0,1],[0,-1],[0,0]]
       .map(d=>[cr.x+d[0],cr.y+d[1]])
       .find(q=>{const w=WORLDS[cr.world];
@@ -4815,7 +4820,7 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
       return;}}
   if(cr.friend&&cr.world===cr.friend.w){ /* beside the favorite person: mostly adoration */
     const f=(WORLDS[cr.world].npcs||[]).find(n=>n.key===cr.friend.key);
-    if(f&&Math.abs(f.x-cr.x)+Math.abs(f.y-cr.y)<=2&&Math.random()<0.4){
+    if(f&&Math.abs(f.x-cr.x)+Math.abs(f.y-cr.y)<=2&&DICE.roll("dog")<0.4){
       cr.face=Math.sign(f.x-cr.x)||cr.face;cr.sit=true;cr.next=dogHappy(cr,now)+600;return;}}
   const other=park?CRIT.find(o=>o!==cr&&isDog(o)&&o.world===PL.park&&!o.task
     &&Math.abs(o.x-cr.x)+Math.abs(o.y-cr.y)<=7):null;
@@ -4842,10 +4847,10 @@ function dogWhim(cr,now){ /* his own clock: mostly naps and songs. Digging was a
     else if(r<0.77)dogStick(cr,now);  /* away from the park the course's roll is his own stick... */
     else dogDoor(cr,now);}           /* ...or a restaurant door; either passes if it cannot happen here */
   else if(r<DOGDIGBAND[0]){if(other){ /* dogs being dogs: sniff, or a burst of chase; no other dog, it passes */
-    if(Math.random()<0.55)cr.task={type:"sniff",other};
+    if(DICE.roll("dog")<0.55)cr.task={type:"sniff",other};
     else{cr.task={type:"chase",other,until:now+4200};
       other.task={type:"flee",until:now+4200};other.sit=false;other.layT=0;
-      if(Math.random()<0.4)toast("🐶 "+(T().chaseToast||"!"),2200);}
+      if(DICE.roll("dog")<0.4)toast("🐶 "+(T().chaseToast||"!"),2200);}
     cr.sit=false;cr.layT=0;}
     else if(!park)dogRomp(cr,now);} /* away from the park the greeting's roll is a romp with somebody near */
   else if(r<DOGDIGBAND[1])dogDig(cr,now);
@@ -4965,7 +4970,7 @@ function dogStick(cr,now){ /* he finds a stick, flings it, and runs it down */
   for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){const d=far[y*w.W+x];
     if(d>=3&&!portalAt(cr.world,x,y)&&!troDanger(cr.world,x,y))opts.push([x,y]);}
   if(!opts.length)return;                                    /* no room to throw: the whim passes */
-  const[tx,ty]=opts[Math.floor(Math.random()*opts.length)];
+  const[tx,ty]=opts[Math.floor(DICE.roll("dog")*opts.length)];
   const o={kind:"stick",world:cr.world,sx:cr.x,sy:cr.y,fx:cr.x,fy:cr.y,tx,ty,t:0,phase:"fly",dog:cr};
   DOGTHINGS.push(o);
   cr.task={type:"stick",phase:"go",o,hx:cr.x,hy:cr.y};cr.sit=false;cr.layT=0;cr.face=Math.sign(tx-cr.x)||cr.face;}
@@ -5043,7 +5048,7 @@ function ballUpdate(dt,now){
         if(fetchRoll(dog)){dog.task={type:"fetch",phase:"go"};dog.sit=false;dog.layT=0;dog.next=0;}
         else{dog.sit=true;dog.face=Math.sign(BALL.tx-dog.x)||dog.face;dog.next=now+2600;
           BALL.until=wDate()+6000;
-          const L=T().fetchNo||[];if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);}}
+          const L=T().fetchNo||[];if(L.length)toast("🐶 "+L[Math.floor(DICE.roll("dog")*L.length)],2600);}}
       else BALL.until=wDate()+6000;}
     else{BALL.fx=BALL.sx+(BALL.tx-BALL.sx)*BALL.t;BALL.fy=BALL.sy+(BALL.ty-BALL.sy)*BALL.t;}}
   else if(BALL.phase==="ground"&&BALL.until&&wDate()>BALL.until)BALL=null;
@@ -5092,7 +5097,7 @@ $("ball").addEventListener("click",()=>{
     const d=Math.abs(x-px)+Math.abs(y-py);
     if(d>=2&&d<=4&&rs[y*w.W+x])opts.push([x,y]);} /* only tiles the dog can reach */
   if(!opts.length){toast(T().ballNoRoom||"…",1800);return;}
-  const [tx,ty]=opts[Math.floor(Math.random()*opts.length)];
+  const [tx,ty]=opts[Math.floor(DICE.roll("ball")*opts.length)];
   BALL={world,sx:px,sy:py,fx:px,fy:py,tx,ty,t:0,phase:"fly",dog:petCrit};
   $("ball").hidden=true;
 });
@@ -5250,7 +5255,7 @@ function curlVersion(i){const L=curlVersions();return (Array.isArray(L)&&Number.
    give nothing to pick between: the first, and no roll. r may be handed in for a check. Answers the place picked */
 function dogCurlPick(cr,r){const L=curlVersions();cr.curlV=0;if(!Array.isArray(L)||L.length<2)return 0;
   const w=L.map(v=>v&&typeof v.w==="number"&&isFinite(v.w)?Math.max(0,v.w):0),tot=w.reduce((a,b)=>a+b,0);if(!(tot>0))return 0;
-  let x=(typeof r==="number"&&r>=0&&r<1?r:Math.random())*tot,last=0;
+  let x=(typeof r==="number"&&r>=0&&r<1?r:dogRoll(cr))*tot,last=0;
   for(let i=0;i<L.length;i++){if(!(w[i]>0))continue;last=i;x-=w[i];if(x<0){cr.curlV=i;return i;}}
   cr.curlV=last;return last;}
 function dogCurlCard(g,cr,cx,sy,o,ver){const CC=curlVersion(ver).card||CURLCARD,C=CC[cr.kind]||CC.beagle||CURLCARD.beagle,[bx,by,rx,ry]=C.body,[hx,hy]=C.head,gy=sy+by+ry;   /* gy: the ground under him */
@@ -10268,9 +10273,10 @@ const DOGPOOL=(()=>{const seen=new Set();
 function dogNamePick(pool,seed,taken){const n=pool.length;if(!n)return null;const s0=(seed>>>0)%n;
   for(let i=0;i<n;i++){const nm=pool[(s0+i)%n];if(!taken.includes(nm.toLowerCase()))return nm;}
   return null;}
-/* one 32-bit seed from the platform's generator — not the game's dice, which tests pin for other reasons */
+/* one 32-bit seed from the platform's strong source, so the name a dog is given and kept is not tied to one run's starting
+   number; on the dog's line of the dice only where the platform has no such source */
 function dogSeed(){try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0];}
-  catch(e){return Math.floor(Math.random()*4294967296);}}
+  catch(e){return DICE.below("dog",4294967296);}}
 (function nameStar(){const s=starDog();if(!s)return;
   if(parkPrefs.star)s.name=parkPrefs.star.n;
   else if(DOGPOOL.length){
@@ -10314,7 +10320,7 @@ function dogsRoam(newW){ /* rolled at every door: unseen dogs drift between the 
   CRIT.forEach(cr=>{const rec=isDog(cr)?dogRecord(cr):null;
     if(!rec||!rec.friend||cr.world===newW||cr.task||(LEASH&&LEASH.cr===cr))return;
     if(rec.rehomed){if(cr.world!==rec.friend.w)dogPlace(cr,rec);return;}
-    if(Math.random()<0.3){rec.out=!rec.out;dogPlace(cr,rec);dirty=true;}});
+    if(DICE.roll("dog")<0.3){rec.out=!rec.out;dogPlace(cr,rec);dirty=true;}});
   if(dirty)parkPersist();}
 parkPrefs.dogs.forEach(d0=>{const n=sanName(d0.n);if(!n)return;
   const k=DOGK.has(d0.k)&&!DOGSOLE.has(d0.k)?d0.k:"beagle";   /* a world's own dog's kind is never an adopted dog's (mq-v295) */
@@ -10547,9 +10553,9 @@ function dogCmd(kind){
   const pe=kind==="course"?personaOf(c):null,A=pe?COURSEANSWER[pe]:null;   /* his personality answers the course; every other command, and a dog with none, the roll below */
   const p=A?A.run:(kind==="come"?0.7:0.5)+0.1*Math.min(4,reps)+(dogFed(c)?0.25:0);
   const now=wNow();
-  if(Math.random()>=p){const no=A?dogLine(T().courseAloof,c):null,L=T().cmdNo||[];
+  if(DICE.roll("dog")>=p){const no=A?dogLine(T().courseAloof,c):null,L=T().cmdNo||[];
     if(no)toast("🐶 "+no,2800);
-    else if(L.length)toast("🐶 "+L[Math.floor(Math.random()*L.length)],2600);return;}
+    else if(L.length)toast("🐶 "+L[Math.floor(DICE.roll("dog")*L.length)],2600);return;}
   tr[kind]=reps+1;parkPersist();
   routineStop(c);c.task=null;c.layT=0;
   /* holdT is what makes a hold (stay, then sit) mean he does NOT come through the door after you.
@@ -10563,7 +10569,7 @@ function dogCmd(kind){
       for(let y=0;y<w.H;y++)for(let x=0;x<w.W;x++){
         const d=Math.abs(x-px)+Math.abs(y-py);
         if(d>=3&&d<=6&&rs[y*w.W+x])opts.push([x,y]);}
-      if(opts.length){const[wx,wy]=opts[Math.floor(Math.random()*opts.length)];
+      if(opts.length){const[wx,wy]=opts[Math.floor(DICE.roll("dog")*opts.length)];
         c.world=world;c.x=wx;c.y=wy;c.fx=wx;c.fy=wy;c.home=[wx,wy];c.follow=false;}}
     c.task={type:"come"};}
   else if(kind==="course"){c.stayT=0;c.holdT=0;c.sit=false;
