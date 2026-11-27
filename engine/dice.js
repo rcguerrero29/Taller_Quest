@@ -10,8 +10,8 @@
        another: the cat doing something new changes nothing the dog does.
    2 · IN PLAY THE STARTING NUMBER IS NEW EACH TIME. It is drawn once, when the page loads, and it is never
        read from the address, from storage or from anything a player can type.
-   3 · ONLY CHECKS MAY SET IT. `reseed` and `stub` are for the checks; nothing in the game calls them, and
-       test/dice.js is red when anything outside the checks names either.
+   3 · ONLY CHECKS MAY SET IT. `reseed`, `stub` and `all` are for the checks; nothing in the game calls them, and
+       test/dice.js is red when anything outside the checks sets one.
    4 · EVEN SWEEPS ARE KEPT. A check that walks a roll through even steps (0.5/40, 1.5/40, ...) to see every
        band a whim can land in still can: `stub` hands one line the check's own numbers and leaves the rest.
 
@@ -54,18 +54,17 @@ const DICE=(function(){
     t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);
     return ((t^(t>>>14))>>>0)/4294967296;}
   let start=fresh();const lines={};
-  /* THE BRIDGE, while the checks move onto their lines: until now a check steered a system by replacing the browser's number
-     for the whole page. While any check still does (test/dice.js counts them), a line with no stub of its own follows a
-     replaced number, so every such check still steers what it steered, in the same order, and means what it meant. In play
-     the browser's number is the browser's own, so every line rolls on its own. When the last check has moved onto its
-     line, the bridge comes out, and test/dice.js is red if it is still here then. */
-  const NATIVE=Math.random;
-  function reset(){DICELINES.forEach(n=>{lines[n]={s:mix(start,n),n:0,stub:null};});}
+  /* EVERY LINE AT ONCE, for the checks (`all`): until the dice, a check steered the game by replacing the browser's number
+     for the whole page, and every roll took that one number in turn. A check that wants the same now sets `DICE.all` to its
+     function, and every line rolls it, in the same order as before; reading `DICE.all` gives the function set, or the
+     browser's own number when none is, so a check can keep what was there and put it back, or pass a roll on to it. Setting
+     it to the browser's own number, or to null, takes it off. The browser's number itself steers nothing any more. */
+  const NATIVE=Math.random;let shared=null;
+  function reset(){shared=null;DICELINES.forEach(n=>{lines[n]={s:mix(start,n),n:0,stub:null};});}
   reset();
   function line(name){const L=typeof name==="string"&&Object.prototype.hasOwnProperty.call(lines,name)?lines[name]:null;
     if(!L)throw new Error("DICE: no line named "+String(name)+" (the lines are named in DICELINES)");return L;}
   function roll(name){const L=line(name);L.n++;
-    if(!L.stub&&Math.random!==NATIVE)return Math.random();
     if(L.stub){const v=+L.stub();if(!(v>=0&&v<1))throw new Error("DICE: the stub on "+name+" gave "+v+", not a number from 0 up to 1");return v;}
     return next(L);}
   return Object.freeze({
@@ -79,11 +78,15 @@ const DICE=(function(){
     /* how many rolls a line has made since the start (for the checks: a line moved by nobody else) */
     count(name){return line(name).n;},
     /* ---- FOR THE CHECKS ONLY (rule 3) ---- */
-    /* a new starting number: every line starts again from it, and every stub is taken off */
+    /* a new starting number: every line starts again from it, and every stub is taken off, `all` too */
     reseed(n){if(!(Number.isInteger(n)&&n>=0&&n<=4294967295))throw new Error("DICE: a starting number is a whole number from 0 to 4294967295");
       start=n>>>0;reset();},
     /* one line rolls the check's own numbers (an even sweep); null puts the line back on its own rolls */
-    stub(name,fn){const L=line(name);if(fn!==null&&typeof fn!=="function")throw new Error("DICE: a stub is a function or null");L.stub=fn;}
+    stub(name,fn){const L=line(name);if(fn!==null&&typeof fn!=="function")throw new Error("DICE: a stub is a function or null");L.stub=fn;},
+    /* every line at once (see EVERY LINE AT ONCE above) */
+    get all(){return shared||NATIVE;},
+    set all(fn){const f=fn===NATIVE?null:fn;if(f!==null&&f!==undefined&&typeof f!=="function")throw new Error("DICE: every line at once takes a function or null");
+      shared=f||null;DICELINES.forEach(n=>{lines[n].stub=shared;});}
   });
 })();
 if(typeof module==="object"&&module&&module.exports)module.exports={DICE,DICELINES};

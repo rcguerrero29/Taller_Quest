@@ -4550,17 +4550,12 @@ const gearShut=(wid,x,y)=>{const w=WORLDS[wid];return !!w&&courseOn("poles")&&ge
    3D camera where it is the place being shown (t3Reshape, as a kitchen door's swing does). */
 const GEARBARS=new Set();
 function gearBarDown(wid,x,y){if(wid==null)wid=world;return GEARBARS.has(wid+"|"+x+","+y);}
-/* ...AND NOT ONE NUMBER OFF THE GAME'S DICE FOR IT: the 3D library names every piece it makes with numbers it takes from
-   Math.random, and a pole that leans is stood again many times a second. Taken off the game's dice, those would move
-   every roll the game makes for as long as a dog is in the poles (measured: some 370 numbers for one pass of the three
-   pieces). So while a piece of gear is built again the library draws its names from a small generator kept here.
-   Since the game's own dice (engine/dice.js), no roll of the game comes from Math.random, so the library's numbers move none
-   of them; this stays while the checks still count the browser's numbers and steer through them (the dice's bridge,
-   test/dice.js), and comes out with the bridge. */
-let GEARSEED=0x9E3779B9;
-const gearRnd=()=>{GEARSEED=(Math.imul(GEARSEED,1664525)+1013904223)>>>0;return GEARSEED/4294967296;};
+/* ...AND NOT ONE ROLL OF THE GAME FOR IT: the 3D library names every piece it makes with numbers it takes from Math.random,
+   and a pole that leans is stood again many times a second. Since the game's own dice (engine/dice.js) no roll of the game
+   comes from Math.random, so the library takes what it likes and moves nothing the game decides. (Until then a small
+   generator here lent the library its numbers while gear was built again, some 370 of them a pass.) */
 function gearReshape(wid,x,y){if(wid!==world||typeof t3Reshape!=="function"||typeof T3!=="object"||!T3||String(T3.builtKey||"").indexOf(world+"|")!==0)return false;
-  const dice=Math.random;Math.random=gearRnd;try{return !!t3Reshape(x,y);}catch(e){return false;}finally{Math.random=dice;}}
+  try{return !!t3Reshape(x,y);}catch(e){return false;}}
 /* a bar falls or is set back seldom, so where the 3D camera is not standing this place just now (a flat camera is up, say)
    everything it has built is simply marked stale, as a kicked cone does, and it builds the place afresh when next shown */
 function gearBarSet(wid,x,y,down){const k=wid+"|"+x+","+y;if(GEARBARS.has(k)===!!down)return false;

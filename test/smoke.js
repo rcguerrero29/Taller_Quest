@@ -194,14 +194,14 @@ const CANDIDATES = [
       const K = [...DOGK][0], wid = PL.street, w = WORLDS[wid]; let at = null;
       for (let y = 0; y < w.H && !at; y++) for (let x = 0; x < w.W && !at; x++) if (!SOLID.has(w.grid[y][x]) && w.grid[y][x] !== 'N') at = [x, y];
       if (!at) { problems.push('Meridian\'s street has nowhere to stand a dog, so whether its dogs curl up could not be asked'); return problems; }
-      const MR = Math.random, N = 40; let naps = 0, curled = 0;
+      const MR = DICE.all, N = 40; let naps = 0, curled = 0;
       try {
         for (let i = 0; i < N; i++) { const v = (i + 0.5) / N; let k = 0;
-          Math.random = () => { k++; return k === 1 ? 0.2 : k === 2 ? 0.5 : v; };   /* the nap's band, no cone, then the sweep */
+          DICE.all = () => { k++; return k === 1 ? 0.2 : k === 2 ? 0.5 : v; };   /* the nap's band, no cone, then the sweep */
           const d = { kind: K, name: 'Probe', world: wid, x: at[0], y: at[1], fx: at[0], fy: at[1], face: 1, dx: 0, dy: 0, sit: false, layT: 0, howlT: 0, digT: 0, sniffT: 0, happyT: 0, loveT: 0, next: 0, home: at.slice(), task: null };
           const now = wNow(); dogWhim(d, now);
           if (d.layT > now) { naps++; if (dogPose(d, now + 10, now + 10).curl) curled++; } }
-      } finally { Math.random = MR; }
+      } finally { DICE.all = MR; }
       if (!naps) problems.push('a dog of Meridian given the roll for a nap does not lie down, so whether he curls up could not be asked');
       else { const pc = 100 * curled / naps;
         if (pc < 40 || pc > 60) problems.push('in Meridian, ' + Math.round(pc) + '% of a dog\'s naps are curled up, where about half of them are (both games take the pose: ' + (curled ? 'the share has moved' : 'Meridian\'s own switch for it is off') + ')'); }
@@ -1210,7 +1210,7 @@ const CANDIDATES = [
       ' and ' + (document.getElementById('cmdReh').hidden ? 'no rehome' : 'a rehome') + ' — he is renamed like any adopted dog, and never rehomed';
     document.getElementById('dogPX').click();
     // training: with luck pinned, Sit lands and Come recalls from across the lawn
-    const MR = Math.random; Math.random = () => 0.01;
+    const MR = DICE.all; DICE.all = () => 0.01;
     star.task = null; star.layT = 0; star.stayT = 0;
     px = fx = 8; py = fy = 6;
     dogCmd('sit');
@@ -1219,7 +1219,7 @@ const CANDIDATES = [
     out.stayOk = star.stayT > performance.now();
     star.stayT = 0; star.x = 17; star.y = 2; star.fx = 17; star.fy = 2; star.moving = false; star.next = 0;
     dogCmd('come');
-    Math.random = MR;
+    DICE.all = MR;
     const runner = CRIT.find(c => c.task && c.task.type === 'come') || star;
     const t1 = Date.now();
     while (Date.now() - t1 < 6000) {
@@ -1236,11 +1236,11 @@ const CANDIDATES = [
     {
       const keep = { world: star.world, x: star.x, y: star.y, fx: star.fx, fy: star.fy,
         task: star.task, sit: star.sit, layT: star.layT, next: star.next };
-      const MR2 = Math.random; Math.random = () => 0.8;
+      const MR2 = DICE.all; DICE.all = () => 0.8;
       star.world = 'pk'; star.task = null;
       let wp = [];
       try { dogWhim(star, performance.now()); wp = star.task && star.task.type === 'run' ? star.task.wp : []; }
-      finally { Math.random = MR2; Object.assign(star, keep); }
+      finally { DICE.all = MR2; Object.assign(star, keep); }
       const sent = wp.map(([x, y]) => ({ '3': 'hurdle', '4': 'tunnel', '5': 'weave' }[WORLDS.pk.rows[y][x]] || 'bare ground') + ' (' + x + ',' + y + ')').join(', ');
       const reach = dogReach({ world: 'pk', x: 2, y: 6 });
       out.agility = (WORLDS.pk.rows[8].includes('3.4.5') && sent === 'hurdle (9,8), tunnel (11,8), weave (13,8)' &&
@@ -1253,9 +1253,9 @@ const CANDIDATES = [
     // check asking a pack that serves nothing, and passing. Asked through the whim, for a dog made here
     // in the star dog's own corner of the street, so nobody real moves.
     {
-      const MR3 = Math.random; Math.random = () => 0.80;
+      const MR3 = DICE.all; DICE.all = () => 0.80;
       const d = { kind: 'beagle', name: 'Probe', world: 'st', x: 22, y: 11, fx: 22, fy: 11, face: 1, sit: false, layT: 0, next: 0, home: [22, 11], task: null };
-      try { dogWhim(d, performance.now()); } finally { Math.random = MR3; }
+      try { dogWhim(d, performance.now()); } finally { DICE.all = MR3; }
       const t = d.task;
       /* the step is whichever side of La Cocina's door (6,5) he comes from: from his corner, the south one */
       const worker = t && t.eat && typeof eateryWorker === 'function' ? eateryWorker(t.eat) : null;
@@ -1526,13 +1526,13 @@ const CANDIDATES = [
         if (!rec || !rec.star || rec.star.n !== NEW) P.push('the new name was not kept on the device (' + JSON.stringify(rec && rec.star) + ')');
         if (!renSaid.includes(was) || !renSaid.includes(NEW)) P.push('the first time the star dog is renamed he is the stubborn one, and the rename said "' + renSaid + '" — no word of the name he is used to');
         // he keeps answering to the old name for the next two calls, then comes round
-        const MR = Math.random; Math.random = () => 0.01; /* every command would land: only the joke can stop one */
+        const MR = DICE.all; DICE.all = () => 0.01; /* every command would land: only the joke can stop one */
         const call = () => { beside(); s.stayT = 0; $('cmd').click(); const got = during(() => $('cmdStay').click()); return { ok: s.stayT > performance.now(), said: got }; };
         const c1 = call(), c2 = call(), c3 = call();
         const r0 = said.length; await sleep(2600);
         const later = said.slice(r0), round = later.find(m => m.includes(NEW) && !m.includes(was)) || later.join(' | ');
         const c4 = call();
-        Math.random = MR;
+        DICE.all = MR;
         [c1, c2].forEach((c, i) => {
           if (c.ok) P.push('call ' + (i + 1) + ' after the rename: a stubborn dog answered to "' + NEW + '" at once');
           else if (!c.said.includes(was)) P.push('call ' + (i + 1) + ' after the rename was ignored and the line ("' + c.said + '") never says the name he still answers to, "' + was + '"'); });
@@ -1547,9 +1547,9 @@ const CANDIDATES = [
         else {
           const L = eg.lines[lang].length, got = [];
           for (let i = 0; i < L; i++) {
-            const seq = [0.1, (i + 0.5) / L]; let k = 0; const MR3 = Math.random; Math.random = () => seq[Math.min(k++, 1)];
+            const seq = [0.1, (i + 0.5) / L]; let k = 0; const MR3 = DICE.all; DICE.all = () => seq[Math.min(k++, 1)];
             beside(); petCrit = s; petTarget = s.kind;
-            try { got.push(during(() => $('treat').click())); } finally { Math.random = MR3; }
+            try { got.push(during(() => $('treat').click())); } finally { DICE.all = MR3; }
           }
           if (!got.some(l => l.includes(NEW))) P.push('no treat line names the dog being fed, so a stale name could not be told from a missing one');
           got.filter(l => l.includes(was)).forEach(l => P.push('a treat line still calls him "' + was + '": "' + l + '"'));
@@ -1583,7 +1583,7 @@ const CANDIDATES = [
           const $ = id => document.getElementById(id), said = [], toast0 = window.toast;
           window.toast = function (m) { said.push(String(m)); return toast0.apply(this, arguments); };
           if (es) $('optEs').click();
-          const MR = Math.random; Math.random = () => mr;
+          const MR = DICE.all; DICE.all = () => mr;
           const stub = [], ren = (c, nm) => { const was = c.name, i0 = said.length; renTarget = c; $('renName').value = nm; $('renGo').click();
             if (c.name === nm && said.slice(i0).some(m => m.includes(was))) stub.push(was); };
           try {
@@ -1595,7 +1595,7 @@ const CANDIDATES = [
             names.forEach(nm => { $('adoptName').value = nm; $('adoptGo').click(); });
             names.forEach((nm, i) => { const c = CRIT.find(x => x.name === nm); if (c) ren(c, next[i]); });
             return { stub, renamed: next.filter(nm => CRIT.some(x => x.name === nm)).length };
-          } finally { Math.random = MR; window.toast = toast0; }
+          } finally { DICE.all = MR; window.toast = toast0; }
         }, [mr, es]);
         await D.ctx.close();
         return r;
@@ -2235,8 +2235,8 @@ const CANDIDATES = [
         else {
           Object.keys(SEASONS).forEach(sid => { seasonSet(sid); Object.keys(WORLDS).forEach(wid => { const t = fiestaTaped(wid); if (t.length) problems.push(`in season ${sid} ${t.length} string(s) of Meridian's ${wid} are cut as taped strings ("${t[0].mount}", row ${t[0].y}) — Meridian tapes nothing`); }); });
           seasonSet(id);
-          const A = S.art, sw0 = A.swags, dn = Date.now, rnd = Math.random, T0 = dn(), yaw0 = T3.yaw, sm0 = swagMount, ft0 = fiestaTaped; let sd = 7;
-          Date.now = () => T0; Math.random = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+          const A = S.art, sw0 = A.swags, dn = Date.now, rnd = DICE.all, T0 = dn(), yaw0 = T3.yaw, sm0 = swagMount, ft0 = fiestaTaped; let sd = 7;
+          Date.now = () => T0; DICE.all = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
           try {
             world = PL.street; px = fx = 5; py = fy = 2; moving = false; held = null; T3.yaw = 0; T3.turn = null;
             const frame = (cam, swags, seamless) => { A.swags = swags; if (seamless) { swagMount = () => 'poles'; fiestaTaped = () => []; }
@@ -2275,7 +2275,7 @@ const CANDIDATES = [
                 if (inside < all * 0.97) problems.push(`in the ${cam} camera ${all - inside} of the ${all} pixels of the street's string on poles over row ${y} (x ${x0}–${x1}) land off where a string on poles has always hung — inside its span, from the top of its row`);
                 if (second < first * 0.5) problems.push(`in the ${cam} camera the street's string on poles over row ${y} (x ${x0}–${x1}) is one row of flags deep (${first} pixels in its first row, ${second} under it) — a string on poles is two rows`); });
               if (!seen) problems.push(`no string on poles of the street painted in the ${cam} camera drawn alone — where Meridian's strings hang was not measured`); });
-          } finally { A.swags = sw0; Date.now = dn; Math.random = rnd; T3.yaw = yaw0; swagMount = sm0; fiestaTaped = ft0; seasonSet(id); }
+          } finally { A.swags = sw0; Date.now = dn; DICE.all = rnd; T3.yaw = yaw0; swagMount = sm0; fiestaTaped = ft0; seasonSet(id); }
         }
         // the season speaks: arrival lines may be functions and say something different tonight; planters bloom
         const arr = UI.en.arrive[ex ? ex.world : PL.street]; const said = typeof arr === 'function' ? arr() : arr;
@@ -2878,8 +2878,8 @@ const CANDIDATES = [
           await selfDrawer(); await p.selectOption('#aleWho', A.old); await p.click(`#aleRow button[data-look="${A.pick}"]`); await p.click('#closeSet');
           if (!await call('beside', A.old)) throw new Error(`there is nowhere to stand beside ${A.old} alone`);
           await p.waitForSelector('#band:not([hidden])'); await p.click('#band');
-          await p.evaluate(() => { window.__mr = Math.random; Math.random = () => 0.01; });
-          try { await p.click('#cmd'); await p.click('#cmdSit'); } finally { await p.evaluate(() => { Math.random = window.__mr; }); }
+          await p.evaluate(() => { window.__mr = DICE.all; DICE.all = () => 0.01; });
+          try { await p.click('#cmd'); await p.click('#cmdSit'); } finally { await p.evaluate(() => { DICE.all = window.__mr; }); }
           // Rayo: a custom look laid over her own, the way a later editor would
           const bareC = await call('draw', C.old);
           await p.evaluate(nm => { alePick.custom[nm] = { tint: '#0B6E4F', pat: '#F2E94E' }; alePersist(); }, C.old);
