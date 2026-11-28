@@ -15,9 +15,14 @@ const HAS = Object.freeze({
     'map-spots': true,     /* places the town plan marks by a spot of their own (MAPDOT) */
     'map-markers': true,   /* the map marks who is waiting, and a click or tap chooses a marker (markKinds) */
     'interview-room': true,   /* a room whose questions show as a marker at its door (RM, roomStart) */
+    animals: true,         /* animals that live in its worlds (CRITTERS) */
+    'kitchen-cat': true,   /* the cat of La Cocina's kitchen, met and petted (CRITTERS, wardrobe: true) */
+    'eatery-worker': true, /* somebody working inside each restaurant a dog sings at */
+    'ground-skirt': true,  /* the apron laid outside the world's footprint in 3D, under the floor's edge */
+    'sill-skulls': true,   /* a season that sets a sugar skull on a window sill, in 3D and the front camera */
   }),
-  'El Horno': Object.freeze({ trolley: false, 'animals-by-the-trolley': false, 'map-markers': false, 'interview-room': false }),   /* one kitchen (content/horno/) */
-  'El Faro': Object.freeze({ trolley: false, 'animals-by-the-trolley': false, 'map-markers': false, 'interview-room': false }),    /* the gauge's worlds (content/gauge/), each a few rooms */
+  'El Horno': Object.freeze({ trolley: false, 'animals-by-the-trolley': false, 'map-markers': false, 'interview-room': false, animals: false, 'kitchen-cat': false, 'eatery-worker': false, 'sill-skulls': false }),   /* one kitchen (content/horno/) */
+  'El Faro': Object.freeze({ trolley: false, 'animals-by-the-trolley': false, 'map-markers': false, 'interview-room': false, animals: false, 'kitchen-cat': false, 'eatery-worker': false, 'sill-skulls': false }),    /* the gauge's worlds (content/gauge/), each a few rooms */
 });
 /* true, false, or null when the game or the thing is not on the list */
 function has(game, thing) {
