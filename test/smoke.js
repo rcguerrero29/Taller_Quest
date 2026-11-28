@@ -6186,41 +6186,51 @@ const CANDIDATES = [
      correct engine would have stayed red.
      This one puts each animal on the rails in front of a running tram and asks whether the tram
      stops. That is the noun. It survives any rewrite of how the engine keeps its list. */
+  /* THE ANIMALS OF THE PROGRAM TOO (the owner's confirmed goal of 2026-11-25 on the checks that can find nothing and pass;
+     the sweep found this one asking nothing). Since the animals moved into the animal program, the old globals above stand
+     nowhere in Meridian, so every one of them was skipped and the check passed on nothing. It asks every animal that lives
+     on a street with a trolley line now: the old globals where a world still keeps them, and every animal of the program in
+     that world (dogs, cats, pigeons, the rest), each alone: every other animal set aside, the hero far away, and the tram
+     first rolled up with the animal off the rails, so that if something else on the street stops it, that is said and the
+     animal is not counted as asked. In a world whose trolley street has animals, asking none is a red; a street with none
+     says so, by world. */
   const blind = await page.evaluate(() => {
-    const P = [];
+    const P = [], N = [];
     const lines = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT) ? TROLLEYAT : [];
-    if (!lines.length) return P;
-    const beasts = [['dog', typeof DOG !== 'undefined' ? DOG : null],
-                    ['cat', typeof CAT !== 'undefined' ? CAT : null],
-                    ['pigeon', typeof PIG !== 'undefined' ? PIG : null]];
-    const key = { dog: 'dog', cat: 'cat', pigeon: 'pig' };
+    if (!lines.length) { N.push('no world here has a trolley line, so the tram\'s stop for an animal is not asked'); return { P, N }; }
+    const crit = typeof CRIT !== 'undefined' ? CRIT : [];
+    const olds = [['dog', typeof DOG !== 'undefined' ? DOG : null, 'dog'], ['cat', typeof CAT !== 'undefined' ? CAT : null, 'cat'], ['pigeon', typeof PIG !== 'undefined' ? PIG : null, 'pig']];
     lines.forEach(L => {
-      const keep = { st: TRO.state, x: TRO.x, dir: TRO.dir, w: world, px: px, py: py };
-      beasts.forEach(([name, a]) => {
-        if (!a || AW(key[name]) !== L.world) return;       /* not on a trolley street at all */
-        const w = WORLDS[L.world];
-        const mid = Math.round((L.from + L.to) / 2);
-        const g = w.grid[L.row] && w.grid[L.row][mid];
-        if (g === undefined || SOLID.has(g) || g === 'N') return;   /* it could not stand there anyway */
-        /* park the hero far away so HE is not what stops it, put the animal on the rails,
-           and roll the tram up to it */
+      const keep = { st: TRO.state, x: TRO.x, dir: TRO.dir, t: TRO.t, w: world, px: px, py: py };
+      const beasts = olds.filter(([, a, k]) => a && AW(k) === L.world).map(([n, a]) => ({ name: 'the old ' + n, a, crit: false }))
+        .concat(crit.filter(c => c && c.world === L.world).map(c => ({ name: (c.name ? c.name + ' (' + c.kind + ')' : 'the ' + c.kind), a: c, crit: true })));
+      if (!beasts.length) { N.push('no animal lives on the trolley street in ' + L.world + ', so the tram\'s stop for one is not asked there'); return; }
+      const w = WORLDS[L.world], mid = Math.round((L.from + L.to) / 2), g = w.grid[L.row] && w.grid[L.row][mid];
+      if (g === undefined || SOLID.has(g) || g === 'N') { P.push('the middle of the trolley line in ' + L.world + ' is not ground an animal can stand on, so the tram\'s stop for its ' + beasts.length + ' animal(s) could not be asked'); return; }
+      const roll = () => { TRO.dir = L.to >= L.from ? 1 : -1; TRO.x = mid - TRO.dir * 3.0; TRO.state = 'run'; TRO.t = 0;
+        for (let i = 0; i < 40; i++) { troUpdate(50); if (TRO.state === 'hold') return true; } return false; };
+      let asked = 0;
+      beasts.forEach(b => {
+        const a = b.a, was = { x: a.x, y: a.y, fx: a.fx, fy: a.fy, lift: a.lift, world: a.world };
+        const aside = crit.filter(c => c !== a && c.world === L.world); aside.forEach(c => { c.world = '__aside'; });
         world = L.world; px = fx = 0; py = fy = 0;
-        const was = { x: a.x, y: a.y, fx: a.fx, fy: a.fy, lift: a.lift };
-        a.x = a.fx = mid; a.y = a.fy = L.row; a.lift = null;
-        TRO.dir = L.to >= L.from ? 1 : -1;
-        TRO.x = mid - TRO.dir * 3.0; TRO.state = 'run'; TRO.t = 0;
-        let held = false;
-        for (let i = 0; i < 40 && !held; i++) { troUpdate(50); if (TRO.state === 'hold') held = true; }
-        if (!held) P.push('the trolley does not stop for the ' + name + ' on its own line in ' +
-          L.world + ' — it drives straight through, while it brakes for a hummingbird on the same street');
-        a.x = was.x; a.y = was.y; a.fx = was.fx; a.fy = was.fy; a.lift = was.lift;
+        try {
+          a.lift = null; if (Math.round(a.y) === L.row) { a.y = a.fy = L.row + (L.row > 0 ? -1 : 1); }
+          if (roll()) { N.push('in ' + L.world + ' something else on the street stops the tram with ' + b.name + ' off the rails, so its stop for ' + b.name + ' was not asked'); return; }
+          a.x = a.fx = mid; a.y = a.fy = L.row;
+          asked++;
+          if (!roll()) P.push('the trolley does not stop for ' + b.name + ' on its own line in ' + L.world + ': it drives straight through');
+        } finally { a.x = was.x; a.y = was.y; a.fx = was.fx; a.fy = was.fy; a.lift = was.lift; aside.forEach(c => { c.world = L.world; }); }
       });
-      TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.dir;
+      if (!asked) P.push('the trolley street in ' + L.world + ' has ' + beasts.length + ' animal(s) and the tram\'s stop was asked for none of them, so this passed on nothing');
+      else N.push('the tram\'s stop was asked for each of ' + asked + ' animal(s) on its rails in ' + L.world + ': ' + beasts.map(b => b.name).join(', '));
+      TRO.state = keep.st; TRO.x = keep.x; TRO.dir = keep.dir; TRO.t = keep.t;
       world = keep.w; px = fx = keep.px; py = fy = keep.py;
     });
-    return P;
+    return { P, N };
   });
-  fails.push(...blind);
+  blind.N.forEach(n => console.log('  ANIMALS ON THE RAILS: ' + n));
+  fails.push(...blind.P);
 
   /* ---- a bird already in the air is not something to brake for ----
      The lift exists so the tram does NOT have to stop for her. Lupe measured that it stopped doing
