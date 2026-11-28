@@ -24,7 +24,7 @@
    exist; otherwise nothing is picked and it exits 2, so a new check cannot be skipped without anyone noticing.
    A check that fails is run once more, alone, before it counts as a failure (a busy machine fails some of them). */
 'use strict';
-const fs = require('fs'), path = require('path'), cp = require('child_process');
+const fs = require('fs'), path = require('path'), cp = require('child_process'), os = require('os');
 const ROOT = path.resolve(__dirname, '..');
 const WORKFLOW = '.github/workflows/ci.yml';
 const SELF = 'scripts/pick-checks.js';
@@ -137,11 +137,23 @@ function report(p, changed) {
 }
 
 /* ---------- running them ---------- */
+/* WHAT A RED SAID (2026-11-28, the running findings on faster checks): a red's last three lines were often counted
+   lines, not the red, so finding it cost a rerun of the whole check. The red lines themselves are kept (from the last line
+   that starts with FAIL, seven lines), with the dice's starting number where the check prints one, and the whole output
+   goes to a file outside the repository, named in the report. */
+function redLines(text) {
+  const lines = String(text || '').trim().split('\n').filter(l => !/dbus|^\[pid=/.test(l));
+  const at = lines.map((l, i) => /^\s*FAIL\b/.test(l) ? i : -1).filter(i => i >= 0).pop();
+  const reds = at === undefined ? lines.slice(-3) : lines.slice(at, at + 7);
+  const dice = lines.filter(l => /^\s*THE DICE: the dice started from/.test(l)).slice(-1);
+  return reds.concat(dice.filter(d => !reds.includes(d))).map(l => l.trim()).join(' / ');
+}
 function runAll(cmds, base) {
-  const res = [];
+  const res = [], dir = path.join(os.tmpdir(), 'pick-checks-' + process.pid); let n = 0;
   const once = cmd => { const r = cp.spawnSync('bash', ['-c', cmd.replace(/\{base\}/g, base)], { cwd: ROOT, encoding: 'utf8', timeout: 25 * 60 * 1000, maxBuffer: 1 << 28 });
-    const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').filter(l => !/dbus|^\[pid=/.test(l)).slice(-3).join(' / ');
-    return { code: r.status === null ? 'timed out' : r.status, tail }; };
+    const all = (r.stdout || '') + (r.stderr || ''); let log = null;
+    try { fs.mkdirSync(dir, { recursive: true }); log = path.join(dir, (++n) + '.log'); fs.writeFileSync(log, '$ ' + cmd + '\n' + all); } catch (e) { log = null; }
+    return { code: r.status === null ? 'timed out' : r.status, tail: redLines(all), log }; };
   cmds.forEach(cmd => { process.stderr.write(`running ${cmd}\n`); res.push({ cmd, first: once(cmd) }); });
   res.filter(r => r.first.code !== 0).forEach(r => { process.stderr.write(`again, alone: ${r.cmd}\n`); r.again = once(r.cmd); });
   return res;
@@ -173,8 +185,12 @@ function selftest() {
   ok(guard(CHECKS, wf).length === 0, 'the table has a row for every check the workflow runs: ' + guard(CHECKS, wf).join('; '));
   ok(guard(CHECKS.filter(c => c.self !== 'test/horno.js'), wf).some(s => /test\/horno\.js/.test(s)), 'a check the workflow runs with no row is caught');
   ok(guard(CHECKS.concat([{ self: 'test/no-such-check.js', reads: [] }]), wf).some(s => /no-such-check/.test(s)), 'a row for a file that does not exist is caught');
+  const red = redLines('  THE DICE: the dice started from 7 on every page\nCOUNT-ONLY: one\nFAIL (index.html)\n- the tram drives through the cat\nError: the page closed\n    at one (x.js:1)\n    at two (x.js:2)\n    at three (x.js:3)\n[pid=12][err] dbus noise');
+  ok(/the tram drives through the cat/.test(red), 'a red\'s own line is kept, not only its last lines: ' + red);
+  ok(/started from 7/.test(red), 'the dice\'s starting number is kept with a red: ' + red);
+  ok(/the third/.test(redLines('one\ntwo\nthe third')) && !/FAIL/.test(redLines('one\ntwo\nthe third')), 'a check with no FAIL line keeps its last lines');
   if (fails.length) { console.log('RED — the check picker:\n- ' + fails.join('\n- ')); process.exit(1); }
-  console.log('OK — the check picker: 13 cases, each as it should be.');
+  console.log('OK — the check picker: 16 cases, each as it should be.');
 }
 
 /* ---------- the command line ---------- */
@@ -190,8 +206,8 @@ if (require.main === module) {
   const res = runAll(r.run.map(l => l.split('  — ')[0]), base);
   const failed = res.filter(x => x.first.code !== 0 && (!x.again || x.again.code !== 0));
   console.log(`\n### Checks run by hand (picked by scripts/pick-checks.js against ${base}; every check also runs on GitHub)\n`);
-  res.forEach(x => console.log(`- \`${x.cmd.replace(/\{base\}/g, base)}\`: ${x.first.code === 0 ? 'passed' : x.again && x.again.code === 0 ? `failed (${x.first.code}), then passed run alone` : `FAILED (${x.first.code}${x.again ? `, and again alone: ${x.again.code}` : ''}) — ${(x.again || x.first).tail}`}`));
+  res.forEach(x => console.log(`- \`${x.cmd.replace(/\{base\}/g, base)}\`: ${x.first.code === 0 ? 'passed' : x.again && x.again.code === 0 ? `failed (${x.first.code}), then passed run alone` : `FAILED (${x.first.code}${x.again ? `, and again alone: ${x.again.code}` : ''}) — ${(x.again || x.first).tail}${(x.again || x.first).log ? ` (the whole output: ${(x.again || x.first).log})` : ''}`}`));
   console.log(`\nSkipped (${r.skip.length}):\n- ` + r.skip.join('\n- '));
   process.exit(failed.length ? 1 : 0);
 }
-module.exports = { CHECKS, pick, guard, deps, named };
+module.exports = { CHECKS, pick, guard, deps, named, redLines };
