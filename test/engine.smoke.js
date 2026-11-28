@@ -10507,20 +10507,37 @@ function findChromium() {
     });
     if (!aprons) return P;   /* no apron in this pack: nothing to be roofed by */
 
-    /* ---- AND A WELL IS A HOLE YOU CAN SEE INTO ---- */
-    let well = null;
-    for (let y = 0; y < w.H && !well; y++) for (let x = 0; x < w.W; x++)
-      if (typeof wellDepth === 'function' && wellDepth(w, x, y) > 0) { well = { x, y, d: wellDepth(w, x, y) }; break; }
-    if (!well) return P;     /* this world has no well — say nothing rather than pass for free */
-    /* is anything at all built inside the hole? */
-    let inside = 0;
-    T3.scene.traverse(o => { const u = o.userData || {};
-      if ((u.tread || u.shaft) && u.x === well.x && u.y === well.y) inside++; });
-    if (!inside)
-      P.push('the well at ' + well.x + ',' + well.y + ' is a hole in the floor with nothing built inside it — a player looking down the stairs sees whatever lies beyond the world');
     return P;
   });
   fails.push(...roof);
+
+  /* ---- AND A WELL IS A HOLE YOU CAN SEE INTO, IN EVERY WORLD THAT DIGS ONE ----
+     It asked only the world the page stood in, and most worlds have no well, so it passed on nothing (the owner's confirmed
+     goal of 2026-11-25 on the checks that can find nothing and pass; the sweep found it). Each world that digs a well is now
+     built in 3D and its first well asked; the page is put back as it was after. A shell with no well in any world says so. */
+  const wells = await page.evaluate(() => {
+    const P = [], N = [];
+    if (!window.THREE || typeof T3 === 'undefined' || !T3 || typeof wellDepth !== 'function' || typeof enterWorld !== 'function' || typeof camSet !== 'function') return { P, N: ['the wells were not asked: this shell has no 3D camera or no well seam'] };
+    const withWell = [];
+    Object.keys(WORLDS).forEach(id => { const w = WORLDS[id]; let well = null;
+      for (let y = 0; y < w.H && !well; y++) for (let x = 0; x < w.W; x++) if (wellDepth(w, x, y) > 0) { well = { x, y }; break; }
+      if (well) withWell.push([id, well]); });
+    if (!withWell.length) return { P, N: ['no world in this shell digs a well, so no hole was asked'] };
+    const keep = { world, px, py, fx, fy, dir, cam: camMode };
+    try {
+      withWell.forEach(([id, well]) => {
+        world = id; px = fx = well.x; py = fy = well.y; dir = 'up'; enterWorld(false); camSet('3d');
+        if (typeof draw3d === 'function') draw3d();
+        if (!T3.scene) { P.push('the 3D scene of ' + id + ' was not built, so whether its well at ' + well.x + ',' + well.y + ' is a hole you can see into could not be asked'); return; }
+        let inside = 0;
+        T3.scene.traverse(o => { const u = o.userData || {}; if ((u.tread || u.shaft) && u.x === well.x && u.y === well.y) inside++; });
+        if (!inside) P.push('the well at ' + id + ' ' + well.x + ',' + well.y + ' is a hole in the floor with nothing built inside it — a player looking down the stairs sees whatever lies beyond the world');
+      });
+      N.push('the wells asked, each in its own world built in 3D: ' + withWell.map(([id, wl]) => id + ' (' + wl.x + ',' + wl.y + ')').join(', '));
+    } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; enterWorld(false); camSet(keep.cam); }
+    return { P, N };
+  });
+  fails.push(...wells.P); wells.N.forEach(n => console.log('  THE WELLS: ' + n));
 
   /* ---- NOBODY MAY BE WALLED OUT BY SOMEBODY STANDING (R11) ----
      Open in `docs/REGRESSION.md` since 2026-09-13 and reddening a suite about one run in

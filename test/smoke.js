@@ -5077,11 +5077,17 @@ const CANDIDATES = [
       if (!unshaped.length && !casitaLots.length && !['▩', '▨', '▦'].some(g => TILEDRAW[g]))
         problems.push('no casita face is drawable at all, so the unshaped-lot check measured nothing — that is a red, not a pass');
 
-      if (typeof DECOR !== 'undefined') DECOR.forEach(d => {
+      /* SAID WHEN IT ASKS NONE (the owner's confirmed goal of 2026-11-25 on the checks that can find nothing and pass): no
+         decoration hangs on a shaped wall today, so the real ones below are counted, and none is said by name, not passed. */
+      let decoOnShaped = 0;
+      if (typeof DECOR === 'undefined') problems.push('the engine keeps no list of wall decorations (DECOR), so whether one is buried in a shaped wall could not be asked');
+      else DECOR.forEach(d => {
         const hit = shaped.find(o => o.userData.x === d.x && o.userData.y === d.y && d.world === 'ex');
+        if (hit) decoOnShaped++;
         const r = hit && buries(hit);
         if (r) problems.push('the ' + d.deco + ' at ' + d.x + ',' + d.y + ' is hung 0.505 from the middle of a tile whose ' + hit.userData.g + ' reaches ' + r.toFixed(3) + ': it is inside the wall and nobody will ever see it, and nothing in the engine will say so');
       });
+      problems.push('COUNT-ONLY: BURIED DECOR: ' + (decoOnShaped ? decoOnShaped + ' decoration(s) hang on a shaped wall in ex, each asked whether it is buried' : 'no decoration hangs on a shaped wall in ex today, so no real one was asked (the check proved above that it can go red)'));
 
       // (8) THE ROOF GOES OVER A FRONT DOOR AND NOWHERE ELSE — every door in the game, drawn twice.
       //
@@ -5250,7 +5256,8 @@ const CANDIDATES = [
 
       return problems;
     });
-    fails.push(...casa3d);
+    fails.push(...casa3d.filter(l => !/^COUNT-ONLY: /.test(l)));
+    casa3d.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l.slice(12)));
 
     // every glyph a template can lay is a real, declared, drawable tile
     const gl = await page.evaluate(() => {
@@ -6020,7 +6027,6 @@ const CANDIDATES = [
       // it, so every person with a document stays where the map put them, as before.
       Object.entries(WORLDS).forEach(([id, w]) => w.npcs.forEach(n => { if (n.roams) problems.push(`Meridian station ${n.npc} in ${id} roams — the seam is the town's, not Meridian's`);
         if (n.doc && wanders(n)) problems.push(`Meridian's ${n.npc} carries a document and wanders — a person you look for must be where you left them`); }));
-      const want = {};
       /* the pigeon and the parrot: the engine's own stand nowhere, and the program's stand where the owner put them (mq-v297): the
          pigeon on her square of the street, the parrot a scarlet macaw on his rod out of the office's wall beside its street door,
          facing the door, the wall behind him the thing under him (the owner's confirmed goals of 2026-11-23) */
@@ -6049,17 +6055,22 @@ const CANDIDATES = [
           if (r.world !== 'hq' || r.x !== 12 || r.y !== 5) problems.push('the office dog of the program starts at ' + r.world + ' (' + r.x + ',' + r.y + '), not on his square in the office (hq 12,5)');
           if (r.kind !== 'aussie' || r.tidy !== true || r.leashOnly !== true) problems.push('the office dog of the program is declared ' + JSON.stringify({ kind: r.kind, tidy: r.tidy, leashOnly: r.leashOnly }) + ': an aussie, tidy, leaving the office only on the leash');
           if (g === undefined || SOLID.has(g)) problems.push('the office dog of the program has nothing to stand on at ' + r.world + ' (' + r.x + ',' + r.y + ')'); } }
-      Object.entries(want).forEach(([k, [wid, x, y]]) => {
-        const a = ANI(k); if (!a || a.world !== wid || a.x !== x || a.y !== y) problems.push(`animal ${k} default moved: ${JSON.stringify(a)}`);
-        if (AW(k) !== wid) problems.push(`animal ${k} is not in ${wid}`);
-        const w = WORLDS[wid], g = w.grid[y] && w.grid[y][x];
-        if (g === undefined) problems.push(`animal ${k} is off the map`);
-        else if (k === 'loro') { if (!SOLID.has(g) && !((TILES[g] || {}).lift > 0)) problems.push(`the parrot has nothing under him at ${wid} (${x},${y}): "${g}"`); }
-        else if (SOLID.has(g)) problems.push(`animal ${k} stands in a wall at ${wid} (${x},${y}): "${g}"`);
-      });
+      /* EVERY ANIMAL OF THE PROGRAM (the owner's confirmed goal of 2026-11-25 on the checks that can find nothing and pass): the
+         engine's own animals stand nowhere here (asked one by one above), so the table of their places this loop used to walk
+         was empty and it asked nothing. It walks every animal the game declares now: each starts on the map, the parrot on a
+         wall or a perch, every other animal on ground it can stand on. A game that declares no animal at all is a red. */
+      const decl = typeof CRITTERS !== 'undefined' && Array.isArray(CRITTERS) ? CRITTERS : [];
+      if (!decl.length) problems.push('Meridian declares no animal at all in its CRITTERS, so where its animals start could not be asked');
+      decl.forEach(c => { const who = (c.name || c.kind) + ' (' + c.kind + ')', w = WORLDS[c.world], g = w && w.grid[c.y] && w.grid[c.y][c.x];
+        if (!w) problems.push(`the animal ${who} starts in ${c.world}, which is no world`);
+        else if (g === undefined) problems.push(`the animal ${who} starts off the map at ${c.world} (${c.x},${c.y})`);
+        else if (c.kind === 'loro') { if (!SOLID.has(g) && !((TILES[g] || {}).lift > 0)) problems.push(`the parrot ${who} has nothing under him at ${c.world} (${c.x},${c.y}): "${g}"`); }
+        else if (SOLID.has(g)) problems.push(`the animal ${who} starts in a wall at ${c.world} (${c.x},${c.y}): "${g}"`); });
+      problems.push('COUNT-ONLY: ANIMALS WHERE THEY START: ' + decl.length + ' animal(s) the game declares, each asked to start on the map and on something it can stand on');
       return problems;
     });
-    fails.push(...r1);
+    fails.push(...r1.filter(l => !/^COUNT-ONLY: /.test(l)));
+    r1.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l.slice(12)));
   }
   // ---- R5: every document a quest hands over exists, builds, and names a real template ----
   {
