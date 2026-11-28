@@ -80,6 +80,7 @@ and only he approves a deploy to the live site.
 ## 5 · The craft lives in skill files
 
 `.claude/skills/` holds the working methods, each learned the hard way: `guard` before you write any
-test, `shapes` and `shaping` before you draw, `stairs` before a door or a floor. Read the one for your
+test, `shapes` and `shaping` before you draw, `stairs` before a door or a floor, `check-speed` before you
+make a check faster. Read the one for your
 task first. The personas in `.claude/agents/` are reviewers with one job each; their files also mention
 notes that live on the private side, which you will not find here.
