@@ -2135,6 +2135,7 @@ const CANDIDATES = [
         const pb = (S.art.papelBridge || []).map(h => h.toLowerCase());
         if (S.art.papel && !pb.length) problems.push('the bridge has no marigold palette for its papel picado (papelBridge)');
         const bf = T3.group.children.filter(o => o.userData && o.userData.papel && o.userData.flag);
+        if (pb.length && !bf.length) problems.push('the season gives the bridge a marigold palette for its papel picado, and no papel picado hangs over the bridge in 3D');   /* the sweep of 2026-11-25: silent */
         if (pb.length && bf.length && !bf.every(f => (f.userData.pal || []).map(h => h.toLowerCase()).join() === pb.join())) problems.push('the papel picado over the bridge is not cut from the marigold palette');
         Object.entries(per).forEach(([c, n]) => { if (!n) problems.push('the ' + c + ' camera never spills petals onto the ground around the bridge'); });
         if (!trails) problems.push('the top and front cameras never draw the trail');
@@ -7004,7 +7005,8 @@ const CANDIDATES = [
      stone in one camera; this reads the sweet, the pane and the ledge together in the other. */
   const frontSill = await page.evaluate(() => {
     const P = [];
-    if (typeof SEASONS === 'undefined' || typeof seasonSet !== 'function' || typeof drawSillBox !== 'function' || typeof draw !== 'function') return P;
+    if (typeof SEASONS === 'undefined' || typeof seasonSet !== 'function' || typeof drawSillBox !== 'function' || typeof draw !== 'function') { const gone = Object.entries({ SEASONS: typeof SEASONS, seasonSet: typeof seasonSet, drawSillBox: typeof drawSillBox, draw: typeof draw }).filter(([k, t]) => k === 'SEASONS' ? t === 'undefined' : t !== 'function').map(([k]) => k);
+      P.push('the engine has no ' + gone.join(', ') + ', so the front camera\'s sill box could not be asked'); return P; }   /* the sweep of 2026-11-25: silent */
     const keep = { w: world, px: px, py: py, cam: camMode, season: (typeof seasonNow === 'function' ? seasonNow() : null) };
     let prop = null;
     for (const k of Object.keys(SEASONS)) { seasonSet(k);

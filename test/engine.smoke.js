@@ -1533,7 +1533,9 @@ function findChromium() {
     kErr.forEach(m => say('the page threw: ' + m.split('\n')[0]));
     await kp.close();
     fails.push(...S8.map(m => 'the kitchen room, the closet and the tools (sprint 8a): ' + m));
-    if (process.env.MQ_ONLY_8A) { if (fails.length) { console.log('FAIL (8a only)\n- ' + fails.join('\n- ')); process.exit(1); } console.log('OK (8a only)'); process.exit(0); }
+    if (process.env.MQ_ONLY_8A) { const { settle } = require('./has.js'), st = fails.map(l => settle(GAMEOF, l)), red = st.filter(l => !/^COUNT-ONLY: /.test(l));   /* an absence is settled here too, against the list */
+      st.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+      if (red.length) { console.log('FAIL (8a only)\n- ' + red.join('\n- ')); process.exit(1); } console.log('OK (8a only)'); process.exit(0); }
   }
 
   /* ---- THE SIGNS OVER THE KITCHEN'S PLACES (sprint 8b of the 3D kitchen) ----
@@ -1905,7 +1907,9 @@ function findChromium() {
       console.log('  COUNT-ONLY: the signs: counts per place (none for nothing due, past-only, day 31, undated), at a laptop, full screen and a phone, shrinking to the count, hidden while picked, open or paneled, the narrowed panel and its order, keys, the flat cameras, both languages');
     } catch (e) { if (e === 'SKIP8B') console.log('  COUNT-ONLY: this is a small fixture shell, so the signs were not asked here'); else say('the signs could not be driven to the end: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' ')); }
     fails.push(...S8B.map(m => 'the kitchen\'s signs (sprint 8b): ' + m));
-    if (process.env.MQ_ONLY_8B) { if (fails.length) { console.log('FAIL (8b only)\n- ' + fails.join('\n- ')); process.exit(1); } console.log('OK (8b only)'); process.exit(0); }
+    if (process.env.MQ_ONLY_8B) { const { settle } = require('./has.js'), st = fails.map(l => settle(GAMEOF, l)), red = st.filter(l => !/^COUNT-ONLY: /.test(l));   /* an absence is settled here too, against the list */
+      st.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
+      if (red.length) { console.log('FAIL (8b only)\n- ' + red.join('\n- ')); process.exit(1); } console.log('OK (8b only)'); process.exit(0); }
   }
 
 
@@ -7581,7 +7585,7 @@ function findChromium() {
     return { P, out };
   });
   merCats.out.forEach(l => console.log('  CATS: ' + l));
-  fails.push(...merCats.P.map(m => 'the cats: ' + m));
+  fails.push(...merCats.P.map(m => /^ABSENT [a-z][a-z0-9-]*: /.test(m) ? m : 'the cats: ' + m));   /* an absence keeps its head, so the list can settle it */
 
   /* ---- THE CATS, ROUND TWO (mq-v299; the owner's confirmed goals of 2026-11-24 on the cats' second round) ----
      What he asked: every cat a kitten of his photographs, card and body together (approved in pictures), and two poses, each a
