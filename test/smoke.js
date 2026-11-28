@@ -113,6 +113,8 @@ const CANDIDATES = [
   const index = 'file://' + path.resolve(__dirname, '..', 'index.html');
   await page.goto(index);
   await page.waitForTimeout(1200);
+  /* this game's name, for the list of what each game has (test/has.js) */
+  const GAMEOF = await page.evaluate(() => typeof GAMENAME === 'string' ? GAMENAME : '');
   { const st = await page.evaluate(() => typeof DICE === 'object' && DICE ? DICE.start : null);   /* the run's number reached the page, so a red can be played again */
     if (st !== DICESEED) fails.push('the dice on the first page started from ' + st + ', not from this run\'s ' + DICESEED + ', so a red here could not be played again from the same dice'); }
 
@@ -6347,14 +6349,16 @@ const CANDIDATES = [
   const shy = await page.evaluate(() => {
     const P = [];
     const lines = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT) ? TROLLEYAT : [];
-    if (!lines.length || typeof CRIT === 'undefined' || typeof critUpdate !== 'function') return P;
+    if (!lines.length) { P.push('ABSENT trolley: no animal was asked to leave the rails before the tram brakes (the shy rule)'); return P; }
+    if (typeof CRIT === 'undefined' || typeof critUpdate !== 'function') { P.push('the engine has no animals to step (CRIT or critUpdate is missing), so the shy rule could not be asked'); return P; }
+    let askedShy = 0;   /* the sweep of 2026-11-25: with no animal on a trolley street the loop ran no times and passed */
     lines.forEach(L => {
-      const w = WORLDS[L.world]; if (!w) return;
+      const w = WORLDS[L.world]; if (!w) { P.push('the trolley line names the world ' + L.world + ', which does not exist, so the shy rule could not be asked there'); return; }
       const mid = Math.round((L.from + L.to) / 2);
       const g = w.grid[L.row] && w.grid[L.row][mid];
       if (g === undefined || SOLID.has(g) || g === 'N') return;   /* nothing could stand there anyway */
       /* a parrot on his perch lives on a wall, never on the ground, so he is not asked (mq-v297) */
-      CRIT.filter(c => c.world === L.world && !c.perch).forEach(cr => {
+      CRIT.filter(c => c.world === L.world && !c.perch).forEach(cr => { askedShy++;
         /* every OTHER animal held still too, as the note above says, so the one asked is the only thing that can move: the pigeon
            lives in the program from mq-v297, and wandering onto the rails while the butterfly was asked she made the tram brake */
         const others = CRIT.filter(c => c !== cr).map(c => [c, c.next]); others.forEach(([c]) => { c.next = 1e9; });
@@ -6388,6 +6392,7 @@ const CANDIDATES = [
         others.forEach(([c, n]) => { c.next = n; });
       });
     });
+    if (!askedShy) P.push('ABSENT animals-by-the-trolley: no animal was asked to leave the rails before the tram brakes (the shy rule)');
     return P;
   });
   fails.push(...shy);
@@ -6550,9 +6555,9 @@ const CANDIDATES = [
      Driven through troTick, which is the function loop() calls, so this is the shipped path. */
   const paseo = await page.evaluate(() => {
     const P = [];
-    if (typeof RIDE === 'undefined' || typeof troTick !== 'function' ||
-        typeof TRV === 'undefined' || TRV.length < 2) return P;
-    const L = troLine(TRV[0].w); if (!L) return P;
+    if (typeof RIDE === 'undefined' || typeof troTick !== 'function') { P.push('the engine has no trolley ride (RIDE or troTick is missing), so riding it could not be asked'); return P; }
+    if (typeof TRV === 'undefined' || TRV.length < 2) { P.push('ABSENT trolley: the ride was not asked (it needs two destinations)'); return P; }
+    const L = troLine(TRV[0].w); if (!L) { P.push('the trolley\'s first destination, ' + TRV[0].w + ', has no line, so the ride could not be asked'); return P; }
     const here = TRV[0], there = TRV.find(t => t.w !== here.w);
     const keep = { w: world, px: px, py: py, st: TRO.state, x: TRO.x };
     world = here.w; px = fx = here.x; py = fy = here.y; moving = false;
@@ -6606,8 +6611,9 @@ const CANDIDATES = [
      it is invisible unless you hold something on the rails on purpose, which is what this does. */
   const trapped = await page.evaluate(() => {
     const P = [];
-    if (typeof RIDE === 'undefined' || typeof TRV === 'undefined' || TRV.length < 2) return P;
-    const L = troLine(TRV[0].w); if (!L) return P;
+    if (typeof RIDE === 'undefined') { P.push('the engine has no trolley ride (RIDE is missing), so whether you can walk off it could not be asked'); return P; }
+    if (typeof TRV === 'undefined' || TRV.length < 2) { P.push('ABSENT trolley: whether you can walk off the ride was not asked (it needs two destinations)'); return P; }
+    const L = troLine(TRV[0].w); if (!L) { P.push('the trolley\'s first destination, ' + TRV[0].w + ', has no line, so whether you can walk off the ride could not be asked'); return P; }
     const here = TRV[0], there = TRV.find(t => t.w !== here.w);
     const keep = { w: world, px: px, py: py, st: TRO.state, x: TRO.x,
                    dx: typeof DOG !== 'undefined' ? DOG.x : 0, dy: typeof DOG !== 'undefined' ? DOG.y : 0,
@@ -7027,11 +7033,31 @@ const CANDIDATES = [
      commonest wrong guard in this repo — but blank the one painter and read what the plan lost,
      and plant a world with NOBODY waiting, which must lose nothing. Every plant is on real state
      (a quest id taken out of `done` and put back), never on a stub. */
+  /* ---- THE TRAM'S OWN WINDOWS (the sweep of 2026-11-25: a tram with no windows was green). Meridian draws its own tram
+     body (TILEART_MESH["prop:tram"]), so the engine builds no windows of its own and counts none; the windows are parts of
+     the drawing. Read off the drawing's own parts: a window pane is a box a hand's breadth thin, taller than a rail, standing
+     at a side; the tram needs panes along both long sides and at both ends, or from some side it is a closed box. ---- */
+  const panes = await page.evaluate(() => {
+    const P = [];
+    const mk = typeof TILEART_MESH !== 'undefined' && TILEART_MESH ? TILEART_MESH['prop:tram'] : null;
+    if (!mk) { P.push('ABSENT trolley: the tram\'s own windows were not asked (this game draws no tram body of its own)'); return P; }
+    let parts; try { parts = typeof mk === 'function' ? mk({ x: 0, y: 0 }) : mk; } catch (e) { P.push('drawing the tram\'s body threw (' + e.message + '), so its windows could not be asked'); return P; }
+    if (!Array.isArray(parts) || !parts.length) { P.push('the tram\'s body has no parts, so its windows could not be asked'); return P; }
+    const box = parts.filter(p => p && p.s === 'box' && p.h >= 0.1);
+    const side = sg => box.filter(p => p.d <= 0.03 && p.z * sg >= 0.3).length, end = sg => box.filter(p => p.w <= 0.03 && p.x * sg >= 0.4).length;
+    const n = { north: side(-1), south: side(1), west: end(-1), east: end(1) };
+    Object.entries(n).forEach(([k, v]) => { if (!v) P.push('the tram\'s body has no window on its ' + k + ' face (no thin pane there), so from that side it is a closed box'); });
+    P.push('COUNT-ONLY: THE TRAM\'S OWN WINDOWS: ' + n.north + ' and ' + n.south + ' panes along its sides, ' + n.west + ' and ' + n.east + ' at its ends');
+    return P;
+  });
+  fails.push(...panes.filter(l => !/^COUNT-ONLY: /.test(l))); panes.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l.slice(12)));
+
   const plan = await page.evaluate(() => {
     const P = [];
     if (typeof planMarks !== 'function' || typeof drawPlanMarks !== 'function')
       { P.push('the plan carries nothing about who is waiting: planMarks()/drawPlanMarks() do not exist (#160)'); return P; }
-    if (typeof drawTown !== 'function' || typeof MAPDOT === 'undefined') return P;
+    if (typeof drawTown !== 'function') { P.push('the engine has no town plan painter (drawTown), so who is waiting could not be asked on the plan'); return P; }
+    if (typeof MAPDOT === 'undefined' || !Object.keys(MAPDOT).length) { P.push('ABSENT map-spots: the plan was not asked to mark who is waiting'); return P; }
     const c = document.getElementById('mapcv'), g = c.getContext('2d'), s = 10;
     const shot = () => { drawTown(); return g.getImageData(0, 0, c.width, c.height).data; };
     const box = (buf, tx, ty) => { /* the pixels of ONE tile, by tile coords */
@@ -7180,6 +7206,9 @@ const CANDIDATES = [
 
   console.log('  NOTE: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
   if (refused.length) fails.push('the browser refused ' + refused.length + ' thing(s) this page asked for under its own policy (#254) — silent to a player, so a red here: ' + [...new Set(refused)].slice(0, 3).join(' | '));
+  /* WHAT EACH GAME HAS (test/has.js): an ABSENT line is a red where this game has the thing, a counted line where not */
+  { const { settle } = require('./has.js'), settled = fails.map(l => settle(GAMEOF, l));
+    fails.length = 0; settled.forEach(l => { if (/^COUNT-ONLY: /.test(l)) console.log('  ' + l.slice(12)); else fails.push(l); }); }
   if (fails.length) { console.log('  THE DICE: ' + diceSays()); console.log('FAIL\n- ' + fails.join('\n- ')); process.exit(1); }
   console.log(`OK — ${stat.quests} quests, maxXP ${stat.maxXP}, all invariants hold.`);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
