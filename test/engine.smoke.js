@@ -10514,8 +10514,15 @@ function findChromium() {
   /* ---- AND A WELL IS A HOLE YOU CAN SEE INTO, IN EVERY WORLD THAT DIGS ONE ----
      It asked only the world the page stood in, and most worlds have no well, so it passed on nothing (the owner's confirmed
      goal of 2026-11-25 on the checks that can find nothing and pass; the sweep found it). Each world that digs a well is now
-     built in 3D and its first well asked; the page is put back as it was after. A shell with no well in any world says so. */
-  const wells = await page.evaluate(() => {
+     built in 3D, in a page of its own, and its first well asked. A shell with no well in any world says so. */
+  /* in a page of its own, opened for this and closed after: building another world means entering it, and the page the
+     rest of this file reads has never entered the world (the world's buttons are measured against that layout below) */
+  const wells = await (async () => {
+    const wp = await browser.newPage({ viewport: { width: 480, height: 900 } });
+    try {
+      await wp.route('**', r => r.request().url().startsWith('file://') ? r.continue() : r.abort());
+      await wp.goto('file://' + file); await boot(wp);
+      return await wp.evaluate(() => {
     const P = [], N = [];
     if (!window.THREE || typeof T3 === 'undefined' || !T3 || typeof wellDepth !== 'function' || typeof enterWorld !== 'function' || typeof camSet !== 'function') return { P, N: ['the wells were not asked: this shell has no 3D camera or no well seam'] };
     const withWell = [];
@@ -10536,7 +10543,9 @@ function findChromium() {
       N.push('the wells asked, each in its own world built in 3D: ' + withWell.map(([id, wl]) => id + ' (' + wl.x + ',' + wl.y + ')').join(', '));
     } finally { world = keep.world; px = keep.px; py = keep.py; fx = keep.fx; fy = keep.fy; dir = keep.dir; enterWorld(false); camSet(keep.cam); }
     return { P, N };
-  });
+      });
+    } finally { await wp.close(); }
+  })();
   fails.push(...wells.P); wells.N.forEach(n => console.log('  THE WELLS: ' + n));
 
   /* ---- NOBODY MAY BE WALLED OUT BY SOMEBODY STANDING (R11) ----
