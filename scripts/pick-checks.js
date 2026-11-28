@@ -57,9 +57,9 @@ const CHECKS = [
   { self: 'test/bump.js', run: 'node test/bump.js {base}', quick: true, reads: ['engine/', 'content/meridian/config.js', 'content/horno/config.js', 'content/gauge/', 'sw.js'] },
   /* --ci reads what the workflow hands it; by hand it is told it is a pull request into main, as GitHub would tell it */
   { self: 'test/prims.js', run: 'EVENT=pull_request BASE_REF=main node test/prims.js --ci', selftest: 'node test/prims.js --selftest', reads: ['content/meridian/', 'content/horno/', 'engine/engine3d.js', 'engine/shapes.js', 'vendor/'] },
-  { self: 'test/smoke.js', run: 'node test/smoke.js', reads: ['content/meridian/'].concat(GAME) },
+  { self: 'test/smoke.js', run: 'node test/smoke.js', reads: ['content/meridian/', 'test/has.js'].concat(GAME) },
   { self: 'test/kitchen-seams.js', run: 'node test/kitchen-seams.js', reads: GAME },
-  { self: 'test/engine.smoke.js', run: 'node test/engine.smoke.js --index index.html', reads: ['content/', 'docs/REGRESSION.md'].concat(GAME) },
+  { self: 'test/engine.smoke.js', run: 'node test/engine.smoke.js --index index.html', reads: ['content/', 'docs/REGRESSION.md', 'test/has.js'].concat(GAME) },
   { self: 'test/gauge.js', run: 'node test/gauge.js --world plain && node test/gauge.js --world 3d && node test/gauge.js --world lib', reads: ['content/gauge/', 'content/meridian/'].concat(GAME) },
   { self: 'test/horno.js', run: 'node test/horno.js', reads: ['content/horno/', 'content/meridian/'].concat(GAME) },
   { self: 'test/offline.js', run: 'node test/offline.js', reads: ['content/horno/', 'content/meridian/'].concat(GAME) },

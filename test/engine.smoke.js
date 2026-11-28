@@ -137,6 +137,13 @@ function findChromium() {
      after boot (measured on the library shell: 12 of 12 against 13 of 13). This sleep is the time passing, so it stays. */
   await page.waitForTimeout(1500);
   let fails = [];
+  /* this game's name, for the list of what each game has (test/has.js), read while the page is open */
+  const GAMEOF = await page.evaluate(() => typeof GAMENAME === 'string' ? GAMENAME : '');
+  /* ...and the list is held to the game: a thing the list says this game has none of, and the game has, is a red, so the
+     list cannot go stale and let a check say "has none" of something that is there */
+  { const { has } = require('./has.js');
+    const here = await page.evaluate(() => ({ trolley: typeof TROLLEYAT !== 'undefined' && Array.isArray(TROLLEYAT) && TROLLEYAT.length > 0 }));
+    Object.keys(here).forEach(k => { if (has(GAMEOF, k) === false && here[k]) fails.push('the list of what each game has (test/has.js) says ' + (GAMEOF || 'this game') + ' has no ' + k + ', and it has one: mend the list'); }); }
   { const st = await page.evaluate(() => typeof DICE === 'object' && DICE ? DICE.start : null);   /* the run's number reached the page, so a red can be played again */
     if (st !== DICESEED) fails.push('the dice on the first page started from ' + st + ', not from this run\'s ' + DICESEED + ', so a red here could not be played again from the same dice'); }
   let r = null;   /* the first section's findings and the letters still flat, read again by the closing line */
@@ -10857,7 +10864,8 @@ function findChromium() {
         P.push('a destination ' + nm + ' of the hero puts the bearing at ' + Math.round(L) + '%,' + Math.round(T) +
           '% of the screen and it belongs at ' + wx + '%,' + wy + '% — the arrow is pointing somewhere the place is not');
       const rot = /rotate\(([-\d.]+)deg\)/.exec(document.getElementById('bearTip').style.transform || '');
-      if (rot) { const rr = ((+rot[1] % 360) + 360) % 360, ee = ((deg[nm] % 360) + 360) % 360;
+      if (!rot) P.push('the arrowhead\'s turn could not be read (no rotate() on it), so whether it points due ' + nm + ' was not asked');   /* the sweep of 2026-11-25: it was never asked then */
+      else { const rr = ((+rot[1] % 360) + 360) % 360, ee = ((deg[nm] % 360) + 360) % 360;
         if (Math.min(Math.abs(rr - ee), 360 - Math.abs(rr - ee)) > 12)
           P.push('the arrowhead is turned ' + Math.round(rr) + '° for a destination due ' + nm + ', and due ' + nm + ' is ' + ee + '°'); }
       const a = el.getBoundingClientRect(), v = vp.getBoundingClientRect();
@@ -11661,7 +11669,7 @@ function findChromium() {
       for (const touch of [false, true]) {
         const { ctx, p } = await pageT(390, 844, touch), how = touch ? 'tap' : 'click'; fingerPx = touch ? FINGER : 0;
         if (!await begin(p)) { MP.push('the game did not start, so a ' + how + ' on the map\'s markers was not asked about — nothing to measure is not a pass'); await ctx.close(); continue; }
-        if (await p.evaluate(() => typeof markKinds === 'function' && !markKinds().length)) { await ctx.close(); break; }   /* a game that marks nobody has nothing to click (the gauge, El Horno) */
+        if (await p.evaluate(() => typeof markKinds === 'function' && !markKinds().length)) { MP.push('ABSENT map-markers: a click or tap on every marker of the map, at seven sizes, was not asked'); await ctx.close(); break; }   /* a game that marks nobody has nothing to click (the gauge, El Horno), and says so */
         await p.evaluate(MAPHELP());
         await p.evaluate(() => { if (typeof CHAPTERS !== 'undefined' && Array.isArray(CHAPTERS) && typeof applyGrowth === 'function') { done.clear(); chSeen = CHAPTERS.length; applyGrowth(); } });
         for (const [w, h, size, tapToo, full] of SIZES) {
@@ -12086,6 +12094,7 @@ function findChromium() {
           }
         }
       }
+      else MP.push('ABSENT interview-room: a room\'s questions were not asked to show as a marker at its door until answered');   /* the sweep of 2026-11-25: silent */
       await ctx.close();
     }
 
@@ -14995,10 +15004,10 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const P = [];
     if (typeof troLine !== 'function' || !troLine('' + (typeof PL !== 'undefined' ? PL.street : ''))) {
       const any = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT.length) ? TROLLEYAT[0] : null;
-      if (!any) return P;                       /* this game has no trolley; nothing to hold to account */
+      if (!any) { P.push('ABSENT trolley: the trolley was not measured as a vehicle (taller than a door, wheels on the road, one driver, windows all round)'); return P; }
     }
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
-    if (!L) return P;
+    if (!L) { P.push('ABSENT trolley: the trolley was not measured as a vehicle (taller than a door, wheels on the road, one driver, windows all round)'); return P; }
     if (typeof T3 === 'undefined' || !window.THREE) {   /* the tram is measured in the 3D scene, and this shell has none */
       P.push('COUNT-ONLY: this shell declined 3D, so the trolley was not measured in the scene');
       return P; }
@@ -15080,7 +15089,14 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       /* and it must read as a tram from every stop you can turn the camera to, not just the two
          long sides — six window slabs at z=±0.37 left a bare brown slab at 90 degrees */
       let faces = 0; T3.tram.traverse(o => { if ((o.userData || {}).glazing) faces++; });
-      if (faces && faces < 3 * N) P.push('the trolley only has windows on its long sides, so from a quarter turn it is a blank brown brick');
+      /* the engine builds the windows only for a tram it builds itself; a game that draws its own (prop:tram) carries its
+         windows in its own parts, merged into its body, and they are asked of that game's own parts by its own check
+         (Meridian's in test/smoke.js, grep "THE TRAM'S OWN WINDOWS"). A tram the engine built with no window was green
+         until the sweep of 2026-11-25 */
+      const ownBody = (T3.tramBodies || []).length > 0;
+      if (ownBody) P.push('COUNT-ONLY: this game draws its own trolley body, so its windows are its own parts and are asked by its own check, not counted here');
+      else if (!faces) P.push('the trolley has no window at all (no part of it is glazing), so it is a closed brown box from every side');
+      else if (faces < 3 * N) P.push('the trolley only has windows on its long sides, so from a quarter turn it is a blank brown brick');
     }
     TRO.state = bs; TRO.x = bx; world = bw; camSet(bc); sizeCanvas();
     document.getElementById('world').hidden = true;
@@ -15186,7 +15202,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   const onRoof = await byCard(page, 'the hero over the trolley\'s roof', () => page.evaluate(() => {   /* his card, as he is seen from afar, where a world takes his body (2026-11-14) */
     const P = [];
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
-    if (!L) return P;
+    if (!L) { P.push('ABSENT trolley: a person behind the trolley at its stop was not asked to be seen through it'); return P; }
     if (typeof T3 === 'undefined' || !window.THREE) { P.push('COUNT-ONLY: this shell declined 3D, so the trolley was not measured in the scene'); return P; }
     const s = troStops(L)[0], w = WORLDS[L.world];
     if (!s || !w) { P.push('COUNT-ONLY: the first trolley line declares no stop, so nobody can wait for it'); return P; }
@@ -15258,8 +15274,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   const flatTurn = await page.evaluate(() => {
     const P = [];
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
-    if (!L) return P;
-    const w = WORLDS[L.world]; if (!w) return P;
+    if (!L) { P.push('ABSENT trolley: the trolley was not asked to be painted in its row\'s turn in the front and slanted cameras'); return P; }
+    const w = WORLDS[L.world]; if (!w) { P.push('the trolley line names the world ' + L.world + ', which does not exist, so its turn in the front and slanted cameras could not be asked'); return P; }
     const cams = (typeof CAMS === 'undefined' ? ['front', 'iso'] : ['front', 'iso'].filter(c => CAMS.indexOf(c) >= 0));
     if (!cams.length) { P.push('COUNT-ONLY: this shell has neither a front nor an isometric camera'); return P; }
     const open = (x, y) => y >= 0 && y < w.H && x >= 0 && x < w.W && !SOLID.has(w.rows[y][x]) && w.grid[y][x] !== 'N';
@@ -16005,8 +16021,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
     const P = [];
     if (typeof troCars !== 'function' || typeof troSpan !== 'function') { P.push('this engine cannot be asked how many cars a trolley line runs — `cars:` is a word with no reader'); return P; }
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
-    if (!L) return P;
-    const w = WORLDS[L.world]; if (!w) return P;
+    if (!L) { P.push('ABSENT trolley: how many cars the trolley runs was not asked'); return P; }
+    const w = WORLDS[L.world]; if (!w) { P.push('the trolley line names the world ' + L.world + ', which does not exist, so how many cars it runs could not be asked'); return P; }
     const keep = { w: world, px, py, cam: camMode, st: TRO.state, x: TRO.x, d: TRO.dir, cars: ('cars' in L) ? L.cars : undefined };
     const one = troSpan(L);
     if (troCars(L) !== 1 || one !== 2) { P.push('COUNT-ONLY: this game already declares a train, so the one-car baseline could not be taken'); }
@@ -16089,7 +16105,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
   const troCams = await page.evaluate(() => {
     const P = [];
     const L = (typeof TROLLEYAT !== 'undefined' && TROLLEYAT && TROLLEYAT[0]) ? TROLLEYAT[0] : null;
-    if (!L) return P;
+    if (!L) { P.push('ABSENT trolley: the trolley was not asked to be drawn in the top, front and slanted cameras'); return P; }
     const bw = world, bc = camMode, bs = TRO.state, bx = TRO.x;
     document.getElementById('world').hidden = false; world = L.world;
     TRO.state = 'run'; TRO.x = L.from + 1;
@@ -23194,6 +23210,9 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
      "21 portals declared", "3D declined". They exist so a zero is visible instead of silent
      (the owner asked for smarter guards rather than more notes), and
      they are printed rather than failed. One filter at the end, so a new check cannot forget one. */
+  /* WHAT EACH GAME HAS (test/has.js): a check that found none of a thing said so as an ABSENT line; settled here against the
+     list, a red where this game has the thing and a counted line where it has none or is not on the list */
+  { const { settle } = require('./has.js'); fails = fails.map(l => settle(GAMEOF, l)); }
   fails.filter(l => /^COUNT-ONLY: /.test(l)).forEach(l => console.log('  ' + l));
   fails = fails.filter(l => !/^COUNT-ONLY: /.test(l));
   console.log('  COUNT-ONLY: ' + (watchPolicy.n || 0) + ' page(s) opened by this file, every one watched for a refusal under the page\'s own policy');
