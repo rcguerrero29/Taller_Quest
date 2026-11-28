@@ -142,7 +142,7 @@ const CANDIDATES = [
          panel's bottom now */
       const beat = async () => { for (let i = 0; i < 2; i++) await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 300); }); };
       const bl = (typeof BUILDS !== 'undefined' ? BUILDS : []).find(b => b.tpl === 'barberia'), who = GRW().barberNpc;
-      if (!bl || !who) return problems;
+      if (!bl || !who) { problems.push('this game has no barber' + (bl ? '' : '\'s shop') + ' (a BUILDS row with the barbería template, and the barber the growth table names), so the barber\'s chair could not be asked'); return problems; }   /* the sweep of 2026-11-25: silent */
       const keep = { world, px, py, season: seasonPick };
       seasonSet('muertos');
       const rm = WORLDS[bl.id], n = rm && rm.npcs.find(x => x.npc === who);
@@ -189,6 +189,7 @@ const CANDIDATES = [
           n.q = hadQ; checkTalk();
         }
       }
+      else problems.push('the barber ' + who + ' does not stand in his shop, ' + bl.id + ', so the barber\'s chair could not be asked');   /* the sweep of 2026-11-25: silent */
       seasonSet(keep.season || 'auto'); world = keep.world; px = fx = keep.px; py = fy = keep.py;
       return problems;
     });
@@ -2054,7 +2055,14 @@ const CANDIDATES = [
     if (typeof art !== 'function' || typeof seasonNow !== 'function' || typeof seasonSet !== 'function') {
       problems.push('the season seam (art / seasonNow / seasonSet) is missing'); return problems; }
     if (typeof SEASONS === 'undefined' || !Object.keys(SEASONS).length) { problems.push('the pack declares no SEASONS'); return problems; }
-    const [id, S] = Object.entries(SEASONS)[0];
+    /* THE FIESTA'S SEASON, found by what it hangs, not by its place in the list (the sweep of 2026-11-25: with the first
+       season asked, a season added ahead of it, or the dressing moved, made the petal bridge and the fiesta pass on nothing) */
+    const seasonsAll = Object.entries(SEASONS), hangs = v => v && v.art && (v.art.swags || v.art.bridgeStyle === 'petals');
+    const [id, S] = seasonsAll.find(([, v]) => hangs(v)) || seasonsAll[0];
+    if (!seasonsAll.some(([, v]) => v && v.art && v.art.swags)) problems.push('no season of this game hangs papel picado (art.swags), so the fiesta dressing could not be asked');
+    else if (!(S.art && S.art.swags)) problems.push('the papel picado hangs in a season other than the petal bridge\'s, so the fiesta dressing was not asked');
+    if (!seasonsAll.some(([, v]) => v && v.art && v.art.bridgeStyle === 'petals')) problems.push('no season of this game fills the bridge with petals, so the petal bridge could not be asked');
+    else if (!(S.art && S.art.bridgeStyle === 'petals')) problems.push('the petal bridge is in a season other than the papel picado\'s, so the petal bridge was not asked');
     const pick0 = seasonPick;
     // off: the fallback is what you get, and the bridge paints its year-round bands
     seasonSet('off');
@@ -4206,15 +4214,16 @@ const CANDIDATES = [
     // 3D: the mural becomes a real object on the wall it is painted on
     const d3 = await page.evaluate(async () => {
       if (typeof T3 === 'undefined' || !T3 || T3.fail) return null;
-      const d = DECOS.find(x => x.world === 'st'); if (!d) return { none: true };
+      const d = DECOS.find(x => x.world === 'st'); if (!d) return { none: 'the street has no mural, so the mural in 3D could not be asked' };
       camSet('3d'); world = 'st'; px = fx = d.x; py = fy = Math.min(d.y + 3, WORLDS.st.H - 2);
       moving = false; held = null;
       await new Promise(r => setTimeout(r, 800));
-      if (!T3.group) return { none: true };
+      if (!T3.group) return { none: 'the 3D camera built no scene on the street, so the mural in 3D could not be asked' };
       let hit = null; T3.group.traverse(o => { if (o.userData && o.userData.deco) hit = { deco: o.userData.deco, y: +o.position.y.toFixed(2), isSprite: o.isSprite === true }; });
       return { hit, onSolid: SOLID.has(WORLDS.st.grid[d.y][d.x]) };
     });
-    if (d3 && !d3.none) {
+    if (d3 && d3.none) fails.push(d3.none);   /* the sweep of 2026-11-25: silent */
+    else if (d3) {
       if (!d3.hit) fails.push('decor is still missing from 3D — the camera the game boots into');
       else if (d3.onSolid && d3.hit.isSprite) fails.push('a mural on a wall became a billboard instead of paint on the wall');
     }
@@ -6670,11 +6679,11 @@ const CANDIDATES = [
         const q = (typeof fiestaProps === 'function' ? fiestaProps(wid) : []).find(r => r.sill && r.kind === 'calaverita');
         if (q) { dressed = k; prop = { ...q, world: wid }; break; } }
       if (prop) break; }
-    if (!prop) { seasonSet(keep.season); return P; }   /* this pack hangs nothing on a sill */
+    if (!prop) { seasonSet(keep.season); P.push('ABSENT sill-skulls: no season puts a sugar skull on a window sill, so the sill in 3D could not be asked'); return P; }   /* the sweep of 2026-11-25: silent */
     world = prop.world; px = fx = prop.x + 3; py = fy = prop.y + 2; moving = false;
     camSet('3d'); if (typeof draw3d === 'function') draw3d();
     const root = (typeof T3 !== 'undefined' && T3) ? (T3.group || T3.scene) : null;
-    if (!root) { seasonSet(keep.season); return P; }
+    if (!root) { seasonSet(keep.season); P.push('the 3D camera built no scene at the dressed window, so the sill in 3D could not be asked'); return P; }
     let pane = null, ledge = null;
     root.traverse(o => { if (!o.userData) return;
       if (o.userData.ledge && o.userData.x === prop.x && o.userData.y === prop.y) ledge = o;
@@ -7003,7 +7012,7 @@ const CANDIDATES = [
         const q = (typeof fiestaProps === 'function' ? fiestaProps(wid) : []).find(r => r.sill && r.kind === 'calaverita');
         if (q) { prop = { ...q, world: wid }; break; } }
       if (prop) break; }
-    if (!prop) { seasonSet(keep.season); return P; }
+    if (!prop) { seasonSet(keep.season); P.push('ABSENT sill-skulls: no season puts a sugar skull on a window sill, so the front camera\'s sill box could not be asked'); return P; }   /* the sweep of 2026-11-25: silent */
     world = prop.world; px = fx = prop.x + 3; py = fy = prop.y + 2; moving = false; held = null;
     camSet('front');
     const c = document.getElementById('cv'), g = c.getContext('2d');

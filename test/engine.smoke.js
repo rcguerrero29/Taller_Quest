@@ -142,7 +142,10 @@ function findChromium() {
   /* ...and the list is held to the game: a thing the list says this game has none of, and the game has, is a red, so the
      list cannot go stale and let a check say "has none" of something that is there */
   { const { has } = require('./has.js');
-    const here = await page.evaluate(() => ({ trolley: typeof TROLLEYAT !== 'undefined' && Array.isArray(TROLLEYAT) && TROLLEYAT.length > 0 }));
+    const here = await page.evaluate(() => { const crit = typeof CRIT !== 'undefined' && Array.isArray(CRIT) ? CRIT : [];
+      return { trolley: typeof TROLLEYAT !== 'undefined' && Array.isArray(TROLLEYAT) && TROLLEYAT.length > 0,
+        animals: crit.length > 0, 'kitchen-cat': typeof isCat === 'function' && crit.some(c => isCat(c) && c.wardrobe === true),
+        'eatery-worker': typeof PL !== 'undefined' && !!PL && (PL.eateries || []).some(e => e && WORLDS[e.world]) }; });
     Object.keys(here).forEach(k => { if (has(GAMEOF, k) === false && here[k]) fails.push('the list of what each game has (test/has.js) says ' + (GAMEOF || 'this game') + ' has no ' + k + ', and it has one: mend the list'); }); }
   { const st = await page.evaluate(() => typeof DICE === 'object' && DICE ? DICE.start : null);   /* the run's number reached the page, so a red can be played again */
     if (st !== DICESEED) fails.push('the dice on the first page started from ' + st + ', not from this run\'s ' + DICESEED + ', so a red here could not be played again from the same dice'); }
@@ -202,6 +205,7 @@ function findChromium() {
      where a room was declared, and the filter above never hears it, because "build" is not one of its
      six words. So the log is read, not the console: every lot refused at boot is a red, in the
      engine's own words. */
+  if (!(await page.evaluate(() => typeof logCrit === 'function'))) fails.push('the engine keeps no log of what it refused (logCrit is missing), so a lot it refused to build at boot could not be asked');   /* the sweep of 2026-11-25: silent */
   (await page.evaluate(() => (typeof logCrit === 'function' ? logCrit() : []).filter(e => e.kind === 'build').map(e => e.msg)))
     .forEach(m => fails.push('the engine refused part of this city at boot, so a player finds an empty lot where a room was declared: ' + m));
 
@@ -287,6 +291,17 @@ function findChromium() {
     ['dog', 'cat', 'pig', 'loro'].forEach(k => { const a = ANI(k), wid = AW(k); if (!a || !wid) return; const w = WORLDS[wid];
       if (k === 'loro') { const t = w.rows[a.y] && w.rows[a.y][a.x]; if (!(t && (SOLID.has(t) || (TILES[t] && TILES[t].lift)))) P.push('loro has no perch at ' + wid + ' (' + a.x + ',' + a.y + ')'); }
       else if (!walk(w, a.x, a.y)) P.push(k + ' has nowhere to stand at ' + wid + ' (' + a.x + ',' + a.y + ')'); });
+    /* ...and every animal of the program (the sweep of 2026-11-25: the engine's own four stand nowhere in a world whose
+       animals are the program's, so the loop above asked nothing there). Each starts on the map, the parrot on a wall or
+       perch, every other animal on ground it can walk; a world with no animal at all says so, against the list */
+    { const crit = typeof CRIT !== 'undefined' && Array.isArray(CRIT) ? CRIT : [];
+      const olds = ['dog', 'cat', 'pig', 'loro'].filter(k => ANI(k) && AW(k));
+      if (!crit.length && !olds.length) P.push('ABSENT animals: no animal was asked to have something to stand or perch on');
+      crit.forEach(c => { const w = WORLDS[c.world], who = (c.name || c.kind) + ' (' + c.kind + ')';
+        if (!w) { P.push('the animal ' + who + ' lives in ' + c.world + ', which is no world'); return; }
+        const t = w.rows[Math.round(c.y)] && w.rows[Math.round(c.y)][Math.round(c.x)];
+        if (c.kind === 'loro' || c.perch) { if (!(t && (SOLID.has(t) || (TILES[t] && TILES[t].lift)))) P.push('the parrot ' + who + ' has no perch at ' + c.world + ' (' + c.x + ',' + c.y + ')'); }
+        else if (!walk(w, Math.round(c.x), Math.round(c.y))) P.push('the animal ' + who + ' has nowhere to stand at ' + c.world + ' (' + c.x + ',' + c.y + ')'); }); }
     // ---- every camera draws every world; every door stands in 3D ----
     const before = { cam: camMode, world, px, py, yaw: (typeof T3 !== 'undefined' && T3) ? T3.yaw : 0 };
     moving = false; held = null;
@@ -849,6 +864,8 @@ function findChromium() {
        laid for the purpose and measured against what its drawing says, through the engine's own bake (t3BakeParts) —
        the numbers below are the drawing's and the person's, never the shape's own. A shape that tells the gate it was
        built from its letter's drawing (`.drawing`) and has no check here is a claim nobody reads, and is a red. */
+    if (window.THREE && !(typeof SHAPES === 'object' && SHAPES && typeof SHAPEBIND === 'object' && SHAPEBIND && typeof t3BakeParts === 'function'))
+      P.push('this 3D world has no shape library or no bake (SHAPES, SHAPEBIND or t3BakeParts is missing), so whether every library shape matches its drawing could not be asked');   /* the sweep of 2026-11-25: silent */
     if (typeof SHAPES === 'object' && SHAPES && typeof SHAPEBIND === 'object' && SHAPEBIND && typeof t3BakeParts === 'function') {
       const R = [], tri = {};
       const lum = h => { const n = parseInt(String(h || '#000000').slice(1, 7), 16); return 0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255); };
@@ -7144,7 +7161,7 @@ function findChromium() {
             fredCheck(); const btn = document.getElementById('treat');
             if (petTarget !== od.kind || petCrit !== od || btn.hidden) P.push('beside the office dog the treat button is not his (' + petTarget + ')');
             else { if (btn.textContent !== T().treatLb) P.push('beside the office dog the treat button reads "' + btn.textContent + '", not the old words');
-              ['ball', 'leash', 'love'].forEach(id => { const b = document.getElementById(id); if (b && b.hidden) P.push('beside the office dog the program\'s ' + id + ' button is not offered'); });
+              ['ball', 'leash', 'love'].forEach(id => { const b = document.getElementById(id); if (!b) P.push('beside the office dog the program\'s ' + id + ' button is not in the page at all'); else if (b.hidden) P.push('beside the office dog the program\'s ' + id + ' button is not offered'); });
               const q = [];
               for (let k = 1; k <= 3; k++) { petTarget = od.kind; petCrit = od; btn.click(); q.push(fredQ); }
               if (treats !== 3) P.push('three treats given counted ' + treats);
@@ -7180,6 +7197,7 @@ function findChromium() {
             if (old) P.push('the wardrobe\'s preview painted the office dog with the old painter');
             if (!viaProgram) P.push('the wardrobe\'s preview did not paint the office dog with the program\'s painter');
             out.push('the wardrobe\'s preview: the old painter ' + old + ' times, the program\'s ' + (viaProgram ? 'yes' : 'no')); }
+          else P.push('the wardrobe has no preview to paint the office dog in (wdDraw or #wdpv is missing), so which painter draws him there could not be asked');   /* the sweep of 2026-11-25: silent */
         } finally { Object.assign(wear, keep.wear); if (keep.wd !== null) wdPet = keep.wd; } }
 
       /* 7 · his body, and his card where he is one */
@@ -7537,6 +7555,8 @@ function findChromium() {
           if (pet[1] !== EARSPRING.patient) P.push('the kitchen cat\'s ears spring at ' + pet[1] + ', not the patient speed (' + EARSPRING.patient + ')');
           out.push('her ears: far ' + far[0] + ', near ' + close[0] + ', petted ' + pet[0] + ', grooming ' + gr[0] + ', springing at ' + pet[1]); } }
       /* 7 · a cat not yet met, with cat personalities turned on for this block only */
+      if (!kc) P.push('ABSENT kitchen-cat: a cat not yet met was not asked to face away grooming');
+      else if (typeof catAway !== 'function') P.push('the engine has no catAway, so a cat not yet met could not be asked to face away grooming');   /* the sweep of 2026-11-25: silent */
       if (kc && typeof catAway === 'function') { personaOn = k => k === 'cat'; const saved = kc.persona;
         try { kc.persona = 'patient'; hold(kc); kc.sit = true; const nw = wNow();
           if (!catAway(kc, nw)) P.push('with cat personalities on, a cat not yet met does not face away');
@@ -7769,6 +7789,7 @@ function findChromium() {
           const off = [...kinds.entries()].filter(([, k]) => k !== 'gato');
           if (!kinds.size) P.push('on the night of alebrijes no cat\'s card passed through the alebrije layer, so what it wears was not asked');
           if (off.length) P.push('on the night of alebrijes ' + off.map(([c, k]) => (c && (c.name || (c.wardrobe ? 'the kitchen cat' : c.world))) + ' wears the marks of ' + JSON.stringify(k)).join(', ') + ': every cat of the critters wears the kitten\'s, its card\'s'); }
+        else P.push('the night of alebrijes could not be asked of the cats (wildDraw, alebLooks, alebLookFor or ALEB_KIND.gato is missing), so whether every cat wears the kitten\'s marks was not asked');   /* the sweep of 2026-11-25: silent */
         out.push('every coat: ' + Object.keys(CATCOAT).length + ' coats, ' + Q.length + ' poses each on the card' + (has3d ? ' and the body (' + seen.length + ' bodies)' : '') + '; a coat it does not know grey, a mouth it does not know the smile'); }
       /* 7 · the cat's parts: its whiskers and its mouth, on every cat's body and on no dog's */
       if (has3d) { const parts = B => { let wh = 0, mouth = 0; B.traverse(o => { if (o.userData && o.userData.whisker) wh++; if (o.isMesh && (o.userData.marks || []).includes('mouth')) mouth++; }); return { wh, mouth }; };
@@ -9195,7 +9216,8 @@ function findChromium() {
           const worker = (door.e.who && inside.find(n => n.npc === door.e.who)) || inside[0];
           if (door.e.who && !inside.some(n => n.npc === door.e.who)) P.push('PLACES.eateries says ' + door.e.who + ' works at ' + door.e.world + ', and nobody of that name works there');
           if (!s) P.push('there is nowhere near the door of ' + door.e.world + ' in ' + door.wid + ' for a dog to start from, so the restaurant door could not be asked');
-          else if (worker) {
+          else if (!worker) P.push('ABSENT eatery-worker: nobody works inside ' + door.e.world + ', so a dog singing at its door was not asked to be brought water');   /* the sweep of 2026-11-25: silent */
+          else {
             const name = npcName(worker.npc).split(' ·')[0], glyph = steps.map(([x, y]) => w.grid[y][x]).join('');
             world = door.wid; px = fx = w.W - 1; py = fy = w.H - 1;
             DICE.all = () => 0.80;   /* inside the band that, away from the park, means "a restaurant door" */
@@ -10512,7 +10534,7 @@ function findChromium() {
                ' tiles of the world at y=' + o.position.y.toFixed(2) +
                ' — anything sunk below the floor there is roofed over and can never be seen');
     });
-    if (!aprons) return P;   /* no apron in this pack: nothing to be roofed by */
+    if (!aprons) { P.push('ABSENT ground-skirt: nothing laid under the world was asked to stay outside its footprint (no apron in the scene)'); return P; }   /* the sweep of 2026-11-25: silent */
 
     return P;
   });
@@ -21575,7 +21597,7 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
                       if (!(s1.head > s0.head + 0.3)) said('sniffing, the dog\'s nose is not let down to the ground: his neck comes down by ' + (s1.head - s0.head).toFixed(2) + ', where for a hole it comes down by ' + (d1.head - st.head).toFixed(2));
                       if (!(Math.abs(s2.nod - s1.nod) > 0.02)) said('sniffing, the dog\'s nose does not work: his head is as still as a statue\'s');
                       if ((U.dirt || []).some(d => d.visible)) said('sniffing, the dog throws up earth, as if he were digging'); }
-                    at({ ...P0, dig: true }, 400); if (!(U.dirt || []).every(d => d.visible)) said('digging, the dog throws up no earth');
+                    at({ ...P0, dig: true }, 400); if (!(U.dirt || []).length) said('digging, the dog\'s body has no earth to throw up at all (no clods)'); else if (!(U.dirt || []).every(d => d.visible)) said('digging, the dog throws up no earth');
                     at({ ...P0, dig: false }, 400); if ((U.dirt || []).some(d => d.visible)) said('not digging, the dog still throws up earth');
                     const hv = P => { at({ ...P0, dig: false, ...P }, 500); return (U.hearts || []).filter(h => h.visible).length; };
                     if (hv({ love: true, happy: false }) !== 3) said('showing his love, the dog\'s body shows ' + hv({ love: true, happy: false }) + ' hearts, where his card shows three');
@@ -22869,7 +22891,8 @@ if (typeof CAMS === 'undefined' || CAMS.indexOf('3d') >= 0) {
       const panel = async (label, open, ids, close, L, keys) => { const e0 = wErr.length; await wp.evaluate(open).catch(e => wErr.push(String(e.message)));
         const got = await wp.evaluate(ids => ids.map(i => { const el = document.getElementById(i); return [i, el ? (el.placeholder !== undefined && el.tagName === 'INPUT' ? el.placeholder : el.textContent) : null]; }), ids);
         if (threw(e0)) WD.push('in ' + LN[L] + ', opening ' + label + ' threw "' + wErr[e0] + '"');
-        got.forEach(([i, s]) => { if (s === null) return; if (!String(s).trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where its words go (#' + i + ')'); });
+        got.forEach(([i, s]) => { if (s === null) { if (!threw(e0)) WD.push('in ' + LN[L] + ', ' + label + ' has no #' + i + ' at all, so the words it holds could not be asked'); return; }   /* the sweep of 2026-11-25: a missing piece was skipped */
+          if (!String(s).trim() || bad(s)) WD.push('in ' + LN[L] + ', ' + label + ' shows ' + (String(s).trim() ? '"' + s + '"' : 'nothing') + ' where its words go (#' + i + ')'); });
         (twice[label] = twice[label] || {})[L] = got.map(x => x[1]).filter(x => x !== null).join(' | ');
         for (const [i, s] of got) if (keys && keys[i] && s !== null) await holds(L, label + ' (#' + i + ')', s, keys[i]);
         await wp.evaluate(close).catch(() => {}); };
